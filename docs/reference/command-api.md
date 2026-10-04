@@ -288,18 +288,18 @@ If authorization fails, `isAuthorized` is `false`; `reason` is safe human-readab
 
 Stable authorization reason codes are documented in [Forbidden](./problems/forbidden.md) and the [security model](../guides/security-model.md). Claims-based validators are local/dev/test fallback only; Tenants-backed runtime validation uses the configured tenant/RBAC validator adapters and fails closed when unavailable, stale, ambiguous, or malformed.
 
-## GET /api/v1/commands/status/{correlationId}
+## GET /api/v1/commands/status/{messageId}
 
-Query the processing status of a previously submitted command.
+Query the processing status of a previously submitted command. Retain the submitted `messageId` and use it for status lookup. The server searches authorized tenants for that exact command first; bounded correlation-index lookup and legacy status records support older callers that have only a correlation ID. An ambiguous correlation returns `409 Conflict`, so it cannot reliably identify one command.
 
 ### Path Parameter
 
-`correlationId` — identifier string returned in the submit response. Accepts both GUID (`a1b2c3d4-...`) and ULID (`01HKQXYZ...`) formats — the validator regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$` matches both.
+`messageId` — caller-supplied identifier from the submitted command. For compatibility, a correlation ID from the submit response is also accepted when it resolves to exactly one command. Both forms must be 1–128 characters and match `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$` (GUID and ULID shapes are valid).
 
 ### Example
 
 ```bash
-$ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+$ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -308,25 +308,35 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef12345
 | Field              | Type     | Description                                                                                                |
 | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
 | correlationId      | string   | The command's correlation ID.                                                                              |
+| messageId          | string?  | Submitted command identity; null for a legacy record without a retained message ID.                       |
+| tenantId           | string?  | Authorized tenant scope of the matched status record.                                                     |
 | status             | string   | One of: Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, TimedOut. |
 | statusCode         | integer  | Numeric enum value (0-7).                                                                                  |
 | timestamp          | string   | ISO 8601 timestamp of last status update.                                                                  |
 | aggregateId        | string?  | Populated when processing begins.                                                                          |
+| domain             | string?  | Aggregate domain when recorded. Null when scope was not retained or verified.                              |
 | eventCount         | integer? | Number of events produced (Completed status only).                                                         |
+| committedEventSequence | integer? | Last aggregate event sequence durably committed by this command when an exact eventful range is verified. Null when proof is unavailable. |
 | rejectionEventType | string?  | Rejection event type name (Rejected status only).                                                          |
 | failureReason      | string?  | Error description (PublishFailed status only).                                                             |
 | timeoutDuration    | string?  | ISO 8601 duration format, e.g., `"PT30S"` (TimedOut status only). Produced by `XmlConvert.ToString(TimeSpan)`. |
+
+`committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, rejection, legacy status, or a recovery whose command-specific range cannot be verified; the domain may also be null for these cases. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
 
 **Example — completed command:**
 
 ```json
 {
     "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageId": "01HKQXYZ0000000000000000A1",
+    "tenantId": "tenant-a",
     "status": "Completed",
     "statusCode": 4,
     "timestamp": "2026-03-01T10:30:00.000Z",
     "aggregateId": "counter-1",
+    "domain": "counter",
     "eventCount": 1,
+    "committedEventSequence": 8,
     "rejectionEventType": null,
     "failureReason": null,
     "timeoutDuration": null
@@ -338,11 +348,15 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef12345
 ```json
 {
     "correlationId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "messageId": "01HKQXYZ0000000000000000B2",
+    "tenantId": "tenant-a",
     "status": "Rejected",
     "statusCode": 5,
     "timestamp": "2026-03-01T10:31:00.000Z",
     "aggregateId": "counter-1",
+    "domain": null,
     "eventCount": null,
+    "committedEventSequence": null,
     "rejectionEventType": "CounterAlreadyAtZero",
     "failureReason": null,
     "timeoutDuration": null
@@ -351,7 +365,7 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef12345
 
 ### Status Lifecycle
 
-Poll `/api/v1/commands/status/{correlationId}` at the interval indicated by the `Retry-After` response header (typically 1 second) until a terminal status is returned.
+Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Retry-After` response header (typically 1 second) until a terminal status is returned.
 
 1. **Received** (0) — Command accepted by API, queued for processing
 2. **Processing** (1) — Actor activated, domain service invocation started
@@ -368,10 +382,11 @@ Terminal states: Completed, Rejected, PublishFailed, TimedOut. See [Command Life
 
 | Status                | Condition                                                       | Body                                              |
 | --------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
-| 400 Bad Request       | Correlation ID is empty or whitespace                           | RFC 7807 ProblemDetails                           |
+| 400 Bad Request       | Message or correlation identifier has invalid syntax            | RFC 7807 ProblemDetails                           |
 | 401 Unauthorized      | Missing or invalid JWT token                                    | —                                                 |
 | 403 Forbidden         | No `eventstore:tenant` claims found in JWT                      | RFC 7807 ProblemDetails                           |
 | 404 Not Found         | Command not found in authorized tenants                         | RFC 7807 ProblemDetails                           |
+| 409 Conflict          | Correlation ID matches multiple commands                       | RFC 7807 ProblemDetails; retry with `messageId`    |
 | 429 Too Many Requests | Per-tenant rate limit exceeded                                  | RFC 7807 ProblemDetails with `Retry-After` header |
 
 > **Note:** A `404` response means the command was not found among your authorized tenants. This is intentional — the API does not distinguish between "command does not exist" and "you are not authorized for that tenant" to prevent tenant enumeration.
@@ -532,7 +547,7 @@ $ curl -X POST "${EVENTSTORE_URL}/api/v1/commands" \
 **Step 3 — Poll status:**
 
 ```bash
-$ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+$ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -541,6 +556,8 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef12345
 ```json
 {
     "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageId": "01HKQXYZ0000000000000000A1",
+    "tenantId": "tenant-a",
     "status": "Completed",
     "statusCode": 4,
     "timestamp": "2026-03-01T10:30:00.000Z",
