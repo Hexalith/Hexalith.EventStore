@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true'">
+    <PackageReference Include="Hexalith.EventStore.Server" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true'">
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
+  </ItemGroup>
+</Project>

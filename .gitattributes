@@ -38,3 +38,5 @@ _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/** text 
 # Story 4.15 v4 content-binds every successor artifact while lifecycle state remains mutable.
 _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4/** text eol=lf
 global.json text eol=crlf
+# P1R verification binds fixture and retained receipt bytes; keep the entire new packet LF-stable.
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/** text eol=lf

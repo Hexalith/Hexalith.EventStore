@@ -1,0 +1,34 @@
+{
+  "attempt_02_cleanup_sha256": "fddcdb548af2fd2902e64dc15ab8156c1ba7776de65c2ba55907a97802eb6145",
+  "added_ids": [],
+  "removed_ids": [
+    "09521e5691043b78fa4be805a3064f39193db764dc19ea9bd4a8eb271ff32f79",
+    "6a35dcf8e5455bf4bfe327aacaaec5a3a61900be5e1485d338e6031f5acd80ff",
+    "b2ee3917ccbfefbffc06b74d9d46fcc13f56c2288a9e60a7d95fbc2647d4f803"
+  ],
+  "changed_common_ids": [],
+  "delta_is_prior_task_owned": true,
+  "original_shared_resources_equal": true,
+  "ownership_packets": {
+    "attempt-01": {
+      "invocation": "6c8457e1642945b3846f47aa876e0e51",
+      "ids": [
+        "6a35dcf8e5455bf4bfe327aacaaec5a3a61900be5e1485d338e6031f5acd80ff",
+        "09521e5691043b78fa4be805a3064f39193db764dc19ea9bd4a8eb271ff32f79",
+        "0852f888d6c21e9fcfb5f2e53c88759111dadfad549aaa6738bcaa9c5c133ade",
+        "b2ee3917ccbfefbffc06b74d9d46fcc13f56c2288a9e60a7d95fbc2647d4f803"
+      ],
+      "cleanup_sha256": "18921aba08c33739239f32f856755ba6f862324043a53f6875b6a4f935cda79d"
+    },
+    "attempt-02": {
+      "invocation": "c53262dd73c444d6ae986027d0a1fe65",
+      "ids": [
+        "59024545a75c7df38382ee19831cef53b20a071bf5c441918b57480efcc7dda9",
+        "f77eb2f0c81b2519996c119e3d74471eae72a8e32ffeee9ffb132be2633a6458",
+        "b8a7a127c20fc4e46712f0807e430032766bfc0f0e41d327325ba98d979a3f79",
+        "861cb5f06bfb8c39b9857b35c72af7de7084e20ab785aad24dcdf3bcf89ee868"
+      ],
+      "cleanup_sha256": "fddcdb548af2fd2902e64dc15ab8156c1ba7776de65c2ba55907a97802eb6145"
+    }
+  }
+}

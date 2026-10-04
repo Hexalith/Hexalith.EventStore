@@ -1,0 +1,579 @@
+{
+  "canonical_byte_policy": {
+    "gitattributes_sha256": "d3e21a2616e07babfbb70b1e5585b2f193f9c567b4ab0ad6ecaba06169f23495",
+    "verification_editorconfig_sha256": "adaccd5f2667ec21d6be009aaebdd25e80e08258820751cca204944668339756",
+    "working_bytes_equal_git_filtered_bytes_with_core_autocrlf_true": true
+  },
+  "coordinates": {
+    "current": "2c58ffda41759e895ace4b9625c9bd931a217672",
+    "current_builds": "688eec9a4333245cc0ff7772115c769094471863",
+    "projects_baseline": "cbcf54fa4d7a8c17bbfc3f9fb555ac0a85c179c0",
+    "rollback_archive": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+    "rollback_builds": "7af20f8bafbfe561df6f7705913a0800603090b5",
+    "rollback_tag": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+    "selected": "27279fe6431925a6ea046c3f89af61487185c7de",
+    "selected_builds": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2"
+  },
+  "fixture_hashes": {
+    ".editorconfig": "adaccd5f2667ec21d6be009aaebdd25e80e08258820751cca204944668339756",
+    "Directory.Build.props": "c8360e228cb33d95535f9277ce5cff74c31ab4b98d2cd0ab61f82b3227d584a3",
+    "Directory.Build.targets": "17284cb74605517cbec8a8153505da71a685b28694b67b5ef80608cd79b1c0ea",
+    "Directory.Packages.props": "7b66c888787f6f1bca7b37fde6c64ed2bbe92420f33a1c477bb4db50b198e254",
+    "NuGet.Config": "db3d4bfdad4f1f635e4f1b063f84e41111c9e9fd1d979f78cc6f547979a6a2ce",
+    "domain/AssertCounter.cs": "d3aa3fb89458a680ea6b485666ffdf06e993d002ccae90889c7cfef2dc01359e",
+    "domain/CounterAggregate.cs": "d501129e720329f99f8e5e64c721665523a2ae462d5288f25d72b9b8dc56ce15",
+    "domain/CounterIncremented.cs": "c7277b87f7a71d611f94e1673937bfc38afa21dd3dbeaf8dfd1d0efa8656237e",
+    "domain/CounterState.cs": "81dde09fef9edfa307aadab207ecacf91e81d8bfb86a26af1f0a3b829569db8a",
+    "domain/CursorQueryHandler.cs": "e0d653bf9c6264550afce3d2458023d162c884032cd7136a28eafb8c3dc89c15",
+    "domain/Domain.csproj": "34cee9dbba48dc2a860df85f4a423cd4738cd09b941430eea3dbae52c8a6b5aa",
+    "domain/IncrementCounter.cs": "1e09edc3d4723aaa4d4f23755954ed5031d6c4ed0a49e552ebc996297d5370ed",
+    "domain/Program.cs": "feb0abf490de4236f56ea076cfbe7fd179c8347eadd8a30ceccbbcc9b5fcd5c2",
+    "host/Host.csproj": "bd61eefd7e15d41b67219f4766e8e31dafb0322c87169d3a3030c997b00da13a",
+    "host/Program.cs": "6a5b7e24e9b431c9b32baa9eb062ca004b556b344b3af594cfbeb896be3ed5a7",
+    "probe/Probe.csproj": "86a82c2f17d572ce40d7cfb166f30bb9e9944f7055239176b8a4d5128765a38f",
+    "probe/Program.cs": "759f8d8e0d8342c9f7dedf2351a4d3fa2e7657dff3e21485c0b125555d92b5bd",
+    "run_verification.py": "cf813b1a9bfb461e361ce0b902329d2fa953399d612d8f70f64d8b8bee40f264",
+    "test_run_verification.py": "947f00cd4d842b624b92da4c4d7ba133b45c840dce097ce223ceb8d62d183921"
+  },
+  "limitations": [
+    "Metadata floor, delegated query authority, projection watermark and recovery status fields are lost through rollback consumption; selected actor contracts and watermark helper are absent in rollback.",
+    "Invalid floor, protected serialization marker and unknown metadata version are accepted unsafely by selected, rollback and current source.",
+    "Selected/current shared scope is measured equivalent; Reminder contracts/actors, registration and Dapr.Actors.AspNetCore dependency remain outside that scope.",
+    "Fenced and trusted-effect controls exercise actual dispatch and null-argument validation, not successful effects.",
+    "Post-upgrade restore passed ordinary untrimmed/snapshot fixtures; this does not erase retained-metadata or API downgrade incompatibility.",
+    "Pre-upgrade restoration contains only the earlier backup and discards later selected writes; any rollback-policy change requires a later named owner decision."
+  ],
+  "live_host_loaded_identities": {
+    "3.110.0": [
+      {
+        "name": "Hexalith.EventStore.Server",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      }
+    ],
+    "3.70.1": [
+      {
+        "name": "Hexalith.EventStore.Server",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      }
+    ],
+    "current": [
+      {
+        "name": "Hexalith.EventStore.Server",
+        "sha256": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "sha256": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
+        "version": "3.110.0.0"
+      }
+    ]
+  },
+  "observed_runtime": {
+    "dapr_version": "1.18.2",
+    "daprd_sha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+    "images": {
+      "placement": {
+        "id": "7cde83cca12c224096e2ee557b45badbc9a4611dbbbcf93eaf3c7340c011e026",
+        "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+      },
+      "postgresql": {
+        "id": "c03d786acd9565db57ac9536e57065615200dcde4024b8b298ef0cb9e0c80cc3",
+        "image_id": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+      },
+      "pubsub": {
+        "id": "b68c0483133c897a265bca2ca4112efed11d3fbf0e7c3cbe8d3fbe3fd2925f2b",
+        "image_id": "sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
+      },
+      "scheduler": {
+        "id": "512ef53de230fc9d8ea57ae9db147864b348fd21be64ad85de9daf5c308cf4f0",
+        "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+      }
+    },
+    "private_discovery": true
+  },
+  "owner_acceptance_granted": false,
+  "package_and_loaded_identities": {
+    "3.110.0": {
+      "built_assemblies": {
+        "Domain": {
+          "Hexalith.EventStore.Client": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+          "Hexalith.EventStore.Contracts": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+          "Hexalith.EventStore.DomainService": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+          "Hexalith.EventStore.ServiceDefaults": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
+        },
+        "Host": {
+          "Hexalith.EventStore.Client": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+          "Hexalith.EventStore.Contracts": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+          "Hexalith.EventStore.DomainService": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+          "Hexalith.EventStore.Server": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+          "Hexalith.EventStore.ServiceDefaults": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
+        },
+        "Probe": {
+          "Hexalith.EventStore.Client": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+          "Hexalith.EventStore.Contracts": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+          "Hexalith.EventStore.DomainService": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+          "Hexalith.EventStore.Server": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+          "Hexalith.EventStore.ServiceDefaults": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
+        }
+      },
+      "lane": "3.110.0",
+      "loaded": {
+        "actorMethods": [
+          "CreateManualSnapshotAsync",
+          "EraseTrustedEffectEvidenceAsync",
+          "FenceTrustedEffectsAsync",
+          "GetCurrentSequenceAsync",
+          "GetEventsAsync",
+          "GetRetainedFloorAsync",
+          "GetStreamMetadataAsync",
+          "ProcessCommandAsync",
+          "ProcessFencedCommandAsync",
+          "ProcessTrustedEffectAsync",
+          "ReadEventsRangeAsync",
+          "ReconcileFencedCommandAsync"
+        ],
+        "assemblies": [
+          {
+            "name": "Hexalith.EventStore.Server",
+            "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+            "version": "3.110.0.0"
+          },
+          {
+            "name": "Hexalith.EventStore.Contracts",
+            "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+            "version": "3.110.0.0"
+          }
+        ],
+        "assertions": 1,
+        "cursorScopeMethods": [
+          "Add",
+          "AddProjectionWatermark",
+          "Build",
+          "Create",
+          "Equals",
+          "GetHashCode",
+          "GetType",
+          "ToString"
+        ],
+        "statusFields": [
+          "AggregateId",
+          "CorrelationId",
+          "DrainAttemptCount",
+          "EventCount",
+          "FailureReason",
+          "MessageId",
+          "RecoveryReasonCode",
+          "RejectionEventType",
+          "Retryable",
+          "Status",
+          "TimeoutDuration",
+          "Timestamp"
+        ]
+      },
+      "packages": [
+        {
+          "archive_sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Client.dll": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a"
+          },
+          "id": "Hexalith.EventStore.Client",
+          "repository": {
+            "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.110.0"
+        },
+        {
+          "archive_sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Contracts.dll": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b"
+          },
+          "id": "Hexalith.EventStore.Contracts",
+          "repository": {
+            "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.110.0"
+        },
+        {
+          "archive_sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.DomainService.dll": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b"
+          },
+          "id": "Hexalith.EventStore.DomainService",
+          "repository": {
+            "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.110.0"
+        },
+        {
+          "archive_sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Server.dll": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca"
+          },
+          "id": "Hexalith.EventStore.Server",
+          "repository": {
+            "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.110.0"
+        },
+        {
+          "archive_sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
+          },
+          "id": "Hexalith.EventStore.ServiceDefaults",
+          "repository": {
+            "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.110.0"
+        }
+      ]
+    },
+    "3.70.1": {
+      "built_assemblies": {
+        "Domain": {
+          "Hexalith.EventStore.Client": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+          "Hexalith.EventStore.Contracts": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+          "Hexalith.EventStore.DomainService": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+          "Hexalith.EventStore.ServiceDefaults": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022"
+        },
+        "Host": {
+          "Hexalith.EventStore.Client": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+          "Hexalith.EventStore.Contracts": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+          "Hexalith.EventStore.Server": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da"
+        },
+        "Probe": {
+          "Hexalith.EventStore.Client": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+          "Hexalith.EventStore.Contracts": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+          "Hexalith.EventStore.Server": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da"
+        }
+      },
+      "lane": "3.70.1",
+      "loaded": {
+        "actorMethods": [
+          "CreateManualSnapshotAsync",
+          "GetCurrentSequenceAsync",
+          "GetEventsAsync",
+          "GetStreamMetadataAsync",
+          "ProcessCommandAsync",
+          "ReadEventsRangeAsync"
+        ],
+        "assemblies": [
+          {
+            "name": "Hexalith.EventStore.Server",
+            "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+            "version": "3.70.1.0"
+          },
+          {
+            "name": "Hexalith.EventStore.Contracts",
+            "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+            "version": "3.70.1.0"
+          }
+        ],
+        "assertions": 1,
+        "cursorScopeMethods": [
+          "Add",
+          "Build",
+          "Create",
+          "Equals",
+          "GetHashCode",
+          "GetType",
+          "ToString"
+        ],
+        "statusFields": [
+          "AggregateId",
+          "CorrelationId",
+          "EventCount",
+          "FailureReason",
+          "MessageId",
+          "RejectionEventType",
+          "Status",
+          "TimeoutDuration",
+          "Timestamp"
+        ]
+      },
+      "packages": [
+        {
+          "archive_sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Client.dll": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c"
+          },
+          "id": "Hexalith.EventStore.Client",
+          "repository": {
+            "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.70.1"
+        },
+        {
+          "archive_sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Contracts.dll": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d"
+          },
+          "id": "Hexalith.EventStore.Contracts",
+          "repository": {
+            "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.70.1"
+        },
+        {
+          "archive_sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.DomainService.dll": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0"
+          },
+          "id": "Hexalith.EventStore.DomainService",
+          "repository": {
+            "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.70.1"
+        },
+        {
+          "archive_sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.Server.dll": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da"
+          },
+          "id": "Hexalith.EventStore.Server",
+          "repository": {
+            "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.70.1"
+        },
+        {
+          "archive_sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6",
+          "assemblies": {
+            "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022"
+          },
+          "id": "Hexalith.EventStore.ServiceDefaults",
+          "repository": {
+            "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+            "type": "git",
+            "url": "https://github.com/Hexalith/Hexalith.EventStore"
+          },
+          "version": "3.70.1"
+        }
+      ]
+    },
+    "current": {
+      "built_assemblies": {
+        "Domain": {
+          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
+          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
+          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+        },
+        "Host": {
+          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
+          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
+          "Hexalith.EventStore.Server": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+        },
+        "Probe": {
+          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
+          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
+          "Hexalith.EventStore.Server": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+        }
+      },
+      "lane": "current",
+      "loaded": {
+        "actorMethods": [
+          "CreateManualSnapshotAsync",
+          "EraseTrustedEffectEvidenceAsync",
+          "FenceTrustedEffectsAsync",
+          "GetCurrentSequenceAsync",
+          "GetEventsAsync",
+          "GetRetainedFloorAsync",
+          "GetStreamMetadataAsync",
+          "ProcessCommandAsync",
+          "ProcessFencedCommandAsync",
+          "ProcessTrustedEffectAsync",
+          "ReadEventsRangeAsync",
+          "ReconcileFencedCommandAsync"
+        ],
+        "assemblies": [
+          {
+            "name": "Hexalith.EventStore.Server",
+            "sha256": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+            "version": "3.110.0.0"
+          },
+          {
+            "name": "Hexalith.EventStore.Contracts",
+            "sha256": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+            "version": "3.110.0.0"
+          }
+        ],
+        "assertions": 1,
+        "cursorScopeMethods": [
+          "Add",
+          "AddProjectionWatermark",
+          "Build",
+          "Create",
+          "Equals",
+          "GetHashCode",
+          "GetType",
+          "ToString"
+        ],
+        "statusFields": [
+          "AggregateId",
+          "CorrelationId",
+          "DrainAttemptCount",
+          "EventCount",
+          "FailureReason",
+          "MessageId",
+          "RecoveryReasonCode",
+          "RejectionEventType",
+          "Retryable",
+          "Status",
+          "TimeoutDuration",
+          "Timestamp"
+        ]
+      },
+      "packages": []
+    }
+  },
+  "preserved_after": {
+    "_bmad-output/implementation-artifacts/6-1-p1r-acceptance.json": "37e2532154319cc030b9559f3cfee4bfb0853a4e50d47dcc0196f89e448a4eb7",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "bc0d564d8c07a9299c9e678dca2df1d98345ae870a798a6ec99a258bf11e6a93",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/README.md": "12a28c92f83dc9ec72c95b82059e5c337a6a34c8a414af7be5d30426889d1cc7",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj": "b6032d043d9c83065d0a0d8e573b50454c089c376b11a103e3c014ffd63565b6",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/NuGet.Config": "288e7ea6a4e6262902d19228109822b09383dfc751d9b182b4eb67b08089c3fc",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/PublishedApiSmoke.cs": "094c5eca45461694cb8cb007aea968af84b18ad05d544392b9a69e38a252c5ae",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/public-packages.json": "fe82ad393a9335088715648e551f5be487fb90b0259776271555cf675dac0bf2",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py": "35c0c062128c4c7a9b53e8321fd0c81bed14f4b8ec92279034e1e8f09a49ef17"
+  },
+  "preserved_before": {
+    "_bmad-output/implementation-artifacts/6-1-p1r-acceptance.json": "37e2532154319cc030b9559f3cfee4bfb0853a4e50d47dcc0196f89e448a4eb7",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "bc0d564d8c07a9299c9e678dca2df1d98345ae870a798a6ec99a258bf11e6a93",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/README.md": "12a28c92f83dc9ec72c95b82059e5c337a6a34c8a414af7be5d30426889d1cc7",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj": "b6032d043d9c83065d0a0d8e573b50454c089c376b11a103e3c014ffd63565b6",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/NuGet.Config": "288e7ea6a4e6262902d19228109822b09383dfc751d9b182b4eb67b08089c3fc",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/PublishedApiSmoke.cs": "094c5eca45461694cb8cb007aea968af84b18ad05d544392b9a69e38a252c5ae",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/public-packages.json": "fe82ad393a9335088715648e551f5be487fb90b0259776271555cf675dac0bf2",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py": "35c0c062128c4c7a9b53e8321fd0c81bed14f4b8ec92279034e1e8f09a49ef17"
+  },
+  "provenance_validation": {
+    "archive_and_dll_digest_maps": "Pinned fixture constants are verified against fresh signed archives; packet declarations are not trust anchors.",
+    "current_source_outputs": "Host, Domain and Probe Debug outputs bind executed physical DLL inventories, restore project graphs, probe identities and every retained live identity response.",
+    "exact_package_ids": [
+      "Hexalith.EventStore.Client",
+      "Hexalith.EventStore.Contracts",
+      "Hexalith.EventStore.DomainService",
+      "Hexalith.EventStore.Server",
+      "Hexalith.EventStore.ServiceDefaults"
+    ],
+    "exact_probe_assemblies": [
+      "Hexalith.EventStore.Contracts",
+      "Hexalith.EventStore.Server"
+    ],
+    "required_live_host_assemblies": [
+      "Hexalith.EventStore.Client",
+      "Hexalith.EventStore.Contracts",
+      "Hexalith.EventStore.Server"
+    ],
+    "shared_resource_inspection": "Only Id, Image, Running, StartedAt and invocation label are projected; unrelated container configuration and environment are neither read nor retained."
+  },
+  "public_packages_record_sha256": "fe82ad393a9335088715648e551f5be487fb90b0259776271555cf675dac0bf2",
+  "qualified": false,
+  "retained_diagnostics": {
+    "attempt-01": "db01c2cc636d700d905d0e8313026e606f89d63103c22122cf9792879d9b83cd",
+    "attempt-02": "7a68c7870bf8f5d86e6c69ae0fee45b820cc6e8ce0a8a3ab626d67d8756d5dc9",
+    "attempt-03": "45a341e0f2f608f76b9be63e50e8dfd1956b52ffe62284c1188b66cc9198a796",
+    "attempt-04": "f49f9be0d7b69aaafbd542ba31f92c35e1a0fdc82a09c81fb50528ef0997eb5b",
+    "attempt-05-targeted": "1b49a78490095a453018f64b289fac9a2f60a1eb19bd59151652967a66af5098",
+    "attempt-06": "304b5eabe0a3ee84f5824e99840b67efd827c7a472cae188661cd29c4cb49bd5",
+    "attempt-07": "e8607841a1ea0a098b840f59be9f39ed6b708036152a635e38427034a910194e",
+    "attempt-08": "92968dfc0bce1fa57726eb7d73055d5a25fec64baac5e6491b42b092f237c34b",
+    "attempt-09-audit-reproduction": "c294ff7bcd2584fd1cec9220b9a594f45edbb760f1fa16fb290db040f1d79f05"
+  },
+  "runtime": {
+    "dapr": "1.18.2",
+    "discovery": "private SQLite v1 (Alpha; fixture only)",
+    "postgresql": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+  },
+  "schema": "hexalith.p1r.verification.report-index.v1",
+  "selected_invocation": {
+    "directory": "attempt-10",
+    "files": {
+      "README.md": "6890e3064155e8020d1d110592745b69a202f2174436b2a09e5155cc29e325b0",
+      "SHA256SUMS": "203d3bbeebf2e510bb06c8b981542a7957e6b201fff15591e0c1360275084846",
+      "cleanup.json": "143a6a10cbd2f6a89c01c13f7761c19b9d29fbdd296ffebb7b48e94af6e67393",
+      "commands.json": "2a1c64641bc9feb3b1dcb4a0f41b2d1288a87e0f8242241311c5690eb71f7ae9",
+      "manifest.json": "97966a3d10ff28618cd5e22626cea5a3002af328948fc6dfc8b9771f3f35f697",
+      "runtime-identity.json": "57bd722fc785fd6d90f32aa8c6ad017659be64b5c5e6d3efa4f2b7326ac5f162",
+      "scenario-results.json": "9830b13d3e42fa3b907419b8b9595d4f3ee80bcd9dc43b6851810067d1af6a00",
+      "shared-scope-comparison.json": "a37e50193d0cd2d3ae3673dc9ffbca0e6b56c0d23b0b8a861177d55c1835c82b",
+      "source-comparison.json": "d3c4617119285a6190aea35575d35a6ba20ee5881effae53650ce4784c47d652"
+    }
+  },
+  "status": "complete-investigation",
+  "usable_as_prerequisite": false,
+  "verification": {
+    "assertions": 2693,
+    "command_receipts": 1626,
+    "control_tests_passed": 60,
+    "run_exit_code": 1,
+    "scenario_count": 17,
+    "top_level_cases": 72,
+    "validator_exit_code": 0
+  },
+  "versions": [
+    "3.110.0",
+    "3.70.1"
+  ]
+}

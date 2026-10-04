@@ -1,0 +1,66 @@
+{
+  "coordinates": {
+    "current": "2c58ffda41759e895ace4b9625c9bd931a217672",
+    "current_builds": "688eec9a4333245cc0ff7772115c769094471863",
+    "projects_baseline": "cbcf54fa4d7a8c17bbfc3f9fb555ac0a85c179c0",
+    "rollback_archive": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+    "rollback_builds": "7af20f8bafbfe561df6f7705913a0800603090b5",
+    "rollback_tag": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+    "selected": "27279fe6431925a6ea046c3f89af61487185c7de",
+    "selected_builds": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2"
+  },
+  "finished_utc": "2026-10-04T05:34:40+00:00",
+  "fixture_hashes": {
+    "Directory.Build.props": "d53054a57bde1d096aa1b04dfc7c08e2bb7a4df922cd79e662e3eab1627699be",
+    "Directory.Build.targets": "5c10e0dca89d53fa828e2b8ad817f7ddeccb7775bef36c1e75dba0d87a103ee6",
+    "Directory.Packages.props": "fedf63955d84e2ef1a02d3ae42bf4d85b961513f603f0a9c96c0e8ce09dced9c",
+    "NuGet.Config": "f5b382f6d811974b4488d83b01dd98c497bd793be51ef035ee212c2236206c23",
+    "domain/AssertCounter.cs": "a6c216e8939a32e3ae6752fb22df1fa595a3d08d2b6b60f98b2ec5da989866fd",
+    "domain/CounterAggregate.cs": "9dffcdd4b03f325927d2d367614ce2de977837bb2393853df032696e43126021",
+    "domain/CounterIncremented.cs": "df06979efafe7ef36869ad559d2e28270acf787d715f825a480da34afd1cda43",
+    "domain/CounterState.cs": "4a9c2a452cd05ede0952081aad822c76912ce7dfd71d81d8ed677332aec63737",
+    "domain/CursorQueryHandler.cs": "9e82f4d563eb237aaebc2ae80e1a3e2e56c9ab61dc99b56aa8269500b7be9bbb",
+    "domain/Domain.csproj": "aca4ebd970bb17af1244e6e1e73197d993ab51a66d2a64920f5b4b32597e11a3",
+    "domain/IncrementCounter.cs": "8117678c26c26aea3982d3b96201bc9a76181191dffe5b54b3e40467349bef7e",
+    "domain/Program.cs": "30dbf832c3ce580e067bbd92254084eed47e7ea587e65cf145e1876630c533ff",
+    "host/Host.csproj": "20cd17e53b32f3686b4ac3e63c43771a877bb3fe116216d6566160fc629c1123",
+    "host/Program.cs": "2abc611fcfea7a49446970458ddbed4554d6cd4ce6ce18c8af95c85734d18fa3",
+    "probe/Probe.csproj": "efb5cb3fe2f4970cda836c6ee757fed98577c22901c8fab358f924d8c7cab117",
+    "probe/Program.cs": "546b7baa060afd9e6fbc3240dda1bbbce2f4b1de2013ee79ed63fe383dbf7f1f",
+    "run_verification.py": "d08b3354ea64fca596a50e14b679b948540826c2749e0077cd9a21df6542c79c",
+    "test_run_verification.py": "c675a6f2e30ccb05eaf0bb57889ff7044c964251b41124ad1d8254465e308f73"
+  },
+  "owner_acceptance_granted": false,
+  "preserved_after": {
+    "_bmad-output/implementation-artifacts/6-1-p1r-acceptance.json": "37e2532154319cc030b9559f3cfee4bfb0853a4e50d47dcc0196f89e448a4eb7",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "bc0d564d8c07a9299c9e678dca2df1d98345ae870a798a6ec99a258bf11e6a93",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/README.md": "12a28c92f83dc9ec72c95b82059e5c337a6a34c8a414af7be5d30426889d1cc7",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj": "b6032d043d9c83065d0a0d8e573b50454c089c376b11a103e3c014ffd63565b6",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/NuGet.Config": "288e7ea6a4e6262902d19228109822b09383dfc751d9b182b4eb67b08089c3fc",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/PublishedApiSmoke.cs": "094c5eca45461694cb8cb007aea968af84b18ad05d544392b9a69e38a252c5ae",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/public-packages.json": "fe82ad393a9335088715648e551f5be487fb90b0259776271555cf675dac0bf2",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py": "35c0c062128c4c7a9b53e8321fd0c81bed14f4b8ec92279034e1e8f09a49ef17"
+  },
+  "preserved_before": {
+    "_bmad-output/implementation-artifacts/6-1-p1r-acceptance.json": "37e2532154319cc030b9559f3cfee4bfb0853a4e50d47dcc0196f89e448a4eb7",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "bc0d564d8c07a9299c9e678dca2df1d98345ae870a798a6ec99a258bf11e6a93",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/README.md": "12a28c92f83dc9ec72c95b82059e5c337a6a34c8a414af7be5d30426889d1cc7",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj": "b6032d043d9c83065d0a0d8e573b50454c089c376b11a103e3c014ffd63565b6",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/NuGet.Config": "288e7ea6a4e6262902d19228109822b09383dfc751d9b182b4eb67b08089c3fc",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/PublishedApiSmoke.cs": "094c5eca45461694cb8cb007aea968af84b18ad05d544392b9a69e38a252c5ae",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/public-packages.json": "fe82ad393a9335088715648e551f5be487fb90b0259776271555cf675dac0bf2",
+    "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py": "35c0c062128c4c7a9b53e8321fd0c81bed14f4b8ec92279034e1e8f09a49ef17"
+  },
+  "runtime": {
+    "dapr": "1.18.2",
+    "discovery": "private SQLite v1 (Alpha; fixture only)",
+    "postgresql": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+  },
+  "schema": "hexalith.p1r.verification.v1",
+  "started_utc": "2026-10-04T05:31:22+00:00",
+  "usable_as_prerequisite": false,
+  "versions": [
+    "3.110.0",
+    "3.70.1"
+  ]
+}

@@ -1,0 +1,293 @@
+{
+  "errors": [],
+  "invocation": "a1d3b897e26c4975a3ff703a36384427",
+  "owned_containers": [
+    "d106e0dd29b6b310f69231de6f07261489be8724ff485fdcb26a3b773bac0e4c",
+    "b496d83dea7a4de5f2562f894277b5da358a293b6f6ac5e9601fefed64cc02f6",
+    "4dbb1b711831e5f8eadc1dfa4a81b3b85de661ce9a0fb6a0a9258641f0cea0c6",
+    "90c15ebdc857f16d6596290fba03c98cde193e755d000de0bec3f64f265a81db"
+  ],
+  "owned_containers_removed": true,
+  "owned_processes": [
+    2166627,
+    2166752,
+    2166957,
+    2167140,
+    2167198,
+    2167366,
+    2167447,
+    2167611,
+    2167641,
+    2167671,
+    2167698,
+    2167729,
+    2167758,
+    2167773,
+    2167891,
+    2168076,
+    2168160,
+    2168254,
+    2168342,
+    2168527,
+    2168553,
+    2168585,
+    2168636,
+    2168663,
+    2168703,
+    2168711,
+    2168712,
+    2168713,
+    2168726,
+    2168739,
+    2168760,
+    2168768,
+    2168776,
+    2168787,
+    2168797,
+    2168805,
+    2168816,
+    2168851,
+    2168867,
+    2168875,
+    2168883,
+    2168891,
+    2168899,
+    2168943,
+    2168954,
+    2168965,
+    2168975,
+    2169013,
+    2169021,
+    2169032,
+    2169043,
+    2169054,
+    2169062,
+    2169071,
+    2169080,
+    2169093,
+    2169101,
+    2169111,
+    2169136,
+    2169146,
+    2169154,
+    2169165,
+    2169173,
+    2169191,
+    2169199,
+    2169241,
+    2169255,
+    2169274,
+    2169288,
+    2169387,
+    2169401,
+    2169420,
+    2169433,
+    2169468,
+    2169483,
+    2169497,
+    2169512,
+    2169525,
+    2169539,
+    2169558,
+    2169583,
+    2169584,
+    2169691,
+    2169692,
+    2169808,
+    2170150,
+    2170209,
+    2170235,
+    2170250,
+    2170251,
+    2170358,
+    2170359,
+    2170498,
+    2170546,
+    2170572,
+    2170586,
+    2170602,
+    2170603,
+    2170674,
+    2170675,
+    2170785,
+    2170885,
+    2171059,
+    2171091,
+    2171092,
+    2171093,
+    2171102,
+    2171130,
+    2171144,
+    2171209,
+    2171226,
+    2171240,
+    2171286,
+    2171300,
+    2171313,
+    2171359,
+    2171375,
+    2171388,
+    2171415,
+    2171442
+  ],
+  "owned_processes_stopped": true,
+  "scratch_removed": true,
+  "shared_after": {
+    "/home/administrator/.dapr/bin/daprd": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c",
+    "/usr/local/bin/dapr": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5",
+    "68d1c190f77b104c94c2ab3f4c568f11931981b7f923a386b42bc7e1b6083ef9": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": true,
+      "started": "2026-10-01T13:15:19.252306038Z"
+    },
+    "69033d10a1652fbf7c6bb0929db6cbdfa9acb3be7a5388c7cd8ca5cb5434701a": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": false,
+      "started": "2026-08-30T13:01:44.744997415Z"
+    },
+    "777d21d77f11e7910413170d56767cdae4ee1acd9f47a5d25ecb209a5eb46c4b": {
+      "image": "sha256:e60f9c44a55437e17b67b0e5492e2618ab827c79e2be90815e6471193a673d04",
+      "running": false,
+      "started": "2026-08-30T13:01:44.160369659Z"
+    },
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "running": true,
+      "started": "2026-09-25T20:29:22.938893285Z"
+    },
+    "9303afb431fcee432d7df752a202d42b5472a606ef7bb3dde3fb4bf6d902afa1": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-09-30T07:15:16.319361101Z"
+    },
+    "a04a08588626a50a76716d51ecc0fd835e9dd5b8b00ca3d99b7606d9024d9f87": {
+      "image": "sha256:f9ba7b2af90db8dc749a57ca9aedca51e840cb9224441ab546a968da941da900",
+      "running": true,
+      "started": "2026-10-01T13:15:23.661635993Z"
+    },
+    "b27fa2dad48b0301f65f568d17a5cab3be761a39cb0bf1647c26571040937b52": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": false,
+      "started": "2026-08-30T13:01:44.623501234Z"
+    },
+    "b6975246f99abc9c32c17b8b88aafd7b675a7ad8b8d9041af7dc1e7788ab13ad": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-09-30T07:15:16.585507698Z"
+    },
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+      "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "running": true,
+      "started": "2026-09-25T20:29:22.942562136Z"
+    },
+    "ce990e17442eba15b21c5327e765217ba2f76f3b78b825c630866ef9caefebfc": {
+      "image": "sha256:c3cf14b1301277042b38233f242da0df230335a1a8c074848d13af5b8e09e782",
+      "running": true,
+      "started": "2026-10-01T13:15:20.341326064Z"
+    },
+    "d0ae9352d2c22aca7252e887d8a58bc6137a8bea4519de453b3f1d62e11d5037": {
+      "image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "de3de45eca7b7af84ce3235730e8d406f84cde214a836d4b989a5c5b915dc807": {
+      "image": "sha256:f9ba7b2af90db8dc749a57ca9aedca51e840cb9224441ab546a968da941da900",
+      "running": false,
+      "started": "2026-08-30T13:01:47.172650409Z"
+    },
+    "e638616892ca1bd7f9db63de609d11a82500b2d8fa2c54b0b583e6a68810bb83": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": true,
+      "started": "2026-10-01T13:15:19.257486215Z"
+    }
+  },
+  "shared_before": {
+    "/home/administrator/.dapr/bin/daprd": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c",
+    "/usr/local/bin/dapr": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5",
+    "68d1c190f77b104c94c2ab3f4c568f11931981b7f923a386b42bc7e1b6083ef9": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": true,
+      "started": "2026-10-01T13:15:19.252306038Z"
+    },
+    "69033d10a1652fbf7c6bb0929db6cbdfa9acb3be7a5388c7cd8ca5cb5434701a": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": false,
+      "started": "2026-08-30T13:01:44.744997415Z"
+    },
+    "777d21d77f11e7910413170d56767cdae4ee1acd9f47a5d25ecb209a5eb46c4b": {
+      "image": "sha256:e60f9c44a55437e17b67b0e5492e2618ab827c79e2be90815e6471193a673d04",
+      "running": false,
+      "started": "2026-08-30T13:01:44.160369659Z"
+    },
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "running": true,
+      "started": "2026-09-25T20:29:22.938893285Z"
+    },
+    "9303afb431fcee432d7df752a202d42b5472a606ef7bb3dde3fb4bf6d902afa1": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-09-30T07:15:16.319361101Z"
+    },
+    "a04a08588626a50a76716d51ecc0fd835e9dd5b8b00ca3d99b7606d9024d9f87": {
+      "image": "sha256:f9ba7b2af90db8dc749a57ca9aedca51e840cb9224441ab546a968da941da900",
+      "running": true,
+      "started": "2026-10-01T13:15:23.661635993Z"
+    },
+    "b27fa2dad48b0301f65f568d17a5cab3be761a39cb0bf1647c26571040937b52": {
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "running": false,
+      "started": "2026-08-30T13:01:44.623501234Z"
+    },
+    "b6975246f99abc9c32c17b8b88aafd7b675a7ad8b8d9041af7dc1e7788ab13ad": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-09-30T07:15:16.585507698Z"
+    },
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+      "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "running": true,
+      "started": "2026-09-25T20:29:22.942562136Z"
+    },
+    "ce990e17442eba15b21c5327e765217ba2f76f3b78b825c630866ef9caefebfc": {
+      "image": "sha256:c3cf14b1301277042b38233f242da0df230335a1a8c074848d13af5b8e09e782",
+      "running": true,
+      "started": "2026-10-01T13:15:20.341326064Z"
+    },
+    "d0ae9352d2c22aca7252e887d8a58bc6137a8bea4519de453b3f1d62e11d5037": {
+      "image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "running": false,
+      "started": "0001-01-01T00:00:00Z"
+    },
+    "de3de45eca7b7af84ce3235730e8d406f84cde214a836d4b989a5c5b915dc807": {
+      "image": "sha256:f9ba7b2af90db8dc749a57ca9aedca51e840cb9224441ab546a968da941da900",
+      "running": false,
+      "started": "2026-08-30T13:01:47.172650409Z"
+    },
+    "e638616892ca1bd7f9db63de609d11a82500b2d8fa2c54b0b583e6a68810bb83": {
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "running": true,
+      "started": "2026-10-01T13:15:19.257486215Z"
+    }
+  }
+}

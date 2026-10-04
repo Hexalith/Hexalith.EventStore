@@ -1,0 +1,2517 @@
+{
+  "exit_code": 1,
+  "qualified": false,
+  "scenarios": [
+    {
+      "assertions": 232,
+      "cases": [
+        {
+          "actor_methods": [
+            "CreateManualSnapshotAsync",
+            "EraseTrustedEffectEvidenceAsync",
+            "FenceTrustedEffectsAsync",
+            "GetCurrentSequenceAsync",
+            "GetEventsAsync",
+            "GetRetainedFloorAsync",
+            "GetStreamMetadataAsync",
+            "ProcessCommandAsync",
+            "ProcessFencedCommandAsync",
+            "ProcessTrustedEffectAsync",
+            "ReadEventsRangeAsync",
+            "ReconcileFencedCommandAsync"
+          ],
+          "assertions": 126,
+          "id": "3.110.0",
+          "packages": 5
+        },
+        {
+          "actor_methods": [
+            "CreateManualSnapshotAsync",
+            "GetCurrentSequenceAsync",
+            "GetEventsAsync",
+            "GetStreamMetadataAsync",
+            "ProcessCommandAsync",
+            "ReadEventsRangeAsync"
+          ],
+          "assertions": 106,
+          "id": "3.70.1",
+          "packages": 5
+        }
+      ],
+      "command_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "provenance",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 4,
+      "cases": [
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": 1,
+          "id": "pascal-floor-None",
+          "inputSha256": "f25f14d0063765cdc9db3de266306b486381db9f8f522249bd889cac371fe429",
+          "outputSha256": "2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323"
+        },
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": 1,
+          "id": "web-floor-None",
+          "inputSha256": "848473291db50ff6da09c3801cd80ed3ebf690fc565f786fd0d22afb573687a8",
+          "outputSha256": "6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf"
+        }
+      ],
+      "command_ids": [
+        29,
+        30
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "legacy-metadata",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 8,
+      "cases": [
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "pascal-floor-1",
+          "inputSha256": "9e0dcbd998d1f7ec834c6297ebfc215e4e4210b7b1eabf580867c8eacede2b7d",
+          "outputSha256": "ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c"
+        },
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "pascal-floor-5",
+          "inputSha256": "5d26d5bc9014670583b1c457e2d8dc2b091a6ff17a749e7b5b16e90252feac95",
+          "outputSha256": "ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c"
+        },
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "web-floor-1",
+          "inputSha256": "7f6b019dabcd77f15fb40a2f5eacafa4958ff231e3ff9756e255bb707470258f",
+          "outputSha256": "0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a"
+        },
+        {
+          "assertions": 2,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "web-floor-5",
+          "inputSha256": "acea7fc927340ccde6d93d07a4a30990d5299d3de3b4e7d0b66b041d6f988896",
+          "outputSha256": "0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a"
+        }
+      ],
+      "command_ids": [
+        31,
+        32,
+        33,
+        34
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "metadata-read",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 50,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "49acab5301d8fdd33a4a734db3b16abada9959df0715d68dca0eae9241a8fd18",
+          "assertions": 50,
+          "before_sha256": "c6cc973267d692748a8f5704f4d7c1ae871a089a0b15c0b52d20bce3ff73b4e6",
+          "bookkeeping_rows_after": 45,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "d5863b9af3127ef9f6c9886196e646a16ce8dae5ea28f35da40ddf58343c5ce8",
+          "id": "3.110.0-to-3.70.1",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        }
+      ],
+      "command_ids": [
+        356,
+        357,
+        358,
+        359,
+        360,
+        361,
+        362,
+        363,
+        364,
+        365,
+        366,
+        367,
+        368,
+        369,
+        370,
+        371,
+        372,
+        373,
+        374,
+        375,
+        376
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "metadata-write",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 96,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "bd0ef01de9ece14a569ba0e3c0b618a25cabc6eb86631b6afa3d15509078988e",
+          "assertions": 48,
+          "before_sha256": "4e083029129e485997dbec4ae8b83056153ea70b3a04986fc464c84b18483281",
+          "bookkeeping_rows_after": 43,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "6cc0bf8efec553bb92d54158b7a4d36a6a12b907b49f2c3fe09bed6a75c651ab",
+          "id": "3.110.0-to-3.70.1",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "9c9fc3073727bf0f7cede7d2ad6272f8d93fcfdfa00328c47de70203da6573f1",
+          "assertions": 48,
+          "before_sha256": "74146c72b9c94d3528058b7aa3017e34b7dc255f1c43920118bc4162ea8f3650",
+          "bookkeeping_rows_after": 41,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "1ca15f4b4dfbb903ae185c0ecbd8aff73a461aaf2fa205f7f68363c3a1b0540d",
+          "id": "3.70.1-to-3.110.0",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        }
+      ],
+      "command_ids": [
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "full-replay",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 96,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "a1fc40c9c93c84513f23922bb55d453f2a8920a450d8ec2d613c4094ccaefed6",
+          "assertions": 48,
+          "before_sha256": "2a61878feba0e2aaa799526b95edc11853442ca653009d2582767f1a6309abfb",
+          "bookkeeping_rows_after": 43,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "0abb3a4f53fa1692b13d77ac49b51ba7c25c20518ae5f533c97cdb0b07accd68",
+          "id": "3.110.0-to-3.70.1",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "e17aa20cf48735b08645792eeb58fb0ae9abcfec19d6129dc10c48e872f091d0",
+          "assertions": 48,
+          "before_sha256": "472c3da3633a04413dfd9caecf9277b26a62d8adf1830cc42cd0041014746814",
+          "bookkeeping_rows_after": 41,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "1ec1f541ccd8d1704787f3bdc4691f650ec6d8bb264187e020905841051b4a36",
+          "id": "3.70.1-to-3.110.0",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        }
+      ],
+      "command_ids": [
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "snapshot-tail",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 96,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "7873791f1c3b6561423243b84af366ac245aa1d014018aa81f72a0378eacc4f1",
+          "assertions": 48,
+          "before_sha256": "cf8fe91c48722f72562baa2533b5264061811212265e27cd61ed0b1c7c1b2f17",
+          "bookkeeping_rows_after": 43,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "00a323ff3a98efd8f4f6905bf2eb33952673028e7f5d576bf99189c071d8c768",
+          "id": "3.110.0-to-3.70.1",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "180c89ba2aef92363e96968a0ac60d86ef6e916a65adec943c93e15619eb965b",
+          "assertions": 48,
+          "before_sha256": "9af61f46d080ce4dd904e8bcec4e275f7230186db35d9bf0b2a2af6f37f466cd",
+          "bookkeeping_rows_after": 41,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "4d583faf282a4b5648c982c3b1c8cbd4004a0e910fc34e9f97b160996756605f",
+          "id": "3.70.1-to-3.110.0",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        }
+      ],
+      "command_ids": [
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "retained-covered",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 192,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "61370c27c9bb567eafb26deb5a3be73cc6156a8f923b52f0918000fafbeabbad",
+          "assertions": 48,
+          "before_sha256": "479fe07ea9c0d40d9f43dabbaf3c49b0056e40d8f2274ed56baa3bf608a68eb9",
+          "bookkeeping_rows_after": 42,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "9bcc3120f7649751bdadaefbb0aedbf0abd55dfca39f0d68cc26a43838e2c7a5",
+          "id": "3.110.0-to-3.70.1-absent",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "0aed0981b3ff0c11a9c17993d83c8f3ce27b84b3f2f09d0f0f04cd390e6323b2",
+          "assertions": 48,
+          "before_sha256": "e932cf9128584d62e9da72a6c95341ea117e32045d71ce873e0e99929b2930bc",
+          "bookkeeping_rows_after": 42,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "88f69cfd423a342705d3439b6afe28cb95fca1e8006fb5d004b7b47bbd359472",
+          "id": "3.110.0-to-3.70.1-non-covering",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "d7034fb2cf43012e215c1a0fe48a63b74f99aafee38c0f69b5fd09ce4bde8daa",
+          "assertions": 48,
+          "before_sha256": "5a63f35d7ac0aa6b79b8cf70dbacb25452527e3b1b2aec37bcb29034eefa5fa7",
+          "bookkeeping_rows_after": 40,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "06dc821305d53899489eff4b5696a009e40cabbb254cc3c9a5bd8438eb714d94",
+          "id": "3.70.1-to-3.110.0-absent",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "f4729b55e1a8db1eae0f51c93431271293c846fd710e8ab88cfad4cec7b33046",
+          "assertions": 48,
+          "before_sha256": "08c086aac27b00c843374deb14b808e91875ec40083cb76059687305e744c6dd",
+          "bookkeeping_rows_after": 40,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "66bb26840f25dfea52570a86fb1e980eec1153e01345a364132a2beb25ee9393",
+          "id": "3.70.1-to-3.110.0-non-covering",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        }
+      ],
+      "command_ids": [
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "retained-uncovered",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 192,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "44971a060db89304f783296084c311a829a26fa78d1559b847c0475ecfa117a3",
+          "assertions": 48,
+          "before_sha256": "7812abe092dccf100222378bef92c811970f5bca8cf7a0c54add5185aa022eca",
+          "bookkeeping_rows_after": 42,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "e6c456d41f4543f42a9c33df3a4114c7fe7e2c53495c8c46a23b06e9f11a753c",
+          "id": "3.110.0-to-3.70.1-interior",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "c9e7a216c00536bcf856b565fd5b1ac1e62bab6748f9fccadaf121947fbf1ee9",
+          "assertions": 48,
+          "before_sha256": "f8515ea51a2a7385955aef0a0194de863e7ddc60746945f762d21b5df7ef17e8",
+          "bookkeeping_rows_after": 42,
+          "bookkeeping_rows_before": 39,
+          "database_identity_sha256": "752ef99069afcff19fe450778f9a41ac0e48dbcd61cb04c5aabb55586684ea38",
+          "id": "3.110.0-to-3.70.1-tail",
+          "reader": "3.70.1",
+          "writer": "3.110.0"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "7a5e8db7f157abc7e64d315bdc6a41a963867b3f3fc85d36efbbfe82a5996c4a",
+          "assertions": 48,
+          "before_sha256": "d4efde786a332ca27639da1b8d47c4690557f39d9ece200011e1fd9095862205",
+          "bookkeeping_rows_after": 40,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "3a0c9213b79e6ab4f6821a9e12de9d1cebb91cd5b1097e20d45f652a6b0e646a",
+          "id": "3.70.1-to-3.110.0-interior",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "6cb9da4888f25d1c8ec72fe6c5b458bb19fd3108bfbf55bce17ad2459b3cd906",
+          "assertions": 48,
+          "before_sha256": "ba2130ae6254e758013ce83736c089d42cbbb509b0977c862fd032dfbcb2a05c",
+          "bookkeeping_rows_after": 40,
+          "bookkeeping_rows_before": 37,
+          "database_identity_sha256": "47099845a4adb19c2ed1c1e7d8cdbf4c28764c5e62ad7ddf309c303618966b35",
+          "id": "3.70.1-to-3.110.0-tail",
+          "reader": "3.110.0",
+          "writer": "3.70.1"
+        }
+      ],
+      "command_ids": [
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348,
+        349,
+        350,
+        351,
+        352,
+        353,
+        354,
+        355
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "missing-event",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 420,
+      "cases": [
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "e5a07ce9bce9c72425dab404418d7856d0fd69c6a2f7e6fb6836ca1a58a8a5dd",
+          "assertions": 42,
+          "before_sha256": "d34cd49a3cdb6d485f514e469ca813880c8154afe82ec4381b757c35af6f0bd0",
+          "handling": "accepted-unsafe",
+          "id": "3.110.0-invalid-floor"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "21ae203eacd000ee1ef3844f831f9a561c02848fb8ee53e07324555c109db6e4",
+          "assertions": 42,
+          "before_sha256": "bed28eed1583bf195d82ff85d07331d077e2d3c37d5fa6405681f93a8c63bbbf",
+          "handling": "rejected",
+          "id": "3.110.0-unreadable"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "46c3ef7021e9d6cd4dc4193128a190dc9954166e7b03947d949cb50743394e92",
+          "assertions": 42,
+          "before_sha256": "9afb363981644bcf4708c254c831572eb723b466b0c8939bf4f880d1d2a44092",
+          "handling": "accepted-unsafe",
+          "id": "3.110.0-protected"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+          },
+          "after_sha256": "14ea65eceb32248afd8d5d560faf9d45b5cf539386e9edfed1136b3b42ab9741",
+          "assertions": 42,
+          "before_sha256": "1edb20b5623fed560c72a171a7128c03d531aecbe6ccf6a29db6209d507f9b89",
+          "handling": "rejected",
+          "id": "3.110.0-unknown-type"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "e3c4bc9750075912ead2ed0d08787a3c7b19bf6431d9b033335c07790aebb808",
+          "assertions": 42,
+          "before_sha256": "414207490a6b530d113151e84a2b2c50a551c027b1e3d72560f00d8d205f0355",
+          "handling": "accepted-unsafe",
+          "id": "3.110.0-unknown-version"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "90ee825130c12b4e27eb79f75b639aa4be4e7dc81194cf4510e3c330a3584827",
+          "assertions": 42,
+          "before_sha256": "5d54296bd41147ebee23c9225c221061738cb9c21cf6d8723c6ad6b6276729c5",
+          "handling": "accepted-unsafe",
+          "id": "3.70.1-invalid-floor"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "625aa24ba3680f59bfcf6fb7dd23a7a09de9bf69e8e4138d00c3f197febb74e3",
+          "assertions": 42,
+          "before_sha256": "480ce422576bb391982d49fe24237eed27203168580866bc0c7b02da2067d397",
+          "handling": "rejected",
+          "id": "3.70.1-unreadable"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "7371915aa76d074d0073859a249fedba5eb54bed2137ba34e52a1c242d59e423",
+          "assertions": 42,
+          "before_sha256": "594e66abe9b697ff9fe3dc636b62f7f63e0c6e1ac27384c3c640b846c7a1a894",
+          "handling": "accepted-unsafe",
+          "id": "3.70.1-protected"
+        },
+        {
+          "actor_outcome": {
+            "accepted": false,
+            "assertions": 1,
+            "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "a01841f81031b066b9b4f9bdcdc29d97a007f3dd41a38daca59eeccaf37a3263",
+          "assertions": 42,
+          "before_sha256": "215ae647763ba2efb79e6b1a29afce0a6457ccabc2e0314d2c3474ca433117d5",
+          "handling": "rejected",
+          "id": "3.70.1-unknown-type"
+        },
+        {
+          "actor_outcome": {
+            "accepted": true,
+            "assertions": 1,
+            "errorSha256": null,
+            "eventCount": 0,
+            "failureReason": null
+          },
+          "after_sha256": "2d29295b767f9243e67a87374e08d10aa8969faf6a6a4c61be7f5920c910e3d3",
+          "assertions": 42,
+          "before_sha256": "1b6cc699357e892ff8b295e0fe6ef96714f724d9e8d9869119eb05e2dfb667a4",
+          "handling": "accepted-unsafe",
+          "id": "3.70.1-unknown-version"
+        }
+      ],
+      "command_ids": [
+        669,
+        670,
+        671,
+        672,
+        673,
+        674,
+        675,
+        676,
+        677,
+        678,
+        679,
+        680,
+        681,
+        682,
+        683,
+        684,
+        685,
+        686,
+        687,
+        688,
+        689,
+        690,
+        691,
+        692,
+        693,
+        694,
+        695,
+        696,
+        697,
+        698,
+        699,
+        700,
+        701,
+        702,
+        703,
+        704,
+        705,
+        706,
+        707,
+        708,
+        709,
+        710,
+        711,
+        712,
+        713,
+        714,
+        715,
+        716,
+        717,
+        718,
+        719,
+        720,
+        721,
+        722,
+        723,
+        724,
+        725,
+        726,
+        727,
+        728,
+        729,
+        730,
+        731,
+        732,
+        733,
+        734,
+        735,
+        736,
+        737,
+        738,
+        739,
+        740,
+        741,
+        742,
+        743,
+        744,
+        745,
+        746,
+        747,
+        748,
+        749,
+        750,
+        751,
+        752,
+        753,
+        754,
+        755,
+        756,
+        757,
+        758,
+        759,
+        760,
+        761,
+        762,
+        763,
+        764,
+        765,
+        766,
+        767,
+        768,
+        769,
+        770,
+        771,
+        772,
+        773,
+        774,
+        775,
+        776,
+        777,
+        778,
+        779,
+        780,
+        781,
+        782,
+        783,
+        784,
+        785,
+        786,
+        787,
+        788,
+        789,
+        790,
+        791,
+        792,
+        793,
+        794,
+        795,
+        796,
+        797,
+        798,
+        799,
+        800,
+        801,
+        802,
+        803,
+        804,
+        805,
+        806,
+        807,
+        808,
+        809,
+        810,
+        811,
+        812,
+        813,
+        814,
+        815,
+        816,
+        817,
+        818,
+        819,
+        820,
+        821,
+        822,
+        823,
+        824,
+        825,
+        826,
+        827,
+        828,
+        829,
+        830,
+        831,
+        832,
+        833,
+        834,
+        835,
+        836,
+        837,
+        838,
+        839,
+        840,
+        841,
+        842,
+        843,
+        844,
+        845,
+        846,
+        847,
+        848
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "invalid-evidence",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 16,
+      "cases": [
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-legacy",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-dual",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.110.0-3.70.1-xml-legacy",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.110.0-3.70.1-xml-dual",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-legacy",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-dual",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.70.1-3.110.0-xml-legacy",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.70.1-3.110.0-xml-dual",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f"
+          ]
+        }
+      ],
+      "command_ids": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "query-wire",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 4,
+      "cases": [
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "GlobalPosition": 0,
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-positive",
+          "middle_fields": {
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361",
+            "ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-positive",
+          "middle_fields": {
+            "GlobalPosition": 0,
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361",
+            "ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4",
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361"
+          ]
+        }
+      ],
+      "command_ids": [
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "projection-wire",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 103,
+      "cases": [
+        {
+          "assertions": 103,
+          "id": "incomplete",
+          "reason": "ValueError: Old dispatcher absence not proven"
+        }
+      ],
+      "command_ids": [
+        849,
+        850,
+        851,
+        852,
+        853,
+        854,
+        855,
+        856,
+        857,
+        858,
+        859,
+        860,
+        861,
+        862,
+        863,
+        864,
+        865,
+        866,
+        867,
+        868,
+        869,
+        870,
+        871,
+        872,
+        873,
+        874,
+        875,
+        876,
+        877,
+        878,
+        879,
+        880,
+        881,
+        882,
+        883,
+        884,
+        885,
+        886,
+        887,
+        888,
+        889,
+        890,
+        891,
+        892,
+        893,
+        894,
+        895,
+        896,
+        897,
+        898,
+        899,
+        900,
+        901,
+        902,
+        903,
+        904,
+        905,
+        906,
+        907,
+        908,
+        909,
+        910,
+        911,
+        912,
+        913,
+        914,
+        915,
+        916,
+        917,
+        918,
+        919,
+        920,
+        921,
+        922,
+        923,
+        924,
+        925,
+        926
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "mixed-api",
+      "reason": "ValueError: Old dispatcher absence not proven",
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 640,
+      "cases": [
+        {
+          "actor_methods": [
+            "CreateManualSnapshotAsync",
+            "EraseTrustedEffectEvidenceAsync",
+            "FenceTrustedEffectsAsync",
+            "GetCurrentSequenceAsync",
+            "GetEventsAsync",
+            "GetRetainedFloorAsync",
+            "GetStreamMetadataAsync",
+            "ProcessCommandAsync",
+            "ProcessFencedCommandAsync",
+            "ProcessTrustedEffectAsync",
+            "ReadEventsRangeAsync",
+            "ReconcileFencedCommandAsync"
+          ],
+          "assertions": 20,
+          "id": "current-build",
+          "packages": 0
+        },
+        {
+          "assertions": 4,
+          "cases": [
+            {
+              "assertions": 2,
+              "currentSequence": 12,
+              "floor": 1,
+              "id": "pascal-floor-None",
+              "inputSha256": "f25f14d0063765cdc9db3de266306b486381db9f8f522249bd889cac371fe429",
+              "outputSha256": "2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323"
+            },
+            {
+              "assertions": 2,
+              "currentSequence": 12,
+              "floor": 1,
+              "id": "web-floor-None",
+              "inputSha256": "848473291db50ff6da09c3801cd80ed3ebf690fc565f786fd0d22afb573687a8",
+              "outputSha256": "6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "legacy-metadata"
+        },
+        {
+          "assertions": 16,
+          "cases": [
+            {
+              "assertions": 2,
+              "direction": [
+                "3.110.0",
+                "current"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "3.110.0-current-json-legacy",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "3.110.0",
+                "current"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "3.110.0-current-json-dual",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "3.110.0",
+                "current"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "format": "xml",
+              "id": "3.110.0-current-xml-legacy",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "3.110.0",
+                "current"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "format": "xml",
+              "id": "3.110.0-current-xml-dual",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "current",
+                "3.110.0"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "current-3.110.0-json-legacy",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+                "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "current",
+                "3.110.0"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "current-3.110.0-json-dual",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+                "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "current",
+                "3.110.0"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "format": "xml",
+              "id": "current-3.110.0-xml-legacy",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": null,
+                "DelegationId": null,
+                "IsDelegated": false,
+                "OriginalActorId": null,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+                "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "current",
+                "3.110.0"
+              ],
+              "final_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "format": "xml",
+              "id": "current-3.110.0-xml-dual",
+              "middle_fields": {
+                "AuthenticatedWorkloadId": "fixture-workload",
+                "DelegationId": "fixture-delegation",
+                "IsDelegated": true,
+                "OriginalActorId": "fixture-human",
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+                "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199"
+              ]
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "query-wire"
+        },
+        {
+          "assertions": 4,
+          "cases": [
+            {
+              "assertions": 2,
+              "direction": [
+                "3.110.0",
+                "current"
+              ],
+              "final_fields": {
+                "GlobalPosition": 987,
+                "SequenceNumber": 3,
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "3.110.0-current-json-positive",
+              "middle_fields": {
+                "GlobalPosition": 987,
+                "SequenceNumber": 3,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260"
+              ]
+            },
+            {
+              "assertions": 2,
+              "direction": [
+                "current",
+                "3.110.0"
+              ],
+              "final_fields": {
+                "GlobalPosition": 987,
+                "SequenceNumber": 3,
+                "UserId": "fixture-user"
+              },
+              "format": "json",
+              "id": "current-3.110.0-json-positive",
+              "middle_fields": {
+                "GlobalPosition": 987,
+                "SequenceNumber": 3,
+                "UserId": "fixture-user"
+              },
+              "preserved": true,
+              "wire_hashes": [
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+                "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260"
+              ]
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "projection-wire"
+        },
+        {
+          "assertions": 48,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "81835d9d795983bb85fac41a24bb28e44a034b6c3c108e95c8ceceb1b9fbf50c",
+              "assertions": 48,
+              "before_sha256": "e10c4a6c28099908f470461886919f8563fb50d21ada863185d5891e170af72b",
+              "bookkeeping_rows_after": 43,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "7893acf01904c0caa4c958a3335127029d30936499e775682c56127d169909ec",
+              "id": "3.110.0-to-current",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "full-replay"
+        },
+        {
+          "assertions": 48,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "dd19cad8c575cb2283797e9049cfb44353355139f74a9ae213979b70a93a3aef",
+              "assertions": 48,
+              "before_sha256": "0b31585ae1e77cdc9e6e6a313923f7a9f2a3aeea8233c7a3f0ddbc376fcb9c2a",
+              "bookkeeping_rows_after": 43,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "8cb0a1620d2ad2f6975876b402d699ebc05eb3de67f4e255c05fef04bda85f63",
+              "id": "3.110.0-to-current",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "snapshot-tail"
+        },
+        {
+          "assertions": 48,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "c3b461eb5ea4bc28ad6c77052810b8968147a2962f9f8a674f5169e3dfae6698",
+              "assertions": 48,
+              "before_sha256": "982b1870059c3f5186f4a67c944373855db8e8d987ebe7221f4b52bb73fa6e38",
+              "bookkeeping_rows_after": 43,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "154886b0ed37bc997c35d838e6789c05aef64ea415d1d339f1225448d27e78eb",
+              "id": "3.110.0-to-current",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "retained-covered"
+        },
+        {
+          "assertions": 96,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "56d1798673e983c64be68022af3ab5c6b909f2bb22719918667b745e9ccc72b2",
+              "assertions": 48,
+              "before_sha256": "b3fb080b150c3d3392dc277e47c1e3d2e221c925df9150b7b1882ce00db3256a",
+              "bookkeeping_rows_after": 42,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "f71921f25561c1b9dac1ce1c793b0cbc588f5d02e614840be4bed4b17a228a75",
+              "id": "3.110.0-to-current-absent",
+              "reader": "current",
+              "writer": "3.110.0"
+            },
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "9df769d974e5fd089b5ce50ce5ca211cb4742d5f1fd483c0cb31b4fa850858fb",
+              "assertions": 48,
+              "before_sha256": "52ccc6b55e7a04d37401947a7e41cb2ae48b51de28cab85ae07b1d94880ea807",
+              "bookkeeping_rows_after": 42,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "fb9fe48d8470b3fd85d17daffb528f92011483f65238e0d9b1739b5b207561f4",
+              "id": "3.110.0-to-current-non-covering",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "retained-uncovered"
+        },
+        {
+          "assertions": 96,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "838bcfa6f6f15376ecf56aedae3d6c6c18e0924c26aa2ccb03ba8303602f1fa8",
+              "assertions": 48,
+              "before_sha256": "364dbb0cde2f9b1b1d76b27a941d1409dfe3931f74499f18efcb68bc3b9ef382",
+              "bookkeeping_rows_after": 42,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "bce8bf37a7e4f3d177a67e24745f4bee98555aa6ed4a5da52cb263ec62a4d950",
+              "id": "3.110.0-to-current-interior",
+              "reader": "current",
+              "writer": "3.110.0"
+            },
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "b85821e392d19273c62949c8d2ad00782679b27fa15dda72fcf7d317b1436221",
+              "assertions": 48,
+              "before_sha256": "79250c0988fadd24f0aad0c6a286235e1146647171c7881c002645bb9d10522e",
+              "bookkeeping_rows_after": 42,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "19e89312e537896f8a37d7a006c3a47324858f7ccaced25728a861d9eec72b20",
+              "id": "3.110.0-to-current-tail",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "missing-event"
+        },
+        {
+          "assertions": 50,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "431980e684426160b7593ec15511ec7c651639a045768bdae6988be0315abd29",
+              "assertions": 50,
+              "before_sha256": "9f8411154bf82c353cda469bcf22b306184bf59ba24ecf0b37860f65d3289338",
+              "bookkeeping_rows_after": 45,
+              "bookkeeping_rows_before": 39,
+              "database_identity_sha256": "5b183615c2c2b1c077079614d8ebadaf0edd04a78d7ac14cbf03cb5d43c5a3f1",
+              "id": "3.110.0-to-current",
+              "reader": "current",
+              "writer": "3.110.0"
+            }
+          ],
+          "compatibility": "compatible",
+          "id": "metadata-write"
+        },
+        {
+          "assertions": 210,
+          "cases": [
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "fbceb5befbf1936c893adad7d5b0b496c5c0eee5690b687feae736ebccce057e",
+              "assertions": 42,
+              "before_sha256": "54231f4babe3f28de9aca7965d3da6a8eded92186151ec9f2a90ca40302e55ec",
+              "handling": "accepted-unsafe",
+              "id": "current-invalid-floor"
+            },
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "baedcc2558835302bd9777f6cdba44b83259c83d8c3cde4e067d1a30ac4e01b4",
+              "assertions": 42,
+              "before_sha256": "715d7c6be7d7da0991f165af5abfbe5ee848173260fbda1929430795c136837f",
+              "handling": "rejected",
+              "id": "current-unreadable"
+            },
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "30a7abecd234fecb9a0ae6aa9eb1f95f93d3035ec9cce38f54526f072e4ef447",
+              "assertions": 42,
+              "before_sha256": "409b545b4310de29b7750a0babc36a880761ef49293ca59dea024d0e121c22bf",
+              "handling": "accepted-unsafe",
+              "id": "current-protected"
+            },
+            {
+              "actor_outcome": {
+                "accepted": false,
+                "assertions": 1,
+                "errorSha256": "f25785d5d8c283991fba832938fd7b294ddffad74eed6d0a8f6edd54dbe5c377",
+                "eventCount": 0,
+                "failureReason": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+              },
+              "after_sha256": "b205e72b42522c9afcfc970b68d4b86fb638505152af91e33987b44a31028ee8",
+              "assertions": 42,
+              "before_sha256": "63ec1de157f4eea0b93a530ea50c05a9e79148cd80ea424dbef3255d5d8ea4a8",
+              "handling": "rejected",
+              "id": "current-unknown-type"
+            },
+            {
+              "actor_outcome": {
+                "accepted": true,
+                "assertions": 1,
+                "errorSha256": null,
+                "eventCount": 0,
+                "failureReason": null
+              },
+              "after_sha256": "5461873aa3136e0b3ca581554445ffb0a2f5197c25af3f532d048b63c16124c6",
+              "assertions": 42,
+              "before_sha256": "986b07921b6fc3b68f69e136990bce26f2d8968a6662c3eafe6f8326dd401dbd",
+              "handling": "accepted-unsafe",
+              "id": "current-unknown-version"
+            }
+          ],
+          "compatibility": "incompatible",
+          "id": "invalid-evidence"
+        }
+      ],
+      "command_ids": [
+        377,
+        378,
+        379,
+        380,
+        381,
+        382,
+        383,
+        384,
+        385,
+        386,
+        387,
+        388,
+        389,
+        390,
+        391,
+        392,
+        393,
+        394,
+        395,
+        396,
+        397,
+        398,
+        399,
+        400,
+        401,
+        402,
+        403,
+        404,
+        405,
+        406,
+        407,
+        408,
+        409,
+        410,
+        411,
+        412,
+        413,
+        414,
+        415,
+        416,
+        417,
+        418,
+        419,
+        420,
+        421,
+        422,
+        423,
+        424,
+        425,
+        426,
+        427,
+        428,
+        429,
+        430,
+        431,
+        432,
+        433,
+        434,
+        435,
+        436,
+        437,
+        438,
+        439,
+        440,
+        441,
+        442,
+        443,
+        444,
+        445,
+        446,
+        447,
+        448,
+        449,
+        450,
+        451,
+        452,
+        453,
+        454,
+        455,
+        456,
+        457,
+        458,
+        459,
+        460,
+        461,
+        462,
+        463,
+        464,
+        465,
+        466,
+        467,
+        468,
+        469,
+        470,
+        471,
+        472,
+        473,
+        474,
+        475,
+        476,
+        477,
+        478,
+        479,
+        480,
+        481,
+        482,
+        483,
+        484,
+        485,
+        486,
+        487,
+        488,
+        489,
+        490,
+        491,
+        492,
+        493,
+        494,
+        495,
+        496,
+        497,
+        498,
+        499,
+        500,
+        501,
+        502,
+        503,
+        504,
+        505,
+        506,
+        507,
+        508,
+        509,
+        510,
+        511,
+        512,
+        513,
+        514,
+        515,
+        516,
+        517,
+        518,
+        519,
+        520,
+        521,
+        522,
+        523,
+        524,
+        525,
+        526,
+        527,
+        528,
+        529,
+        530,
+        531,
+        532,
+        533,
+        534,
+        535,
+        536,
+        537,
+        538,
+        539,
+        540,
+        541,
+        542,
+        543,
+        544,
+        545,
+        546,
+        547,
+        548,
+        549,
+        550,
+        551,
+        552,
+        553,
+        554,
+        555,
+        556,
+        557,
+        558,
+        559,
+        560,
+        561,
+        562,
+        563,
+        564,
+        565,
+        566,
+        567,
+        568,
+        569,
+        570,
+        571,
+        572,
+        573,
+        574,
+        575,
+        576,
+        577,
+        578,
+        579,
+        580,
+        581,
+        582,
+        583,
+        584,
+        585,
+        586,
+        587,
+        588,
+        589,
+        590,
+        591,
+        592,
+        593,
+        594,
+        595,
+        596,
+        597,
+        598,
+        599,
+        600,
+        601,
+        602,
+        603,
+        604,
+        605,
+        606,
+        607,
+        608,
+        609,
+        610,
+        611,
+        612,
+        613,
+        614,
+        615,
+        616,
+        617,
+        618,
+        619,
+        620,
+        621,
+        622,
+        623,
+        624,
+        625,
+        626,
+        627,
+        628,
+        629,
+        630,
+        631,
+        632,
+        633,
+        634,
+        635,
+        636,
+        637,
+        638,
+        639,
+        640,
+        641,
+        642,
+        643,
+        644,
+        645,
+        646,
+        647,
+        648,
+        649,
+        650,
+        651,
+        652,
+        653,
+        654,
+        655,
+        656,
+        657,
+        658,
+        659,
+        660,
+        661,
+        662,
+        663,
+        664,
+        665,
+        666,
+        667,
+        668
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "checkout",
+      "reason": null,
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 42,
+      "cases": [
+        {
+          "assertions": 42,
+          "id": "incomplete",
+          "reason": "ValueError: Actor/domain outcome differs"
+        }
+      ],
+      "command_ids": [
+        927,
+        928,
+        929,
+        930,
+        931,
+        932,
+        933,
+        934,
+        935,
+        936,
+        937,
+        938,
+        939,
+        940,
+        941,
+        942,
+        943,
+        944,
+        945
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "post-upgrade-restore",
+      "reason": "ValueError: Actor/domain outcome differs",
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 29,
+      "cases": [
+        {
+          "assertions": 29,
+          "id": "incomplete",
+          "reason": "ValueError: Command 953 exited -6"
+        }
+      ],
+      "command_ids": [
+        950,
+        951,
+        952,
+        953
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "pre-upgrade-restore",
+      "reason": "ValueError: Command 953 exited -6",
+      "setup_assertions": 0
+    },
+    {
+      "assertions": 6,
+      "cases": [
+        {
+          "assertions": 2,
+          "id": "startup-failure"
+        },
+        {
+          "assertions": 2,
+          "id": "timeout"
+        },
+        {
+          "assertions": 2,
+          "id": "cancellation"
+        }
+      ],
+      "command_ids": [
+        958,
+        959,
+        960
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "failure-cleanup",
+      "reason": null,
+      "setup_assertions": 0
+    }
+  ]
+}
