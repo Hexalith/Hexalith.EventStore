@@ -56,7 +56,7 @@ public sealed class CommitMessagePolicyTests
         ContainsAnchoredReferencesLink(copilotInstructions).ShouldBeFalse(
             "A Markdown link anchored under references/ resolves from a different base in the Copilot entry point and silently loses the shared instructions.");
 
-        string sharedLlmInstructionsPath = RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md");
+        string sharedLlmInstructionsPath = Path.Combine(PackagingRepositoryPaths.ResolveDependency(FindRepositoryRoot(), "Hexalith.AI.Tools"), "hexalith-llm-instructions.md");
         File.Exists(sharedLlmInstructionsPath).ShouldBeTrue(
             "The Copilot entry point must delegate to an initialized shared LLM instruction file.");
 
@@ -569,7 +569,7 @@ public sealed class CommitMessagePolicyTests
                 if (File.Exists(Path.Combine(directory.FullName, "package.json"))
                     && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Contracts")))
                 {
-                    return directory.FullName;
+                    return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
                 }
 
                 directory = directory.Parent;

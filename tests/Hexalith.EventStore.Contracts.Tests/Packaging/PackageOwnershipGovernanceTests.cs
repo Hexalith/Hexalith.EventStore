@@ -114,9 +114,7 @@ public sealed class PackageOwnershipGovernanceTests
     {
         string root = FindRepositoryRoot();
         XDocument host = XDocument.Load(Path.Combine(
-            root,
-            "references",
-            "Hexalith.Tenants",
+            PackagingRepositoryPaths.ResolveDependency(root, "Hexalith.Tenants"),
             "src",
             "Hexalith.Tenants",
             "Hexalith.Tenants.csproj"));
@@ -203,7 +201,7 @@ public sealed class PackageOwnershipGovernanceTests
             if (File.Exists(Path.Combine(directory.FullName, "Directory.Packages.props"))
                 && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Contracts")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;

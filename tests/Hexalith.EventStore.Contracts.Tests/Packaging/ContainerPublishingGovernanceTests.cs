@@ -626,15 +626,15 @@ public sealed class ContainerPublishingGovernanceTests
         // arises the moment a legitimate bump lands on the release pin. What the rule actually
         // means is that the pin is reviewed history the gitlink already contains, so assert
         // ancestor-or-equal instead -- local, network-free, and true after a rotation.
-        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        string builds = PackagingRepositoryPaths.ResolveDependency(
+            root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE"));
         string gitlinkSha = gitlinkEntry.Groups["sha"].Value;
         string? alternateBuilds = Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE");
         if (!string.IsNullOrWhiteSpace(alternateBuilds))
         {
-            RunGit(alternateBuilds, "rev-parse", "HEAD").ShouldBe(
+            RunGit(builds, "rev-parse", "HEAD").ShouldBe(
                 gitlinkSha,
                 "The explicit Builds checkout must match the EventStore gitlink.");
-            builds = alternateBuilds;
         }
         else
         {
@@ -1524,7 +1524,7 @@ public sealed class ContainerPublishingGovernanceTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;
@@ -1542,6 +1542,8 @@ public sealed class ContainerPublishingGovernanceTests
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        start.ArgumentList.Add("--no-replace-objects");
         foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);
@@ -1563,6 +1565,8 @@ public sealed class ContainerPublishingGovernanceTests
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        start.ArgumentList.Add("--no-replace-objects");
         foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);

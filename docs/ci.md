@@ -643,6 +643,33 @@ dotnet build Hexalith.EventStore.slnx --configuration Release
 Run test projects individually, matching the workflow lists. Do not use
 solution-level `dotnet test`.
 
+For local Contracts packaging and governance checks, restore and build in Debug
+source-reference mode, then run the individual Contracts project from EventStore:
+
+```bash
+dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -p:UseNuGetDeps=false -m:1 -v:q
+dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Debug -p:UseNuGetDeps=false -m:1 --no-restore -v:q
+dotnet test --project tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Debug -p:UseNuGetDeps=false --no-build --no-restore
+```
+
+The governance sources are `Hexalith.Builds`, `Hexalith.AI.Tools`, and
+`Hexalith.Tenants`. Standalone checkouts use their root `.gitmodules` declarations.
+An umbrella workspace may supply its own root-declared dependencies when its
+`.gitmodules` also declares the exact EventStore checkout; a containing Tenants
+repository supplies its own source. Uninitialized nested submodules are left
+untouched. Each selected source must own its Git worktree and identify the intended
+Hexalith repository through its origin remote. Unrelated sibling clones and paths
+that cause Git to discover an ancestor repository are rejected.
+
+`HEXALITH_BUILDS_SOURCE` can explicitly select a verified Builds checkout. The
+release-caller guard additionally requires an explicit checkout's HEAD to equal
+the EventStore Builds gitlink. The Builds object store must contain the exact
+historical commits used by the release and tool-hash assertions, including the
+reviewed release pin; checkout layout does not relax commit, ancestry, or tool-byte
+checks. EventStore also needs its recorded historical OQ8 commits. The OQ8 tests
+reproduce sealed historical source and checkout bytes only in temporary fixtures;
+the current-source evidence validator continues to reject live source drift.
+
 For package validation, run the same shared-CI entry points locally:
 
 ```bash

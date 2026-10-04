@@ -6327,7 +6327,7 @@ public sealed class Oq8PlatformClosureTests
             .ToArray();
         sprintMatches.Length.ShouldBe(1);
         sprint[sprintMatches[0]] = $"  4-15-oq8-platform-closure-and-handoff: {sprintStatus}";
-        File.WriteAllLines(sprintPath, sprint);
+        File.WriteAllText(sprintPath, string.Join('\n', sprint) + "\n");
 
         string specPath = Path.Combine(artifacts, "spec-4-15-oq8-platform-closure-and-handoff.md");
         string[] spec = File.ReadAllLines(specPath);
@@ -6341,7 +6341,7 @@ public sealed class Oq8PlatformClosureTests
             .ToArray();
         statusMatches.Length.ShouldBe(1);
         spec[statusMatches[0]] = $"status: '{specStatus}'";
-        File.WriteAllLines(specPath, spec);
+        File.WriteAllText(specPath, string.Join('\n', spec) + "\n");
     }
 
     private static string CreateCandidateFixture(string root)
@@ -6404,20 +6404,6 @@ public sealed class Oq8PlatformClosureTests
             CopyFile(root, fixture, relative);
         }
 
-        // Historical v4 mutation fixtures must retain the source bytes v4
-        // actually reviewed, even after the additive v5 candidate evolves them.
-        foreach (string relative in new[]
-        {
-            "docs/ci.md",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
-            "tools/validate-oq8-platform-evidence.py",
-        })
-        {
-            CopyHistoricalV4File(root, fixture, relative);
-        }
-
         CopyHistoricalV4Selection(root, fixture);
 
         CopyDirectory(
@@ -6435,8 +6421,78 @@ public sealed class Oq8PlatformClosureTests
         CopyDirectory(
             Path.Combine(root, V4SuccessorRelativeDirectory),
             Path.Combine(fixture, V4SuccessorRelativeDirectory));
+        MaterializeHistoricalV4Inputs(root, fixture);
         SetFinalLifecycle(fixture);
         return fixture;
+    }
+
+    /// <summary>
+    /// Verifies every historical v4 source input reproduces its sealed identity, including CRLF JSON.
+    /// </summary>
+    [Fact]
+    public void HistoricalV4FixtureReproducesEveryBoundSourceAndRejectsUnreproducibleBytes()
+    {
+        string fixture = CreateFixture(FindRepositoryRoot());
+        try
+        {
+            JsonObject identity = LoadObject(Path.Combine(fixture, V4SuccessorRelativeDirectory, "source-artifact-identity.json"));
+            foreach ((string relative, JsonNode? hash) in identity["gateInputs"]!.AsObject())
+            {
+                ComputeSha256(Path.Combine(fixture, relative)).ShouldBe(hash!.GetValue<string>(), relative);
+            }
+
+            string artifacts = Path.Combine(fixture, "_bmad-output", "implementation-artifacts");
+            File.ReadAllText(Path.Combine(artifacts, "spec-4-15-oq8-platform-closure-and-handoff.md")).ShouldNotContain("\r");
+            File.ReadAllText(Path.Combine(artifacts, "sprint-status.yaml")).ShouldNotContain("\r");
+
+            byte[] globalJson = File.ReadAllBytes(Path.Combine(fixture, "global.json"));
+            System.Text.Encoding.UTF8.GetString(globalJson).ShouldContain("\r\n");
+            globalJson[0] ^= 1;
+            Should.Throw<InvalidDataException>(() => ReproduceRecordedBytes(globalJson,
+                identity["gateInputs"]!["global.json"]!.GetValue<string>(), "global.json"));
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies historical manifests reject unsafe paths before reading or rewriting any entry.
+    /// </summary>
+    /// <param name="path">An absolute or parent-traversing manifest path.</param>
+    [Theory]
+    [InlineData("absolute")]
+    [InlineData("../outside.txt")]
+    [InlineData("nested/../../outside.txt")]
+    [InlineData("..\\outside.txt")]
+    [InlineData("C:\\outside.txt")]
+    [InlineData("\\\\host\\share\\outside.txt")]
+    public void HistoricalV4ManifestRejectsUnsafePathsBeforeMaterialization(string path)
+    {
+        string fixture = Path.Combine(Path.GetTempPath(), "oq8-manifest-path-" + Guid.NewGuid().ToString("N"));
+        string evidence = Path.Combine(fixture, V4SuccessorRelativeDirectory);
+        Directory.CreateDirectory(evidence);
+        try
+        {
+            string safe = Path.Combine(evidence, "safe.txt");
+            string outside = Path.Combine(Path.GetDirectoryName(evidence)!, "outside.txt");
+            File.WriteAllText(safe, "safe\n");
+            File.WriteAllText(outside, "sentinel\n");
+            string safeHash = Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("safe\r\n")));
+            string outsideHash = Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("sentinel\r\n")));
+            string relative = path == "absolute" ? outside : path;
+            File.WriteAllText(Path.Combine(evidence, "closure-sha256.txt"), $"{safeHash}  safe.txt\n{outsideHash}  {relative}\n");
+
+            Should.Throw<InvalidDataException>(() => MaterializeHistoricalV4Inputs("unused-source", fixture))
+                .Message.ShouldContain("Historical manifest path");
+            File.ReadAllText(safe).ShouldBe("safe\n");
+            File.ReadAllText(outside).ShouldBe("sentinel\n");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
     }
 
     private static string CreateGitFixture(string root)
@@ -6453,29 +6509,67 @@ public sealed class Oq8PlatformClosureTests
         File.Copy(Path.Combine(sourceRoot, relative), destination);
     }
 
-    private static void CopyHistoricalV4File(string repositoryRoot, string fixtureRoot, string relative)
+    private static void CopyHistoricalV4File(string repositoryRoot, string fixtureRoot, string relative, string? expectedSha256 = null)
     {
         string destination = Path.Combine(fixtureRoot, relative);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        ProcessStartInfo start = new("git")
+        byte[] bytes = PackagingRepositoryPaths.ReadPinnedFile(repositoryRoot, "Hexalith.EventStore", V4SourceCommit, relative);
+        File.WriteAllBytes(destination, ReproduceRecordedBytes(bytes, expectedSha256, relative));
+    }
+
+    private static byte[] ReproduceRecordedBytes(byte[] bytes, string? expectedSha256, string relative)
+    {
+        if (expectedSha256 is null || Convert.ToHexStringLower(SHA256.HashData(bytes)) == expectedSha256)
         {
-            WorkingDirectory = repositoryRoot,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        start.ArgumentList.Add("--no-replace-objects");
-        start.ArgumentList.Add("show");
-        start.ArgumentList.Add($"{V4SourceCommit}:{relative}");
-        using Process process = Process.Start(start).ShouldNotBeNull();
-        using (FileStream output = File.Create(destination))
-        {
-            process.StandardOutput.BaseStream.CopyTo(output);
+            return bytes;
         }
 
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        process.ExitCode.ShouldBe(0, error);
+        // The reviewed Windows checkout recorded CRLF JSON (notably global.json).
+        // Accept that one recorded byte form only when it reproduces the sealed hash.
+        byte[] checkoutBytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(bytes)
+            .Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", "\r\n", StringComparison.Ordinal));
+        if (Convert.ToHexStringLower(SHA256.HashData(checkoutBytes)) != expectedSha256)
+        {
+            throw new InvalidDataException($"Historical fixture identity cannot be reproduced: {relative}");
+        }
+
+        return checkoutBytes;
+    }
+
+    private static void MaterializeHistoricalV4Inputs(string repositoryRoot, string fixtureRoot)
+    {
+        string evidence = Path.Combine(fixtureRoot, V4SuccessorRelativeDirectory);
+        (string Hash, string Relative, string Destination)[] entries = File.ReadAllLines(Path.Combine(evidence, "closure-sha256.txt"))
+            .Select(line =>
+            {
+                string[] fields = line.Split("  ", 2, StringSplitOptions.None);
+                fields.Length.ShouldBe(2, "The historical v4 manifest must bind an exact file path.");
+                string relative = fields[1].Replace('\\', '/');
+                if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':')
+                    || relative.Split('/').Any(segment => segment is "" or "." or ".."))
+                {
+                    throw new InvalidDataException($"Historical manifest path must be relative without traversal: {fields[1]}");
+                }
+
+                string destination = Path.GetFullPath(Path.Combine(evidence, relative));
+                string prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(evidence)) + Path.DirectorySeparatorChar;
+                if (!destination.StartsWith(prefix, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException($"Historical manifest path escapes its evidence directory: {fields[1]}");
+                }
+
+                return (fields[0], relative, destination);
+            }).ToArray();
+        foreach ((string hash, string relative, string destination) in entries)
+        {
+            File.WriteAllBytes(destination, ReproduceRecordedBytes(File.ReadAllBytes(destination), hash, relative));
+        }
+
+        JsonObject identity = LoadObject(Path.Combine(evidence, "source-artifact-identity.json"));
+        foreach ((string relative, JsonNode? hash) in identity["gateInputs"]!.AsObject())
+        {
+            CopyHistoricalV4File(repositoryRoot, fixtureRoot, relative, hash!.GetValue<string>());
+        }
     }
 
     private static void CopyHistoricalV4Selection(string repositoryRoot, string fixtureRoot)
@@ -6972,6 +7066,7 @@ public sealed class Oq8PlatformClosureTests
                 UseShellExecute = false,
             },
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
         foreach (string argument in arguments)
         {
             process.StartInfo.ArgumentList.Add(argument);
@@ -6990,7 +7085,7 @@ public sealed class Oq8PlatformClosureTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;

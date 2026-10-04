@@ -8,8 +8,8 @@ public sealed class ContractsPackageDependencyTests
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
     private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(3);
 
-    // Hash-bound release evidence that restores the published 3.108.1 and 3.70.1 packages
-    // outside the repository build graph; pinning those exact versions is their purpose.
+    // Hash-bound standalone consumers and the recorded verification harness restore published
+    // release and rollback packages outside the live build graph. Exclusions name exact files.
     private static readonly string[] _standaloneEvidenceProbeProjects =
     [
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj",
@@ -161,8 +161,116 @@ public sealed class ContractsPackageDependencyTests
         string wrapperPath = Path.Combine(root, "Directory.Packages.props");
         XDocument wrapper = XDocument.Load(wrapperPath);
         string catalogPath = ResolveSharedPackageVersionsPath(root, wrapper);
-        string catalogDirectory = Path.GetDirectoryName(catalogPath).ShouldNotBeNull();
-        string buildsRoot = Path.GetDirectoryName(catalogDirectory).ShouldNotBeNull();
+        (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(root, root, catalogPath).ConfigureAwait(true);
+        exitCode.ShouldBe(
+            0,
+            $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+    }
+
+    /// <summary>
+    /// Verifies the evidence exemptions cannot hide a new executable-project version override.
+    /// </summary>
+    /// <param name="metadata">The project-level version metadata to reject.</param>
+    /// <param name="evidenceSibling">Whether the executable is beside the historical exemptions.</param>
+    /// <param name="tracked">Whether discovery uses an isolated Git index.</param>
+    [Theory]
+    [InlineData("Version", false, false)]
+    [InlineData("VersionOverride", false, false)]
+    [InlineData("Version", true, false)]
+    [InlineData("VersionOverride", true, false)]
+    [InlineData("Version", false, true)]
+    [InlineData("VersionOverride", false, true)]
+    [InlineData("Version", true, true)]
+    [InlineData("VersionOverride", true, true)]
+    public async Task SharedConsumerAuthorityValidatorRejectsNonExemptExecutableOverrideAsync(string metadata, bool evidenceSibling, bool tracked)
+    {
+        string root = FindRepositoryRoot();
+        string catalogPath = ResolveSharedPackageVersionsPath(root, XDocument.Load(Path.Combine(root, "Directory.Packages.props")));
+        string fixture = Path.Combine(Path.GetTempPath(), "consumer-authority-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        try
+        {
+            foreach (string relative in _standaloneEvidenceProbeProjects)
+            {
+                string destination = Path.Combine(fixture, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Copy(Path.Combine(root, relative), destination);
+            }
+
+            new XDocument(new XElement("Project",
+                new XElement("PropertyGroup", new XElement("ManagePackageVersionsCentrally", "true")),
+                new XElement("Import", new XAttribute("Project", catalogPath))))
+                .Save(Path.Combine(fixture, "Directory.Packages.props"));
+            string executable = Path.Combine(fixture, evidenceSibling
+                ? "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Executable.csproj"
+                : "src/Executable.csproj");
+            Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
+            File.WriteAllText(executable,
+                $"<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"Hexalith.EventStore.Server\" {metadata}=\"9.9.9\" /></ItemGroup></Project>");
+
+            if (tracked)
+            {
+                RunFixtureGit(fixture, "init", "--quiet");
+                RunFixtureGit(fixture, "add", "--", ".");
+            }
+
+            (int exitCode, _, string error) = await RunConsumerAuthorityValidatorAsync(root, fixture, catalogPath).ConfigureAwait(true);
+            exitCode.ShouldBe(1, error);
+            error.ShouldContain($"Executable.csproj contains PackageReference {metadata} metadata '9.9.9'");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies effective catalogs and validators reject undeclared or unowned source directories before use.
+    /// </summary>
+    /// <param name="layout">The invalid catalog source layout.</param>
+    [Theory]
+    [InlineData("undeclared")]
+    [InlineData("wrong-identity")]
+    [InlineData("unowned")]
+    public async Task EffectiveCatalogAndValidatorRequireDeclaredBuildsOwnershipAsync(string layout)
+    {
+        string fixture = Path.Combine(Path.GetTempPath(), "catalog-ownership-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        try
+        {
+            RunFixtureGit(fixture, "init", "--quiet");
+            RunFixtureGit(fixture, "remote", "add", "origin", "https://github.com/Hexalith/Hexalith.EventStore.git");
+            string builds = Path.Combine(fixture, "references", "Hexalith.Builds");
+            string catalog = Path.Combine(builds, "Props", "Directory.Packages.props");
+            Directory.CreateDirectory(Path.GetDirectoryName(catalog)!);
+            File.WriteAllText(catalog, "This must never be parsed as XML.");
+            if (layout != "unowned")
+            {
+                RunFixtureGit(builds, "init", "--quiet");
+                RunFixtureGit(builds, "remote", "add", "origin", "https://github.com/Hexalith/" +
+                    (layout == "wrong-identity" ? "Hexalith.Tenants" : "Hexalith.Builds") + ".git");
+            }
+
+            if (layout != "undeclared")
+            {
+                File.WriteAllText(Path.Combine(fixture, ".gitmodules"),
+                    "[submodule \"Builds\"]\n\tpath = references/Hexalith.Builds\n\turl = https://github.com/Hexalith/Hexalith.Builds.git\n");
+            }
+
+            XDocument wrapper = new(new XElement("Project", new XElement("PropertyGroup",
+                Enumerable.Range(1, 4).Select(index => new XElement($"Hexalith{index}BuildPackageProps", catalog)))));
+            Should.Throw<InvalidDataException>(() => LoadSharedPackageVersions(fixture, wrapper));
+            _ = await Should.ThrowAsync<InvalidDataException>(() => RunConsumerAuthorityValidatorAsync(fixture, fixture, catalog)).ConfigureAwait(true);
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunConsumerAuthorityValidatorAsync(string repositoryRoot, string root, string catalogPath)
+    {
+        string buildsRoot = VerifyCatalogRepository(repositoryRoot, catalogPath);
         string validatorPath = Path.Combine(
             buildsRoot,
             "Tools",
@@ -179,6 +287,7 @@ public sealed class ContractsPackageDependencyTests
                 WorkingDirectory = root,
             },
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
         process.StartInfo.ArgumentList.Add("-NoProfile");
         process.StartInfo.ArgumentList.Add("-File");
         process.StartInfo.ArgumentList.Add(validatorPath);
@@ -208,9 +317,25 @@ public sealed class ContractsPackageDependencyTests
 
         string output = await outputTask.ConfigureAwait(true);
         string error = await errorTask.ConfigureAwait(true);
-        process.ExitCode.ShouldBe(
-            0,
-            $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        return (process.ExitCode, output, error);
+    }
+
+    private static void RunFixtureGit(string root, params string[] arguments)
+    {
+        ProcessStartInfo start = new("git") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        start.ArgumentList.Add("--no-replace-objects");
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        process.WaitForExit(30_000).ShouldBeTrue("Temporary consumer repository setup timed out.");
+        process.ExitCode.ShouldBe(0, error.GetAwaiter().GetResult());
+        _ = output.GetAwaiter().GetResult();
     }
 
     [Theory]
@@ -290,7 +415,7 @@ public sealed class ContractsPackageDependencyTests
             if (File.Exists(Path.Combine(directory.FullName, "Directory.Packages.props"))
                 && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Contracts")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;
@@ -340,12 +465,20 @@ public sealed class ContractsPackageDependencyTests
 
             if (File.Exists(importPath))
             {
+                _ = VerifyCatalogRepository(root, importPath);
                 return importPath;
             }
         }
 
         throw new FileNotFoundException(
             "No declared Hexalith.Builds package props fallback exists; the effective central catalog cannot be validated.");
+    }
+
+    private static string VerifyCatalogRepository(string root, string catalogPath)
+    {
+        string catalogDirectory = Path.GetDirectoryName(catalogPath).ShouldNotBeNull();
+        string buildsRoot = Path.GetDirectoryName(catalogDirectory).ShouldNotBeNull();
+        return PackagingRepositoryPaths.VerifyDeclaredDependency(root, "Hexalith.Builds", buildsRoot);
     }
 
     private static string ResolveMsBuildPath(string msBuildThisFileDirectory, string path)

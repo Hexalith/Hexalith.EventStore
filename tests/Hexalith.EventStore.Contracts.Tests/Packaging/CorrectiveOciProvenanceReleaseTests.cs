@@ -1495,8 +1495,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     public void PublicationAuthorityFixturesPassWithoutSkippedCases()
     {
         string root = FindRepositoryRoot();
-        string builds = Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE")
-            ?? Path.Combine(root, "references", "Hexalith.Builds");
+        string builds = PackagingRepositoryPaths.ResolveDependency(
+            root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE"));
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         Match releasePin = Regex.Match(
             workflow,
@@ -1809,6 +1809,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             }
         }
 
+        if (fileName == "git")
+        {
+            PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        }
+
         using Process process = Process.Start(start).ShouldNotBeNull();
         Task<string> output = process.StandardOutput.ReadToEndAsync();
         Task<string> error = process.StandardError.ReadToEndAsync();
@@ -1867,6 +1872,12 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
+        if (fileName == "git")
+        {
+            PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+            start.ArgumentList.Add("--no-replace-objects");
+        }
+
         foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);
@@ -1882,7 +1893,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;

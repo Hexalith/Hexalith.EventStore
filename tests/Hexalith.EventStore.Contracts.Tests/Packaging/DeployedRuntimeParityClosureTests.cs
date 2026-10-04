@@ -9889,6 +9889,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 UseShellExecute = false,
             },
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
+        process.StartInfo.ArgumentList.Add("--no-replace-objects");
         foreach (string argument in arguments)
         {
             process.StartInfo.ArgumentList.Add(argument);
@@ -9946,12 +9948,15 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             StartInfo = new ProcessStartInfo("git")
             {
-                WorkingDirectory = Path.Combine(repositoryRoot, "references", "Hexalith.Builds"),
+                WorkingDirectory = PackagingRepositoryPaths.ResolveDependency(
+                    repositoryRoot, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE")),
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
             },
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
+        process.StartInfo.ArgumentList.Add("--no-replace-objects");
         process.StartInfo.ArgumentList.Add("show");
         process.StartInfo.ArgumentList.Add(buildsSha + ":" + toolPath[buildsPrefix.Length..]);
         try
@@ -10301,6 +10306,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 UseShellExecute = false,
             },
         };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
         process.StartInfo.ArgumentList.Add("check-ignore");
         process.StartInfo.ArgumentList.Add("--no-index");
         process.StartInfo.ArgumentList.Add("-v");
@@ -10358,7 +10364,7 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;

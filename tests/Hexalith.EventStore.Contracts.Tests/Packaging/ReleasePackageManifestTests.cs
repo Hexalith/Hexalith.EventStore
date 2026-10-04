@@ -667,7 +667,7 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        string daprInit = File.ReadAllText(Path.Combine(root, "references", "Hexalith.Builds", "Github", "dapr-init", "action.yml"));
+        string daprInit = File.ReadAllText(Path.Combine(PackagingRepositoryPaths.ResolveDependency(root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE")), "Github", "dapr-init", "action.yml"));
 
         AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release, daprInit);
     }
@@ -818,7 +818,7 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        string daprInit = File.ReadAllText(Path.Combine(root, "references", "Hexalith.Builds", "Github", "dapr-init", "action.yml"));
+        string daprInit = File.ReadAllText(Path.Combine(PackagingRepositoryPaths.ResolveDependency(root, "Hexalith.Builds", Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE")), "Github", "dapr-init", "action.yml"));
 
         string mutatedIntegration = mutation switch
         {
@@ -2154,7 +2154,7 @@ public sealed class ReleasePackageManifestTests
             if (File.Exists(Path.Combine(directory.FullName, "Directory.Packages.props"))
                 && File.Exists(Path.Combine(directory.FullName, "tools", "release-packages.json")))
             {
-                return directory.FullName;
+                return PackagingRepositoryPaths.VerifyRepositoryRoot(directory.FullName, "Hexalith.EventStore");
             }
 
             directory = directory.Parent;
