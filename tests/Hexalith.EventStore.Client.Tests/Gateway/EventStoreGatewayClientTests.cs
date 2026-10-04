@@ -68,6 +68,24 @@ public class EventStoreGatewayClientTests {
         response.EventCount.ShouldBe(0);
     }
 
+    [Fact]
+    public async Task GetCommandStatusAsync_PreservesCommittedCommandAndAggregateProof() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            """{"correlationId":"corr-1","tenantId":"system","status":"Completed","statusCode":4,"messageId":"message-1","eventCount":1,"committedEventSequence":8,"domain":"tenants","aggregateId":"tenant.alpha"}""")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
+
+        response.MessageId.ShouldBe("message-1");
+        response.CorrelationId.ShouldBe("corr-1");
+        response.TenantId.ShouldBe("system");
+        response.Domain.ShouldBe("tenants");
+        response.AggregateId.ShouldBe("tenant.alpha");
+        response.CommittedEventSequence.ShouldBe(8);
+        response.EventCount.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData("null")]
     [InlineData("{}")]
@@ -93,6 +111,9 @@ public class EventStoreGatewayClientTests {
         CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
 
         response.MessageId.ShouldBeNull();
+        response.CommittedEventSequence.ShouldBeNull();
+        response.Domain.ShouldBeNull();
+        response.AggregateId.ShouldBeNull();
         response.FailureReason.ShouldBeNull();
         response.Retryable.ShouldBeNull();
     }

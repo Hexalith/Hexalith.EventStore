@@ -297,6 +297,60 @@ public class EventDrainRecoveryTests {
             Arg.Any<ActorReminderToken>());
     }
 
+    [Theory]
+    [InlineData("valid", 8L)]
+    [InlineData("legacy", null)]
+    [InlineData("wrong-identity", null)]
+    [InlineData("wrong-scope", null)]
+    [InlineData("wrong-sequence", null)]
+    [InlineData("wrong-correlation", null)]
+    [InlineData("wrong-count", null)]
+    [InlineData("missing-command-type", null)]
+    [InlineData("wrong-domain", null)]
+    [InlineData("wrong-aggregate", null)]
+    public async Task Durable_drain_proof_uses_its_verified_range_instead_of_the_aggregate_head(string scenario, long? expected)
+    {
+        (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
+            StartSequence = 7, EndSequence = 8, MessageId = scenario is "legacy" ? null : scenario is "wrong-identity" ? "other" : "command-8",
+            EventCount = scenario is "wrong-count" ? 3 : 2,
+            CommandType = scenario is "missing-command-type" ? "" : "CreateOrder",
+        };
+        state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(state, 2, startSequence: 7);
+        state.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(30, DateTimeOffset.UtcNow, null)));
+        if (scenario is "wrong-scope" or "wrong-domain" or "wrong-aggregate" or "wrong-sequence" or "wrong-correlation")
+        {
+            EventEnvelope mismatched = new("event-7", scenario is "wrong-aggregate" ? "other" : "agg-001", "test-aggregate", scenario is "wrong-scope" ? "other" : "test-tenant",
+                scenario is "wrong-domain" ? "other" : "test-domain", scenario is "wrong-sequence" ? 6 : 7, 0, DateTimeOffset.UtcNow,
+                scenario is "wrong-correlation" ? "other" : "corr-drain", "cause", "user", "1.0.0", "OrderCreated", 1, "json", [1], null);
+            state.TryGetStateAsync<EventEnvelope>("test-tenant:test-domain:agg-001:events:7", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, mismatched));
+        }
+        publisher.PublishEventsAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+        await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
+        if (scenario is "wrong-count")
+        {
+            // Invalid durable range/count is rejected before publication and must never report committed completion.
+            await store.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed), Arg.Any<CancellationToken>());
+            _ = await publisher.DidNotReceive().PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+            return;
+        }
+        CommandStatusRecord completed = store.ReceivedCalls().Select(call => call.GetArguments())
+            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord { Status: CommandStatus.Completed })
+            .Select(args => (CommandStatusRecord)args[2]!).Single();
+        completed.CommittedEventSequence.ShouldBe(expected);
+        completed.Domain.ShouldBe("test-domain");
+        await state.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
     // --- Task 7.4: Drain succeeds, advisory status updated ---
 
     [Fact]

@@ -89,8 +89,9 @@ public class EventPublicationIntegrationTests {
     }
 
     private static (AggregateActor Actor, InMemoryStateManager StateManager, IDomainServiceInvoker Invoker, FakeEventPublisher EventPublisher, ICommandStatusStore StatusStore, ILogger<AggregateActor> Logger) CreateInMemoryActor(
-        ICommandStatusStore? statusStore = null) {
-        var stateManager = new InMemoryStateManager();
+        ICommandStatusStore? statusStore = null,
+        InMemoryStateManager? stateManager = null) {
+        stateManager ??= new InMemoryStateManager();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -116,6 +117,79 @@ public class EventPublicationIntegrationTests {
             .Returns(DomainResult.NoOp());
 
         return (actor, stateManager, invoker, eventPublisher, commandStatusStore, logger);
+    }
+
+    [Fact]
+    public async Task Committed_proof_is_written_after_durable_terminal_state_and_survives_recreation_and_duplicate()
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        List<(CommandStatusRecord Status, IReadOnlyDictionary<string, object> State)> completedWrites = [];
+        var observer = new ObservingStatusStore(statuses, status => {
+            if (status.Status == CommandStatus.Completed)
+            {
+                completedWrites.Add((status, new Dictionary<string, object>(state.CommittedState)));
+            }
+        });
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, _, _, _) = CreateInMemoryActor(observer, state);
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-durable-proof");
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(command);
+
+        (CommandStatusRecord completed, IReadOnlyDictionary<string, object> committedAtWrite) = completedWrites.ShouldHaveSingleItem();
+        completed.CommittedEventSequence.ShouldBe(2);
+        completed.Domain.ShouldBe(command.Domain);
+        completed.AggregateId.ShouldBe(command.AggregateId);
+        completed.MessageId.ShouldBe(command.MessageId);
+        completed.CorrelationId.ShouldBe(command.CorrelationId);
+        completed.EventCount.ShouldBe(2);
+        var metadata = (AggregateMetadata)committedAtWrite[command.AggregateIdentity.MetadataKey];
+        metadata.CurrentSequence.ShouldBe(2);
+        EventEnvelope[] committedEvents = committedAtWrite.Values.OfType<EventEnvelope>()
+            .OrderBy(envelope => envelope.SequenceNumber).ToArray();
+        committedEvents.Select(envelope => envelope.SequenceNumber).ShouldBe(new long[] { 1, 2 });
+        committedEvents.ShouldAllBe(envelope => envelope.TenantId == command.TenantId
+            && envelope.Domain == command.Domain && envelope.AggregateId == command.AggregateId
+            && envelope.CorrelationId == command.CorrelationId);
+        var terminal = (IdempotencyRecord)committedAtWrite[$"idempotency:{command.MessageId}"];
+        terminal.Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+        terminal.MessageId.ShouldBe(command.MessageId);
+        terminal.CommandType.ShouldBe(command.CommandType);
+        terminal.CorrelationId.ShouldBe(command.CorrelationId);
+        terminal.EventCount.ShouldBe(2);
+        terminal.Accepted.ShouldBeTrue();
+        committedAtWrite.ContainsKey($"{command.AggregateIdentity.PipelineKeyPrefix}{command.CorrelationId}").ShouldBeFalse();
+        ((UnpublishedPublicationIndex)committedAtWrite[UnpublishedPublicationIndex.StateKey]).Entries.ShouldBeEmpty();
+        ((int)committedAtWrite["pending_command_count"]).ShouldBe(0);
+
+        // A later command really advances the stream before a fresh actor handles the first command again.
+        _ = await actor.ProcessCommandAsync(CreateTestEnvelope(correlationId: "corr-later-proof"));
+        var recreatedState = new InMemoryStateManager();
+        foreach ((string key, object value) in state.CommittedState)
+        {
+            await recreatedState.SetStateAsync(key, value);
+        }
+        await recreatedState.SaveStateAsync();
+        (AggregateActor recreated, _, IDomainServiceInvoker recreatedInvoker, FakeEventPublisher recreatedPublisher, _, _)
+            = CreateInMemoryActor(observer, recreatedState);
+        EventEnvelope[] recreatedEvents = await recreated.GetEventsAsync(0);
+        recreatedEvents.Select(envelope => envelope.SequenceNumber).ShouldBe(new long[] { 1, 2, 3, 4 });
+        ((IdempotencyRecord)recreatedState.CommittedState[$"idempotency:{command.MessageId}"]).ShouldBe(terminal);
+        CommandStatusRecord beforeDuplicate = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldNotBeNull();
+        beforeDuplicate.ShouldBe(completed);
+        int writesBeforeDuplicate = statuses.GetStatusHistory(command.TenantId, command.MessageId).Count;
+        int observedBeforeDuplicate = completedWrites.Count;
+
+        CommandProcessingResult duplicate = await recreated.ProcessCommandAsync(command);
+
+        duplicate.ShouldBe(result);
+        (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldBe(completed);
+        statuses.GetStatusHistory(command.TenantId, command.MessageId).Count.ShouldBe(writesBeforeDuplicate);
+        completedWrites.Count.ShouldBe(observedBeforeDuplicate);
+        await recreatedInvoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        recreatedPublisher.PublishCalls.ShouldBeEmpty();
     }
 
     // --- Task 7.1: Happy path transitions ---
@@ -156,6 +230,10 @@ public class EventPublicationIntegrationTests {
                 r.Status == CommandStatus.EventsPublished
                 && r.MessageId == envelope.MessageId
                 && r.CorrelationId == envelope.CorrelationId));
+        await statusStore.Received().WriteStatusAsync("test-tenant", envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.Completed
+                && r.CommittedEventSequence == 1 && r.Domain == envelope.Domain
+                && r.AggregateId == envelope.AggregateId));
     }
 
     // --- Task 7.2: Publication fails ---
@@ -316,7 +394,7 @@ public class EventPublicationIntegrationTests {
     [Fact]
     public async Task ProcessCommand_NoOp_SkipsPublication_TransitionsDirectlyToCompleted() {
         // Arrange
-        (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, _) = CreateActor();
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
@@ -326,6 +404,9 @@ public class EventPublicationIntegrationTests {
         // Assert
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(0);
+        await statusStore.Received().WriteStatusAsync("test-tenant", envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.Completed
+                && r.EventCount == 0 && r.CommittedEventSequence == null));
 
         // EventPublisher should NOT be called for no-op
         _ = await eventPublisher.DidNotReceive().PublishEventsAsync(

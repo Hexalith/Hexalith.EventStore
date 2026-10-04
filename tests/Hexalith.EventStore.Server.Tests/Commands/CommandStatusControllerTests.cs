@@ -28,6 +28,21 @@ public class CommandStatusControllerTests {
     }
 
     [Fact]
+    public async Task GetStatus_PreservesCommittedCommandProofThroughTheHttpResponse()
+    {
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync("tenant-a", CorrelationId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, "aggregate", 1, null, null, null)
+                { CommittedEventSequence = 8, Domain = "tenants" }, CancellationToken.None);
+        CommandStatusResponse response = (await _controller.GetStatus(CorrelationId, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+        response.CommittedEventSequence.ShouldBe(8);
+        response.Domain.ShouldBe("tenants");
+        response.AggregateId.ShouldBe("aggregate");
+        response.TenantId.ShouldBe("tenant-a");
+    }
+
+    [Fact]
     public async Task GetStatus_ExistingStatus_Returns200WithRecord() {
         // Arrange
         string correlationId = CorrelationId;

@@ -94,6 +94,9 @@ public class AggregateActorIdempotencyTests {
 
         // Assert
         result.ShouldBe(original);
+        // Returning cached evidence must preserve the already recorded status and its command-specific proof.
+        await ctx.StatusStore.DidNotReceive().WriteStatusAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CommandStatusRecord>());
     }
 
     [Fact]

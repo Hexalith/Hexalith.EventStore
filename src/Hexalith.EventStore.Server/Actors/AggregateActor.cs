@@ -1641,7 +1641,8 @@ public partial class AggregateActor(
                         eventsPublishedState,
                         processActivity, startTicks,
                         rejectionEventType: rejectionType,
-                        resultPayload: domainResult.ResultPayload).ConfigureAwait(false);
+                        resultPayload: domainResult.ResultPayload,
+                        rangeProofVerified: true).ConfigureAwait(false);
                 }
                 else {
                     // Publication failed: transition to PublishFailed terminal state
@@ -2711,7 +2712,16 @@ public partial class AggregateActor(
                             // Story 4.4: the drain completed, so no further automatic attempt follows.
                             Retryable: false,
                             RecoveryReasonCode: null,
-                            DrainAttemptCount: record.RetryCount)).ConfigureAwait(false);
+                            DrainAttemptCount: record.RetryCount) {
+                                Domain = identity.Domain,
+                                CommittedEventSequence = !record.IsRejection
+                                    && !string.IsNullOrWhiteSpace(record.MessageId)
+                                    && string.Equals(record.MessageId, trackingId, StringComparison.Ordinal)
+                                    && !string.IsNullOrWhiteSpace(record.CommandType)
+                                    && HasVerifiedEventRange(identity, events, record.StartSequence,
+                                        record.EndSequence, record.EventCount, record.CorrelationId)
+                                        ? record.EndSequence : null,
+                            }).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) {
                     throw;
@@ -4122,6 +4132,7 @@ public partial class AggregateActor(
         Activity? processActivity,
         long startTicks) {
         int eventCount = existingPipeline.EventCount ?? 0;
+        bool rangeProofVerified = false;
         PipelineState? eventsPublishedState = null;
 
         if (eventCount > 0) {
@@ -4169,6 +4180,10 @@ public partial class AggregateActor(
                     processActivity,
                     startTicks).ConfigureAwait(false);
             }
+
+            rangeProofVerified = HasVerifiedCommandRange(command, existingPipeline, eventCount)
+                && HasVerifiedEventRange(command.AggregateIdentity, persistedEvents, resumeStart, resumeEnd,
+                    eventCount, command.CorrelationId);
 
             EventPublishResult publishResult = await eventPublisher
                 .PublishEventsAsync(
@@ -4226,7 +4241,8 @@ public partial class AggregateActor(
             eventsPublishedState,
             processActivity,
             startTicks,
-            rejectionEventType: existingPipeline.RejectionEventType).ConfigureAwait(false);
+            rejectionEventType: existingPipeline.RejectionEventType,
+            rangeProofVerified: rangeProofVerified).ConfigureAwait(false);
 
         logger.LogInformation(
             "Resume completed: Actor {ActorId}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
@@ -6019,6 +6035,36 @@ public partial class AggregateActor(
         }
     }
 
+    private static bool HasVerifiedCommandRange(CommandEnvelope command, PipelineState checkpoint, int eventCount)
+        => eventCount > 0 && checkpoint.EventCount == eventCount
+            && checkpoint.StartSequence is > 0 && checkpoint.EndSequence >= checkpoint.StartSequence
+            && checkpoint.EndSequence - checkpoint.StartSequence + 1 == eventCount
+            && string.Equals(checkpoint.MessageId, command.MessageId, StringComparison.Ordinal)
+            && string.Equals(checkpoint.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+            && string.Equals(checkpoint.CommandType, command.CommandType, StringComparison.Ordinal);
+
+    private static bool HasVerifiedEventRange(AggregateIdentity identity, IReadOnlyList<EventEnvelope> events,
+        long start, long end, int count, string correlationId)
+    {
+        if (start <= 0 || end < start || count <= 0 || end - start + 1 != count || events.Count != count)
+        {
+            return false;
+        }
+        for (int index = 0; index < events.Count; index++)
+        {
+            EventEnvelope envelope = events[index];
+            if (envelope.SequenceNumber != start + index
+                || !string.Equals(envelope.TenantId, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(envelope.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(envelope.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+                || !string.Equals(envelope.CorrelationId, correlationId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private async Task<CommandProcessingResult> CompleteTerminalAsync(
         CommandEnvelope command,
         string causationId,
@@ -6034,7 +6080,8 @@ public partial class AggregateActor(
         long startTicks,
         string? rejectionEventType = null,
         string? resultPayload = null,
-        TrustedEffectAdmission? effectAdmission = null) {
+        TrustedEffectAdmission? effectAdmission = null,
+        bool rangeProofVerified = false) {
         var result = new CommandProcessingResult(
             Accepted: accepted,
             ErrorMessage: errorMessage,
@@ -6147,7 +6194,10 @@ public partial class AggregateActor(
         await WriteAdvisoryStatusAsync(
             command, terminalStatus,
             eventCount: accepted || eventCount > 0 ? eventCount : null,
-            rejectionEventType: rejectionEventType).ConfigureAwait(false);
+            rejectionEventType: rejectionEventType,
+            committedEventSequence: accepted && rangeProofVerified
+                && HasVerifiedCommandRange(command, expectedPreCommitPipeline, eventCount)
+                    ? expectedPreCommitPipeline.EndSequence : null).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 
         _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
@@ -6179,7 +6229,8 @@ public partial class AggregateActor(
         string? rejectionEventType = null,
         bool? retryable = null,
         string? recoveryReasonCode = null,
-        int? drainAttemptCount = null) {
+        int? drainAttemptCount = null,
+        long? committedEventSequence = null) {
         try {
             await commandStatusStore.WriteStatusAsync(
                 command.TenantId,
@@ -6196,7 +6247,9 @@ public partial class AggregateActor(
                     CorrelationId: command.CorrelationId,
                     Retryable: retryable,
                     RecoveryReasonCode: recoveryReasonCode,
-                    DrainAttemptCount: drainAttemptCount)).ConfigureAwait(false);
+                    DrainAttemptCount: drainAttemptCount) {
+                        Domain = command.Domain, CommittedEventSequence = committedEventSequence,
+                    }).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;

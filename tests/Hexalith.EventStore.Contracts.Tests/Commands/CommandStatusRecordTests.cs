@@ -7,6 +7,17 @@ namespace Hexalith.EventStore.Contracts.Tests.Commands;
 
 public class CommandStatusRecordTests {
     [Fact]
+    public void Optional_commit_proof_round_trips_and_legacy_json_remains_compatible()
+    {
+        CommandStatusRecord legacy = new(CommandStatus.Completed, DateTimeOffset.UtcNow, "aggregate", 1, null, null, null);
+        JsonSerializer.Deserialize<CommandStatusRecord>("{\"Status\":4,\"EventCount\":1}")!.CommittedEventSequence.ShouldBeNull();
+        CommandStatusRecord current = legacy with { CommittedEventSequence = 8, Domain = "tenants" };
+        CommandStatusRecord restored = JsonSerializer.Deserialize<CommandStatusRecord>(JsonSerializer.Serialize(current))!;
+        restored.CommittedEventSequence.ShouldBe(8);
+        restored.Domain.ShouldBe("tenants");
+    }
+
+    [Fact]
     public void Constructor_WithCompletedStatus_SetsEventCount() {
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var record = new CommandStatusRecord(

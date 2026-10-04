@@ -21,6 +21,9 @@ using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using InMemoryStateManager = Hexalith.EventStore.Testing.Fakes.InMemoryStateManager;
+using InMemoryCommandStatusStore = Hexalith.EventStore.Testing.Fakes.InMemoryCommandStatusStore;
+using FakeEventPublisher = Hexalith.EventStore.Testing.Fakes.FakeEventPublisher;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -87,6 +90,26 @@ public class StateMachineIntegrationTests {
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, snapshotManager, statusStore, eventPublisher);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Completed_status_proves_only_an_eventful_commands_committed_end(bool noOp)
+    {
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore store, _) = CreateActor();
+        CommandEnvelope command = CreateTestEnvelope();
+        if (!noOp) invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
+        await actor.ProcessCommandAsync(command);
+        CommandStatusRecord status = store.ReceivedCalls().Select(call => call.GetArguments())
+            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord { Status: CommandStatus.Completed })
+            .Select(args => (CommandStatusRecord)args[2]!).Single();
+        status.CommittedEventSequence.ShouldBe(noOp ? null : 2);
+        status.Domain.ShouldBe(command.Domain);
+        status.MessageId.ShouldBe(command.MessageId);
+        if (!noOp) await stateManager.Received().SetStateAsync(Arg.Any<string>(),
+            Arg.Is<PipelineState>(checkpoint => checkpoint.EndSequence == 2 && checkpoint.StartSequence == 1), Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.1: Happy path transitions ---
@@ -365,12 +388,71 @@ public class StateMachineIntegrationTests {
         await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("valid", 8L)]
+    [InlineData("tenant", null)]
+    [InlineData("domain", null)]
+    [InlineData("aggregate", null)]
+    [InlineData("correlation", null)]
+    [InlineData("sequence", null)]
+    public async Task Committed_resume_completes_without_proof_when_persisted_envelopes_mismatch(string mismatch, long? expectedProof)
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        var publisher = new FakeEventPublisher();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        CommandEnvelope command = CreateTestEnvelope(causationId: "msg-sm-test");
+        var checkpoint = new PipelineState(command.CorrelationId, CommandStatus.EventsStored,
+            command.CommandType, DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: command.MessageId, CausationId: command.CausationId, StartSequence: 7, EndSequence: 8);
+        string pipelineKey = $"{command.AggregateIdentity.PipelineKeyPrefix}{command.CorrelationId}";
+        await state.SetStateAsync(pipelineKey, checkpoint);
+        await state.SetStateAsync(command.AggregateIdentity.MetadataKey, new AggregateMetadata(20, DateTimeOffset.UtcNow, null));
+        for (int sequence = 7; sequence <= 8; sequence++)
+        {
+            bool mutate = sequence == 7;
+            EventEnvelope envelope = new($"event-{sequence}", mutate && mismatch == "aggregate" ? "other" : command.AggregateId,
+                "test-aggregate", mutate && mismatch == "tenant" ? "other" : command.TenantId,
+                mutate && mismatch == "domain" ? "other" : command.Domain,
+                mutate && mismatch == "sequence" ? 6 : sequence, 0, DateTimeOffset.UtcNow,
+                mutate && mismatch == "correlation" ? "other" : command.CorrelationId,
+                command.CausationId!, "system", "1.0.0", "TestEvent", 1, "json", [1], null);
+            await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", envelope);
+        }
+        await state.SaveStateAsync();
+        state.CommittedState[pipelineKey].ShouldBe(checkpoint);
+        var host = ActorHost.CreateForTest<AggregateActor>(new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
+        var actor = new AggregateActor(host, Substitute.For<ILogger<AggregateActor>>(), invoker,
+            new Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager(), new NoOpEventPayloadProtectionService(),
+            statuses, publisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()),
+            Substitute.For<IDeadLetterPublisher>());
+        ActorStateManagerTestHelper.SetStateManager(actor, state);
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(2);
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.MessageId.ShouldBe(command.MessageId);
+        completed.CorrelationId.ShouldBe(command.CorrelationId);
+        completed.Domain.ShouldBe(command.Domain);
+        completed.CommittedEventSequence.ShouldBe(expectedProof);
+        publisher.PublishCalls.ShouldHaveSingleItem();
+        state.CommittedState.ContainsKey(pipelineKey).ShouldBeFalse();
+        var terminal = (IdempotencyRecord)state.CommittedState[$"idempotency:{command.MessageId}"];
+        terminal.Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+        terminal.Accepted.ShouldBeTrue();
+        terminal.EventCount.ShouldBe(2);
+        await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+    }
+
     [Fact]
     public async Task ProcessCommand_ResumeFromEventsStored_UsesCheckpointRange_NotAdvancedStreamHead() {
         // Regression (D1): the stale command committed events 1-2 (recorded in the checkpoint range), then an
         // interleaved command advanced the aggregate head to 9. Resume MUST publish the checkpoint's own events
         // [1,2]; a range re-derived from the mutated head would be [8,9], losing/duplicating events.
-        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, IEventPublisher eventPublisher) = CreateActor();
 
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
@@ -421,6 +503,10 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>(),
             Arg.Any<bool>());
         _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        await statusStore.Received().WriteStatusAsync("test-tenant", envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed
+                && status.CommittedEventSequence == 2 && status.Domain == envelope.Domain
+                && status.AggregateId == envelope.AggregateId));
     }
 
     [Fact]

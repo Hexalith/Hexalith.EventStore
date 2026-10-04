@@ -21,6 +21,12 @@ public record CommandStatusResponse(
     bool? Retryable = null,
     string? RecoveryReasonCode = null,
     int? DrainAttemptCount = null) {
+    /// <summary>Gets the last aggregate event sequence durably committed by this command, or null when proof is unavailable.</summary>
+    public long? CommittedEventSequence { get; init; }
+
+    /// <summary>Gets the aggregate domain owning this command, or null for a legacy status.</summary>
+    public string? Domain { get; init; }
+
     /// <summary>Gets the tenant that owns this status record.</summary>
     public string? TenantId { get; init; }
 
@@ -43,6 +49,6 @@ public record CommandStatusResponse(
             MessageId: record.MessageId,
             Retryable: record.Retryable,
             RecoveryReasonCode: record.RecoveryReasonCode,
-            DrainAttemptCount: record.DrainAttemptCount) { TenantId = tenantId };
+            DrainAttemptCount: record.DrainAttemptCount) { TenantId = tenantId, Domain = record.Domain, CommittedEventSequence = record.CommittedEventSequence };
     }
 }

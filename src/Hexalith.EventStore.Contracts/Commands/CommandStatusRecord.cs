@@ -38,4 +38,12 @@ public record CommandStatusRecord(
     string? CorrelationId = null,
     bool? Retryable = null,
     string? RecoveryReasonCode = null,
-    int? DrainAttemptCount = null);
+    int? DrainAttemptCount = null)
+{
+    /// <summary>Gets the last aggregate event sequence durably committed by this command, or null when proof is unavailable.</summary>
+    public long? CommittedEventSequence { get; init; }
+
+    /// <summary>Gets the aggregate domain owning this command, or null for a legacy status.</summary>
+    public string? Domain { get; init; }
+
+}

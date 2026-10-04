@@ -17,6 +17,15 @@ public sealed record CommandStatusQueryResponse(
     string? RejectionEventType = null,
     string? MessageId = null)
 {
+    /// <summary>Gets the last aggregate event sequence durably committed by this command, or null when proof is unavailable.</summary>
+    public long? CommittedEventSequence { get; init; }
+
+    /// <summary>Gets the aggregate domain owning this command, or null for a legacy status.</summary>
+    public string? Domain { get; init; }
+
+    /// <summary>Gets the aggregate identifier owning this command, or null for a legacy status.</summary>
+    public string? AggregateId { get; init; }
+
     /// <summary>Gets the number of events produced by a completed command; zero identifies an authoritative no-op.</summary>
     public int? EventCount { get; init; }
 
