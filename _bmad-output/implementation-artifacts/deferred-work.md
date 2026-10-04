@@ -5302,3 +5302,10 @@ status: open
   summary: Invariants added by the recovery build have no owning refusal case, so removing any of them leaves `verify.py` green (RW1). They are `registry-count-readback`/`registry-scope-readback`, `cursor-envelope-bound`/`cursor-position`, `capsule-prior-chunk`, `execution-identity`/`execution-progress`/`predecessor-generation` and `intent-binding`/`intent-phase`.
   evidence: Recovery-build review 2026-10-04 (Blind Hunter + Verification Gap) of `ab11c86a..bf11765c`. Guard-removal mutants at `6-5d-simplification/verify.py:346-357`, `:396-398`, `:1025-1031` and `:1111` pass the full suite. Deferred because owner decision FD1(a) chose a bounded behavior set rather than per-guard coverage; the persisted-intent behavior these guards back is exercised end to end at `verify.py:1424-1429`. Guards that back named fixes or the FD1 list are tracked separately as patches RP16/RP17.
   status: open
+
+## Deferred from: code review of spec-6-1-folded-snapshot-frozen-spec.md (2026-10-04)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
+  summary: `epics.md` Story 6.1 "Current reconciliation" still says Story 6.1 is backlog and `spec-folded-snapshot.md` is absent, although the artifact exists with normative digest `0b456b5f…` and a named approval.
+  evidence: `_bmad-output/planning-artifacts/epics.md:4273` at `2242ad55`. Story 6.2 dependency inspection reads this record, and `epic-6-context.md` blocks treating 6.2 as authorized until it is reconciled. `sprint-change-proposal-2026-09-23.md` item 4 already proposes the correction; it was not applied. Deferred because the fix edits a planning spec, and the 6.1 digest may change if the 2026-10-04 review decisions reopen the normative body.
+  status: open
