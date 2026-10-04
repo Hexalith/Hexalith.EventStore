@@ -1,0 +1,267 @@
+{
+  "authority": "UNAPPROVED; Story 6.5 in progress; Story 6.6 unauthorized; no provider proof",
+  "commands": [
+    {
+      "captures": {
+        "stderr": {
+          "bytes": 0,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/review-fixes.stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout": {
+          "bytes": 2085,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/review-fixes.stdout.txt",
+          "sha256": "40eff686d2b9d4ae4c34de9ac73e598d5616d956452ff30d9f153b5708ca7b62"
+        }
+      },
+      "command": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "--review-fixes"
+      ],
+      "exitCode": 0,
+      "name": "review-fixes",
+      "result": {
+        "authority": "UNAPPROVED; Story 6.6 unauthorized",
+        "controls": [
+          {
+            "mutation": "receipt-bytes",
+            "owningFailure": "receipt-bytes",
+            "result": "rejected"
+          },
+          {
+            "mutation": "receipt-bytes",
+            "owningFailure": "receipt-bytes",
+            "result": "rejected"
+          },
+          {
+            "mutation": "receipt-bytes",
+            "owningFailure": "receipt-bytes",
+            "result": "rejected"
+          },
+          {
+            "mutation": "receipt-bytes",
+            "owningFailure": "receipt-bytes",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-input-identities",
+            "owningFailure": "document-input-identities",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-input-identities",
+            "owningFailure": "document-input-identities",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-input-identities",
+            "owningFailure": "document-input-identities",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-d-input-pins",
+            "owningFailure": "document-d-input-pins",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-d-input-pins",
+            "owningFailure": "document-d-input-pins",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-d-input-pins",
+            "owningFailure": "document-d-input-pins",
+            "result": "rejected"
+          },
+          {
+            "mutation": "document-input-pin",
+            "owningFailure": "document-input-pin",
+            "result": "rejected"
+          },
+          {
+            "mutation": "hold-inventory-mappings",
+            "owningFailure": "hold-inventory-mappings",
+            "result": "rejected"
+          },
+          {
+            "mutation": "hold-predicate-baseline",
+            "owningFailure": "hold-predicate-baseline",
+            "result": "rejected"
+          },
+          {
+            "mutation": "inventory-cursor-literals",
+            "owningFailure": "inventory-cursor-literals",
+            "result": "rejected"
+          },
+          {
+            "mutation": "inventory-cursor-literals",
+            "owningFailure": "inventory-cursor-literals",
+            "result": "rejected"
+          },
+          {
+            "mutation": "sorted directory enumeration with historical execution record first",
+            "owningCheck": "candidate-enumeration-independent",
+            "result": "passed for all three exact pinned candidates"
+          }
+        ],
+        "currentPins": 6,
+        "cursor": {
+          "algorithm": "HS256",
+          "generationVectors": 2,
+          "positiveEnvelope": 1
+        },
+        "heldPredicates": {
+          "d8": 6,
+          "preserved": 17,
+          "supplemental": 11
+        },
+        "normativeDigest": "7d9af4ba95ff8a7ae4b103fdadc8af2b6986bc24ae858e982843a494d36fbe42",
+        "pins": {
+          "abc": 3,
+          "d": 54
+        },
+        "result": "passed"
+      }
+    },
+    {
+      "captures": {
+        "stderr": {
+          "bytes": 0,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/parent-constructor-default.stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout": {
+          "bytes": 2256,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/parent-constructor-default.stdout.txt",
+          "sha256": "63e16aca7a3e7f6635abf79f4479e3a953011f0671d452f2097fddedca2a1707"
+        }
+      },
+      "command": [
+        "node",
+        "_bmad-output/implementation-artifacts/6-5-integration/independent-answers.mjs"
+      ],
+      "exitCode": 0,
+      "name": "parent-constructor-default",
+      "result": {
+        "unchangedSurvivingParentAnswers": 5
+      }
+    },
+    {
+      "captures": {
+        "stderr": {
+          "bytes": 0,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/review-fixes-diff-check.stderr.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stdout": {
+          "bytes": 0,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/review-fixes-diff-check.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "_bmad-output/implementation-artifacts/6-5-integration/build-integration.py",
+        "_bmad-output/implementation-artifacts/6-5-integration/independent-answers.mjs",
+        "_bmad-output/implementation-artifacts/6-5-integration/metadata-adapter-contract.md",
+        "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
+        "_bmad-output/implementation-artifacts/spec-6-5-event-versioning-and-upcasting-spec.md"
+      ],
+      "exitCode": 0,
+      "name": "review-fixes-diff-check"
+    }
+  ],
+  "completedUtc": "2026-10-04T12:58:48.903638+00:00",
+  "normativeDigest": "7d9af4ba95ff8a7ae4b103fdadc8af2b6986bc24ae858e982843a494d36fbe42",
+  "preservedHistoricalCaptures": {
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/blind-hunter.md": {
+      "bytes": 3361,
+      "sha256": "36df381f7f6e1ad86dac7b81c014f199665335f46386c9958ddb021b01215d0a"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/edge-case-hunter.md": {
+      "bytes": 1880,
+      "sha256": "e50f969dca6438a58d49214b5fda305d4715a8c3beb83459f79bb96908e30b78"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/review-input.diff.gz": {
+      "bytes": 864596,
+      "sha256": "503277729d337cca0712a4a9757e5e09fbdea5d4f258644a10ed460ed3b2b042"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/review-input.json": {
+      "bytes": 5104,
+      "sha256": "bba38be3aefc70f714bedcb809d549f4fa765dda5edc9ad4b00ee03d423f6ae5"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/verification-gap-standalone-prompt.md": {
+      "bytes": 4615988,
+      "sha256": "3ff371fc61a9a3a51c183d9feb85239e4648fc3a5e86c3dd5045fc958e27fa2e"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/reviews/verification-gap.md": {
+      "bytes": 634,
+      "sha256": "55cfe2c283f062e350509ffaa6df1e59856a6d93f31adbcdcf0d214283ceceae"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-bounded.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-bounded.stdout.txt": {
+      "bytes": 1875,
+      "sha256": "8f7e71b14998bde649f1d748ac7fe89f3ec41723c72a30e66320e29d9d9d4e21"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-focused-regressions.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-focused-regressions.stdout.txt": {
+      "bytes": 1812,
+      "sha256": "a9bb91f68c045ed03e5355f8316294a98e816a50438c522112e5af8e1d78c3e7"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-mutations.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/d-mutations.stdout.txt": {
+      "bytes": 3333,
+      "sha256": "dfaa84adbe01202b10b637d63c24e412eefdb2bb8ff6e363e775b20d4b9c0551"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/deferred-work.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/deferred-work.stdout.txt": {
+      "bytes": 197799,
+      "sha256": "330d725a0fffd2cac1fdd54602315a1216aeeab74935dd83a885cb03105892ef"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/diff-check.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/diff-check.stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/historical-child-acceptance.stderr.txt": {
+      "bytes": 110222,
+      "sha256": "460b6f41467d144588f1205cad6f2142058880491c44dbdc446809c4f454c0f4"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/historical-child-acceptance.stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/integration.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "_bmad-output/implementation-artifacts/6-5-integration/runs/integration.stdout.txt": {
+      "bytes": 1745,
+      "sha256": "8fc9fd7f0b791276173b2643503e650b3f39f1cee788f7bbae3ff772267b7bbd"
+    }
+  },
+  "priorVerificationResultsSha256": "c200696096dbd7e190e4364b35c535f344a27a9527ce8048922a8057c0791fdd",
+  "result": "passed",
+  "schema": "hexalith.story-6-5.targeted-review-fixes/1",
+  "scope": "Only edited seams; full verification delegated to parent."
+}

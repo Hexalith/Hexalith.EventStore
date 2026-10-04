@@ -2,10 +2,12 @@
 title: 'Story 6.5: Event Versioning And Upcasting Spec'
 type: 'feature'
 created: '2026-09-26'
-status: 'draft'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 1
-baseline_commit: 'ccb4faf03256ef8eb627d49d6f6f0a032fcb4830'
+baseline_commit: 'cbbe41501ba722731bf36b2c343efdef4ac714fb'
+initial_baseline_commit: 'ccb4faf03256ef8eb627d49d6f6f0a032fcb4830'
+story_key: '6-5-event-versioning-and-upcasting-spec'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
 ---
@@ -39,84 +41,47 @@ context:
   - the exits, reason codes and capacity rules these depend on.
 
   They move to a focused child spec story, Story 6.5d, under the children's routing bar. Story 6.5 integration then imports 6.5d exactly as it imported 6.5a–6.5c. D-RESUME stays in force as a 6.5d requirement. Story 6.5 is blocked until 6.5d is done.
+- D-ARCH (owner, 2026-10-04): “do recommended” authorizes closing the PostgreSQL architecture handoff within Story 6.5. Extend this run's permitted paths to `_bmad-output/planning-artifacts/architecture.md` and `6-5-integration/metadata-adapter-contract.md`. Make focused AD-1/AD-26 amendments and specify the already selected adapter's exact schema/caps/indexes, transaction contract, migration/rollback ownership and least-privilege OpenBao credentials. Keep actor event/snapshot mutation authority and separate production-profile/qualification approval. Use the chosen backend and existing owner records; add no generic provider/migration framework or new runtime mechanism.
+- D-RELEASE (owner, 2026-10-04): “do recommended” authorizes compatible maintenance/security publication through the existing current-main manual workflow while 6.6 progresses. Reuse API/wire/package-consumer and focused inactive-path evidence. Compatible dormant preparation is not automatically a shipped breaking change; genuine breaking commits remain honestly classified and require SemVer-major. Retain the hold whenever compatibility is unproven or incomplete breaking changes have reached main; expose the complete approved incompatible set only in the major release. Add no maintenance lane, release-version override or CI mutation in 6.5.
+
 </frozen-after-approval>
+
 
 ## Code Map
 
-- `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` -- the only normative target: the v37 draft, 1,008 lines, LF enforced by `.gitattributes` `*.md eol=lf`. Section starts:
+All short artifact paths below resolve under `_bmad-output/implementation-artifacts/`.
 
-  | § | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-  |---|---|---|---|---|---|---|---|---|---|---|---|---|
-  | Line | L14 | L34 | L62 | L88 | L122 | L149 | L251 | L372 | L396 | L450 | L465 | L992 |
-
-  - §10's four 6.6 slices are at L456–459.
-  - §11 has Node verifiers at L628–797 and L864–984. They read this exact path and need unique `^V17…=`, `^V20…=` and `^V23…=` lines.
-  - The §12 receipt marker is at L1002.
-  - The L12 claim "no deferred implementation decisions" and the L496 claim "Open decisions: none" must end up true.
-  - L301, L480 and L988 pin the `000f` lease codec, the V17/V20/V22/V23 bytes and the six-field `UNAPPROVED` receipt.
-- `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence.md` -- A1–A10 replace or add to draft §§1–5 and 7–11 (L39):
-  - A3 limits (L85) are superseded by 6.5b B6 (BH37-4).
-  - A5 (L126): codec-02 intent, pre-save and receipt, plus `ActorBundleReadbackHash`.
-  - A6 (L168): corrupt-event record. A7 (L178): no-op witness.
-  - A8 (L199): the codec-03 outcome. It replaces the §7 retry rule and the §11 Review-32 vector, and it narrows §7 L323 to cross-tenant.
-  - A9 (L267): §9/§10.
-  - A10 (L291): V01–V24 and K01–K12.
-  - The BH37 table is at L297–301; the model is at L361–902.
-- `_bmad-output/implementation-artifacts/spec-6-5b-verified-read-replay-and-projection.md` -- its L39 scope understates the change: §6 is rewritten well beyond the timeline paragraphs.
-  - B2 (L64) replaces §3 L84.
-  - B4–B4b (L112–155) add the purpose-12 selector, with expiry at 864,000,000,000 ticks.
-  - B5 (L169) changes §6 L223.
-  - B6 (L181) sets the §8 budgets and scopes §6 L227/231 and L247.
-  - B7/B7c (L211–287) add §5 rows `5a` and `5b`. B8 is at L305 and B9 (§9) at L320.
-  - B10 (L343) holds the BH37 table at L349–352.
-  - It adds 13 typed outcomes the draft lacks. The handoff is at L1607–1620 and the model at L408–1605.
-- `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md` -- the handoff at L3491–3497 is the authoritative integration checklist.
-  - C1 (L43): `destinationId`, the tenant and deployment retention ceilings, and attestation 1..6,123 B / key ID 1..738 B. These replace the 8 KiB bound at draft §7 L281 (twice) and §8 L392, not in §6.
-  - C3 (L119): an 8-field `EventEffectKey` and a 16 KiB receipt, replacing §7 L352 and L356.
-  - C4 (L199): the 23-field manifest, replacing §7 L287.
-  - C5 (L249): replaces the codec-01 outcome at §7 L358 and L366.
-  - C6 (L322): the activation checklist, plus 11 public surfaces and the repository-search floor (L339).
-  - C7 (L345): non-normative vectors. BH37-9 is at L69.
-  - The integrity script at L4116–4226 pins the old draft, so it fails by design after this change.
-- `_bmad-output/implementation-artifacts/story-6-5-review-triage.md` L546–555 -- BH37 rows. Cite them; never edit them.
-- `_bmad-output/implementation-artifacts/deferred-work.md` L4927–5192 -- 54 child entries:
-  - 2 resolved: L5003 and L5035.
-  - 5 non-story, left open: L4931, L4935, L4939, L5043, L5047.
-  - Evidence and tooling: L4959, L4975, L5039, L5102–5114, L5122, L5137, L5167, L5189.
-  - Everything else is contract-level.
-- **Owner decisions not to reopen:**
-  - 6.5a: the routing bar; one scope per execution MessageId (tags 01–07); the first POST reply never waits; the `Completed` `resultPayload` gate.
-  - 6.5b: entry-free lists need no provider; the 1,000-event timeline cap is disclosed; two-level storage; selector expiry ≤24 h.
-  - 6.5c: the pin is charged at the pin CAS; a capacity-held pin returns `CommandOutcomeHold`, at tenant and deployment level only.
-- **Do not change:**
-  - `src/`, `tests/`, `docs/`, `tools/` and `.github/`;
-  - `sprint-status.yaml` and `epics.md`;
-  - the child candidates and their `-2` records;
-  - `story-6-5-*` history;
-  - the §12 hash rule and its `UNAPPROVED` values.
+- `spec-event-versioning-upcasting.md` — sole normative AD-13 target; current 2,825-line loop-1 candidate is reproducible at `288a61908f4661fed52bb791f928292fe7d90180`, SHA-256 `c474df76a687b2798757051efbdb382bb6b9650f7bd7a7637d0c67bfc5e7b715`. Preserve §12's byte-hash rule, exact authorization sentence and six receipt fields. Old scratchpad backups are historical, never prerequisites.
+- `spec-6-5a-event-contract-writer-and-migration-evidence.md`, `spec-6-5b-verified-read-replay-and-projection.md`, `spec-6-5c-publication-subscription-and-rollout.md` and completed `-2.md` records — reviewed A/B/C inputs already imported; §11.4's file/model hashes still match. Keep source files immutable. Preserve public bytes, unowned known answers and V17/V20/V22/V23 signed fixtures.
+- `spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md` — reviewed simplified D1–D9, last content revision `b1558b06a1a1771a10e1c0fe76b54a417c96558e`, SHA-256 `6d7e9326671572e07426329c6f57fb38879589e04c155290b04a82df184a1e98`. Completed `-2.md`/`-3.md` retain owner decisions, correction evidence and review limits. D9 is the exact import/activation map.
+- `6-5d-simplification/obligations.md`, `known-answers.json`, `verify.py`, integer-safe `independent-answers.mjs` and shared-key constructor — normative schemas/literals and bounded local evidence. Copy required schema tables/literals into AD-13 so its digest covers the complete contract; cite exact full committed revisions and file/block hashes. Preserve the entire child directory and execution records; archives are historical.
+- Parent replacements: I-06 ← D5; I-10/I-14/I-15/I-16 ← D3/D4; I-12/I-17 ← D5; I-29/I-30/I-31 ← D1/D6; I-36/I-37 ← D2/D7/D8; I-45/I-46 ← D2/D3. Amend I-01/I-26/I-28 to match whole-batch reservation, eight-envelope single queue and bootstrap precharges. Retain all unrelated A/B/C hold predicates when replacing the inventory.
+- Amend imported C1/C2/C4/C5 in place: batch reservation before separate pin install; window/member/send authority; captured physical custody distinct from route completion; permanent operation-terminal fence distinct from resume-window fence. Replace obsolete old hold/redrive/repair/reconciliation families, routes, purposes and answers throughout §§7–11; keep no competing rule.
+- `story-6-5-review-pass-2-findings.md` — 13 parent findings: VG2-1/5/6/7, BH2-11/12/13/14/15/17, E2-27/33/37. The other 54 have exact D obligations. Historical review/triage/design-note files remain immutable.
+- `deferred-work.md` — preserve unrelated entries, five non-story open entries, two earlier resolutions, D-SPLIT child closure and RW1. Pending integrated dispositions remain open until exact approval; I-44 names the integrator's amendment/refusal duty. Restore O-06/O-07/O-11 as evidence obligations under D-CLOSE.
+- New `6-5-integration/` — current-baseline preservation/traceability verifier, pinned source manifest, independent surviving-codec constructor and recorded checks. Current child `acceptance.py` cannot serve as this run's gate: it refuses newer owner history and pins the pre-integration parent. Preserve it and report its historical failure; do not repin or weaken it.
+- Source inventory is read-only: `src/Hexalith.EventStore.Contracts/Events/{IEventContract,EventContractMetadata}.cs`, Server `EventEnvelope`, `AggregateActor`, `EventStreamReader`, Client replay/subscription, gateway controllers and Admin query/filter surfaces. Since the old baseline, 138 source/test/docs files changed; recovery remains one 30-second attempt at AggregateActor:2207, and AdminStreamQueryController now has seven full-read call sites. Refresh citations against current HEAD, including exact enum filters.
+- `../planning-artifacts/architecture.md` AD-1/AD-13/AD-26, `scripts/validate-publication-preflight.sh`, `.github/workflows/release.yml`, `.releaserc.json`, `.editorconfig`, `.gitattributes` and build/test configuration — read-only constraints, except architecture scope as authorized by D-ARCH. No `src/`, `tests/`, `docs/`, `tools/`, `scripts/`, CI, dependencies, submodules, epics, sprint-status or Git mutation.
 
 ## Tasks & Acceptance
 
-**Execution (review loop 1 re-derivation):**
-- [x] `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` and `_bmad-output/implementation-artifacts/deferred-work.md` -- Start from the pre-review integration: `/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/3517cf94-2fd6-4d7a-865b-4f03f9f21b4e/scratchpad/backup-pre-review/spec-event-versioning-upcasting.md` (SHA-256 `d5a14515…41d2`) and `/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/3517cf94-2fd6-4d7a-865b-4f03f9f21b4e/scratchpad/backup-pre-review/deferred-work.md` (SHA-256 `80604156…2321`). Verify both hashes before copying. -- KEEP (Spec Change Log, loop 1).
-- [x] same artifact -- Apply every `patch` row of review pass 1, each with the smallest text change that removes the defect. The rows are VG-1, VG-2, VG-O1/BH-6a, BH-1, BH-3, BH-11, BH-12/E29, BH-13, BH-19, BH-20, BH-21/E19, BH-22, E1, E2, E3, E6, E12, E13, E14, E21, E24, E26, E27 and E28. -- These are verified defects with direct fixes.
-- [x] same artifact -- Rework the rules named by bad_spec groups G-A (legacy scope inventory [I-12]), G-B (drain limit [I-14]), G-C (hold reason codes [I-10]/[I-16]), G-E (pin-capacity queue [I-31]), G-F (long-stream growth [I-06]), G-G (schemas and capability fields [I-17]/[I-29]/[I-30]), G-H (redrive [I-36]), G-I (hold inventory [I-37]) and G-J (integration codec known answers). Every reworked rule must satisfy the Design Notes completeness bar. -- Pass 1 found states with no exit, impossible actions and unchecked codecs.
-- [x] same artifact -- Specify the D-RESUME operation as `[I-nn]` rules:
-  - operator authority and signing purpose;
-  - request and audit record codecs, with known answers;
-  - eligibility (the retry-exhausted hold, the drain-limit hold, and reconciled legacy status-6 records);
-  - the exact re-armed attempt, with the same committed events and MessageId, and never a command re-execution;
-  - hold-inventory removal;
-  - its §10 slice and §10.3 class;
-  - the client polling signal while a hold waits for an operator.
+**Execution:**
 
-  Register it in §11.5, and point the G-B drain-limit hold and the G-D hold at it. -- Owner decision D-RESUME.
-- [x] same artifact -- Update §11.5, §11.7 and the ledger status lines to match the reworked rules. Keep §12 and the receipt `UNAPPROVED`, and record the recomputed digest in Implementation Notes. -- One consistent register; approval stays human-only.
+- [x] `6-5-integration/source-manifest.json`, `verify.py` — pin current canonical baseline, complete child inputs, revisions/hashes and preserved outside-scope bytes/gitlinks; audit committed, worktree and untracked paths with an explicit allowed set. Retain present child-preservation failure as historical evidence and reproduce child literals using existing integer-safe constructors.
+- [x] `../planning-artifacts/architecture.md`, `6-5-integration/metadata-adapter-contract.md` — close AD-1/AD-26's exact adapter documentation contract under D-ARCH. Preserve actor mutation authority and the separate unapproved production/profile gate. Do not choose new record, codec, state or exit policy locally.
+- [x] `spec-event-versioning-upcasting.md` — splice the reviewed D1–D9 and supporting schema/literal contracts; replace all owned I-rules and amend imported C1/C2/C4/C5 in place. Reconcile §§8.1/10.1/10.2/10.3/11: BC-15 legacy claim outage, BC-16 tombstone/410/reuse, authoritative exact-status filters, activation order, current public routes, budgets and legacy recovery prerequisites. Apply D-RELEASE's compatible-maintenance/complete-major policy. Cite D9's actual provider/crash obligations without claiming fixture proof.
+- [x] `spec-event-versioning-upcasting.md`, `6-5-integration/verify.py`, `independent-answers.mjs` — resolve VG2-1/5/6/7, BH2-17 and E2-33: derive all 16 same-attempt pairs from pinned A `reduce_set`; compare exact labeled B results and inline C offset/destination vectors; enforce verifier identities and counts; independently reconstruct surviving parent codecs. Exercise each demonstrated corrupting edit and require its owning failure. Import reviewed D bounded cases/constructors without promising per-guard coverage.
+- [x] `spec-event-versioning-upcasting.md`, `deferred-work.md` — reconcile BH37-1..10, every raw pass-1/pass-2 finding and ledger entry to one disposition. Keep unapproved entries open with proposed disposition/citation; give each O-row Story 6.6 ownership, gate and closure evidence. Restore O-06/O-07/O-11 for the replacement boundary gate, carry FW1 as an explicit rerun gate, retain RW1 unchanged, cite D6's mismatched-attach conflict/refusal, and remove obsolete O-10/O-20 mechanisms.
+- [ ] `6-5-integration/verification-results.json`, this execution record — record focused verification and three review lenses, individual finding dispositions and exact immutable input hashes; append D-RESUME/D-SPLIT and review-log supersessions without deleting history. Recompute AD-13 digest. Present the completed candidate for the separate §12 approval. Keep 6.5 in progress and 6.6 unauthorized until all receipt checks succeed.
 
 **Acceptance Criteria:**
-- Given the three handoffs, when each obligation is traced, then it lands in exactly one normative location, no superseded rule survives beside its replacement, and every public, wire or storage change carries its NFR12 class.
-- Given BH37-1..10, the ledger entries and the pass-1 triage rows, when the register and the artifact are read, then each item has one disposition, every `patch` row is fixed, every G-group rule meets the completeness bar, and no decision is deferred into Story 6.6.
-- Given the re-derived file, when the Verification commands run, then all of them pass (including the new verifier blocks), the receipt is still `UNAPPROVED`, and the only files that differ from the baseline are the task files plus the two other-owner paths listed under Verification.
+
+- Given completed reviewed 6.5a–d inputs, when the integrated artifact is traced, then every metadata, writer, reader, publication, migration, identity, cancellation and compatibility seam has one exact schema/algorithm/bound/outcome/vector; no superseded rule survives, no mechanism is invented, and no implementation decision remains open.
+- Given BH37-1..10, pass-1 groups, the 54 D-owned rows and 13 parent findings, when the register and ledger are checked, then each has one explicit disposition, each verification obligation has named story/gate/evidence ownership, and pending approval never claims resolution or runtime authority.
+- Given the approved architecture/release choices, when compatibility and activation are inspected, then the metadata deployment contract is exact and architecture-consistent, every changed public behavior is classified (including exact filters, BC-15/16), and the approved maintenance/major policy is stated without a fictitious release lane.
+- Given the revised verification gates, when baseline checks and targeted corruptions run, then every required block runs, labeled values and independent constructors agree, and each demonstrated regression fails its owning check; local-model success remains distinct from unproven provider behavior.
+- Given current baseline and subsequent repository state, when the preservation gate runs, then all outside-scope content, child inputs/archives/checkpoints, public signed fixtures, unrelated trackers/ledger entries and root gitlinks remain unchanged; absent/untracked/committed outside-scope changes fail rather than being exempted or silently repinned.
+- Given Story 6.5 completion is requested, when §12's exact bytes and receipt are verified, then a named authenticated human, matching digest and source UTC, immutable approval capture, fixed scope and exact explicit 6.6 authorization validate. Otherwise the five receipt values remain UNAPPROVED, 6.5 is incomplete and 6.6 unauthorized. Build-plan approval alone does not satisfy this criterion.
 
 ## Implementation Notes
 
@@ -155,6 +120,13 @@ The latest review snapshot is v37 with `BH37-1` through `BH37-10` open. Its prio
 
 - 2026-09-30 correct-course (`sprint-change-proposal-2026-09-30.md`). Story 6.5d is created as `backlog`. It owns `[I-06]`, `[I-10]`, `[I-12]`, `[I-14]`–`[I-17]`, `[I-29]`–`[I-31]`, `[I-36]`, `[I-37]`, `[I-45]`, `[I-46]` and every hold or wait exit; this story keeps the other `[I-nn]` rules and may add no new mechanism. Of the 67 pass-2 findings, 54 go to 6.5d and 13 return to this story's next plan: VG2-1, VG2-5, VG2-6, VG2-7, BH2-11 to BH2-15, BH2-17, E2-27, E2-33 and E2-37. The loop-1 re-derivation noted above as uncommitted is committed as `288a6190`, now on `origin/main`.
 
+
+- 2026-10-04 parent re-plan after child completion. Planning baseline is `cbbe41501ba722731bf36b2c343efdef4ac714fb`, clean `main`; initial baseline and historical notes remain evidence. Cached epic context is valid; previous completed 6.1 continuity preserves immutable stream/snapshot authority. **Intent gaps:** Q-ARCH and Q-RELEASE only. **Irreversibles:** none in this documentation run; publishing, runtime migration, dependency or Git mutation is outside scope. **Footprint:** parent build record, AD-13, affected ledger status/evidence, new `6-5-integration/` verification artifacts, plus architecture documentation only as authorized by D-ARCH. Three read-only investigators supplied handoff, parent-finding and validation maps. No integration implementation has started.
+- Baseline evidence: all five existing parent bash blocks exit 0; normative digest `7af8041cca7941c22879ac031d2eccc5f9d89dae3ca0ba7870443a767261424d`. In-memory corruptions still passed for accepted-row unfreezing, swapped B labels, changed inline C offset digest and a removed verifier fence. Child `verify.py` passes; child `acceptance.py` exits 1 at line 114 with `changes outside correction scope` against its old correction baseline (792 newer committed paths). Its pins remain immutable history; the successor gate belongs to this integration.
+- D-SPLIT's child prerequisite is now satisfied by completed 6.5d, including recovery corrections. The preserved frozen statement that integration is blocked until 6.5d completes is historical; no human-owned decision is rewritten. D-SCOPE's existing acceptance of a single integrated change beyond the token guideline persists. This record retains its earlier append-only history, so its total size exceeds the recommended range; implementation follows the current Code Map/Tasks/Verification, with history read for evidence only.
+
+- 2026-10-04 owner answered both questions with “do recommended” after the detailed tradeoff explanation. D-ARCH/D-RELEASE are recorded above; no Open Questions remain. This instruction approves proceeding with the presented build plan and recommended scope, rather than requesting another confirmation. The single-goal scope acceptance persists. Plan approval does not authenticate §12 approval or authorize Story 6.6.
+
 ## Spec Change Log
 
 - 2026-09-30 review loop 1. **Trigger:** review pass 1 routed one intent gap (G-D: `PublicationRetryExhaustedHold` has no resolution, and BC-02 removes today's replay recovery) and nine bad_spec groups G-A…G-C and G-E…G-J. In each group an integration-authored `[I-nn]` rule left a state with no exit, prescribed an impossible action, or defined a codec with no known answer. It also found about 24 text-level patches (see the Review Triage Log). **Amendment:** pending the owner's G-D answer. Step 2 re-plans the non-frozen sections so that every `[I-nn]` rule meets the completeness bar: exit, capacity, activation slice, codec plus known answer plus verifier, and inventory. **Known-bad state avoided:** an approvable AD-13 whose integration rules strand commands, deliveries or pins, rely on unencodable legacy records, or bind literals nothing checks. **KEEP:**
@@ -172,6 +144,9 @@ The latest review snapshot is v37 with `BH37-1` through `BH37-10` open. Its prio
   - Keep `[I-02]` inventory drift.
   - Keep every `[I-nn]` rule that no finding names.
   - Apply every `patch` row of pass 1 during re-derivation.
+
+
+- 2026-10-04 planning supersession. **Trigger:** completed simplified 6.5d and its correction review; retained 13 parent pass-2 findings; historical source/preservation drift. **Amendment:** replace obsolete map/tasks/checks with the D9 splice plan, reproducible committed base, current-baseline preservation and independent/labeled verification; restore the exact-content human-approval completion criterion and D-CLOSE tooling obligations. Q-ARCH/Q-RELEASE were resolved by D-ARCH/D-RELEASE on 2026-10-04; their previous pending state remains planning history. **Known-bad state avoided:** approving contradictory old/new holds, silently removing gates, treating fixture or plan approval as runtime authority, or relying on vanished scratchpad bytes. **KEEP:** every prior history entry, original frozen intent, A/B/C candidates, child archives/checkpoints/public literals, original §12 receipt/hash rule and unrelated owner changes. The earlier “Amendment: pending” line describes pass 1; D-RESUME was resolved on 2026-09-30 and is now supplied by reviewed D3 rather than integration-authored mechanism.
 
 ## Review Triage Log
 
@@ -241,28 +216,79 @@ Review pass 1 (2026-09-30), diff `ccb4faf0..worktree` limited to the three story
 | E28 | low — [I-40] gives `FirstSendMembershipChangedHold` and `ProjectionPriorConflict` two outcomes each (:1341, :1332). | patch |
 | E29 | medium — same defect as BH-12. | patch |
 
+
+
+### Current integration review (2026-10-04)
+
+The fresh blind and edge reviewers plus the independent investigator reused with the owner's explicit “reuse investigator” authorization reviewed the preserved snapshot in `6-5-integration/reviews/review-input.diff.gz`. The platform refused the third fresh spawn with `agent thread limit reached`; reuse preserves implementation independence and has prior context. Every individual finding is graded before grouping below. The smallest corrections use existing D1/D3/D8 rules, retained model algorithms and B6 bounds; they add no public field, lifecycle phase, record family or release lane.
+
+| Finding | Verdict and verified evidence | Route / group |
+| --- | --- | --- |
+| BH-R1 | high — read_text normalizes CRLF before approval() receives bytes; §12 exact-byte protection is bypassed. | patch / P1 exact bytes |
+| BH-R2 | medium — inputs() loops over matches without asserting the exact three child identities; deleting the rows passes. | patch / P2 complete source pins |
+| BH-R3 | medium — inputs() checks manifest files but never parses the displayed D pin table; a false displayed digest passes. | patch / P2 complete source pins |
+| BH-R4 | medium — The hold manifest is pinned but never consumed; removing a supplemental hold row is not detected. | patch / P3 retained inventory |
+| BH-R5 | medium — D8 closes its reason/owner vocabulary while the supplemental table names retained predicates only in prose; an inventory encoder lacks exact mappings. | patch / P3 retained inventory |
+| BH-R6 | medium — cursor_sign uses SHA256(prefix+payload); that historical model fixture cannot validate a correct HS256 implementation. Retain it as historical and add a standards-based positive vector. | patch / P4 cursor evidence |
+| BH-R7 | medium — The exact payload has schema but no declared audience placement; identify its existing schema literal as the authenticated inventory audience. | patch / P4 cursor evidence |
+| BH-R8 | medium — The model uses canonical [headerGeneration,subject/generation pairs], but D8 does not state the full preimage; separate implementations can diverge. | patch / P4 cursor evidence |
+| BH-R9 | medium — The added adapter wording can imply a new native receipt family absent from D1; define its authenticated SQL readback using the already declared row/participant/backend authority. | patch / P5 adapter contract |
+| BH-R10 | medium — Eight retries cap the count only; a row lock or statement can wait without bound. Apply the existing 30-second recovery budget and cancellation-to-hold rules. | patch / P5 adapter contract |
+| BH-R11 | medium — Materializing predecessor/result images of eight legal 100 MiB envelopes violates B6 live-memory bounds; state bounded sequential streaming and qualification. | patch / P5 adapter contract |
+| EC-R1 | medium — Read-only reviewer probes accept missing A/B/C pins and incorrect D pins, confirming BH-R2/R3. | patch / P2 complete source pins |
+| EC-R2 | high — D3 deletes superseded evidence at fixed deadlines while amended C5 requests complete historical source bytes; unresolved operations cannot meet both rules. | patch / P6 D3/C5 seam |
+| EC-R3 | medium — All three glob patterns also match -2.md execution records, which contain zero model blocks. Lexicographic enumeration reproduces refusal. | patch / P7 deterministic model paths |
+| EC-R4 | high — This claim finding confirms the same D3/C5 historical-source conflict as EC-R2; D3 already requires authenticated rolling history and current attempts. | patch / P6 D3/C5 seam |
+| VG-R1 | medium — The verification reviewer reproduced all three filesystem-order failures. This Other finding is independently confirmed by the exact glob and preserved -2 inputs. | patch / P7 deterministic model paths |
+
+All seven groups route to direct correction of demonstrated states. No finding requires a new owner policy or modification of the frozen intent. The fixed D3 reclamation policy and immutable child sources stay intact; C5 must consume the existing authenticated rolling history rather than require deleted sources. Provider qualification and §12 human authority remain separate.
+
+All 16 current findings are corrected. P1 validates raw LF/no-BOM receipt bytes and unique full-line framing before decoding; P2 checks the complete three A/B/C and 54 D pin rows; P3 accounts for all 17 baseline predicates with six D8 and 11 supplemental rows, exact existing owner mappings and unchanged D4 aggregate reasons. P4 states the existing schema audience and generation preimage and adds independent standard HS256 answers while preserving historical child fixtures. P5 requires fresh complete authenticated SQL readback under the existing owner, cumulative 30-second recovery deadline and 128 MiB live scratch bound. P6 consumes the retained active-window claim and authenticated rolling history without reclaimed sources. P7 uses exact immutable candidate paths. No review finding is deferred.
+
+Parent full verification additionally exposed a historical-table parser collision: current review rows were counted as pass-1 identities. The original implementation agent restricted extraction to the original contiguous table and its exact 59 identities. Current rows and three added review rows are ignored; removing historical VG-1 is refused. The failed run and focused correction captures remain separate historical evidence. The subsequent full run passed all six required commands; the old child acceptance command still produced its expected correction-scope failure. See `6-5-integration/verification-results.json` for commands, exact capture hashes and review provenance.
+
 ## Design Notes
 
-- **Completeness bar for every `[I-nn]` rule (review loop 1).** Each rule must satisfy all of the following:
-  - **Exits.** Every state the rule creates has a stated exit, whether a resolution, a terminal outcome or the D-RESUME operation. Every indefinite or operator-gated hold is admitted to the [I-37] inventory by predicate.
-  - **Storage.** Every stored record has a charge or ceiling and a tenant offboarding and erasure rule.
-  - **Activation.** It names the §10 slice that activates it.
-  - **Codecs.** Every new record or codec has tags and a §11.6 known answer produced and checked by an embedded `bash` verifier block, which Verification command 1 then runs.
-  - **Sources.** It reads only sources that exist at `ccb4faf0` or records this document defines.
-  - **Closed sets.** Every reason-code or outcome set it adds is complete for every raiser.
-- **Imported rules.** A rule a child imported is amended in place, never contradicted elsewhere.
+Use exact reviewed splices and fixed-revision citations, not a fresh design. The only normative document is AD-13: include its required schema/codec/bound/literal content within the hashed bytes, while referenced executable models are evidence with pinned sources. Amend superseded imported prose in place. Keep privately retired families historical; do not invent deployed migrations for them.
 
-- **Form.** Everything stays in one file. Normative rules, codecs and known answers go inline. The child models are cited, not copied: they verify themselves at their own paths, and copying them would add about 2,300 lines and break their extraction. The expected size is about 0.9–1.2 MB.
-- **Splicing.** Integrate section by section, largest first (§7). Splice with scripts rather than retyping, so the imported bytes stay exact. Keep LF line endings.
-- **Tagged rules.** A tag `[I-nn]` marks each rule first decided at integration. The approver and the review can then focus on exactly the rules no child story reviewed.
-- **Wording.** Use sole-owner vocabulary: never "independent". The 6.5c "Independent review should challenge" items become review focus points and 6.6 provider-evidence obligations.
-- **After the build.** The owner fills in the receipt from an authenticated immutable capture, for example a GitHub-verified signed commit. The 6.5 tracker row stays `in-progress` until then.
+Parent verification must detect the demonstrated defects rather than mirror its own expected constants. Existing D constructors supply an independent implementation for D-owned literals; a separate constructor covers surviving parent preimages. Preservation applies to current authorized scope, while older correction-scope results retain their original revision attribution. Production cryptography, two-host PostgreSQL/broker crashes and deployment-profile authorization remain explicit provider gates.
 
 ## Verification
 
-**Commands:**
-- `python3 -c 'import re,subprocess,pathlib; t=pathlib.Path("_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md").read_text(); b=re.findall(r"^```bash\n(.*?)^```$",t,re.S|re.M); [subprocess.run(["bash","-c",x],check=True) for x in b]; print(len(b),"bash blocks passed")'` -- expected: exit 0, and the last line before the summary is a 64-hex digest.
-- `grep -c '^<!-- APPROVAL RECEIPT: mutable fields below -->$' _bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` -- expected: `1`. The last six lines keep five `UNAPPROVED` values plus the fixed scope.
-- `for i in $(seq 1 10); do grep -q "BH37-$i\b" _bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md || echo "missing BH37-$i"; done` -- expected: no output.
-- The 6.5a, 6.5b and 6.5c model commands from their Verification sections, run against the unchanged candidates -- expected: exit 0.
-- `git diff --check ccb4faf03256ef8eb627d49d6f6f0a032fcb4830` and `git diff --name-only ccb4faf03256ef8eb627d49d6f6f0a032fcb4830` -- expected: clean; the name-only list holds the three task files plus `references/Hexalith.Builds` and `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs` (other-owner commits `5f854425`, `27279fe6`).
+From repository root after implementation:
+
+- `python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py` — exact input pins, complete verifier identities/counts, parent/child labeled vectors and independent answers; current scope/preservation, disposition/obligation accounting and exact unapproved receipt pass. Targeted wrong transition, swapped label, modified offset, omitted block and forbidden-path controls fail their named owning checks.
+- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py` — reviewed bounded behavior cases pass without modifying sources.
+- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/mutations.py` and `python3 _bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py` — exact owning refusal/removal checks pass; run the integer-safe independent literal constructors through the parent gate.
+- `python3 scripts/check-deferred-work.py --json` — exit 0, preserving unrelated classification/counts; the parent gate separately verifies approval-pending statuses and obligations that this legacy checker does not inspect.
+- `git diff --check` — exit 0; source-manifest gate separately enforces the exact allowed diff/committed/untracked paths from full current baseline.
+
+Historical blockers are reported separately: the existing child `acceptance.py` exits 1 for newer owner commits and pins the old parent; its checkpoint/pins are not updated. Pre-integration A/B checksum checks and the second C integrity block remain historical. No .NET build or Aspire start is required for artifact-only planning/integration. The final authenticated §12 gate is distinct from these local checks and from build-plan approval.
+
+
+### 2026-10-04 current-baseline integration execution
+
+The reviewed D1–D9 sections, complete wire schemas/known answers and immutable-input pins are integrated into AD-13. D-ARCH's focused AD-1/AD-26 handoff and exact application-owned metadata adapter contract are documented. D-RELEASE's existing current-main compatible maintenance/security workflow and complete-major/publication-hold policy are retained. No runtime, tests, CI, dependencies, submodules or Git state were mutated.
+
+D-RESUME's old integration-created inventory/reconciliation mechanisms are superseded by the reviewed D2/D3 same execution-control owner, exact signed intent/window sequence and capsule-bound legacy recovery. D-SPLIT's historical integration block is superseded by the completed reviewed child and this exact import. The historical execution/review logs above remain verbatim. Their withdrawn O-06/O-07/O-11 and old capacity/codec/transition claims are superseded by the restored current-baseline boundary gate and D1/D4/D6 contracts; privately retired fixtures imply no deployed migration.
+
+The current register gives 10 BH37 findings, all 59 pass-1 findings, all 54 child-routed plus 13 parent pass-2 findings, and all 20 O-rows one proposed disposition/owner/gate/evidence obligation. Exactly 47 pending integrated ledger status lines remain recognized open proposals. Five unrelated open entries, two earlier resolutions, D-SPLIT child closure, FW1 and RW1 remain unchanged. All receipt fields remain UNAPPROVED except the fixed scope; Story 6.5 remains in progress and Story 6.6 is unauthorized.
+
+Focused check results, exact commands/exit codes, immutable source hashes and complete output captures are in [6-5-integration/verification-results.json](6-5-integration/verification-results.json). The historical child acceptance failure is preserved with its original correction checkpoint/pins, rather than repinned. Local models and index-width/UTF-8 checks supply no PostgreSQL, broker, cryptographic production-profile or runtime proof; D9 and AD-26 retain those gates.
+
+Three formal review lenses are complete, with the independent investigator reused under the owner's explicit authorization. All 16 findings and the parent historical-table parser correction are addressed and independently checked. Local evidence and presentation are complete; the final execution checkbox stays open for the separate authenticated human §12 approval. Build-plan approval does not approve AD-13.
+
+Final reviewed-and-corrected candidate normative-body SHA-256 (not approval): `b9e85ef0c637b5cf88af39a59d2896cbecaa7f45a259504187904b0dced3561a`. The pre-review and first failed post-review captures retain their original digests and are superseded only as current evidence. All six required commands passed on this final candidate; fourteen final output captures were independently byte/hash checked. Any candidate/executable change requires FW1 rerun and a fresh digest/approval.
+
+The workflow's terminal presentation is complete within the authorized artifact-only scope. Its generic done/commit/sprint-update instructions do not override the frozen §12 gate or the approved preservation boundary: no commit or sprint-status mutation is made, Story 6.5 remains in progress, and Story 6.6 is unauthorized. The candidate awaits a named authenticated human, exact digest/source UTC, immutable approval capture, fixed scope and explicit authorization sentence under §12.
+
+
+### 2026-10-04 targeted review corrections
+
+The review correction changes raw-byte receipt framing, complete displayed source-pin accounting, exact candidate selection, consumed preserved-predicate/closed inventory mappings, existing-schema inventory audience and independent HS256/generation vectors, bounded authenticated SQL readback, and C5 current-window/rolling-accumulator authority without reclaimed-history requirements. No child source/literal, prior reviewed snapshot, original verification result or prepatch run/review capture is rewritten. The corrected authorizing files and inline adapter/vector bytes have freshly regenerated current-content pins.
+
+Only the edited seams were checked by `verify.py --review-fixes`, the existing Node parent constructor, and whitespace validation restricted to the edited files. Their separate evidence is [6-5-integration/review-fix-checks.json](6-5-integration/review-fix-checks.json). Full verification and final review/approval disposition belong to the parent workflow. Story 6.5 stays in progress, the six-field receipt stays UNAPPROVED except fixed scope, and Story 6.6 remains unauthorized.
+
+Corrected normative-body SHA-256 (not approval): `7d9af4ba95ff8a7ae4b103fdadc8af2b6986bc24ae858e982843a494d36fbe42`.
+
+- Final P6 precision: C5 authenticates the active window’s retained signed claim/carrier; reclaimed first-window claims are not required. The targeted rerun passes at corrected normative-body SHA-256 `245e4c59ad69034e0163a715e746f69a8aa9e142a1b7490f68ec6764f4d08b24` (not approval), captured separately in [review-fix-final-checks.json](6-5-integration/review-fix-final-checks.json). Earlier targeted captures remain unchanged historical evidence.

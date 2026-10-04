@@ -1,0 +1,48 @@
+{
+  "result": "passed",
+  "rejectedRegressions": 7,
+  "cases": [
+    {
+      "case": "signed foreign held identity",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: redrive-claim-owner",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: redrive-claim-owner"
+    },
+    {
+      "case": "legacy recovery owner",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: legacy-owner",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: legacy-owner"
+    },
+    {
+      "case": "send terminal exclusion",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: terminal-no-send",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: terminal-no-send"
+    },
+    {
+      "case": "accepted dispatch exclusion",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: accepted-dispatch-exclusion",
+      "expectedOwningFailure": "AssertionError: accepted-dispatch-exclusion"
+    },
+    {
+      "case": "original-route completion",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: route-terminal-readback",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: route-terminal-readback"
+    },
+    {
+      "case": "refund delete readback",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: delete-readback",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: delete-readback"
+    },
+    {
+      "case": "closed legacy failure reasons",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal: legacy-failure",
+      "expectedOwningFailure": "AssertionError: expected owning refusal: legacy-failure"
+    }
+  ]
+}

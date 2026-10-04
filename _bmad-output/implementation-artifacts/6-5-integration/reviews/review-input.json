@@ -1,0 +1,127 @@
+{
+  "diffPath": "/tmp/story-6-5-final-p5hs_lw3.diff",
+  "diffBytes": 4605721,
+  "diffSha256": "5465a2389a1efc67cec9d825d7392d94baa6417a1e86f087433b2a114fbf5443",
+  "normativeDigest": "f9511f04afbafc9f76a052f33e935465e002ec138f08772998b05b2060b8675f",
+  "reviewers": {
+    "blind-hunter": "fresh reviewer launched",
+    "edge-case-hunter": "fresh reviewer launched",
+    "verification-gap": "completed by independent investigator with prior context; owner explicitly authorized reuse"
+  },
+  "findingCount": 16,
+  "verdicts": [
+    {
+      "id": "BH-R1",
+      "verdict": "high",
+      "evidence": "read_text normalizes CRLF before approval() receives bytes; \u00a712 exact-byte protection is bypassed.",
+      "route": "patch",
+      "group": "P1 exact bytes"
+    },
+    {
+      "id": "BH-R2",
+      "verdict": "medium",
+      "evidence": "inputs() loops over matches without asserting the exact three child identities; deleting the rows passes.",
+      "route": "patch",
+      "group": "P2 complete source pins"
+    },
+    {
+      "id": "BH-R3",
+      "verdict": "medium",
+      "evidence": "inputs() checks manifest files but never parses the displayed D pin table; a false displayed digest passes.",
+      "route": "patch",
+      "group": "P2 complete source pins"
+    },
+    {
+      "id": "BH-R4",
+      "verdict": "medium",
+      "evidence": "The hold manifest is pinned but never consumed; removing a supplemental hold row is not detected.",
+      "route": "patch",
+      "group": "P3 retained inventory"
+    },
+    {
+      "id": "BH-R5",
+      "verdict": "medium",
+      "evidence": "D8 closes its reason/owner vocabulary while the supplemental table names retained predicates only in prose; an inventory encoder lacks exact mappings.",
+      "route": "patch",
+      "group": "P3 retained inventory"
+    },
+    {
+      "id": "BH-R6",
+      "verdict": "medium",
+      "evidence": "cursor_sign uses SHA256(prefix+payload); that historical model fixture cannot validate a correct HS256 implementation. Retain it as historical and add a standards-based positive vector.",
+      "route": "patch",
+      "group": "P4 cursor evidence"
+    },
+    {
+      "id": "BH-R7",
+      "verdict": "medium",
+      "evidence": "The exact payload has schema but no declared audience placement; identify its existing schema literal as the authenticated inventory audience.",
+      "route": "patch",
+      "group": "P4 cursor evidence"
+    },
+    {
+      "id": "BH-R8",
+      "verdict": "medium",
+      "evidence": "The model uses canonical [headerGeneration,subject/generation pairs], but D8 does not state the full preimage; separate implementations can diverge.",
+      "route": "patch",
+      "group": "P4 cursor evidence"
+    },
+    {
+      "id": "BH-R9",
+      "verdict": "medium",
+      "evidence": "The added adapter wording can imply a new native receipt family absent from D1; define its authenticated SQL readback using the already declared row/participant/backend authority.",
+      "route": "patch",
+      "group": "P5 adapter contract"
+    },
+    {
+      "id": "BH-R10",
+      "verdict": "medium",
+      "evidence": "Eight retries cap the count only; a row lock or statement can wait without bound. Apply the existing 30-second recovery budget and cancellation-to-hold rules.",
+      "route": "patch",
+      "group": "P5 adapter contract"
+    },
+    {
+      "id": "BH-R11",
+      "verdict": "medium",
+      "evidence": "Materializing predecessor/result images of eight legal 100 MiB envelopes violates B6 live-memory bounds; state bounded sequential streaming and qualification.",
+      "route": "patch",
+      "group": "P5 adapter contract"
+    },
+    {
+      "id": "EC-R1",
+      "verdict": "medium",
+      "evidence": "Read-only reviewer probes accept missing A/B/C pins and incorrect D pins, confirming BH-R2/R3.",
+      "route": "patch",
+      "group": "P2 complete source pins"
+    },
+    {
+      "id": "EC-R2",
+      "verdict": "high",
+      "evidence": "D3 deletes superseded evidence at fixed deadlines while amended C5 requests complete historical source bytes; unresolved operations cannot meet both rules.",
+      "route": "patch",
+      "group": "P6 D3/C5 seam"
+    },
+    {
+      "id": "EC-R3",
+      "verdict": "medium",
+      "evidence": "All three glob patterns also match -2.md execution records, which contain zero model blocks. Lexicographic enumeration reproduces refusal.",
+      "route": "patch",
+      "group": "P7 deterministic model paths"
+    },
+    {
+      "id": "EC-R4",
+      "verdict": "high",
+      "evidence": "This claim finding confirms the same D3/C5 historical-source conflict as EC-R2; D3 already requires authenticated rolling history and current attempts.",
+      "route": "patch",
+      "group": "P6 D3/C5 seam"
+    },
+    {
+      "id": "VG-R1",
+      "verdict": "medium",
+      "evidence": "The verification reviewer reproduced all three filesystem-order failures. This Other finding is independently confirmed by the exact glob and preserved -2 inputs.",
+      "route": "patch",
+      "group": "P7 deterministic model paths"
+    }
+  ],
+  "reviewComplete": true
+}

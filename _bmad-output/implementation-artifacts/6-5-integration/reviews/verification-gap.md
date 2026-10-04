@@ -1,0 +1,3 @@
+## Other findings
+
+- `_bmad-output/implementation-artifacts/6-5-integration/verify.py:116` selects each child model with `next(ART.glob('spec-6-5'+label+'-*.md'))`. This pattern also matches the preserved `-2.md` execution records, which contain no Python model. Directory iteration order is unspecified, so an unchanged checkout can fail with `child-model-identity`. A read-only probe supplying lexicographically ordered matches reproduced that failure for all three children. Select the exact candidate paths already named in the pinned input table. The current directory order passes the full gate and all six corruption controls.

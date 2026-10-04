@@ -4,16 +4,16 @@ type: architecture-gate
 story: "6.5"
 status: normative-candidate
 required_by: AD-13
-baseline_commit: ccb4faf03256ef8eb627d49d6f6f0a032fcb4830
+baseline_commit: cbbe41501ba722731bf36b2c343efdef4ac714fb
 ---
 
 # Event Versioning And Upcasting
 
 This is the Story 6.5 AD-13 normative artifact. It specifies a future Story 6.6 implementation; it changes no runtime behavior. **Story 6.6 is unauthorized until the content-bound human receipt in §12 validates.** The words MUST, MUST NOT, SHOULD and MAY are normative. There are no deferred implementation decisions.
 
-**Integrated version.** This version integrates the Story 6.5a, 6.5b and 6.5c section candidates into this single AD-13 artifact. Their normative sections are imported under their original labels and placed in the section they amend: A1–A10 (event contract, writer and migration evidence), B1–B10 (verified read, replay and projection) and C0–C7 (publication, subscription and rollout). Inside an imported section, a bare label such as A5, B6 or C3 names that subsection of this document, `§N` names a section of this document, and "pre-integration" names the v37 text this version replaces. Model family names such as K06, LB-11 or C02e name the cited, non-normative child models in §11.4. The child candidate files remain review evidence only; they grant no authority beyond what this document states. The tag `[I-nn]` marks a rule first decided at integration, which no child review examined; approval and review should focus on those rules. Where an imported section says it replaces or supersedes an earlier rule, the earlier text has been removed or amended in place, so exactly one rule governs each obligation. §10.2 carries the NFR12 breaking-change proposal that the §12 receipt approves with this document, and §11.5 gives every open finding, including each finding of review pass 1, exactly one disposition.
+**Integrated version.** This version integrates the Story 6.5a, 6.5b, 6.5c and reviewed 6.5d section candidates into this single AD-13 artifact. Their normative sections are imported under their original labels and placed in the section they amend: A1–A10 (event contract, writer and migration evidence), B1–B10 (verified read, replay and projection) and C0–C7 (publication, subscription and rollout), and D1–D9 (hold lifecycle, resume and legacy admission). D1–D9 and the complete supporting schemas/literals in §11.6 replace the D9-owned rules; retired private fixtures create no deployed migration. Inside an imported section, a bare label such as A5, B6 or C3 names that subsection of this document, `§N` names a section of this document, and "pre-integration" names the v37 text this version replaces. Model family names such as K06, LB-11 or C02e name the cited, non-normative child models in §11.4. The child candidate files remain review evidence only; they grant no authority beyond what this document states. The tag `[I-nn]` marks a rule first decided at integration, which no child review examined; approval and review should focus on those rules. Where an imported section says it replaces or supersedes an earlier rule, the earlier text has been removed or amended in place, so exactly one rule governs each obligation. §10.2 carries the NFR12 breaking-change proposal that the §12 receipt approves with this document, and §11.5 gives every open finding, including each finding of review pass 1, exactly one disposition.
 
-[I-01] **Precedence between imported sections.** These supersessions are applied, and no other imported rule overrides another: (1) B6's compositional phase admission governs every A3 and §8 individual ceiling, so an individually legal maximum never admits an allocation that B6 rejects; (2) C1's decoded-attestation bound of 1..6,123 bytes, with a purpose-02 delivery key ID of 1..738 bytes, replaces the pre-integration 8 KiB attestation maximum in §7 and §8; (3) C3's eight-field `EventEffectKey`, 16 KiB effect records and separate commit and readback receipts replace the pre-integration seven-part key and 4 KiB `EventEffectReceipt`; (4) A8's codec-03 outcome and immutable first POST pin, with C5's terminal proof, replace the pre-integration codec-01 command outcome and its retry alternative; (5) C1's per-tenant and deployment publication-retention ceilings supersede A8's rule that revision zero never first discovers after commit that its outcome is unrepresentable, for those two levels only, while A8's per-operation reservation before `Prepared` stands. In addition, A5 replaces the §4 codec-01 intent certificate, `PreSaveBundleHash`, provider receipt and `ActorBundleReadbackHash`; A6 replaces the thirteen-field `RawCorruptDisposition`; A8 limits same-MessageId independence to different tenants; B2 replaces the V2 raw-source record-absence rule; B3 adds the empty-target prefix; B4a replaces the zero-page transcript rule for transcript v2; B4 and B5 replace the paged timeline and successor-capture wording; B7d replaces per-call latest-root retry inside a versioned query session; C1 replaces hash-only publication-pin tombstones; and C4 replaces the pre-integration legacy handoff manifest and its acknowledgement point.
+[I-01] **Precedence between imported sections.** These supersessions are applied, and no other imported rule overrides another: (1) B6's compositional phase admission governs every A3 and §8 individual ceiling, so an individually legal maximum never admits an allocation that B6 rejects; (2) C1's decoded-attestation bound of 1..6,123 bytes, with a purpose-02 delivery key ID of 1..738 bytes, replaces the pre-integration 8 KiB attestation maximum in §7 and §8; (3) C3's eight-field `EventEffectKey`, 16 KiB effect records and separate commit and readback receipts replace the pre-integration seven-part key and 4 KiB `EventEffectReceipt`; (4) A8's codec-03 outcome and immutable first POST pin, with C5's terminal proof, replace the pre-integration codec-01 command outcome and its retry alternative; (5) D1/D6 qualified whole-batch metadata reservation precedes the separate pin install and replaces C1's un-precharged per-tenant/deployment post-commit capacity exception. D6 fixed bootstrap/header/owner precharges and eight reserved queue envelopes govern readiness together with A8's per-operation reservation before `Prepared`; no individual ceiling grants admission. D4's ordered authoritative status mapping supersedes earlier scalar/private-failure interpretations, with preparation/conflict evidence preceding publication holds. D3's resume-window fences remain distinct from C2/C5 permanent operation-terminal fences; D7 captured physical custody is distinct from logical C3 route completion. D9's activation map governs these supersessions. In addition, A5 replaces the §4 codec-01 intent certificate, `PreSaveBundleHash`, provider receipt and `ActorBundleReadbackHash`; A6 replaces the thirteen-field `RawCorruptDisposition`; A8 limits same-MessageId independence to different tenants; B2 replaces the V2 raw-source record-absence rule; B3 adds the empty-target prefix; B4a replaces the zero-page transcript rule for transcript v2; B4 and B5 replace the paged timeline and successor-capture wording; B7d replaces per-call latest-root retry inside a versioned query session; C1 replaces hash-only publication-pin tombstones; and C4 replaces the pre-integration legacy handoff manifest and its acknowledgement point.
 
 ## 1. Current path and authority inventory
 
@@ -35,7 +35,7 @@ This is the Story 6.5 AD-13 normative artifact. It specifies a future Story 6.6 
 
 The actor stream, not an adapted DTO, remains replay authority. Ordinary reads never mutate event keys, stored payload, `MessageId`, sequence, original `DateTimeOffset` offset, correlation/causation, protection metadata or outbox pin. Domain code returns a result; only the actor stages/commits state. Reflection remains load-bearing; this contract claims no AOT/trimming support. Epic 8 protection-engine work is not a dependency.
 
-[I-02] **Baseline re-verification.** Every path and symbol named in this section, A1, B1 and C0 was re-verified at `ccb4faf03256ef8eb627d49d6f6f0a032fcb4830`, which replaces the pre-integration baseline `ec67e340`. All 37 paths in the table above, 35 A1 paths, 63 B1 paths and 18 C0 paths resolve, and the named types, members, endpoints and test methods exist. Recorded drift: (1) the single 30-second bounded recovery attempt that A9 relies on is now `AggregateActor.cs:2206` (`new CancellationTokenSource(TimeSpan.FromSeconds(30))`); (2) the five shipped `PublishFailed` status writers that [I-14] retires for evidence-required executions are at `AggregateActor.cs:1760` (first publication failure: `drain_publish_failed` with a computed `Retryable`), `:2765` and `:2814` (drain retry: `retryable: retryRemains`), `:2972` (drain exhaustion: `drain_attempts_exhausted` with `Retryable=false`) and `:4480` (resumed pipeline); (3) the dead-letter capture default is `EventStoreOperationsOptions.MaxBodyBytes = 1_048_576`, with a validator ceiling of 10,485,760 bytes; (4) the B1 and B9 Admin timeline call sites are unchanged (`AdminStreamQueryController.cs:155`, `:364`, `:515`, `:818`). The children were grounded at `02cf007c` (6.5a), `68492519` (6.5b) and `e29b44a2` (6.5c); none of their inventory claims changed. Commits after the baseline (`5f854425`, `27279fe6`) touch only `references/Hexalith.Builds` and `ContractsPackageDependencyTests.cs`, outside this inventory. Story 6.6 repeats this verification at its own baseline before implementing; a changed path, line or symbol is recorded as drift and never silently reinterpreted.
+[I-02] **Current source inventory.** This integration baseline is cbbe41501ba722731bf36b2c343efdef4ac714fb. Historical A/B/C source baselines remain in §11.4; no old line citation implies present proof. Current AggregateActor.cs:2207 retains exactly one 30-second recovery attempt. AdminStreamQueryController.cs full-read sites are 129, 337, 466, 599, 786, 1066 and 1284 (seven). BC-01k cites the current named/exact filter predicates. The source-manifest pins every current outside-scope file/gitlink, with a read-only inventory of all table paths. Story 6.6 repeats source/symbol verification at its own baseline, records drift explicitly and never silently repins an input. Since the old parent baseline 138 source/test/docs paths changed; this is inventory drift, not authorization to change them.
 
 ### A1. Source inventory and authority
 
@@ -670,7 +670,7 @@ Cancellation/failure closes the scoped session, stops future reads and discards 
 
 Purpose `1e` is unassigned and never valid, and every purpose above `2d` is invalid until an approved amendment assigns it. Every purpose uses the §6 `HX-EV-SIG-1\0` input and the fixed P-256/P1363 carrier.
 
-[I-06] **Full-replay routes and the legacy complete array.** A projection route without a `5a` row is a full-replay route (B7). After its domain activates the verified read path in slice 3, it receives complete input only within the §8 legacy complete array: at most 100,000 events, 64 MiB cumulative readable payload and 256 MiB conservative accounting, whichever is reached first; at the 8,192-byte per-event charge the accounting bound alone admits at most 32,768 events. A stream beyond any of the three bounds holds that route for that stream with `LegacyArrayLimit` as a readiness hold, whereas today `ProjectionUpdateOrchestrator.UpdateProjectionAsync` reads it without a bound. This is breaking change BC-05 (§10.2). The hold never skips, truncates or partially applies history, and no staged full-replay protocol exists (B7). (1) *Inventory.* Before the domain activates, slice 3 measures every full-replay route's longest retained stream by event count, by cumulative readable payload bytes and by conservative accounting bytes, each charged by the §8 rule. A route whose measurement reaches 75% of any bound must either register a `5a` `incremental` capability with B7a prior-state intake or be named with disposition `hold` in the activation record. (2) *Activation record.* `HX-EV-FULL-REPLAY-ACTIVATION-1\0 || 01 || 0008` (≤1 MiB) is signed under purpose `2d` by the operator-action authority ([I-05]): `01` U operator-action issuer ID, `02` U domain, `03` B32 active RegistryFingerprint, `04` N positive inventory generation, `05` B inventory rows, `06` Q inventory-complete UTC, `07` U operator subject and `08` Q signing UTC. Tag `05` is `u32 count ||` one row per full-replay route in ascending HandlerRouteId bytes: `U HandlerRouteId || U disposition || N longest stream event count || N largest cumulative readable bytes || N largest accounting bytes`, where the disposition is exactly `incremental` or `hold`. It is created once, with backend-CAS readback, at `full-replay-activation:` plus lowercase-hex SHA-256 of `U domain || B32 RegistryFingerprint || N generation`; the verified read path does not serve the domain until it reads back, and a new fingerprint needs the next generation. The record is charged to the domain's §8 registry and catalog budget, contains no tenant data and is retained with its fingerprint (§5). (3) *Growth after activation.* Every full-replay dispatch charges the legacy array as it reads. The first dispatch that exceeds a bound holds that route for that stream and creates its [I-37] entry (hold code `LegacyArrayLimit`, subject key the route and stream key); a dispatch whose charge reaches 75% of any bound records the support-safe reason `legacy_array_headroom_low` in the route's projection status and increments the counter `hexalith.eventstore.projections.legacy_array_warnings` (dimensions `domain` and `bound`), so growth never holds silently. (4) *Exit.* The only exit is a `5a` `incremental` capability registered with B7a intake under a new RegistryFingerprint; the route then leaves the full-replay path, and its [I-37] entries are removed on its first verified incremental dispatch. Known answer `I06-activation` (§11.6).
+[I-06] **Full replay.** D5 is the complete three-way activation, accounting/readable/count bound and scheduled idle-bootstrap exit. The signed activation uses the exact retained D06 schema in §11.6; catalog registration precedes fingerprint calculation. D8 owns discovery before the projection hold activates.
 
 ## 7. Publication, transport and side effects
 
@@ -706,7 +706,7 @@ The delivery claim is signed with purpose 02; tag `0a` is immutable trusted-sign
 
 CloudEvent `id` equals persisted MessageId, `type` equals pinned stored-form `EventTypeName` (V2 canonical; V1 exact registered alias), `source` equals the exact registered publisher source URI, `specversion` is `1.0`, and optional subject/time, content type, component and topic equal the signed body/pin before dedup or routing. New application routing headers are exactly `hx-tenant-id`, `hx-domain`, `hx-aggregate-id`, `hx-aggregate-type`, `hx-event-contract-type`, `hx-payload-version`. The publisher renders exact lowercase ASCII application HTTP header names in binary mode; the receiver folds received HTTP header names to lowercase ASCII before duplicate detection and comparison with the signed map, so legal header-name case variation alone is accepted while changed values, duplicate case variants and unknown `hx-*` fail. In DAPR they are metadata keys `metadata.hx-tenant-id`, `metadata.hx-domain`, `metadata.hx-aggregate-id`, `metadata.hx-aggregate-type`, `metadata.hx-event-contract-type`, `metadata.hx-payload-version` surfaced by authenticated raw ingress. They are **not** CloudEvents extensions. Each is required on new delivery, lowercase-ASCII named, unique even by case variant and sorted by unsigned UTF-8 name into M. For V2, contract type and version headers compare to the stored pair. For V1 stored pair absent/null, derive those two header values from the **exact registered domain-scoped alias/source-version descriptor**, keep the stored pair absent/null in the delivery body, and bind the derived values in this signed header map and active RegistryFingerprint. The receiver compares them to that alias resolution, never to nonexistent stored pair fields. The other four headers compare to signed addressed scope. Unknown `hx-*` fails; non-`hx-*` headers never influence route, and C1 and C2 decide which of them belong to the retained header image and which are enumerated transport-managed fields. `hx-payload-version` is canonical invariant ASCII unsigned decimal 1..1024, with no sign, space or leading zero. Parse and re-emit before comparing signed version. `MapEventStoreDomainEvents` builds a `VerifiedDeliveryContext` from raw authenticated transport containing exact core attributes, component/topic/body/headers; DTO attestation properties are read-only derived views, not independent authority.
 
-`MapEventStoreDomainEvents` selects ingress by authenticated transport content type and bounded raw bytes **before** deserializing any DTO. The legacy flat-JSON route remains for queued V1 messages. It parses under the same raw size/depth/duplicate-name bounds, authenticates source component/topic and legacy addressed metadata, and performs trusted gateway lookup by scoped MessageId. From the authenticated original publication/configuration revision for that physical subscription, it resolves the **complete immutable set** of addressed logical HandlerRouteIds before processing or acknowledging one old broker delivery; current membership or a broker-attempt ID cannot add, omit or rename routes. The batch handoff operation ID is deterministically derived from separately encoded §4 U fields `(component, topic, physical subscription ID, MessageId, original configuration revision)`, and its durable manifest stores the sorted complete route-ID set, original event key/scope/StoredDigest, original JSON identity and exact shared binary pin/send intent. Each route record retains the unique key `(component, topic, physical subscription ID, HandlerRouteId, MessageId)` with separately encoded U fields; scope and digest are compared as values, never used to create a second key for changed evidence. Under the global MessageId reservation and one-pin CAS, a linearizable batch transaction creates or returns **all** route records, the one shared attested binary pin and shared send intent. If the backend lacks a multi-record transaction, a batch-wide CAS manifest owns staged records and an atomic committed pointer; no individual record or send is active until the manifest, all records and pin read back as one exact complete set. A partial or ambiguous batch remains unacknowledged and is reconciled by the same operation ID, without effect or a second pin. Redelivery reauthenticates source/configuration, recomputes the complete set, and compares every route record, shared pin and manifest bytes; changed source, route set or pin is `LegacyHandoffConflict` and never creates a second effect. The old JSON broker delivery is acknowledged only under C4's rule: after the shared binary send has durable broker acceptance, the side record, manifest, every route record and the pin/send intent read back, **and every addressed route has a durable terminal decision**. A crash before that point leaves it unacknowledged; a later redelivery reuses the full set and the existing route receipts. The outbox sends the one exact pinned binary delivery until durable broker acceptance; every logical route independently uses its marker and effect receipt, so one completed route cannot suppress another. A source lookup, batch readback or broker failure keeps the old JSON unacknowledged. Legacy JSON cannot assert `isAdapted` or bypass reservation/effect checks. The new `application/vnd.hexalith.eventstore.v2+octet-stream` route decodes the exact body and `hyevattestation`, builds `VerifiedDeliveryContext`, and verifies body, transport, signature and effective route before DTO binding/handler selection. JSON and binary binders never reinterpret each other's bytes. Reconcile old broker unacked counts, full handoff batches, outbox states and target acceptance before removing JSON ingress.
+`MapEventStoreDomainEvents` selects ingress by authenticated transport content type and bounded raw bytes **before** deserializing any DTO. The legacy flat-JSON route remains for queued V1 messages. It parses under the same raw size/depth/duplicate-name bounds, authenticates source component/topic and legacy addressed metadata, and performs trusted gateway lookup by scoped MessageId. From the authenticated original publication/configuration revision for that physical subscription, it resolves the **complete immutable set** of addressed logical HandlerRouteIds before processing or acknowledging one old broker delivery; current membership or a broker-attempt ID cannot add, omit or rename routes. The batch handoff operation ID is deterministically derived from separately encoded §4 U fields `(component, topic, physical subscription ID, MessageId, original configuration revision)`, and its durable manifest stores the sorted complete route-ID set, original event key/scope/StoredDigest, original JSON identity and exact shared binary pin/send intent. Each route record retains the unique key `(component, topic, physical subscription ID, HandlerRouteId, MessageId)` with separately encoded U fields; scope and digest are compared as values, never used to create a second key for changed evidence. Under the global MessageId reservation and one-pin CAS, a linearizable batch transaction creates or returns **all** route records, the one shared attested binary pin and shared send intent. If the backend lacks a multi-record transaction, a batch-wide CAS manifest owns staged records and an atomic committed pointer; no individual record or send is active until the manifest, all records and pin read back as one exact complete set. A partial or ambiguous batch remains unacknowledged and is reconciled by the same operation ID, without effect or a second pin. Redelivery reauthenticates source/configuration, recomputes the complete set, and compares every route record, shared pin and manifest bytes; changed source, route set or pin is `LegacyHandoffConflict` and never creates a second effect. The old JSON broker delivery without a D7 retained-custody handoff is acknowledged only under C4's logical-completion rule: after the shared binary send has durable broker acceptance, the side record, manifest, every route record and the pin/send intent read back, **and every addressed route has a durable terminal decision**. A crash before that point leaves it unacknowledged; a later redelivery reuses the full set and the existing route receipts. The outbox sends the one exact pinned binary delivery until durable broker acceptance; every logical route independently uses its marker and effect receipt, so one completed route cannot suppress another. A source lookup, batch readback or broker failure keeps the old JSON unacknowledged. Legacy JSON cannot assert `isAdapted` or bypass reservation/effect checks. The new `application/vnd.hexalith.eventstore.v2+octet-stream` route decodes the exact body and `hyevattestation`, builds `VerifiedDeliveryContext`, and verifies body, transport, signature and effective route before DTO binding/handler selection. JSON and binary binders never reinterpret each other's bytes. Reconcile old broker unacked counts, full handoff batches, outbox states and target acceptance before removing JSON ingress.
 
 The durable legacy handoff manifest is C4's exact 23-tag `HX-EV-LEGACY-HANDOFF-1\0 || 01 || 0017` schema; the pre-integration tag assignment is superseded. Its tag `10` is exactly `SHA256("HX-EV-LEGACY-DECODED-1\0" || 01 || U tenant || U domain || U aggregate type || U aggregate ID || U event key || N sequence || U MessageId || B32 StoredDigest || B(§4 canonical decoded original stored-event JSON value) || B(exact decoded readable payload bytes) || B(exact derived protection-record bytes) || B(exact original CloudEvent core/ordered-header identity bytes whose hash is tag `0f`))`; the canonical renderer retains all known/unknown legacy members and null/absent distinctions, so raw whitespace is not an identity input. The complete handoff manifest is capped at 2 MiB and its route set at the authenticated 4,096-member physical-subscription bound before nested allocation; the send-intent B is capped at 1 MiB. The side record is tenant-scoped authenticated encrypted bounded storage keyed by that OperationId; it contains the exact original JSON body (at most the admitted 128 MiB raw-carrier bound) and core/header bytes, is capped as a complete encrypted side record at 193 MiB (C4, [I-26]), and is read back byte-for-byte before handoff commit or old-message acknowledgement. Before constructing the binary pin, parse those original bytes with the frozen legacy codec and compare **every** stored event field, readable payload and protection state with authenticated actor source and the newly rendered binary body under the frozen binary codec. Different whitespace can produce equivalent decoded content only after exact original broker pin/body bytes and decoded fields authenticate; changed content, scope, route set, side-record bytes or configuration revision is `LegacyHandoffConflict`. The manifest, original-body side record, all route records and send intent share one committed handoff pointer; partial readback cannot acknowledge the original JSON delivery. Handoff/side-record retention lasts through broker retry, rollback, route-effect and late-delivery obligations.
 
@@ -767,7 +767,7 @@ Before each append, the store reserves durable capacity for the preparation caps
 
 Per-route marker key includes scoped MessageId, canonical type, physical subscription ID and stable HandlerRouteId, while immutable duplicate identity compares scope, sequence, StoredDigest and DeliveryDigest; RegistryFingerprint is audit/readiness metadata, not duplicate identity. Same MessageId may reach several cataloged routes only for identical event evidence. A changed body, destination, header or reused ID is conflict, never duplicate. Migrate legacy Completed/Dispatched marker under CAS only with independent scoped actor evidence **and** route-specific receipt/outbox/catalog proof; Completed remains terminal, Dispatched only finalizes. Old InProgress may retry only under proven effect idempotency. Unique-ID inventory alone is insufficient. Ambiguity holds for reconciliation.
 
-There is exactly **one durable global publication pin keyed by the exact MessageId**, CAS-created only after comparing scope, StoredDigest, DeliveryDigest and all pinned decoded body/attestation/core/header bytes and the exact outbound bytes for the same transport mode. A changed digest cannot create a second pin even if a secondary index includes that digest. The separate durable historic delivery-pin obligation is keyed by scoped MessageId and DeliveryDigest and stores purpose 02, scope, StoredDigest, exact body and extension bytes, signature/key ID, signed issuance UTC from claim tag `0a` and approved fingerprint, source head, pending queue/quarantine/rollback needs and drain status. Recovery may derive the first pin from durable original event/readability only when actor commit/outbox witness proves no prior send; otherwise it holds for operator reconciliation. The exact global MessageId publication pin and its body/attestation bytes remain durable until every queue, broker retry, quarantine replay, rollback target and old-key verification obligation for that event has closed with durable evidence; beyond that they stay available for every possible late duplicate, and a CAS tombstone may replace them only under C1's rule: after authenticated closure proves no future same-MessageId comparison can arise, or when the tombstone names one authenticated immutable full-byte comparison source retained for the whole enforceable redelivery horizon. A hash-only tombstone never deduplicates. A late delivery is compared byte for byte with the pin or that source and the original actor source before route-receipt deduplication; changed bytes conflict, and missing bytes, trust or evidence hold without a new send, effect or false acknowledgement. The global Committed ID index and immutable event digest remain for lifetime uniqueness. Each pin is charged at its exact size at the pin CAS against C1's publication-retention ceilings; a full counter returns `PublicationPinCapacityHold`, creates no pin and keeps the committed outbox pending. A retired key may verify only its exact still-open pin obligation after proving signature validity in the key's original interval and exact byte/scope equality. On a queued approved pin after registry rotation, first validate the historic purpose-02 signature, prior RegistryFingerprint, signed issuance time/key interval and **exact durable pin obligation**; do not compare that prior fingerprint to the active route fingerprint. Independently authenticate the immutable actor source under current trust, compute a fresh purpose-01 route and verified effective view under the **current** key/fingerprint, compare StoredDigest, MessageId, scope and sequence across old pin, actor source and new route, and compare the received exact delivery body/attestation/transport bytes to the old pin before handler selection. The current view retains the authenticated source digest and original delivery digest as provenance; a newly computed effective payload need not equal the old pinned readable payload. Missing old obligation, unavailable source or missing current route holds without effect or acknowledgement. Historic purpose-02 acceptance never authorizes old effective bytes to bypass current evolution. Revocation or compromise follows an explicit incident decision; age alone never grants generic old-key acceptance or drops an open pin. Before activating a new signer, every affected verifier advertises the new trust map/fingerprint and old obligations remain readable.
+There is exactly **one durable global publication pin keyed by the exact MessageId**, CAS-created only after comparing scope, StoredDigest, DeliveryDigest and all pinned decoded body/attestation/core/header bytes and the exact outbound bytes for the same transport mode. A changed digest cannot create a second pin even if a secondary index includes that digest. The separate durable historic delivery-pin obligation is keyed by scoped MessageId and DeliveryDigest and stores purpose 02, scope, StoredDigest, exact body and extension bytes, signature/key ID, signed issuance UTC from claim tag `0a` and approved fingerprint, source head, pending queue/quarantine/rollback needs and drain status. Recovery may derive the first pin from durable original event/readability only when actor commit/outbox witness proves no prior send; otherwise it holds for operator reconciliation. The exact global MessageId publication pin and its body/attestation bytes remain durable until every queue, broker retry, quarantine replay, rollback target and old-key verification obligation for that event has closed with durable evidence; beyond that they stay available for every possible late duplicate, and a CAS tombstone may replace them only under C1's rule: after authenticated closure proves no future same-MessageId comparison can arise, or when the tombstone names one authenticated immutable full-byte comparison source retained for the whole enforceable redelivery horizon. A hash-only tombstone never deduplicates. A late delivery is compared byte for byte with the pin or that source and the original actor source before route-receipt deduplication; changed bytes conflict, and missing bytes, trust or evidence hold without a new send, effect or false acknowledgement. The global Committed ID index and immutable event digest remain for lifetime uniqueness. D6 atomically reserves the complete admitted batch and original per-tenant/deployment charges before append; the separate pin install authenticates exact reservation-bound attachment/readback before send or A8 revision zero. Waiting existing committed work remains `PublicationPinCapacityHold` under D6 without partial grants or an uncharged pin. A retired key may verify only its exact still-open pin obligation after proving signature validity in the key's original interval and exact byte/scope equality. On a queued approved pin after registry rotation, first validate the historic purpose-02 signature, prior RegistryFingerprint, signed issuance time/key interval and **exact durable pin obligation**; do not compare that prior fingerprint to the active route fingerprint. Independently authenticate the immutable actor source under current trust, compute a fresh purpose-01 route and verified effective view under the **current** key/fingerprint, compare StoredDigest, MessageId, scope and sequence across old pin, actor source and new route, and compare the received exact delivery body/attestation/transport bytes to the old pin before handler selection. The current view retains the authenticated source digest and original delivery digest as provenance; a newly computed effective payload need not equal the old pinned readable payload. Missing old obligation, unavailable source or missing current route holds without effect or acknowledgement. Historic purpose-02 acceptance never authorizes old effective bytes to bypass current evolution. Revocation or compromise follows an explicit incident decision; age alone never grants generic old-key acceptance or drops an open pin. Before activating a new signer, every affected verifier advertises the new trust map/fingerprint and old obligations remain readable.
 
 The existing public `EventStoreDomainEventContext` remains an **unsealed** positional record with its exact six-argument constructor `(TenantId, AggregateId, MessageId, SequenceNumber, Timestamp, CorrelationId)`, generated six-field deconstruction, nullable `long? GlobalPosition`, and optional init properties `Domain`, `CausationId`, `UserId`. No member is redeclared, sealed, made required, or changed in type or accessibility; old source and compiled callers retain their API. Add a separate immutable `VerifiedEventStoreDomainEventContext` wrapper for the two new effect callables. Its public `LegacyContext: EventStoreDomainEventContext` is a detached copy with those original fields, and its verified-only members are addressed `AggregateType`, non-null verified global position, `DeliveryDigest`, `HandlerRouteId`, stored metadata/type/version/format/digest, effective type/version/format/payload digest, current `RegistryFingerprint`, and exact purpose-01/02 claim/key/signature values. Binary members are immutable copies; public mutable transport arrays never back signed authority. The router constructs the wrapper only after source, consumed-metadata, current-view and both signed claims validate, compares every wrapper and legacy member to those claims and actor readback, and binds scope, MessageId and DeliveryDigest to `EventEffectKey`. Production admission requires a verified global position when the signed claim requires one; this does not narrow the old nullable member. A mismatch is `HandlerCapabilityMismatch` before effect or marker. Both new callable interfaces receive the verified wrapper; an old-handler adapter receives its `LegacyContext` and preserves its six-argument metadata semantics.
 
@@ -808,12 +808,9 @@ The exact global MessageId CAS pin contains decoded body, purpose-02 `HX-EV-ATTE
 - each C4 legacy original or variant side record, with its manifest, attempt, side-link, variant-entry and head records;
 - each retained object under a C3/C4 obligation fence, whether an AD-31 capture object or a broker-owned full-byte object.
 
-An object's charge is its exact canonical encoded byte length plus the capability's pinned per-object overhead `o`: one exact byte count covering worst-case protection expansion (≤1 MiB, as C4 requires) and outer record metadata/framing. The account is the authenticated tenant; an unidentified physical object is charged to its purpose-`1b` signed isolated capture/access scope ID as its own tenant account. One physical owner is charged once, to the account of its first charge, when the purpose-`2b` canonical-object mapping or the pin/handoff key proves it is the same owner. A later attach from any account with the same kind and amount returns already-charged and charges nothing; a different kind or amount conflicts. The refund returns to the charged account after the object's final closure. Under B6's linearizable quota fence, each charge is taken atomically against both counters at these points:
-- a global pin is charged at its exact size at the pin CAS, atomically with that CAS and before any send; there is no admission-time publication-retention reservation;
-- a legacy side record is charged before the C4 variant bundle writes it;
-- a retained object is charged before a C3/C4 fence install, attach or purpose-`2c` extension first adds an obligation to it.
+D6 defines each original charge by exact kind-qualified account, canonical encoded length, pinned original overhead and checked amount, under D1's qualified shared metadata transaction. Same-kind/length reattachment preserves that original account/amount; mismatched kind or length refuses unchanged. Complete batch charges and both tenant/capture-scope and deployment counters reserve atomically before append. The separate pin install requires exact reservation-bound attachment/readback before any send or A8 revision zero. Legacy side/object creation likewise reserves its original complete charge before the external write or obligation-fence phase. Authenticated final deletion/closure readback precedes once-only refund to the original account.
 
-If either counter would exceed its ceiling, the typed, nonterminal result is `PublicationPinCapacityHold`. At the pin CAS it creates no pin and permits no send, and the committed events and outbox stay stored. A8 requires every `ExpectedEntries` entry to carry its `exactPublicationPinHash` and prepares each pin before the observation, so while any expected member's pin is missing A8 creates no revision zero, no pending member row and no first POST pin: the POST reply and status inspection return A8's existing `CommandOutcomeHold` for a missing first pin (A10 V24, [I-16]), never `EventsStored`. This specification adds no `Retryable`, `RecoveryReasonCode` or `DrainAttemptCount` value of its own to that hold. Pins already created for the command's other members keep their charges. The pin CAS resumes only after authenticated capacity readback shows room on both counters; it retries the same exact pin bytes and charge, and A8 then creates revision zero and the first POST pin normally. The per-tenant and deployment levels are therefore discovered after commit. For those two levels only, this supersedes A8's rule that revision zero must never first discover after commit that its complete outcome is unrepresentable; command admission, append and A4 `Prepared` accept no backpressure from their current usage, while level one still reserves before Prepared; the only pre-`Prepared` check against these levels is [I-31]'s static feasibility check of the batch against the ceilings themselves. At a side-record write or retained-object attach it returns non-2xx with no fence change, route decision or acknowledgement, and redelivery retries only after authenticated capacity readback. Refunds follow B6's no-early-release rule: only after authenticated closure of every obligation and deletion or tombstone readback, updating both counters once under the same fence. An ambiguous deletion keeps its charge, and recovery reconciles the counters before the next pin CAS, side-record write or attach. The capacity known answer, with feasible object sizes and the unidentified-capture reserve, is [I-26]; per-kind maxima, the exact overhead bound, overhead changes, the counter home and ceiling changes are [I-26], [I-27], [I-28], [I-29] and [I-30] (§7.2).
+If either counter would exceed its ceiling, the typed, nonterminal result is `PublicationPinCapacityHold`. D6 reserves the whole admitted member batch and all original charges/counters in one qualified ledger transaction before the separate pin install. No send or A8 revision zero precedes every exact reservation-bound attachment/readback.
 
 Transport is exact binary `application/vnd.hexalith.eventstore.v2+octet-stream` body with canonical padded Base64 `ce-hyevattestation`, or sorted structured CloudEvents JSON with canonical padded `data_base64` and `hyevattestation`. Both modes strictly decode to the same body/attestation and signed `specversion=1.0`, id/type/source, optional subject/time with original offset, content type, component/topic and six `hx-*` routing headers. The six are `hx-tenant-id`, `hx-domain`, `hx-aggregate-id`, `hx-aggregate-type`, `hx-event-contract-type`, `hx-payload-version`; structured mode keeps them outside the CloudEvent object. The attestation is always present and nonempty; an absent or empty `ce-hyevattestation` or `hyevattestation`, which would decode to an unsigned rendering, is `DeliveryPinConflict`. In Structured mode the CloudEvent attributes exist only in the JSON object: any `ce-*` HTTP header, in any case and including `ce-hyevattestation`, is `DeliveryPinConflict` before decode, so no header can agree or disagree with a JSON attribute. In Binary mode the `ce-*` headers are the only attribute source. Every header value is checked byte-for-byte: a value containing CR (`0x0d`), LF (`0x0a`) or NUL (`0x00`) is `DeliveryPinConflict`; it is never retained in a pin or header image, replayed, or used as a decision input. V1 header type/version comes from exact registered domain alias descriptor while stored body pair remains absent/null. Case-fold only legal HTTP header-name case to identify **decision fields**: the six routing names, every `hx-*`, CloudEvent `ce-*` field, `ce-hyevattestation`, `Content-Type`, and any configured mode or attestation selector. A duplicate of any such name, including a differently cased spelling, is `DeliveryPinConflict`; unknown `hx-*`/CloudEvent attributes, changed values, alternate Base64 and noncanonical mode rendering also conflict. Exact ordered duplicates of other HTTP names are admitted only when the signed destination configuration names them as non-decision inputs and the C2 full-byte broker/sidecar/ingress probe proves they cannot affect routing, trust, filtering, effects, quarantine identity or mode selection. Otherwise hold admission; the generic duplicate rule never rejects an otherwise proved non-routing image. JSON object member names remain unique under strict JSON parsing. Non-`hx-*` broker headers cannot route. All six signed headers are required on new deliveries and sorted by unsigned UTF-8 name; `hx-payload-version` is canonical unsigned ASCII decimal 1..1024 without sign, space or leading zero. Generic object publication/DTO binding does not satisfy this contract. Same-mode retry uses retained exact outbound bytes; a broker mode conversion is accepted only after strict decode and canonical re-render to the same pin.
 
@@ -833,7 +830,7 @@ Production duplicate-safety readiness requires the §7 `HX-EV-DEDUP-PROBE-3\0 ||
 
 At acceptance, `TryPublishAtRevision(tenant, domain, component, topic, expectedRevision, fenceNonce, operationId, ExactCanonicalPinDigest, requestMode, exactRequestModeTransportBytes, exactCompleteRequestHeaderImage, proposedAcceptedMode, exactPredictedAcceptedTransportBytes, exactPredictedAcceptedHeaderImage)` atomically checks authoritative broker UTC, active member set, every lease/configuration/probe/fingerprint, revision and fence expiry/nonce **with the complete accepting body and header bytes**. `ExactCanonicalPinDigest` is the §7 formula. The proposed accepted mode is either the request mode or a specifically authorized canonical conversion; the broker atomically compares the actual accepted mode, exact canonical body rendering and complete accepted header image with the already pinned prediction and returns all three exact actual images in its signed Accepted result; any difference holds **before** acceptance with no new pin. Both modes are exactly `Binary` or `Structured`. Publisher precheck or a later header hash is insufficient. Join, leave, filter/handler/provider/registry change strictly advances the revision, installs a fresh never-reused fence nonce and invalidates old fence/leases; a lower or equal revision or a reused nonce holds or conflicts. Missing compare-and-accept is `ConsumerMembershipFenceUnavailable`. The broker enforces **one unique key** `(U tenant, U domain, U component, U topic, U memberSendOperationId)` before digest comparison; its immutable value binds the canonical pin digest, request mode and exact request body, accepted mode and exact accepted rendering, the complete request and accepted `HX-EV-BROKER-HEADERS-2` header images and authenticated parent binding. Both request and accepted body/header images are retained and read back byte-for-byte; conversion may change only the **precommitted** canonical mode rendering and its mode-specific complete header image, including Content-Type; decoded body, attestation and signed six-header projection remain equal. A different digest, either mode, bytes, either complete header image or parent under that same key conflicts; the digest is never part of key selection. Every member send OperationId, including a future retry-nonce ID, requires `HX-EV-SEND-PARENT-1\0 || 01 || 000c`: `01` U authenticated tenant, `02..04` U domain/component/topic, `05` U original parent command OperationId, `06` B32 A5 tenant-scoped ScopeOpHash, `07` N A8 member position, `08` U event MessageId, `09` U member send OperationId, `0a` B32 exact outbox-intent/pin binding hash (`SHA256(B(exact outbox intent) || B(exact global pin))`), `0b` U configured broker send-parent issuer ID and `0c` Q signed issuance UTC. Its complete record/signature carrier is ≤16 KiB, reserved before A4 Prepared; its key is the unique broker operation key above. Authenticate complete same-save outbox/preparation evidence, signed send intent and broker parent-index CAS/readback before acceptance. The broker parent index is append-only under the authenticated tenant and ScopeOpHash parent namespace; an unbound, mismatched or late-invented send ID holds before acceptance. A terminal parent reject fence keyed by the authenticated tenant and original command ScopeOpHash is checked atomically across **every** A8 destination in that tenant **before** the unique-key duplicate path on every accept path, including delayed old and newly presented member IDs; a broker without that cross-destination atomic check cannot certify C5 terminality; a matching historical Accepted receipt remains queryable but cannot create new acceptance. Accepted is idempotent only for the matching unique key and immutable value. After uncertain send, `GetPublicationReceipt` uses the exact attempt key and complete-chain rules below; an operation-level latest result cannot authorize retry or erase a prior Unknown. Matching Accepted records without resend; a proved class-01 Rejected permits renewal of fence/nonce for the same member send OperationId/pin; Unknown or unavailable evidence holds without new nonce/send. Receipt retention covers pin, parent binding, retry, handoff and rollback obligations. Cancellation after send starts follows the same lookup under a bounded recovery token; caller cancellation cannot infer nonacceptance.
 
-If membership changes after the global pin is committed but before this member's first acceptance, the old pin is never rewritten or silently repinned. Before any send under the new revision, the broker freezes the old member namespace and produces one complete authenticated zero-send proof covering every configured destination/alias partition and the parent-member namespace from its initial generation. The proof has exactly one of two states: `EmptyNamespace`, with no purpose-20 attempt registration, parent-member row/head, queued or in-flight send, acceptance index or definitive/Unknown result; or `InitialRowOnly`, with exactly the immutable ordinal-one parent-member row and purpose-23 head required by the signed A8 plan, zero cumulative/local attempts, no result or acceptance index, and no queued or in-flight send. `InitialRowOnly` binds the complete row, head, purpose-23 carrier and row/head CAS receipts into the zero-send root; those bytes remain the ordinal-one predecessor under the new revision and are not recreated. Any later row, attempt, result, queue or acceptance evidence makes both states false. The broker then signs `HX-EV-FIRST-SEND-MEMBERSHIP-1\0 || 01 || 000f` (claim/carrier ≤16 KiB) under distinct purpose `2a`: ordered `01..04` U tenant/domain/component/topic, `05` U MessageId, `06` B32 ScopeOpHash, `07` N one-based A8 member position, `08` B32 immutable global-pin hash, `09` B32 old membership claim hash, `0a` N old revision, `0b` B32 new membership claim hash, `0c` N new revision, `0d` B32 complete zero-send proof root, `0e` U disposition and `0f` Q decision UTC. Disposition is exactly `ContinueSamePin` or `FirstSendMembershipChangedHold`. `ContinueSamePin` is legal only when the new signed membership/configuration deterministically selects the same logical consumer and destination and reproduces byte-for-byte the pinned request body/header image, predicted accepted body/header image, mode pair, renderer and six-header projection; it changes only the revision checked by the atomic accept and does not create another MessageId pin. Any changed pinned image, removed/renamed route, provider ambiguity, incomplete zero-send proof or inability to fence the old namespace yields the closed typed `FirstSendMembershipChangedHold`, which authorizes no send and requires a separately approved migration/new command path while preserving the original pin and identity.
+Before any first send, D4 versions the existing first-send outcome at its existing key using retained purpose-2a resolution. Fresh complete atomic EmptyNamespace/InitialRowOnly proof and byte-identical ContinueSamePin under active membership/configuration are the sole restoration. Incompatible images remain FirstSendMembershipChangedHold; manual checking cannot override, repin, abandon or complete them.
 
 The stable outcome key is `first-send-membership:` plus lowercase-hex `SHA256("HX-EV-FIRST-SEND-MEMBERSHIP-KEY-1\0" || 01 || U tenant || B32 ScopeOpHash || N member position || U MessageId || B32 immutable global-pin hash)`. The accepted broker membership authority named in both revisions owns one create-once CAS at this key; the exact claim, purpose-`2a` carrier and zero-send proof commit atomically with an authenticated receipt naming absent prior value, installed claim/carrier hash, resulting generation/ETag, authority and commit UTC. Verify issuer/SPKI, purpose, tenant/scope/member, both signed membership claims, decision UTC in the authority interval, current revocation, complete partition manifest/index roots and exact pinned bytes before following the disposition. Lost acknowledgement reads the same record and receipt; identical bytes resume, while a different new revision, disposition, proof, signer or image at that key conflicts and remains held. Once any attempt, row, queue or acceptance evidence exists, this pre-first-send outcome is unavailable and normal historical-obligation rules apply.
 
@@ -869,6 +866,9 @@ Its one stable key is `historical-execution-renewal:` plus lowercase-hex `SHA256
 
 The replacement mapping is `HX-EV-HISTORICAL-EXECUTION-MAPPING-1\0 || 01 || 0010` (≤16 KiB), with ordered `01` U authenticated tenant, `02..04` U domain/component/topic, `05` U physical subscription, `06` U **old** HandlerRouteId, `07` N **old** accepted membership revision, `08` B32 `HistoricalAcceptedObligationHash`, `09` B32 old EventEffectKey hash, `0a` B32 old global-pin hash, `0b` B32 purpose-13 grant claim-and-carrier hash, `0c` U replacement endpoint identity, `0d` U replacement provider/backend identity, `0e` B32 replacement V3 probe/configuration/**handler-graph** hash, `0f` B32 exact old-provider reconciliation and exclusion-source hash and `10` N exclusive mapping generation. Its key is `historical-execution-mapping:` plus `SHA256("HX-EV-HISTORICAL-MAPPING-KEY-1\0" || 01 || U tenant || U domain || U component || U topic || U old physical subscription || U old HandlerRouteId || N old revision || B32 HistoricalAcceptedObligationHash)`; replacement bytes are values, never key material. The broker membership authority owns one linearizable create-once CAS at this key. Its authenticated CAS receipt includes the exact pre-CAS mapping-record hash, absent prior value, resulting generation/ETag, issuer and commit UTC, and is retained/read back with full mapping bytes. A lost acknowledgement queries this same key and receipt; an identical mapping follows it only after byte-identical comparison of the complete record, old-provider reconciliation, exclusion fence and ownership-CAS evidence, while any changed endpoint/provider/backend/probe/grant or evidence conflicts and may not create another mapping. Before the owner can invoke, it reads every exact-key old provider receipt, in-flight operation and uncertain-commit ledger under the old `EventEffectKey`, atomically installs a cross-provider exclusion fence against any old owner/handler commit, then CAS-owns the mapping generation with the exact signed reconciliation result. The old and replacement providers must jointly enforce that fence on every effect path and verify one shared key/receipt; missing old readback, uncertain effect, unsupported atomic fence, changed owner generation or competing mapping holds without invoking. Completion is CAS-recorded under the same mapping owner and old route-decision key; the replacement cannot reset that decision, issue a new effect key or bypass the old takeover chain. `ReplacementCapabilityHash = SHA256("HX-EV-HISTORICAL-REPLACEMENT-CAP-1\0" || 01 || B(exact replacement V3 probe claim/carrier) || B(exact replacement configuration) || B(exact handler graph and loader closure))` is tag `0e`; tag `08` is the one C2 `HistoricalAcceptedObligationHash`, after reauthenticating its complete purpose-21 result and acceptance-index sources. `OldEffectKeyHash = SHA256("HX-EV-OLD-EFFECT-KEY-1\0" || 01 || B(exact eight-field old EventEffectKey))`; `HistoricalMappingHash = SHA256("HX-EV-HISTORICAL-MAPPING-HASH-1\0" || 01 || B(exact mapping record) || B(exact authenticated mapping CAS receipt) || B(exact ownership-CAS receipt))`; tag `0f` is `SHA256("HX-EV-HISTORICAL-RECONCILIATION-1\0" || 01 || B(exact old-provider receipt and uncertain-operation ledger) || B(exact pre-mapping cross-provider exclusion-fence receipt))`; the ownership-CAS receipt is issued **after** sealing the mapping record, retained separately and authenticated in `HistoricalMappingHash`, never included in tag `0f`. The mapping receipt's installed-record tag hashes **only** the exact pre-CAS mapping record under `SHA256("HX-EV-HISTORICAL-MAPPING-RECORD-1\0" || 01 || B(exact record))`; its generation/ETag then contributes to the ownership CAS and `HistoricalMappingHash`. Purpose-13 grant or complete renewal-chain validity is checked separately at accepted revision and invocation; a mapping record or its digest alone grants no historical authority. Expired/revoked current leases prohibit new acceptance but do not erase an already accepted obligation; unprovable historical authority is `ConsumerMembershipFenceUnavailable` and keeps physical acknowledgement pending.
 
+
+D3 window/member/send authority applies to every new acceptance/index. Each purpose-1c parent binds the exact window claim, member, MessageId, pin and namespace before registration, enqueue, duplicate resolution or acceptance. The unchanged public purpose-1c carrier is accompanied by the authenticated retained window binding; historical fixtures retain their exact bytes. Operation-terminal and closed-window fences are both consulted before duplicates. Signed 1..64 local attempts apply within each window; accepted/class-02/class-03 permanent member fences still prohibit drain-only sends.
+
 ### C3. Raw ingress, route effects and physical acknowledgement
 
 Every identified-addressed acknowledgement rule in C3 applies identically to authenticated Binary and Structured CloudEvents. Both modes use the same committed handoff key, complete addressed route set, empty-set physical-filter rule and all-route terminal-decision gate; Structured mode's canonical JSON/body and separately transported signed routing headers must verify against the global pin before the handoff can commit. Legacy JSON additionally requires C4's migration evidence. Therefore “identified addressed Binary or legacy JSON” below is inclusive shorthand for identified addressed Binary, identified addressed Structured and legacy JSON; no Structured delivery may bypass the committed handoff, complete-route decisions or empty-set proof.
@@ -895,7 +895,7 @@ Each transfer appends `HX-EV-EFFECT-TAKEOVER-1\0 || 01 || 000d` under the **same
 
 Takeover tag `02` is exactly `SHA256("HX-EV-EFFECT-TAKEOVER-BIND-1\0" || 01 || B(exact committed C3 binary handoff manifest) || B(exact global MessageId pin) || U tenant || U domain || U aggregateType || U aggregateId || U MessageId || B32 DeliveryDigest || U physicalSubscriptionId || U HandlerRouteId || U accepted providerId || U accepted backendId)`. B uses §4's checked four-byte length and hashes the complete retained bytes in streaming order; the scoped identifiers are the authenticated accepted eight-field EventEffectKey and configuration, each within A8's U bound. The accepted provider/backend identity stays fixed across every takeover even if a later mapping uses another provider. Read back the exact handoff, pin, key and accepted configuration, recompute tag `02` for every chain record, and require identical bytes and hash across the chain. A missing old pin/handoff or changed provider identity holds before another invocation.
 
-Physical acknowledgement for an **identified addressed Binary or legacy JSON** delivery requires the committed handoff pointer and **every** addressed route's authenticated durable terminal decision and matching `Completed` effect receipt or permitted `Filtered` proof read back. A separately proven permanently invalid source uses a matching `Quarantined` decision and capture proof below; handoff alone is never a route result. One completed and one failed/unavailable route remains unacknowledged; redelivery resumes only incomplete routes. An authenticated identified empty addressed set is success only under C3's exact signed physical-filter receipt. C4's unidentified physical quarantine follows its separate no-MessageId rule and cannot be presented as a handoff or route result. `InProgress` acquisition needs a persisted fenced lease; current DAPR read-only acquisition is insufficient. Old `Completed`/`Dispatched` markers migrate by CAS only with independent scoped actor plus route-specific receipt/outbox/catalog proof and global-ID inventory; `Dispatched` finalizes from receipt, old `InProgress` retries only with proved idempotency. Ambiguous evidence holds. No-handler, unavailable key/provider, new capability/limit hold, cancellation or pin mismatch never maps to 200. Deterministic authenticated permanent schema/identity poison may be acknowledged **only after** exact-byte AD-31 durable capture/readback or the C4 authenticated broker-owned full-byte reference **and** one durable `Quarantined` decision/receipt for every addressed route. Its distinct canonical receipt is `HX-EV-ROUTE-QUARANTINE-1\0 || 01 || 000a`: `01..05` U component/topic/physical subscription/HandlerRouteId/MessageId, `06` O(B32) StoredDigest, `07` O(B32) DeliveryDigest, `08` B tagged authority reference, `09` B32 exact carrier-byte-and-header hash, `0a` B32 exact authenticated source/retention proof hash. Tag `08` is exactly `00 || U AD-31 capture key || B32 exact AD-31 item/index proof hash` or `01 || U broker immutable full-byte reference ID || B32 exact broker reference proof hash`, enclosed once by `B`; other discriminators, untagged strings and bare hashes are invalid. The `00` verifier decrypts and reads back the complete AD-31 item and index, checking exact bytes, headers, tenant/scope, ETag, proof and retention. The `01` verifier uses the accepted broker authority to resolve and read back the **entire** ≤193 MiB carrier and every header under its immutable ID, then checks signed reference/retention proof, byte-for-byte equality and the horizon. Neither authority's proof is interchangeable with the other. It is ≤16 KiB, keyed by physical delivery plus route ID under the handoff, create-once/read back, and its optional digests cannot be fabricated when parsing failed; the 128 MiB local capture limit never turns a larger structured addressed carrier into an uncloseable poison route. Compare exact source, route set, captured/referenced bytes and retention on duplicate. It records no effect and cannot stand in for `Completed` on a valid event, missing handler or unavailable capability. Only after all decisions, receipts, capture/reference and manifest readback may poison receive 2xx. Capture never permits replay/projection checkpoint advancement. An untrusted carrier is not proven permanent source poison.
+Physical acknowledgement for an **identified addressed Binary or legacy JSON** delivery requires either D7 exact captured physical custody (with every logical obligation still open) or the committed handoff pointer and **every** addressed route's authenticated durable terminal decision and matching `Completed` effect receipt or permitted `Filtered` proof read back. A separately proven permanently invalid source uses a matching `Quarantined` decision and capture proof below; handoff alone is never a route result. One completed and one failed/unavailable route remains unacknowledged; redelivery resumes only incomplete routes. An authenticated identified empty addressed set is success only under C3's exact signed physical-filter receipt. C4's unidentified physical quarantine follows its separate no-MessageId rule and cannot be presented as a handoff or route result. `InProgress` acquisition needs a persisted fenced lease; current DAPR read-only acquisition is insufficient. Old `Completed`/`Dispatched` markers migrate by CAS only with independent scoped actor plus route-specific receipt/outbox/catalog proof and global-ID inventory; `Dispatched` finalizes from receipt, old `InProgress` retries only with proved idempotency. Ambiguous evidence holds. No-handler, unavailable key/provider, new capability/limit hold, cancellation or pin mismatch never maps to 200. Deterministic authenticated permanent schema/identity poison may be acknowledged **only after** exact-byte AD-31 durable capture/readback or the C4 authenticated broker-owned full-byte reference **and** one durable `Quarantined` decision/receipt for every addressed route. Its distinct canonical receipt is `HX-EV-ROUTE-QUARANTINE-1\0 || 01 || 000a`: `01..05` U component/topic/physical subscription/HandlerRouteId/MessageId, `06` O(B32) StoredDigest, `07` O(B32) DeliveryDigest, `08` B tagged authority reference, `09` B32 exact carrier-byte-and-header hash, `0a` B32 exact authenticated source/retention proof hash. Tag `08` is exactly `00 || U AD-31 capture key || B32 exact AD-31 item/index proof hash` or `01 || U broker immutable full-byte reference ID || B32 exact broker reference proof hash`, enclosed once by `B`; other discriminators, untagged strings and bare hashes are invalid. The `00` verifier decrypts and reads back the complete AD-31 item and index, checking exact bytes, headers, tenant/scope, ETag, proof and retention. The `01` verifier uses the accepted broker authority to resolve and read back the **entire** ≤193 MiB carrier and every header under its immutable ID, then checks signed reference/retention proof, byte-for-byte equality and the horizon. Neither authority's proof is interchangeable with the other. It is ≤16 KiB, keyed by physical delivery plus route ID under the handoff, create-once/read back, and its optional digests cannot be fabricated when parsing failed; the 128 MiB local capture limit never turns a larger structured addressed carrier into an uncloseable poison route. Compare exact source, route set, captured/referenced bytes and retention on duplicate. It records no effect and cannot stand in for `Completed` on a valid event, missing handler or unavailable capability. Only after all decisions, receipts, capture/reference and manifest readback may poison receive 2xx. Capture never permits replay/projection checkpoint advancement. An untrusted carrier is not proven permanent source poison.
 
 An **addressed** `Quarantined` route needs one active **physical retained-object-scoped** complete obligation set before any route decision or 2xx; C4's unidentified physical **disposition receipt** has a separate key, while its storage obligation uses this same canonical object key and head. The canonical physical object ID is the immutable AD-31 capture object key (tag `00`) or broker immutable full-byte object ID (tag `01`), inside its authenticated storage partition and named storage authority. The tagged reference proof hash and generation/ETag are authenticated **values** at that object, never identity or key components. The stable key is `retained-object-obligation:` plus lowercase-hex `SHA256("HX-EV-RETAINED-OBJECT-KEY-1\0" || 01 || U authenticated storage partition || U storage authority ID || u8 authority tag || U canonical physical object ID)`; no handoff key or retry ID enters it. One storage object has exactly one linearizable head and one no-expiry fence even if several committed Binary/legacy handoffs cite it. Different bytes, partition or tagged authority at the same key conflict; changed reference proof follows the object-wide version/CAS chain with authenticated source and full-byte readback, or conflicts. An unproved exclusive-reference claim does not excuse use of the object-wide key. Capacity for up to 128 open entries, all anticipated handoff links and route binds is reserved before the first quarantine decision; a 129th obligation holds before attachment rather than splitting the same object across fences. An AD-31 item/index key or broker reference resolves to exactly one canonical object ID through an immutable signed authority mapping, verified with complete bytes and the storage CAS readback. Distinct IDs may carry identical bytes only with independent fences; two aliases for the **same** object require a signed canonical-ID mapping to this one key. A renewed proof/generation for the same object must traverse this one version/CAS head with full-byte readback or conflict; it cannot create another addressed or unidentified fence. Capture links, purpose-18 sources and every handoff obligation resolve the same canonical object/head.
 
@@ -999,6 +999,9 @@ A finite retention-through UTC in the signed source is a lower bound, never perm
 
 “Initial fence” in the retention rule means the exact discriminated `RetentionAnchor`: a physical fence for discriminator `00`, or the installing extension plus attachment for discriminator `01`. Likewise “physical version chain” means physical versions while physical-only and the purpose-2c extension chain after mixing. The same nonexpiry, full-byte and authenticated-closure rule applies to both forms.
 
+
+D7 exact retained carrier, locator/receipt, active charge, captured owner and original discovery permit physical-copy handoff independently of logical completion. A legacy handoff still requires its complete C4 manifest/route set; captured custody never marks a logical route or effect completed. Ordinary 193 MiB and advertised provider-qualified quarantine through 256 MiB apply; finite local attempts/24-hour bound and direct dead-letter capture are D7 policy.
+
 ### C5. A8 public outcome and terminal `PublishFailed`
 
 The atomic receipt paired with each purpose-25 coordinator drain head is exactly `HX-EV-COORDINATOR-DRAIN-CAS-1\0 || 01 || 0008`: `01` B32 `SHA256("HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0" || 01 || B(exact ten-tag head claim) || B(exact purpose-25 carrier))`, `02` N expected prior coordinator-index generation, `03` O(U) expected prior ETag, `04` N resulting coordinator-index generation, `05` U resulting ETag, `06` B32 exact predecessor `DrainHeadHash`, `07` U backend authority and `08` Q commit UTC. Tag `03` is absent only for the initial CAS; tag `06` is 32 zero bytes only for the first head. The full ten-tag head decoder must verify ordered tags `01..0a`, exact field types, nullable count/latest-row pairing, generation, tag-`07` ETag, predecessor and issuer before comparing this receipt. A matching isolated tag-`07` fragment is never proof of a head or receipt.
@@ -1063,7 +1066,7 @@ The pre-send admission, post-fence no-attempt and nonadmissibility records and t
 
 The three source hashes and final root have one acyclic byte order. For each terminal source, exact claim tag `08` selects its authentication bytes before creation. `Auth(x)` is exactly `01 || B(exact purpose-specific signed carrier)` when tag `08` is `SignedCarrier`, or `02 || B(exact backend-authenticated post-CAS receipt)` when tag `08` is `BackendCas`; any other value or discriminator/byte mismatch holds. For `SignedCarrier`, the named purpose-specific issuer signs the complete eight-tag claim including `AuthMode`; if the signed record is also persisted by CAS, `SourceCas(x)` is that exact authenticated storage receipt, otherwise it is the empty byte string. For `BackendCas`, `SourceCas(x)` is always the empty byte string because the one post-CAS receipt already appears inside `Auth(x)`. Every backend receipt, in either position, names only `SHA256("HX-EV-TERMINAL-INSTALLED-1\0" || 01 || B(exact pre-CAS eight-tag source claim))`, expected generation/ETag, resulting generation/ETag, authority and commit UTC; it never names its own source hash. The enclosing `B(SourceCas(x))` always appears once, including when empty. A signed carrier cannot be supplied for `BackendCas`, a backend receipt cannot substitute for `SignedCarrier`, and no writer or reader may choose the shorter variant after seeing a result.
 
-`Evidence(x)` is `u32 count ||` one `B(exact authenticated item)` per item in the fixed order below. The count is at least one, because every role's fixed order begins with its required descriptor; a zero count holds. The drain order is its exact roster descriptor, then each complete roster segment in descriptor order, then each segment CAS/readback receipt, then the final queue/outbox/in-flight readback, then exact purpose-25 drain-head claim/carrier/CAS receipt and every predecessor head/receipt in ascending generation, then each coordinator drain row/CAS receipt in ascending ordinal (or the purpose-26 absence claim/carrier/index receipt), then the exact final coordinator-fence receipt. The no-accept order is its exact attempt descriptor, then each complete attempt segment and CAS/readback receipt in descriptor order, then the exact broker reject-fence receipt, producer-disable receipt, complete signed send/attempt ledger and final empty-state readback, then, for an operation resumed under [I-45], each earlier window-closure record and its authentication bytes in ascending window order. The policy order is its exact member-decision descriptor, then each complete policy segment and CAS/readback receipt in descriptor order, then exact signed retry-policy claim/carrier, each full member identifier/outbox/pin image and every definitive C2 result observation/carrier in member and attempt order, each zero-attempt pre-send source/carrier and post-fence ledger/carrier where applicable. Counts, order, complete bytes, signatures, ETags and full identifiers are mandatory; absent evidence holds.
+`Evidence(x)` is `u32 count ||` one `B(exact authenticated item)` per item in the fixed order below. The count is at least one, because every role's fixed order begins with its required descriptor; a zero count holds. The drain order is its exact roster descriptor, then each complete roster segment in descriptor order, then each segment CAS/readback receipt, then the final queue/outbox/in-flight readback, then exact purpose-25 drain-head claim/carrier/CAS receipt and every predecessor head/receipt in ascending generation, then each coordinator drain row/CAS receipt in ascending ordinal (or the purpose-26 absence claim/carrier/index receipt), then the exact final coordinator-fence receipt. The no-accept order is its exact attempt descriptor, then each complete attempt segment and CAS/readback receipt in descriptor order, then the exact broker reject-fence receipt, producer-disable receipt, complete signed send/attempt ledger and final empty-state readback, then, for an operation resumed under D3, the complete current-window attempt set plus the authenticated active execution control/current-window claim and rolling prior closure accumulator/count. Authenticate the active window’s retained signed claim/carrier, current addressed owner generation/fence, operation/scope/window/member/pin bindings, immutable admission and exact closedCount/accumulator selected by that owner before consuming them. Verify every current observation and seal the current window. D3 fixed-deadline deletion of superseded claims/closure/effect sources stands: terminal verification never requires those reclaimed artifacts. A bare historical hash/count, unauthenticated owner or a window closure alone is not terminal authority; all permanent operation-terminal and accepted/class-02/class-03 member fences still apply. The policy order is its exact member-decision descriptor, then each complete policy segment and CAS/readback receipt in descriptor order, then exact signed retry-policy claim/carrier, each full member identifier/outbox/pin image and every definitive C2 result observation/carrier in member and attempt order, each zero-attempt pre-send source/carrier and post-fence ledger/carrier where applicable. Counts, order, complete bytes, signatures, ETags and full identifiers are mandatory; absent evidence holds.
 
 `TerminalDrainSourceHash = SHA256("HX-EV-TERMINAL-DRAIN-SOURCE-1\0" || 01 || B(exact eight-tag drain claim) || B(Auth(drain)) || B(SourceCas(drain)) || B(Evidence(drain)))`. Drain claim tag `04`, tag `08` and its descriptor are verified before this hash. No-accept claim tag `06` is exactly `TerminalDrainSourceHash`; `TerminalNoAcceptSourceHash = SHA256("HX-EV-TERMINAL-NO-ACCEPT-SOURCE-1\0" || 01 || B(exact eight-tag no-accept claim) || B(Auth(no-accept)) || B(SourceCas(no-accept)) || B(Evidence(no-accept)))`. Policy claim tags `05..06` are exactly these drain/no-accept hashes; `TerminalPolicySourceHash = SHA256("HX-EV-TERMINAL-POLICY-SOURCE-1\0" || 01 || B(exact eight-tag policy claim) || B(Auth(policy)) || B(SourceCas(policy)) || B(Evidence(policy)))`. Proposal tags `07..09` are respectively these three full-source hashes. `TerminalProofRoot = SHA256("HX-EV-TERMINAL-PROOF-ROOT-1\0" || 01 || U authenticated tenant || B32 ScopeOpHash || B32 exact final failed A8 head hash || B32 exact final publication-set hash || B32 TerminalDrainSourceHash || B32 TerminalNoAcceptSourceHash || B32 TerminalPolicySourceHash || B(exact eight-tag drain claim) || B(Auth(drain)) || B(SourceCas(drain)) || B(exact eight-tag no-accept claim) || B(Auth(no-accept)) || B(SourceCas(no-accept)) || B(exact eight-tag policy claim) || B(Auth(policy)) || B(SourceCas(policy)))`. The root consumes each complete authenticated source claim, its declared authentication bytes and any separate CAS receipt directly, as well as ordered segment evidence through the three hashes. Pointer tag `09` equals this root; pointer tag `07` equals the retained first proposal/carrier hash. Every proposal/pointer/status reader recomputes the full sequence from retained bytes, provider receipts and readbacks, with no writer-selected subset or postcommit ETag inside a pre-CAS claim.
 
@@ -1106,11 +1109,11 @@ Derive the **entire expected event-member list** from all immutable committed ou
 
 `HX-EV-PUBLICATION-SET-1\0 || 01 || 0006`: tags `01` U OperationId, `02` B32 append-result-record hash, `03` B32 committed batch-root hash, `04` B32 ExpectedSetHash, `05` B exact coordinated observation fence, `06` B(`u32 count || ordered observation rows`). The complete set is capped at 2 MiB before allocation; observation fence at 64 KiB. Every referenced receipt/proof is capped at 64 KiB, with at most 64 MiB combined unique evidence per observation, streamed under A3 scratch and charged to the 1 GiB operation quota. Exceeding any cap preserves the previous outcome and holds. Hash the exact complete set record for outcome tag `08`. Retain exact set plus every receipt, pin, observation proof, original verifier keys/options and set-fence proof. Hashes alone prove nothing: independently authenticate each provider/broker receipt under §7, compare operation/scope/member/destination/attempt/pin and accepted/failure disposition, and read back the whole vector under the coordinator fence. The coordinator snapshot linearizes observation against publication changes; unavailable common fence or incomparable member proof is `CommandOutcomeHold`. This is private evidence; broker signed claim codecs/fixtures remain unchanged.
 
-Before A4 publishes Prepared, reserves IDs or permits append, the writer must conservatively preflight and durably reserve the **complete** first-outcome capacity: exact expected-entry framing and all record/tag/length overhead; the worst-case accepted observation row for every event (`entry bytes + 8 attempt + 1 state + 33 present-receipt + 32 observation hash`); complete set/fence; renderer/response/outcome/pin/head/preparation records; and authenticated provider/broker receipt, pin, observation, closure and verifier evidence needed by that vector. Use advertised authenticated maximum encoded evidence sizes, not the smaller initial pending rows or average receipts. Count all separately live/retained bytes against A3 scratch, the 512 MiB capsule and the combined 1 GiB operation quota, as applicable. The complete set must fit 2 MiB and its referenced unique evidence 64 MiB even when every member is accepted; conservative deduplication is allowed only for already known identical immutable evidence. A provider without enforceable evidence maxima/reservable capacity cannot admit the batch. Reduce the admitted batch or hold before append when any bound fails; revision zero must never first discover after commit that its complete outcome is unrepresentable, except at C1's per-tenant and deployment publication-retention levels ([I-01] (5)). Post-append authority failures still hold and preserve commit truth. Later attempts/revisions reserve additional evidence before admitting that attempt/revision, retain accepted and prior obligated evidence, and cannot spend the first-outcome reservation.
+Before A4 publishes Prepared, reserves IDs or permits append, the writer must conservatively preflight and durably reserve the **complete** first-outcome capacity: exact expected-entry framing and all record/tag/length overhead; the worst-case accepted observation row for every event (`entry bytes + 8 attempt + 1 state + 33 present-receipt + 32 observation hash`); complete set/fence; renderer/response/outcome/pin/head/preparation records; and authenticated provider/broker receipt, pin, observation, closure and verifier evidence needed by that vector. Use advertised authenticated maximum encoded evidence sizes, not the smaller initial pending rows or average receipts. Count all separately live/retained bytes against A3 scratch, the 512 MiB capsule and the combined 1 GiB operation quota, as applicable. The complete set must fit 2 MiB and its referenced unique evidence 64 MiB even when every member is accepted; conservative deduplication is allowed only for already known identical immutable evidence. A provider without enforceable evidence maxima/reservable capacity cannot admit the batch. Reduce the admitted batch or hold before append when any bound fails; revision zero must never first discover after commit that its complete outcome is unrepresentable. D1/D6 additionally require whole-batch retained-capacity reservation, fixed precharges and complete queue/owner readiness before append ([I-01] (5)). Post-append authority failures still hold and preserve commit truth. Later attempts/revisions reserve additional evidence before admitting that attempt/revision, retain accepted and prior obligated evidence, and cannot spend the first-outcome reservation.
 
 Reduce the verified complete vector deterministically: all accepted → `published`; otherwise any unknown → `unknown`; otherwise any pending → `pending`; otherwise → `failed` (at least one failed, every other row accepted/failed). Thus one accepted plus one pending is pending, not an invalid batch or published. Preserve every accepted row/receipt permanently across attempts/revisions; it cannot become pending/failed/unknown and cannot be sent again. Only unresolved members progress. A failed member may move to a higher-attempt pending row after definitive prior-attempt closure and durably admitted retry under the same immutable pin; an unknown member must reconcile accepted or definitive no-acceptance/no-future-acceptance before retry. No new attempt guesses that proof. A failed→pending transition changes the complete set hash and retains old evidence. No silent retry of accepted members, including when a different event failed.
 
-Revisions begin at zero, increase by one with checked N arithmetic and immutable keys `command-outcome:` plus ScopeOpHash plus `:` plus invariant revision decimal. Published/not-applicable are terminal. Pending/failed/unknown revisions require newly authenticated complete observations; identical evidence reuses its revision, regardless of an HTTP result. Publication state is separate from the saved domain rejection/success decision; published rejection events do not turn a rejected command into a successful one. No-op completion maps from its witness, with no publication assertion. Status body rendering preserves current public contracts: projection of verified pending/unknown to the existing nonterminal shape must not claim Completed/EventsPublished; published alone can claim complete publication. Private `failed` proves failure for the observed member attempts and may later admit a retry; it does not establish permanent public `CommandStatus.PublishFailed`, whose existing contract tells clients to stop polling. C5 and [I-10] establish the exact compatibility-preserving terminal mapping, with its terminality evidence, existing public fields, polling semantics and permitted transitions. Without that verified evidence, **status inspection** of a head at private `failed` deterministically yields `CommandOutcomeHold`, never terminal PublishFailed or stop-polling semantics. This status hold does not block private outcome creation, head advancement or first-response pinning: revision zero records any authenticated complete observation, `failed` included, and later failed observations create ordinary immutable revisions and advance the head under the same readback/CAS rules. A failed revision's tag-`09` body is the existing nonterminal status body, rendered exactly as for pending/unknown; it is never a PublishFailed or complete-publication shape, and storing it does not release it while status inspection holds. The first POST reply expresses the authenticated saved domain result and never waits on publication progress, because `pending` and `unknown` are complete observations. Its status, headers, rejection classification and body shape do not depend on publication state, with one retained exception, the current result-payload gate: `resultPayload` is included, subject to current access policy, only when the revision-zero observation is `published`, matching today's `CommandStatus.Completed` gate in `SubmitCommandHandler.Handle`. For `pending`, `failed` and `unknown`, the field is omitted (`JsonIgnore(WhenWritingNull)`), so for the same committed result and admitted rendering policy a first `failed` observation yields the exact same application status/header/body bytes as `pending`: 202 with `{correlationId, messageId}` for an accepted command, or the existing ProblemDetails for a committed rejection. Neither shape claims publication. The private observation/input/outcome hashes still bind the actual `failed` evidence; only the public response bytes are identical. Because the first reply is pinned, an exact retry after a non-`published` revision zero does not gain the payload later. Preserve append truth, retained observations and every existing response pin; an authorized exact POST retry still returns its original pin. No permanent-failure public reply is produced from per-attempt failure. This preserves current behavior: `AggregateActor.CreatePublishFailedResult` keeps `Accepted = true` for a non-rejection and withholds the payload (`ResultPayloadWithheld`), and `CommandsController` keeps its existing response shape. No new public shape, enum/member, proof codec or interpretation of transient HTTP status as commit authority is implied.
+Revisions begin at zero, increase by one with checked N arithmetic and immutable keys `command-outcome:` plus ScopeOpHash plus `:` plus invariant revision decimal. Published/not-applicable are terminal. Pending/failed/unknown revisions require newly authenticated complete observations; identical evidence reuses its revision, regardless of an HTTP result. Publication state is separate from the saved domain rejection/success decision; published rejection events do not turn a rejected command into a successful one. No-op completion maps from its witness, with no publication assertion. Status body rendering preserves current public contracts: projection of verified pending/unknown to the existing nonterminal shape must not claim Completed/EventsPublished; published alone can claim complete publication. Private `failed` proves failure for the observed member attempts and may later admit a retry; it does not establish permanent public `CommandStatus.PublishFailed`, whose existing contract tells clients to stop polling. C5 and [I-10] establish the exact compatibility-preserving terminal mapping, with its terminality evidence, existing public fields, polling semantics and permitted transitions. D4 supplies the complete ordered status mapping: a private `failed` observation alone never establishes terminal PublishFailed. Authenticate active-window failure classes, drain-limit/exhaustion and all earlier evidence/conflict/preparation predicates before choosing its exact nonterminal hold or progressing EventsStored form. Status inspection does not block private outcome creation, head advancement or first-response pinning: revision zero records any authenticated complete observation, `failed` included, and later failed observations create ordinary immutable revisions and advance the head under the same readback/CAS rules. A failed revision's tag-`09` body is the existing nonterminal status body, rendered exactly as for pending/unknown; it is never a PublishFailed or complete-publication shape, and storing it does not release it while status inspection holds. The first POST reply expresses the authenticated saved domain result and never waits on publication progress, because `pending` and `unknown` are complete observations. Its status, headers, rejection classification and body shape do not depend on publication state, with one retained exception, the current result-payload gate: `resultPayload` is included, subject to current access policy, only when the revision-zero observation is `published`, matching today's `CommandStatus.Completed` gate in `SubmitCommandHandler.Handle`. For `pending`, `failed` and `unknown`, the field is omitted (`JsonIgnore(WhenWritingNull)`), so for the same committed result and admitted rendering policy a first `failed` observation yields the exact same application status/header/body bytes as `pending`: 202 with `{correlationId, messageId}` for an accepted command, or the existing ProblemDetails for a committed rejection. Neither shape claims publication. The private observation/input/outcome hashes still bind the actual `failed` evidence; only the public response bytes are identical. Because the first reply is pinned, an exact retry after a non-`published` revision zero does not gain the payload later. Preserve append truth, retained observations and every existing response pin; an authorized exact POST retry still returns its original pin. No permanent-failure public reply is produced from per-attempt failure. This preserves current behavior: `AggregateActor.CreatePublishFailedResult` keeps `Accepted = true` for a non-rejection and withholds the payload (`ResultPayloadWithheld`), and `CommandsController` keeps its existing response shape. No new public shape, enum/member, proof codec or interpretation of transient HTTP status as commit authority is implied.
 
 The latest pointer is `HX-EV-COMMAND-OUTCOME-HEAD-1\0 || 01 || 0004`: `01` U immutable outcome key, `02` N revision, `03` B32 exact outcome-record hash, `04` O(B32) previous outcome-record hash, absent only at zero. Key `command-outcome-head:` plus ScopeOpHash is CAS-fenced. Create immutable revision bytes first, then CAS the head from the exact previous version/hash; authenticate readback of both before status inspection exposes them. If immutable revision `r+1` already exists after a crash before the head CAS, authenticate its exact bytes, complete retained observation/receipt set, authoring fence and durable CAS-preparation evidence binding predecessor key/revision/hash `r`. Reconcile that existing revision first: CAS/read back the head from the exact predecessor to those same `r+1` bytes, or verify that the head already contains that transition. Only then record a newer observation at `r+2`. Missing/conflicting revision, observation, predecessor or fence evidence holds; never overwrite the occupied key, skip a revision, or substitute a newer observation at `r+1`. Competing observations follow that same reconciliation rule. This predecessor/CAS evidence is retained under the command fence before revision creation and is bounded/reserved with revision evidence; the existing outcome/head codecs remain unchanged. Revision record plus pointer/evidence count toward the 1 GiB quota; no age-based eviction while obligated. Capacity or overflow holds the next revision while preserving prior committed truth.
 
@@ -1168,34 +1171,29 @@ Retain revision zero, response record, first pin, append/witness and their exact
 
 [I-09] The preparation-write evidence that permits recovery from `Rendering` (A8 step 3) is the create-once record `HX-EV-RESPONSE-PREPARATION-WRITE-1\0 || 01 || 000a` (≤4 KiB) at `command-response-preparation-write:` plus ScopeOpHash: `01` B32 ScopeOpHash, `02` N owner-fence generation of the `Rendering` transition, `03` U owner ID of that transition, `04` B32 response-input record hash, `05` B32 response-record hash, `06` B32 revision-zero outcome-record hash, `07` B32 response-record storage CAS receipt hash, `08` B32 revision-zero outcome CAS receipt hash, `09` Q write UTC and `0a` N fence generation of the owner that wrote this record. The `Rendering` owner creates it, with tag `0a` equal to tag `02`, only after both output records and their CAS receipts read back, and before the `Rendering → Prepared` CAS. Both receipts' backend authentication must name the tag-`02` generation, which must be the generation of the preparation record's `Rendering` transition. A crash after both outputs but before this record exists is recoverable: a recovery owner first completes A8's fenced owner-transfer CAS, which invalidates the `Rendering` owner, then reads back both output records and both receipts; when both receipts name the tag-`02` generation and both records verify against the preparation record's input hash, it creates this record itself with tag `0a` set to its own, higher generation and continues to `Prepared`. A recovery owner may complete from `Rendering` only when this record, both outputs and both receipts verify against the preparation record's input hash and fence history; a missing output, or a receipt that names another generation or does not verify, is `CommandOutcomeHold` (`response_preparation_hold`, [I-16]). The record is retained with the first pin, charged within A8's per-operation reservation, deleted only with its tenant's erasure and written from slice 4. Known answer `I09-preparation-write` (§11.6).
 
-[I-10] Status inspection maps the latest verified head of an evidence-required execution as follows; this is the complete mapping that A8 and C5 require. (1) `published`: the existing `Completed` shape for a committed success, and the existing `Rejected` shape, with its `RejectionEventType`, for a committed domain rejection whose rejection events published; the success or rejection decision comes only from the authenticated A5 result record, as A8 requires, because published rejection events never turn a rejection into a success. (2) `not-applicable`: the existing no-op completion shape, `Completed` with `EventCount=0`. (3) `pending` or `unknown`: the existing nonterminal `EventsStored`/2 shape, unless a verified [I-14] drain-limit record binds this head, which gives case (4b). (4) `failed`, in this order: (a) with a verified C5 terminal pointer, proposal, source records and proof root, the existing `PublishFailed`/6 projection; (b) with a verified C5 `PublicationRetryExhaustedHold` source for a member, or a verified [I-14] drain-limit record that binds this head, the hold projection: `EventsStored`/2, `Retryable=false`, the committed result's metadata (C5) and `RecoveryReasonCode=publication_retry_exhausted_hold` when a retry-exhaustion source verifies (even if a drain-limit record also binds the head), otherwise `publication_drain_limit_hold`; (c) retry wait, when every failed member's latest definitive result is class `01` below its signed maximum under the verified retry policy and the verified coordinator drain head shows a reserved drain invocation remaining or in progress: `EventsStored`/2 with `Retryable=true` and `RecoveryReasonCode=publication_retry_pending`; (d) otherwise `CommandOutcomeHold` with the [I-16] reason code for its cause. While a verified [I-45] resume window is open for the head, case (4b) gives way to (3) or (4c) for the resumed members. Headers follow [I-15]. The first POST reply is unaffected, and the §11.6 status model checks this order.
+[I-10] **Authoritative status.** D4 supplies the complete ordered mapping, including conflict/preparation precedence, terminal pointer, published/no-op, active drain-limit, class-02/03 terminal evidence, class-01 exhaustion/retry, and pending/unknown. D3 successor-window and exact legacy classifications apply. No scalar or advisory status bypasses this order.
 
 [I-11] An observation row is identified by `(ordinal, MessageId, destinationId, admittedAttempt)`. Between consecutive revisions a row for the same attempt may change only as K09 and A10 V20 allow: pending (`00`) may stay pending or become accepted (`01`), failed (`02`) or unknown (`03`); unknown may stay unknown or become accepted or failed; accepted and failed rows are frozen, so every later revision carries the identical row, with the same state, receipt hash and observation-proof hash, for that attempt. Only a failed or unknown member may move to a higher admitted attempt, under A8's closure and retry-admission rules. A frozen row whose receipt or proof hash changes, a return from a receipt-bearing state to a receipt-absent one, or unknown becoming pending at the same attempt is an evidence conflict: no revision is created, the head keeps its last verified revision, which status inspection continues to map, and the coordinator's publication progress for the operation holds with an [I-37] entry (`CommandOutcomeHold`, `outcome_evidence_conflict`). Its exit is a later observation that verifies against every retained row; nothing rewrites a retained row. The rule applies from slice 4, with evidence-required admission, and the §11.6 transition model checks its table.
 
-[I-12] **Execution-scope uniqueness and legacy classification.** The key is `command-execution-scope:` plus lowercase-hex SHA-256(`U tenant || U executionMessageId`) (A8). The record at a key is exactly one of three codecs, told apart by domain separator: A8's `HX-EV-COMMAND-SCOPE-1` with evidence class `required`, its tombstone in (1) or the legacy claim in (2). A legacy execution is never written in A8's codec, and nothing enumerates the archive or status stores, which DAPR can read only by key. (1) *Required records and tombstones.* A required record is never deleted while its tenant exists. After every retry, status, rollback and backup obligation of its execution closes, one CAS may compact it to `HX-EV-COMMAND-SCOPE-TOMBSTONE-1\0 || 01 || 0006` (≤1 KiB, same key): `01` U tenant, `02` U execution MessageId, `03` B32 ScopeOpHash, `04` B32 original input hash, `05` B32 SHA-256 of the compacted full record and `06` Q compaction UTC. An admission that finds a tombstone whose tags `03` and `04` equal its own ScopeOpHash and original input hash is an exact late retry and receives the existing `IdempotencyKeyExpiredException` reply (HTTP 409, type `https://hexalith.io/problems/idempotency-key-expired`); any other admission naming that tenant and MessageId is `CommandIdentityConflict`. The Idempotency-Key coordinator decisions that resolve no execution MessageId (`Expired`, `Conflict`, `Corrupt`, `Collision`, `Redirect` and `UnsafeLegacy`) keep their existing replies and precede this check; every decision that resolves one (`Execute`, `Recoverable`, `Replay`, `Pending` and `UnknownProviderOutcome`) passes through this check before A8 retry selection. (2) *Legacy claims.* From slice 2, a Story 6.6 gateway admitting a command in legacy mode (its domain has not enabled evidence-required admission) reads the key before its status write, archive write or actor call. A required record or tombstone there is `CommandIdentityConflict`. Otherwise it CAS-creates the claim, or CAS-replaces an expired claim at its ETag: `HX-EV-COMMAND-SCOPE-LEGACY-1\0 || 01 || 0008` (≤4 KiB, each U at most 1,024 bytes) with `01` U tenant, `02` U execution MessageId, `03` U domain, `04` U aggregate ID, `05` U command type, `06` B32 SHA-256 of the exact command payload bytes that `SubmitCommandHandler` archives, `07` Q claim UTC and `08` Q expiry UTC, which is the claim UTC plus the larger of `CommandStatusOptions.TtlSeconds` and `IdempotencyRetentionOptions.TerminalRetentionSeconds` in force. An unexpired claim leaves the existing legacy path unchanged, including its archive guard and its cross-aggregate reuse. A claim carries the provider `ttlInSeconds` metadata that `DaprCommandArchiveStore` uses and is read as absent after its expiry UTC. (3) *Evidence-required admission.* Once a domain enables evidence-required admission at slice 4 ([I-41]), its admission of tenant T and execution MessageId M reads the key: a required record follows A8 (tags `01`–`07` equal: duplicate; otherwise `CommandIdentityConflict`); a tombstone follows (1); an unexpired claim whose tags `03`–`06` equal the request's domain, aggregate ID, command type and payload hash is a retry of a legacy execution, and any other unexpired claim is `CommandIdentityConflict`. When the key is absent or holds an expired claim, the admission point-reads the archive key `CommandArchiveConstants.BuildKey(T, M)` and the status key `CommandStatusConstants.BuildKey(T, M)`, which predate claims, and asks the addressed actor whether it holds a legacy idempotency record for M. A matching archived command (same domain, aggregate ID, command type and payload bytes) or an actor legacy idempotency record is a retry of a legacy execution; a differing archived command, or a status record without an archived command, is `CommandIdentityConflict`, because its scope cannot be proven. Only when all three are absent does the admission CAS-create A8's required record (replacing an expired claim at its ETag), which linearizes it against every concurrent claim at the same key; it does so before its own advisory status or archive write, so an archive or status record without a key is always legacy. A retry of a legacy execution takes the existing legacy path (the archive guard, `ThrowDeterministicFailure` and the idempotency-record `RejectionEventType`), never A8 retry selection, so it never waits for a first pin. A legacy record that expired before the admission is outside this rule, as it is today. (4) *Status classification.* The legacy classification that A8 requires for legacy-only status fallback is exactly: no required record or tombstone at the key, plus an unexpired claim or an existing archive or status record for T and M. Every evidence-required admission creates its create-once key before domain invocation, so the key's authenticated absence proves that no evidence-required obligation exists. (5) *Capacity and erasure.* A per-tenant `HX-EV-SCOPE-RETENTION-USAGE-1\0 || 01 || 0004` record (≤1 KiB) at `scope-retention-usage:` plus lowercase-hex SHA-256(`U tenant`), with `01` U tenant, `02` N required-record count, `03` N tombstone count and `04` N charged bytes, changes in the same multi-key CAS as each create (charged 4,096 bytes) and each compaction (charge reduced to 1,024 bytes). A create that would exceed the tenant's `scopeRetentionCeiling` ([I-29]) is `ScopeRetentionCapacityHold` before domain invocation, with no record written ([I-40]); its exits are compaction or a capability revision that raises the ceiling, and it is indexed in [I-37]. A provider without that multi-key CAS cannot enable evidence-required admission. Legacy claims are uncharged: each is at most 4 KiB and expires like the archive record it accompanies. Scope records, tombstones, claims and the usage record are deleted only together with the tenant's erasure of every event stream and command record, after which no retained operation remains that a missing record could downgrade. Known answers `I12-tombstone`, `I12-legacy-claim` and `I12-usage` (§11.6).
+The following labeled contract is derived by executing the pinned A K09 reduce_set for every same-attempt pair; the integration gate recomputes all 16, including frozen Accepted.
+
+```text
+I11SameAttemptPairs=[[0,0,true],[0,1,true],[0,2,true],[0,3,true],[1,0,false],[1,1,true],[1,2,false],[1,3,false],[2,0,false],[2,1,false],[2,2,true],[2,3,false],[3,0,false],[3,1,true],[3,2,true],[3,3,true]]
+```
+
+[I-12] **Execution scope.** D5 supplies slice-2 legacy CAS claims before archive/status/invocation, 256 transactional shard usage records, pinned H/cutover, exact expired-claim renewal, required compaction, bounded tombstones, HTTP 410 and eventual identity reuse after authenticated deletion. The shared command-execution-scope key and A8 required-class bytes remain unchanged. Idempotency-Key decisions resolving no execution retain their existing precedence; every decision resolving an execution uses this scope before retry selection. Missing provider readback is admission_evidence_hold, never absence.
 
 [I-13] Tenant and execution MessageId enter `command-execution-scope:`, ScopeOpHash and `CommandStatusConstants.BuildKey` as exact UTF-8 bytes compared ordinally, with no case folding or Unicode normalization; two different byte strings are two identities. The tenant needs no separate canonicalizer: command admission validates it with the `SubmitCommandRequestValidator` grammar `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, at most 64 characters (`SubmitCommandRequestValidator.cs:43-48`), so each tenant has exactly one byte form. An admission path that does not apply that grammar rejects the command with the existing validation error before any lookup. Evidence-required admission takes the tenant only from that validated, authorized request and the MessageId only from the admitted execution identity, never from a request echo. The MessageId grammar admits both letter cases, so MessageIds that differ only in case are distinct identities.
 
-[I-14] **Publication-failure writers by admission class.** An execution's class is fixed at admission ([I-12]). A legacy execution keeps the five shipped `PublishFailed` status writers (§1 drift record) and the codes `drain_publish_failed` and `drain_attempts_exhausted` whenever its status record is written, including after its domain activates; status inspection projects those records unchanged, `ReplayController` applies C5's 409 gate to them, and [I-46] is their only recovery. An evidence-required execution (slice 4) never runs those writers: a first or retried publication failure is a private A8 observation, and status inspection follows [I-10]. Reaching a member's signed maximum with a class-01 result is `PublicationRetryExhaustedHold`, never `PublishFailed`. Terminal `PublishFailed` exists only through C5's terminal pointer; its `RecoveryReasonCode` is exactly `publication_terminal_failed`, snake case like the shipped `DrainReasonCodes`, which replaces the candidate literal `"PublishFailed"`, and the retry-exhaustion hold keeps `publication_retry_exhausted_hold`. `MaxDrainAttempts` (`EventDrainOptions`, default 8) sets the number of coordinator drain invocations reserved before `Prepared` (C5 purpose-25 rows); it is independent of each member's signed 1..64 broker-attempt maximum. When the last reserved invocation has completed and at least one member is still unresolved (pending, unknown, or failed below its maximum), the coordinator creates `HX-EV-PUBLICATION-DRAIN-LIMIT-1\0 || 01 || 0009` (≤4 KiB) at `publication-drain-limit:` plus ScopeOpHash plus `:` plus the invariant decimal limit: `01` U tenant, `02` B32 ScopeOpHash, `03` U OperationId, `04` N reserved drain limit reached, `05` B32 exact `DrainHeadHash` at that count, `06` B32 latest verified A8 outcome-head hash, `07` N its revision, `08` U reduced publication state (`pending`, `unknown` or `failed`) and `09` Q decision UTC. It is created once with backend-CAS readback, charged within A8's per-operation reservation, which reserves one record for each drain limit the operation can reach, retained with the operation and deleted with its tenant's erasure. While it binds the latest head, the state is the typed hold `PublicationDrainLimitHold`: status inspection projects it by [I-10] (4b) with `RecoveryReasonCode=publication_drain_limit_hold`, it is indexed in [I-37], and its only exit is an [I-45] resume, which raises the limit; a later head that no drain-limit record binds also ends it. Known answer `I14-drain-limit` (§11.6).
+[I-14] **Publication failures.** D3/D4 define immutable per-window drain-limit source/resolution, legacy reason eligibility and exclusive capsule recovery. Legacy status-6 writers keep shipped behavior; evidence-required failures use D4 and C5, never an advisory writer. D3 consumes the exact old source before rearming; drain-only keeps the exact active claim and all permanent C2 member fences. D6 reserves the next limit/resolution before effects.
 
-[I-15] **Polling signals.** Story 6.6 sends `Retry-After: 1` on every nonterminal `EventsStored` projection whose publication can still progress automatically ([I-10] cases (3) and (4c)), and `Retry-After: 60` on the operator-gated hold projection ([I-10] (4b)). That hold projection also carries `Retryable=false` and the hold's `RecoveryReasonCode` (`publication_retry_exhausted_hold` or `publication_drain_limit_hold`); together they are the client's signal that progress now waits for an operator's [I-45] resume. After a verified resume opens a window, the projection returns to case (3) or (4c) with `Retry-After: 1`. Every value is a polling interval only and never authorizes publication, a new send ID or a command retry. `CommandOutcomeHold` keeps `Retry-After: 30` ([I-16]), and terminal status sends none.
+[I-15] **Polling.** D4 operator-gated EventsStored carries Retryable=false and Retry-After: 60; automatically progressing EventsStored carries Retry-After: 1; CommandOutcomeHold carries Retry-After: 30; terminal status has none. Polling intervals confer no send, command replay or resume authority.
 
-[I-16] `CommandOutcomeHold` has one wire form on the command POST and status routes: HTTP 503 with `Retry-After: 30` and Problem Details type `https://hexalith.io/problems/service-unavailable`, plus the additive extension `reasonCode`. It never carries a pinned body or a status value. A committed domain rejection whose rejection-event pin is capacity-held answers the POST with this 503 until revision zero and the first pin exist; later exact retries return the pinned rejection. The `reasonCode` set is closed, and every raiser of `CommandOutcomeHold` in this document maps to exactly one code; each cause is recorded in its [I-37] entry from its first observation until its exit:
-
-| `reasonCode` | Raised by | Exit |
-| --- | --- | --- |
-| `admission_evidence_hold` | A8 execution-scope lookup or admission index unavailable, missing or unverifiable at POST or status ([I-12]) | The index and record read back. |
-| `response_preparation_hold` | A7 missing first pin; A8 missing, partial or contradictory response preparation, input, output or first pin, including a `Rendering` recovery without verifiable [I-09] evidence | A8 recovery completes steps 3–5 from verified bytes. |
-| `publication_pin_capacity_hold` | C1 capacity-held pin before revision zero, including a parked [I-31] candidate | The pin CAS succeeds after a refund or a capability revision ([I-31]). |
-| `outcome_evidence_hold` | A8 missing or unverifiable observation, receipt, fence, committed-result classification or [I-08] predecessor evidence; A7 missing no-op witness; C5 missing clock reservation, finalization, drain head or rows, hold source or committed metadata, or a drain count outside [I-35] | The evidence reads back and the revision or projection verifies. |
-| `outcome_evidence_conflict` | [I-11] same-attempt conflict; A8 occupied revision with changed bytes; C5 contradictory later acceptance, or a terminal proposal for an all-Accepted set | A later authenticated observation verifies against every retained row; an unrepaired contradiction stays held. |
-| `terminal_evidence_hold` | C5 failed head whose nonaccepted members have definitive class-02 or class-03 evidence while the terminal pointer, proposal or proof root is missing, in progress or unverifiable | C5 terminal closure reads back, and status becomes `PublishFailed`. |
-
-A failed member awaiting an admitted retry is not a hold ([I-10] (4c)), and a retry-exhausted or drain-limit publication is the `EventsStored` hold projection, never this 503. The wire form and this table apply from slice 4, when evidence-required admission activates (BC-09, [I-41]).
+[I-16] **Outcome hold.** D4 gives the sole HTTP 503 form and closed reason set, including first-send membership and resume/ledger evidence. D8 derives discoverable authoritative causes and exact exits. Admission, scope capacity and registry capacity refuse before invocation; no 503 replaces the immutable first response once selected. Retry-exhaustion/drain-limit use D4 EventsStored, while evidence/preparation/membership incidents precede that projection.
 
 ### 7.2 Integration rules for destinations, carriers and publication retention
 
-[I-17] The destination-ID derivation treats configuration bytes as opaque, so every C1 known answer is a valid derivation vector. Admission, however, admits only configuration bytes in the closed destination-configuration schema `hexalith.eventstore.destination/1`: one §4 canonical JSON object (sorted member names, no insignificant whitespace, no final LF) of at most 64 KiB with exactly the members `component` (string of 1..1,024 UTF-8 bytes), `metadata` (object whose values are strings, possibly empty, at most 64 members and 16 KiB of names and values), `schema` (exactly `"hexalith.eventstore.destination/1"`) and `topic` (string of 1..1,024 bytes). The schema is the content contract of the opaque bytes the §7 configuration reference names, not a registry or catalog row, so [I-04]'s closed tag list is unchanged. Admission parses the bytes under that schema and requires `component` and `topic` to equal intent tags `0a` and `0b` byte for byte; noncanonical bytes, a missing, extra or wrongly typed member, another `schema` value or a contradiction is `DeliveryPinConflict` before pin. The C1 delimiter-shift configurations are derivation vectors only and would not be admitted. Destination configurations are written from slice 2 (the transport dry run) and admitted for publication from slice 4. Known answer `I17-destination-config` (§11.6).
+[I-17] **Destination.** D5 gives the exact canonical hexalith.eventstore.destination/1 schema, 65,536-byte ceiling and admission equality. C1 destination-ID preimages/answers remain byte-identical; derivation vectors need not be admissible configurations. Destination/policy installation begins slice 2 and grants no send authority. The surviving I17 literal in §11.6 fixes canonical JSON bytes.
 
 [I-18] The immutable address inside `HX-EV-OUTBOX-CONFIG-REF-1` is a §4 `U`: strict UTF-8 of 1..1,024 bytes. A non-UTF-8 or longer address holds before pin, send or evidence write.
 
@@ -1213,17 +1211,17 @@ A failed member awaiting an admitted retry is not a hold ([I-10] (4c)), and a re
 
 [I-25] A global MessageId pin's charged canonical length is exactly the sum of: the decoded delivery body; the decoded attestation; the request-mode transport body; the predicted accepted-mode transport body when an authorized conversion makes it differ from the request mode; the complete request header image; the complete accepted header image when it differs; and a fixed 4,096-byte allowance for scope, digests, fingerprint, claim UTC, routing-intent hash, renderer version and membership hash and revision. Every implementation therefore charges one pin identically. Only Binary-to-Structured conversion is authorized, so one pin is at most 128 MiB + 6,123 B + 128 MiB + 192 MiB + 2 × 192 KiB + 4,096 B, below 449 MiB.
 
-[I-26] A single charge is also bounded by its kind: a global pin at most 449 MiB (470,810,624 bytes) of canonical length, and a C4 legacy side record, retained capture object or broker full-byte object at most 193 MiB, each before `o`, and an [I-45] `resume-window` charge at most 1 GiB. A larger canonical length is a conflict that holds, never a partial charge. The integrated capacity known answer uses feasible sizes and [I-30]: tenant ceiling 1,024 MiB, deployment ceiling 2,048 MiB, `unidentifiedCaptureReserve` 256 MiB, `unidentifiedCaptureCeiling` 512 MiB and `o` = 1 MiB. Tenant T1 charges a shared retained object of 100 MiB (charged once although attached twice), a 192 MiB side record and a 400 MiB pin, occupying 101 + 193 + 401 = 695 MiB. A further T1 pin of 328 MiB fits exactly at 1,024 MiB, while 329 MiB is `PublicationPinCapacityHold` with both counters unchanged. Tenant T2 can then charge at most 768 MiB, because tenant accounts together may use only 2,048 − 256 = 1,792 MiB. A 10 MiB unidentified object in its own scope account still fits in the reserve, as an 11 MiB charge. A later attach of the shared object from that scope account returns already-charged, and its refund after final closure returns 101 MiB to T1. This known answer replaces the pre-integration C1 arithmetic, which the 6.5c C01d model still checks as historical evidence; the §11.6 capacity model executes this known answer with the [I-27]–[I-30] constraints.
+[I-26] **Kind bounds.** D6 owns checked complete-batch reservation, 449 MiB pins, 193 MiB ordinary retained/side objects, 256 MiB maximum quarantine and 1 GiB active resume window before original overhead. The eight separately precharged 100 MiB queue envelopes and bootstrap/header/owner reservations count toward pools. D6 readiness includes them; the former un-precharged capacity arithmetic is historical, never an admission capability.
 
 [I-27] The per-object overhead `o` is an exact pinned byte count with 0 ≤ `o` ≤ 1,114,112 (1 MiB of worst-case protection expansion plus 64 KiB of outer record metadata and framing). A capability outside that range fails readiness.
 
-[I-28] A charge records its kind (exactly `pin`, `side-record`, `retained-object` or `resume-window`), canonical length and the exact `o` in force at its first charge. A later attach compares kind and canonical length only, returns already-charged with the recorded amount, and the refund returns the recorded amount. A capability revision that changes `o` applies only to objects first charged after it.
+[I-28] **Charge reattachment.** D6 retained charge schema records kind-qualified account, original length/overhead/amount and exact charge address. A matching reattach preserves the original charged account/amount; a mismatched kind/length is a conflict/refusal with unchanged bytes, never an ownership transfer. Current overhead governs only new charges. Checked authenticated erasure/deletion readback precedes once-only refund.
 
-[I-29] Both publication-retention counters and every per-object charge record live in one publication-retention quota ledger on the EventStore state backend named by the deployment capability's `publicationRetentionBackend` (a §5 canonical backend descriptor). That ledger is the single linearizable quota fence for pins, side records, retained objects and [I-45] resume windows, wherever the object bytes live: actor state store, legacy side storage, AD-31 capture storage or broker-owned storage. A broker-owned object is charged under its canonical physical-object key. The fields that [I-12] and [I-26]–[I-30] pin form one authenticated record, the publication-retention section of the deployment capability: `HX-EV-PUBLICATION-RETENTION-CAPABILITY-1\0 || 01 || 000b` (≤64 KiB) at `publication-retention-capability:` plus lowercase-hex SHA-256(`U deployment identity`) plus `:` plus the invariant decimal revision, with `01` U deployment identity (B6), `02` N revision (contiguous from 1), `03` B `publicationRetentionBackend` as the exact §5 canonical backend descriptor, `04` N tenant ceiling, `05` N deployment ceiling, `06` N `unidentifiedCaptureReserve`, `07` N `unidentifiedCaptureCeiling`, `08` N `o`, `09` N `scopeRetentionCeiling` ([I-12]), `0a` B32 predecessor revision's record hash (32 zero bytes at revision 1) and `0b` Q effective UTC. It is created once with backend-CAS readback, and readiness advertises the latest revision's record hash. A record that breaks `1 GiB ≤ tenant ceiling ≤ deployment ceiling`, [I-27], [I-30] or `scopeRetentionCeiling ≥ 64 MiB` fails readiness. It contains no tenant data and is retained while any charge made under it is open. It is written from slice 2, and the ledger enforces it for [I-45] `resume-window` charges from slice 3 and for pins, side records and retained objects from slice 4. Known answer `I29-capability` (§11.6).
+[I-29] **Ledger/backend.** D1/D6 require the same approved application-owned PostgreSQL metadata backend for controls, registry, ledger and queue, with one qualified serializable transaction over declared expected generations/fences. D6 capability/charge/counter/pin-batch retained schemas and §11.6 answers apply. Separate pin backend installation is reservation-bound and read back before any send; every 1..59-member batch reserves atomically, 60..1,000 fails AppendPreparationLimit before append.
 
-[I-30] The deployment capability also pins an exact `unidentifiedCaptureReserve` of at least 195 MiB, with tenant ceiling + reserve ≤ deployment ceiling, and an exact `unidentifiedCaptureCeiling` between the reserve and the deployment ceiling. Authenticated tenant accounts together may charge at most the deployment ceiling minus the reserve. Purpose-1b scope accounts, which C1 treats as their own accounts under the per-account tenant ceiling, are outside that tenant pool: together they may charge at most `unidentifiedCaptureCeiling` against the whole deployment counter, so tenant saturation never blocks an unidentified capture that fits the reserve. Lowering any ceiling below current usage is a capability revision that admits no new charge at that level until usage falls below the new value; it never evicts, refunds or rejects an existing charge.
+[I-30] **Headroom.** D6 supplies kind-qualified tenant/capture-scope pools, fixed bootstrap precharges, reserve/unidentified/deployment bounds, checked net grant/refund and readiness inequalities. The encoded 195 MiB minimum is not sufficient readiness. Lowering ceilings evicts nothing and admits no excess increase; account or arithmetic uncertainty holds unchanged.
 
-[I-31] **Pin-capacity waits.** A pin CAS checks the tenant counter and then the deployment counter ([I-29], [I-30]). A refusal by either is `PublicationPinCapacityHold` and leaves a durable `HX-EV-PIN-CAPACITY-WAIT-1\0 || 01 || 0009` entry (≤4 KiB, charged within A8's per-operation reservation) at `pin-capacity-wait:` plus lowercase-hex SHA-256 of `U tenant || U MessageId`: `01` U tenant, `02` U MessageId, `03` B32 ScopeOpHash, `04` U holding counter (`tenant` or `deployment`), `05` B32 candidate pin-bytes hash, `06` N candidate charged length (canonical length plus the `o` in force), `07` Q first-hold UTC, `08` N re-attempt count and `09` U queue state (`queued` or `parked`). (1) *Queues.* Each counter has one queue: one per tenant and one for the deployment. Its order is `HX-EV-PIN-CAPACITY-QUEUE-1\0 || 01 || 0004` (≤64 MiB) at `pin-capacity-queue:` plus lowercase-hex SHA-256 of `U counter ID` (`tenant:` plus the tenant, or `deployment`): `01` U counter ID, `02` N generation, `03` N entry count (at most 50,000) and `04` B entries, `u32 count ||` each `Q first-hold UTC || U tenant || U MessageId`, ascending by those three fields with bytes compared unsigned. A queue and the wait entries it orders change together in one CAS on the ledger's backend. (2) *Head rule.* Only the head of each queue retries: after every refund committed under the quota fence and otherwise every 60 seconds, driven by the outbox drain worker that owns its MessageId. A head that its own counter now admits but the other counter refuses moves to the other counter's queue with its first-hold UTC unchanged and takes its place there by first-hold time; tenants therefore share the deployment queue first come, first served, and no tenant's wait overtakes another tenant's earlier wait. A candidate that finds its queue full is `parked` until a slot frees and never retries ahead of a queued candidate. (3) *Never-fitting candidates.* A candidate whose charged length exceeds its counter's capacity under the current capability (the tenant ceiling, or the deployment ceiling minus `unidentifiedCaptureReserve`) can never fit; it is `parked` at once, so it cannot block its queue. It keeps its first-hold UTC, holds as `CommandOutcomeHold` (`publication_pin_capacity_hold`) with an [I-37] entry, and re-enters its queue at its original order when a capability revision raises the ceiling enough. To keep a committed batch out of that state, A8's pre-`Prepared` reservation also requires the batch's summed pin charges, each the [I-25] charged length with a 6,123-byte attestation plus `o`, to fit both the tenant ceiling and the deployment ceiling minus the reserve; otherwise admission fails with `AppendPreparationLimit` before append. This is a static feasibility check against the ceilings, not against current usage, so admission still takes no backpressure from either level (C1). (4) *Resume.* The exact candidate bytes are retried while every input still verifies: the purpose-02 key is active for new pins, and the membership revision, lease, fence and routing intent are unchanged. If any input no longer verifies, the candidate is discarded, since no pin, send or revision zero ever existed, and a fresh candidate is rendered from the immutable read-back outbox intent under current trust and membership and charged at its own exact length; the wait entry keeps its first-hold UTC and queue position while tags `05` and `06` change by CAS. This refines C1's "retries the same exact pin bytes" to "the same bytes while they remain valid". (5) *Exit and storage.* A successful pin CAS deletes the wait entry and its queue slot in the same CAS as the charge. A tenant's erasure deletes its wait entries, its tenant queue and its slots in the deployment queue. Waits exist from slice 4, when pins are first charged. Known answers `I31-wait` and `I31-queue` (§11.6); the §11.6 queue model checks the head, move, parking and re-queueing rules.
+[I-31] **One capacity queue.** D6 supplies one deployment allocator and eight addressed fixed storage envelopes, immutable global tickets/precommit slots, same-row queued/parked/reserved/cleanup states, tenant-eligible fairness and no deployment bypass. No paired queue move, owner index or predecessor-image family survives. Discovery precedes row reservation; waiting work has zero pin capacity; qualified atomic whole batch and row refund precede separate pin install. Recovery requires original authority/WAL, never a hash-only reconstruction.
 
 ### 7.3 Integration rules for delivery, effects and holds
 
@@ -1235,15 +1233,319 @@ A failed member awaiting an admitted retry is not a hold ([I-10] (4c)), and a re
 
 [I-35] The purpose-25 head count, when present, is 0..2,147,483,647. The decoder rejects a larger `N` before use, and the result is `CommandOutcomeHold`.
 
-[I-36] **Held deliveries and redrive.** A held delivery (non-2xx and not poison) is never silently dropped. (1) *Subscription policy.* Every component/topic subscription used for addressed delivery must be configured so that either (a) the broker redelivers without a finite attempt budget or TTL, or (b) its dead-letter topic is consumed by the §7 dead-letter capture endpoint, whose own subscription satisfies (a), because a dead-letter topic has no further dead-letter topic. The shipped `pubsubRetryInbound` policy (`resiliency.yaml:19-22`, `maxRetries: 10`) therefore cannot govern a dead-letter topic's own subscription. Binary publication readiness requires, for each such subscription, the evidence record `HX-EV-SUBSCRIPTION-DELIVERY-POLICY-1\0 || 01 || 0008` (≤16 KiB), created with backend-CAS readback at `subscription-delivery-policy:` plus lowercase-hex SHA-256 of `U component || U topic || U physical subscription ID`: `01` U component, `02` U topic, `03` U physical subscription ID, `04` U mode (`unbounded-redelivery` or `dead-letter-capture`), `05` O(U) dead-letter topic (present exactly for `dead-letter-capture`), `06` B32 SHA-256 of the exact resolved subscription and resiliency configuration bytes as the sidecar loaded them, `07` U configuration source (`dapr-configuration` or `broker-api`) and `08` Q observation UTC. A subscription without verified evidence, or whose loaded configuration hash changes, holds binary publication readiness. The evidence contains no tenant data, is replaced when the loaded configuration hash changes and is deleted with its subscription. (2) *Continuation.* In case (b), capturing a held addressed carrier is a continuation, not a disposition. The capture retains the exact carrier bytes and header image under C3's retained-object obligation, charged under [I-29], and creates `HX-EV-HELD-DELIVERY-1\0 || 01 || 000b` (≤16 KiB) at `held-delivery:` plus lowercase-hex SHA-256 of `U physical subscription ID || B32 carrier hash`: `01` O(U) tenant (absent when no tenant was authenticated), `02` O(U) MessageId (absent when identity was not parsed), `03` U physical subscription ID, `04` U component, `05` U topic, `06` B32 SHA-256 of the exact retained carrier bytes, `07` B32 retained-object key hash, `08` U hold cause (the stable reason code of the typed hold that answered non-2xx), `09` O(B32) committed handoff hash, `0a` Q capture UTC and `0b` N redrive count. It acknowledges only the dead-letter transport copy and records no route decision; every original route obligation and the committed handoff stay open. A header-invalid carrier never enters this continuation ([I-23]). (3) *Redrive.* A redrive re-injects the exact retained bytes and header image into the same physical subscription's authenticated ingress, which applies C3's duplicate, route-decision and handoff rules as for any delivery; a carrier whose routes already completed through another copy acknowledges as complete. The Operations host's redrive worker tries an open entry when its cause's clearing evidence reads back (for example a capacity refund, a handler capability becoming ready or a membership revision), and otherwise at most every 60 seconds with exponential backoff to 15 minutes; each attempt increments tag `0b` by CAS. An operator may request an immediate redrive with `POST /api/v1/admin/held-deliveries/{tenantId}/{entryKey}/redrive` under `AdminAuthorizationPolicies.Operator` and tenant authorization (a deployment-scoped entry needs `AdminAuthorizationPolicies.Admin`). The Admin server signs the request as the purpose-`2d` claim `HX-EV-REDRIVE-REQUEST-1\0 || 01 || 0006`: `01` U operator-action issuer ID, `02` O(U) tenant, `03` B32 held-delivery key hash, `04` N expected redrive count, `05` U operator subject and `06` Q request UTC; a stale expected count is HTTP 409 (`concurrency-conflict`, `reasonCode=redrive_state_changed`). Delivery stays at-least-once and unordered, so a redriven carrier has no order relative to newer deliveries; consumers rely on per-event MessageId deduplication and the per-aggregate sequence guard, never on arrival order. (4) *Exit and storage.* An entry closes when its redriven carrier is acknowledged with every route's terminal decision; the retained carrier is then refunded under B6's no-early-release rule, and the entry and its [I-37] entry are removed. Entries are deleted with their tenant's erasure, or with their capture scope when deployment-scoped. The continuation, the redrive worker and the redrive route activate with the binary carrier in slice 4, and the evidence of (1) is a slice-4 readiness input. Known answers `I36-policy`, `I36-held-delivery` and `I36-redrive` (§11.6).
+[I-36] **Held delivery.** D7 supplies bounded original observation, policy/count/24-hour capture, exact object charges/intents/readbacks, same-owner redrive/repair, above-max incident/quarantine, delivery-versus-erasure cleanup and tenant/deployment routes. Captured custody may acknowledge the physical copy; all logical route/effect obligations remain open. Original identity/reason/charge/discovery survive partial effects and repairs.
 
-[I-37] **Hold inventory.** (1) *Admission by predicate.* An entry exists for every hold that is indefinite or operator-gated: every `CommandOutcomeHold` cause of [I-16]; `PublicationRetryExhaustedHold`, `PublicationDrainLimitHold`, `PublicationPinCapacityHold`, `FirstSendMembershipChangedHold`, `LegacyHandoffCapacityHold`, `RollbackReaderCapabilityHold`, `KeySpaceMigrationHold`, `ConsumerMembershipFenceUnavailable`, `ActorCommitEvidenceHold`, `AppendPreparationHold`, `ReplayCommitAmbiguous`, `HistoricalMessageIdCollision`, `LegacyEvidenceConflict`, `LegacyArrayLimit`, `RawSourceUnavailable`, `ScopeRetentionCapacityHold` and every [I-36] held delivery; and, by predicate, any other typed hold whose exit needs an operator action, a capability or configuration revision or provider repair. The named list is a floor, not a limit. (2) *Entry.* `HX-EV-HOLD-INDEX-1\0 || 01 || 000a` (≤4 KiB) at `hold-index:` plus lowercase-hex SHA-256 of `O(U) tenant || U hold code || U subject key`: `01` O(U) tenant (absent only for a deployment-scoped hold: a purpose-1b capture scope, an unauthenticated held delivery or a deployment counter), `02` U hold code, `03` U subject key (ScopeOpHash hex, MessageId, handoff key, route and stream key, or held-delivery key), `04` O(U) domain, `05` U stable reason code, `06` Q first-observed UTC, `07` Q last-observed UTC, `08` N observation count, `09` U owner kind (exactly `actor`, `coordinator`, `gateway`, `subscriber`, `projection` or `operations`) and `0a` Q re-evaluation deadline. An entry contains no payload, secret, key alias, CLR identity or provider internals. (3) *Owner and reconciliation.* One `HoldInventoryActor` per tenant, and one with actor ID `deployment` for deployment-scoped holds, owns its entries and an ordered key index of at most 10,000 entries, following the Operations dead-letter drain actor and its `DeadLetterIndex`; the actor's turn-based concurrency serializes observations and removals. The raiser observes an entry when it decides the hold and again at every re-evaluation, which the hold's owner performs at least every 3,600 seconds through its reminder or retry loop; each observation refreshes tags `07`, `08` and `0a`. A failed index write never changes the hold decision and is repaired by the next re-evaluation. An entry past its deadline is shown as stale and is never removed for staleness; it is removed only when the hold resolves with the evidence that the rule raising it names (for example [I-06], [I-12], [I-14], [I-16], [I-31], [I-36] and [I-45]). A full index counts further observations in an `overflowCount` shown with the inventory, so no hold disappears without a signal. (4) *Metric.* Each inventory actor publishes its entry counts per hold code and domain to the observable gauge `hexalith.eventstore.holds.active` (dimensions `hold_code` and `domain`, with `none` for an absent domain), following `EventStoreOperationsTelemetry.cs:55-60`, and a startup reconciler activates every inventory actor that holds entries, as `DeadLetterBacklogReconciler` does. The gauge reports durable index counts, never an in-process up-down counter, so replicas and restarts cannot make it drift. (5) *Admin view.* `GET /api/v1/admin/holds/{tenantId}` (`AdminAuthorizationPolicies.ReadOnly`, tenant-authorized) and `GET /api/v1/admin/holds/deployment` (`AdminAuthorizationPolicies.Admin`) accept the optional query parameters `holdCode`, `domain`, `pageToken` and `pageSize` (1..200, default 50) and return `{ items: [{ holdCode, subjectKey, domain, reasonCode, firstObservedUtc, lastObservedUtc, observationCount, stale }], nextPageToken, overflowCount }`, oldest first. The view is read-only. (6) *Storage and activation.* Each entry counts against its actor's 10,000-entry cap, about 40 MiB of entries per actor, and a tenant's erasure deletes its actor state. The inventory activates in slice 3, when BC-05 holds first occur. Known answers `I37-hold-index` and `I37-key-preimage` (§11.6).
+[I-37] **Complete discovery.** D8 supplies reserve-before-owner registry, addressed entries/count headers, one Operations epoch, authoritative reason derivation, scope-only generation cursors and exact tenant/deployment routes. Its exit table additionally includes every unrelated A/B/C predicate in the supplemental table below. All owners and evidence are charged before producer activation; registry is a locator, never independent lifecycle authority.
 
 ### 7.4 Integration rules for publication resume
 
-[I-45] **Publication resume (owner decision D-RESUME, 2026-09-30).** Story 6.6 ships one authenticated operator operation that re-arms publication of the same committed events under the same event MessageIds. It never re-executes the command: it makes no mediator submission or domain invocation; it creates no execution MessageId, event MessageId, pin, outbox intent or batch root; and it never changes the first POST pin, resends an accepted member or rewrites retained evidence. (1) *Authority and request.* `POST /api/v1/admin/publications/{tenantId}/{messageId}/resume` in the Admin server, under `AdminAuthorizationPolicies.Operator` and tenant authorization, takes the body `{ "expectedHoldSourceHash": "<64 lowercase hex>", "reason": "<1..512 UTF-8 bytes>" }`. After authorizing the operator, the Admin server signs the purpose-`2d` claim `HX-EV-PUBLICATION-RESUME-1\0 || 01 || 000d` (≤4 KiB) with its operator-action key ([I-05]) and forwards it by DAPR service invocation to the EventStore server, where the operation's coordinator executes it under the A8 command fence (for a legacy record, the aggregate actor executes it in one actor turn): `01` U operator-action issuer ID, `02` U tenant, `03` U execution MessageId, `04` B32 ScopeOpHash (32 zero bytes for a legacy record), `05` U eligibility (`retry-exhausted`, `drain-limit` or `legacy-publish-failed`), `06` B32 hold-source hash (the exact C5 retry-exhaustion hold source, [I-14] drain-limit record or [I-46] reconciliation record), `07` B32 latest verified A8 head hash (32 zero bytes for a legacy record), `08` N resume ordinal (contiguous from 1 per execution), `09` B32 predecessor audit-record hash (32 zero bytes at ordinal 1), `0a` U operator subject (the authenticated principal ID, at most 256 bytes), `0b` U reason, `0c` Q request UTC and `0d` Q expiry UTC, at most 15 minutes after tag `0c`. (2) *Eligibility.* Exactly three states are eligible, each only while tags `06` and `07` still name the current evidence: an evidence-required operation whose latest verified head is `failed` with a verified C5 `PublicationRetryExhaustedHold` source for at least one member and no open window; an evidence-required operation whose latest head is bound by a verified [I-14] drain-limit record; and a legacy status-6 execution reconciled under [I-46]. A C5 terminal pointer, any `CommandOutcomeHold` cause, `FirstSendMembershipChangedHold` and a `published` or `not-applicable` head are not eligible: terminal `PublishFailed` still needs a new command (C5), and the others have their own exits. (3) *Re-armed attempt.* For `retry-exhausted`, the coordinator first closes the current window w for the exhausted members, following C5 closure steps (1)–(4) scoped to those members' send IDs of window w: producer disable, broker reject fence, reconciliation and a final empty observation. It records `HX-EV-PUBLICATION-WINDOW-CLOSURE-1\0 || 01 || 000a` (≤64 KiB) once at `publication-window-closure:` plus ScopeOpHash plus `:` plus the invariant decimal w: `01` U tenant, `02` B32 ScopeOpHash, `03` N closed window w (the admission window is 0), `04` B member rows (`u32 count ||` each `u32 member position || N final attempt ordinal within w || B32 last class-01 ResultObservationHash`, in ascending position), `05` B32 broker reject-fence receipt hash, `06` B32 producer-disable receipt hash, `07` B32 final empty-state readback root, `08` B32 attempt-set root of window w by C5's `completeAttemptSetHash` formula, `09` U `AuthMode` (C5) and `0a` Q closure UTC. Window w+1 reuses the operation's immutable signed retry policy: each exhausted member receives its original signed maximum again, and its first send in w+1 is a new send ID in C2's signed same-parent retry chain, under the same MessageId and pin. For `drain-limit`, no window closes unless members are also retry-exhausted. Either way the drain limit rises by the operation's original reserved drain maximum, drain ordinals continue contiguously, and `DrainAttemptCount` stays the total count. Wherever C5 counts a member's attempts against its signed maximum (roster, attempt set, policy rows and exhaustion), it counts within one window, and each earlier window is proved by its closure record. (4) *Capacity.* Before the audit record, the coordinator charges the new window's worst-case evidence (every held member's attempts at two observations each, the new drain rows, the next window closure and the audit record) to the tenant publication-retention ledger as one charge of kind `resume-window` ([I-26], [I-29]). A refused charge rejects the request with `resume_capacity_hold`; the hold continues, and a later request succeeds after a refund or a capability revision. Charges are refunded under B6's no-early-release rule after the operation's final closure and obligations end. (5) *Audit record and inventory removal.* Every request that passes authorization and signature verification and whose ordinal is free creates `HX-EV-PUBLICATION-RESUME-AUDIT-1\0 || 01 || 000b` (≤4 KiB) once at `publication-resume:` plus lowercase-hex SHA-256(`U tenant || U execution MessageId`) plus `:` plus the invariant decimal ordinal: `01` U tenant, `02` U execution MessageId, `03` N resume ordinal, `04` B32 SHA-256 of the exact request claim and its purpose-2d carrier, `05` U outcome (`resumed` or `rejected`), `06` O(U) rejection reason (present exactly when rejected: `resume_not_eligible`, `resume_hold_changed`, `resume_request_expired` or `resume_capacity_hold`), `07` O(B32) window-closure record hash (present exactly when a window closed), `08` N window opened (0 when rejected or legacy), `09` N drain limit after the decision, `0a` Q decision UTC and `0b` B32 predecessor audit-record hash. Each audit record is charged 4,096 bytes as kind `resume-window`; if even that charge is refused, no record is written. A request whose ordinal another request already occupies creates no record and is `resume_hold_changed`; an exact retry of the same claim bytes reads back and returns the existing record. A `resumed` record is the resolution evidence that removes the hold's [I-37] entry, after which the coordinator arms the next drain invocation. A window that exhausts again creates a new hold, a new entry and a new eligibility. (6) *Replies.* HTTP 202 with `{ resumeOrdinal, window, drainLimit, auditRecordHash }` for `resumed`; HTTP 409 Problem Details type `https://hexalith.io/problems/concurrency-conflict` with `reasonCode` `resume_not_eligible`, `resume_hold_changed` or `resume_request_expired`; HTTP 503 type `https://hexalith.io/problems/service-unavailable` with `Retry-After: 30` and `reasonCode` `resume_capacity_hold`, or `resume_evidence_hold` when the hold source, head or ledger cannot be read back, in which case no audit record is written. (7) *Client signal, slice and class.* While a hold waits for an operator, status carries the [I-15] signal (`Retryable=false`, the hold's `RecoveryReasonCode` and `Retry-After: 60`); after a `resumed` record the ordinary nonterminal projection returns. The operation ships in slice 3 together with BC-02, so that no status-6 record loses its recovery path, and its evidence-required eligibilities become reachable when a domain enables evidence-required admission in slice 4. Its route, records and signing purpose are additive (§10.3). Audit records, window closures and resume charges are retained through the operation's retry, rollback and incident obligations and deleted with the tenant's erasure. Known answers `I45-request`, `I45-audit` and `I45-window-closure` (§11.6).
+[I-45] **Publication resume.** Owner D-RESUME is implemented as the exact D1–D3 same-owner request/intent/action sequence, purpose-2d claims, original fixed retry horizons/deletion/refund and D8 inventory handle. GET precondition and POST are D3 tenant handle routes. No archived command/domain invocation or recreation of committed event/pin/result/first-response bytes is permitted. Permanent terminal operation fences remain distinct from resumed window fences.
 
-[I-46] **Legacy status-6 resume.** A legacy execution ([I-12]) whose publication failed under the shipped writers has no A8 evidence, so D-RESUME reconciles it first. (1) *Reconciliation.* The coordinator reads the legacy source: the actor's `drain:` record (`UnpublishedEventsRecord`) for the execution's tracking identity when it still exists without an armed `drain-unpublished-` reminder, or otherwise the drain-exhaustion `DeadLetterMessage` (`FailureStage=PublishFailed`, with `StartSequence` and `EndSequence` present) retained by the Operations dead-letter store. It reads back the stored events of that sequence range from the aggregate stream, checks that their count equals the source's event count and that each event's metadata correlation equals the source's correlation, and proves that no drain record is armed, no drain reminder is registered and no publication-index owner remains for the tracking identity. It then records `HX-EV-LEGACY-PUBLICATION-RECONCILIATION-1\0 || 01 || 000f` (≤4 KiB) once at `legacy-publication-reconciliation:` plus lowercase-hex SHA-256(`U tenant || U execution MessageId`) plus `:` plus the resume ordinal: `01` U tenant, `02` U domain, `03` U aggregate ID, `04` U execution MessageId (the tracking identity), `05` U correlation ID, `06` U source kind (`drain-record` or `dead-letter`), `07` B32 SHA-256 of the exact source bytes, `08` O(B32) SHA-256 of the legacy status-6 record bytes (absent once that record has expired), `09` N start sequence, `0a` N end sequence, `0b` I event count, `0c` B32 SHA-256 of the ordered exact stored event bytes of the range, `0d` B32 SHA-256 of the drain-absence readback, `0e` N resume ordinal and `0f` Q reconciliation UTC. A missing source, a count or correlation mismatch or an armed drain makes the request `resume_not_eligible`. (2) *Re-armed attempt.* The [I-45] request names this record in tag `06`. The actor re-creates the shipped `UnpublishedEventsRecord` for exactly that range, with the source's correlation, command type, rejection flag and tracking identity, `RetryCount` 0 and `DeadLettered=false`, and arms its drain reminder, so the shipped drain republishes the stored events under their stored event MessageIds with a fresh `MaxDrainAttempts` budget. Exhaustion again follows the legacy writers ([I-14]) and may be reconciled and resumed again. The resume never rewrites the legacy status record; a successful drain writes the shipped drain-success status (`AggregateActor.cs:2696`), exactly as it does today after a first-failure `PublishFailed` record, so no new status transition is added. (3) *Storage and slice.* The reconciliation record is charged 4,096 bytes as kind `resume-window` with its audit record, is retained with it and is deleted with the tenant's erasure; the re-created drain record is the shipped record with its shipped lifetime. It ships in slice 3 with [I-45]. Known answer `I46-reconciliation` (§11.6).
+[I-46] **Legacy status-6.** D3 is the sole capsule-before-cleanup, exclusive legacy recovery and original range/MessageId/classification contract. Extant original drain authority is necessary; missing historical authority is a non-resumable legacy_resume_evidence_unavailable incident. Dead letter corroboration supplies no invented classification. Signed capsule/repair/drain readbacks and bounded restart intents retain the same owner; no fresh-command replay is authorized.
+
+#### Imported reviewed D1–D9
+
+<!-- imported-d-contract-start -->
+#### D1. Ownership, persistence and provider gate
+
+There are two local coordination records: one execution control and one held-delivery control. Each is one bounded canonical JSON value with a provider generation/ETag; each transition compares the exact predecessor and checked next generation. A request, attempt, repair or cleanup is a phase of its owner. No independent origin, reconstruction, preparation head, repair prerequisite, cleanup or native-receipt family is created. Immutable events, signed claims, audits, window closures and provider-required evidence keep separate authority when their owner, signature or retention differs.
+
+The chosen target is AD-26's Dapr `statestore` / `state.postgresql` v1 with `actorStateStore: true`. Aggregate/event/snapshot mutations and existing actor-owned drain registrations continue solely through IActorStateManager transactional state/ETag operations; immutable actor sources are external authenticated readbacks. Execution/delivery controls, ledger and registry are platform coordinator metadata, in the application-owned PostgreSQL schema `hexalith_eventstore_control`, table `rows` keyed by `(namespace, address)` with `generation`, `owner_fence` and bounded `payload` columns. Namespace is the literal `eventstore.control.v1`; address is the exact framed public key or registry/queue key below. The metadata adapter uses supported PostgreSQL SERIALIZABLE transactions and conditional generation/owner_fence updates with exact readback. Its actor/API facade serializes a local owner, but never directly mutates Dapr private actor-state keys, caches or tables. Scope-row plus shard-usage writes, quota counters/charges/reservations/queue writes and epoch lease changes require one serializable PostgreSQL transaction on their respective declared backend, with expected versions, checked arithmetic and complete persisted readback. Use the supported Dapr state transaction with ETags where it supplies that contract; a provider adapter must otherwise expose that exact PostgreSQL transaction. Readiness fails before admission if the configured component cannot prove it. The execution/delivery controls, ledger and owner registry are deliberately placed on the same PostgreSQL statestore backend. Held installation uses one adapter transaction over metadata charge/counters and new held-control/registry membership; capture admission uses the held-control intent and object-charge/counter rows in one transaction before the separate external object write/readback. Stage admission/cancellation uses one qualified adapter transaction over the fenced execution-control row and its ledger charge/counter rows; resume finalization uses that execution row plus old/new charges/counters; final held erasure uses its fenced held-control row, ledger charge/counters and original registry membership. Scope compaction uses scope/usage rows; wait grants use queue/reservation/charge/counter rows. Every metadata participant has explicit expected generation and current owner_fence, and all resulting bytes/readbacks are preflighted. owner_fence is a 26-character ULID minted from cryptographic randomness on creation and every ownership transfer; it is never reused after deletion/recreation. A transfer transaction authenticates the old holder, compares the old token and generation, installs the fresh token and checked generation, and reads back before dispatch. Every mutation includes both expected values and authenticated current owner-fence authority; ordinary owners use fence/generation CAS, and only Operations uses the D8 lease. Old tokens fail even at an equal generation. No cached actor identity mints authority. Qualification must demonstrate supported atomic CAS over those exact addressed participants; missing qualified application-owned metadata adapter transaction or a separately configured ledger/registry backend fails readiness before admission. This is an explicit required backend adapter capability, not a guarantee from actor serialization or cross-owner actor calls. Pins on another backend, external objects and broker effects remain separate intended/read-back phases.
+
+Before an external side effect, CAS/read back the exact bounded intent in the owner: deterministic existing address/identity, expected authority and exact intended-byte hash. Then perform the effect, freshly read its authenticated result by that address, and advance the same record. A crash recovers from serialized owner bytes and addressed sources. Unavailability is never absence. A hash or process cache is never a reconstruction source. Producer-disable and broker-reject are separate irreversible effects with separate phases and retained receipt references. After either irreversible effect or a successful audit, recovery must finish the original request. Before either, cancellation/refusal may release staged capacity only after authenticated absence of audit/successor and deletion/absence readback of every intended external artifact. Partial deletion stays indexed and charged.
+
+Preflight every source, byte ceiling, signature, authority, count and changed generation before the next transaction. A pre-effect refusal preserves all owner bytes, counters, charges and external artifacts. Expected CAS loss retries from fresh readback at most eight times (0, 5, 10, 20, 40, 80, 160, 320 ms), then exposes RegistryCapacityHold for discovery exhaustion or the owning evidence hold (admission_evidence_hold/resume_evidence_hold/publication_pin_capacity_hold) for CAS exhaustion, retaining the original discoverable subject; restoration/readback, capability increase, or authenticated erasure is its exit. All u64 increments/sums are checked; exhaustion is indexed QuotaGenerationIncident/quota_generation_exhausted for ledger generations, resume_arithmetic_exhausted for resume, or the owning evidence incident for observation counts; only authenticated migration or scope erasure exits it, never wraparound. A byte ceiling refuses before persistence as the owning evidence/capacity hold; its exit is a legal complete image or approved capability/migration, never truncation. Resume preflights remaining owner/provider generations for every admitted phase (the model reserves 20), refusing unchanged as resume_arithmetic_exhausted before irreversible effects.
+
+Every durable owner is discoverable before work can commit or be acknowledged. D8 defines the reserve-before-create order. Resolved work keeps discovery until referenced artifacts delete/read back and exact refund completes. Scope erasure removes all data and authority together and cannot stand in for publication or successful delivery.
+
+#### D2. Exact internal schemas and bounds
+
+Canonical JSON is UTF-8, sorted object names, compact separators, no final LF, duplicate keys or insignificant whitespace; re-encoding must equal input. Values are objects with exactly the declared fields. Integers are checked nonnegative u64 (booleans are not integers); UTC values are signed i64 ticks from the existing epoch, monotone within an owner. Digests are 64 lowercase hex characters; optional values are explicit JSON null. Identifiers are 1..1,024 UTF-8 bytes unless a smaller imported public bound applies; object locators are 1..4,096 bytes. Arrays have the fixed order below and reject duplicates. No event body or full predecessor/successor image is copied into control. `schema` is the exact literal named below.
+
+| Record | Exact fields and nested schemas | Ceiling / storage |
+| --- | --- | --- |
+| execution `hexalith.eventstore.execution-control/1` | `schema,tenant,execution,scope,revision,phase,firstUtc,updatedUtc,source,window,windowClaim,closedCount,history,ordinal,limit,drainBase,roster,accepted,unresolved,legacy,request,intent,receipts,outcomes,reason,nextUtc,charge` | 768 KiB plus 16 KiB bounded provider metadata; reserve 784 KiB in the active window, or separately as side-record before legacy cleanup |
+| held `hexalith.eventstore.held-control/1` | `schema,scopeKind,scopeId,deployment,tenant,component,topic,subscription,policy,revision,phase,reason,firstUtc,updatedUtc,observations,length,carrier,locator,objectReceipt,charge,request,attempt,redrives,nextUtc,repair,error,intent,receipts` | 128 KiB plus 8 KiB bounded provider metadata, charged before first nonterminal response; retained carrier is a separate length-plus-overhead charge |
+| request | execution: `identity,carrier,claim,signature,utc,expiry,eligibility,source,priorHash,result`; held: `claim,signature,expectedCount,utc` | execution carrier ≤2 KiB, signed claim/envelope ≤12 KiB; held claim ≤3 KiB/envelope ≤8 KiB; exact bytes encoded lowercase hex |
+| intent | `kind,address,hash,payload` | at most one current action, address ≤256 bytes; execution payload ≤128 KiB, held payload ≤2 KiB references/fields, never a process graph |
+| receipts | object mapping action name to authenticated external source reference | at most eight entries, each ≤256 bytes; current request only, delete references after completion/reclamation |
+| outcome | `identity,carrierHash,ordinal,window,limit,audit,expiry,deleteAfter,result,oldCharge,artifacts` | at most 64 rows total, sorted by ordinal; canonical response ≤512 bytes; fixed deleteAfter = original expiry + 30 days; oldCharge names the exact superseded reservation, artifacts is a unique sorted list of ≤12 addressed readbacks, each ≤256 bytes |
+| roster member | `position,message,digest` | ascending positive u32 position; unique positions/MessageIds; ≤59 members; accepted/unresolved arrays contain positions only |
+| legacy reference | null or `capsule,identity,owner,state,generation,ordinal,failure,repaired` | exclusive recovery phase in execution owner; `owner` is legacy-resume/dead-letter-admin; source is the exact capsule hash |
+| held locator / attempt / repair / error | locator null or `backend,key`; attempt null or `count,requestHash,carrier,utc,result`; repair `none,absent,corrupt,required,repaired`; error null or `reason,hash,utc` | one attempt and one last bounded error (reason ≤128 bytes); original carrier reason never changes during repair |
+
+Execution phases are `idle,prepared,disable,reject,closure,window,audit,successor,finalize,invoke,cleanup,incident`. Held phases are `observed,capturing,captured,redriving,cleanup,quarantined,incident`; closed is removed because resolved control/discovery delete after readback. Fields not used by a phase are null/empty, never omitted. Idle execution has null request/intent and empty current receipts; other publication phases require the exact request. Legacy reference has precisely its declared fields, closed owner/state/failure sets, failure present exactly in failed, and repaired present only on the claim/drain following an evidence failure. Observed held has no locator/request/attempt/intent; capturing requires capture intent; cleanup requires delivered-cleanup or erase intent. Captured/redriving/quarantined require paired locator/receipt. Request and attempt may be explicitly absent/corrupt only as the original held owner's repair incident. Execution intent kind is exactly disable/reject/closure/window/audit/successor/finalize/invoke/capsule/cleanup/erase; held intent kind is exactly capture/send/delivered-cleanup/erase, bound to its current phase. A capsule cleanup/intended recovery fences fresh resume until its original intent completes. Validate signed UTC types, horizons, fixed deleteAfter, closed reasons/intents, sorted/unique roster/queue/registry identities and destination limits; NaN, infinity, non-hex, malformed UTF-8 or lone surrogates are typed refusal. Phase, exact request, source reference, original times, intended result and charges share one owner CAS. Checked observations/revision/count and monotone UTC advance together; unavailable readback authorizes no send/ack. Full byte ceiling, including hex expansion and all arrays, is checked before persistence. Control is deleted after obligation/retry closure and external deletion readback, or authenticated whole-scope erasure; execution `idle` may remain under its fixed charge while a publication obligation exists. A legal set exceeding a ceiling stops at an indexed hold before the write; it is never truncated.
+
+#### D3. Resume and legacy publication
+
+The closed signed/precondition eligibility set is `retry-exhausted,drain-limit,drain-limit-and-retry-exhausted,legacy-publish-failed`. Eligible resume means definitive class-01 unresolved members at their signed per-window maximum, an active drain-limit source, their combination, or a verified legacy capsule. Pending/unknown without a drain-limit, terminal/published/not-applicable, CommandOutcomeHold and membership holds are ineligible. Authenticate the current window against tenant/ScopeOpHash/window and the committed roster: accepted and unresolved are disjoint, duplicate-free and their exact union is the roster; accepted never regresses. Current unresolved is a subset of immutable window admission. A zero-unresolved request is ineligible.
+
+Authorized Operator reads `GET /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}/precondition`, returning `{resumeHandle,eligibility,expectedHoldSourceHash,headHash,nextResumeOrdinal,predecessorAuditHash,expiresAt}` from one authenticated read. `resumeHandle = hxrsm1-` plus SHA256(`U tenant || U execution identity || B32 hold-source hash`). POST to the same tenant handle accepts `{expectedHoldSourceHash,idempotencyKey,reason}` with 64 lowercase hex, 1..128 visible ASCII and 1..512 UTF-8 bytes respectively. No deployment route substitutes for a tenant. The server constructs the retained exact resume carrier and purpose-`2d` claim defined in the imported wire reference in §11.6; expiry is at most 15 minutes after original authorization UTC.
+
+Stable request identity excludes server time/ordinal: SHA256(`"HX-EV-PUBLICATION-RESUME-IDENTITY-1\0" || 01 || U tenant || U handle || U idempotencyKey`). The carrier hash additionally binds source and reason. Resolve that identity against current request/outcomes **before** eligibility/source/expiry checks: exact live success returns the original canonical 202 bytes; exact pending success finishes its recorded request; changed carrier conflicts; retained expired outcome returns expired. One pending request fences another identity with resume_capacity_hold (503/Retry-After 30). Failed/refused resume requests create no audit, persistent identity, charge or ordinal. Successful outcomes expire at their original expiry, retain conflict/expired authority until fixed deleteAfter, then delete/read back exactly their signed claim, audit, invocation, superseded window claim, complete sealed attempt set, drain-limit source/resolution, closure and broker disable/reject/effect receipts before removing the row and refunding its oldCharge in the same owner/ledger transaction. Retain the old charge until this readback; finalize activates the staged charge without refunding retained old evidence. Never reclaim the current pending identity, even beyond deleteAfter; its original finish comes first. The active window claim remains charged under the current reservation. Hourly reconciliation never extends either time. At most 64 concurrent outcome rows; capacity refusal persists nothing. Reclamation permits more than 64 lifetime successes.
+
+For retry exhaustion, the persisted action order is `prepared -> disable -> reject -> closure -> window -> audit -> successor -> finalize -> invoke -> idle`: retain original signed request and stage the whole next-window charge; read back old-window producer-disable, then broker-reject, reconcile every send and final empty proof, read back closure, open one window, read back successful audit, consume source/install successor, finalize charges, arm deterministic invocation. Each phase stores the next intent before effect. Recovery uses the persisted exact address/hash/payload bytes, never recomputes an admitted action from mutable accepted/unresolved progress. Progress may accept more members; the next invocation freshly excludes them without changing an already persisted closure/audit intent. A prepared request at or beyond original expiry, with authenticated absence of every irreversible effect/audit/successor, takes authenticated cancellation and deletion/readback before stage refund; expiry never cancels an effect already present. The complete attempt set includes every original C2 purpose-20/21/22 registration, optional Unknown and definitive result in contiguous member-local/observation order, not only final summaries; distinct send rows have distinct IDs and all nonce chains bind the exact member/window. Missing/contradictory evidence holds before closure. Maximum 59×64×3 = 11,328 observations; checked 128-byte digest rows plus headers are within the retained 64 MiB attempt-set cap. Existing C2 sources remain separately charged; no full source image enters control. The signed claim's admission root never changes when progress accepts a member. Closure covers every member admitted to that window, including those accepted since admission; successor admits only current unresolved. History accumulator consumes exact closure and broker authentication bytes and has no successor self-reference.
+
+**C5 amendment in place:** terminal closure keeps its permanent whole-operation producer-disable and cross-destination broker-reject fence, checked before duplicates for every present/future send ID. Resume closes only `(tenant,ScopeOpHash,window)` permanently and retains two distinct effect receipts. New window-aware broker indexes/accepts include window/member/send ID; each purpose-1c parent has authenticated binding to exact window claim, member, MessageId, pin and namespace. Closed-window delayed IDs reject; a window claim cannot bypass an operation-terminal fence. C2's signed 1..64 attempt maximum applies within each window. C5 terminal verification consumes the complete current attempt set plus authenticated prior closure accumulator/count, then seals it; a window closure alone is never terminal proof.
+
+Drain-only resume keeps **exact window claim bytes/hash, window, closedCount and immutable admission**, consumes the exact old drain-limit source/resolution, checks `newLimit = oldLimit + drainBase` (positive, bounded pre-admitted increment), and invokes only current unresolved. Combined eligibility resolves the old drain-limit and opens one successor window; the resolution links to constructible window bytes, never a circular successor. Drain consumption, final-budget hold/source and owner revision persist together before acknowledgement. Each later limit/window creates a distinct immutable limit source. New drain-limit evidence is included in the next-window reservation. Deterministic invocation identity/address is the retained formula in the imported wire reference in §11.6; its exact bounded intent and existing coordinator registration read back before dispatch. Original authorization times and result bytes survive late recovery; an expired irreversible request still finishes, with its result retained only until original fixed deadline.
+
+The stage reserves worst-case remaining full attempts, next drain-limit/resolution, signed claims/closure/audit, control, outcomes, inventory and bounded provider metadata: at most 1 GiB, in addition to the active and all retained superseded charges. Insufficient combined active/staged/retained headroom returns `resume_capacity_hold` (503, Retry-After 30) unchanged. D6 readiness does not guarantee a reserve for resume; later headroom or authenticated reclamation permits retry. Finalized successor/readback permits one transactional activation of staged charge; superseded-window charge remains until the exact deletion/readback deadline above, never below retained usage or twice. Drain-only retention preserves its active claim while reclaiming request-specific resolution/effect/audit/invocation evidence and old reservation. Before irreversible effects/audit, authenticated absence/deletion permits cleanup and staged refund; afterward complete original success. No accepted member, command, pin, outbox, batch root, committed result or first response is recreated.
+
+202 result is canonical sorted JSON `{resumeHandle,resumeOrdinal,window,drainLimit,auditRecordHash}`. Closed 409 concurrency reasons: `resume_hold_changed,resume_not_eligible,resume_request_expired,resume_request_conflict,resume_arithmetic_exhausted,legacy_resume_evidence_unavailable`. Closed 503/Retry-After 30 reasons: `resume_capacity_hold,resume_evidence_hold`. Missing historical legacy authority is the stable non-resumable 409 incident; transient unavailability of an extant source is 503. No refusal audit is written.
+
+Legacy slice 3 first reserves/reads discovery and creates/reads the charged legacy execution owner, then persists its exact capsule/chunk action intent before the first chunk charge/write. It writes/reads every bounded capsule chunk, then manifest and the capsule-bound control, **before** deleting terminal status-6 drain evidence/index/reminder. Partial charge-only/chunk work remains discoverable and finishes from original drain authority; refusal on a later chunk leaves that owner and original drain. Drain cleanup has its own retained owner intent. Recovery freshly authenticates the unchanged capsule/control and the original cleanup address/source hash; it verifies any remaining drain against that intent, finishes exact deletion/readback, then consumes the same intent. A crash before or after source deletion therefore completes without requiring an absent source again; contradictory remaining source refuses with all persisted bytes unchanged. Capsule binds tenant/domain/aggregate/tracking, optional execution, correlation, command type, rejection classification, exact start/end/count, ordered stored-event root and MessageIds, cleanup cause and exact source. ≤1,000 events use ≤17 chunks, each ≤61 maximum-width rows/64 KiB, manifest ≤128 KiB. Charge exact capsule/chunks plus control/discovery before cleanup; failure retains original drain/reminder. A historical capsule may be created only from extant authoritative UnpublishedEventsRecord; dead letter corroboration cannot invent rejection classification. No authoritative drain/dead-letter/status/range evidence means `legacy_resume_evidence_unavailable`, indexed and removable only by whole-tenant erasure or separately approved migration; evidence import is deferred.
+
+Aggregate and dead-letter Admin use the same execution-owner CAS recovery fence. Generic retry of drain-exhaustion dead letter resolves to resume precondition. New resume and every pending legacy phase freshly bind the signed source to the owner's unchanged capsule hash/identity and freshly addressed chunks; missing/contradictory source fails closed. Invocation uses capsule eventRoot, exact endpoints and ordered original MessageIds, never window roster positions. Verify capsule/chunks and original stored sequence/MessageId/StoredDigest, exact range/correlation/classification and absence of a live drain/index/reminder; then `claimed -> draining -> completed|failed`. Only owner advances; completed is terminal. Every non-failed edge must use exactly the recovery's current ordinal; a caller cannot reset it. The existing owner persists the original live-drain restore address/hash/payload bound to that owner, ordinal, capsule hash, eventRoot, range and classification before restoration; MessageIds are freshly read from the authenticated capsule/chunks, never embedded as a list in the bounded intent. A restart freshly authenticates capsule/range/classification and accepts only that exact pending intent; it writes if absent or accepts exact authenticated readback if present, then advances once from the recorded predecessor. A same-owner, same-ordinal repeat after advancement validates the exact restored readback and returns without another owner generation; a different owner/ordinal, contradictory readback or unrelated live drain refuses unchanged. Failed reasons are the closed set transport-retryable/evidence-unavailable/evidence-contradictory, derived solely from authenticated drain-failure evidence binding the current capsule, failed predecessor generation/ordinal, eventRoot, range and classification. A caller label cannot replace that authority. Persist deletion intent before live-drain cleanup; restart finishes deletion/readback and the same failed-owner CAS. Evidence reclaim reads an authenticated repaired-range record binding the unchanged capsule, failed legacy generation, eventRoot and every original range/classification field. The original owner persists a consume intent, deletes/reads back that proof before advancing the reclaim CAS; later failures require new generation-bound proof; an unsigned boolean is never repair authority. draining→failed atomically reinstalls source=capsule hash and reason=legacy-publish-failed with the fence CAS, enabling a later authenticated resume without a second capsule. `failed(transport-retryable) -> claimed` requires greater successful resume ordinal and next generation with unchanged capsule. Evidence failure additionally requires read-back repaired exact range authority. Capsule creation reentry freshly validates the already bound capsule and returns without resetting its generation/state/ordinal; a pending resume request refuses unchanged. A later exhaustion reuses the same capsule; status 6 and command bytes remain unchanged until the shipped drain finishes Completed for success events or Rejected for rejection events. Restore only the original stored range/MessageIds, never execute a command. The documentation model represents addressed live-drain readback as the compact capsule/eventRoot/range/classification descriptor and separately reconstructs original ordered MessageIds from freshly authenticated capsule/chunks. This fixture does not prove the native actor drain body; D9 qualification must compare the actual restored actor range, classification and ordered MessageIds/StoredDigests against those original rows.
+
+#### D4. Status and first-send membership
+
+Apply authenticated status precedence in this exact order: (1) evidence conflict/unavailable/preparation hold -> CommandOutcomeHold; (2) verified terminal pointer -> PublishFailed/publication_terminal_failed; (3) published -> committed Completed/Rejected, not-applicable -> Completed/zero; (4) active drain-limit -> EventsStored, Retryable false, publication_drain_limit_hold/60; (5) failed containing class-02/03 -> terminal_evidence_hold; (6) all definitive class-01 at maximum -> EventsStored, false, publication_retry_exhausted_hold/60; (7) all class-01 below maximum with admitted automatic attempt -> EventsStored, true, publication_retry_pending/1; (8) pending/unknown -> EventsStored/1, exhaustion alone ignored; (9) other/empty/unknown/contradictory failed classes -> outcome_evidence_conflict. The verifier contains the 14 historical cases plus mixed class-01/class-02 and evidence unavailable. Open successor windows return to (7)/(8).
+
+CommandOutcomeHold is 503 type `https://hexalith.io/problems/service-unavailable`, Retry-After 30 and no replacement first response or command status. Its closed reasons are `admission_evidence_hold,response_preparation_hold,publication_pin_capacity_hold,outcome_evidence_hold,outcome_evidence_conflict,resume_evidence_hold,quota_generation_exhausted,terminal_evidence_hold,first_send_membership_changed_hold`. Every copied nullable committed-result field remains available, including AggregateId, EventCount, RejectionEventType, TimeoutDuration and DrainAttemptCount; Status alone determines terminality. Admin merges submission CommandSummary with latest authoritative status/control reason at read time.
+
+Drain reasons `drain_publish_failed,drain_state_store_failure,drain_dapr_unavailable` automatically retry only while a shipped drain/reminder and budget remain; terminal status 6 without automatic owner uses capsule resume. `drain_attempts_exhausted` uses capsule resume. `drain_event_count_mismatch,drain_missing_event,unknown` are evidence incidents and require authoritative repaired stored range; absent evidence is non-resumable. No catch-all automatic retry.
+
+**C2 membership amendment in place:** version the existing first-send outcome at its existing key with retained purpose-2a signed resolution, contiguous generation and predecessor. Configuration/membership change or hourly check obtains fresh complete atomic zero-send proof (`EmptyNamespace` or `InitialRowOnly`, preserving existing ordinal-one row). Only byte-identical ContinueSamePin under active membership/configuration resolves: same logical consumer/destination, pinned request/predicted acceptance body and complete headers, modes, renderer and six-header projection. Any sent/queued/accepted attempt rules out this path. Manual action requests a check; incompatible images cannot be overridden, repinned, abandoned or called completed.
+
+ResponsePreparationHold keeps unchanged A8/[I-09]: transfer HX-EV-RESPONSE-PREPARATION-1 Rendering fence; require **both already existing** immutable outputs and generation-bound receipts before writing/reading HX-EV-RESPONSE-PREPARATION-WRITE-1 at `command-response-preparation-write:` plus ScopeOpHash. Missing output is a non-resumable indexed incident; only whole-tenant erasure or separately approved migration exits it. Outcome evidence unavailable retries on recovery/30 seconds; contradiction needs later authoritative unchanged-row proof or stays incident. TerminalEvidenceHold completes C5 proof or later authoritative accepted evidence, never fabricates closure.
+
+#### D5. Admission, scope retention, replay and destinations
+
+From slice 2 every legacy admission reads and CAS-claims the unchanged shared `command-execution-scope:` + SHA256(`U tenant || U executionMessageId`) before archive/status write or actor invocation. Required record/tombstone or changed input conflicts; identical unexpired legacy input retries. Unavailable read/CAS -> admission_evidence_hold, no invocation. Scope+usage change in one supported backend transaction, exactly 256 shards selected by first digest byte; per-shard ceiling floor(total/256) plus one for first total mod 256 shards. Claims reserve 8 KiB, required/tombstones 4 KiB, shard header 2 KiB retained until tenant erasure. Authenticate exact tenant/shard/current generation on every renewal/compaction/delete. Eight CAS losses have D1's bounded delays and then hold.
+
+Pinned horizon H is max(status,archive,idempotency,actor-idempotency,replay,backup retention), ≤315,576,000 seconds. Slice 4 requires continuous claims for H, all slice-2-start legacy in-flight owners closed, read-back cutover under gateway fence. Then archive/status/actor fallback reads stop. Exact expired claim renews only with identical immutable input/cohort/cutover, authenticated old obligation closure and current UTC; refund/recharge 8 KiB in the same transaction. Changed expired identity conflicts until authenticated deletion. Claim expiry never starts a new cohort.
+
+ScopeRetentionReconciler runs hourly and at 75% shard occupancy. Only after all retry/status/rollback/backup obligations close may exact required predecessor compact to authenticated tombstone binding original input/record/ScopeOpHash and shard. Tombstone expiry = compaction UTC + pinned retention ≥H and ≤10 years. Required-to-tombstone keeps 4 KiB charge; expiry plus absence of every obligation permits authenticated deletion/readback and once-only decrement/refund. Status on live tombstone is HTTP 410 type `https://hexalith.io/problems/command-status-expired`, no fallback. Exact late admission is idempotency-expired 409, changed identity conflicts. After deletion later MessageId reuse may be admitted. Full shard blocks before invocation and exits after exact-shard compaction/deletion or capability increase.
+
+Full replay bounds are 100,000 events, 64 MiB readable payload, 256 MiB conservative accounting at exactly count×8,192, first exceeded wins. Nonnegative checked count/accounting and authenticated complete measurements are required even for incremental routes. Slice-3 activation inventories all full-replay routes under the already computed target RegistryFingerprint: every dimension below 75% -> continue-full-replay; exact registered `5a incremental` and B7a intake -> incremental; otherwise at/above 75% -> route-wide LegacyArrayLimit/no partial service. ≤943 routes fit the retained 1 MiB signed activation; 944 fails readiness as ActivationInventoryCapacityHold, resolved by reduced/split catalog and complete new inventory. Registration precedes fingerprint calculation. Growth at exactly hard bound remains legal; above it creates stream hold, no truncation. At 75% emit legacy_array_headroom_low. Registry/config revision or hourly re-evaluation schedules incremental bootstrap even with **no new event**. Counting 24,575/24,576/24,577 proves the accounting activation threshold; the readable dimension has its own below/at/above cases. Accounting supersedes the independent count bound: count×8,192 binds at 32,768, so the 75,000/100,000 count boundaries are unreachable with valid accounting; no independent count-bound coverage is claimed. Above a hard bound the per-stream projection owner retains LegacyArrayLimit/legacy_array_limit with the original stream identity, charge and discovery until complete incremental bootstrap or stream/domain erasure.
+
+Destination schema is exact canonical JSON `hexalith.eventstore.destination/1` with exactly component/metadata/schema/topic, ≤65,536 bytes. Component/topic 1..1,024 UTF-8 bytes equal exact outbox bytes. Metadata ≤64 unique string pairs, each name/value and total decoded UTF-8 ≤16,384 bytes. Reject duplicates, wrong types/schema, malformed UTF-8, extra/missing fields, noncanonical bytes and mismatch before admission. Preserve C1 destinationId bytes/vectors and public event identity; configuration revision triggers membership check but supplies no send authority.
+
+#### D6. Quota ledger and one fair queue
+
+The declared publicationRetentionBackend (the same AD-26 statestore PostgreSQL backend as D1 controls/registry; a separately configured backend fails readiness) ledger owns charge/counter/reservation bytes and one bounded deployment queue. Account identity is `(kind,id)`: tenant `deployment` and capture-scope `deployment` are distinct. Tenant charge touches tenant, tenant-pool and deployment; capture charge touches capture-scope, unidentified and deployment. Every amount = checked length + **recorded creation overhead**. Reattach matches original kind/length and never substitutes current overhead. Authenticated delete/closure/readback precedes once-only released generation and exact counter decrement; all generations/predecessors/counts and ceilings preflight. Every owner `charge`, outcome `oldCharge` and wait `charge` contains the exact lowercase `publication-charge:` address: retained HX-EV-PUBLICATION-CHARGE-KEY-1 framing over deployment, kind, account ID and B32 objectKey. For a local owner/storage locator, objectKey is SHA256(B(exact UTF-8 locator)); no raw concatenated charge address is permitted. Current capability governs new fits; lower ceilings evict nothing and admit no excess increase.
+
+Retain capability/charge/counter/pin-batch binary codecs in the imported wire reference in §11.6. Capability bounds: 1 GiB ≤tenant≤deployment; tenant+reserve≤deployment; reserve≥195 MiB (codec floor superseded by readiness below); reserve≤unidentified ceiling≤deployment; scope≥64 MiB; overhead 0..1,114,112; 256 shards; tombstone≤10 years; queue ceiling 1..50,000; quarantined maximum 193..256 MiB. Kind maxima: global pin 449 MiB, side/ordinary retained object 193 MiB, oversize quarantine 256 MiB, active resume window 1 GiB. Negative/overflow/unknown account or unverified candidate evidence holds with no partial write. Generation exhaustion is quota_generation_exhausted. In addition to the encoded minimum bounds, readiness requires each per-kind maximum plus original overhead to fit its account after fixed bootstrap/owner precharges: tenant must fit a 1 GiB resume-window plus overhead and its fixed control/discovery/wait reservations; unidentified must fit maximumQuarantinedCarrierBytes plus overhead after queue/bootstrap/header precharges. Reserve protects that complete unidentified requirement, and deployment must fit tenant plus reserve. Exact fixed unidentified bootstrap precharge is `800 MiB + 16 KiB + 256×16 KiB + 16 KiB + 266×recordedOverhead` (eight queue shard envelopes, one allocator 256 registry shard headers and one Operations epoch). Tenant fixed precharge is `216 KiB + 16 KiB + 4×recordedOverhead`, including its escaped-width registry scope header. Readiness requires `tenant ≥ 1 GiB + overhead + tenantFixed`, `reserve ≥ fixedUnidentified + quarantineMaximum + overhead`, `unidentified ≥ reserve`, and `deployment ≥ tenant + reserve`. Consequently the historical 195 MiB floor is unreachable under these fixed bootstrap reservations. A syntactically valid 256 MiB quarantine maximum with a 195 MiB unidentified ceiling is invalid readiness, as is a queue-precharged deployment unable to fit a 449 MiB pin.
+
+Reserve the entire checked member batch and all per-pin charges/counters in one ledger transaction (≤59 members/64 KiB reservation, original exact ordered pin hashes/lengths/amounts). 60..1,000 otherwise valid V1 members fail AppendPreparationLimit **before append**, no segmentation after commit. Exact lost acknowledgement reads original candidate/reservation despite changed overhead. Pin backend installation is a separate reservation-bound external phase; deterministic exact pin readback for every member advances reserved -> installed; no send before all attachments/readbacks. Partial install retains full reservation, discovery and completion intent. Refund cannot precede authenticated absence/deletion of every pin.
+
+Allocator/header schema `hexalith.eventstore.capacity-queue/1` has exactly `schema,deployment,generation,lastTicket,count` (≤16 KiB); each of eight `hexalith.eventstore.capacity-queue-shard/1` envelopes has exactly `schema,deployment,shard,generation,rows` (≤100 MiB, ≤6,400 rows). The allocator uses retained `pin-capacity-queue:` derivation; shard address is `pin-capacity-queue-shard:` + SHA256(`"HX-EV-PIN-CAPACITY-QUEUE-SHARD-KEY-1\0" || 01 || U deployment || N shard`). Both header and every touched shard are fenced transaction participants; each row exactly `subject,tenant,scope,plan,ticket,firstUtc,updatedUtc,state,candidate,amount,attempts,charge,owner`. Rows sorted by unique positive unsigned ticket; subject is capacity-subject SHA256(`"HX-EV-CAPACITY-SUBJECT-1\0" || 01 || B32 ScopeOpHash || B32 immutable admitted plan root`). State is `reserved,queued,parked,cleanup`; candidate is null or exact batch root, amount null or positive checked total. Subject/tenant/scope/plan/ticket/firstUtc/owner immutable. Owner is exact admitted operation authority; each row ≤16 KiB including bounded native metadata, logical queue ≤800 MiB plus 16 KiB header/support, stored in eight fixed ≤100 MiB shards in the same ledger transaction, ≤authenticated ceiling≤50,000 rows. The eight queue storage envelopes and header are separately precharged at bootstrap (each ≤100 MiB side-record plus original overhead, within the 193 MiB per-object cap); all form one logical queue and global allocator; each row's 16 KiB + original overhead is separately charged to its tenant and remains until row deletion. Envelope/header account is capture-scope queue-bootstrap:<deployment> (framed account ID, ≤1,024 UTF-8 bytes); capability checks its fixed precharges against unidentified and deployment pools. Ticket maps to storage shard (ticket−1) mod 8; addressed per-shard rows share one global allocator and count header. Admission checks that shard's count/bytes as well as the logical queue ceiling before reserving a ticket. A full target shard refuses `AppendPreparationLimit` without consuming the candidate ticket; placement stays `(ticket−1) mod 8`, with no shard scheduler or fallback placement. No owner index, predecessor image, paired interests or tenant queue exists.
+
+Before command commit, one ledger transaction reserves a row, row storage charge and checked global ticket; registry discovery already exists. A reserved row itself discovers the preparation. Ticket exhaustion or unavailable row/storage capacity fails AppendPreparationLimit before commit. Exact readback reuses ticket; conflicting owner cannot cancel it. Cancellation requires original admitted owner, authenticated no-command-commit and absent/deleted external preparation evidence; delete row/refund transaction is once-only. Issued tickets never reused. If commit occurs, materialize from immutable operation authority at same subject/ticket into queued or parked. Waiting work owns **zero pin capacity**. Invalid/unavailable arithmetic has discoverable owner PublicationPinCapacityHold and reserved row (no trustworthy candidate/amount), retries every 60 seconds/cause change; it cannot grant or spend pin capacity.
+
+Each turn authenticates current capability/counters and exact outbox/member-plan, renderer, membership and purpose-02 key. Checked rerender may change candidate/amount/state under owner CAS without changing ticket/identity. Rerender and materialization validate 1..59 unique members, exact lengths/amounts and current operation authority before fit; cleanup rows cannot materialize. A changed-overhead or invalid row is updated/parked under its exact predecessor in the queue transaction before selecting another eligible row; stale materialized totals cannot repeatedly abort the turn. Any selected-row refusal preserves grant atomicity and parks/holds that subject on its next bounded re-evaluation, permitting eligible tenants to progress. Every decision compares its exact predecessor inside the transaction, including request/priorHash admission, queue selection, and capture phase advancement. A candidate above current ceilings is parked **in this same queue**; cause revision/refund/60-second trigger re-evaluates it. Select the oldest currently tenant-eligible feasible queued row; skip tenant-blocked/parked rows, preserve their tickets. If selected row cannot fit deployment, younger eligible rows cannot bypass it. New batches join this ordering even if they fit. Fit includes the exact net charge of the simultaneous row-storage refund; whole batch reserve and queue deletion/row-storage refund share the ledger transaction; install pins afterward. Thus no partial pin capacity, queue move or circular reservation exists. Empty/parked-only turns are byte-identical no-ops.
+
+Decoder rejects extra/missing/duplicate rows, wrong order, count/byte limits, ticket above allocator head, zero/duplicate ticket/subject, unbound owner/tenant, impossible phase/amount, generation overflow and trailing/noncanonical bytes. Corruption grants nothing and is PinCapacityQueueCorruptionHold under bootstrap discovery. Recovery requires original immutable operation/precommit allocation authority plus authenticated ledger transaction/WAL recovery establishing **all original tickets and charges**; unavailable authority stays incident. A digest cannot reconstruct a queue. Erasure first proves operation/pin obligations erased, then transactionally deletes tenant rows/refunds exact storage; deployment allocator/header stays until whole deployment erasure. No ticket reuse after tenant erasure.
+
+#### D7. Capture, redrive and erasure
+
+Retain the signed subscription policy schema/key: contiguous immutable revision/head, capture mode dead-letter/direct, 1..64 local attempts, exact resolved configuration. An unbounded broker alone is insufficient. At attempt bound or 24h from original observation (first wins), capture exact carrier/body/header image before acknowledging transport copy. Dead-letter subscription uses direct capture and cannot dead-letter again. Observation first persists original UTC/carrier identity/count under delivery owner and registry; restart cannot reset count/clock.
+
+Held identity retains exact HX-EV-HELD-DELIVERY-KEY-2 framing over scope kind/deployment/optional tenant/component/topic/physical subscription/carrier hash. Tenant kind requires tenant; deployment kind forbids it. Carrier key is `held/<held-key hex>` on held-delivery-store, create-once exact bytes. Metadata charge/control/discovery read back before first nonterminal response; missing capability/readiness blocks earlier boundary. Capture admission atomically checks/reserves the object charge and installs observed -> capturing with exact object-write intent on the metadata backend; quota refusal preserves owner/ledger bytes. Erasure first fences the admitted capture predecessor. After external write/readback, re-read exact control bytes and admitted provider generation/incarnation fence; a stale writer cannot advance an absent, erased or recreated owner. Delete/read back the late object only when no current authenticated capturing/captured owner owns and charges those exact bytes; preserve a replacement owner’s valid object and return the predecessor conflict. Same-incarnation duplicate completion returns its authenticated captured result, leaving no orphan or uncharged retained carrier. Exact original capture predecessor then permits captured. Charge-only restart completes exact object; object-written restart completes same control, preserving original observation/policy and later monotone counts. No cross-store atomicity claim. Acknowledge only retained bytes, locator/receipt, original identity, active exact charge, durable captured control and original discovery. **C4 amendment:** this is terminal handoff of physical copy, all logical route/effect obligations stay open.
+
+Carrier ≤193 MiB uses ordinary retained capture (maximum inclusive). Permanently invalid carrier/header becomes terminal quarantine with retained exact object and signed/provider archive authority; forbidden headers in quarantine evidence contain names/lengths/hashes only. 193 MiB <carrier≤advertised maximum≤256 MiB requires provider atomic exact non-expiring archive plus oversize-quarantine charge. Valid EventStore carrier cannot use oversize exception. Provider readiness pre-rejects anything it cannot capture. Above advertised maximum persists bounded incident with streamed length/hash and original discovery, remains unacknowledged; exit only authenticated provider pre-rejection/no-live-copy or later approved exact capture. Terminal invalid/quarantined delivery never redrives.
+
+Closed original reasons: handler-capability-hold, raw-source-unavailable, delivery-carrier-limit-hold, invalid-header-value, invalid-carrier, oversize-carrier, delivery_above_advertised_max. Unknown values refuse. Operations owns all. Tenant redrive route `POST /api/v1/admin/held-deliveries/tenants/{tenantId}/{entryKey}/redrive` uses Operator policy; deployment route `/api/v1/admin/held-deliveries/deployment/{entryKey}/redrive` uses Admin. entryKey is the lowercase 64-hex held identity (without the held-delivery: prefix). Request body is exactly {expectedRedriveCount}; success is 202 {entryKey,redriveCount,state} from the committed owner, stale count is 409 held_redrive_count_changed, unavailable authority is 503 held_redrive_evidence_hold/Retry-After 30, terminal quarantine is 409 held_redrive_not_eligible. Automatic redrive has authenticated server purpose-2d authority equivalent to retained HX-EV-REDRIVE-REQUEST-2 claim, never unsigned synthetic action.
+
+Before every send freshly verify object bytes/header hash/length/locator/receipt, active kind-qualified charge, current control/discovery, signed scope-bound request/UTC≥firstUtc/expected count. CAS **together** exact request, attempt and checked count, state redriving, send intent. Lost acknowledgement reads this committed control and cannot increment twice. Retry exact retained bytes through same authenticated ingress using existing MessageId/idempotent route keys. After crash query exact original attempt's terminal route authority: terminal -> cleanup with an exact delivered-cleanup intent; unknown/nonterminal -> captured scheduled retry, preserving count/carrier/charges. No first reconciliation leaves redriving. Nonterminal failures back off `min(900,60×2^min(count-1,4))` seconds (60 to 15 minutes). Error is one current bounded typed reason/hash/time. Unavailable evidence permits neither send nor completion.
+
+Request/attempt absence and corrupt bytes are explicit repair states in same owner, original carrier reason unchanged. Set captured/repair required at max 15-minute deadline, then require authenticated exact original request/count/carrier/charge repair readback, with requestHash equal to the retained original attempt/route source; a newly signed substituted request is refused; no fabricated receipt or separately charged/indexed repair hold. A genuine repaired state authorizes next captured retry. Terminal route decisions alone authorize delivered cleanup; erasure has distinct intent and never claims delivery. Before refund delete/read back exact carrier and every claim/attempt/provider source, then transactionally release original charge and finally metadata/control/discovery. Partial cleanup retains original record/charge/discovery, exact pending action and bounded receipts. Delivered cleanup is a distinct function/intent from scope erasure and preserves delivered=true through partial deletion; erase requires a stored scope-authority record and preserves delivered=false. Observed→cleanup is permitted on authenticated original-route terminal success before capture; this releases metadata/discovery only after source readback/deletion and claims no fabricated carrier retention. Quarantined/incident are terminal-no-redrive views retained under original discovery; they exit by D7 provider capture/no-live-copy proof or authenticated scope erasure. Execution cleanup finishes its persisted capsule/erasure intent; incident re-evaluates authentic evidence or exits only by authorized erasure/migration. Registry last removal follows control deletion/refund; no uncharged retained object or invisible partial capture.
+
+#### D8. Discovery, inventory and complete hold exits
+
+Use one durable deployment owner registry with 256 storage shards selected by first byte SHA256(U scopeKind || U scopeId), and **one active Operations reconciler/aggregator epoch across all shards**. Store independently addressed canonical entries, never a 1 GiB rewritten shard value. Header schema hexalith.eventstore.owner-registry/1 has exactly schema,deployment,shard,generation,entryCount,scopeCount (≤16 KiB). Entry schema hexalith.eventstore.owner-registry-entry/1 has exactly schema,deployment,shard,generation,scopeKind,scopeId,subject,owner,address,firstUtc,state (≤64 KiB including bounded metadata); key is owner-registry-entry: plus SHA256("HX-EV-OWNER-REGISTRY-ENTRY-KEY-1\0" || 01 || U deployment || U scopeKind || U scopeId || U subject). Subject and scopeId are ordinary identifiers of 1..1,024 UTF-8 bytes in both the entry decoder and U key framing; the cursor continuation subject has that same bound. Each entry has its own generation. A ≤16 KiB per-scope count header (fits both 1,024-byte identifiers under worst JSON escaping) schema hexalith.eventstore.owner-registry-scope/1 has exactly schema,deployment,scopeKind,scopeId,generation,count; at owner-registry-scope: plus SHA256("HX-EV-OWNER-REGISTRY-SCOPE-KEY-1\0" || 01 || U deployment || U scopeKind || U scopeId) tracks ≤10,000 subjects; a shard supports ≤50,000 scopes with bounded count/index/query metadata, not a single value. Install/delete entry and both counts in one D1 transaction; ordered indexed reads use (firstUtc,scopeKind UTF-8,scopeId UTF-8,subject UTF-8) and authenticate every addressed row. Each shard header address is `owner-registry-shard:` + SHA256(`"HX-EV-OWNER-REGISTRY-SHARD-KEY-1\0" || 01 || U deployment || N shard`). Capacity checks that addressed shard’s scope count. Scope/owner discovery authenticates its addressed headers/entry without a deployment-wide entry scan; unavailable foreign entries cannot block it. Ordered provider index metadata identifies an unreadable row’s original scope/subject so inventory emits a per-row incident. Header reserves are bootstrap capture-scope charges; full 64 KiB plus original overhead per row is charged to that row's tenant or deployment capture-scope account in D6, with no unnamed operational-evidence quota. Unknown owner values, duplicates, regression, extra fields or wrong order fail closed. Full shard/scope/quota creates gateway-owned RegistryCapacityHold/registry_capacity_hold; onboarding/readiness rejects before new durable work. Its bootstrap-discovered gateway owner retries on deletion/capability change/hourly and exits after exact freed slot/capability readback or whole scope erasure. A committed owner never predates its reserved entry.
+Concrete order: authenticate onboarding/bootstrap registry and capacity; reserve/read registry row naming exact intended owner address; then create/read owner; mark row present after exact owner readback. Independent commits are allowed: crash with reserved row is discoverable; reconciler reads address and completes mark/create only from immutable admitted source, or releases placeholder after authenticated no-commit/no-owner/no-effect and deletion readback. A committed owner cannot predate reservation. Tenant onboarding reserves registry scope before EventStore admission. Gateway preadmission execution owner uses stable tenant+execution; if no work committed and request ends, authenticated absence lets reconciler delete owner/refund/release reservation. Projection uses domain+route+stream or activation fingerprint; quota uses stable capacity subject/deployment queue. Registry row is a locator, never separately authoritative hold reason/hash. Every phase, repair and cleanup remains discoverable at original subject; reason and monotone time/count derive from owner. Registry release follows exact owner/effect deletion/readback and refund, including erasure.
+
+One authenticated epoch lease gates reconciliation and metric emission. Exact canonical schema hexalith.eventstore.operations-epoch/1 fields schema,deployment,holder,epoch,generation,ownerFence,acquiredUtc,expiresUtc,renewedUtc; address operations-epoch: plus SHA256("HX-EV-OPERATIONS-EPOCH-KEY-1\0" || 01 || U deployment); ≤16 KiB plus bounded metadata, precharged to deployment capture-scope bootstrap. Epoch and generation are positive checked u64; holder/deployment are ordinary identifiers, ownerFence is a canonical 26-character Crockford ULID (first character 0..7), acquiredUtc ≤ renewedUtc < expiresUtc, and expiresUtc = renewedUtc + 60 seconds. Backend UTC grants a 60-second lease, renewed every 20 seconds by exact holder/fence/generation CAS; acquisition/takeover increments checked epoch and mints fresh ownerFence, takeover only after authenticated expiry. Work/metric sink binds the epoch and refuses stale epochs; the old holder stops before its expiry or any failed renewal, including external emission. Hourly/cause-change re-evaluation activates every registered owner; gateway unavailable evidence every 30s, capacity every 60s/refund. Metrics hexalith.eventstore.holds.active aggregate current authoritative reasons/domain; no shard owns a metric and metrics confer no lifecycle authority. Lease and header delete only after whole-deployment erasure and zero owner obligations. Scope actor IDs use tenant: + SHA256(U tenant) or deployment: + SHA256(U deployment), separate Admin routes /api/v1/admin/holds/tenants/{tenantId} and /api/v1/admin/holds/deployment; legal tenant deployment cannot collide.
+Admin oldest-first paging 1..200/default50 uses cursor payload schema hexalith.eventstore.hold-cursor/1 with exactly schema,scopeKind,scopeId,generation,last,expiry; last null or exact last sort tuple. Generation is SHA-256 of the canonical scope-header generation plus ordered subject/entry generations for that scope; foreign-scope and shard-global changes are excluded; owner revisions are excluded. Owner changes cannot invalidate continuation. Each row returns its freshly authenticated owner revision, current reason/times/count, owner and stale flag; unavailable/corrupt owner yields an explicit per-row evidence incident with stale=true, never a failed whole page or omission. Cursor envelope schema hexalith.eventstore.hold-cursor-envelope/1 has exactly schema,keyId,payload,signature, ≤16 KiB complete canonical UTF-8; HS256 authenticates the exact canonical payload with a server-only rotated cursor key and explicit inventory audience, distinct from purpose 2d. keyId resolves retained verification authority through the ≤15-minute horizon. Payload binds current authorized scope and original expiry, never extended by continuation. Invalid/malformed/signature cursor is 400 hold_inventory_cursor_invalid, expired 410 hold_inventory_cursor_expired, cross-scope 403 hold_inventory_cursor_scope_mismatch; registry generation change is 409 hold_inventory_generation_changed/restart. Every eligible publication inventory item exposes resumeHandle. Resolve a handle by recomputing the exact D3 formula over the tenant's registered execution owners (and retained original retry result handles); authenticate a single exact match, never accept an arbitrary caller execution/address.
+| Predicate / owner | Deterministic exit / erasure |
+| --- | --- |
+| LegacyArrayLimit / projection | complete verified incremental capability and scheduled idle bootstrap; erased with stream/domain |
+| ActivationInventoryCapacityHold / projection | ≤943-route complete new catalog inventory; domain erasure |
+| AdmissionEvidenceHold, ScopeRetentionCapacityHold / gateway | exact scope/cutover/shard readback or proved conflict; shard expiry/capability increase; absent precommit work releases placeholder, committed work follows scope erasure |
+| RegistryCapacityHold / gateway | exact freed scope/shard slot or approved capability readback on cause change/hourly; bootstrap-discovered gateway incident, preadmission refusal, authenticated scope erasure |
+| ResponsePreparationHold / coordinator | both existing immutable outputs/receipts plus A8 preparation-write; missing output stays incident until whole tenant erasure/approved migration |
+| OutcomeEvidenceHold/Conflict / coordinator | complete immutable sources or later authoritative unchanged-row proof; irreparable contradiction stays incident until scope erasure |
+| TerminalEvidenceHold / coordinator | C5 complete terminal proof or later authoritative accepted evidence; scope erasure |
+| PublicationRetryExhaustedHold, PublicationDrainLimitHold / coordinator | D3 exact eligible resume or terminal/verified head advance; consumed source becomes inactive atomically; scope erasure |
+| PublicationResumePreparationHold / coordinator | same owner's original finish or pre-irreversible authenticated absence/deletion cleanup; expiry never cancels irreversible work |
+| ResumeAttemptCollectionHold / coordinator | complete definitive source/closure evidence; bound forbids another observation/send; scope erasure |
+| PublicationPinCapacityHold / quota-coordinator | checked candidate plus whole-batch fair grant; remains reserved/parked discoverable; operation erasure before refund |
+| PinCapacityQueueCorruptionHold, QuotaGenerationIncident / quota-coordinator | authenticated original authority/WAL repair or separately approved migration; deployment/scope erasure after obligations close |
+| FirstSendMembershipChangedHold / subscriber | fresh zero-send and exact ContinueSamePin only; whole-tenant erasure never publication success |
+| HeldDelivery including repair / Operations | exact retained-byte redrive reaches route terminal decisions; invalid terminal quarantine; above-max explicit D7 exit; scope erasure distinct from delivery |
+| LegacyResumeIncident / actor or operations | extant authoritative capsule repair then exact resume; historical absent source remains non-resumable until tenant erasure/approved migration |
+
+Closed owner-kind mapping follows this table: coordinator/gateway/projection/quota-coordinator/subscriber/operations, and actor or operations for LegacyResumeIncident. Closed hold→reason mapping is LegacyArrayLimit→legacy_array_limit; ActivationInventoryCapacityHold→full_replay_inventory_capacity; AdmissionEvidenceHold→admission_evidence_hold; ScopeRetentionCapacityHold→scope_retention_capacity_hold; RegistryCapacityHold→registry_capacity_hold; ResponsePreparationHold→response_preparation_hold; OutcomeEvidenceHold→outcome_evidence_hold; OutcomeEvidenceConflict→outcome_evidence_conflict; TerminalEvidenceHold→terminal_evidence_hold; PublicationRetryExhaustedHold→publication_retry_exhausted_hold; PublicationDrainLimitHold→publication_drain_limit_hold; PublicationResumePreparationHold→publication_resume_preparation_hold; ResumeAttemptCollectionHold→resume_evidence_hold; PublicationPinCapacityHold→publication_pin_capacity_hold; PinCapacityQueueCorruptionHold→pin_capacity_queue_corruption_hold; QuotaGenerationIncident→quota_generation_exhausted; FirstSendMembershipChangedHold→first_send_membership_changed_hold; LegacyResumeIncident→legacy_resume_evidence_unavailable; HeldDelivery→exact D7 original reason. RedriveEvidenceRepairHold is retired/mapped to the same HeldDelivery repair view; it creates no second hold/charge. Owners are exactly actor/coordinator/gateway/subscriber/projection/operations/quota-coordinator; RegistryCapacityHold uses gateway. Every owner/control plus referenced evidence is charged at its D2/D5/D6/D7 ceiling before producer activation; inventory slot/header uses D6's explicit tenant/capture-scope accounts, never an uncharged side store.
+
+#### D9. Story 6.5 handoff and activation
+
+| Target | Import action |
+| --- | --- |
+| I-06 | D5 complete three-way replay activation, limits and idle exit |
+| I-10/I-14/I-15/I-16 | D3/D4 exact drain source/resolution, precedence, reasons, polling and current Admin join |
+| I-12 | D5 claim/cutover/256-shard/tombstone, bounded CAS/outage/410 and expiry |
+| I-17 | D5 exact destination schema, retain C1 IDs/vectors |
+| I-29/I-30 (I-26/I-28 cite them) | D6 retained codecs, kind-qualified accounts, checked charges/counters, complete batch, quarantine and cross-backend phase |
+| I-31 | D6 one deployment queue, precommit slot/ticket, tenant-eligible ordering, same-row parking/rerender/refund/corruption |
+| I-36/I-37 | D7/D8 same-owner capture/redrive/repair, discovery reserve order, epoch and scope cursor |
+| I-45/I-46 | D2/D3 exact resume/control/retry/legacy capsule, no command execution; purpose 2d only activation/resume/window/redrive |
+| C1/C2/C4/C5 | Amend in place: ledger reservation-bound pin install; versioned compatible first-send; captured physical-copy handoff; terminal operation fence versus resume window fence and complete evidence chain |
+| §8.1 | Import D4 status and closed 503/409 reasons, D5 replay/scope 410, D6 zero partial capacity, D7 capture/terminal quarantine, D3 exact legacy outcomes |
+| §10.2 | BC-01 cites D4; BC-02 denies fresh committed PublishFailed command replay only after D3 routes/capsule gate; BC-05 cites D5; BC-08 cites D7; add SemVer-major BC-15 slice-2 legacy claim outage 503 and BC-16 tombstone 410/bounded eventual identity reuse |
+| §11.5/§11.6 | Replace owned disposition/answers with the imported wire reference in §11.6's 54 exact rows/pass-1 mappings and retained/new literals; keep unowned A/B/C answers and original public bytes; retired private families have no deployed migration |
+
+Implementation slices are complete policy handoffs, not authorization. Slice 1 activates none. Slice 2 installs provider-gated ledger/shared transactions, registry/onboarding/epoch and owner-charge prerequisites **before any hold producer**, begins legacy claims and pins H, stores destination/policy capability. Slice 3 activates replay inventory, tenant resume safety route/ReplayController denial, capsule-before-cleanup and exclusive legacy recovery; wait H and read cutover. Slice 4 activates evidence-required status/scopes, membership restoration, whole pin batch/waits/windows, captured physical handoff and redrive. Readers understand exact signed external schemas before any writer; old incompatible readers are fenced. No runtime slice chooses new policy.
+
+The Story 6.5/architecture handoff must amend AD-1's over-Dapr-state rule and AD-26 for the chosen application-owned metadata adapter before any runtime activation, without changing any AD in 6.5d. It owns exact DDL/column/value caps and ordered registry indexes, versioned migration/rollback ownership (Platform deployment owner), separately scoped least-privilege schema credentials/rotation (OpenBao), backend identity, owner-fence and epoch qualification. publicationRetentionBackend names that same approved backend. The integration must also wire this documentation verifier into its automatic gate or explicitly retain a re-run gate (FW1). Existing C2 class-02/03 and accepted-member permanent fences still govern drain-only invocation; a drain-limit status cannot authorize a forbidden send.
+
+Actual Story 6.6 provider gate requires content-bound human approval plus AD-26 exact approved production profile, then two-host/shared-PostgreSQL crash tests for owner CAS/readback, scope+shard transaction, queue+all-counters grant/refund/erasure and epoch transfer; external object charge-only/object-written recovery; broker separate disable/reject crashes, window versus terminal fences, complete C2 sources and accepted-member exclusion; full retained bytes/header equality and signed crypto/revocation. Test unavailable/refused phases against **persisted exact bytes**, lost acknowledgement and replay-no-new-event activation. Provider receipt/transaction metadata must fit stated caps. Local fixture signatures and model transactions prove only specification behavior; profile remains unapproved and this verifier supplies no production proof.
+
+<!-- imported-d-contract-end -->
+
+#### Unrelated A/B/C holds retained under D8
+
+Each predicate keeps its defining owner and existing exit below. D8 reserves its locator before producer activation and derives status from that owner; discovery grants no additional cleanup or erasure authority. D8’s closed inventory hold→reason union is extended exactly by the ten diagnostic predicate mappings below; D4 HTTP reasons remain unchanged. Each owner cell selects one existing encoded owner kind from the actual defining authority and scope. Conditional cases are deterministic; no alternative list or slash string is an encoded enum, no new owner family or ownership transfer is granted. CommandOutcomeHold is the existing D4 aggregate view: it derives its actual reason and exactly one existing owner from the current authenticated cause, rather than adding a standalone command_outcome_hold reason or second locator.
+
+| Predicate | Inventory reason | Closed owner-kind | Defining authority, owner and existing exit |
+| --- | --- | --- | --- |
+| `ActorCommitEvidenceHold` | `actor_commit_evidence_hold` | `actor` | A5/A9 actor append owner under the original operation fence: authenticate the complete original intent, post-save receipt and entire committed-generation row set. Complete commit preserves original truth; proven no-start plus no-future-commit permits same-capsule continuation if the source is unchanged, or A5 AbortedStale cleanup after source change. Partial/unknown/in-flight evidence remains held, with no duplicate append or ID release. |
+| `AppendPreparationHold` | `append_preparation_hold` | `coordinator` for §7 preparation; `actor` for A7 no-op | §7 append-preparation fenced owner and A7 no-op owner: reconcile the original capsule CAS, every encrypted chunk and no-save evidence; reuse exact Prepared bytes. After commit, restore the exact compact completion/result/witness/first-pin evidence. Only authenticated never-started/no-future-commit proof permits uncommitted cleanup; no regeneration or fresh append. |
+| `CommandOutcomeHold` | `D4 aggregate: original authenticated cause` | `gateway` for admission; `quota-coordinator` for pin capacity/quota generation; `subscriber` for first-send; `coordinator` for preparation/outcome/resume/terminal | D4 aggregate reason view of the existing authenticated execution/preparation, quota or first-send owner. Preserve D4 exact precedence and its nine closed original reasons: admission_evidence_hold, response_preparation_hold, publication_pin_capacity_hold, outcome_evidence_hold, outcome_evidence_conflict, resume_evidence_hold, quota_generation_exhausted, terminal_evidence_hold and first_send_membership_changed_hold. Owner mapping is admission_evidence_hold→gateway, publication_pin_capacity_hold/quota_generation_exhausted→quota-coordinator, first_send_membership_changed_hold→subscriber, and response_preparation_hold/outcome_evidence_hold/outcome_evidence_conflict/resume_evidence_hold/terminal_evidence_hold→coordinator. The current cause selects its existing D8 exit; there is no extra owner, duplicate locator, standalone command_outcome_hold cause, new exit or erasure authority. |
+| `ConsumerMembershipFenceUnavailable` | `consumer_membership_fence_unavailable` | `subscriber` | C2 broker membership authority and the existing send/historical-execution owner: restore qualified atomic compare-and-accept, exact current membership/fence/lease and complete attempt/parent readback. For an owed historical route, authenticate the exact purpose-13 grant/renewal chain, latest exclusive owner and mapping/exclusion evidence. Uncertain send requires exact attempt lookup; no new nonce, send or effect without that proof. |
+| `HistoricalMessageIdCollision` | `historical_message_id_collision` | `operations` | §7 global IEventMessageReservationStore migration/readiness owner: retain both original events and hold rollout under the historical collision rule; no local uniqueness fallback, reassignment or overwrite. The existing authenticated global inventory/reservation proof must establish collision-free readiness before rollout. No automatic repair or erasure exit is granted. |
+| `KeySpaceMigrationHold` | `key_space_migration_hold` | `projection` | §10.1 named-projection key-space migration owner, with B7 scoped-store authority: inventory every overlapping physical key, fence old writers, then authenticate exact fenced copy/mapping and readback, or a declared nonoverlapping prefix plus bounded old-reader adapter. Preserve old keys/evidence and the last certified root/readable legacy path until replacement is proven. |
+| `LegacyEvidenceConflict` | `legacy_evidence_conflict` | `operations` for A4/A6 offline evidence; `projection` for B2 retained projection reads | A4 migration reviewer/readiness owner and A6 raw-corrupt disposition owner: authenticate the unique original encoding/source interval, reviewer docket, decoder closure, exact source/incarnation and approved disposition. Changed/conflicting historical bytes are preserved; backend restore/move requires independently approved source migration. No overwrite, guessed encoding or synthetic provenance exits the hold. |
+| `LegacyHandoffCapacityHold` | `legacy_handoff_capacity_hold` | `subscriber` | C4 handoff variant-head owner: an identical authenticated attempt reuses its retained ordinal/bundle. A new attempt requires qualified atomic reservation and readback of the complete reverse-index/attempt/side/link/head/receipt bundle with a free ordinal among the fixed 64. A distinct sixty-fifth attempt remains held; no eviction, partial variant or logical success is authorized. |
+| `RawSourceUnavailable` | `raw_source_unavailable` | `gateway` for B2 gateway reads; `projection` for B2/B9 projection reads | B2 authenticated raw-source provider/read owner (A6 for raw-corrupt authority): restore bounded raw transport and exact fresh source proof, original backend/incarnation and complete provenance/capture/decision evidence before allocation/read/Apply. Typed reads, current cache, equal JSON or fabricated digest cannot substitute; source conflict follows A6 instead of claiming recovery. |
+| `ReplayCommitAmbiguous` | `replay_commit_ambiguous` | `coordinator` | B4b replay/timeline fenced owner and B9 recovery token: freeze further Apply, retain operation/quota/pins and reconcile all selected objects/hashes/final-pointer presence. Exact matching committed pointer and complete objects return pinned bytes; old pointer plus authenticated no-future-commit proof alone permits orphan cleanup and a new page-1 operation. Mixed/missing/inconclusive evidence remains held. |
+| `RollbackReaderCapabilityHold` | `rollback_reader_capability_hold` | `gateway` for A9/C6 deployment routing; `projection` for B8 projection routes; `subscriber` for C6 subscriber routes | A9/B8/C6 deployment routing/readiness owner: fence old-only endpoints and restore an authenticated capable reader/consumer for every retained V2/evolution/transcript version, with original keys/evidence and applicable read/Apply/handler capability. Returning writer mode to V1 cannot remove those obligations or authorize Apply/send/effect on an incapable endpoint. |
+
+#### D8 authenticated cursor framing and independent positive vector
+
+The existing `payload.schema` literal `hexalith.eventstore.hold-cursor/1` is the authenticated inventory audience. HS256 signs the exact canonical UTF-8 payload including that literal; verification requires this exact schema and the original authorized scope, generation, continuation and expiry. No public audience field is added. The reviewed inventory_page generation preimage is exactly canonical JSON `[scopeHeaderGeneration, ordered [subject, entryGeneration] pairs]`: the outer second element is the full ordered pair array for the authorized scope, in D8 registry order. An authenticated absent scope header is JSON `null`, not zero or omitted; unavailable header evidence remains an incident. SHA-256 of those exact bytes is `payload.generation`. Owner revisions, foreign-scope entries and shard-global revisions are excluded. The envelope signature is lowercase hex HMAC-SHA256 over the exact canonical payload using the resolved server-only cursor key; it remains distinct from purpose 2d.
+
+The preserved child `cursor_sign` prefix-hash and `public.cursor-envelope` literal are immutable historical model evidence, not HS256 production authorization. Their bytes remain in the imported literal block. The following small Python/Node independent HS256 positive answer uses public fixture key bytes 00..1f, header generation 7, ordered entries a/2 and é/3, and original expiry 9000000000 ticks. Its authenticated-absent generation vector is `[null,[]]`. These vectors fix framing and standard HMAC arithmetic, and prove no production key, authorization, rotation, backend or provider behavior.
+
+<!-- inventory-cursor-known-answers-start -->
+```json
+{
+  "absentGeneration": {
+    "hex": "5b6e756c6c2c5b5d5d",
+    "length": 9,
+    "sha256": "97294f05c3603881a6466e787eb8726dde04588d242bea02914b0f0a8e12bdb2"
+  },
+  "envelope": {
+    "hex": "7b226b65794964223a22696e746567726174696f6e2d66697874757265222c227061796c6f6164223a7b22657870697279223a393030303030303030302c2267656e65726174696f6e223a2262333536643038626338346234666464303939323835396161353436366430616361353332306538383934363035353262303434623137316332363662386464222c226c617374223a5b312c2274656e616e74222c2274222c2261225d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74227d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722d656e76656c6f70652f31222c227369676e6174757265223a2261306562303832666634313839643663363164643231363436383739316564376438623866303361343133373136326637376364363831663835353561363834227d",
+    "length": 384,
+    "sha256": "9f425b0a0dc96f86748653c07ce2dbdb29887679eba2fd093122e8992c0bdcaf"
+  },
+  "generation": {
+    "hex": "5b372c5b5b2261222c325d2c5b22c3a9222c335d5d5d",
+    "length": 22,
+    "sha256": "b356d08bc84b4fdd0992859aa5466d0aca5320e889460552b044b171c266b8dd"
+  },
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "payload": {
+    "hex": "7b22657870697279223a393030303030303030302c2267656e65726174696f6e223a2262333536643038626338346234666464303939323835396161353436366430616361353332306538383934363035353262303434623137316332363662386464222c226c617374223a5b312c2274656e616e74222c2274222c2261225d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74227d",
+    "length": 209,
+    "sha256": "c3a82faf2636c51ccab3f7675aec14d7fe5d8f11b4f6ec92addcc07d554a272e"
+  },
+  "signature": "a0eb082ff4189d6c61dd216468791ed7d8b8f03a4137162f77cd681f8555a684"
+}
+```
+<!-- inventory-cursor-known-answers-end -->
+
+#### Exact application-owned metadata adapter
+
+<!-- imported-adapter-contract-start -->
+# AD-13 application-owned PostgreSQL metadata adapter contract
+
+Owner decision D-ARCH (2026-10-04) closes the documentation handoff from reviewed D1/D8/D9. This selects no additional provider or lifecycle policy. Platform deployment owns installation, migration, rollback and qualification; Security and Platform Operations own separately scoped OpenBao credentials/rotation. AD-26 production-profile approval, its actual database/runtime pins, two-host evidence and §12 AD-13 approval remain separate and unapproved. No DDL or credentials are applied by Story 6.5.
+
+The adapter shares AD-26 component `statestore`, stable `state.postgresql` v1, `actorStateStore: true`, and the exact database endpoint/cluster/database identity of that component. Its application-owned schema is `hexalith_eventstore_control`; namespace is exactly `eventstore.control.v1`. `publicationRetentionBackend` resolves this same authenticated backend descriptor, including database/schema/namespace; a different control/ledger/registry backend refuses readiness. The adapter never reads or mutates Dapr private actor-state tables, keys or caches. IActorStateManager remains the sole aggregate/event/snapshot and actor drain-registration mutation authority; adapter transactions consume authenticated actor readbacks as external evidence.
+
+The UTF-8 database uses PostgreSQL C byte ordering for namespace/address and unsigned bytea ordering for registry indexes. `generation` is checked unsigned u64 represented by `numeric(20,0)`; signed bigints cannot represent its complete range. Creation and every authenticated ownership transfer mint a fresh cryptographically random canonical 26-character ULID `owner_fence`, never reused after recreation. Both predecessor generation and fence are mandatory on every mutation, including zero/equal payload changes; ordinary owner CAS uses no Operations lease. Operations work/metrics additionally require D8's current 60-second backend-UTC epoch, renewed every 20 seconds.
+
+Exact version-1 DDL is:
+
+```sql
+CREATE SCHEMA hexalith_eventstore_control;
+CREATE TABLE hexalith_eventstore_control.rows (
+    namespace text COLLATE "C" NOT NULL
+        CHECK (namespace = 'eventstore.control.v1'),
+    address text COLLATE "C" NOT NULL
+        CHECK (octet_length(address) BETWEEN 1 AND 256),
+    generation numeric(20,0) NOT NULL
+        CHECK (generation BETWEEN 0 AND 18446744073709551615),
+    owner_fence text COLLATE "C" NOT NULL
+        CHECK (owner_fence ~ '^[0-7][0-9A-HJKMNP-TV-Z]{25}$'),
+    payload bytea NOT NULL
+        CHECK (octet_length(payload) BETWEEN 1 AND 104857600),
+    registry_deployment bytea,
+    registry_scope_kind bytea,
+    registry_scope_id bytea,
+    registry_subject bytea,
+    registry_first_ticks bigint,
+    registry_shard smallint,
+    registry_deployment_hash bytea,
+    registry_scope_hash bytea,
+    CHECK ((address LIKE 'owner-registry-entry:%' AND
+        (registry_deployment IS NOT NULL AND registry_scope_kind IS NOT NULL
+         AND registry_scope_id IS NOT NULL AND registry_subject IS NOT NULL
+         AND registry_first_ticks IS NOT NULL AND registry_shard IS NOT NULL
+         AND registry_deployment_hash IS NOT NULL AND registry_scope_hash IS NOT NULL))
+        OR (address NOT LIKE 'owner-registry-entry:%' AND
+        (registry_deployment IS NULL AND registry_scope_kind IS NULL
+         AND registry_scope_id IS NULL AND registry_subject IS NULL
+         AND registry_first_ticks IS NULL AND registry_shard IS NULL
+         AND registry_deployment_hash IS NULL AND registry_scope_hash IS NULL))),
+    CHECK (registry_deployment IS NULL OR octet_length(registry_deployment) BETWEEN 1 AND 1024),
+    CHECK (registry_scope_kind IS NULL OR registry_scope_kind IN
+        (decode('74656e616e74','hex'), decode('6465706c6f796d656e74','hex'))),
+    CHECK (registry_scope_id IS NULL OR octet_length(registry_scope_id) BETWEEN 1 AND 1024),
+    CHECK (registry_subject IS NULL OR octet_length(registry_subject) BETWEEN 1 AND 1024),
+    CHECK (registry_shard IS NULL OR registry_shard BETWEEN 0 AND 255),
+    CHECK (registry_deployment_hash IS NULL OR octet_length(registry_deployment_hash) = 32),
+    CHECK (registry_scope_hash IS NULL OR octet_length(registry_scope_hash) = 32),
+    PRIMARY KEY (namespace, address)
+);
+```
+
+The 100 MiB column ceiling is the largest metadata participant, one queue storage envelope; it grants no other family that allowance. Before INSERT/UPDATE, the adapter strictly decodes the address's exact retained family, canonical JSON or binary tags and declared D2/D5/D6/D8 schema, then checks the family's complete cap in AD-13's normative byte-ceiling table. Missing/unknown schema/family, duplicate/noncanonical fields, trailing bytes, invalid UTF-8, surrogate/NaN/infinity, invalid phase/authority or oversized values refuse before persistence. Execution payload ≤786,432; held ≤131,072; allocator, registry/scope/epoch ≤16,384; registry entry ≤65,536; each of eight queue shards ≤104,857,600 with ≤6,400 rows; scope claim/tombstone/usage ≤8,192/4,096/2,048; binary record caps are AD-13's exact table. Address is the existing framed retained key; no raw concatenation or adapter-chosen alias is allowed. SQL row/index/readback framing overhead is independently bounded and charged at the owning D2/D6 creation reservation; exceeding its cap holds, never truncates. No PostgreSQL-native receipt or signed proof record family is introduced.
+
+Registry index metadata is derived provider metadata stored as bounded nullable columns in the same addressed row, never a second authoritative record family. `registry_deployment/scope_kind/scope_id/subject` contain exact decoded UTF-8 **bytea**, including legal NUL; no `jsonb`/text conversion is used. The closed scopeKind is tenant (6 bytes) or deployment (10 bytes). These columns retain the originally authenticated scope/subject even if later payload readback is corrupt/unavailable, enabling the required per-row incident. `registry_first_ticks` is the exact signed i64 original firstUtc and `registry_shard` is D8's 0..255 value. Deployment hash is SHA256(U deployment); scope hash is SHA256(U deployment || U scopeKind || U scopeId), used only as bounded index selection, never identity authority. All nonentry rows have **every** registry column NULL. Entry rows have every column present. Admission verifies strict UTF-8 and exact equality with the canonical entry, retained framed address, generation/fence and both count headers. The row transaction and separately authenticated provider readback bind exact derived metadata bytes together with payload/generation/fence; owners cannot mutate only the metadata. Missing/contradictory index evidence is an incident, never absence. Ordered lookup filters full original scope bytes before applying its limit/cursor; any hash collision remains a distinct exact-byte identity.
+
+```sql
+CREATE INDEX owner_registry_scope_order ON hexalith_eventstore_control.rows
+    (registry_scope_hash, registry_first_ticks, registry_subject)
+    WHERE address LIKE 'owner-registry-entry:%';
+CREATE INDEX owner_registry_shard_order ON hexalith_eventstore_control.rows
+    (registry_deployment_hash, registry_shard, registry_first_ticks,
+     registry_scope_kind, registry_scope_id, registry_subject)
+    WHERE address LIKE 'owner-registry-entry:%';
+```
+
+`bytea` B-tree ordering is the exact unsigned-byte lexicographic order. At maximum width, scope lookup key data is 32+8+1,024 = 1,064 bytes; shard key data is 32+2+8+10+1,024+1,024 = 2,100 bytes. Reserve a conservative 128 bytes for alignment/varlena/index tuple metadata: maximum 2,228 bytes, below 2,704 on the qualification target's standard 8 KiB PostgreSQL page. No 1,024-byte deployment value appears in an index tuple, and no INCLUDE duplicates enlarge the tuple. Qualification must check actual page size/index-entry limit and insert incompressible maximum-width multibyte/NUL identifiers before readiness. The derived column bytes (at most 3×1,024+10+8+2+64 = 3,156) and bounded row/index overhead count within the registry entry's 64 KiB metadata reservation/original overhead. No extra uncharged index store is created. The [PostgreSQL JSON documentation](https://www.postgresql.org/docs/17/datatype-json.html) explains why jsonb/text cannot preserve the full identifier domain; its [B-tree documentation](https://www.postgresql.org/docs/17/btree.html) requires checking physical index tuple limits. Those facts motivate these byte-preserving bounded keys, without narrowing D2/D8 identifiers.
+
+Queries constrain exact authenticated namespace/deployment/scope (or D8 shard) and use the declared oldest-first tuple, limit 1..200, default 50. Return independently addressed entries and both bounded count headers with exact generation/fence/readback; authenticate each owner separately. Cursor generation derives only that scope header and ordered subject/entry generations, never foreign/shard-global or owner revisions. Unavailable owner rows become per-item incidents with the index's original scope/subject; missing index/readback authority cannot become absence or omission. D8 shard maximum 50,000 scopes and scope maximum 10,000 subjects are checked by the header/entry transaction, with all full cap reservations charged before insertion.
+
+Every transaction uses `BEGIN ISOLATION LEVEL SERIALIZABLE`; addresses are locked in unsigned UTF-8 `(namespace,address)` order. Authenticate current owner authority and all expected predecessor bytes/generations/fences, preflight all resulting images, signatures, caps, checked counters/sums and generation headroom before the first write. INSERT is conditional on authenticated absence; UPDATE/DELETE compare exact predecessor generation and owner_fence plus admitted predecessor bytes. No affected-row count or COMMIT acknowledgement alone establishes completion. Persist every participant and reread its complete exact image/new generation/fence inside the transaction, then COMMIT. Before dispatch, perform fresh authenticated SQL readback of the complete declared participant set on the exact pinned database/schema/namespace using the pinned OpenBao role and authenticated TLS server/backend identity. Read every declared row's exact namespace/address, payload, generation, owner_fence and all nullable/derived index columns, and authenticate absence for declared deletes; compare the complete result with the original admitted transaction and its existing owner/intent. This SQL readback is consumed by that existing owner's reconciliation, without a new native receipt, proof codec or authoritative record. Lost acknowledgement uses the same complete fresh addressed readback, never a cached row, affected-count or invented commit receipt. Unavailable/mixed readback retains the original owner/intent and owning evidence hold without dispatch or replay of an external effect.
+
+Connection/TLS acquisition, lock waits, preflight, every statement, all eight D1 attempts and delays (0/5/10/20/40/80/160/320 ms), rollback and reconciliation share the existing **30-second recovery budget**, measured by one monotonic caller deadline with cancellation. Each attempt inherits only the remaining budget; never reset it per connection, transaction, statement or retry. Before opening a transaction, install positive connection/acquisition limits within remaining time and transaction-scoped positive server `lock_timeout`, `statement_timeout` and `idle_in_transaction_session_timeout`, each no greater than remaining time; use a positive cumulative server transaction timeout where the qualified version supports it. Refresh each statement's bound from the remaining deadline, stop before exhausted/less-than-one-millisecond budget, and propagate cancellation through connection, SQL, waits and delays. No zero/unlimited server timeout is admitted. Cancelled or ambiguous commit follows D1's exact rollback/readback or original-result reconciliation: only authenticated rollback/no-future-write plus complete unchanged predecessor permits a retry; exact committed result continues from its original intent. Otherwise return the owning evidence hold without effect, keeping ambiguous authority for the existing owner to reconcile under a later bounded recovery token. Cancellation/timeout cannot establish absence or authorize a second effect.
+
+B6's **128 MiB aggregate live scratch** ceiling applies to the whole adapter path, including driver/network buffers, canonical decoding, validation, sorting, transaction preflight, result construction and fresh readback. Legal occupancy can include eight 100 MiB queue envelopes, but these are validated/read back sequentially with bounded streaming windows under the admitted snapshot/fence. Preflight all participants before the first write using repeatable streaming passes over their original admitted images; write/read one participant at a time and release/zero its transient buffers before the next. Never materialize simultaneous complete old/new images, eight envelopes, or a whole-transaction DOM. Retained original images and pending intent remain in their existing charged stores; streaming does not introduce a staging or receipt family. Qualification must demonstrate this scratch bound at maximum legal eight-envelope occupancy through the actual SQL driver/provider, including cancellation and retries. A provider unable to support complete exact readback/preflight within these time/memory limits refuses readiness/admission rather than narrowing legal occupancy or claiming partial success.
+
+The closed multi-row participant sets are D1's scope+shard usage, held creation+metadata charges/counters+registry membership, capture intent+object charge/counters, stage/cancel+execution owner+ledger charges/counters, resume finalize+execution old/new charges/counters, final held erasure+owner+charges/counters+original registry membership, scope compaction+usage, wait grant+allocator/touched shards+reservation/charges/counters, registry entry+scope/shard counts, and D8 epoch lease transition. Every participant carries expected generation/current fence. Queue tickets/counts/shard placement and full net row refund+whole pin reservation are one transaction; no partial grant. Pins, external objects, actor state and broker disable/reject remain separate intended/read-back phases; PostgreSQL does not make them atomic. A supported Dapr ETag transaction may be used only when qualification proves this complete participant/CAS/readback contract; otherwise the selected adapter supplies it directly.
+
+Platform deployment retains the exact versioned DDL/index bytes and digest, predecessor schema version, database identity, migration source inventory, backup/restore receipt and migration result in the existing authenticated deployment record. Install empty schema/indexes with migration credentials before slice-2 producers; fence all metadata admissions/owners for any later schema migration, inventory and preserve every exact row/fence/charge/ticket, perform one owner-approved version transition and verify complete readback before serving. Never migrate private fixtures that were not deployed. No generic provider or migration framework is introduced. Rollback uses a reader compatible with every retained row/schema and the same backend identity; it restores no stale generation/fence or quota snapshot over live evidence. If no compatible reader exists, remain fenced at the current schema. Drop schema/index only after authenticated whole-deployment erasure and zero obligations; backup/restore must preserve all expected authority/retention and prove no old holder can dispatch after restore.
+
+OpenBao provides distinct roles/credentials for Dapr actor state, metadata coordinator DML and offline migration. The metadata runtime role has CONNECT to the selected database, USAGE on this schema, SELECT/INSERT/UPDATE/DELETE on `rows` and no function execution privilege; no schema ownership/CREATE/ALTER/DROP, superuser, replication, bypass-RLS or access to Dapr private state. Public/default schema/table/function grants are revoked before readiness. Migration owner credentials have only the privileges required to install the above schema/index and grant the runtime role; they are unavailable to application pods. Production profile binds each OpenBao role/path/audience/TLS CA, exact privilege inventory, lease TTL and renewal/rotation window under AD-24. No secret is stored in this document or row payload. Rotate by issuing the same narrowly scoped replacement role credential, prove its backend/privileges/TLS and drain old connections, revoke the old lease, then verify old access denied; owner fences and generations continue unchanged. Authentication/renewal/revocation outage fails readiness/admission before mutation, never broadens privileges or disables TLS.
+
+Story 6.6 qualification binds §12 approval and the separately approved canonical AD-26 profile plus exact PostgreSQL/Dapr pins, schema/DDL/index/credential contracts and source/runtime identities. Two hosts share the real backend and inject each transactional predecessor race, serializable retry, commit/lost-ack and owner deletion/recreation/fence takeover, scope-shard compaction, queue all-counter grant/refund/erasure and Operations epoch transfer. Inspect persisted bytes/counters/tickets and fresh authenticated complete SQL readbacks, including maximum-width JSON/row/index/framing sizes, legal eight-envelope scratch occupancy, the cumulative 30-second deadline, cancellation, ordered scope isolation and stale-holder refusal. Separately prove actual actor range/MessageIds/classification, external capture/pins and broker disable/reject/window/terminal fences. Local constructors/models and this SQL documentation supply no production/provider proof.
+
+<!-- imported-adapter-contract-end -->
 
 ## 8. Numeric budgets and deterministic outcomes
 
@@ -1356,11 +1658,17 @@ Retain §8 named-index bounds: 512-byte logical key, 4 KiB leaf/progress record,
 | `SandboxSequenceLimit` | B2a checked sequence arithmetic | Existing `SandboxResult` with `Outcome=error` and this reason, before Apply. |
 | `DeliveryCarrierLimitHold` | C1 carrier length or streaming bound | Non-2xx retryable response (HTTP 503) with no parsed identity, effect or acknowledgement; [I-36] applies. |
 | `LegacyHandoffCapacityHold` | C4 sixty-fifth distinct legacy variant | Non-2xx retryable response (HTTP 503); the old JSON delivery stays unacknowledged and the variant is not written. |
-| `FirstSendMembershipChangedHold` | C2 membership changed before the first send | No send; the original pin and identity are preserved. The member's latest verified observation stays `pending`, so status inspection projects the nonterminal `EventsStored` shape ([I-10] (3)), and a [I-37] entry is written; C2's separately approved migration or new-command path is its exit. |
+| `FirstSendMembershipChangedHold` | C2/D4 first-send change | CommandOutcomeHold HTTP 503, reasonCode=first_send_membership_changed_hold; unchanged original pin, no send; only fresh zero-send plus exact ContinueSamePin under active configuration exits. |
 | `PublicationRetryExhaustedHold` | C5 class-01 Rejected at the signed maximum | Status projection `EventsStored`/2 with `Retryable=false` and `RecoveryReasonCode=publication_retry_exhausted_hold` ([I-10]); `Retry-After: 60` ([I-15]); [I-37] entry; exit by an [I-45] resume. |
 | `ReplayPublicationConflict` | C5 replay-safety gate for `PublishFailed` | `ReplayController` HTTP 409 conflict with this support-safe reason; no mediator submission or ID allocation. |
 | `PublicationDrainLimitHold` | [I-14] reserved drain invocations exhausted with a member unresolved | Status projection `EventsStored`/2 with `Retryable=false` and `RecoveryReasonCode=publication_drain_limit_hold` ([I-10]); `Retry-After: 60` ([I-15]); [I-37] entry; exit by an [I-45] resume. |
-| `ScopeRetentionCapacityHold` | [I-12] tenant scope-retention ceiling at evidence-required admission | HTTP 503 Problem Details type `https://hexalith.io/problems/service-unavailable`, `Retry-After: 30`, `reasonCode=scope_retention_capacity_hold`, before domain invocation and with no record written; [I-37] entry. |
+| `ScopeRetentionCapacityHold` | D5 exact shard ceiling | HTTP 503/Retry-After 30, reasonCode=scope_retention_capacity_hold before invocation; D8 discovery and D5 exact-shard deletion/compaction/capability exit. |
+
+| `AdmissionEvidenceHold` | D5 claim/read/CAS unavailable | HTTP 503/Retry-After 30, admission_evidence_hold; no invocation. |
+| `RegistryCapacityHold` | D8 scope/shard/quota capacity | HTTP 503/Retry-After 30, registry_capacity_hold; bootstrap discovery and exact freed-slot/readback exit. |
+| `CommandStatusExpired` | D5 live authenticated tombstone | HTTP 410, https://hexalith.io/problems/command-status-expired; no fallback. After exact deletion later reuse is legal. |
+| `ActivationInventoryCapacityHold` | D5 944+ routes | Domain readiness hold, full_replay_inventory_capacity; complete ≤943-route catalog/inventory required. |
+| `AppendPreparationLimit` | D6 precommit batch/queue/storage refusal | Preappend ingress refusal with no event append; unchanged admitted owner/registry retained until authenticated no-commit cleanup. |
 
 ## 9. Consumer and cancellation matrix
 
@@ -1393,7 +1701,7 @@ Retain §8 named-index bounds: 512-byte logical key, 4 KiB leaf/progress record,
 | Named-projection batch visibility | Shared keys select one route/key-space committed generation root with checked per-source progress; aggregate-only pointers cannot publish them. The complete sparse Merkle row set, source progress, logical concurrency and TTL are verified under the fence, including a final authoritative-UTC expiry check after value readback. Partial shadow rows, failed/ambiguous root CAS or a reader seeing the prior root select only last-good unexpired values; at or after authenticated expiry, `ReadModelExpiryPending`/`ProjectionStateUnproven` holds until a scoped tombstone is certified. Bounded query overflow returns `ReadModelQueryLimit` without partial values. |
 | Named read capability or key-space migration | Forged, expired, copied-principal or revoked authority returns `ReadModelAccessDenied` before key/root lookup. Overlapping unmigrated legacy physical keys return `KeySpaceMigrationHold` before guard activation; neither path exposes a partial row set or hidden-key existence. |
 | Batch delete readback | Require absent-state readback and durable delete receipt/version under the same fence; absence alone or a present deleted row never advances checkpoint. |
-| Legacy ingress or unknown binary consumer | Queued flat JSON resolves the authenticated publication revision and **complete addressed logical route set**, then durably commits/reads back the batch handoff manifest, every route record, one exact shared binary pin and send intent, and acknowledges the old message only after broker acceptance and every route's terminal decision (C4); partial/ambiguous work remains unacknowledged and reconciles by operation ID. Redelivery compares MessageId/source/full route set/pin; a difference is `LegacyHandoffConflict` with no second effect. Binary publishing remains fenced until every component/topic subscriber proves carrier and duplicate-safe capability. |
+| Legacy ingress or unknown binary consumer | Queued flat JSON resolves the authenticated publication revision and **complete addressed logical route set**, then durably commits/reads back the batch handoff manifest, every route record, one exact shared binary pin and send intent, and acknowledges the physical old copy after D7 exact retained custody, keeping every logical obligation open, or after broker acceptance and every route's terminal decision (C4); partial/ambiguous work remains unacknowledged and reconciles by operation ID. Redelivery compares MessageId/source/full route set/pin; a difference is `LegacyHandoffConflict` with no second effect. Binary publishing remains fenced until every component/topic subscriber proves carrier and duplicate-safe capability. |
 | Binary or `data_base64` dead-letter capture | Extract replay-safe identity only after attestation and pinned transport/body/header verification. Capture the admitted body durably with exact hash and actor index readback before HTTP 200; failure returns retryable non-2xx, and malformed identity is safe unidentified evidence, never an identified replay. Valid bytes above the old 1 MiB default are not acknowledged without retention. |
 | Verified effect context or dependency route | Both new effect calls receive the additive verified wrapper around the unchanged public `EventStoreDomainEventContext`, with a signed non-null global position where required; mismatched wrapper/legacy members or an effect-capable DI dependency outside the selected write session/exact-key provider holds before invocation or ack. |
 | Hopped handler view or production receipt missing | A projection/subscription hop requires verified `VerifiedEffectiveEventView`, a discoverable registered current-type handler and its §5 capability row; `HandlerCapabilityMismatch` blocks handler/effect/checkpoint or ack. A production route without registered `AtomicStore` or `ProviderIdempotency` and queryable receipt returns `HandlerCapabilityHold` before effect or marker. |
@@ -1470,9 +1778,9 @@ Before any reader cutover, inventory each provider's retained V1 aliases, raw/me
 Cutover audits the §4 origin branch for **every valid** V1 event key. Valid historical rows need the independently signed manifest, reviewed docket, source evidence and version-2 digest sidecar; upgraded new V1 appends need their exact actor-save certificate and same-save event/sidecar/result readback. A raw-corrupt item uses only its separate cutover disposition and remains a replay stop. Do not demand an offline manifest for a new writer or accept a retained event under a fabricated new-writer branch. Advertise and compare `MigrationAuthorityDigest` beside the active per-domain RegistryFingerprint on every reader/publisher migration capability; a missing/mismatched signer or reviewer trust map, identity policy or retained old key holds mixed-reader activation. Binary publication readiness includes the §7 all-route physical acknowledgement contract, capped membership/external carrier, provider probe and bounded dead-letter capture. Named-projection readiness includes the callable fenced writer, query-token quota, changed-leaf TTL jobs, bounded ordinal archive and per-member committed-bundle proofs. Each provider probe must inspect durable bytes, route receipts, certified roots, old visible state and actor result/outcome records after injected crash and ambiguous CAS boundaries. Any provider unable to supply those exact capabilities holds the affected domain/route; no fixture is evidence that a production provider supports them.
 
 1. **Reader foundation:** registry/manifest/codecs, bounded raw/protection read, shared evolution pipeline, proofs, corpus probes and additive DTOs. Slice 1 **owns an evidence-capable bounded V1 producer** before either an upgraded V1 writer or evolved reader serves: it premeasures legacy raw/readable/result preallocation ceilings, stages the exact raw event, purpose-06 encoding and version-2 StoredDigest sidecars, branch-01 origin, acyclic pre-save intent certificate, outbox and immutable domain result in one actor save, reads back those staged bytes, then obtains and verifies the separate **post-save** purpose-11 provider receipt under the committed generation. No V1 append is enabled until same-save, bounded-readback, receipt/key and provider capability probes pass. Retained valid V1 receives branch-02 independently reviewed offline manifest/docket/digest evidence before reader cutover; a retained raw-corrupt item may close inventory only through the §4 RawCorruptDisposition and remains unreadable. Fence or upgrade every live V1 appender; V1 admission remains active only for measured bounded evidence-writing producers after this gate. An unready reader binary stays dormant while old readers serve. Slice 1 also carries the additive contracts of §10.3 and activates no §10.2 change. Its producer writes A5 evidence under legacy admission; evidence-required admission activates only at slice 4 ([I-41]).
-2. **Writer and transport dry run:** bounded mode-selected V1/V2 writer, raw publisher/ingress, exact pin/protection output, preparation capsules, atomic batch-root reservation, verification of Slice 1 stored-digest/origin/certificate evidence, explicit state-backend identity and provider probes. No V2 writes yet. No §10.2 change activates in slice 2.
-3. **Consumer integration:** command pages/replay, projections/rebuild/checkpoints, subscription effects/markers with verified context and audited effect-dependency graph, named-projection versioned read-model visibility, Admin/trace and all bypass reads through shared route with durable validation. Consumer code may deploy, but production subscriber activation that requires global committed reservations remains fenced until slice 4's complete historical ID backfill and marker reconciliation. Its production activation for a domain also requires the slice-3 rows of §10.2 (BC-01, BC-01a–BC-01i, BC-01k, BC-02, BC-04, BC-05, BC-07, BC-08, BC-09, BC-10, BC-13 and BC-14), the [I-06] long-stream inventory and activation record and the BC-08 capture capacity ([I-41]). Slice 3 also activates the [I-37] hold inventory and the [I-45] and [I-46] publication-resume operation, together with BC-02.
-4. **Migration and final gate:** backfill IDs/markers/obligations and **reverify previously installed encoding sidecars** (never first install evidence required by an active slice-1 reader), block on every distinct-event historical MessageId collision until separately approved offline resolution, drain or reconcile old publications and queued legacy JSON, verify cross-instance backend and durable reservation/pin capacity, all serving domain peers' approved registry/trust/handler capability, production state-backend identity and transitive dependency closure, command-state proof and snapshot lookup paths, shared checkpoint fence, **every subscribed consumer's binary-carrier and duplicate-safety lease under a fenced authoritative membership revision**, one global pinned send per shared topic, registered production effect receipts, rollback reader-capability fences, corpus reachability and provider portability vectors; **only then** enable V2 writes. Before V2 writes or binary cutover it also requires the slice-4 rows of §10.2 (BC-01j, BC-03, BC-06, BC-11 and BC-12) and the SemVer-major release carrying all of §10.2, with its API and wire baselines and package-only consumer checks passing ([I-41]). Slice 4 is also where a domain enables evidence-required admission ([I-12], [I-14]).
+2. **Writer and transport dry run:** bounded mode-selected V1/V2 writer, raw publisher/ingress, exact pin/protection output, preparation capsules, atomic batch-root reservation, verification of Slice 1 stored-digest/origin/certificate evidence, explicit state-backend identity and provider probes. No V2 writes yet. D9 slice 2 first installs the qualified metadata ledger/shared transactions, registry/onboarding/epoch and all owner/bootstrap charges before any hold producer; then legacy claims and pinned H begin (BC-15). Destination/policy capabilities are stored; V2 remains dormant.
+3. **Consumer integration:** command pages/replay, projections/rebuild/checkpoints, subscription effects/markers with verified context and audited effect-dependency graph, named-projection versioned read-model visibility, Admin/trace and all bypass reads through shared route with durable validation. Consumer code may deploy, but production subscriber activation that requires global committed reservations remains fenced until slice 4's complete historical ID backfill and marker reconciliation. Its production activation for a domain also requires the slice-3 rows of §10.2 (BC-02, BC-04, BC-05, BC-13 and BC-14), D5 long-stream inventory/activation and existing reader/capture capability prerequisites. Preparation and qualification of D7 capture in slice 3 grant no captured physical handoff/redrive activation; BC-07/BC-08 replaced D7 behavior waits for slice 4 ([I-41]). Slice 3 activates D5 replay inventory, D3 tenant resume safety route/BC-02 denial, capsule-before-cleanup and exclusive legacy recovery. Wait H and authenticate fenced cutover before slice 4. D8 registry prerequisites already exist from slice 2.
+4. **Migration and final gate:** backfill IDs/markers/obligations and **reverify previously installed encoding sidecars** (never first install evidence required by an active slice-1 reader), block on every distinct-event historical MessageId collision until separately approved offline resolution, drain or reconcile old publications and queued legacy JSON, verify cross-instance backend and durable reservation/pin capacity, all serving domain peers' approved registry/trust/handler capability, production state-backend identity and transitive dependency closure, command-state proof and snapshot lookup paths, shared checkpoint fence, **every subscribed consumer's binary-carrier and duplicate-safety lease under a fenced authoritative membership revision**, one global pinned send per shared topic, registered production effect receipts, rollback reader-capability fences, corpus reachability and provider portability vectors; **only then** enable V2 writes. Before V2 writes or binary cutover it also requires the slice-4 rows of §10.2 (BC-01 and BC-01a–BC-01k, BC-03, BC-06–BC-12 and BC-16), including D4 authoritative status and D7 captured physical handoff/redrive and the SemVer-major release carrying all of §10.2, with its API and wire baselines and package-only consumer checks passing ([I-41]). Slice 4 is also where a domain enables evidence-required admission ([I-12], [I-14]).
 
 Mixed-version rollback keeps V1 aliases/readers and old verifier keys while V2 persisted history, queues, pins or rollback targets need them; never emit V1 from a V2 current payload without proven F. Once **any** V2 event is persisted for a domain, every serving command, replay, projection, rebuild and subscription endpoint in both forward deployment and rollback MUST advertise and prove the minimum V2 read/evolution capability covering **all retained source versions** before receiving work. The gateway fences V1-only endpoints from those routes at the membership/load-balancer boundary; if no capable endpoint remains, commands and deliveries hold with `RollbackReaderCapabilityHold` before Apply/effect rather than being routed to a V1-only binary. Returning the writer mode to V1 does not downgrade immutable V2 history. Rollback drills include an old endpoint joining after first V2 append and a previously serving endpoint losing its capability; both are fenced before work can reach them. Advancing current payload version re-runs retained-source ≤16-hop proof. Adding a trust key fences affected-domain V2 writing, installs dual trust/verifier readiness first, attests one matching new RegistryFingerprint, then resumes signing/writes; old obligations remain verifiable under exact prior fingerprint and key interval. Changed `EventTransformHash` or route `HandlerCompatibilityHash` invalidates state witness and forces full replay/rebuild; trust-only change can re-attest a verified checkpoint without state mutation. Provider portability evidence includes exact-byte save/readback, raw ingress/send, bounded protection input/output, CAS/global reservation, effect idempotency and checkpoint fence under at least the configured production provider and a second independent provider or conforming harness.
 
@@ -1491,7 +1799,7 @@ The ten-item B activation handoff is one simultaneous activation checklist:
 | 5. Retention/rollback | Keep source, purpose-01/02/06/10/11/12 event keys, purpose-13 historical broker-grant/renewal keys and complete CAS heads/trust intervals, purpose-14 catalog-filter, purpose-15 member-nonadmissibility, purpose-1b physical capture-scope, purpose-1c send-parent keys, purpose-20/21/22/23 attempt/result/attempt-head/member-head authorities, purpose-24 pre-send admission, purpose-25/26 drain head/absence, purpose-27 capture-closure, purpose-28 physical-filter delivery identity, purpose-29 terminal-proposal closure, purpose-2a first-send membership outcome, purpose-2b canonical physical-object mapping and purpose-2c retained-object extension authorities, purpose-2d operator-action authority ([I-05]), purpose-1d pre-send and purpose-1f no-attempt ledger keys/trust intervals, accepted-revision catalog predicate/input and transform bytes, old approved fingerprints, migration authority/decoder, backend evidence, pins, route decisions/reservation owner-fence histories/reconciliation proofs/receipts, broker-owned full-byte references or AD-31-only tagged references, canonical alias/proof mapping chains, cross-kind identity attachments and the one complete shared addressed/unidentified obligation fence with every version link, signed capture scopes, terminal proposals/pointers/closure CAS receipts, eight-tag source records with declared Auth bytes, segments/pre-send and zero-attempt proofs and response records through event/queue/retry/backup/rollback obligations. No capable endpoint → `RollbackReaderCapabilityHold`. |
 | 6. Fold/query catalog | Activate B7 `5a` fold-mode and `5b` query catalog rows with pinned deployment capability. Read/Apply/handler semantic change needs authenticated rebuild; F-only write change refreshes transient proof without semantic invalidation. |
 | 7. Cache classification | Atomically activate versioned-cache classification and quarantine old entries; no stale cache claims current query or route state. |
-| 8. Storage ceilings | Pin B6 1 GiB **per-operation** quota and one **deployment** replay-storage ceiling across replicas, replay and B9 exports; ambiguous deletion retains charge. Named 64 GiB retained state has its own shared cap. Pin C1's per-tenant and deployment **publication-retention** ceilings (exact byte counts, `1 GiB ≤ tenant ≤ deployment`, per-object overhead `o`) over global pins, legacy side records and fenced retained objects; each global pin is charged at its exact size at the pin CAS before any send, and each side record or retained object before its write or attach; a full counter is `PublicationPinCapacityHold`. At a pin CAS the events stay stored but no pin or A8 revision zero exists, so the POST reply and status inspection return A8's `CommandOutcomeHold`. These two levels are discovered after commit and supersede A8's no-post-commit-discovery rule for those levels only; command admission accepts no backpressure from them. |
+| 8. Storage ceilings | B6 retains its 1 GiB per-operation and shared deployment replay-storage ceilings and separate 64 GiB named-state cap. D1/D6 govern qualified whole-batch pin/charge/counter reservation before append, fixed bootstrap precharges and all eight 100 MiB queue envelopes; separate pin/object install requires exact reservation-bound readback. D6 tenant/capture-scope and deployment readiness, original charges and once-only authenticated deletion/refund apply. Existing committed waiting work remains PublicationPinCapacityHold without a pin/send/revision zero, under D4 status precedence; no un-precharged post-commit exception admits new work. |
 | 9. Final visibility | Replay, timeline, query, export and named projection rows are visible only through authenticated final pointer/complete proof; partial generations authorize no subscription/command/publication status. |
 | 10. Admin timeline | Disclose B9 behavior: target above 1,000 events/64 MiB cumulative timeline state or absent qualified protection returns `TimelineLimit`/`TimelineProtectionHold`, without partial timeline. |
 
@@ -1503,39 +1811,41 @@ Cancellation before preparation CAS leaves zero mutation. After durable preparat
 
 ### 10.1 Slice gates for the breaking changes
 
-[I-41] The §10.2 rows gate the slices as their last column states. Slice 3 may deploy consumer code, but its production activation for a domain also requires every slice-3 row amended, the [I-06] inventory and activation record complete, and the capture capacity of BC-08 configured. Evidence-required admission (A8 scope records, response preparation, first pins, outcome revisions, `CommandOutcomeHold` and the C5 retry policy) activates for a domain only when that domain enables the evolved writer at the slice-4 gate ([I-12], [I-14]). Before that every execution is a legacy execution, so the slice-1 producer's A5 evidence never raises BC-09 or BC-10; their documentation is amended in slice 3, and their behavior first becomes observable in slice 4. Slice 4 enables V2 writes and the binary carrier for a domain only after the slice-4 rows are satisfied and the SemVer-major release carrying all of §10.2 has passed its API and wire baselines and package-only consumer checks. No slice ships a §10.2 change under a minor or patch version. Releases are cut only by a manual dispatch of `.github/workflows/release.yml`, and semantic-release derives the version from the Conventional Commits since the last tag (`.releaserc.json`), so Story 6.6 enforces that rule three ways. (1) *Dormant code.* Every §10.2 behavior lands behind its per-domain activation gate, inactive by default, so a release cut from any intermediate commit changes no §10.2 behavior. (2) *Footer.* Every commit that adds §10.2 behavior or amends a §10.2 surface carries a `BREAKING CHANGE:` footer naming its rows, so any release that contains it is computed as a major version. (3) *Release hold.* The Release workflow is not dispatched while `main` contains such a commit but not the complete §10.2 set; O-19 makes the release preflight enforce this.
+[I-41] **Ordered activation and release.** D9 fixes the four slices: slice 1 activates no incompatible behavior; slice 2 provider-qualified metadata/registry/epoch/charge prerequisites precede legacy claims and BC-15; slice 3 activates replay inventory, BC-02 safety route/capsules and the slice-3 consumer changes; slice 4 waits H/cutover before evidence-required scopes/status, whole-batch pins/queue/windows, membership restoration and captured physical handoff/redrive. BC-09/BC-10/BC-16 activate slice 4. Readers understand exact schemas before writers; incompatible old readers are fenced. D-RELEASE permits compatible maintenance/security publication through the existing current-main manual workflow when API, wire, package-only consumer and focused inactive-path evidence prove compatibility. Dormant compatible preparation alone is not a shipped breaking change. Genuine breaking commits remain honestly classified under repository commit policy and require SemVer-major. Retain the publication hold whenever compatibility is unproven or incomplete breaking changes reached main; expose the complete approved incompatible set only in the major release. No maintenance lane, version override or CI mutation is created by this specification. Every runtime activation still requires §12 and the separate AD-26 profile/provider gates.
 
 ### 10.2 NFR12 breaking-change proposal
 
 [I-42] This proposal is the approved breaking-change path that NFR12 requires. The §12 receipt that approves this document approves this proposal with it. Story 6.6 ships as a SemVer-major release of the EventStore packages and hosts. The complete list of incompatible changes follows; nothing in it is deferred to Story 6.6, which implements it exactly. Every other public, wire or storage change in this document is classified in §10.3. The owner decision of 2026-09-29 (D-NFR12) fixes BC-01, BC-04 and BC-05; the other rows were found while integrating or in the first review of the integrated version, and are classified here so that no incompatible change ships unclassified.
 
-| ID | Surface and old contract (at `ccb4faf0`) | New contract | Migration path | Slice |
+| ID | Surface and old contract (at `cbbe4150`) | New contract | Migration path | Slice |
 | --- | --- | --- | --- | --- |
-| BC-01 | Publication retry exhaustion. The exhausted record is status `PublishFailed`/6 with `Retryable=false` (`AggregateActor.cs:2972`), and every shipped surface defines `Retryable=false` and `PublishFailed` as terminal. | C5 `PublicationRetryExhaustedHold` projects nonterminal `EventsStored`/2 with `Retryable=false`, `RecoveryReasonCode=publication_retry_exhausted_hold`, null `FailureReason` and the committed result's `AggregateId`, `EventCount`, `RejectionEventType`, `TimeoutDuration` and `DrainAttemptCount`. `Status` alone carries terminality. While it waits for an operator the hold carries `Retry-After: 60` ([I-15]), and the [I-14] drain-limit hold has the same shape with `RecoveryReasonCode=publication_drain_limit_hold`. | Clients read terminality from `Status` (or `IsTerminal()`), never from `Retryable`, and keep polling `EventsStored`; operators find held commands in the [I-37] inventory and resume them with the [I-45] operation. External HTTP pollers cannot be fenced, so no client fence is claimed, and the hold itself authorizes no resend, new send ID or replay. Surfaces amended in BC-01a–BC-01k. | 3 |
-| BC-01a | `CommandStatusRecord` XML docs: class summary (`CommandStatusRecord.cs:4-5`, non-terminal states have null terminal-specific fields); `EventCount` (`:10`, Completed status only); `TimeoutDuration` (`:13`, TimedOut status only); `Retryable` (`:16-23`, `false` is terminal). | Summary: `Status` alone defines terminality, and a nonterminal publication hold or retry wait ([I-10]) may carry `Retryable`, `RecoveryReasonCode` and every value copied from the committed result. `EventCount`/`TimeoutDuration`: set on `Completed`/`TimedOut` and also on the publication hold. `Retryable=false`: no automatic publication attempt is armed; it is terminal only when `Status` is terminal. | Documentation of the same record; no member added or removed. | 3 |
-| BC-01b | `docs/operations/drain-failure-reason-codes.md`: retryability table (`:27`, `false` terminal) and reason-code table without the two new codes. | `false` means no automatic attempt is armed; add rows `publication_retry_exhausted_hold` and `publication_drain_limit_hold` (nonterminal, operator-held, see the hold inventory and the [I-45] resume), `publication_retry_pending` (nonterminal, a retry is armed) and `publication_terminal_failed` (terminal `PublishFailed` with C5 proof); mark `drain_publish_failed` and `drain_attempts_exhausted` as legacy-record values. | Operators use the new rows; legacy records keep their codes. | 3 |
-| BC-01c | `CommandStatusController` OpenAPI remarks (`:37-46`): `PublishFailed` = "failed after retry exhaustion" (terminal), `EventsStored` in-flight. | `PublishFailed` = C5-proven permanent publication failure; `EventsStored` may be a publication hold with `Retryable=false` and a recovery reason; `CommandOutcomeHold` 503 listed. | Regenerated OpenAPI. | 3 |
-| BC-01d | `CommandStatus.PublishFailed` XML doc (`CommandStatus.cs:29`: "events stored but pub/sub permanently failed"). | Terminal only with C5 terminal proof; recoverable failures and retry exhaustion stay `EventsStored`. Enum value 6 unchanged. | Documentation only; binary-compatible. | 3 |
-| BC-01e | `docs/reference/command-api.md` response-field table (`:311-317`), status lifecycle (`:354-365`) and status table with terminal and replayable lists (`:439-454`). | Add `retryable`, `recoveryReasonCode`, `drainAttemptCount` rows; `eventCount`, `rejectionEventType`, `timeoutDuration` also appear on the publication hold; `PublishFailed` needs C5 proof and is no longer replayable (BC-02); document the 503 hold (BC-09). | Documentation. | 3 |
-| BC-01f | `docs/concepts/command-lifecycle.md` (`:195-203`, `:251`): a publish failure reaches `PublishFailed`, and a drain retries it. | A publish failure stays `EventsStored` while attempts continue or are held; `PublishFailed` only with C5 terminal proof. | Documentation. | 3 |
-| BC-01g | Generated `docs/reference/api` pages for `CommandStatus` and `CommandStatusRecord`. | Regenerated from BC-01a and BC-01d. | Documentation. | 3 |
-| BC-01h | `docs/brownfield/integration-architecture.md:121`, `docs/brownfield/deployment-guide.md:107`, `docs/guides/dapr-component-reference.md:834` and the `src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml:36` comment: pub/sub failure drives the actor into `PublishFailed`. | Pub/sub failure is a private publication observation; the status stays `EventsStored` or `CommandOutcomeHold` per [I-10]. | Documentation and comment. | 3 |
-| BC-01i | `docs/brownfield/api-contracts.md:23-24`: terminal and replayable states include `PublishFailed`. | As BC-01e and BC-02. | Documentation. | 3 |
+| BC-01 | Publication retry exhaustion. The exhausted record is status `PublishFailed`/6 with `Retryable=false` (`AggregateActor.cs:2972`), and every shipped surface defines `Retryable=false` and `PublishFailed` as terminal. | C5 `PublicationRetryExhaustedHold` projects nonterminal `EventsStored`/2 with `Retryable=false`, `RecoveryReasonCode=publication_retry_exhausted_hold`, null `FailureReason` and the committed result's `AggregateId`, `EventCount`, `RejectionEventType`, `TimeoutDuration` and `DrainAttemptCount`. `Status` alone carries terminality. While it waits for an operator the hold carries `Retry-After: 60` ([I-15]), and the [I-14] drain-limit hold has the same shape with `RecoveryReasonCode=publication_drain_limit_hold`. | Clients read terminality from `Status` (or `IsTerminal()`), never from `Retryable`, and keep polling `EventsStored`; operators find held commands in the [I-37] inventory and resume them with the [I-45] operation. External HTTP pollers cannot be fenced, so no client fence is claimed, and the hold itself authorizes no resend, new send ID or replay. Surfaces amended in BC-01a–BC-01k. | 4 |
+| BC-01a | `CommandStatusRecord` XML docs: class summary (`CommandStatusRecord.cs:4-5`, non-terminal states have null terminal-specific fields); `EventCount` (`:10`, Completed status only); `TimeoutDuration` (`:13`, TimedOut status only); `Retryable` (`:16-23`, `false` is terminal). | Summary: `Status` alone defines terminality, and a nonterminal publication hold or retry wait ([I-10]) may carry `Retryable`, `RecoveryReasonCode` and every value copied from the committed result. `EventCount`/`TimeoutDuration`: set on `Completed`/`TimedOut` and also on the publication hold. `Retryable=false`: no automatic publication attempt is armed; it is terminal only when `Status` is terminal. | Documentation of the same record; no member added or removed. | 4 |
+| BC-01b | `docs/operations/drain-failure-reason-codes.md`: retryability table (`:27`, `false` terminal) and reason-code table without the two new codes. | `false` means no automatic attempt is armed; add rows `publication_retry_exhausted_hold` and `publication_drain_limit_hold` (nonterminal, operator-held, see the hold inventory and the [I-45] resume), `publication_retry_pending` (nonterminal, a retry is armed) and `publication_terminal_failed` (terminal `PublishFailed` with C5 proof); mark `drain_publish_failed` and `drain_attempts_exhausted` as legacy-record values. | Operators use the new rows; legacy records keep their codes. | 4 |
+| BC-01c | `CommandStatusController` OpenAPI remarks (`:37-46`): `PublishFailed` = "failed after retry exhaustion" (terminal), `EventsStored` in-flight. | `PublishFailed` = C5-proven permanent publication failure; `EventsStored` may be a publication hold with `Retryable=false` and a recovery reason; `CommandOutcomeHold` 503 listed. | Regenerated OpenAPI. | 4 |
+| BC-01d | `CommandStatus.PublishFailed` XML doc (`CommandStatus.cs:29`: "events stored but pub/sub permanently failed"). | Terminal only with C5 terminal proof; recoverable failures and retry exhaustion stay `EventsStored`. Enum value 6 unchanged. | Documentation only; binary-compatible. | 4 |
+| BC-01e | `docs/reference/command-api.md` response-field table (`:311-317`), status lifecycle (`:354-365`) and status table with terminal and replayable lists (`:439-454`). | Add `retryable`, `recoveryReasonCode`, `drainAttemptCount` rows; `eventCount`, `rejectionEventType`, `timeoutDuration` also appear on the publication hold; `PublishFailed` needs C5 proof and is no longer replayable (BC-02); document the 503 hold (BC-09). | Documentation. | 4 |
+| BC-01f | `docs/concepts/command-lifecycle.md` (`:195-203`, `:251`): a publish failure reaches `PublishFailed`, and a drain retries it. | A publish failure stays `EventsStored` while attempts continue or are held; `PublishFailed` only with C5 terminal proof. | Documentation. | 4 |
+| BC-01g | Generated `docs/reference/api` pages for `CommandStatus` and `CommandStatusRecord`. | Regenerated from BC-01a and BC-01d. | Documentation. | 4 |
+| BC-01h | `docs/brownfield/integration-architecture.md:121`, `docs/brownfield/deployment-guide.md:107`, `docs/guides/dapr-component-reference.md:834` and the `src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml:36` comment: pub/sub failure drives the actor into `PublishFailed`. | Pub/sub failure is a private publication observation; the status stays `EventsStored` or `CommandOutcomeHold` per [I-10]. | Documentation and comment. | 4 |
+| BC-01i | `docs/brownfield/api-contracts.md:23-24`: terminal and replayable states include `PublishFailed`. | As BC-01e and BC-02. | Documentation. | 4 |
 | BC-01j | `DeadLetterMessage.cs:130` (`FailureStage = PublishFailed`), written when drain exhaustion dead-letters. | Not produced for evolved-writer operations, whose exhaustion is the hold; still produced for legacy drain records. | None for legacy consumers; new operations surface through the hold inventory. | 4 |
-| BC-01k | Admin command-activity surfaces: `DaprHealthQueryService.IsFailedCommand` (`:374-375`) counts only `PublishFailed` and `TimedOut` toward `ErrorPercentage`; the `failed` and `processing` status filters of `CommandStatusFilterHelper` (`:21-27`) and `DaprStreamQueryService` (`:535-541`) select `PublishFailed`/`TimedOut` and the in-flight statuses including `EventsStored`; `CommandSummary` carries no recovery reason. | `CommandSummary` gains the additive nullable `RecoveryReasonCode`. A publication hold (`EventsStored` with `publication_retry_exhausted_hold` or `publication_drain_limit_hold`) counts as failed in `ErrorPercentage` and is selected by `failed`, not `processing`, which keeps today's meaning, under which the same exhaustion was `PublishFailed`. | Admin dashboards and saved filters keep their meaning; callers of the Admin query API see held commands under `failed`. | 3 |
+| BC-01k | DaprHealthQueryService:375 counts PublishFailed/TimedOut; CommandStatusFilterHelper:23–36 and DaprStreamQueryService:535–548 processing = Received/Processing/EventsStored/EventsPublished, failed = PublishFailed/TimedOut; exact enum parsing selects only its exact value. | D4 authoritative list-time join adds nullable RecoveryReasonCode. Named failed includes the two EventsStored publication holds; processing excludes them. Exact EventsStored still includes all EventsStored values including holds; exact PublishFailed and all other enums select only their authoritative exact value, never alias named failed. ErrorPercentage includes publication holds. | Authenticate status/control at read time; unavailable authority is per-item evidence incident, never stale submission success. | 4 |
 | BC-02 | `ReplayController`: `PublishFailed` is replayable and resubmits the archived command with a new correlation and MessageId. | C5 replay-safety gate: HTTP 409 with `ReplayPublicationConflict` for every committed `PublishFailed`, including legacy status-6 records without complete proof. | No fresh-command replay of a committed batch. A held publication, or a legacy status-6 record reconciled under [I-46], is recovered by the operator publication-resume operation ([I-45]), which re-arms publication of the same committed events under the same MessageIds and never re-executes the command; a C5-terminal `PublishFailed` has no resume and needs a new command. | 3 |
 | BC-03 | Five shipped writers set `PublishFailed` on first failure, drain retry and resumed pipeline, with a computed `Retryable` (§1 drift record). | [I-14]: no status 6 for evidence-required executions except through C5; a failed attempt awaiting an admitted retry projects `EventsStored` with `Retryable=true` and `RecoveryReasonCode=publication_retry_pending` ([I-10] (4c)), and missing evidence is `CommandOutcomeHold`. | Pollers keep polling `EventsStored` and treat 503 as retry-later (BC-09); legacy records are unchanged. | 4 |
 | BC-04 | Admin timeline routes blame, bisect, step and diff (`AdminStreamQueryController.cs:155`, `:364`, `:515`, `:818`) replay every event with `includeTimeline: true` whatever the count. | Target above 1,000 events or 64 MiB cumulative timeline state: `TimelineLimit`. No qualified timeline protection provider: `TimelineProtectionHold`. No partial timeline (B4c, B9). | Use the state-only `state` route or a target within the bound; durable timelines return once a qualified authenticated-encryption provider is registered. | 3 |
 | BC-05 | Projection full replay reads `GetEventsAsync(0)` without a bound (`ProjectionUpdateOrchestrator.UpdateProjectionAsync`). | A full-replay route whose stream exceeds the legacy complete array (at most 32,768 events at 8,192 bytes per event) holds with `LegacyArrayLimit` ([I-06]). | Register a `5a` incremental capability with B7a intake, or accept the named hold, before the domain activates. | 3 |
 | BC-06 | Publication wire: generic DAPR object publication of flat JSON CloudEvents. | Per domain, component and topic after cutover: binary `application/vnd.hexalith.eventstore.v2+octet-stream` or structured `data_base64`, with `hyevattestation` and the six `hx-*` routing headers (§7, C1). | Reader-first: every subscriber proves binary decoding, lease and V3 probe under current membership (C2, C6); queued JSON migrates by C4; JSON ingress stays until drained. | 4 |
-| BC-07 | `MapEventStoreDomainEvents` returns 200 for invalid and no-handler skips. | Non-2xx (retry) for no handler, invalid, unavailable or held; 2xx only after every addressed route has a durable terminal decision (C3). | Register verified handlers with receipts, or declare a signed physical filter for an intentionally unhandled route. | 3 |
-| BC-08 | Dead-letter capture acknowledges oversize, conflicting or unretainable bodies with 200 under a 1 MiB default. | 2xx only after exact durable capture and readback, up to the C4 bounds; otherwise retryable non-2xx ([I-36]). | Configure capture storage capacity before activation, and configure every addressed subscription by [I-36] (1), with the dead-letter topic's own subscription redelivering without a finite budget. | 3 |
-| BC-09 | Command POST and status answer committed commands without an evidence hold. | `CommandOutcomeHold` 503 wire form ([I-16]) on both routes, and the pre-invocation `ScopeRetentionCapacityHold` 503 on POST ([I-12]); observable from slice 4 ([I-41]). | Clients retry after `Retry-After`; an exact POST retry is idempotent. | 3 |
-| BC-10 | One execution MessageId may be reused in different aggregates of one tenant as independent commands. | Same-tenant cross-scope reuse is `CommandIdentityConflict` (A8); retired IDs stay consumed ([I-12]), also for legacy-mode domains of a tenant once one of its domains admits evidence-required commands; observable from slice 4 ([I-41]). | Clients mint a new ULID per command. | 3 |
+| BC-07 | `MapEventStoreDomainEvents` returns 200 for invalid and no-handler skips. | Non-2xx (retry) for no handler, invalid, unavailable or held; 2xx after every addressed route has a durable terminal decision (C3), or D7 exact captured physical custody; logical obligations remain open after custody. | Register verified handlers with receipts, or declare a signed physical filter for an intentionally unhandled route. | 4 |
+| BC-08 | Dead-letter capture acknowledges oversize, conflicting or unretainable bodies with 200 under a 1 MiB default. | 2xx only after exact durable capture and readback, up to the C4 bounds; otherwise retryable non-2xx ([I-36]). | Configure capture storage capacity before activation, and configure every addressed subscription by [I-36] (1), with the dead-letter subscription using D7 direct capture, never another dead-letter cycle. | 4 |
+| BC-09 | Command POST and status answer committed commands without an evidence hold. | `CommandOutcomeHold` 503 wire form ([I-16]) on both routes, and the pre-invocation `ScopeRetentionCapacityHold` 503 on POST ([I-12]); observable from slice 4 ([I-41]). | Clients retry after `Retry-After`; an exact POST retry is idempotent. | 4 |
+| BC-10 | One execution MessageId may be reused in different aggregates of one tenant as independent commands. | Same-tenant cross-scope reuse is `CommandIdentityConflict` (A8); retained IDs conflict through D5 obligations/tombstone horizon; after authenticated deletion reuse is legal (BC-16), also for legacy-mode domains of a tenant once one of its domains admits evidence-required commands; observable from slice 4 ([I-41]). | Clients mint a new ULID per command. | 4 |
 | BC-11 | Stored `EventTypeName`, replay `FailedEventType` and timeline `EventTypeName` carry CLR aliases for every event. | For V2 events these existing fields carry the canonical kebab-case type, with the alias only in the new stored-provenance fields (§2). | Consumers route on `eventContractType` and `payloadVersion`; V1 history keeps its values. Activated per domain only when V2 writes start. | 4 |
 | BC-12 | Any endpoint may serve a domain whatever its read capability. | Once V2 history exists, V1-only command, replay, projection and subscription endpoints are fenced (`RollbackReaderCapabilityHold`), in forward and rollback deployments. | Upgrade every serving endpoint before V2 writes; rollback targets must carry V2 read capability. | 4 |
 | BC-13 | Admin sandbox (`POST .../sandbox`, `AdminStreamQueryController.cs:1001`) invokes any domain's `Handle` through DAPR. | B2a: a route without a side-effect-free diagnostic adapter returns the existing `SandboxResult` with `Outcome=error` and `SandboxCapabilityHold`, with no invocation. | Register the diagnostic adapter for every domain that needs sandbox runs. | 3 |
 | BC-14 | Admin stream export (`DaprBackupCommandService.cs:140-141`) returns the latest `MaxStreamExportEvents` events with `Truncated=true`, whatever their encoded size. | An export whose stream exceeds the configured count ceiling (fenced to the validated page and legacy-array budgets) or whose encoded JSON or CloudEvents content exceeds 64 MiB returns `ExportLimit` with no artifact (§3, §8); a truncated partial export is no longer produced. | Export streams within both bounds; callers that consumed `Truncated=true` partial exports handle `ExportLimit`. | 3 |
+| BC-15 | Legacy admission could proceed when no shared scope claim was available. | D5 slice-2 read/CAS claim outage or eight CAS losses returns admission_evidence_hold HTTP 503 before archive/status/invocation. | Qualified scope+shard transaction, continuous H claims and authenticated cutover; clients retry after 30 seconds. | 2 |
+| BC-16 | Status could fall back and retained command identity horizon was implicit. | D5 authenticated live tombstone returns HTTP 410 command-status-expired without fallback; exact late admission is 409 idempotency-expired, changed input conflicts; eventual reuse only after authenticated obligation-free deletion. | Pinned bounded H/tombstone retention, hourly/75% reconciliation and once-only shard refund. | 4 |
 
 Before activation, Story 6.6's compatibility gate verifies every amendment above and repeats the repository search at its own baseline for any other shipped XML doc, OpenAPI remark, docs page or UI text that defines command terminality, `PublishFailed`, replayability or per-status field nullability. The search at `ccb4faf0` found, besides the rows above, `docs/brownfield/architecture.md:152`, `docs/brownfield/data-models.md:38`, `CommandStatusExtensions.IsTerminal` and its generated page, the Admin UI `StatusBadge`, `CommandPipeline`, `Commands` and `CorrelationTraceMap` components, `CorrelationTraceMap.cs` and `AdminTraceQueryController`. Their meaning is unchanged, because `PublishFailed` stays a terminal failure and `EventsStored` stays in flight, so they need no amendment; the Admin error rate and status filters, whose meaning does change, are BC-01k; a surface found later is added to this table by an approved amendment before release, never shipped silently.
 
@@ -1545,9 +1855,9 @@ Before activation, Story 6.6's compatibility gate verifies every amendment above
 
 - **Contracts and SDK types, additive members only.** Nullable metadata and wire members (§2, A2); `ISerializedEventPayload` default members; stored and effective DTO provenance; `VerifiedEffectiveEventView`, `VerifiedEffectiveCommandEvent`, `VerifiedProjectionRequest`, `VerifiedProjectionPriorState`, `VerifiedProjectionPriorKind` and `ProjectionPriorSessionClosedException`; `PagedContext`, `PagedProgress` and `IPagedReplayStateSession` with `AppendTimelineEntry`; `AggregateReconstructionStatus.InProgress = 3`; the [I-39] `ReasonCode` member and `ErrorCategory` values 8–10; `EventStoreDomainEventEnvelope.VerifiedEffectiveEvent`; `VerifiedEventStoreDomainEventContext`; the eight-field `EventEffectKey` and the effect interfaces; `EventRouteCapability`; `NamedProjectionReadScope.ReadCapability`. Existing constructors, deconstruction, members and defaults are unchanged. New enum values are additive only with baseline evidence that old consumers tolerate them; an exhaustive old switch that breaks moves the change to §10.2.
 - **New interfaces and registrations.** `IEventUpcaster`, `IV1Downserializer`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator`, `IReadOnlyPayload`, `IAuthenticatedRawEventSource`, `IEventEvolutionReader`, `IAuthenticatedSnapshotSource`, `IAsyncAggregateReplay`, `IAsyncDomainProcessor`, `IVerifiedDomainProjectionHandler`, `IVerifiedProjectionPriorReadSession`, `INamedProjectionVersionedReadModelStore`, `IVersionedNamedProjectionBatchWriter`, the transactional and provider-idempotent handler interfaces, `IEventEffectReceiptReader` and the `Add…Handler` registration extensions.
-- **New routes and wire members.** `POST /replay-state/pages` with `replayTranscriptSelection`; the `writerMode`/`registryFingerprint` negotiation members; the verified dispatch path of the existing `/project` endpoint; the `reasonCode` Problem Details extension on existing error types; the binary and structured v2 carriers as new content types beside the legacy JSON ingress (their cutover is BC-06); and the Admin routes `POST /api/v1/admin/publications/{tenantId}/{messageId}/resume` ([I-45]), `POST /api/v1/admin/held-deliveries/{tenantId}/{entryKey}/redrive` ([I-36]) and `GET /api/v1/admin/holds/{tenantId}` and `GET /api/v1/admin/holds/deployment` ([I-37]). The new `RecoveryReasonCode` values belong to BC-01b and BC-03, not to this list.
+- **New routes and wire members.** `POST /replay-state/pages` with `replayTranscriptSelection`; the `writerMode`/`registryFingerprint` negotiation members; the verified dispatch path of the existing `/project` endpoint; the `reasonCode` Problem Details extension on existing error types; the binary and structured v2 carriers as new content types beside the legacy JSON ingress (their cutover is BC-06); and the Admin routes `GET /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}/precondition` and `POST /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}` ([I-45]), `POST /api/v1/admin/held-deliveries/tenants/{tenantId}/{entryKey}/redrive` and `POST /api/v1/admin/held-deliveries/deployment/{entryKey}/redrive` ([I-36]) and `GET /api/v1/admin/holds/tenants/{tenantId}` and `GET /api/v1/admin/holds/deployment` ([I-37]). The new `RecoveryReasonCode` values belong to BC-01b and BC-03, not to this list.
 - **Storage.** Every `HX-EV-*` record and key defined in this document adds new keys beside existing state and never rewrites an existing key's bytes; readers are activated before writers, and a reader that cannot read a new record is fenced (C6, BC-12). Legacy markers, outboxes and status rows migrate only by the authenticated CAS rules in §7 and C3.
-- **Operator surfaces.** The hold-inventory actors, index, gauge and Admin view ([I-37]); the publication-resume operation with its audit, window-closure and reconciliation records ([I-45], [I-46]); the held-delivery redrive worker and route ([I-36]); the full-replay activation record and legacy-array warning counter ([I-06]); and signing purpose `2d` with its `OperatorActionAuthorityDigest` trust map ([I-05]). A legacy status-6 resume re-arms the shipped drain and adds no new status transition ([I-46]).
+- **Operator surfaces.** D8 addressed owner registry, single Operations epoch, authoritative inventory gauge and scope-bound Admin paging; D3 publication resume with same execution-control owner, signed audit/window closure and capsule-bound legacy phase; the held-delivery redrive worker and route ([I-36]); the full-replay activation record and legacy-array warning counter ([I-06]); and signing purpose `2d` with its `OperatorActionAuthorityDigest` trust map ([I-05]). A legacy status-6 resume re-arms the shipped drain and adds no new status transition ([I-46]).
 
 ## 11. Verification vectors, rejected alternatives and decision state
 
@@ -2200,11 +2510,86 @@ The child candidates are cited, not copied. Their local models verify themselves
 
 **Historical checks.** These child checks were pinned to the pre-integration version of this document, whose SHA-256 was `bcf6eee0b2d0795fa8a53b6d4e99ae0fd1ea79896acfca9927f5e448042f3d4a` (baseline `ec67e340`), and are historical: the 6.5a Verification evidence that compares this file to `bcf6eee0…` and searches its `UNAPPROVED` receipt; the 6.5b local verification that `sha256sum` of this file equals `bcf6eee0…`; and the second 6.5c Verification block, the documentation-integrity script, which pins this file's pre-integration bytes and `UNAPPROVED` receipt against its recorded baseline and fails by design once this integrated version exists. Where an integration rule changes a value that a child model checks, this document governs and the model value is historical: the capacity arithmetic ([I-26], [I-30]), the terminal `RecoveryReasonCode` ([I-14]), the K06 implicit-V1 case ([I-03]) and the hold's polling interval, which C11h checks as `Retry-After: 1` ([I-15]). The pins in the table above are compared by the §11.6 evidence verifier, which also runs the three model blocks.
 
-[I-47] The 6.5c documentation-integrity script is historical and is not ported to Story 6.6. The integrity of this document is its §12 digest, and the integrity of the child candidates is the SHA-256 pins above, which the §11.6 evidence verifier checks together with the three child models; neither check exempts a path or reads the worktree beyond the files it names. The ledger entries that asked to restrict that script's owner and automation exemptions, to make it fail on untracked files and to confine its path-only bookkeeping set (ledger :5110, :5114 and :5189) therefore have no remaining subject and are closed by this rule, and §11.7 withdraws O-06, O-07 and O-11.
+[I-47] **Boundary verification successor.** The old 6.5c integrity script and old child acceptance pins remain immutable historical evidence, including their current failures. The new current-baseline §11.6 gate audits committed, index, worktree, untracked and root-gitlink state against an explicit allowed set, preserving every child/archive/checkpoint and all outside-scope bytes. O-06/O-07/O-11 remain Story 6.6 obligations for this successor, never exemptions or withdrawn gates.
+
+
+#### Current immutable D import pins
+
+| Path | Exact full committed revision | File SHA-256 |
+| --- | --- | --- |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/RECOVERY-EVIDENCE.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `20a87346239573a86d8bd26ecc3065ea078d70034dc2556ce8a9f6e3d7e3abeb` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `c59d4f2738d391807c3fe9d0534c1d69ae9bddeb8d4904da7b2f04c510576dd1` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-checkpoint.json.gz` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `b207ddaa338b634c74b8d387aff9d833c1670498c46df556d0d0d500eefc6283` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-checks.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `185c126165704dfbeefda7ab4366755949b9ee7747fd6e5a96d9a3c72cc8c45c` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-final-review-input.diff.gz` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `8f662f639d1425ff4ca01ff9fa147a1db4c83e1316e3f17567c0e9a9493b8cb2` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-final-review-input.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `41e38213c5ad03ce1042d10003b935571b9e693e3ca70aef05d50f8fa0bb3284` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-review-input.diff.gz` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `b080ae5ec478fdba103c7d7562b03fe8df4697e5dbe8d796c4c74afa960edbe2` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/correction-review-input.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `243f1ae94adf273e8b5f34468c15bf70318e6d5761688fa099cb08050e3dc80e` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/current-acceptance.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `88e1932b7fa085b2b600b6c5deabe25b14de020f8b93902ff8ee2d8d1ea94941` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/current-mutations.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `dfaa84adbe01202b10b637d63c24e412eefdb2bb8ff6e363e775b20d4b9c0551` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/current-preservation-cases.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `d1710872cc6d7ccd855af8f1af26c676ffaab62192b14adb9a05c6a23ab8c172` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/current-verification.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `8f7e71b14998bde649f1d748ac7fe89f3ec41723c72a30e66320e29d9d9d4e21` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.diff.gz` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `11bc26f334f1c5440cc5d84afa631f31f55fa199c08d9338a2407336e3c0c79c` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `03086d8ab1f24ef039708b2b56505204cce3734ceb531406f5cbe3a859133be1` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/independent-answers.mjs` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `8eed7093e8de65fb72ec11ce6c78377756e0f865617f57e186077620229f5018` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/independent-shared-keys.mjs` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `6103c676c838c4709d563f0c4b7ffffeadc998eb150aeddf16f8d94146be2a90` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/known-answers.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `1772a776d4361038598fa9098e88b036612f079b71ce3f42e4391c953b80c419` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/mutations.py` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `ade8f0cda11be17555e1fe78e80a760a32c52cc440011c613cfd3a15166cf646` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/obligations.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `4e9daf7b760a07b9e1cfa2f97de709d40a3a72322fa10e280f18a59752d5146e` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/parent-acceptance.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `4dc9a95f97bad05b26d24383322f2ae4fcc2e65a4e4d3f17dc605efc08ad62f7` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/pre-correction-checks.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `3fc3f664b6d8a1fed2bd6303850c4296c755d6bba9e48993549bc90e845416ce` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/pre-correction-evidence.tar.gz` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `e8b07ff82c7b9bec7ab1fc7ea1a65d6f9649e4f9a87c8e2230c93bb69a9431bc` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/pre-correction-manifest.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `8d96bc38e3134addfbdbb98398a2befc0c513720dccacb429a4d27a7af26ed97` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/preservation-cases.py` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `3b6ac44150b932bb48db7b7ad9a881923e02a85d0f1654aa9bc0b9b655908fa7` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/previous-candidate.md` | `b51978dd1d2a3721ad239db2623e1560377c7583` | `fb0c7bec739df1752bc4bc47bd8aa223f74f709fbb6e4926d4be1992c8bc6954` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/previous-execution.md` | `b51978dd1d2a3721ad239db2623e1560377c7583` | `a2556eea423ac546aca15e7405f2cf64012a544966fec80464de27e905f87386` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-authority-check.py` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `9b1a12a2c6f541d61267ccb6b8ab973eb00a0d548070dee5dc65edccacdc15a9` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-concurrent-runtime.json` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `d2f460b9e2389ae5024d6742948e16cc1ad843f16e3a0f16eafd7d324cdb7160` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-independent-input.json` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `6fc2185093f4585159457d7f012828f0dc03258ad74b4afe380c5b301528b1b2` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-acceptance.md` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `7198f2c42211eab46c31ac986bb9d4b77dc74c621e5858e4f471087abfb65d76` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-audit.py` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `718f9b88eb32fed24cea6b9186d43d803d7a1a142696916d097c1590d2c1d871` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-protected.py` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `c4dcafd9190054274f4a577dd74610b7c8f78cda366883a4eae7361131ac40d4` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/README.md` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `327c9579d73eb6b1dc106d4498f093f5b44df7ce3557ac0007430e8622273b39` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/bmad-6-5d-simplification-proposal.md` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `cf316be4733ec81d5b838443911e81fd01dfbc9250a449d938bc28fea4a9f1fe` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/manifest.json` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `1ce510c3b90fb7f80db72236ee942ba7088827da2f1674857888da7127134078` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/verify-6-5d-simplified-independent.mjs` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `6e80cb1b3c4aa58806cdd038533631cd8ebd605b43cbdc2f4a308c89b91f1bdf` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/recovery-checkpoint.json.gz` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `056f93c90fb3a7e7cc049793794fa654209083d8ca0b661d6e745ef5510bdc03` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/review-input.diff.gz` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `f7f548e5140f30dccc9ccf89a1adc582233f35342f5093f53e2b9e46456a5aaf` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/review-input.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `71e95b0ecad6679edb99854ec1b71c4d82873a27be750403e6a8dd2592ff39c9` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-blind.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `320b1ef1cc33246d07bd78b091d3fd10a288e39de5fd71fb4618c5662438972d` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-closure.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `70f97f2a6b321538caddd49b06d15ae372d03466a4cd3b44f323a33d067156a2` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-edge.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `0b07262788a24d920229b3809f1bd2d631e0867c0abd53a52d66c9a3ac5e9d64` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-parent-probes.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `7f89651efb3f36f62a27aab243ddc6f05acd647a8d54fb708ca0382879f3c1b6` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-verification.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `6ab720430e48316bd65cef7904323a7162d3276f493a4698e4e727b05ed6b3d5` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/current-focused-regressions.json` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `a9bb91f68c045ed03e5355f8316294a98e816a50438c522112e5af8e1d78c3e7` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `46dee962873cf5d7d281ed96d098606605814bb948bec95c865f5d577df2ab52` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-review.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `bf03ba2103e3befa0fd4d52f47458d09f5ed497694e792fc51b400e87d2b3d64` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/owner-and-cleanup-probes.py` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `f2e0f613203bbf6ecf3f337bd81beadc5de37b9fbf91e9e5bea02a3b1f976ceb` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/pre-fix-probe-output.txt` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `4b099be12809f4bac354a6915fdfa8762d025aa53bf2f9aca58d047e94f29edc` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/reviews/restore-probe.py` | `0d4eb714a771d3a0963921022b6e41a1eefc574f` | `037007cbff802be7a7bba99ca40a006a190720df51b76efff388afc23fda78c5` |
+| `_bmad-output/implementation-artifacts/6-5d-simplification/verify.py` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `0369d6eb950b64f947490cb3bab6124456ef39e3bb070de280e39bf4d929628d` |
+| `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `9fd1f93d8c97e6e99c41b9d98a3783834c39946063b38d6005b2676044638e0b` |
+| `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-3.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `65bf03761b1170b13062750c80f494fda3df9795cdaa833a3b453533ff4b11bb` |
+| `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md` | `b1558b06a1a1771a10e1c0fe76b54a417c96558e` | `6d7e9326671572e07426329c6f57fb38879589e04c155290b04a82df184a1e98` |
+
+The current input manifest pins the complete child directory, including archives, checkpoints and execution records; none is rewritten or repinned. The imported D schema/contract/literal blocks are checked against the exact pinned source transformation. Historical child acceptance failure at its old correction baseline remains evidence; current preservation belongs to this run. D9 provider/crash gates remain unproved.
+
+#### Current integration executable/document pins
+
+These files are current uncommitted content, with no invented committed revision. Their exact SHA-256 values are part of the AD-13 approval digest. Any change requires rerun, fresh digest and fresh approval; the gate checks the table generically without a self-hash cycle. Verification-results and review captures are execution evidence rather than authorizing source.
+
+| Current path | Exact SHA-256 |
+| --- | --- |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/verify.py` | `248206080b7c35df43f0df0163a2b454e824b95381097dc165bac3fb773eb7b1` |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/independent-answers.mjs` | `0517b5a50309f0dc59530949f0c8bab90e0c782016fe15280176b99b51c3000d` |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/source-manifest.json` | `966297b5847e69c6ce33bc2d674e5d9e7b3981771a58a10388e63cbba3442fa3` |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/metadata-adapter-contract.md` | `a88d743a8603617742564672450a733563e10b070f948995424570a0a0b36a2f` |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/build-integration.py` | `be06cd9feec15d25d5b1fc393e102d79ed37c7978415a3c2f4d0275487e9d63c` |
+| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/preserved-hold-predicates.json` | `7cfff82bdb39e8b3a152e6c98ac5035f8f80d5cac02d0501c341984c6b2d3d9d` |
 
 ### 11.5 Disposition register
 
-[I-44] Each open finding has exactly one disposition class. **Rule** means an integration rule `[I-nn]` closes it; **citation** means an imported section already closes it and the register cites that section; **6.6 obligation** means it becomes a Story 6.6 verification obligation in §11.7, with no decision left to Story 6.6; **non-story** means it lies outside this story and stays open in the ledger. The BH37 rows are cited from `story-6-5-review-triage.md:546-555`, which is not edited. The ledger rows are the child entries in `deferred-work.md` at the lines they had at the integration baseline. A closed entry's `status:` line reads `dispositioned pending approval`, because its disposition takes effect only when the §12 receipt validates. If that receipt is refused, or an amendment of this document changes the rule or obligation that an entry names before approval, the entry's `status:` line returns to `open` with the refusal or amendment reference, in the same change that updates this register. The register holds 12 citations, 39 rules, 8 Story 6.6 obligations and 5 non-story entries, plus the owner decision D-RESUME.
+[I-44] Each open finding has exactly one disposition class. **Rule** means an integration rule `[I-nn]` closes it; **citation** means an imported section already closes it and the register cites that section; **6.6 obligation** means it becomes a Story 6.6 verification obligation in §11.7, with no decision left to Story 6.6; **non-story** means it lies outside this story and stays open in the ledger. The BH37 rows are cited from `story-6-5-review-triage.md:546-555`, which is not edited. The ledger rows are the child entries in `deferred-work.md` at the lines they had at the integration baseline. Every pending entry's status remains `open` and carries a proposed disposition; it takes effect only when the §12 receipt validates. The Story 6.5 integrator owns re-evaluation on any candidate amendment, receipt refusal or invalidation, in the same update that changes this register/ledger; the named Story 6.6 verification owner closes an obligation only on its blocking-gate immutable evidence. If that receipt is refused, or an amendment of this document changes the rule or obligation that an entry names before approval, the entry's `status:` line returns to `open` with the refusal or amendment reference, in the same change that updates this register. The original register is preserved with proposed, approval-pending dispositions. O-06/O-07/O-11 are restored successor-boundary verification obligations. D1–D9 replace owned rules; the 54 child-routed and 13 parent pass-2 rows below each have one proposed disposition. Five non-story entries and two earlier resolutions stay unchanged. The integrator must amend or refuse an affected disposition under this rule; no approval-pending ledger entry is resolved.
 
 | Item | Source | Class | Disposition and location |
 | --- | --- | --- | --- |
@@ -2255,8 +2640,8 @@ The child candidates are cited, not copied. Their local models verify themselves
 | D12 drain count range | ledger :5098 | rule | [I-35] |
 | D13 kill sweep over model guards | ledger :5102 | 6.6 obligation | O-04 |
 | D14 per-mutation timeout | ledger :5106 | 6.6 obligation | O-05 |
-| D15 integrity-script path exemptions | ledger :5110 | rule | [I-47] |
-| D16 untracked files in the integrity script | ledger :5114 | rule | [I-47] |
+| D15 integrity-script path exemptions | ledger :5110 | 6.6 obligation | O-06 successor boundary gate |
+| D16 untracked files in the integrity script | ledger :5114 | 6.6 obligation | O-07 successor boundary gate |
 | D17 shipped `PublishFailed` writers | ledger :5118 | rule | [I-14] |
 | D18 Binary `ce-*` headers in the size model | ledger :5122 | 6.6 obligation | O-08 |
 | D19 CR/LF/NUL carrier disposition | ledger :5126 | rule | [I-23] |
@@ -2271,7 +2656,7 @@ The child candidates are cited, not copied. Their local models verify themselves
 | D17 addendum: all recoverable writers | ledger :5171 | rule | [I-14] |
 | AA2 addendum: four surfaces | ledger :5178 | rule | [I-42] (BC-01a–BC-01g) |
 | Second AA2 addendum: every surface and field | ledger :5185 | rule | [I-42] (BC-01a–BC-01j and the search floor) |
-| D15 addendum: bookkeeping set | ledger :5189 | rule | [I-47] |
+| D15 addendum: bookkeeping set | ledger :5189 | 6.6 obligation | O-11 successor boundary gate |
 | Owner decision D-RESUME (2026-09-30) | Story 6.5 spec | rule | [I-45] and [I-46]; [I-10], [I-14] and [I-15] point the retry-exhaustion and drain-limit holds at them, and C5 and BC-02 name them as the recovery path. |
 
 No register row defers a decision to Story 6.6: every rule is decided above, and every 6.6 obligation is a verification task against an already decided contract.
@@ -2280,12 +2665,12 @@ No register row defers a decision to Story 6.6: every rule is decided above, and
 
 | Finding | Route | Disposition and location |
 | --- | --- | --- |
-| VG-1 | patch | The §11.6 capacity model executes the [I-26] known answer and the [I-27]–[I-30] constraints; O-03 ports it instead of C01d's superseded asserts. |
-| VG-2 | patch | The §11.6 evidence verifier compares the §11.4 pins and the A- and B-series answers. |
-| VG-3 | bad_spec (G-J) | §11.6 integration codec known answers, recomputed by the codec verifier, for [I-08], [I-09], [I-12], [I-31], [I-33], [I-37] and every codec added in this loop. |
+| VG-1 | patch | D6 fixed precharges/eight-envelope readiness and reviewed bounded cases replace the former integration capacity model; §11.6 runs D constructors/gate, O-03 ports D6 instead of superseded C01d asserts. |
+| VG-2 | patch | The current §11.6 gate compares exact §11.4 file/model pins and labeled A/B answers, inline C values and current executable pins. |
+| VG-3 | bad_spec (G-J) | §11.6 independently reconstructs all five surviving parent preimages and exact reviewed D schemas/literals; obsolete I12/I31/I37 private codecs are historical only. |
 | VG-O1, BH-6a | patch | A8 tag `09` stays exactly `required`; [I-12] writes legacy claims in their own codec. |
-| BH-1 | patch | [I-44] `dispositioned pending approval` ledger wording and reopening rule. |
-| BH-3 | patch | [I-47]; §11.7 withdraws O-06, O-07 and O-11. |
+| BH-1 | patch | I44 keeps all 47 pending integrated ledger entries open with proposed dispositions; integrator amendment/refusal and obligation-owner closure triggers are explicit. |
+| BH-3 | patch | [I-47]; O-06/O-07/O-11 retain replacement boundary-gate ownership. |
 | BH-6b, BH-6c, BH-7, E7, E8, E9, E10 | bad_spec (G-A) | [I-12] reworked; A8's legacy classification amended in place. |
 | BH-8, E4 | bad_spec (G-B) | [I-14] drain-limit hold, with its [I-45] exit. |
 | BH-9, E5 | bad_spec (G-C) | [I-10] retry-wait mapping; [I-16] reason-code table. |
@@ -2302,7 +2687,7 @@ No register row defers a decision to Story 6.6: every rule is decided above, and
 | BH-20 | patch | [I-32]. |
 | BH-21, E19 | patch | [I-03] root-only scan. |
 | BH-22 | patch | [I-40] ingress-rejection reply and registry drift. |
-| E1 | patch | [I-11] transition table; §11.6 transition model. |
+| E1 | patch | I11 and the §11.6 gate derive all 16 same-attempt pairs from pinned A reduce_set, preserving Accepted/Failed receipt and observation-proof freezing. |
 | E2 | patch | [I-10] cases (1) and (2). |
 | E3 | patch | [I-14] admission class. |
 | E6 | patch | [I-09] recovery-written record. |
@@ -2311,10 +2696,87 @@ No register row defers a decision to Story 6.6: every rule is decided above, and
 | E14 | patch | [I-23]. |
 | E21 | patch | [I-22]. |
 | E24 | patch | [I-41]; §10 slices 1, 3 and 4. |
-| E26 | patch | A8's no-post-commit rule amended in place. |
+| E26 | patch | I01, A8 and C1/C6 admission wording use D1/D6 whole-batch reservation and fixed precharges before separate pin install; no un-precharged exception remains. |
 | E27 | patch | §7 legacy side-record cap amended in place. |
 | E28 | patch | [I-40] rows for `FirstSendMembershipChangedHold` and `ProjectionPriorConflict`. |
 | VG-4, VG-O2, BH-2, BH-4, BH-5, E20, E22, E23, E25 | reject | Rejected in the review triage; no change. |
+
+
+**Review pass 2: proposed dispositions pending §12.** The exact 54 child rows follow; one owner per raw finding, with local proof distinguished from runtime proof.
+
+| Finding | Disposition / evidence | Replacement and verification |
+| --- | --- | --- |
+| VG2-2 | replacement; archived D7 enforces `unidentifiedCaptureCeiling`; archived D12 exercises exact fill and +1 refusal. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| VG2-3 | replacement; archived D3 checks drain-limit pending exit and reason; archived D12 covers active versus resolved. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| VG2-4 | replacement; Historical two-directory move mechanics are obsolete; the acceptance concern is tenant blocking and deployment fairness, now proved in one queue. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| VG2-O1 | replacement; Historical model/contract contradiction is replaced by the same one-queue function and wire schema used for tests; no queue moves remain. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| VG2-O2 | replacement; archived D3 says pending/unknown ignore exhaustion unless an active drain-limit record exists. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| VG2-O3 | replacement; archived D3's resolution closes the exact drain-limit epoch before a larger limit activates. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-1 | replacement; archived D9 precondition exposes a buildable handle/source/head/ordinal chain; server signing removes caller reconstruction. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-2 | replacement; archived D11 uses discriminated hashed actor IDs and separate tenant/deployment routes. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| BH2-3 | replacement; archived D2 supplies below-bound disposition, noncircular target fingerprint, and activation-hold semantics. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| BH2-4 | replacement; archived D7 atomically reserves the whole pin batch; archived D8 waits hold no resource and cannot deadlock. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| BH2-5 | replacement; D5 permits only configuration restoration plus fresh zero-send/exact-byte proof. | D4; status_replay_cases checks membership shared exact-byte/fresh-zero-send policy; D9 runtime gate for atomic broker zero-send and all imported pinned header/body/configuration comparisons |
+| BH2-6 | replacement; archived D1/archived D3 name owners, triggers, and evidence/conflict exits; no hold is silently abandoned. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-7 | replacement; archived D10 writes/read-backs the capsule before cleanup and fences Operations retry against resume. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-8 | replacement; archived D9 retains one rolling active charge/state, includes the next limit, refunds closed windows, and records only success. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-9 | replacement; archived D4 uses 256 shards, bounded retries, a measured horizon, and a cutover that ends legacy fallback reads. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| BH2-10 | replacement; archived D1/archived D11 define gateway subjects, re-evaluation, removal evidence, and capacity reservation. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| BH2-16 | replacement; Same verified defect as VG2-O2; archived D3 owns its single resolution. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-18 | replacement; Quota/quarantine external binary identities are retained literally; private hold entry/index codecs are obsolete and map to canonical registry/current owner. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| BH2-19 | replacement; archived D4 returns `admission_evidence_hold`; archived D13 classifies it as BC-15 in slice 2. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-1 | replacement; archived D3 keys drain-limit records by window and limit epoch. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-2 | replacement; archived D3 atomically records budget consumption/hold pointer and reconciles lost acknowledgement. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-3 | replacement; archived D3 evidence conflict precedes pending/unknown scalar projection and is inventory-visible. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-4 | replacement; archived D10 capsule stores authenticated rejection classification before drain evidence disappears. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-5 | replacement; archived D10 missing-source policy is stable non-resumable incident, not BC-02 command replay. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-6 | replacement; archived D10 handle binds tenant/domain/aggregate/tracking/range independent of expiring status or reused MessageId. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-7 | replacement; Same verified defect as BH2-1; archived D9.1 is the single replacement. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-8 | replacement; archived D11 requires bounded direct/dead-letter capture even when broker redelivery is unbounded. | D7; held_cases exercises ordinary capture/redrive/reconcile/cleanup/erasure; status_replay_cases checks exact capture_interval policy; D9 runtime gate for subscription policy bound/24-hour scheduling, atomic provider quarantine and readiness pre-rejection |
+| E2-9 | replacement; archived D11 requires exact provider quarantine through 256 MiB or broker pre-rejection/readiness failure. | D7; held_cases exercises ordinary capture/redrive/reconcile/cleanup/erasure; status_replay_cases checks exact capture_interval policy; D9 runtime gate for subscription policy bound/24-hour scheduling, atomic provider quarantine and readiness pre-rejection |
+| E2-10 | replacement; archived D11 defines a deployment-scoped redrive route with no tenant placeholder. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-11 | replacement; archived D11's actor IDs and routes cannot collide with tenant `deployment`. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-12 | replacement; Same verified defect as BH2-10; archived D11 entry lifecycle owns it. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-13 | replacement; archived D11's bounded actor directory and one epoch lease make reconciliation/gauges complete and single-owner. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-14 | replacement; Separately synchronized reason tag is obsolete; reason derives from current authenticated owner; cursor generation excludes owner revisions and binds registry generations only. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-15 | replacement; Parking keeps the original row in the one enumerable deployment queue; no key-store scan or side parked set. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-16 | replacement; archived D7 uses ledger reservation plus reservation-bound pin CAS across different backends. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| E2-17 | replacement; The old duplicate binary count is obsolete; exact canonical JSON array and row/ticket/byte invariants have one parse authority. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-18 | replacement; archived D4 names the compactor, hourly/75% trigger, authenticated expiry, and decrement. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-19 | replacement; Same verified defect as BH2-9; archived D4 sharding and bounded loser outcome own it. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-20 | replacement; archived D4 status on a tombstone returns stable 410 and never falls back. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-21 | replacement; Same verified defect as BH2-19; archived D4/archived D13 own its outcome and slice. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-22 | replacement; Same verified defect as BH2-3; archived D2 requires `continue-full-replay` below 75%. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| E2-23 | replacement; archived D2 configuration revision schedules re-evaluation/bootstrap even with no new events. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| E2-24 | replacement; Verified unchanged A8 policy: both preexisting immutable outputs required; missing output is non-resumable incident, never rerendered. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-25 | replacement; archived D9's active window charge explicitly includes the next drain-limit record/resolution. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-26 | replacement; archived D9 rejection writes no audit/charge; exact successful retry reuses one audit. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-28 | replacement; archived D3 classifies every shipped drain reason as automatic, capsule-resumable, or evidence incident. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-29 | replacement; archived D3 requires Admin list-time join with authoritative status/hold evidence. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-30 | replacement; Same verified defect as VG2-O2; archived D3's row 8 owns it. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-31 | replacement; Same verified defect as VG2-O1; archived D8/archived D12 own it. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-32 | replacement; archived D7 maps negative/overflow arithmetic to stable `publication_pin_capacity_hold` before comparison with zero mutation; archived D12 executes negative and u64-sum-overflow cases and proves counters unchanged. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| E2-34 | replacement; Verified exact C5 contradiction: permanent operation fence belongs only to terminal closure; disable/reject resume phases are window-scoped. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-35 | replacement; archived D10 capsule predates the request, so archived D9 tag `06` is noncircular. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-36 | replacement; archived D3 precedence maps mixed class-01/class-02 to `terminal_evidence_hold`. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-38 | replacement; archived D1 plus archived D2–archived D11 give G-B, G-E, and G-I storage, bounds, activation, inventory, owner, and exits. | D1–D8 lifecycle table, one-owner phases and ledger queue; four executed frozen matrix scenario groups, with actual provider proofs retained explicitly in D9 |
+
+
+| Parent finding | Proposed disposition and exact gate |
+| --- | --- |
+| VG2-1 | §11.6 derives all 16 same-attempt pairs from pinned A reduce_set, including frozen Accepted, with owning corrupt-transition refusal; O-03/O-04 bounded coverage is not a per-guard proof claim |
+| VG2-5 | §11.6 exact B label/value comparison |
+| VG2-6 | §11.6 inline C offset/destination values |
+| VG2-7 | §11.6 exact verifier identity/count and missing-block refusal |
+| BH2-11 | I44 integrator amendment/refusal trigger and owner, open ledger statuses with proposed dispositions; every O-row has Story 6.6 owner/blocking gate/immutable closure evidence |
+| BH2-12 | §12 named exact receipt gate, five UNAPPROVED fields; story remains in progress; execution change log records D-RESUME/D-SPLIT supersessions without deleting history |
+| BH2-13 | Committed reproducible parent base 288a61908f4661fed52bb791f928292fe7d90180 and current baseline cbbe41501ba722731bf36b2c343efdef4ac714fb; source-manifest exact full revisions/file/block hashes, no scratchpad prerequisite |
+| BH2-14 | I47 successor documentation boundary gate; O-06/O-07/O-11 restored under D-CLOSE, current committed/worktree/untracked scope checks and FW1 rerun gate |
+| BH2-15 | I41 D-RELEASE compatible maintenance/security publication through existing current-main manual workflow with compatibility/inactive-path evidence; complete major and hold policy retained |
+| BH2-17 | §11.6 independent Node reconstruction of all five surviving parent preimages and integer-safe D constructors; retired integration codecs are historical only |
+| E2-27 | D6 original-account/length/kind attach conflict/refusal, unchanged bytes; O-10 actual provider proof |
+| E2-33 | §11.6 exact labeled B results and owning swapped-label refusal; no substring comparison |
+| E2-37 | BC-01k authoritative exact-status EventsStored/PublishFailed semantics, distinguished from named failed/processing and unavailable list-time evidence |
 
 ### 11.6 Integrated child known answers
 
@@ -2384,425 +2846,2421 @@ LB-14 transcript selector claim 44600a3d68552fffc7552c19359edf08f5a026ab02f2789b
 Integration codec known answers (label, exact byte length, SHA-256):
 
 ```text
-I06-activation 244 45c62c27ec806fca34512d48b5047377326572123d4a220571eb9d7b190d3826
 I08-outcome-prep 323 8a2ee1b0eea4ab01d1065757cd89a241e6171a474f7cabb7727545783954feec
 I08-key-preimage 72 8ddbdd48844475ddac39be4e062cdd08997b49e768952e8baae29fe0b9807c2f
 I09-preparation-write 275 5f81ba2a3922aa2f85b3b4f5d7e79c58cea6997345728d4edfa55009d1946133
-I12-tombstone 156 4517a282a2319f7e49f3053c12cdee380d00dd0f19e5b01a8dfa327af6d4c97f
-I12-legacy-claim 136 74321bfbe2a26e9e2abd9d94e369cacaf5b5be116b0733f1481a57868c723975
-I12-usage 66 87f598e90dc52bdd00f90d467bd2bef42298f2d389c4cd3508f5b23b22483a6c
-I14-drain-limit 185 0f19573365bb7f344d6a72e83ee2226a351ac99ac3ee8b2e02a4e3cd4456fe09
 I17-destination-config 102 2e87b686ee7df5650e305d924e2f210304f7b302e8c9e271a730e365fa573282
-I29-capability 263 a07ef912a4bca7cd84f81180efc3ca65ebb26ba7ceff7dae30d829303db291e7
-I31-wait 170 8cc1ac2f210e91efe048d32bbaa629570ed78ac3c4a2947e75a27126a4e7dbe7
-I31-queue 102 29eac0c11992a52d510c130c7ca9c0a147f16b1239293e06f025dfa9661866b8
 I33-preimage 55 40e258b609e520fcd16918f7d5ffa50835d9ac43eae2d642332e60fa149e6701
-I36-policy 210 2cddd913bdc468a4cfeaebd8ecd6c53d574fa0150ce01e83ae996d109a08e10f
-I36-held-delivery 225 570da84a47c6b1f551450a72754d04112c787a523cff6e719c5b82b134b8ce7e
-I36-redrive 127 1904a737a7ecc2247729240c871a8115bf51fd9b4df931a85d80bec60d853725
-I37-hold-index 228 b981d750bff16efefe9700d9c083b66bfc2874fac84915c17f7ddba4df11ec41
-I37-key-preimage 107 c1414c8b12312db0d09e6cd1b2c45d784085169b1078b191d1cb8cf28aea7332
-I45-request 291 ac5706c1e6f0625acf546e9699e6eba441f25d04105d1039a953d7d09d9d7e54
-I45-audit 199 a590c7c7e4a7fc6de37a22066661d62e18599fa11183839d49305924dd0b2447
-I45-window-closure 295 0c9913bcbfb56bc78d7efbe5881e5de592dee3d464c2ba4033645a0feedff686
-I46-reconciliation 283 38d3efeb4d7d0cdefdf9bf226d22d68f771904fca95d03c64b8b9480029001f3
 ```
 
-Each integration answer fixes one codec that an `[I-nn]` rule defines, over the fixture inputs of the first verifier block below: tenant `t`, domain `d`, aggregate type `counter`, aggregate ID `a`, execution MessageId `op`, the K04 scope hash as ScopeOpHash, and fixed marker hashes and UTC instants. Like the A- and B-series answers they are local codec answers, not provider fixtures. `I08-key-preimage` and `I37-key-preimage` are key preimages; `I33-preimage` is the `RouteDecisionKeyHash` preimage for the route-decision key text `route-decision-key`, so its SHA-256 is that hash; and `I17-destination-config` is the canonical configuration JSON itself.
+The independent Node constructor and separate Python encoder reconstruct these five surviving parent preimages from the fixed K04 scope, original UTC and marker fields. D-owned private predecessors are historical only; the exact reviewed replacement schemas and all literals follow inside the normative digest.
 
-The first block recomputes every integration answer and fails on any difference from the list above. It also executes the [I-26] capacity known answer with the [I-27]–[I-30] constraints (the model that O-03 ports in place of C01d's superseded asserts), the [I-11] same-attempt transition table, the [I-10] status mapping and the [I-31] queue rules. The second block checks the §11.4 file and model-block pins, runs the three child models, compares the 6.5a model's printed answers with the A-series list and finds every B-series answer asserted in the 6.5b model. Verification runs both blocks before the §12 digest.
+<!-- imported-d-wire-reference-start -->
+# Story 6.5d obligations and exact wire reference
+
+This file is normative supporting documentation for the compact candidate. Archived reviewed defect evidence is preserved unchanged; replacement targets below describe the new contract, without making archived local model mechanisms binding. All listed local function proofs use fixture authorization/transactions only; production cryptography and provider crash behavior require D9's approved runtime gate. Each row separates the concrete local case from the remaining runtime proof; a function name is not evidence for unmodeled provider behavior.
+
+## Pass-1 owned groups
+
+| Group | Replacement |
+| --- | --- |
+| G-A legacy scope | D5 scopes/shards/cutover/tombstones and D3 capsule identity |
+| G-B drain limit | D3 immutable source/resolution and same-owner successor |
+| G-C hold reasons | D4 precedence and D8 complete exit table |
+| G-D resume intent | D3 same committed roster/MessageIds, no command execution |
+| G-E capacity queue | D6 whole batch and one global ticket queue |
+| G-F long stream | D5 activation/limits/idle capability exit |
+| G-G schema/capability | D5 destination and D6 exact quota capability |
+| G-H held delivery | D7 same owner capture/redrive/repair/quarantine |
+| G-I inventory | D8 reserve-before-owner registry/current reason/global epoch |
+| G-J codecs | retained exact wire schemas/literals below and canonical internal controls |
+
+## All 54 routed pass-2 dispositions
+
+Each row replaces a verified acceptance concern from the archived original disposition. A redundant raw report still has its own row and one owner. Raw VG2-1/5/6/7, BH2-11/12/13/14/15/17, E2-27/33/37 were not routed among these 54; they remain owned by Story 6.5/unowned source review. E2-27's charge-attach behavior is nevertheless retained in D6; no rejected raw assertion is silently counted as a routed finding. None of the routed findings was historically rejected: the archived register classifies all 54 as replacement.
+
+<!-- pass2-dispositions-start -->
+
+| Finding | Disposition / evidence | Replacement and verification |
+| --- | --- | --- |
+| VG2-2 | replacement; archived D7 enforces `unidentifiedCaptureCeiling`; archived D12 exercises exact fill and +1 refusal. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| VG2-3 | replacement; archived D3 checks drain-limit pending exit and reason; archived D12 covers active versus resolved. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| VG2-4 | replacement; Historical two-directory move mechanics are obsolete; the acceptance concern is tenant blocking and deployment fairness, now proved in one queue. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| VG2-O1 | replacement; Historical model/contract contradiction is replaced by the same one-queue function and wire schema used for tests; no queue moves remain. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| VG2-O2 | replacement; archived D3 says pending/unknown ignore exhaustion unless an active drain-limit record exists. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| VG2-O3 | replacement; archived D3's resolution closes the exact drain-limit epoch before a larger limit activates. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-1 | replacement; archived D9 precondition exposes a buildable handle/source/head/ordinal chain; server signing removes caller reconstruction. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-2 | replacement; archived D11 uses discriminated hashed actor IDs and separate tenant/deployment routes. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| BH2-3 | replacement; archived D2 supplies below-bound disposition, noncircular target fingerprint, and activation-hold semantics. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| BH2-4 | replacement; archived D7 atomically reserves the whole pin batch; archived D8 waits hold no resource and cannot deadlock. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| BH2-5 | replacement; D5 permits only configuration restoration plus fresh zero-send/exact-byte proof. | D4; status_replay_cases checks membership shared exact-byte/fresh-zero-send policy; D9 runtime gate for atomic broker zero-send and all imported pinned header/body/configuration comparisons |
+| BH2-6 | replacement; archived D1/archived D3 name owners, triggers, and evidence/conflict exits; no hold is silently abandoned. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-7 | replacement; archived D10 writes/read-backs the capsule before cleanup and fences Operations retry against resume. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-8 | replacement; archived D9 retains one rolling active charge/state, includes the next limit, refunds closed windows, and records only success. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| BH2-9 | replacement; archived D4 uses 256 shards, bounded retries, a measured horizon, and a cutover that ends legacy fallback reads. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| BH2-10 | replacement; archived D1/archived D11 define gateway subjects, re-evaluation, removal evidence, and capacity reservation. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| BH2-16 | replacement; Same verified defect as VG2-O2; archived D3 owns its single resolution. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| BH2-18 | replacement; Quota/quarantine external binary identities are retained literally; private hold entry/index codecs are obsolete and map to canonical registry/current owner. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| BH2-19 | replacement; archived D4 returns `admission_evidence_hold`; archived D13 classifies it as BC-15 in slice 2. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-1 | replacement; archived D3 keys drain-limit records by window and limit epoch. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-2 | replacement; archived D3 atomically records budget consumption/hold pointer and reconciles lost acknowledgement. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-3 | replacement; archived D3 evidence conflict precedes pending/unknown scalar projection and is inventory-visible. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-4 | replacement; archived D10 capsule stores authenticated rejection classification before drain evidence disappears. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-5 | replacement; archived D10 missing-source policy is stable non-resumable incident, not BC-02 command replay. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-6 | replacement; archived D10 handle binds tenant/domain/aggregate/tracking/range independent of expiring status or reused MessageId. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-7 | replacement; Same verified defect as BH2-1; archived D9.1 is the single replacement. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-8 | replacement; archived D11 requires bounded direct/dead-letter capture even when broker redelivery is unbounded. | D7; held_cases exercises ordinary capture/redrive/reconcile/cleanup/erasure; status_replay_cases checks exact capture_interval policy; D9 runtime gate for subscription policy bound/24-hour scheduling, atomic provider quarantine and readiness pre-rejection |
+| E2-9 | replacement; archived D11 requires exact provider quarantine through 256 MiB or broker pre-rejection/readiness failure. | D7; held_cases exercises ordinary capture/redrive/reconcile/cleanup/erasure; status_replay_cases checks exact capture_interval policy; D9 runtime gate for subscription policy bound/24-hour scheduling, atomic provider quarantine and readiness pre-rejection |
+| E2-10 | replacement; archived D11 defines a deployment-scoped redrive route with no tenant placeholder. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-11 | replacement; archived D11's actor IDs and routes cannot collide with tenant `deployment`. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-12 | replacement; Same verified defect as BH2-10; archived D11 entry lifecycle owns it. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-13 | replacement; archived D11's bounded actor directory and one epoch lease make reconciliation/gauges complete and single-owner. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-14 | replacement; Separately synchronized reason tag is obsolete; reason derives from current authenticated owner; cursor generation excludes owner revisions and binds registry generations only. | D8; queue_scope_inventory_cases checks reservation/release, RegistryCapacityHold, separate scope IDs/routes, continuation and per-row evidence incident; held_cases verifies deployment capture/redrive claims; D9 runtime gate for API authorization, complete indexed discovery and single global epoch metrics |
+| E2-15 | replacement; Parking keeps the original row in the one enumerable deployment queue; no key-store scan or side parked set. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-16 | replacement; archived D7 uses ledger reservation plus reservation-bound pin CAS across different backends. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| E2-17 | replacement; The old duplicate binary count is obsolete; exact canonical JSON array and row/ticket/byte invariants have one parse authority. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-18 | replacement; archived D4 names the compactor, hourly/75% trigger, authenticated expiry, and decrement. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-19 | replacement; Same verified defect as BH2-9; archived D4 sharding and bounded loser outcome own it. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-20 | replacement; archived D4 status on a tombstone returns stable 410 and never falls back. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-21 | replacement; Same verified defect as BH2-19; archived D4/archived D13 own its outcome and slice. | D5; queue_scope_inventory_cases checks admission outage, input conflict, closed-authority compaction, 410/expiry/checked refund; D9 runtime gate for hourly/75% triggers, H/cutover, 256 concurrent shard writers and eight-CAS timing |
+| E2-22 | replacement; Same verified defect as BH2-3; archived D2 requires `continue-full-replay` below 75%. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| E2-23 | replacement; archived D2 configuration revision schedules re-evaluation/bootstrap even with no new events. | D5; status_replay_cases exercises shared replay policy below/at/above reachable accounting/readable bounds and no-new-event incremental exit; D9 runtime gate for scheduled idle dispatch and complete signed activation inventory |
+| E2-24 | replacement; Verified unchanged A8 policy: both preexisting immutable outputs required; missing output is non-resumable incident, never rerendered. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-25 | replacement; archived D9's active window charge explicitly includes the next drain-limit record/resolution. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-26 | replacement; archived D9 rejection writes no audit/charge; exact successful retry reuses one audit. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-28 | replacement; archived D3 classifies every shipped drain reason as automatic, capsule-resumable, or evidence incident. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-29 | replacement; archived D3 requires Admin list-time join with authoritative status/hold evidence. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-30 | replacement; Same verified defect as VG2-O2; archived D3's row 8 owns it. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-31 | replacement; Same verified defect as VG2-O1; archived D8/archived D12 own it. | D6; queue_scope_inventory_cases exercises ticket order, tenant/deployment fairness, parking/current-overhead rerender, net grant/refund and row validation; D9 runtime gate for original operation/WAL repair and external pin installation |
+| E2-32 | replacement; archived D7 maps negative/overflow arithmetic to stable `publication_pin_capacity_hold` before comparison with zero mutation; archived D12 executes negative and u64-sum-overflow cases and proves counters unchanged. | D6; queue_scope_inventory_cases exercises tenant/capture accounts, unidentified exact fill/refund and stable arithmetic refusal; literal charge/counter schemas; D9 runtime gate for actual provider counters/batch pin attachment |
+| E2-34 | replacement; Verified exact C5 contradiction: permanent operation fence belongs only to terminal closure; disable/reject resume phases are window-scoped. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-35 | replacement; archived D10 capsule predates the request, so archived D9 tag `06` is noncircular. | D3; resume_cases and legacy_cases exercise exact retry/intent, bounded retention, capsule/recovery/range authority; D9 runtime gate for actual committed event bodies, broker/C2 complete attempt set, live drain/reminder and unchanged first response |
+| E2-36 | replacement; archived D3 precedence maps mixed class-01/class-02 to `terminal_evidence_hold`. | D3/D4; status_replay_cases exercises historical/adjacent precedence and immutable membership/operation fences; resume_cases checks owner restart/limit/window outputs; D9 runtime gate for full signed drain/source/resolution and preparation/terminal authority |
+| E2-38 | replacement; archived D1 plus archived D2–archived D11 give G-B, G-E, and G-I storage, bounds, activation, inventory, owner, and exits. | D1–D8 lifecycle table, one-owner phases and ledger queue; four executed frozen matrix scenario groups, with actual provider proofs retained explicitly in D9 |
+
+<!-- pass2-dispositions-end -->
+
+## Exact retained binary framing and schemas
+
+All external records use ASCII domain including one final NUL, codec byte 01, big-endian u16 field count, then one-byte tags 01..count ascending and the ordered typed fields below. U is u32 UTF-8 byte count plus exact bytes, B is u32 byte count plus bytes, B32 exactly 32 bytes, N nonnegative checked u64, P u32, I signed i32, Q signed i64 UTC ticks. O(X) is 00 absent or 01 plus X; no null variant. Reject duplicate/missing/extra/reordered tags, invalid UTF-8, negative/overflow/count inconsistency or trailing bytes before allocation. Ordinary identifiers ≤1,024 UTF-8 bytes, Operator subject ≤256. Imported C1/C2/C5 signatures, P-256/P1363 carrier, purpose/issuer/SPKI/time/revocation are unchanged. Purpose 2d is activation, resume/window and redrive only; first-send resolution keeps purpose 2a.
+
+Table field order is exact tag order; types are given in parentheses. The fixture hex is literal in known-answers.json and independently reconstructed without running the archived verifier. Dynamic roots below have semantic definitions; opaque fixture hashes are identified in the descriptors, never claimed provider proofs.
+
+| Answer / domain (HX-EV- prefix) | Exact fields | Complete cap |
+| --- | --- | --- |
+| D06-activation / FULL-REPLAY-ACTIVATION-2 | issuer(U),domain(U),fingerprint(B32),generation(N),predecessor(B32),rows(B),inventoryUtc(Q),operator(U),signUtc(Q) | 1 MiB; rowCount 0..943 |
+| D12-legacy-claim / COMMAND-SCOPE-LEGACY-2 | tenant(U),execution(U),domain(U),aggregate(U),commandType(U),payloadHash(B32),claimUtc(Q),expiryUtc(Q),cohort(N),cutoverHash(B32) | 8 KiB |
+| D12-cutover / LEGACY-SCOPE-CUTOVER-1 | tenantOrStar(U),domain(U),cohort(N),startUtc(Q),cutoverUtc(Q),horizonSeconds(N),emptyOwnerRoot(B32),predecessor(B32) | 4 KiB |
+| D12-usage / SCOPE-SHARD-USAGE-1 | tenant(U),shard(N),requiredCount(N),tombstoneCount(N),chargedBytes(N),generation(N),predecessor(B32) | 2 KiB |
+| D12-tombstone / COMMAND-SCOPE-TOMBSTONE-2 | tenant(U),execution(U),scope(B32),input(B32),compactedRecord(B32),compactedUtc(Q),expiryUtc(Q),shard(N) | 4 KiB |
+| D14-drain-limit / PUBLICATION-DRAIN-LIMIT-2 | tenant(U),scope(B32),operation(U),window(N),limit(N),drainHead(B32),outcomeHead(B32),outcomeRevision(N),state(U),decisionUtc(Q) | 4 KiB |
+| D14-drain-resolution / PUBLICATION-DRAIN-LIMIT-RESOLUTION-1 | tenant(U),scope(B32),limitHash(B32),outcome(U),successorIntent(B32),generation(N),owner(U),utc(Q) | 4 KiB |
+| D16-membership-resolution / FIRST-SEND-MEMBERSHIP-RESOLUTION-1 | tenant(U),scope(B32),position(N),MessageId(U),pin(B32),generation(N),predecessor(B32),membership(B32),freshZeroSend(B32),disposition(U),issuer(U),utc(Q) | 16 KiB |
+| D29-capability / PUBLICATION-RETENTION-CAPABILITY-2 | deployment(U),revision(N),backendDescriptor(B),tenantCeiling(N),deploymentCeiling(N),unidentifiedReserve(N),unidentifiedCeiling(N),overhead(N),scopeCeiling(N),predecessor(B32),effectiveUtc(Q),shards(N),tombstoneSeconds(N),waitCeiling(N),quarantineMax(N) | 64 KiB |
+| D29-charge / PUBLICATION-CHARGE-2 | deployment(U),accountKind(U),accountId(U),objectKey(B32),kind(U),length(N),recordedOverhead(N),amount(N),capabilityRevision(N),generation(N),state(U),predecessor(B32),transferOwner(O(B32)),utc(Q),transferred(N) | 4 KiB |
+| D29-counter / PUBLICATION-COUNTER-1 | deployment(U),kind(U),id(U),usedBytes(N),chargeCount(N),generation(N),predecessor(B32),utc(Q) | 4 KiB |
+| D29-pin-batch / PIN-BATCH-RESERVATION-2 | tenant(U),scope(B32),candidateRoot(B32),pinCount(N),rows(B),total(N),capabilityRevision(N),tenantPredecessor(B32),poolPredecessor(B32),deploymentPredecessor(B32),state(U),generation(N),utc(Q) | 64 KiB; pinCount 1..59 |
+| D36-policy / SUBSCRIPTION-DELIVERY-POLICY-3 | deployment(U),component(U),topic(U),subscription(U),revision(N),predecessor(B32),relation(U),captureMode(U),deadLetterTopic(O(U)),localAttempts(N),config(B32),source(U),utc(Q) | 16 KiB |
+| D36-quarantine / CARRIER-QUARANTINE-2 | scopeKind(U),tenant(O(U)),subscription(U),reason(U),length(N),bodyHash(B32),headerManifest(B),backend(U),objectKey(U),archiveAuthority(B32),MessageId(O(U)),utc(Q),disposition(U),sourceReceipt(B32) | 128 KiB |
+| D36-redrive / REDRIVE-REQUEST-2 | issuer(U),scopeKind(U),tenant(O(U)),heldKey(B32),expectedCount(N),operator(U),utc(Q) | 3 KiB payload plus 8 KiB signature envelope |
+| D45-carrier / PUBLICATION-RESUME-CARRIER-1 | tenant(U),handle(U),expectedSource(B32),idempotencyKey(U),reason(U) | 2 KiB |
+| D45-request / PUBLICATION-RESUME-3 | issuer(U),tenant(U),execution(U),scope(B32),eligibility(U),holdOrCapsule(B32),A8head(B32),nextOrdinal(N),predecessorAudit(B32),handle(U),stableIdentity(B32),carrierHash(B32),operator(U),utc(Q),expiry(Q) | 4 KiB payload plus 8 KiB signature envelope |
+| D45-window / PUBLICATION-WINDOW-2 | tenant(U),scope(B32),operation(U),window(N),previousClosure(B32),priorControlHash(B32),requestIdentity(B32),admissionRoot(B32),retryPolicy(B32),drainBase(N),issuer(U),openedUtc(Q),capability(B32) | 16 KiB |
+| D45-closure / PUBLICATION-WINDOW-CLOSURE-3 | tenant(U),scope(B32),closedWindow(N),summaries(B),rejectReceipt(B32),disableReceipt(B32),emptyRoot(B32),attemptRoot(B32),AuthMode(U),previousHistory(B32),utc(Q) | 64 KiB |
+| D45-attempt-set / WINDOW-ATTEMPT-SET-1 | tenant(U),scope(B32),window(N),rosterRoot(B32),evidenceCount(N),rows(B),semanticRoot(B32),sealUtc(Q) | 64 MiB; ≤11,328 rows |
+| D45-audit / PUBLICATION-RESUME-AUDIT-4 | tenant(U),execution(U),ordinal(N),identity(B32),carrierHash(B32),priorControl(B32),closure(O(B32)),openedWindow(N),newLimit(N),utc(Q) | 4 KiB |
+| D46-chunk / LEGACY-RESUME-CAPSULE-CHUNK-1 | capsuleIdentity(B32),ordinal(N),rowCount(N),rows(B),rowRoot(B32) | 64 KiB; 1..61 rows |
+| D46-capsule / LEGACY-RESUME-CAPSULE-2 | tenant(U),domain(U),aggregate(U),tracking(U),execution(O(U)),correlation(U),commandType(U),classification(U),start(N),end(N),eventCount(I),eventRoot(B32),chunkManifest(B),cleanupSource(U),sourceHash(B32),utc(Q) | 128 KiB; 1..17 chunks / 1..1,000 events |
+| D17-destination-config | exact canonical destination JSON defined in candidate D5 | 65,536 bytes |
+
+Drain state pending/unknown/failed; resolution outcome resumed/head-advanced/terminal. Member resolution disposition ContinueSamePin/FirstSendMembershipChangedHold. Charge kind pin-batch/side-record/retained-object/oversize-quarantine/resume-window; state staged/active/released. Transferred marker 0 means absent owner, marker 1 means resume-window with present same stable owner in every generation, including released; successor-readback activates stage; the retained predecessor stays charged until fixed-horizon exact artifact deletion/readback, which releases it exactly once. Counter kind tenant/capture-scope/tenant-pool/deployment/unidentified; tenant counter ID may contain `tenant:` plus 1,024 bytes (1,031 maximum), other IDs ≤1,024. Pin-batch state reserved/installed/released; root SHA256(exact uncounted rows), pinCount equals row count and total checked sum. Subscription relation initial/successor (generation 1 initial, later successor), capture mode dead-letter-capture/direct-held-capture; dead-letter topic present only for first mode; source dapr-configuration/broker-api. Quarantine reason invalid-header-value/invalid-carrier/oversize-carrier, disposition terminal-quarantine; backend ≤1,024 and key ≤4,096. Capsule classification success-events/rejection-events, cleanup drain-exhaustion/operator-reconciliation; positive count exactly end-start+1. Signed resume eligibility is exactly retry-exhausted/drain-limit/drain-limit-and-retry-exhausted/legacy-publish-failed. Legacy signed request scope/A8head and window invocation claim hash are zero; no fabricated A8 authority.
+
+Nested exact payloads: activation rows `u32 count ||` sorted `U route || U disposition || N count || N readable || N accounting || O(B32 incrementalCapability)`; hash present exactly for incremental. Pin rows `u32 position || U MessageId || B32 pin || N length || N amount`, counted by pinCount (no inner count). Closure summary `u32 count ||` sorted `u32 position || N finalLocalAttempt || B32 lastDefinitiveResult`. Attempt rows `u32 position || N localOrdinal || N observationOrdinal || U register|unknown|result || B32 parent || B32 sendId || B32 evidence`, counted by evidenceCount; sorted first three fields, every attempt starts registration/0, optional Unknown/1 then definitive result, contiguous attempts/no Accepted successor. Semantic root SHA256(`"HX-EV-WINDOW-ATTEMPTS-2\0" || 01 || U tenant || B32 scope || N window || B32 roster || N count || B rows`). Window unresolved root SHA256(`"HX-EV-PUBLICATION-UNRESOLVED-1\0" || 01 || u32 count ||` sorted `u32 position || U MessageId || B32 committedByteHash`). History successor SHA256(`"HX-EV-PUBLICATION-WINDOW-HISTORY-1\0" || 01 || B32 previous || B exactClosure || B exactBrokerAuthentication`). Neither window nor audit includes successor control hash.
+
+Capsule rows `N sequence || U MessageId || B32 StoredDigest` ascending unique contiguous sequence/MessageId. Chunk root SHA256(`"HX-EV-LEGACY-RESUME-CHUNK-ROWS-1\0" || 01 || B exactRows`). Manifest `u32 chunkCount ||` sorted `N ordinal || N firstSequence || N rowCount || B32 chunkHash || N encodedLength || U chunkAddress`; exact endpoints/count/length and no gaps/overlap/trailing bytes. Event root SHA256(`"HX-EV-LEGACY-RESUME-EVENTS-2\0" || 01 || B(u32 totalCount || all exactRows)`). Quarantine header manifest `u32 count ||` ≤128 rows `U headerName || N valueLength || B32 valueHash`; aggregate names/value lengths ≤64 KiB, exact worst encoded manifest 71,172 bytes, no raw forbidden value. AuthMode exactly SignedCarrier/BackendCas with unchanged C5 authentication framing and source order. C1 destinationId, imported A/B/C public bytes and signature carrier remain byte-identical and are referenced directly in the unchanged 6.5c C1/C2/C5 definitions.
+
+## Retained addresses
+
+K(name, fields) is literal prefix below plus lowercase SHA256(`ASCII name including one NUL || 01 || fields`). Never raw concatenated variable strings. Shared scope key is the imported exception, SHA256(U tenant || U execution) without domain/codec. Create-once accepts byte-identical readback only; heads use exact predecessor and checked generation. New canonical controls have these stable existing keys, with no migration from private fixtures that were never deployed.
+
+| Name / prefix | Exact fields / mutation |
+| --- | --- |
+| HX-EV-FULL-REPLAY-ACTIVATION-KEY-1 / full-replay-activation: | U domain, B32 fingerprint, N generation; immutable |
+| HX-EV-PUBLICATION-DRAIN-LIMIT-KEY-1 / publication-drain-limit: | B32 scope, N window, N limit; immutable |
+| HX-EV-PUBLICATION-DRAIN-RESOLUTION-KEY-1 / publication-drain-resolution: | B32 scope, B32 limitHash; immutable |
+| HX-EV-SCOPE-SHARD-USAGE-KEY-1 / scope-shard-usage: | U tenant, N shard; transactional head |
+| HX-EV-LEGACY-SCOPE-CUTOVER-KEY-1 / legacy-scope-cutover: | U tenantOrStar, U domain, N generation; immutable; head variant HX-EV-LEGACY-SCOPE-CUTOVER-HEAD-KEY-1 / legacy-scope-cutover-head: omits generation |
+| HX-EV-FIRST-SEND-MEMBERSHIP-KEY-1 / first-send-membership: | U tenant, B32 scope, N position, U MessageId, B32 pin; versioned outcome head |
+| HX-EV-DESTINATION-CONFIG-KEY-1 / destination-config: | U deployment, U component, U topic, N revision; immutable; head variant HX-EV-DESTINATION-CONFIG-HEAD-KEY-1 / destination-config-head: omits revision |
+| HX-EV-PUBLICATION-CAPABILITY-KEY-1 / publication-retention-capability: | U deployment, N revision; immutable; head variant HX-EV-PUBLICATION-CAPABILITY-HEAD-KEY-1 / publication-retention-capability-head: omits revision |
+| HX-EV-PUBLICATION-CHARGE-KEY-1 / publication-charge: | U deployment, U accountKind, U accountId, B32 objectKey; transactional head |
+| HX-EV-PUBLICATION-COUNTER-KEY-1 / publication-counter: | U deployment, U counterKind, U counterId; transactional head |
+| HX-EV-PIN-BATCH-RESERVATION-KEY-1 / pin-batch-reservation: | B32 scope, B32 candidateRoot; transactional head |
+| HX-EV-CAPACITY-SUBJECT-1 / capacity-subject: | B32 scope, B32 immutablePlan; stable subject |
+| HX-EV-PIN-CAPACITY-QUEUE-KEY-1 / pin-capacity-queue: | U deployment, U literal deployment; global allocator/header; eight fixed addressed storage shards under same transaction |
+| HX-EV-PUBLICATION-RESUME-CLAIM-KEY-1 / publication-resume-claim: | U tenant, U execution, B32 requestIdentity; immutable through retry horizon |
+| HX-EV-PUBLICATION-RESUME-STATE-KEY-1 / publication-resume-state: | U tenant, U execution; canonical execution control CAS |
+| HX-EV-PUBLICATION-WINDOW-KEY-1 / publication-window: | B32 scope, N window; immutable |
+| HX-EV-PUBLICATION-WINDOW-CLOSURE-KEY-1 / publication-window-closure: | B32 scope, N window; immutable |
+| HX-EV-PUBLICATION-RESUME-AUDIT-KEY-2 / publication-resume-audit: | U tenant, U execution, B32 requestIdentity; successful immutable audit |
+| HX-EV-WINDOW-ATTEMPT-SET-KEY-1 / window-attempt-set: | U tenant, B32 scope, N window; immutable sealed source, active C2 collection separately owned |
+| HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1 / legacy-resume-capsule-chunk: | B32 capsuleIdentity, N ordinal; immutable |
+| HX-EV-LEGACY-RESUME-CAPSULE-KEY-2 / legacy-resume-capsule: | B32 capsuleIdentity; immutable |
+| HX-EV-SUBSCRIPTION-POLICY-KEY-1 / subscription-policy: | U deployment, U component, U topic, U subscription, N revision; immutable; head variant HX-EV-SUBSCRIPTION-POLICY-HEAD-KEY-1 / subscription-policy-head: omits revision |
+| HX-EV-HELD-DELIVERY-KEY-2 / held-delivery: | U scopeKind, U deployment, O(U tenant), U component, U topic, U subscription, B32 carrier; canonical held control CAS |
+| HX-EV-CARRIER-QUARANTINE-KEY-1 / carrier-quarantine: | B32 heldKey, B32 carrier; immutable |
+| HX-EV-PUBLICATION-INVOCATION-KEY-1 / publication-invocation: | U tenant, U execution, B32 exact retained invocationIdentity; immutable |
+| HX-EV-OWNER-REGISTRY-SHARD-KEY-1 / owner-registry-shard: | U deployment, N shard (0..255); shard-local header CAS |
+| HX-EV-PIN-CAPACITY-QUEUE-SHARD-KEY-1 / pin-capacity-queue-shard: | U deployment, N shard (0..7); fixed storage envelope CAS |
+| HX-EV-OWNER-REGISTRY-ENTRY-KEY-1 / owner-registry-entry: | U deployment, U scopeKind, U scopeId, U subject; bounded per-row CAS |
+| HX-EV-OWNER-REGISTRY-SCOPE-KEY-1 / owner-registry-scope: | U deployment, U scopeKind, U scopeId; bounded scope count header CAS |
+| HX-EV-OPERATIONS-EPOCH-KEY-1 / operations-epoch: | U deployment; authenticated global lease CAS |
+
+CapsuleIdentity = SHA256(`"HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0" || 01 || U tenant || U domain || U aggregate || U tracking || B32 sourceHash`). For legacy execution control, execution identity is the lowercase capsuleIdentity rather than a reused MessageId; retained handle also binds manifest hash. Registry/cursor use their D8 exact canonical schemas under the existing deployment discovery adapter. Actor IDs are scope-discriminated; reserved placeholders use the same eventual owner locator. No provider receipt is minted from a locally computed hash in production.
+
+## Retained and retired verification obligations
+
+| Prior family/probe | Disposition in simplified design |
+| --- | --- |
+| 24 retained records and framed external keys | retained; known-answers.json literals/descriptor encode/decode/hash plus independent reconstruction; dynamic roots constructed from actual semantic rows |
+| D45-state / PUBLICATION-RESUME-STATE-3 | obsolete private head; maps to execution-control/1; historical byte image retained only as literal prior-hash fixture input, no deployed migration |
+| D46-recovery / LEGACY-PUBLICATION-RECOVERY-3 | obsolete separate mutable fence; maps to legacy recovery phase in shared execution owner |
+| D36-held / HELD-DELIVERY-4 | obsolete private mutable representation; same physical held key/public identity maps to held-control/1 |
+| D31-wait / PIN-CAPACITY-WAIT-2 and D31-queue / PIN-CAPACITY-QUEUE-4 | obsolete paired-directory local structures; one canonical deployment queue row/ticket; fairness/refund/parking behavior retained |
+| D37-entry/index/directory/key | obsolete synchronized local entry/index/hash families; bounded addressed per-row registry/current-owner derivation and scope-authorized registry-generation cursor |
+| D45-origin/preparation/preparation-head | obsolete copies of predecessor/successor process images; original request/phase/intent in execution control, byte-only restart tests |
+| D45-invocation | obsolete independent local coordination body; exact deterministic existing invocation identity/address retained below, pending intent in execution control |
+| D36-capture-origin/capture-preparation | obsolete independent private capture coordination; original observation/policy/capture intent in held control; charge-only/object-written restart tests |
+| D36-attempt/current-request | obsolete separate fixed-slot local coordination; exact external signed request bytes and count-bound attempt share held CAS |
+| D36-repair/cleanup/repair-interest/native-cleanup | obsolete second charged repair hold/cleanup family; explicit absent/corrupt repair and bounded deletion intent/receipts in original held record |
+| D31-preparation/authority/owners/predecessor/receipt | obsolete paired owner indexes and 74 MiB predecessor copies; one queue row under single ledger transaction, immutable operation/ledger recovery authority |
+| All historical key-only answers for above private families | obsolete/mapped to same owner keys or registry/queue keys; never deployed wire format, no migration invented |
+| Historical 180 source-text guard mutations and fixed finding/probe counts | obsolete; behavioral refusal/restart/corruption assertions exercise actual simplified functions, zero review findings allowed |
+| 14 historical status cases / four frozen matrix rows | retained; historical and adjacent-predicate concrete precedence cases; resume effects, legacy exact range/classification, queue/refund, held redrive and idle replay checks |
+| 67 lifetime resumes / >130 failed redrives / monotone counts | retained using same byte-only backend plus fixed-horizon authenticated evidence deletion/refund; retained old-window charges remain until deleteAfter; active owner/registry charges stay bounded |
+| Scope/cursor isolation, evidence and pre-effect unchanged refusals | retained; exact persisted bytes inspected after fresh deserialize; unavailable/forged data has no authority |
+| Crypto, real broker and Dapr/PostgreSQL atomic/crash behavior | retained as runtime gate, unproved by fixture model; no production readiness claim |
+
+Deterministic invocation identity is the existing SHA256(`"HX-EV-PUBLICATION-INVOCATION-1\0" || 01 || B32 unchangedOrSelectedWindowClaim || N successfulOrdinal || N newDrainLimit || B32 requestIdentity || B32 currentUnresolvedRoot`); address K(HX-EV-PUBLICATION-INVOCATION-KEY-1, U tenant, U execution, B32 invocationIdentity), prefix publication-invocation:. Legacy claim hash is zero and root is capsule eventRoot. Existing coordinator registers this exact identity before dispatch; it is retained in owner's invoke intent and referenced existing drain authority. Exact retry cannot create another identity. No new invocation codec family is needed.
+
+## Evidence and independent checks
+
+Run verify.py directly. Its byte snapshots restart Store from serialized canonical bytes, not returned process dictionaries. Literal frames are reconstructed independently during authoring and match all 23 previously published retained digests (plus newly exposed caller carrier), then checked by the verifier's separate frame implementation. Internal controls have complete literal JSON/hex/digest answers, including the bounded registry header, independently addressed entry/scope header and operations epoch. Every control literal declares its fixed maxBytes; the epoch literal validates exact fields, positive epoch/generation, canonical 26-character ULID ownerFence and the 60-second lease clock. The model does not prove backend lease acquisition, fencing or metric emission. codec_cases checks registry subject decoder/key agreement at 1,024/1,025 UTF-8 bytes, including multibyte values. The shared command-execution-scope exception has its own unframed literal in sharedKeys. All retained key families have exact framed literals, including capacity subject, claim, policy, window, invocation, destination and scope usage/head variants. Fixed maxBytes values are checked against the parsed normative byte ceilings below in both Python and the independent Node constructor, and mutated deep-copy answers run the actual verify_answers check. Corrupted literal digest/framing/cap metadata, exceeded control cap, illegal legacy ordinal transition, bad queue ticket and invalid accepted partition each fail their owning assertion/decoder. These are a bounded owning behavior set, not a per-guard mutation sweep or proof every guard is mutation-covered. Actual mutation of a fixture expected result must fail its scenario assertion; tests do not mirror source text.
+
+Native auth strings beginning fixture-provider-only and fixture-purpose-2d-only establish deterministic test authorization only. Production requires approved profile, actual signatures and separately authenticated provider readback. Protected frozen intent/archive SHA audits and source/path audit belong to the parent acceptance pass. All AD-13/unapproved/source/runtime/test files remain unchanged.
+
+
+## Focused post-simplification correction evidence
+
+PD1–PD5 and FP1–FP24 (except parent-owned FP19 evidence/trackers) are implemented within the same execution/held owners, registry and queue. The executable groups codec_cases, status_replay_cases, resume_cases, legacy_cases, held_cases and queue_scope_inventory_cases inspect serialized persisted bytes and compute actual persisted owner ordinals/redrive counts and register matrix evidence only after its covering assertions pass. Legacy covers missing capsule, exact same capsule/range/MessageIds, successful-audit ordinal authority, non-failed ordinal preservation, typed evidence repair, later exhaustion, 1,000 maximum-width rows, and capsule cleanup byte restarts before/after original-drain deletion with unchanged refusal on a contradictory source. It also checks live-drain restore byte restarts before/after the external write and after advancement, same-ordinal lost-ack repeats without duplicate advancement, exact original range/MessageIds/classification, wrong owner/ordinal, contradictory readback and altered intent refusal. Resume covers intent recovery after accepted progress, before/after irreversible cancellation/expiry, 64 concurrent outcomes, pending-identity reclamation exclusion and old-charge deletion/refund deadlines. Held covers tenant/deployment account isolation, lost acknowledgement, correctly fixture-signed foreign held-identity refusals at both send and repair with all persisted bytes unchanged, corrupt/absent repair, backoff/count/identity/UTC refusal, observed-route success and distinct delivered versus erasure cleanup. Queue covers tenant blocking, deployment no-bypass, parking after current-overhead rerender, whole net grants, malformed materialization, ticket exhaustion, and unchanged stable arithmetic/evidence refusal. Inventory covers registry capacity, placeholder authority, owner-churn continuation, registry-change conflict, expired/invalid/cross-scope cursors and per-row unavailable evidence.
+
+PD4 defines the adapter/owner-fence/epoch and AD/AD-26 handoff in D1/D8/D9; this is settled policy awaiting an architecture amendment and actual provider gate, not a fixture claim. FW1's automatic CI integration and exact signed/provider authority remain runtime gates. Existing C2 permanent class-02/03 member fences continue to govern drain-only dispatch. Candidate/model storage pressure is reported with actual sizes by parent acceptance; bounds and necessary cases take precedence over the design-pressure target.
+
+## Normative byte ceilings
+
+These exact byte values govern the prose ceilings and literal metadata. Every family must be present exactly once; the constructors parse this table independently. Queue allocator and each shard are separate objects. Public JSON bodies are bounded to 4 KiB; cursor envelope is 16 KiB.
+
+| Family | Maximum bytes |
+| --- | --- |
+| record/D06-activation | 1048576 |
+| record/D12-legacy-claim | 8192 |
+| record/D12-cutover | 4096 |
+| record/D12-usage | 2048 |
+| record/D12-tombstone | 4096 |
+| record/D14-drain-limit | 4096 |
+| record/D14-drain-resolution | 4096 |
+| record/D16-membership-resolution | 16384 |
+| record/D29-capability | 65536 |
+| record/D29-charge | 4096 |
+| record/D29-counter | 4096 |
+| record/D29-pin-batch | 65536 |
+| record/D36-policy | 16384 |
+| record/D36-quarantine | 131072 |
+| record/D36-redrive | 3072 |
+| record/D45-carrier | 2048 |
+| record/D45-request | 4096 |
+| record/D45-attempt-set | 67108864 |
+| record/D45-closure | 65536 |
+| record/D45-window | 16384 |
+| record/D45-audit | 4096 |
+| record/D46-chunk | 65536 |
+| record/D46-capsule | 131072 |
+| record/D17-destination-config | 65536 |
+| control/execution | 786432 |
+| control/held | 131072 |
+| control/queue | 16384 |
+| control/queue-shard | 104857600 |
+| control/registry | 16384 |
+| control/registry-entry | 65536 |
+| control/registry-scope | 16384 |
+| control/epoch | 16384 |
+| control/cursor | 16384 |
+| public/cursor-envelope | 16384 |
+| public/held-redrive-request | 4096 |
+| public/held-redrive-202 | 4096 |
+
+## Recovery correction ownership
+
+RD1/RP14 are D3/D6 headroom/refusal/readiness policy and correction_cases' exact capacity/refund assertions. RD2/RP6 consume failed-generation repair through original recovery intent and authenticated drain-failure classification; correction_cases restarts both deletion phases and rejects a stale proof on the next failure. RD3 is D1 ordinary fence/generation CAS with D8 Operations lease only; correction_cases separately transfers generation, fence and both while keeping payload unchanged. RD4/RP9/RP10 are eight addressed storage envelopes, no consumed refused ticket and external admission-plan readback; correction_cases checks each parking path and fair younger grant.
+
+RP1 reaches draining with 1,000 maximum-width IDs through compact eventRoot/range intent and byte restart. RP4/RP8/RP13/RP19 isolate scoped headers/cursor generations, authenticate typed owners per row, admit escaped-width scope headers and reject empty cursors. RP5 preserves an advanced capsule owner even while the original drain remains. RP7 uses explicit recovery UTC and proves original stage refund before effects. RP11 retains the original attempt/route requestHash across absent/corrupt repair and refuses a re-signed substitute. RP12 checks admitted incarnation after capture and protects an authentically charged replacement owner; stale capture cannot advance it or orphan its object. RP15 restores the closed signed eligibility set. RP18 retains literal cursor/request/202 JSON and exact public count/cursor/admission reasons. RP20 adds RegistryCapacityHold's predicate/exit. RP21 uses exact retained publication-charge addresses in every owner/outcome/queue charge, checked against account/object framing.
+
+RP16/RP17 are the bounded correction_cases and retained scenario assertions, including exact refusal labels, authenticated source/readback/refund failures, observed route completion, accepted dispatch exclusion, all persisted retained artifacts and active-window preservation, scope isolation, actual oversize capture and 1,001-event refusal, four transaction predecessor races, retained handles and fresh page revision. This is bounded case coverage, without a per-guard sweep claim. RP22 pins exact owning failure output in mutations.py and focused-regressions.py. RP23 reports persisted ordinals/counts and registers each matrix observation after its assertions, including zero-event bootstrap. RP24 parses this normative cap table in two independent constructors and mutates cap metadata for every record/control/public family.
+
+RP2/RP3/RP25/RP26 remain parent-owned execution/tracker finalization, fresh ancestry/scope acceptance and historical revision/evidence attribution; their completion is recorded by the correction execution record only after parent acceptance and fresh focused review. Historical frozen intent, original checkpoint, archives, 54 routed dispositions and all 24 retained public record descriptors/bytes remain unchanged.
+
+<!-- imported-d-wire-reference-end -->
+
+<!-- imported-d-known-answers-start -->
+```json
+{
+  "schema": "hexalith.eventstore.6-5d-known-answers/1",
+  "records": {
+    "D06-activation": {
+      "domain": "HX-EV-FULL-REPLAY-ACTIVATION-2",
+      "fields": [
+        [
+          "U",
+          "admin"
+        ],
+        [
+          "U",
+          "d"
+        ],
+        [
+          "B32",
+          "872491a30d60d598962de6e7b834ab76b2aa65fbab102c6ebaaae6acdc238822"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "B",
+          "0000000100000007726f7574652d6100000014636f6e74696e75652d66756c6c2d7265706c61790000000000000064000000000000100000000000000c800000"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "U",
+          "operator"
+        ],
+        [
+          "Q",
+          638712864000000001
+        ]
+      ],
+      "maxBytes": 1048576,
+      "hex": "48582d45562d46554c4c2d5245504c41592d41435449564154494f4e2d3200010009010000000561646d696e02000000016403872491a30d60d598962de6e7b834ab76b2aa65fbab102c6ebaaae6acdc23882204000000000000000105000000000000000000000000000000000000000000000000000000000000000006000000400000000100000007726f7574652d6100000014636f6e74696e75652d66756c6c2d7265706c61790000000000000064000000000000100000000000000c8000000708dd29f73c31400008000000086f70657261746f720908dd29f73c314001",
+      "length": 225,
+      "sha256": "ce6ece552e0e0c6220e13f3bfc15215d4995299bba0d2259844b55dd7c557605"
+    },
+    "D12-legacy-claim": {
+      "domain": "HX-EV-COMMAND-SCOPE-LEGACY-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "U",
+          "d"
+        ],
+        [
+          "U",
+          "a"
+        ],
+        [
+          "U",
+          "increment"
+        ],
+        [
+          "B32",
+          "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "Q",
+          638713728000000000
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "maxBytes": 8192,
+      "hex": "48582d45562d434f4d4d414e442d53434f50452d4c45474143592d320001000a01000000017402000000026f700300000001640400000001610500000009696e6372656d656e7406239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e50708dd29f73c3140000808dd2ac0669b00000900000000000000010a0000000000000000000000000000000000000000000000000000000000000000",
+      "length": 164,
+      "sha256": "e01c2779a425182a0d676c6ac2c8a057f8131da0e36cbee7047b654e564f5394"
+    },
+    "D12-cutover": {
+      "domain": "HX-EV-LEGACY-SCOPE-CUTOVER-1",
+      "fields": [
+        [
+          "U",
+          "*"
+        ],
+        [
+          "U",
+          "d"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "Q",
+          638713728000000000
+        ],
+        [
+          "N",
+          86400
+        ],
+        [
+          "B32",
+          "b775f38f4d3b3e7cbacea2d91c76895d4aafe384f84c8f620573b4fbcd733781"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d4c45474143592d53434f50452d4355544f5645522d310001000801000000012a0200000001640300000000000000010408dd29f73c3140000508dd2ac0669b000006000000000001518007b775f38f4d3b3e7cbacea2d91c76895d4aafe384f84c8f620573b4fbcd733781080000000000000000000000000000000000000000000000000000000000000000",
+      "length": 146,
+      "sha256": "669307293a19b9356da9801bc1d73473748f88df13c230b5133d51eaf43e302f"
+    },
+    "D12-usage": {
+      "domain": "HX-EV-SCOPE-SHARD-USAGE-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "N",
+          7
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "N",
+          14336
+        ],
+        [
+          "N",
+          3
+        ],
+        [
+          "B32",
+          "e542a7da43387e7a09e2c95d60ad448b6aba044cbe8a8e4fd4bcf817dfb27186"
+        ]
+      ],
+      "maxBytes": 2048,
+      "hex": "48582d45562d53434f50452d53484152442d55534147452d310001000701000000017402000000000000000703000000000000000204000000000000000105000000000000380006000000000000000307e542a7da43387e7a09e2c95d60ad448b6aba044cbe8a8e4fd4bcf817dfb27186",
+      "length": 113,
+      "sha256": "dfdeb5df0eb0124072f69e25c0d3e759ef4599c50a39cc9e33dc2f29ca33addf"
+    },
+    "D12-tombstone": {
+      "domain": "HX-EV-COMMAND-SCOPE-TOMBSTONE-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "B32",
+          "c96c6d5be8d08a12e7b5cdc1b207fa6b2430974c86803d8891675e76fd992c20"
+        ],
+        [
+          "B32",
+          "93134ae51d29cf8f6de786a1fd15fe89c5f7858f4b33cbfadbc1d05cec42f12d"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "Q",
+          639028224000000000
+        ],
+        [
+          "N",
+          146
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d434f4d4d414e442d53434f50452d544f4d4253544f4e452d320001000801000000017402000000026f70035f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3304c96c6d5be8d08a12e7b5cdc1b207fa6b2430974c86803d8891675e76fd992c200593134ae51d29cf8f6de786a1fd15fe89c5f7858f4b33cbfadbc1d05cec42f12d0608dd29f73c3140000708de48c8b4f80000080000000000000092",
+      "length": 174,
+      "sha256": "f04ab33d882ecba7632d4131688d0a33ec4ef6a485b497aefa08cd2da3f74363"
+    },
+    "D14-drain-limit": {
+      "domain": "HX-EV-PUBLICATION-DRAIN-LIMIT-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "U",
+          "operation"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "N",
+          16
+        ],
+        [
+          "B32",
+          "811875f53f398befc65eb7ec9eb7638a321706aa5c16d101ee4d10f2e4509814"
+        ],
+        [
+          "B32",
+          "f4d8f812f6d478181d960e6e0b66801ec491e89d17c1fbd53c493f2605a61510"
+        ],
+        [
+          "N",
+          4
+        ],
+        [
+          "U",
+          "pending"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d445241494e2d4c494d49542d320001000a010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3303000000096f7065726174696f6e04000000000000000205000000000000001006811875f53f398befc65eb7ec9eb7638a321706aa5c16d101ee4d10f2e450981407f4d8f812f6d478181d960e6e0b66801ec491e89d17c1fbd53c493f2605a61510080000000000000004090000000770656e64696e670a08dd29f73c314000",
+      "length": 202,
+      "sha256": "e22848b3ab4b7c6bd3357078b95410550c1ee0e552d968a9c01ec8068ea4f343"
+    },
+    "D14-drain-resolution": {
+      "domain": "HX-EV-PUBLICATION-DRAIN-LIMIT-RESOLUTION-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "B32",
+          "7ea383416841309894e7a4455dac5f0074cf3f813ed577cd328533c641e0cff1"
+        ],
+        [
+          "U",
+          "resumed"
+        ],
+        [
+          "B32",
+          "29e16246d97511f5cb76c902ce4cdfd89a09329c9c57c059ebf4a6eb247e9acf"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "U",
+          "coordinator"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d445241494e2d4c494d49542d5245534f4c5554494f4e2d3100010008010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33037ea383416841309894e7a4455dac5f0074cf3f813ed577cd328533c641e0cff10400000007726573756d65640529e16246d97511f5cb76c902ce4cdfd89a09329c9c57c059ebf4a6eb247e9acf060000000000000002070000000b636f6f7264696e61746f720808dd29f73c314000",
+      "length": 197,
+      "sha256": "9fe241c44c658302aac2187226a561138458983ae10d4e2cf81eacd2094b005e"
+    },
+    "D16-membership-resolution": {
+      "domain": "HX-EV-FIRST-SEND-MEMBERSHIP-RESOLUTION-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "U",
+          "event-1"
+        ],
+        [
+          "B32",
+          "64f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c812"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "B32",
+          "6da0633528deaa0144e7b058315f0b753ec0b945163a72bf96a0d18180f9de0d"
+        ],
+        [
+          "B32",
+          "bf5cf59e356652253268c604cbf8df8cfdb03a4a0d32b27ad158e581709c80e4"
+        ],
+        [
+          "B32",
+          "0c5f2562599dc214de1d74bd85627cce62dfd96ed19664efec142ff849c2fb63"
+        ],
+        [
+          "U",
+          "ContinueSamePin"
+        ],
+        [
+          "U",
+          "broker"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 16384,
+      "hex": "48582d45562d46495253542d53454e442d4d454d424552534849502d5245534f4c5554494f4e2d310001000c010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3303000000000000000104000000076576656e742d310564f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c812060000000000000002076da0633528deaa0144e7b058315f0b753ec0b945163a72bf96a0d18180f9de0d08bf5cf59e356652253268c604cbf8df8cfdb03a4a0d32b27ad158e581709c80e4090c5f2562599dc214de1d74bd85627cce62dfd96ed19664efec142ff849c2fb630a0000000f436f6e74696e756553616d6550696e0b0000000662726f6b65720c08dd29f73c314000",
+      "length": 285,
+      "sha256": "2875259659b0f8a7225a55f4f18b9110c6323796ee2f508343c319854a607c40"
+    },
+    "D29-capability": {
+      "domain": "HX-EV-PUBLICATION-RETENTION-CAPABILITY-2",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "N",
+          3
+        ],
+        [
+          "B",
+          "6261636b656e64"
+        ],
+        [
+          "N",
+          1073741824
+        ],
+        [
+          "N",
+          2147483648
+        ],
+        [
+          "N",
+          268435456
+        ],
+        [
+          "N",
+          536870912
+        ],
+        [
+          "N",
+          1048576
+        ],
+        [
+          "N",
+          134217728
+        ],
+        [
+          "B32",
+          "1e190b8ed51c9698a64b5d2451ef4adee1ed31a0e1021f4f464c53211282f5cc"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "N",
+          256
+        ],
+        [
+          "N",
+          31536000
+        ],
+        [
+          "N",
+          50000
+        ],
+        [
+          "N",
+          268435456
+        ]
+      ],
+      "maxBytes": 65536,
+      "hex": "48582d45562d5055424c49434154494f4e2d524554454e54494f4e2d4341504142494c4954592d320001000f010000000c6465706c6f796d656e742d6102000000000000000303000000076261636b656e640400000000400000000500000000800000000600000000100000000700000000200000000800000000001000000900000000080000000a1e190b8ed51c9698a64b5d2451ef4adee1ed31a0e1021f4f464c53211282f5cc0b08dd29f73c3140000c00000000000001000d0000000001e133800e000000000000c3500f0000000010000000",
+      "length": 214,
+      "sha256": "a0194011a460ccf2063d4e9c78b3b7ad4f7bbf70ce9e63a55f237a0ef2b52043"
+    },
+    "D29-charge": {
+      "domain": "HX-EV-PUBLICATION-CHARGE-2",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "2958d416d08aa5a472d7b509036cb7eafd542add84527e66a145ea64cb4cdc75"
+        ],
+        [
+          "U",
+          "pin-batch"
+        ],
+        [
+          "N",
+          10485760
+        ],
+        [
+          "N",
+          1048576
+        ],
+        [
+          "N",
+          11534336
+        ],
+        [
+          "N",
+          3
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "U",
+          "active"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "O:B32",
+          null
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "N",
+          0
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d4348415247452d320001000f010000000c6465706c6f796d656e742d61020000000674656e616e74030000000174042958d416d08aa5a472d7b509036cb7eafd542add84527e66a145ea64cb4cdc75050000000970696e2d6261746368060000000000a00000070000000000100000080000000000b000000900000000000000030a00000000000000010b000000066163746976650c00000000000000000000000000000000000000000000000000000000000000000d000e08dd29f73c3140000f0000000000000000",
+      "length": 220,
+      "sha256": "5b0dcea4582d17f74a4a51c0f148ed7d2e5a7c6529f43c82348ff6d612e2d868"
+    },
+    "D29-counter": {
+      "domain": "HX-EV-PUBLICATION-COUNTER-1",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "t"
+        ],
+        [
+          "N",
+          11534336
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "N",
+          4
+        ],
+        [
+          "B32",
+          "5c31195f4f39357e35722c04eaaaf1a32debb7743809f4e3a1f187f47327289b"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d434f554e5445522d3100010008010000000c6465706c6f796d656e742d61020000000674656e616e74030000000174040000000000b00000050000000000000001060000000000000004075c31195f4f39357e35722c04eaaaf1a32debb7743809f4e3a1f187f47327289b0808dd29f73c314000",
+      "length": 134,
+      "sha256": "eca227f547122e041a159affbac58bf7b57375bf91d78876d88cd73f418d1fc8"
+    },
+    "D29-pin-batch": {
+      "domain": "HX-EV-PIN-BATCH-RESERVATION-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "B32",
+          "58cdc67dd93c307d3ec5a935120301aa96851eadee243d343c6117ca90bd836b"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B",
+          "00000001000000076576656e742d3164f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c8120000000000a000000000000000b00000"
+        ],
+        [
+          "N",
+          11534336
+        ],
+        [
+          "N",
+          3
+        ],
+        [
+          "B32",
+          "6e98b3816d981fe15d1401d9d42ebe5de7735b3645c1677e715d134c308ac6d7"
+        ],
+        [
+          "B32",
+          "d27f9eda0a03498efdc8ca19462b4a346bd036b42d3a55d9cce66d6d53af6e09"
+        ],
+        [
+          "B32",
+          "9599f4aba0e295656299144a237124fa0d0d1bb509d53310b59df62a1c5afb16"
+        ],
+        [
+          "U",
+          "reserved"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 65536,
+      "hex": "48582d45562d50494e2d42415443482d5245534552564154494f4e2d320001000d010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb330358cdc67dd93c307d3ec5a935120301aa96851eadee243d343c6117ca90bd836b040000000000000001050000003f00000001000000076576656e742d3164f46a7526a186d2346552453ae478ca51244674f5b21ba150bd483b39f7c8120000000000a000000000000000b00000060000000000b00000070000000000000003086e98b3816d981fe15d1401d9d42ebe5de7735b3645c1677e715d134c308ac6d709d27f9eda0a03498efdc8ca19462b4a346bd036b42d3a55d9cce66d6d53af6e090a9599f4aba0e295656299144a237124fa0d0d1bb509d53310b59df62a1c5afb160b0000000872657365727665640c00000000000000010d08dd29f73c314000",
+      "length": 330,
+      "sha256": "82e7a4965c94f3be0092cbcb8adb20b8ea560ef13419c88a036f5dc2d62c4517"
+    },
+    "D36-policy": {
+      "domain": "HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ],
+        [
+          "U",
+          "sub-a"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "U",
+          "initial"
+        ],
+        [
+          "U",
+          "dead-letter-capture"
+        ],
+        [
+          "O:U",
+          "orders-dlq"
+        ],
+        [
+          "N",
+          8
+        ],
+        [
+          "B32",
+          "62e51436d6c396075890484730b1dfebecd5babdbdd2f6262bb2dfc2af5f59e7"
+        ],
+        [
+          "U",
+          "dapr-configuration"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 16384,
+      "hex": "48582d45562d535542534352495054494f4e2d44454c49564552592d504f4c4943592d330001000d010000000c6465706c6f796d656e742d61020000000670756273756203000000066f726465727304000000057375622d610500000000000000010600000000000000000000000000000000000000000000000000000000000000000700000007696e697469616c0800000013646561642d6c65747465722d6361707475726509010000000a6f72646572732d646c710a00000000000000080b62e51436d6c396075890484730b1dfebecd5babdbdd2f6262bb2dfc2af5f59e70c00000012646170722d636f6e66696775726174696f6e0d08dd29f73c314000",
+      "length": 257,
+      "sha256": "9989075b380937e91cf9e98b27670f195b58aaeb326f9e90e54c8fe6158f6a88"
+    },
+    "D36-quarantine": {
+      "domain": "HX-EV-CARRIER-QUARANTINE-2",
+      "fields": [
+        [
+          "U",
+          "deployment"
+        ],
+        [
+          "O:U",
+          null
+        ],
+        [
+          "U",
+          "sub-a"
+        ],
+        [
+          "U",
+          "invalid-header-value"
+        ],
+        [
+          "N",
+          16
+        ],
+        [
+          "B32",
+          "7e4e3884709cff72e33e68fa5a8a8ac0fffc9c61a9425f538cabf95b45470cde"
+        ],
+        [
+          "B",
+          "0000000100000008782d6865616465720000000000000004cd42404d52ad55ccfa9aca4adc828aa5800ad9d385a0671fbcbf724118320619"
+        ],
+        [
+          "U",
+          "archive-a"
+        ],
+        [
+          "U",
+          "objects/quarantine-1"
+        ],
+        [
+          "B32",
+          "fa6e1f76fbc01d856290876b65343cffb1f7ae8a8bf04770d44ea6a388b2b273"
+        ],
+        [
+          "O:U",
+          "event-1"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "U",
+          "terminal-quarantine"
+        ],
+        [
+          "B32",
+          "650d64d0ee60d0fba366051c8eb772c5a28c7fa6813252c726d69c3219153371"
+        ]
+      ],
+      "maxBytes": 131072,
+      "hex": "48582d45562d434152524945522d51554152414e54494e452d320001000e010000000a6465706c6f796d656e74020003000000057375622d610400000014696e76616c69642d6865616465722d76616c7565050000000000000010067e4e3884709cff72e33e68fa5a8a8ac0fffc9c61a9425f538cabf95b45470cde07000000380000000100000008782d6865616465720000000000000004cd42404d52ad55ccfa9aca4adc828aa5800ad9d385a0671fbcbf7241183206190800000009617263686976652d6109000000146f626a656374732f71756172616e74696e652d310afa6e1f76fbc01d856290876b65343cffb1f7ae8a8bf04770d44ea6a388b2b2730b01000000076576656e742d310c08dd29f73c3140000d000000137465726d696e616c2d71756172616e74696e650e650d64d0ee60d0fba366051c8eb772c5a28c7fa6813252c726d69c3219153371",
+      "length": 336,
+      "sha256": "5dcce10f015b54bb853a3beb633b865b87889685771beeeb603d351559536257"
+    },
+    "D36-redrive": {
+      "domain": "HX-EV-REDRIVE-REQUEST-2",
+      "fields": [
+        [
+          "U",
+          "admin"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "O:U",
+          "t"
+        ],
+        [
+          "B32",
+          "3c676c7575e6e1e55eec0c4a5380eda958a996866a605cb2a863d976817c8b13"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "U",
+          "operator"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 3072,
+      "hex": "48582d45562d524544524956452d524551554553542d3200010007010000000561646d696e020000000674656e616e7403010000000174043c676c7575e6e1e55eec0c4a5380eda958a996866a605cb2a863d976817c8b1305000000000000000206000000086f70657261746f720708dd29f73c314000",
+      "length": 119,
+      "sha256": "1a552c0f005efc61b9d74682a5f707925c0b47b5e31d559bdb0b43da43f8b49f"
+    },
+    "D45-carrier": {
+      "domain": "HX-EV-PUBLICATION-RESUME-CARRIER-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "hxrsm1-handle"
+        ],
+        [
+          "B32",
+          "e8b22d83b417e85ba4f24101a49a49cc3246a5e5e4ce6574623063e4e32801e0"
+        ],
+        [
+          "U",
+          "retry-0001"
+        ],
+        [
+          "U",
+          "retry after broker repair"
+        ]
+      ],
+      "maxBytes": 2048,
+      "hex": "48582d45562d5055424c49434154494f4e2d524553554d452d434152524945522d3100010005010000000174020000000d687872736d312d68616e646c6503e8b22d83b417e85ba4f24101a49a49cc3246a5e5e4ce6574623063e4e32801e0040000000a72657472792d30303031050000001972657472792061667465722062726f6b657220726570616972",
+      "length": 140,
+      "sha256": "a812cbcdfd7cd5ecac4ef96b49e40d135eec8feb58311d5d908650ae6623241c"
+    },
+    "D45-request": {
+      "domain": "HX-EV-PUBLICATION-RESUME-3",
+      "fields": [
+        [
+          "U",
+          "admin"
+        ],
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "U",
+          "retry-exhausted"
+        ],
+        [
+          "B32",
+          "e8b22d83b417e85ba4f24101a49a49cc3246a5e5e4ce6574623063e4e32801e0"
+        ],
+        [
+          "B32",
+          "9f2e6d33a3717ee826353a404ba4618d1aeeb6879ad7936bce8ed5f46814924d"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "B32",
+          "57f6010d48fa4b64126af4bae2f046e7fc2d1716973396f1498cf4d46fdaea7e"
+        ],
+        [
+          "U",
+          "hxrsm1-handle"
+        ],
+        [
+          "B32",
+          "0c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44"
+        ],
+        [
+          "B32",
+          "a812cbcdfd7cd5ecac4ef96b49e40d135eec8feb58311d5d908650ae6623241c"
+        ],
+        [
+          "U",
+          "operator"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "Q",
+          638712873000000000
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d524553554d452d330001000f010000000561646d696e02000000017403000000026f70045f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33050000000f72657472792d65786861757374656406e8b22d83b417e85ba4f24101a49a49cc3246a5e5e4ce6574623063e4e32801e0079f2e6d33a3717ee826353a404ba4618d1aeeb6879ad7936bce8ed5f46814924d0800000000000000020957f6010d48fa4b64126af4bae2f046e7fc2d1716973396f1498cf4d46fdaea7e0a0000000d687872736d312d68616e646c650b0c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a440ca812cbcdfd7cd5ecac4ef96b49e40d135eec8feb58311d5d908650ae6623241c0d000000086f70657261746f720e08dd29f73c3140000f08dd29f954a25a00",
+      "length": 329,
+      "sha256": "17cef46646c6320df270e39b85a6ab05cf568d798de842b5f5f64bf83caa9e50"
+    },
+    "D45-attempt-set": {
+      "domain": "HX-EV-WINDOW-ATTEMPT-SET-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B32",
+          "c6836f7ad1c4da8a997c009a4b4b120c237b1993693239e194d6307d9d0b8c3a"
+        ],
+        [
+          "N",
+          12
+        ],
+        [
+          "B",
+          "0000000100000000000000010000000000000000000000087265676973746572f2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a602049b89ab9a65c0e83f9da24ed40aa966314ec8af5bb5a07295468c6df057cb5ee000000010000000000000001000000000000000100000007756e6b6e6f776ef2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a602006ad1776c4e45f498749ed831ed1d392738273f8a93c780da83e1d4e9eb0f82d000000010000000000000001000000000000000200000006726573756c74f2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a60205a626e8a3745701d873b06a2bbcfb5379b1beb8aeaff1fb1e4d50f8eabddeee10000000100000000000000020000000000000000000000087265676973746572ca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d86d05c40fffbcecede7d450e824be63533e9e5fabccad1a3022e6dbb0bb21cb85000000010000000000000002000000000000000100000007756e6b6e6f776eca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d80c3e12850c83a63b2c7511f754ce49dda358417b29e3be6bb0f3b81cf5a05603000000010000000000000002000000000000000200000006726573756c74ca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d80a15a1ce0fdbc721ae77fa0fa91c730eb424cb105bb1a1a075f78490d48553800000000100000000000000030000000000000000000000087265676973746572887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05ba557707e186d3a5d38809962d8970c0f1d9fb5c452ab34142bf49321a5b36333000000010000000000000003000000000000000100000007756e6b6e6f776e887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05bb099ca42cb571d806c0aa69a9ce028e40c6b8b724331288878d17b30295f0629000000010000000000000003000000000000000200000006726573756c74887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05b6adb65cab82f21603d881c9a9f10598eb16537369e6c5eed82cfce76780edf4f000000010000000000000004000000000000000000000008726567697374657227e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e7570d50d95574d2076809ab4faba0556bcbf25b4068ca63b0a8dcc351df8e3b393c000000010000000000000004000000000000000100000007756e6b6e6f776e27e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e7573245530c0bfdbb45803ef23aba928e48701196071629b4e09a495e19e00fc38c000000010000000000000004000000000000000200000006726573756c7427e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e757df387fa00a86288878fdd567e8b0a406feacdc9b817ca54d0bff9c78b8e2b971"
+        ],
+        [
+          "B32",
+          "e05e7510318c90200d1857f8ee6e47b1fce697fb8a889d64d55a3910c9a3711a"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 67108864,
+      "hex": "48582d45562d57494e444f572d415454454d50542d5345542d3100010008010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3303000000000000000104c6836f7ad1c4da8a997c009a4b4b120c237b1993693239e194d6307d9d0b8c3a05000000000000000c06000005f40000000100000000000000010000000000000000000000087265676973746572f2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a602049b89ab9a65c0e83f9da24ed40aa966314ec8af5bb5a07295468c6df057cb5ee000000010000000000000001000000000000000100000007756e6b6e6f776ef2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a602006ad1776c4e45f498749ed831ed1d392738273f8a93c780da83e1d4e9eb0f82d000000010000000000000001000000000000000200000006726573756c74f2a0ede82b5b172b5fe082f344cf232da686bda1c8e73017009cdf979efd52adc78017822f832e02483489363c87e5f77bfdd24b54cb50fdc4c3e04f6a4a60205a626e8a3745701d873b06a2bbcfb5379b1beb8aeaff1fb1e4d50f8eabddeee10000000100000000000000020000000000000000000000087265676973746572ca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d86d05c40fffbcecede7d450e824be63533e9e5fabccad1a3022e6dbb0bb21cb85000000010000000000000002000000000000000100000007756e6b6e6f776eca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d80c3e12850c83a63b2c7511f754ce49dda358417b29e3be6bb0f3b81cf5a05603000000010000000000000002000000000000000200000006726573756c74ca8cc224784dcb58614e08e79218736a32f94b5e70e35b11f73cb5eada1d674f9f59783006132b770ce3f79ea0588e2e10d3207e26d802042f708fa0d57892d80a15a1ce0fdbc721ae77fa0fa91c730eb424cb105bb1a1a075f78490d48553800000000100000000000000030000000000000000000000087265676973746572887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05ba557707e186d3a5d38809962d8970c0f1d9fb5c452ab34142bf49321a5b36333000000010000000000000003000000000000000100000007756e6b6e6f776e887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05bb099ca42cb571d806c0aa69a9ce028e40c6b8b724331288878d17b30295f0629000000010000000000000003000000000000000200000006726573756c74887d8d7bb583db363cf1add3a5684223eda8b582467e3138a7a70b77dbda7d195b03c66c6e53df26bd694a309b8a83f03766d5ffd41906f25e3c9eb4802bf05b6adb65cab82f21603d881c9a9f10598eb16537369e6c5eed82cfce76780edf4f000000010000000000000004000000000000000000000008726567697374657227e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e7570d50d95574d2076809ab4faba0556bcbf25b4068ca63b0a8dcc351df8e3b393c000000010000000000000004000000000000000100000007756e6b6e6f776e27e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e7573245530c0bfdbb45803ef23aba928e48701196071629b4e09a495e19e00fc38c000000010000000000000004000000000000000200000006726573756c7427e56f73f0b8752362877a89f2ac1a9402563ff41fd4413fb8cf36402c99ef8ec1dddd43b26e3b601ea96030b79bcaf1aab5dd1b08ec2d1458ec09cd0d49e757df387fa00a86288878fdd567e8b0a406feacdc9b817ca54d0bff9c78b8e2b97107e05e7510318c90200d1857f8ee6e47b1fce697fb8a889d64d55a3910c9a3711a0808dd29f73c314000",
+      "length": 1691,
+      "sha256": "99c18639aebb9701710692fc62663bee36f9954dd550dfb773f33a7c1bb95fa3"
+    },
+    "D45-closure": {
+      "domain": "HX-EV-PUBLICATION-WINDOW-CLOSURE-3",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B",
+          "00000001000000010000000000000004df387fa00a86288878fdd567e8b0a406feacdc9b817ca54d0bff9c78b8e2b971"
+        ],
+        [
+          "B32",
+          "1d5685478a6e2bf87a83973bb9b5d8def7101a349d8ae8376b656b87a460f0c4"
+        ],
+        [
+          "B32",
+          "c83699c0756a8e4feaa3802abd985597e8ff863051333f9d0d1ca0a3047eba7b"
+        ],
+        [
+          "B32",
+          "76f42a29287880819eccab581ac1d2aae1e906ddf37125f46e8b463e4cd4bb42"
+        ],
+        [
+          "B32",
+          "e05e7510318c90200d1857f8ee6e47b1fce697fb8a889d64d55a3910c9a3711a"
+        ],
+        [
+          "U",
+          "SignedCarrier"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 65536,
+      "hex": "48582d45562d5055424c49434154494f4e2d57494e444f572d434c4f535552452d330001000b010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33030000000000000001040000003000000001000000010000000000000004df387fa00a86288878fdd567e8b0a406feacdc9b817ca54d0bff9c78b8e2b971051d5685478a6e2bf87a83973bb9b5d8def7101a349d8ae8376b656b87a460f0c406c83699c0756a8e4feaa3802abd985597e8ff863051333f9d0d1ca0a3047eba7b0776f42a29287880819eccab581ac1d2aae1e906ddf37125f46e8b463e4cd4bb4208e05e7510318c90200d1857f8ee6e47b1fce697fb8a889d64d55a3910c9a3711a090000000d5369676e6564436172726965720a00000000000000000000000000000000000000000000000000000000000000000b08dd29f73c314000",
+      "length": 331,
+      "sha256": "bcd6e3ea2d4ded2afc8a7bad0d9a5e4d6414955df40a9ae500d5e262bdb3e2d1"
+    },
+    "D45-window": {
+      "domain": "HX-EV-PUBLICATION-WINDOW-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "U",
+          "operation"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "B32",
+          "bcd6e3ea2d4ded2afc8a7bad0d9a5e4d6414955df40a9ae500d5e262bdb3e2d1"
+        ],
+        [
+          "B32",
+          "4aca9861a3cbceb14cc0341bbaba7e4e1294d0617decd3a895c1fb28cdf1de58"
+        ],
+        [
+          "B32",
+          "0c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44"
+        ],
+        [
+          "B32",
+          "3a49cb2b7f4927eca7b7d067b70cc1fcdc67dab2e70e467f81ce0f3af0c4d5aa"
+        ],
+        [
+          "B32",
+          "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812"
+        ],
+        [
+          "N",
+          16
+        ],
+        [
+          "U",
+          "admin"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ],
+        [
+          "B32",
+          "38a5be91af79d7e5ba9809bf383c699b6864ee50446239fe56a45e32b84638fe"
+        ]
+      ],
+      "maxBytes": 16384,
+      "hex": "48582d45562d5055424c49434154494f4e2d57494e444f572d320001000d010000000174025f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3303000000096f7065726174696f6e04000000000000000205bcd6e3ea2d4ded2afc8a7bad0d9a5e4d6414955df40a9ae500d5e262bdb3e2d1064aca9861a3cbceb14cc0341bbaba7e4e1294d0617decd3a895c1fb28cdf1de58070c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44083a49cb2b7f4927eca7b7d067b70cc1fcdc67dab2e70e467f81ce0f3af0c4d5aa09823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda8120a00000000000000100b0000000561646d696e0c08dd29f73c3140000d38a5be91af79d7e5ba9809bf383c699b6864ee50446239fe56a45e32b84638fe",
+      "length": 318,
+      "sha256": "573c53d0e7b7511bb5e131b33280e5a5f8e96138ddab0dce1bcc0b380b2ea9df"
+    },
+    "D45-audit": {
+      "domain": "HX-EV-PUBLICATION-RESUME-AUDIT-4",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "B32",
+          "0c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44"
+        ],
+        [
+          "B32",
+          "a812cbcdfd7cd5ecac4ef96b49e40d135eec8feb58311d5d908650ae6623241c"
+        ],
+        [
+          "B32",
+          "4aca9861a3cbceb14cc0341bbaba7e4e1294d0617decd3a895c1fb28cdf1de58"
+        ],
+        [
+          "O:B32",
+          "bcd6e3ea2d4ded2afc8a7bad0d9a5e4d6414955df40a9ae500d5e262bdb3e2d1"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "N",
+          24
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 4096,
+      "hex": "48582d45562d5055424c49434154494f4e2d524553554d452d41554449542d340001000a01000000017402000000026f70030000000000000002040c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a4405a812cbcdfd7cd5ecac4ef96b49e40d135eec8feb58311d5d908650ae6623241c064aca9861a3cbceb14cc0341bbaba7e4e1294d0617decd3a895c1fb28cdf1de580701bcd6e3ea2d4ded2afc8a7bad0d9a5e4d6414955df40a9ae500d5e262bdb3e2d10800000000000000020900000000000000180a08dd29f73c314000",
+      "length": 218,
+      "sha256": "65a4c355269c0fea578bd2a74522261385e9e0b3c7169c8fd8c3557a85768429"
+    },
+    "D46-chunk": {
+      "domain": "HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1",
+      "fields": [
+        [
+          "B32",
+          "15a6c40e379b36f9c1983edc9e7fcd83a092ad02cc3a9d98c9363419243fe8b4"
+        ],
+        [
+          "N",
+          0
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "B",
+          "000000000000000a000000076576656e742d31b48a0e14849b59138886ee568dd854da4b8da9fbd3dc2a70ec2c8a1615e45c10"
+        ],
+        [
+          "B32",
+          "5bfa8f68d7c39319fe40cd22585c420b89253b9c809f59753c1698c02c0754cd"
+        ]
+      ],
+      "maxBytes": 65536,
+      "hex": "48582d45562d4c45474143592d524553554d452d43415053554c452d4348554e4b2d31000100050115a6c40e379b36f9c1983edc9e7fcd83a092ad02cc3a9d98c9363419243fe8b40200000000000000000300000000000000010400000033000000000000000a000000076576656e742d31b48a0e14849b59138886ee568dd854da4b8da9fbd3dc2a70ec2c8a1615e45c10055bfa8f68d7c39319fe40cd22585c420b89253b9c809f59753c1698c02c0754cd",
+      "length": 179,
+      "sha256": "b283d4e7b0025e99a6258569483c2d2b8555332de17f355491e3c4da404d4cd8"
+    },
+    "D46-capsule": {
+      "domain": "HX-EV-LEGACY-RESUME-CAPSULE-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "d"
+        ],
+        [
+          "U",
+          "a"
+        ],
+        [
+          "U",
+          "tracking"
+        ],
+        [
+          "O:U",
+          "op"
+        ],
+        [
+          "U",
+          "correlation"
+        ],
+        [
+          "U",
+          "increment"
+        ],
+        [
+          "U",
+          "success-events"
+        ],
+        [
+          "N",
+          10
+        ],
+        [
+          "N",
+          10
+        ],
+        [
+          "I",
+          1
+        ],
+        [
+          "B32",
+          "12ac48924dcfa770682dac03a1854b93ad01a866c824a099f8e134eee3ca8c6d"
+        ],
+        [
+          "B",
+          "000000010000000000000000000000000000000a0000000000000001b283d4e7b0025e99a6258569483c2d2b8555332de17f355491e3c4da404d4cd800000000000000b30000005c6c65676163792d726573756d652d63617073756c652d6368756e6b3a33393234343065306531353339383837666639653638396230323539616234343536353265643837656436396634636634653137313434323936636364303135"
+        ],
+        [
+          "U",
+          "drain-exhaustion"
+        ],
+        [
+          "B32",
+          "d99af763ec16bfca315492024f3760843a3bb844984e5666194fa942997f3d7c"
+        ],
+        [
+          "Q",
+          638712864000000000
+        ]
+      ],
+      "maxBytes": 131072,
+      "hex": "48582d45562d4c45474143592d524553554d452d43415053554c452d32000100100100000001740200000001640300000001610400000008747261636b696e670501000000026f70060000000b636f7272656c6174696f6e0700000009696e6372656d656e74080000000e737563636573732d6576656e747309000000000000000a0a000000000000000a0b000000010c12ac48924dcfa770682dac03a1854b93ad01a866c824a099f8e134eee3ca8c6d0d000000a4000000010000000000000000000000000000000a0000000000000001b283d4e7b0025e99a6258569483c2d2b8555332de17f355491e3c4da404d4cd800000000000000b30000005c6c65676163792d726573756d652d63617073756c652d6368756e6b3a333932343430653065313533393838376666396536383962303235396162343435363532656438376564363966346366346531373134343239366363643031350e00000010647261696e2d65786861757374696f6e0fd99af763ec16bfca315492024f3760843a3bb844984e5666194fa942997f3d7c1008dd29f73c314000",
+      "length": 409,
+      "sha256": "272a728d7d53a0bdfe3c97556e9f17561bab352c3ae230e637bbe12de2eae9e0"
+    },
+    "D17-destination-config": {
+      "json": {
+        "component": "pubsub",
+        "metadata": {},
+        "schema": "hexalith.eventstore.destination/1",
+        "topic": "orders"
+      },
+      "hex": "7b22636f6d706f6e656e74223a22707562737562222c226d65746164617461223a7b7d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e64657374696e6174696f6e2f31222c22746f706963223a226f7264657273227d",
+      "length": 98,
+      "maxBytes": 65536,
+      "sha256": "048e9eb50252feb334b66506baa8af1c26f6fab1b56461b6fbb491ec12fdb320"
+    }
+  },
+  "keys": {
+    "D06-key": {
+      "prefix": "full-replay-activation:",
+      "domain": "HX-EV-FULL-REPLAY-ACTIVATION-KEY-1",
+      "fields": [
+        [
+          "U",
+          "d"
+        ],
+        [
+          "B32",
+          "872491a30d60d598962de6e7b834ab76b2aa65fbab102c6ebaaae6acdc238822"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d46554c4c2d5245504c41592d41435449564154494f4e2d4b45592d3100010000000164872491a30d60d598962de6e7b834ab76b2aa65fbab102c6ebaaae6acdc2388220000000000000001",
+      "value": "full-replay-activation:0f91a1983b2d87cad832582071c4c14b82fb4120da3f20615531f3d085bc132a"
+    },
+    "D14-key": {
+      "prefix": "publication-drain-limit:",
+      "domain": "HX-EV-PUBLICATION-DRAIN-LIMIT-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "N",
+          2
+        ],
+        [
+          "N",
+          16
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d445241494e2d4c494d49542d4b45592d3100015f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb3300000000000000020000000000000010",
+      "value": "publication-drain-limit:3d6106bf9476e5106018bc78cc6bc4bf771144175f662f3ca5e1c631af3e23df"
+    },
+    "D45-closure-key": {
+      "prefix": "publication-window-closure:",
+      "domain": "HX-EV-PUBLICATION-WINDOW-CLOSURE-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "5f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb33"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d57494e444f572d434c4f535552452d4b45592d3100015f161c9149882e0e10124bc5dd5c11f0fbe8ec452edd52bcec76b01e9252cb330000000000000001",
+      "value": "publication-window-closure:58b1b024adae4973e90e4e491aa8713593c439d51b5eb3941eaf66950e0b73b9"
+    },
+    "D45-audit-key": {
+      "prefix": "publication-resume-audit:",
+      "domain": "HX-EV-PUBLICATION-RESUME-AUDIT-KEY-2",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "B32",
+          "0c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d524553554d452d41554449542d4b45592d3200010000000174000000026f700c3d0b2dffffc9bc4f5e32fdc5d66eb235f531f77cbdfd321e1b6a8f1f090a44",
+      "value": "publication-resume-audit:9d7734f4f8ccb48cce924620e859cf4ba886f3c82a2948729320e57a99877104"
+    },
+    "D46-capsule-key": {
+      "prefix": "legacy-resume-capsule:",
+      "domain": "HX-EV-LEGACY-RESUME-CAPSULE-KEY-2",
+      "fields": [
+        [
+          "B32",
+          "15a6c40e379b36f9c1983edc9e7fcd83a092ad02cc3a9d98c9363419243fe8b4"
+        ]
+      ],
+      "materialHex": "48582d45562d4c45474143592d524553554d452d43415053554c452d4b45592d32000115a6c40e379b36f9c1983edc9e7fcd83a092ad02cc3a9d98c9363419243fe8b4",
+      "value": "legacy-resume-capsule:bdd34978ca55de1163ea7224dd6cae35ee041002ab6d4cbe655090b4e544291a"
+    },
+    "D45-control-key": {
+      "prefix": "publication-resume-state:",
+      "domain": "HX-EV-PUBLICATION-RESUME-STATE-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d524553554d452d53544154452d4b45592d3100010000000174000000026f70",
+      "value": "publication-resume-state:88499acb84960e397ba46461a8ecd674b5bcabf9102e2a2bc4e4597eb0717579"
+    },
+    "D36-held-key": {
+      "prefix": "held-delivery:",
+      "domain": "HX-EV-HELD-DELIVERY-KEY-2",
+      "fields": [
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "O:U",
+          "t"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ],
+        [
+          "U",
+          "sub-a"
+        ],
+        [
+          "B32",
+          "2720c288b1e3f3d9c6d18d5c04b0fbd81071fd107a17e305aea104bca635f0e2"
+        ]
+      ],
+      "materialHex": "48582d45562d48454c442d44454c49564552592d4b45592d3200010000000674656e616e740000000c6465706c6f796d656e742d6101000000017400000006707562737562000000066f7264657273000000057375622d612720c288b1e3f3d9c6d18d5c04b0fbd81071fd107a17e305aea104bca635f0e2",
+      "value": "held-delivery:3887b7d51994fb1e2682e2ff35859f389d54e320a5b9b74ead368ea2265c7c5f"
+    },
+    "D31-queue-key": {
+      "prefix": "pin-capacity-queue:",
+      "domain": "HX-EV-PIN-CAPACITY-QUEUE-KEY-1",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "U",
+          "deployment"
+        ]
+      ],
+      "materialHex": "48582d45562d50494e2d43415041434954592d51554555452d4b45592d3100010000000c6465706c6f796d656e742d610000000a6465706c6f796d656e74",
+      "value": "pin-capacity-queue:a10216c2265fd16d68fb3264e56861f831c861bd62fc2478a98af720d300eebe"
+    },
+    "D29-charge-key": {
+      "prefix": "publication-charge:",
+      "domain": "HX-EV-PUBLICATION-CHARGE-KEY-1",
+      "fields": [
+        [
+          "U",
+          "deployment-a"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "2958d416d08aa5a472d7b509036cb7eafd542add84527e66a145ea64cb4cdc75"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d4348415247452d4b45592d3100010000000c6465706c6f796d656e742d610000000674656e616e7400000001742958d416d08aa5a472d7b509036cb7eafd542add84527e66a145ea64cb4cdc75",
+      "value": "publication-charge:fecd61786cf64869dffff0b50d6c0f1be9d882ae1f59adffd33e3c46c458faa1"
+    },
+    "D14-resolution-key": {
+      "prefix": "publication-drain-resolution:",
+      "domain": "HX-EV-PUBLICATION-DRAIN-RESOLUTION-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d445241494e2d5245534f4c5554494f4e2d4b45592d31000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": "publication-drain-resolution:cd0326fc79d8f8a3befefa86437b546fc5a3f56e704469718d48f1e979ab1d76"
+    },
+    "D12-usage-key": {
+      "prefix": "scope-shard-usage:",
+      "domain": "HX-EV-SCOPE-SHARD-USAGE-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "N",
+          0
+        ]
+      ],
+      "materialHex": "48582d45562d53434f50452d53484152442d55534147452d4b45592d31000100000001740000000000000000",
+      "value": "scope-shard-usage:b9110fa2fa22818e62b8a597ce5388f0f8dcdf0c8d0d7dd5d8af0f323e577d94"
+    },
+    "D12-cutover-key": {
+      "prefix": "legacy-scope-cutover:",
+      "domain": "HX-EV-LEGACY-SCOPE-CUTOVER-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "d"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d4c45474143592d53434f50452d4355544f5645522d4b45592d310001000000017400000001640000000000000001",
+      "value": "legacy-scope-cutover:0558bf0d83075797ed292c30369a6686c44c6ae45ececc53f3e53ec24ab43d5e"
+    },
+    "D12-cutover-head-key": {
+      "prefix": "legacy-scope-cutover-head:",
+      "domain": "HX-EV-LEGACY-SCOPE-CUTOVER-HEAD-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "d"
+        ]
+      ],
+      "materialHex": "48582d45562d4c45474143592d53434f50452d4355544f5645522d484541442d4b45592d31000100000001740000000164",
+      "value": "legacy-scope-cutover-head:c610bdb6089c08bb0686ee010b9bf03ccb4b5db205af8963e5a442704e3cddbc"
+    },
+    "D16-key": {
+      "prefix": "first-send-membership:",
+      "domain": "HX-EV-FIRST-SEND-MEMBERSHIP-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "N",
+          1
+        ],
+        [
+          "U",
+          "event-1"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d46495253542d53454e442d4d454d424552534849502d4b45592d310001000000017400000000000000000000000000000000000000000000000000000000000000000000000000000001000000076576656e742d310000000000000000000000000000000000000000000000000000000000000000",
+      "value": "first-send-membership:42ba23071853c4495d20720bfe3e49242167a3554eee50e2ee83d034c1889fab"
+    },
+    "D17-key": {
+      "prefix": "destination-config:",
+      "domain": "HX-EV-DESTINATION-CONFIG-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d44455354494e4154494f4e2d434f4e4649472d4b45592d3100010000000364657000000006707562737562000000066f72646572730000000000000001",
+      "value": "destination-config:9f526461699c5b58627ab28524c2166c4306769fe8af8b7dfc5ce2c7d574588d"
+    },
+    "D17-head-key": {
+      "prefix": "destination-config-head:",
+      "domain": "HX-EV-DESTINATION-CONFIG-HEAD-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ]
+      ],
+      "materialHex": "48582d45562d44455354494e4154494f4e2d434f4e4649472d484541442d4b45592d3100010000000364657000000006707562737562000000066f7264657273",
+      "value": "destination-config-head:e8aafcd18d8fa7ea89a50785901672f0e9c9a631c803a85ded483dc0385cafda"
+    },
+    "D29-capability-key": {
+      "prefix": "publication-retention-capability:",
+      "domain": "HX-EV-PUBLICATION-CAPABILITY-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d4341504142494c4954592d4b45592d310001000000036465700000000000000001",
+      "value": "publication-retention-capability:035333a5e80d724d7f06e3cd4fabd358b5cac3f1ed88bfda10347df872d55a39"
+    },
+    "D29-capability-head-key": {
+      "prefix": "publication-retention-capability-head:",
+      "domain": "HX-EV-PUBLICATION-CAPABILITY-HEAD-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d4341504142494c4954592d484541442d4b45592d31000100000003646570",
+      "value": "publication-retention-capability-head:450a9ed29a6fbcf4c68c013868390ec2a19323abf5989baf617415d77e3c1e91"
+    },
+    "D29-counter-key": {
+      "prefix": "publication-counter:",
+      "domain": "HX-EV-PUBLICATION-COUNTER-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "tenant:t"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d434f554e5445522d4b45592d310001000000036465700000000674656e616e740000000874656e616e743a74",
+      "value": "publication-counter:a8fd8543874c88eca7501d75a5783afbbf2a06b5f0ffa099238e8f7f2a22d108"
+    },
+    "D29-batch-key": {
+      "prefix": "pin-batch-reservation:",
+      "domain": "HX-EV-PIN-BATCH-RESERVATION-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d50494e2d42415443482d5245534552564154494f4e2d4b45592d31000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": "pin-batch-reservation:3a12e82f56bfa56e91be036a8936e374bfec5b3b398b2605ee951ba242ddb6b9"
+    },
+    "D31-subject-key": {
+      "prefix": "capacity-subject:",
+      "domain": "HX-EV-CAPACITY-SUBJECT-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d43415041434954592d5355424a4543542d31000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": "capacity-subject:8f7acc68cc808e654279382d365833e644beb62bb615bd5049c7d02d5ee1d52f"
+    },
+    "D45-claim-key": {
+      "prefix": "publication-resume-claim:",
+      "domain": "HX-EV-PUBLICATION-RESUME-CLAIM-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d524553554d452d434c41494d2d4b45592d3100010000000174000000026f700000000000000000000000000000000000000000000000000000000000000000",
+      "value": "publication-resume-claim:15b9f5819466d8695d438c3acb6ed2b892ccd80894fd695ac2406a046b1ee3f9"
+    },
+    "D45-window-key": {
+      "prefix": "publication-window:",
+      "domain": "HX-EV-PUBLICATION-WINDOW-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d57494e444f572d4b45592d31000100000000000000000000000000000000000000000000000000000000000000000000000000000001",
+      "value": "publication-window:0528e439cee4ce3c563aed3b5524da3b342f9a7cb1cc8412f869f9552c83be61"
+    },
+    "D45-attempt-key": {
+      "prefix": "window-attempt-set:",
+      "domain": "HX-EV-WINDOW-ATTEMPT-SET-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d57494e444f572d415454454d50542d5345542d4b45592d310001000000017400000000000000000000000000000000000000000000000000000000000000000000000000000001",
+      "value": "window-attempt-set:3086a52c77325b9b03ba88873b99a6ee4e40f804d04655977a70b9d1997a5cf8"
+    },
+    "D46-chunk-key": {
+      "prefix": "legacy-resume-capsule-chunk:",
+      "domain": "HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "N",
+          0
+        ]
+      ],
+      "materialHex": "48582d45562d4c45474143592d524553554d452d43415053554c452d4348554e4b2d4b45592d31000100000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": "legacy-resume-capsule-chunk:7976e87353169569e14424dd55da8239ae937f3b168349d337b71321ca8ec0e9"
+    },
+    "D36-policy-key": {
+      "prefix": "subscription-policy:",
+      "domain": "HX-EV-SUBSCRIPTION-POLICY-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ],
+        [
+          "U",
+          "sub"
+        ],
+        [
+          "N",
+          1
+        ]
+      ],
+      "materialHex": "48582d45562d535542534352495054494f4e2d504f4c4943592d4b45592d3100010000000364657000000006707562737562000000066f7264657273000000037375620000000000000001",
+      "value": "subscription-policy:14ab1f82ea4105181e01ac010ff7aad8d90b9e953f82a30893ebbb1f25857e1f"
+    },
+    "D36-policy-head-key": {
+      "prefix": "subscription-policy-head:",
+      "domain": "HX-EV-SUBSCRIPTION-POLICY-HEAD-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "pubsub"
+        ],
+        [
+          "U",
+          "orders"
+        ],
+        [
+          "U",
+          "sub"
+        ]
+      ],
+      "materialHex": "48582d45562d535542534352495054494f4e2d504f4c4943592d484541442d4b45592d3100010000000364657000000006707562737562000000066f726465727300000003737562",
+      "value": "subscription-policy-head:37c18f69c487b799324345a1ec0255f62785f9739f000f0f3ade320c7cf9d941"
+    },
+    "D36-quarantine-key": {
+      "prefix": "carrier-quarantine:",
+      "domain": "HX-EV-CARRIER-QUARANTINE-KEY-1",
+      "fields": [
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d434152524945522d51554152414e54494e452d4b45592d31000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": "carrier-quarantine:f1aa68f5b6f6331d00879d82eb9a2f0e75c95a7d7a40ed2b3b4b247ee5193b3d"
+    },
+    "D45-invocation-key": {
+      "prefix": "publication-invocation:",
+      "domain": "HX-EV-PUBLICATION-INVOCATION-KEY-1",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ],
+        [
+          "B32",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ],
+      "materialHex": "48582d45562d5055424c49434154494f4e2d494e564f434154494f4e2d4b45592d3100010000000174000000026f700000000000000000000000000000000000000000000000000000000000000000",
+      "value": "publication-invocation:9bc3469e0bc6459b96744f657e7f32005fdc6d224edb73eac9a031d58d35b318"
+    },
+    "D8-registry-key": {
+      "prefix": "owner-registry-entry:",
+      "domain": "HX-EV-OWNER-REGISTRY-ENTRY-KEY-1",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "subject"
+        ]
+      ],
+      "materialHex": "48582d45562d4f574e45522d52454749535452592d454e5452592d4b45592d310001000000036465700000000674656e616e740000000174000000077375626a656374",
+      "value": "owner-registry-entry:3cc75f25376f092c2a10773201256559724bdc9657d03cf226c69e7f51a6de6a"
+    },
+    "D8-registry-scope-key": {
+      "domain": "HX-EV-OWNER-REGISTRY-SCOPE-KEY-1",
+      "prefix": "owner-registry-scope:",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "tenant"
+        ],
+        [
+          "U",
+          "t"
+        ]
+      ],
+      "materialHex": "48582d45562d4f574e45522d52454749535452592d53434f50452d4b45592d310001000000036465700000000674656e616e740000000174",
+      "value": "owner-registry-scope:56d91db5f04b4e1d3914ac41dc0da9eafb7b553b6025d1291a32cbb880a0dacf"
+    },
+    "D8-epoch-key": {
+      "domain": "HX-EV-OPERATIONS-EPOCH-KEY-1",
+      "prefix": "operations-epoch:",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ]
+      ],
+      "materialHex": "48582d45562d4f5045524154494f4e532d45504f43482d4b45592d31000100000003646570",
+      "value": "operations-epoch:f8f677dd9d8729f3aaa4b30a73c5b4cd41b97b509eb59c01b31933e9aab62a92"
+    },
+    "queue-header": {
+      "domain": "HX-EV-PIN-CAPACITY-QUEUE-KEY-1",
+      "prefix": "pin-capacity-queue:",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "U",
+          "deployment"
+        ]
+      ],
+      "materialHex": "48582d45562d50494e2d43415041434954592d51554555452d4b45592d310001000000036465700000000a6465706c6f796d656e74",
+      "value": "pin-capacity-queue:09a7f052fa52063146f23d1174ef1aee20c700f71e055f2505464413db9701e9"
+    },
+    "queue-shard": {
+      "domain": "HX-EV-PIN-CAPACITY-QUEUE-SHARD-KEY-1",
+      "prefix": "pin-capacity-queue-shard:",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "N",
+          0
+        ]
+      ],
+      "materialHex": "48582d45562d50494e2d43415041434954592d51554555452d53484152442d4b45592d310001000000036465700000000000000000",
+      "value": "pin-capacity-queue-shard:6d820d97df95d52afde3a83a8a6e6edb5bda0d1a54952598cbc8daa1d09ac8b5"
+    },
+    "registry-shard": {
+      "domain": "HX-EV-OWNER-REGISTRY-SHARD-KEY-1",
+      "prefix": "owner-registry-shard:",
+      "fields": [
+        [
+          "U",
+          "dep"
+        ],
+        [
+          "N",
+          132
+        ]
+      ],
+      "materialHex": "48582d45562d4f574e45522d52454749535452592d53484152442d4b45592d310001000000036465700000000000000084",
+      "value": "owner-registry-shard:59b384e3f1948632858a63659ab0a36e6bc99a85c841e40039dbfd0af9c9d8bf"
+    }
+  },
+  "controls": {
+    "execution": {
+      "json": {
+        "schema": "hexalith.eventstore.execution-control/1",
+        "tenant": "t",
+        "execution": "op",
+        "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+        "revision": 1,
+        "phase": "idle",
+        "firstUtc": 0,
+        "updatedUtc": 0,
+        "source": "0000000000000000000000000000000000000000000000000000000000000000",
+        "window": 0,
+        "windowClaim": "0000000000000000000000000000000000000000000000000000000000000000",
+        "closedCount": 0,
+        "history": "0000000000000000000000000000000000000000000000000000000000000000",
+        "ordinal": 0,
+        "limit": 8,
+        "drainBase": 8,
+        "roster": [
+          {
+            "position": 1,
+            "message": "event-1",
+            "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ],
+        "accepted": [],
+        "unresolved": [
+          1
+        ],
+        "legacy": null,
+        "request": null,
+        "intent": null,
+        "receipts": {},
+        "outcomes": [],
+        "reason": "retry-exhausted",
+        "nextUtc": 0,
+        "charge": "publication-charge:cb8e26a369aa450dda4bb54677d48d8f0d2af317a7c846e84baa4aa48fd5d53f"
+      },
+      "hex": "7b226163636570746564223a5b5d2c22636861726765223a227075626c69636174696f6e2d6368617267653a63623865323661333639616134353064646134626235343637376434386438663064326166333137613763383436653834626161346161343866643564353366222c22636c6f736564436f756e74223a302c22647261696e42617365223a382c22657865637574696f6e223a226f70222c226669727374557463223a302c22686973746f7279223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22696e74656e74223a6e756c6c2c226c6567616379223a6e756c6c2c226c696d6974223a382c226e657874557463223a302c226f7264696e616c223a302c226f7574636f6d6573223a5b5d2c227068617365223a2269646c65222c22726561736f6e223a2272657472792d657868617573746564222c227265636569707473223a7b7d2c2272657175657374223a6e756c6c2c227265766973696f6e223a312c22726f73746572223a5b7b22646967657374223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c226d657373616765223a226576656e742d31222c22706f736974696f6e223a317d5d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e657865637574696f6e2d636f6e74726f6c2f31222c2273636f7065223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22736f75726365223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c2274656e616e74223a2274222c22756e7265736f6c766564223a5b315d2c2275706461746564557463223a302c2277696e646f77223a302c2277696e646f77436c61696d223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030227d",
+      "length": 868,
+      "sha256": "0841e3d5840e49b824beabc6dcb4da19764cd346a2238d84a47001794eca04c0",
+      "maxBytes": 786432
+    },
+    "held": {
+      "json": {
+        "schema": "hexalith.eventstore.held-control/1",
+        "scopeKind": "tenant",
+        "scopeId": "t",
+        "deployment": "dep",
+        "tenant": "t",
+        "component": "pubsub",
+        "topic": "orders",
+        "subscription": "sub",
+        "policy": "0000000000000000000000000000000000000000000000000000000000000000",
+        "revision": 1,
+        "phase": "observed",
+        "reason": "handler-capability-hold",
+        "firstUtc": 0,
+        "updatedUtc": 0,
+        "observations": 1,
+        "length": 0,
+        "carrier": "0000000000000000000000000000000000000000000000000000000000000000",
+        "locator": null,
+        "objectReceipt": null,
+        "charge": "publication-charge:eab37e7735fc37a8346fe1f90e760187cdb1a2e703f1b7d58027fbd3bcaa8089",
+        "request": null,
+        "attempt": null,
+        "redrives": 0,
+        "nextUtc": 0,
+        "repair": "none",
+        "error": null,
+        "intent": null,
+        "receipts": {}
+      },
+      "hex": "7b22617474656d7074223a6e756c6c2c2263617272696572223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22636861726765223a227075626c69636174696f6e2d6368617267653a65616233376537373335666333376138333436666531663930653736303138376364623161326537303366316237643538303237666264336263616138303839222c22636f6d706f6e656e74223a22707562737562222c226465706c6f796d656e74223a22646570222c226572726f72223a6e756c6c2c226669727374557463223a302c22696e74656e74223a6e756c6c2c226c656e677468223a302c226c6f6361746f72223a6e756c6c2c226e657874557463223a302c226f626a65637452656365697074223a6e756c6c2c226f62736572766174696f6e73223a312c227068617365223a226f62736572766564222c22706f6c696379223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c22726561736f6e223a2268616e646c65722d6361706162696c6974792d686f6c64222c227265636569707473223a7b7d2c227265647269766573223a302c22726570616972223a226e6f6e65222c2272657175657374223a6e756c6c2c227265766973696f6e223a312c22736368656d61223a22686578616c6974682e6576656e7473746f72652e68656c642d636f6e74726f6c2f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74222c22737562736372697074696f6e223a22737562222c2274656e616e74223a2274222c22746f706963223a226f7264657273222c2275706461746564557463223a307d",
+      "length": 692,
+      "sha256": "b5aa22d507b59190349e6f492901bba7fb2e67abbc70140f899850add3586a48",
+      "maxBytes": 131072
+    },
+    "queue": {
+      "json": {
+        "schema": "hexalith.eventstore.capacity-queue/1",
+        "deployment": "dep",
+        "generation": 1,
+        "lastTicket": 1,
+        "count": 1
+      },
+      "hex": "7b22636f756e74223a312c226465706c6f796d656e74223a22646570222c2267656e65726174696f6e223a312c226c6173745469636b6574223a312c22736368656d61223a22686578616c6974682e6576656e7473746f72652e63617061636974792d71756575652f31227d",
+      "length": 108,
+      "sha256": "7efffa53108a69408850aac9a71f00de7946f32d14ccc3dd28b798c4af61007b",
+      "maxBytes": 16384
+    },
+    "registry": {
+      "json": {
+        "schema": "hexalith.eventstore.owner-registry/1",
+        "deployment": "dep",
+        "shard": 132,
+        "generation": 1,
+        "entryCount": 1,
+        "scopeCount": 1
+      },
+      "hex": "7b226465706c6f796d656e74223a22646570222c22656e747279436f756e74223a312c2267656e65726174696f6e223a312c22736368656d61223a22686578616c6974682e6576656e7473746f72652e6f776e65722d72656769737472792f31222c2273636f7065436f756e74223a312c227368617264223a3133327d",
+      "length": 125,
+      "sha256": "f5848e64e78ca31015c28d7229e67ee112bdef65b313ac558e5961b4e3f132ef",
+      "maxBytes": 16384
+    },
+    "cursor": {
+      "json": {
+        "schema": "hexalith.eventstore.hold-cursor/1",
+        "scopeKind": "tenant",
+        "scopeId": "t",
+        "generation": "0000000000000000000000000000000000000000000000000000000000000000",
+        "last": null,
+        "expiry": 9000000000
+      },
+      "hex": "7b22657870697279223a393030303030303030302c2267656e65726174696f6e223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c226c617374223a6e756c6c2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74227d",
+      "length": 193,
+      "sha256": "ed56dc1706c8a08db2f75ce03dca2c2a5fede7495592eb19d96e9fb10540ecb5",
+      "maxBytes": 16384
+    },
+    "registry-entry": {
+      "json": {
+        "schema": "hexalith.eventstore.owner-registry-entry/1",
+        "deployment": "dep",
+        "shard": 132,
+        "generation": 1,
+        "scopeKind": "tenant",
+        "scopeId": "t",
+        "subject": "subject",
+        "owner": "coordinator",
+        "address": "owner-key",
+        "firstUtc": 0,
+        "state": "reserved"
+      },
+      "hex": "7b2261646472657373223a226f776e65722d6b6579222c226465706c6f796d656e74223a22646570222c226669727374557463223a302c2267656e65726174696f6e223a312c226f776e6572223a22636f6f7264696e61746f72222c22736368656d61223a22686578616c6974682e6576656e7473746f72652e6f776e65722d72656769737472792d656e7472792f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74222c227368617264223a3133322c227374617465223a227265736572766564222c227375626a656374223a227375626a656374227d",
+      "length": 232,
+      "sha256": "1b7440fda209850bb3b7525eda76739f9aa2c8e4e1a6d15fede0665d7cbd818a",
+      "maxBytes": 65536
+    },
+    "registry-scope": {
+      "json": {
+        "schema": "hexalith.eventstore.owner-registry-scope/1",
+        "deployment": "dep",
+        "scopeKind": "tenant",
+        "scopeId": "t",
+        "generation": 1,
+        "count": 1
+      },
+      "hex": "7b22636f756e74223a312c226465706c6f796d656e74223a22646570222c2267656e65726174696f6e223a312c22736368656d61223a22686578616c6974682e6576656e7473746f72652e6f776e65722d72656769737472792d73636f70652f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74227d",
+      "length": 134,
+      "sha256": "b9f4110c419ff15145100bbff0ab6973b5284a9f8a602e0574b1a98d52a5c388",
+      "maxBytes": 16384
+    },
+    "epoch": {
+      "json": {
+        "schema": "hexalith.eventstore.operations-epoch/1",
+        "deployment": "dep",
+        "holder": "operations-host-a",
+        "epoch": 1,
+        "generation": 1,
+        "ownerFence": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "acquiredUtc": 0,
+        "expiresUtc": 600000000,
+        "renewedUtc": 0
+      },
+      "hex": "7b226163717569726564557463223a302c226465706c6f796d656e74223a22646570222c2265706f6368223a312c2265787069726573557463223a3630303030303030302c2267656e65726174696f6e223a312c22686f6c646572223a226f7065726174696f6e732d686f73742d61222c226f776e657246656e6365223a22303141525a334e44454b54535634525246465136394735464156222c2272656e65776564557463223a302c22736368656d61223a22686578616c6974682e6576656e7473746f72652e6f7065726174696f6e732d65706f63682f31227d",
+      "length": 220,
+      "sha256": "3e1c961c6173edf5ff90947587a6f08af28a6ec7bcefd3e7fb4b87f2add75fa8",
+      "maxBytes": 16384
+    },
+    "queue-shard": {
+      "json": {
+        "schema": "hexalith.eventstore.capacity-queue-shard/1",
+        "deployment": "dep",
+        "shard": 0,
+        "generation": 1,
+        "rows": [
+          {
+            "subject": "0000000000000000000000000000000000000000000000000000000000000000",
+            "tenant": "t",
+            "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+            "plan": "0000000000000000000000000000000000000000000000000000000000000000",
+            "ticket": 1,
+            "firstUtc": 0,
+            "updatedUtc": 0,
+            "state": "reserved",
+            "candidate": null,
+            "amount": null,
+            "attempts": 0,
+            "charge": "publication-charge:e242e193b019f4c1073df16dad90d43c497cd82c163869ad05e8d72d3c8f2bc7",
+            "owner": "owner"
+          }
+        ]
+      },
+      "maxBytes": 104857600,
+      "hex": "7b226465706c6f796d656e74223a22646570222c2267656e65726174696f6e223a312c22726f7773223a5b7b22616d6f756e74223a6e756c6c2c22617474656d707473223a302c2263616e646964617465223a6e756c6c2c22636861726765223a227075626c69636174696f6e2d6368617267653a65323432653139336230313966346331303733646631366461643930643433633439376364383263313633383639616430356538643732643363386632626337222c226669727374557463223a302c226f776e6572223a226f776e6572222c22706c616e223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c2273636f7065223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c227374617465223a227265736572766564222c227375626a656374223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c2274656e616e74223a2274222c227469636b6574223a312c2275706461746564557463223a307d5d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e63617061636974792d71756575652d73686172642f31222c227368617264223a307d",
+      "length": 562,
+      "sha256": "eeeff1e0e0351bdedf0efbf5970b83df1b206c1a8eadb940ee69587505741c4c"
+    }
+  },
+  "sharedKeys": {
+    "command-execution-scope": {
+      "prefix": "command-execution-scope:",
+      "fields": [
+        [
+          "U",
+          "t"
+        ],
+        [
+          "U",
+          "op"
+        ]
+      ],
+      "materialHex": "0000000174000000026f70",
+      "value": "command-execution-scope:92125fdf867b084df2239305327b2c152490754761e8c8965d6add62f699e554"
+    }
+  },
+  "public": {
+    "cursor-envelope": {
+      "json": {
+        "schema": "hexalith.eventstore.hold-cursor-envelope/1",
+        "keyId": "fixture",
+        "payload": {
+          "schema": "hexalith.eventstore.hold-cursor/1",
+          "scopeKind": "tenant",
+          "scopeId": "t",
+          "generation": "0000000000000000000000000000000000000000000000000000000000000000",
+          "last": null,
+          "expiry": 9000000000
+        },
+        "signature": "5fc52322c8e5d3cd261013d6025df84fca689a0207569fbfc88b96b5396489e4"
+      },
+      "maxBytes": 16384,
+      "hex": "7b226b65794964223a2266697874757265222c227061796c6f6164223a7b22657870697279223a393030303030303030302c2267656e65726174696f6e223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c226c617374223a6e756c6c2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722f31222c2273636f70654964223a2274222c2273636f70654b696e64223a2274656e616e74227d2c22736368656d61223a22686578616c6974682e6576656e7473746f72652e686f6c642d637572736f722d656e76656c6f70652f31222c227369676e6174757265223a2235666335323332326338653564336364323631303133643630323564663834666361363839613032303735363966626663383862393662353339363438396534227d",
+      "length": 356,
+      "sha256": "78989e38df068597c7bdcdef32da521cc3d25973e9c43d597ef2784aa59c002a"
+    },
+    "held-redrive-request": {
+      "json": {
+        "expectedRedriveCount": 0
+      },
+      "maxBytes": 4096,
+      "hex": "7b22657870656374656452656472697665436f756e74223a307d",
+      "length": 26,
+      "sha256": "74dbdc560805cf5d29513ae962d12ed0fc3cb0a60adeff4c3436f9f46fa3bd67"
+    },
+    "held-redrive-202": {
+      "json": {
+        "entryKey": "0000000000000000000000000000000000000000000000000000000000000000",
+        "redriveCount": 1,
+        "state": "redriving"
+      },
+      "maxBytes": 4096,
+      "hex": "7b22656e7472794b6579223a2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c2272656472697665436f756e74223a312c227374617465223a22726564726976696e67227d",
+      "length": 116,
+      "sha256": "ce8c0590f85013e574d6485ff22f86015ba1bb5b232bc876ca9d86593d30fad7"
+    }
+  }
+}
+```
+<!-- imported-d-known-answers-end -->
+
+#### Complete integration verification gate
+
+The gate pins the current baseline and every input revision/file/model hash, compares exact labeled A/B values and all inline C offset/destination vectors, derives all 16 I-11 state pairs from the pinned A reduce_set, and independently constructs every surviving parent and D literal. V17/V20/V22/V23 signed verifiers retain their exact block bytes and identities. Missing/duplicated/replaced blocks fail before execution. Owning corruption controls cover changed transition, swapped B label, changed inline offset, removed verifier fence, forbidden path and an input pin; these are bounded demonstrated regressions, not proof every guard is covered.
 
 ```bash
-python3 - <<'PY'
-import hashlib
-import pathlib
-import re
-import struct
-
-DOC = pathlib.Path('_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md')
-H = lambda b: hashlib.sha256(b).digest()
-B = lambda b: struct.pack('>I', len(b)) + b
-U = lambda s: B(s.encode('utf-8'))
-N = lambda n: struct.pack('>q', n)
-I = lambda n: struct.pack('>i', n)
-C = lambda n: struct.pack('>I', n)
-O = lambda b: b'\x00' if b is None else b'\x02' + b
-Z = bytes(32)
-MiB = 1 << 20
-
-
-def R(name, fields, version=1):
-    assert len(fields) < 256
-    return (name.encode('ascii') + b'\0' + bytes([version]) + struct.pack('>H', len(fields))
-            + b''.join(bytes([tag]) + value for tag, value in enumerate(fields, 1)))
-
-
-# Fixture inputs: the K04 scope hash, fixed marker hashes and fixed UTC instants (ticks).
-scope = H(b''.join(U(s) for s in ('t', 'd', 'counter', 'a', 'op')))
-t0 = 639_000_000_000_000_000
-sec = 10_000_000
-backend = (b'HX-EV-STATE-BACKEND-1\0\x01' + U('fixture') + U('cluster') + U('ns')
-           + H(b'endpoint') + U('store'))
-rows06 = C(2) + (U('route-a') + U('incremental') + N(40_000) + N(50_000_000) + N(327_680_000)
-                 + U('route-b') + U('hold') + N(120_000) + N(70_000_000) + N(983_040_000))
-answers = [
-    ('I06-activation', R('HX-EV-FULL-REPLAY-ACTIVATION-1', [
-        U('operator-action-issuer'), U('d'), H(b'registry-fingerprint'), N(1), B(rows06),
-        N(t0), U('operator-1'), N(t0 + 60 * sec)])),
-    ('I08-outcome-prep', R('HX-EV-COMMAND-OUTCOME-PREP-1', [
-        scope, U('command-outcome:' + scope.hex() + ':0'), N(0), H(b'outcome-0'), H(b'head-0'),
-        N(1), H(b'outcome-1'), H(b'head-1'), N(7), U('owner-1')])),
-    ('I08-key-preimage', scope + N(1) + H(b'outcome-1')),
-    ('I09-preparation-write', R('HX-EV-RESPONSE-PREPARATION-WRITE-1', [
-        scope, N(7), U('owner-1'), H(b'response-input'), H(b'response-record'), H(b'outcome-0'),
-        H(b'response-cas-receipt'), H(b'outcome-cas-receipt'), N(t0), N(8)])),
-    ('I12-tombstone', R('HX-EV-COMMAND-SCOPE-TOMBSTONE-1', [
-        U('t'), U('op'), scope, H(b'input'), H(b'compacted-scope-record'), N(t0)])),
-    ('I12-legacy-claim', R('HX-EV-COMMAND-SCOPE-LEGACY-1', [
-        U('t'), U('op-legacy'), U('d'), U('a'), U('IncrementCounter'), H(b'{"amount":1}'),
-        N(t0), N(t0 + 86_400 * sec)])),
-    ('I12-usage', R('HX-EV-SCOPE-RETENTION-USAGE-1', [U('t'), N(3), N(2), N(3 * 4096 + 2 * 1024)])),
-    ('I14-drain-limit', R('HX-EV-PUBLICATION-DRAIN-LIMIT-1', [
-        U('t'), scope, U('op'), N(8), H(b'drain-head-8'), H(b'head-3'), N(3), U('failed'), N(t0)])),
-    ('I17-destination-config',
-     b'{"component":"pubsub","metadata":{},"schema":"hexalith.eventstore.destination/1","topic":"t.d.events"}'),
-    ('I29-capability', R('HX-EV-PUBLICATION-RETENTION-CAPABILITY-1', [
-        U('deployment-1'), N(1), B(backend), N(1024 * MiB), N(2048 * MiB), N(256 * MiB),
-        N(512 * MiB), N(MiB), N(64 * MiB), Z, N(t0)])),
-    ('I31-wait', R('HX-EV-PIN-CAPACITY-WAIT-1', [
-        U('t'), U('event-message-b'), scope, U('tenant'), H(b'pin-b'), N(330 * MiB), N(t0), N(0),
-        U('queued')])),
-    ('I31-queue', R('HX-EV-PIN-CAPACITY-QUEUE-1', [
-        U('tenant:t'), N(1), N(1), B(C(1) + N(t0) + U('t') + U('event-message-b'))])),
-    ('I33-preimage', b'HX-EV-ROUTE-DECISION-KEY-HASH-1\0\x01' + U('route-decision-key')),
-    ('I36-policy', R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-1', [
-        U('pubsub'), U('t.d.events'), U('physical-subscription-1'), U('dead-letter-capture'),
-        O(U('deadletter.t.d.events')), H(b'resolved-subscription-and-resiliency'),
-        U('dapr-configuration'), N(t0)])),
-    ('I36-held-delivery', R('HX-EV-HELD-DELIVERY-1', [
-        O(U('t')), O(U('event-message-b')), U('physical-subscription-1'), U('pubsub'),
-        U('t.d.events'), H(b'carrier'), H(b'retained-object-key'), U('delivery_carrier_limit_hold'),
-        O(None), N(t0), N(0)])),
-    ('I36-redrive', R('HX-EV-REDRIVE-REQUEST-1', [
-        U('operator-action-issuer'), O(U('t')), H(b'held-delivery-key'), N(0), U('operator-1'),
-        N(t0)])),
-    ('I37-hold-index', R('HX-EV-HOLD-INDEX-1', [
-        O(U('t')), U('PublicationRetryExhaustedHold'), U(scope.hex()), O(U('d')),
-        U('publication_retry_exhausted_hold'), N(t0), N(t0 + 60 * sec), N(2), U('coordinator'),
-        N(t0 + 3_660 * sec)])),
-    ('I37-key-preimage', O(U('t')) + U('PublicationRetryExhaustedHold') + U(scope.hex())),
-    ('I45-request', R('HX-EV-PUBLICATION-RESUME-1', [
-        U('operator-action-issuer'), U('t'), U('op'), scope, U('retry-exhausted'),
-        H(b'retry-exhausted-hold-source'), H(b'head-3'), N(1), Z, U('operator-1'),
-        U('broker outage repaired'), N(t0), N(t0 + 900 * sec)])),
-    ('I45-audit', R('HX-EV-PUBLICATION-RESUME-AUDIT-1', [
-        U('t'), U('op'), N(1), H(b'request-claim-and-carrier'), U('resumed'), O(None),
-        O(H(b'window-closure-0')), N(1), N(16), N(t0 + 5 * sec), Z])),
-    ('I45-window-closure', R('HX-EV-PUBLICATION-WINDOW-CLOSURE-1', [
-        U('t'), scope, N(0), B(C(1) + C(2) + N(4) + H(b'last-class-01-observation')),
-        H(b'reject-fence-receipt'), H(b'producer-disable-receipt'), H(b'empty-state-root'),
-        H(b'window-attempt-set-root'), U('BackendCas'), N(t0 + 2 * sec)])),
-    ('I46-reconciliation', R('HX-EV-LEGACY-PUBLICATION-RECONCILIATION-1', [
-        U('t'), U('d'), U('a'), U('op-legacy'), U('corr-legacy'), U('dead-letter'),
-        H(b'dead-letter-bytes'), O(H(b'status-6-record')), N(5), N(7), I(3),
-        H(b'stored-events-5-7'), H(b'drain-absence'), N(1), N(t0)])),
-]
-assert len({label for label, _ in answers}) == len(answers)
-assert all(len(value) <= 4096 for label, value in answers if label != 'I06-activation')
-computed = ['%s %d %s' % (label, len(value), H(value).hex()) for label, value in answers]
-
-# [I-26]-[I-30] capacity model: the integrated known answer and its constraints (VG-1).
-class Hold(Exception):
-    pass
-
-
-class Conflict(Exception):
-    pass
-
-
-MAX_KIND = {'pin': 470_810_624, 'side-record': 193 * MiB, 'retained-object': 193 * MiB,
-            'resume-window': 1024 * MiB}
-
-
-def capability_ok(tenant, deployment, reserve, unidentified, o, scope_ceiling):
-    return (1024 * MiB <= tenant <= deployment and reserve >= 195 * MiB
-            and tenant + reserve <= deployment and reserve <= unidentified <= deployment
-            and 0 <= o <= 1_114_112 and scope_ceiling >= 64 * MiB)
-
-
-class Ledger:
-    def __init__(self, tenant, deployment, reserve, unidentified, o):
-        assert capability_ok(tenant, deployment, reserve, unidentified, o, 64 * MiB)
-        self.tenant, self.deployment, self.reserve, self.unidentified, self.o = (
-            tenant, deployment, reserve, unidentified, o)
-        self.accounts, self.charges = {}, {}
-
-    def used(self, kind=None):
-        return sum(v for (k, _), v in self.accounts.items() if kind is None or k == kind)
-
-    def charge(self, account, obj, kind, length):
-        if obj in self.charges:
-            recorded_kind, recorded_length, _, amount = self.charges[obj]
-            if (recorded_kind, recorded_length) != (kind, length):
-                raise Conflict(obj)
-            return 'already-charged', amount
-        if length > MAX_KIND[kind]:
-            raise Conflict(kind)
-        amount = length + self.o
-        pool = self.deployment - self.reserve if account[0] == 'tenant' else self.unidentified
-        if (self.accounts.get(account, 0) + amount > self.tenant
-                or self.used(account[0]) + amount > pool
-                or self.used() + amount > self.deployment):
-            raise Hold(obj)
-        self.accounts[account] = self.accounts.get(account, 0) + amount
-        self.charges[obj] = (kind, length, account, amount)
-        return 'charged', amount
-
-    def refund(self, obj):
-        _, _, account, amount = self.charges.pop(obj)
-        self.accounts[account] -= amount
-        return amount
-
-
-def holds(action):
-    try:
-        action()
-    except Hold:
-        return True
-    return False
-
-
-def conflicts(action):
-    try:
-        action()
-    except Conflict:
-        return True
-    return False
-
-
-t1, t2, s1 = ('tenant', 'T1'), ('tenant', 'T2'), ('scope', 'S1')
-ledger = Ledger(1024 * MiB, 2048 * MiB, 256 * MiB, 512 * MiB, MiB)
-assert ledger.charge(t1, 'shared', 'retained-object', 100 * MiB) == ('charged', 101 * MiB)
-assert ledger.charge(t1, 'side', 'side-record', 192 * MiB) == ('charged', 193 * MiB)
-assert ledger.charge(t1, 'pin-1', 'pin', 400 * MiB) == ('charged', 401 * MiB)
-assert ledger.accounts[t1] == 695 * MiB
-before = dict(ledger.accounts)
-assert holds(lambda: ledger.charge(t1, 'pin-329', 'pin', 329 * MiB)) and ledger.accounts == before
-assert ledger.charge(t1, 'pin-328', 'pin', 328 * MiB) == ('charged', 329 * MiB)
-assert ledger.accounts[t1] == 1024 * MiB
-assert holds(lambda: ledger.charge(t2, 't2-768', 'resume-window', 768 * MiB))
-assert ledger.charge(t2, 't2-767', 'resume-window', 767 * MiB) == ('charged', 768 * MiB)
-assert ledger.used('tenant') == 1792 * MiB
-assert ledger.charge(s1, 'unidentified', 'retained-object', 10 * MiB) == ('charged', 11 * MiB)
-assert ledger.charge(s1, 'shared', 'retained-object', 100 * MiB) == ('already-charged', 101 * MiB)
-assert conflicts(lambda: ledger.charge(s1, 'shared', 'retained-object', 99 * MiB))
-assert ledger.refund('shared') == 101 * MiB and ledger.accounts[t1] == 923 * MiB
-assert conflicts(lambda: ledger.charge(t1, 'huge-pin', 'pin', 470_810_625))
-assert conflicts(lambda: ledger.charge(t1, 'huge-side', 'side-record', 193 * MiB + 1))
-ledger.o = 0  # [I-28]: a revised o applies only to first charges after it.
-assert ledger.charge(s1, 'side', 'side-record', 192 * MiB) == ('already-charged', 193 * MiB)
-assert ledger.charge(s1, 'small', 'retained-object', MiB) == ('charged', MiB)
-assert ledger.used() == 1703 * MiB
-ledger.deployment = 1700 * MiB  # [I-30]: lowering below usage admits nothing new and evicts nothing.
-assert capability_ok(1024 * MiB, 1700 * MiB, 256 * MiB, 512 * MiB, 0, 64 * MiB)
-before = dict(ledger.accounts)
-assert holds(lambda: ledger.charge(t1, 'one', 'pin', 1)) and holds(lambda: ledger.charge(s1, 'two', 'pin', 1))
-assert ledger.accounts == before
-assert not capability_ok(1024 * MiB, 2048 * MiB, 194 * MiB, 512 * MiB, MiB, 64 * MiB)
-assert not capability_ok(1024 * MiB, 1200 * MiB, 256 * MiB, 512 * MiB, MiB, 64 * MiB)
-assert not capability_ok(1024 * MiB, 2048 * MiB, 256 * MiB, 200 * MiB, MiB, 64 * MiB)
-assert not capability_ok(1024 * MiB, 2048 * MiB, 256 * MiB, 512 * MiB, 1_114_113, 64 * MiB)
-assert not capability_ok(1023 * MiB, 2048 * MiB, 256 * MiB, 512 * MiB, MiB, 64 * MiB)
-
-# [I-11] same-attempt row transitions (00 pending, 01 accepted, 02 failed, 03 unknown).
-ALLOWED = {0: {0, 1, 2, 3}, 3: {1, 2, 3}, 1: {1}, 2: {2}}
-k09_allowed = [(0, 1), (0, 2), (0, 3)]  # K09 partial -> published, failed, unknown
-k09_rejected = [(2, 0), (3, 0), (1, 0)]  # same-attempt returns to pending
-assert all(b in ALLOWED[a] for a, b in k09_allowed)
-assert all(b not in ALLOWED[a] for a, b in k09_rejected)
-assert sum(len(v) for v in ALLOWED.values()) == 9
-
-
-# [I-10] status mapping.
-def status(state, rejection=False, terminal=False, exhausted=False, drain_limit=False,
-           retry_wait=False, window_open=False):
-    if state == 'published':
-        return ('Rejected' if rejection else 'Completed', None, None)
-    if state == 'not-applicable':
-        return ('Completed', None, None)
-    held = (exhausted or drain_limit) and not window_open
-    if state in ('pending', 'unknown'):
-        if held:
-            return ('EventsStored', False, 60)
-        return ('EventsStored', None, 1)
-    assert state == 'failed'
-    if terminal:
-        return ('PublishFailed', False, None)
-    if held:
-        return ('EventsStored', False, 60)
-    if retry_wait:
-        return ('EventsStored', True, 1)
-    return ('CommandOutcomeHold', None, 30)
-
-
-assert status('published', rejection=True)[0] == 'Rejected'
-assert status('not-applicable')[0] == 'Completed'
-assert status('failed', retry_wait=True) == ('EventsStored', True, 1)
-assert status('failed', exhausted=True, retry_wait=True) == ('EventsStored', False, 60)
-assert status('failed', exhausted=True, window_open=True, retry_wait=True) == ('EventsStored', True, 1)
-assert status('pending', drain_limit=True) == ('EventsStored', False, 60)
-assert status('failed', terminal=True, exhausted=True)[0] == 'PublishFailed'
-assert status('failed') == ('CommandOutcomeHold', None, 30)
-
-
-# [I-31] pin-capacity queues: head rule, cross-counter move, parking and re-queueing.
-class Queues:
-    def __init__(self, tenant_cap, pool_cap):
-        self.cap = {'tenant': tenant_cap, 'deployment': pool_cap}
-        self.used = {'tenant': {}, 'deployment': 0}
-        self.queue = {'tenant': [], 'deployment': []}
-        self.parked = []
-
-    def room(self, counter, tenant, amount):
-        used = self.used['tenant'].get(tenant, 0) if counter == 'tenant' else self.used['deployment']
-        return used + amount <= self.cap[counter]
-
-    def enqueue(self, first_hold, tenant, message, amount):
-        entry = (first_hold, tenant, message, amount)
-        for counter in ('tenant', 'deployment'):
-            if amount > self.cap[counter]:
-                self.parked.append(entry)
-                return 'parked'
-        counter = 'tenant' if not self.room('tenant', tenant, amount) else 'deployment'
-        self.queue[counter].append(entry)
-        self.queue[counter].sort(key=lambda e: (e[0], e[1].encode(), e[2].encode()))
-        return counter
-
-    def retry_heads(self):
-        pinned = []
-        for counter in ('tenant', 'deployment'):
-            if not self.queue[counter]:
-                continue
-            head = self.queue[counter][0]
-            first_hold, tenant, message, amount = head
-            fits_tenant = self.room('tenant', tenant, amount)
-            fits_deployment = self.room('deployment', tenant, amount)
-            if fits_tenant and fits_deployment:
-                self.queue[counter].pop(0)
-                self.used['tenant'][tenant] = self.used['tenant'].get(tenant, 0) + amount
-                self.used['deployment'] += amount
-                pinned.append(message)
-            elif counter == 'tenant' and fits_tenant:
-                self.queue[counter].pop(0)
-                self.queue['deployment'].append(head)
-                self.queue['deployment'].sort(key=lambda e: (e[0], e[1].encode(), e[2].encode()))
-        return pinned
-
-    def raise_caps(self, tenant_cap, pool_cap):
-        self.cap = {'tenant': tenant_cap, 'deployment': pool_cap}
-        parked, self.parked = self.parked, []
-        for first_hold, tenant, message, amount in parked:
-            self.enqueue(first_hold, tenant, message, amount)
-
-
-q = Queues(tenant_cap=10, pool_cap=15)
-q.used['tenant'] = {'A': 8, 'B': 2}
-q.used['deployment'] = 10
-assert q.enqueue(1, 'A', 'a1', 4) == 'tenant'
-assert q.enqueue(2, 'B', 'b1', 6) == 'deployment'
-assert q.enqueue(3, 'A', 'a2', 11) == 'parked'
-assert q.retry_heads() == []  # b1 does not fit the pool; a1 does not fit tenant A
-q.used['tenant']['A'] = 5
-q.used['deployment'] = 7
-assert q.retry_heads() == ['a1']  # a1 fits both; b1 (6) no longer fits after a1 (7 + 4 = 11)
-assert q.queue['deployment'][0][2] == 'b1'
-assert q.enqueue(4, 'A', 'a3', 2) == 'tenant'
-q.raise_caps(tenant_cap=12, pool_cap=30)  # a parked candidate re-enters at its original order
-assert [e[2] for e in q.queue['tenant']] == ['a2', 'a3'] and [e[2] for e in q.queue['deployment']] == ['b1']
-
-text = DOC.read_text(encoding='utf-8')
-marker = 'Integration codec known answers (label, exact byte length, SHA-256):\n\n```text\n'
-assert text.count(marker) == 1, 'integration known-answer block'
-expected = text.split(marker, 1)[1].split('\n```\n', 1)[0].split('\n')
-if expected != computed:
-    for line in sorted(set(expected) ^ set(computed)):
-        print('MISMATCH', line)
-    raise SystemExit('integration codec known answers differ')
-print('%d integration codec known answers, capacity, transition, status and queue models passed'
-      % len(computed))
-PY
+python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py
 ```
 
-```bash
-python3 - <<'PY'
-import hashlib
-import pathlib
-import re
-import subprocess
-
-DOC = pathlib.Path('_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md')
-text = DOC.read_text(encoding='utf-8')
-rows = re.findall(r'^\| (6\.5[abc]) \| `([^`]+)`, commit `[0-9a-f]{40}`, SHA-256 `([0-9a-f]{64})` \|'
-                  r'.*?block \(SHA-256 `([0-9a-f]{64})`\)', text, re.M)
-assert [r[0] for r in rows] == ['6.5a', '6.5b', '6.5c'], rows
-outputs = {}
-for label, path, file_hash, block_hash in rows:
-    body = pathlib.Path(path).read_bytes()
-    assert hashlib.sha256(body).hexdigest() == file_hash, label + ' file pin'
-    blocks = re.findall(r'^```python\n(.*?)^```$', body.decode('utf-8'), re.S | re.M)
-    assert len(blocks) == 1 and hashlib.sha256(blocks[0].encode()).hexdigest() == block_hash, label + ' block pin'
-    run = subprocess.run(['python3', '-'], input=blocks[0], text=True, capture_output=True, check=True)
-    outputs[label] = (blocks[0], run.stdout.splitlines())
-
-
-def listed(marker):
-    assert text.count(marker) == 1, marker
-    return text.split(marker, 1)[1].split('\n```\n', 1)[0].split('\n')
-
-
-a_series = listed('A-series local codec answers (label, exact byte length, SHA-256):\n\n```text\n')
-a_block, a_out = outputs['6.5a']
-assert a_out[-1] == 'K06-K12 strict-codec and decision-model checks passed'
-assert sorted(a_series) == sorted(a_out[:-1]) and len(a_series) == 40, 'A-series answers'
-b_series = listed('B-series local codec answers (SHA-256 of the complete encoded record):\n\n```text\n')
-b_block, b_out = outputs['6.5b']
-assert b_out == ['LB-01..LB-18 passed: codec, bounds, ownership, query/root/TTL and quota models; no provider proof']
-assert len(b_series) == 11
-for line in b_series:
-    digest = line.rsplit(' ', 1)[1]
-    assert re.fullmatch('[0-9a-f]{64}', digest) and digest in b_block, 'B-series ' + line
-c_block, c_out = outputs['6.5c']
-assert len(c_out) == 42 and c_out[-1] == 'C11h exhausted rejection metadata and status-polling semantics passed'
-print('child pins, 40 A-series and 11 B-series answers and three child models passed')
-PY
-```
+FW1: rerun this gate and the D verifier/mutations/focused-regressions after any candidate, imported input, constructor or verifier change and before §12 presentation; Story 6.6 must install the blocking automatic gate before activation. This documentation run changes no CI.
 
 ### 11.7 Story 6.6 verification obligations and review focus points
 
-These obligations are verification work against the decided contract above; none selects behavior. Story 6.6 ports the three child models and the §11.6 verifier blocks into its blocking automated verification suite, and O-03 to O-05, O-08 and O-09 apply to that port, not to the child files.
+These obligations are verification work against the decided contract above; none selects behavior. Story 6.6 ports the pinned child models and current §11.6 gate into its blocking automated verification suite, and O-03 to O-05, O-08 and O-09 apply to that port, not to the child files.
 
-| ID | Obligation | Source |
-| --- | --- | --- |
-| O-01 | A10 production vectors V05–V08 use the derived keys `batch-member-root:` plus ScopeOpHash and the hashed `aggregate-operation-result:` key, never the K02/K07 marker keys, and do not reuse the K02/K07 hashes as key evidence. | ledger :4959 |
-| O-02 | Verify that A9's single 30-second recovery attempt equals the shipped bounded recovery (`AggregateActor.cs:2206` at `ccb4faf0`) and that A8's retry retention of at least 24 hours equals the §8 command-continuation retention; re-cite both if the source moved. | ledger :4975 |
-| O-03 | Extract and run the 6.5a, 6.5b and 6.5c models, the 6.5c mutation harness and the two §11.6 verifier blocks of this document in blocking CI. The ported 6.5c retention family (C01d) asserts the [I-26]–[I-30] values of the §11.6 capacity model, never C01d's superseded pre-integration arithmetic, and the ported C11h asserts the [I-15] `Retry-After: 60` on the hold. | ledger :5039 |
-| O-04 | Run a single-removal kill sweep over the ported 6.5c guards; add a killing vector for each surviving guard or remove the redundant guard, and record the result. | ledger :5102 |
-| O-05 | Give every mutation run a per-mutation timeout, so a looping mutant fails instead of hanging. | ledger :5106 |
-| O-06 | Withdrawn by [I-47]: the historical 6.5c integrity script is not ported, so its path exemptions have no successor. | ledger :5110 |
-| O-07 | Withdrawn by [I-47]: no ported check reads untracked files. | ledger :5114 |
-| O-08 | Model the Binary `ce-*` core headers in the carrier-size family, beside the six routing headers and `Content-Type`. | ledger :5122 |
-| O-09 | Model canonical `destinationId` recomputation at every destination-bearing record, add a plan-time derivation vector, and reject display names and non-derived 1,024-byte destinations. | ledger :5137 |
-| O-10 | Provider and crash vectors for a capacity-held pin CAS: a crash between charge and pin install; resume with the same pin bytes and charge, then revision zero and the first POST pin; sibling pins keeping their charges; the [I-31] queue head, cross-counter move, parking and invalid-candidate re-rendering. | ledger :5167 |
-| O-11 | Withdrawn by [I-47], with O-06. | ledger :5189 |
-| O-12 | Prove A8's no-future-acceptance evidence under a real broker, including a partially accepted member set. | 6.5c review focus |
-| O-13 | Prove same-transaction effect and receipt commit, and multi-route handoff-pointer linearizability, on each production effect provider. | 6.5c review focus |
-| O-14 | Prove raw ingress and capture preallocation and retention through the actual DAPR sidecar and broker intermediaries. | 6.5c review focus |
-| O-15 | Prove original-offset preservation end to end in both Binary and Structured carriers. | 6.5c review focus |
-| O-16 | Prove B6 two-level quota accounting across replicas, restarts and deployment revisions. | 6.5c review focus |
-| O-17 | Prove each of the ten C6 activation gates on the configured production provider and a second provider or conforming harness. | 6.5c review focus |
-| O-18 | Provider vectors for the integration rules: a finite subscription retry budget on a held route and on a dead-letter topic's own subscription, and a redrive after each clearing cause ([I-36]); hold-inventory creation, refresh, stale marking, removal and gauge values across replicas and restarts ([I-37]); legacy claims racing an evidence-required admission, tombstone compaction and the scope-retention ceiling ([I-12]); outcome-preparation and preparation-write records across crashes, including a recovery-written preparation-write record ([I-08], [I-09]); same-attempt transitions and conflicts ([I-11]); drain-limit holds ([I-14]); legacy-array warnings and holds after growth ([I-06]); destination-configuration schema rejections ([I-17]); header byte and name rules ([I-20], [I-21], [I-22]); per-kind maxima, headroom and the capacity known answer ([I-26], [I-30]); the 503 hold wire form and each reason code ([I-16]); and the replay reason codes ([I-39]). | Integration |
-| O-19 | The release preflight (`scripts/validate-publication-preflight.sh`, which `.releaserc.json` runs) fails while `main` contains a commit with a §10.2 `BREAKING CHANGE:` footer but not the complete §10.2 set, and the SemVer-major release proves every §10.2 behavior inactive by default until its per-domain activation ([I-41]). | Integration (BH-13) |
-| O-20 | Provider vectors for [I-45] and [I-46] under a real broker: a window closure racing a late acceptance; a resumed window that exhausts again and is resumed; a drain-limit resume; a refused `resume-window` charge; two concurrent requests for one ordinal; and legacy status-6 records re-armed from a drain record and from a dead-letter message. | Owner decision D-RESUME |
+| ID | Obligation | Source | Owner / blocking gate / closure evidence |
+| --- | --- | --- | --- |
+| O-01 | A10 production vectors V05–V08 use the derived keys `batch-member-root:` plus ScopeOpHash and the hashed `aggregate-operation-result:` key, never the K02/K07 marker keys, and do not reuse the K02/K07 hashes as key evidence. | ledger :4959 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-02 | Verify that A9's single 30-second recovery attempt equals the shipped bounded recovery (`AggregateActor.cs:2207` at `cbbe41501ba722731bf36b2c343efdef4ac714fb`) and that A8's retry retention of at least 24 hours equals the §8 command-continuation retention; re-cite both if the source moved. | ledger :4975 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-03 | Port pinned A/B/C models and the current integration gate with D bounded behavior/independent constructors into blocking CI. Retire superseded C01d capacity/C11h polling expectations in the port; D6 fixed precharges and D4 precedence govern. FW1 automatic execution is mandatory before activation. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-04 | Run a single-removal kill sweep over the ported 6.5c guards; add a killing vector for each surviving guard or remove the redundant guard, and record the result. | ledger :5102 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-05 | Give every mutation run a per-mutation timeout, so a looping mutant fails instead of hanging. | ledger :5106 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-06 | Successor boundary gate rejects every committed/index/worktree outside-scope change; no owner/automation exemption. Preserve immutable current-baseline inputs and gitlinks. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-07 | Successor boundary gate rejects every untracked nonignored outside-scope path and missing tracked path; no path-only bypass. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-08 | Model the Binary `ce-*` core headers in the carrier-size family, beside the six routing headers and `Content-Type`. | ledger :5122 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-09 | Model canonical `destinationId` recomputation at every destination-bearing record, add a plan-time derivation vector, and reject display names and non-derived 1,024-byte destinations. | ledger :5137 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-10 | D1/D6 provider whole-batch transaction and separate reservation-bound pin install crash/readback: original accounts/amounts survive overhead change; mismatched attach refuses unchanged; all counters/charges plus eight-envelope fair queue grant/refund/parking/erasure are atomic. No paired queues/cross-counter move. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-11 | Successor boundary gate confines bookkeeping to the explicit allowed set and validates exact file/block hashes, verifier identities and source ancestry; absent/untracked/committed deviations refuse. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-12 | Prove A8's no-future-acceptance evidence under a real broker, including a partially accepted member set. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-13 | Prove same-transaction effect and receipt commit, and multi-route handoff-pointer linearizability, on each production effect provider. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-14 | Prove raw ingress and capture preallocation and retention through the actual DAPR sidecar and broker intermediaries. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-15 | Prove original-offset preservation end to end in both Binary and Structured carriers. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-16 | Prove B6 two-level quota accounting across replicas, restarts and deployment revisions. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-17 | Prove each of the ten C6 activation gates on the configured production provider and a second provider or conforming harness. | 6.5c review focus | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-18 | D9 two-host shared-PostgreSQL owner fence/generation/readback, scope+shard transaction, registry/reserve-before-owner and Operations epoch transfer; external capture charge-only/object-written/incarnation cleanup, cursor scope/generation and per-row evidence incident; D5 idle bootstrap and complete signed replay activation; I08/I09 crash evidence and I11 all-pair/conflicting-row refusal; unchanged bytes after every unavailable/refused phase. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-19 | D-RELEASE current-main manual workflow compatibility gate: API/wire/package-only consumers and focused inactive-path evidence for compatible maintenance/security/dormant preparation; retain publication hold if unproven or incomplete breaking main, honestly classify genuine breaking commits and expose complete approved incompatible set only in SemVer-major. No new lane/version override. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
+| O-20 | D3/D7 exact signed production resume/redrive authorization and provider readbacks, separate producer-disable/broker-reject crash phases, window versus permanent operation fence, complete C2 observations and accepted exclusion, original legacy actor range/ordered MessageIds/StoredDigests/classification restoration, fixed horizons/reclamation/once-only refund and lost-ack repeated lifetime resumes. No obsolete reconciliation/repair families. | Integration/D9 | Story 6.6 Platform implementation and verification owner; preactivation blocking suite and applicable AD-26 provider qualification; exact immutable source/profile, test IDs, persisted bytes/readbacks, result and retained evidence digest. |
 
 **Review focus points.** Review of this integrated version should concentrate on the `[I-nn]` rules, which no child review examined, and on O-12 to O-17 and O-20, which are the provider facts the local models cannot establish. An unresolved provider fact blocks readiness and needs an approved amendment of this document, never local Story 6.6 improvisation.
 

@@ -1,0 +1,19 @@
+[
+  "ActorCommitEvidenceHold",
+  "AppendPreparationHold",
+  "CommandOutcomeHold",
+  "ConsumerMembershipFenceUnavailable",
+  "FirstSendMembershipChangedHold",
+  "HistoricalMessageIdCollision",
+  "KeySpaceMigrationHold",
+  "LegacyArrayLimit",
+  "LegacyEvidenceConflict",
+  "LegacyHandoffCapacityHold",
+  "PublicationDrainLimitHold",
+  "PublicationPinCapacityHold",
+  "PublicationRetryExhaustedHold",
+  "RawSourceUnavailable",
+  "ReplayCommitAmbiguous",
+  "RollbackReaderCapabilityHold",
+  "ScopeRetentionCapacityHold"
+]

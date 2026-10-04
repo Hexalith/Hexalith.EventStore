@@ -1,0 +1,115 @@
+{
+  "authority": "UNAPPROVED; Story 6.5 in progress; Story 6.6 unauthorized; full verification belongs to parent",
+  "command": [
+    "python3",
+    "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+    "--review-fixes"
+  ],
+  "completedUtc": "2026-10-04T12:59:30.697296+00:00",
+  "exitCode": 0,
+  "previousTargetedEvidenceSha256": "c8580a38cad24e0662fb360b72f22da45ae2e64d6ce43e90d832ec0553c0c92c",
+  "result": "passed",
+  "schema": "hexalith.story-6-5.targeted-review-fixes-final/1",
+  "targetedResult": {
+    "authority": "UNAPPROVED; Story 6.6 unauthorized",
+    "controls": [
+      {
+        "mutation": "receipt-bytes",
+        "owningFailure": "receipt-bytes",
+        "result": "rejected"
+      },
+      {
+        "mutation": "receipt-bytes",
+        "owningFailure": "receipt-bytes",
+        "result": "rejected"
+      },
+      {
+        "mutation": "receipt-bytes",
+        "owningFailure": "receipt-bytes",
+        "result": "rejected"
+      },
+      {
+        "mutation": "receipt-bytes",
+        "owningFailure": "receipt-bytes",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-input-identities",
+        "owningFailure": "document-input-identities",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-input-identities",
+        "owningFailure": "document-input-identities",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-input-identities",
+        "owningFailure": "document-input-identities",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-d-input-pins",
+        "owningFailure": "document-d-input-pins",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-d-input-pins",
+        "owningFailure": "document-d-input-pins",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-d-input-pins",
+        "owningFailure": "document-d-input-pins",
+        "result": "rejected"
+      },
+      {
+        "mutation": "document-input-pin",
+        "owningFailure": "document-input-pin",
+        "result": "rejected"
+      },
+      {
+        "mutation": "hold-inventory-mappings",
+        "owningFailure": "hold-inventory-mappings",
+        "result": "rejected"
+      },
+      {
+        "mutation": "hold-predicate-baseline",
+        "owningFailure": "hold-predicate-baseline",
+        "result": "rejected"
+      },
+      {
+        "mutation": "inventory-cursor-literals",
+        "owningFailure": "inventory-cursor-literals",
+        "result": "rejected"
+      },
+      {
+        "mutation": "inventory-cursor-literals",
+        "owningFailure": "inventory-cursor-literals",
+        "result": "rejected"
+      },
+      {
+        "mutation": "sorted directory enumeration with historical execution record first",
+        "owningCheck": "candidate-enumeration-independent",
+        "result": "passed for all three exact pinned candidates"
+      }
+    ],
+    "currentPins": 6,
+    "cursor": {
+      "algorithm": "HS256",
+      "generationVectors": 2,
+      "positiveEnvelope": 1
+    },
+    "heldPredicates": {
+      "d8": 6,
+      "preserved": 17,
+      "supplemental": 11
+    },
+    "normativeDigest": "245e4c59ad69034e0163a715e746f69a8aa9e142a1b7490f68ec6764f4d08b24",
+    "pins": {
+      "abc": 3,
+      "d": 54
+    },
+    "result": "passed"
+  }
+}
