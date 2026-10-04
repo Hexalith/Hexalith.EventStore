@@ -18,4 +18,12 @@ public record DomainServiceRequest(CommandEnvelope Command, object? CurrentState
     /// <summary>Gets the active event registry fingerprint, when the request is version-aware.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? RegistryFingerprint { get; init; }
+
+    /// <summary>Gets signed proof for the verified effective command state.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? CommandStateProof { get; init; }
+
+    /// <summary>Gets the ordered verified effective command events, when supplied.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<VerifiedEffectiveCommandEvent>? VerifiedEffectiveEvents { get; init; }
 }

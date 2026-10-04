@@ -2,7 +2,7 @@
 title: 'Story 6.1: Folded Snapshot Frozen Spec'
 type: 'feature'
 created: '2026-09-08'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '7598f67cc94a47734c0f21ae7669b29a931d386c'
