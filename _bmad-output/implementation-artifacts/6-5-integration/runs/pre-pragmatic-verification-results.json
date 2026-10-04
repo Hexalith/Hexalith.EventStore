@@ -1,41 +1,10 @@
 {
-  "amendmentReview": {
-    "corrected": 2,
-    "findings": 2,
-    "focusedChecks": [
-      {
-        "bytes": 26836,
-        "path": "_bmad-output/implementation-artifacts/6-5-integration/pragmatic-policy-checks.json",
-        "sha256": "1ac0de65b630dc43a0d322d4d15c157562f10e23699134a303c43d46cdad28c7"
-      },
-      {
-        "bytes": 5432,
-        "path": "_bmad-output/implementation-artifacts/6-5-integration/pragmatic-policy-final-review-checks.json",
-        "sha256": "d703723e84156e85aeee18a4e70a1c079ab7e05b3c39e9fbb59aa79818f18770"
-      }
-    ],
-    "report": {
-      "bytes": 1414,
-      "path": "_bmad-output/implementation-artifacts/6-5-integration/reviews/pragmatic-validation.md",
-      "sha256": "84f487b139ca236088c74c625c02659e94d9b57611969cb2ac9c3a8989be5d27"
-    },
-    "reviewer": "Reused investigator, prior context disclosed; owner authorized reuse",
-    "state": "complete",
-    "unresolved": 0
-  },
   "approval": {
-    "approver": "Jérôme Piquot",
-    "evidence": {
-      "bytes": 1897,
-      "path": "_bmad-output/implementation-artifacts/6-5-integration/approval-intent-jerome-piquot.md",
-      "sha256": "206304a08d80617f383370e6d3499859351ee6cee2bc1e8b38c2726c71f38ce2"
-    },
     "localEvidenceIsProviderProof": false,
     "productionProfile": "unapproved",
-    "recordingDateMeaning": "Administrative recording date; no authenticated source-time claim.",
-    "state": "approved",
-    "story6_5": "done",
-    "story6_6": "ready; not started; owner request starts implementation"
+    "state": "UNAPPROVED",
+    "story6_5": "in-progress",
+    "story6_6": "unauthorized"
   },
   "baseline": "cbbe41501ba722731bf36b2c343efdef4ac714fb",
   "commands": [
@@ -43,13 +12,13 @@
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/integration.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/integration.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
-          "bytes": 4965,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/integration.stdout.txt",
-          "sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96"
+          "bytes": 3619,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/integration.stdout.txt",
+          "sha256": "d53097f8bbdb768a3f35ac2cdfccaf4644c2eb268881dfd12f21eea9371d8e88"
         }
       },
       "command": [
@@ -59,11 +28,11 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:12:12.780408+00:00",
+      "finishedUtc": "2026-10-04T13:06:36.085695+00:00",
       "matchedExpectedExit": true,
       "name": "integration",
       "result": {
-        "authority": "Owner approved; Story 6.6 ready on owner request; fixtures do not prove provider behavior",
+        "authority": "UNAPPROVED; Story 6.6 unauthorized; fixtures do not prove provider behavior",
         "baseline": "cbbe41501ba722731bf36b2c343efdef4ac714fb",
         "blocks": {
           "bashVerifiers": 4,
@@ -81,7 +50,7 @@
           "bh37Findings": 10,
           "childRouted": 54,
           "obligations": 20,
-          "openImplementationFollowups": 47,
+          "openProposals": 47,
           "parentFindings": 13,
           "pass1Findings": 59,
           "pass2Findings": 67
@@ -199,48 +168,8 @@
             "result": "rejected"
           },
           {
-            "control": "unrelated owner commit/worktree/submodule changes",
-            "owningCheck": "unrelated-owner-changes",
-            "result": "accepted without repository queries"
-          },
-          {
-            "mutation": "immutable-input-pin",
-            "owningFailure": "immutable-input-pin",
-            "result": "rejected"
-          },
-          {
-            "mutation": "approval-digest",
-            "owningFailure": "approval-digest",
-            "result": "rejected"
-          },
-          {
-            "mutation": "receipt-bytes",
-            "owningFailure": "receipt-bytes",
-            "result": "rejected"
-          },
-          {
-            "mutation": "approval-receipt-fields",
-            "owningFailure": "approval-receipt-fields",
-            "result": "rejected"
-          },
-          {
-            "control": "unrelated ledger append and status edit",
-            "owningCheck": "unrelated-ledger-progress",
-            "result": "accepted"
-          },
-          {
-            "mutation": "ledger-owned-record",
-            "owningFailure": "ledger-owned-record",
-            "result": "rejected"
-          },
-          {
-            "mutation": "ledger-owned-record",
-            "owningFailure": "ledger-owned-record",
-            "result": "rejected"
-          },
-          {
-            "mutation": "ledger-47-open-followups",
-            "owningFailure": "ledger-47-open-followups",
+            "mutation": "outside-scope-path",
+            "owningFailure": "outside-scope-path",
             "result": "rejected"
           },
           {
@@ -249,19 +178,11 @@
             "result": "rejected"
           }
         ],
-        "normativeDigest": "bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050",
+        "normativeDigest": "b9e85ef0c637b5cf88af39a59d2896cbecaa7f45a259504187904b0dced3561a",
         "result": "passed",
         "scope": {
-          "documentationFiles": [
-            "_bmad-output/implementation-artifacts/deferred-work.md",
-            "_bmad-output/implementation-artifacts/spec-6-5-event-versioning-and-upcasting-spec.md",
-            "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
-            "_bmad-output/planning-artifacts/architecture.md"
-          ],
-          "historicalBaseline": "cbbe41501ba722731bf36b2c343efdef4ac714fb",
-          "ignoredUnrelatedPaths": [],
-          "integrationDirectory": "_bmad-output/implementation-artifacts/6-5-integration/",
-          "repositoryFreeze": false
+          "changedAllowedPaths": 65,
+          "trackedBaselinePaths": 9091
         },
         "vectors": {
           "aVectors": 40,
@@ -273,18 +194,18 @@
           "sameAttemptPairs": 16
         }
       },
-      "startedUtc": "2026-10-04T14:12:09.757652+00:00"
+      "startedUtc": "2026-10-04T13:06:17.382310+00:00"
     },
     {
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-bounded.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-bounded.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
           "bytes": 1875,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-bounded.stdout.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-bounded.stdout.txt",
           "sha256": "8f7e71b14998bde649f1d748ac7fe89f3ec41723c72a30e66320e29d9d9d4e21"
         }
       },
@@ -294,7 +215,7 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:12:32.985407+00:00",
+      "finishedUtc": "2026-10-04T13:06:32.522726+00:00",
       "matchedExpectedExit": true,
       "name": "d-bounded",
       "result": {
@@ -353,18 +274,18 @@
         "sharedKeyAnswers": 1,
         "wireAnswers": 24
       },
-      "startedUtc": "2026-10-04T14:12:09.759690+00:00"
+      "startedUtc": "2026-10-04T13:06:17.382899+00:00"
     },
     {
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-mutations.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-mutations.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
           "bytes": 3333,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-mutations.stdout.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-mutations.stdout.txt",
           "sha256": "dfaa84adbe01202b10b637d63c24e412eefdb2bb8ff6e363e775b20d4b9c0551"
         }
       },
@@ -374,7 +295,7 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:12:45.859253+00:00",
+      "finishedUtc": "2026-10-04T13:06:42.685718+00:00",
       "matchedExpectedExit": true,
       "name": "d-mutations",
       "result": {
@@ -419,18 +340,18 @@
         "controlResult": "{\"authority\": \"fixture authorization and transactions only; D9 provider gate unproved\", \"behaviorEvidence\": {\"boundedRedrives\": 131, \"concurrentOutcomes\": 64, \"correctionEvidence\": [\"RD1-stage-headroom\", \"RP7-expiry-and-RP16-stage-refunds\", \"RP16-signed-resume-and-zero-unresolved\", \"RP17-dispatch-handle-artifact-reclamation\", \"RP5-capsule-reentry\", \"RP16-17-legacy-success-authority\", \"RD2-RP6-generation-repair-and-failure-intent\", \"RP17-closed-failure-and-terminal-readbacks\", \"RP16-17-legacy-source-and-1001-bound\", \"RP17-drain-absence\", \"RP16-17-terminal-send-authority\", \"RP11-RP16-original-absent-repair\", \"RP16-held-signed-tags-and-metadata-charge\", \"RP12-capture-erase-and-recreation\", \"RP17-refund-and-placeholder-readbacks\", \"RP4-RP13-RP16-17-registry-bounds-and-accounts\", \"RP4-RP8-RP19-isolated-typed-inventory\", \"RP17-page-revision\", \"RD4-RP9-RP10-RP17-queue-shards-and-authority\", \"RP17-retained-object-interval\", \"RP17-all-predecessor-CAS\", \"RP18-scope-public-reasons\", \"RD3-provider-generation-and-fence-CAS\", \"RP12-redriving-replacement-retention\", \"RD3-legacy-restore-provider-token\", \"RP19-three-page-original-cursor-expiry\", \"RD4-sixteen-ticket-eight-shard-placement\", \"RP16-bootstrap-precharge-boundaries\"], \"lifetimeResumes\": 67, \"matrixEvidence\": {\"capacity-wait\": \"fair grants, no bypass, parking and net refund\", \"eligible-resume\": \"serialized restart, stable roster and unresolved dispatch\", \"held-delivery\": \"capture restart, route outcome, exact charge and cleanup\", \"idle-replay\": \"incremental-bootstrap at zero events\", \"legacy-resume\": \"maximum-width original range reaches draining after byte restart\"}, \"matrixRows\": 5, \"owningCorruptions\": 1, \"persistedResumeRestarts\": 82, \"refusals\": 1470, \"statusCases\": 24}, \"controlAnswers\": 9, \"keyAnswers\": 35, \"result\": \"passed\", \"routedDispositions\": 54, \"sharedKeyAnswers\": 1, \"wireAnswers\": 24}",
         "rejectedCorruptions": 6
       },
-      "startedUtc": "2026-10-04T14:12:09.760668+00:00"
+      "startedUtc": "2026-10-04T13:06:17.383241+00:00"
     },
     {
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-focused-regressions.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-focused-regressions.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
           "bytes": 1812,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/d-focused-regressions.stdout.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/d-focused-regressions.stdout.txt",
           "sha256": "a9bb91f68c045ed03e5355f8316294a98e816a50438c522112e5af8e1d78c3e7"
         }
       },
@@ -440,7 +361,7 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:14:14.351898+00:00",
+      "finishedUtc": "2026-10-04T13:07:57.005110+00:00",
       "matchedExpectedExit": true,
       "name": "d-focused-regressions",
       "result": {
@@ -491,18 +412,18 @@
         "rejectedRegressions": 7,
         "result": "passed"
       },
-      "startedUtc": "2026-10-04T14:12:09.761306+00:00"
+      "startedUtc": "2026-10-04T13:06:17.383706+00:00"
     },
     {
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/deferred-work.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/deferred-work.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
           "bytes": 197799,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/deferred-work.stdout.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/deferred-work.stdout.txt",
           "sha256": "330d725a0fffd2cac1fdd54602315a1216aeeab74935dd83a885cb03105892ef"
         }
       },
@@ -513,7 +434,7 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:12:09.871984+00:00",
+      "finishedUtc": "2026-10-04T13:06:17.435250+00:00",
       "matchedExpectedExit": true,
       "name": "deferred-work",
       "result": {
@@ -3743,18 +3664,18 @@
         ],
         "exitCode": 0
       },
-      "startedUtc": "2026-10-04T14:12:09.762289+00:00"
+      "startedUtc": "2026-10-04T13:06:17.384465+00:00"
     },
     {
       "captures": {
         "stderr": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/diff-check.stderr.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/diff-check.stderr.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         "stdout": {
           "bytes": 0,
-          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/diff-check.stdout.txt",
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/diff-check.stdout.txt",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         }
       },
@@ -3765,17 +3686,41 @@
       ],
       "exitCode": 0,
       "expectedExitCode": 0,
-      "finishedUtc": "2026-10-04T14:12:09.905821+00:00",
+      "finishedUtc": "2026-10-04T13:06:17.444234+00:00",
       "matchedExpectedExit": true,
       "name": "diff-check",
-      "startedUtc": "2026-10-04T14:12:09.768184+00:00"
+      "startedUtc": "2026-10-04T13:06:17.385766+00:00"
+    },
+    {
+      "captures": {
+        "stderr": {
+          "bytes": 115153,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/historical-child-acceptance.stderr.txt",
+          "sha256": "b1f4893da5cf3b77033d2d4688a2d4c01bdc8f11e2a2ded213d1b7c7c55acc22"
+        },
+        "stdout": {
+          "bytes": 0,
+          "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/historical-child-acceptance.stdout.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "command": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py"
+      ],
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "finishedUtc": "2026-10-04T13:06:17.605349+00:00",
+      "matchedExpectedExit": true,
+      "name": "historical-child-acceptance",
+      "startedUtc": "2026-10-04T13:06:17.435800+00:00"
     }
   ],
-  "completedUtc": "2026-10-04T14:15:45.554067+00:00",
+  "completedUtc": "2026-10-04T13:07:57.006006+00:00",
   "finalRun": {
-    "bytes": 238364,
-    "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T141209Z/results.json",
-    "sha256": "4421c44957d238b53420ade6811e80ef72a551438cdf02dde207442a3512a789"
+    "bytes": 237481,
+    "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130617Z/results.json",
+    "sha256": "e381c672cfb23cc879f1fb6240173dd4fb2a0eee4cfa339ea351d78db19b1a67"
   },
   "historicalEvidence": [
     {
@@ -3789,18 +3734,6 @@
       "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/post-review-20261004T130017Z/results.json",
       "phase": "first post-review run; integration refused raw-pass1-dispositions; all other expected exits matched",
       "sha256": "b96e82d010138ee2d51cc3dcce9bd4a279b465c70831d66c2855bf1112907883"
-    },
-    {
-      "bytes": 264230,
-      "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pre-pragmatic-verification-results.json",
-      "phase": "Prior reviewed technical candidate and former approval policy; historical",
-      "sha256": "dca620a1596d730b4950ab2b0fb9bb9e1d2ab34685abd4e997fff2d46a865a4d"
-    },
-    {
-      "bytes": 237703,
-      "path": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-20261004T140500Z/results.json",
-      "phase": "First pragmatic-policy run: all six checks passed before the focused review corrections",
-      "sha256": "92fccaeb33e2d9be3d983644400f3df4f97e9a884d88d67710b306eaec9a92df"
     }
   ],
   "immutableInputs": {
@@ -4071,11 +4004,18 @@
     }
   },
   "ledgerBaselineComparison": {
-    "legacyCheckerLimitation": "The legacy checker ignores these status forms; the integration verifier checks owned record identities, citations and open statuses.",
-    "openObligations": 20,
-    "ownedOpenFollowups": 47,
-    "policy": "The active gate compares only owned records; unrelated ledger progress is allowed.",
-    "result": "passed"
+    "currentAndBaselineCounts": {
+      "ACCEPTED-DEBT": 0,
+      "DUPLICATE": 0,
+      "NO-ACTION": 0,
+      "OPEN": 0,
+      "RESOLVED": 0,
+      "STORY": 0,
+      "unclassified": 357
+    },
+    "legacyCheckerLimitation": "Ignores approval-pending status lines; current integration separately verifies exact 47 recognized-open changes and all other ledger lines unchanged.",
+    "result": "passed",
+    "unchangedDiagnosticCount": 357
   },
   "metadataByteDomainAndIndexBounds": {
     "conservativeTupleBytes": 2228,
@@ -4106,14 +4046,14 @@
     "standard8KiBLimit": 2704,
     "unsignedUtf8LexicographicOrdering": "preserved"
   },
-  "normativeDigest": "bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050",
+  "normativeDigest": "b9e85ef0c637b5cf88af39a59d2896cbecaa7f45a259504187904b0dced3561a",
   "parentVerificationCorrection": "The historical pass-1 parser now reads only the original contiguous table and requires its 59 exact identities; current review rows are separate. Removal of VG-1 refuses. Failed run preserved.",
   "preservedCaptureAudit": {
     "checkedAtPhase": "before refreshing this current summary",
-    "note": "Prior verification summaries and all earlier captures remain historical. This file is the current summary under D-VALIDATION.",
+    "note": "The prior verification-results.json bytes are preserved as runs/pre-review-verification-results.json; this file is the current summary.",
     "result": "47 historical output/review/evidence hashes plus two targeted output hashes verified unchanged"
   },
-  "result": "passed",
+  "result": "passed-with-explicit-unapproved-gates",
   "reviewLenses": {
     "correctionEvidence": [
       {
@@ -4280,13 +4220,5 @@
   },
   "schema": "hexalith.story-6-5.integration-verification/1",
   "sourceManifestSha256": "966297b5847e69c6ce33bc2d674e5d9e7b3981771a58a10388e63cbba3442fa3",
-  "validationPolicy": {
-    "historicalBaseline": "cbbe41501ba722731bf36b2c343efdef4ac714fb",
-    "observedRevision": "38efbefd5da65d538723f9f85eca6a186dfc0a2f",
-    "ownerApproval": "This conversation is sufficient. Tooling records the digest; no external signed capture, magic authorization sentence or manual hash repetition.",
-    "ownerDecision": "D-VALIDATION",
-    "runtimeRequirements": "Production/profile approval, provider qualification and runtime obligations are unchanged.",
-    "scope": "Check actual reviewed inputs and owned follow-ups; accept normal unrelated repository and ledger progress."
-  },
-  "wholeDocumentSha256": "5caccde87475306057e8424a75c329301ca0a115dc3f83128df9062203520747"
+  "wholeDocumentSha256": "b602076ee2d505e546081ba3bb2d2738f2fbe9bf097e63ae1d6e1f3e0774de40"
 }

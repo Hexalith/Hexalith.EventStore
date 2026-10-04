@@ -1,0 +1,1 @@
+passed: full disposition check permits unrelated ledger append/edit, generator preserves unrelated proposed status, all 20 obligations remain checked, adapter technical body unchanged, profile approval remains separate

@@ -1,0 +1,8 @@
+{
+  "currentCapturesVerified": 12,
+  "epicsChanges": "Story 6.5 and Story 6.6 approval/readiness only",
+  "historicalAndChildFilesVerified": 130,
+  "priorSummaryVerifiedInHistoricalCopy": true,
+  "result": "passed",
+  "sprintChanges": "Story 6.5 status and last_updated only; comments intact"
+}

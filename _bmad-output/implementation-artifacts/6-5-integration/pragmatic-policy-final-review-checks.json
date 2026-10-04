@@ -1,0 +1,128 @@
+{
+  "authority": "Owner approved; Story 6.6 ready on owner request; AD-26 profile/provider qualification remains pending",
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "--pragmatic-policy"
+      ],
+      "elapsedSeconds": 0.6421689030030393,
+      "exitCode": 0,
+      "result": {
+        "authority": "Owner approved; Story 6.6 ready on owner request",
+        "controls": [
+          {
+            "control": "unrelated owner commit/worktree/submodule changes",
+            "owningCheck": "unrelated-owner-changes",
+            "result": "accepted without repository queries"
+          },
+          {
+            "mutation": "immutable-input-pin",
+            "owningFailure": "immutable-input-pin",
+            "result": "rejected"
+          },
+          {
+            "mutation": "approval-digest",
+            "owningFailure": "approval-digest",
+            "result": "rejected"
+          },
+          {
+            "mutation": "receipt-bytes",
+            "owningFailure": "receipt-bytes",
+            "result": "rejected"
+          },
+          {
+            "mutation": "approval-receipt-fields",
+            "owningFailure": "approval-receipt-fields",
+            "result": "rejected"
+          },
+          {
+            "control": "unrelated ledger append and status edit",
+            "owningCheck": "unrelated-ledger-progress",
+            "result": "accepted"
+          },
+          {
+            "mutation": "ledger-owned-record",
+            "owningFailure": "ledger-owned-record",
+            "result": "rejected"
+          },
+          {
+            "mutation": "ledger-owned-record",
+            "owningFailure": "ledger-owned-record",
+            "result": "rejected"
+          },
+          {
+            "mutation": "ledger-47-open-followups",
+            "owningFailure": "ledger-47-open-followups",
+            "result": "rejected"
+          }
+        ],
+        "currentPins": 6,
+        "dispositions": {
+          "bh37Findings": 10,
+          "childRouted": 54,
+          "obligations": 20,
+          "openImplementationFollowups": 47,
+          "parentFindings": 13,
+          "pass1Findings": 59,
+          "pass2Findings": 67
+        },
+        "immutableInputs": 64,
+        "normativeDigest": "bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050",
+        "result": "passed",
+        "scope": {
+          "documentationFiles": [
+            "_bmad-output/implementation-artifacts/deferred-work.md",
+            "_bmad-output/implementation-artifacts/spec-6-5-event-versioning-and-upcasting-spec.md",
+            "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
+            "_bmad-output/planning-artifacts/architecture.md"
+          ],
+          "historicalBaseline": "cbbe41501ba722731bf36b2c343efdef4ac714fb",
+          "ignoredUnrelatedPaths": [],
+          "integrationDirectory": "_bmad-output/implementation-artifacts/6-5-integration/",
+          "repositoryFreeze": false
+        }
+      },
+      "stderr": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final.stderr.txt",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final.stdout.txt",
+      "stdoutSha256": "096bc8ac5d0ede9c564d5723c5e536dfa850f6efb2654123063b4e331af8b24d"
+    },
+    {
+      "command": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final-review-check.py"
+      ],
+      "elapsedSeconds": 0.25561953600117704,
+      "exitCode": 0,
+      "stderr": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final-review.stderr.txt",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final-review.stdout.txt",
+      "stdoutSha256": "1118c3d8374e014a1c45454bda0a6d15cb837b55c0e813a1f9b99b3de2ed4149"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "_bmad-output/implementation-artifacts/6-5-integration/build-integration.py",
+        "_bmad-output/implementation-artifacts/6-5-integration/metadata-adapter-contract.md",
+        "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md"
+      ],
+      "elapsedSeconds": 0.014812197998253396,
+      "exitCode": 0,
+      "stderr": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final-whitespace.stderr.txt",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "_bmad-output/implementation-artifacts/6-5-integration/runs/pragmatic-policy-final-whitespace.stdout.txt",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "completedUtc": "2026-10-04T14:13:37.251931+00:00",
+  "currentLedgerSha256": "8ab40b3f9d5895d8746f4e78531a365eb45ccaa5de719bcfc12094550d53d8ce",
+  "preservedHistoricalAndChildFiles": 131,
+  "previousPolicyChecksSha256": "1ac0de65b630dc43a0d322d4d15c157562f10e23699134a303c43d46cdad28c7",
+  "schema": "hexalith.story-6-5.pragmatic-policy-final-review-checks/1"
+}

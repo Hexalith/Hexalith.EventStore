@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[3]
 ART = ROOT / '_bmad-output/implementation-artifacts'
@@ -36,7 +37,116 @@ def replace_rule(doc, number, value):
     assert count == 1, number
     return result
 
+def owner_policy(doc, ledger):
+    """Apply the owner's administrative amendment without changing imported contracts."""
+    rules={
+        2: '**Source inventory.** The integration source snapshot is '+BASE+'. Historical A/B/C source baselines remain in §11.4; old line citations describe that snapshot. AggregateActor.cs:2207 then retained one 30-second recovery attempt; AdminStreamQueryController.cs full-read sites were 129, 337, 466, 599, 786, 1066 and 1284. Story 6.6 checks its affected sources/symbols at its current revision. The old source-manifest whole-tree entries are historical inventory, not a repository freeze. Its actual reviewed child/source/model inputs retain their exact pins; a changed input needs review before repinning. Normal owner commits, unrelated working-tree changes and submodule advancement do not fail this documentation gate.',
+        44: '**Accepted dispositions and open follow-ups.** Each finding has one disposition class: rule, imported citation, Story 6.6 obligation, or non-story work. Jérôme Piquot has accepted the specification and requested the pragmatic validation amendment in §12. The 47 integrated ledger entries stay open with accepted spec dispositions and implementation/evidence follow-ups; accepting the design does not resolve runtime work. All 20 O-rows retain a Story 6.6 owner, blocking gate and closure evidence. The implementer updates an affected disposition when a material technical change receives owner review, and closes a follow-up only when its implementation/evidence is complete. This amendment historically preserves the five unrelated open entries and two earlier resolutions; ordinary later unrelated ledger additions, edits and closures are permitted. The gate checks only the 47 owned records by their source, summary and evidence identities. Historical BH37/pass-1/pass-2 reports are preserved.',
+        47: '**Focused verification successor.** The old 6.5c integrity script, whole-tree manifest inventory and earlier captures remain historical evidence. The active §11.6 gate checks actual reviewed child/source/model pins, exact codec/literal constructors, verifier identities, corruption controls and the recorded approved content digest. Scope describes this documentation change; it does not freeze other files, commits or submodules. O-06/O-07/O-11 remain open Story 6.6 obligations for these focused checks.',
+    }
+    for number,value in rules.items():
+        doc=re.sub(rf'^\[I-{number:02}\][^\n]*',f'[I-{number:02}] '+value,doc,flags=re.M)
+    doc=doc.replace('status: normative-candidate','status: normative-approved')
+    doc=doc.replace('AD-26 production-profile approval, its actual database/runtime pins, two-host evidence and §12 AD-13 approval remain separate and unapproved.',
+                    'AD-26 production-profile approval remains pending; its actual database/runtime pins and two-host qualification evidence remain unproved. The separate §12 AD-13 conversational owner approval is recorded.')
+    doc=doc.replace('**Story 6.6 is unauthorized until the content-bound human receipt in §12 validates.**',
+                    '**The owner has approved this design; Story 6.6 is ready and starts when the owner requests it (§12).**')
+    doc=doc.replace('An edited GitHub comment URL without immutable capture, wrong captured actor/source UTC, deletion/revocation, conditional text or stale digest leaves all six receipt fields unapproved and Story 6.6 unauthorized.',
+                    'For specification approval, check the conversational owner approval recorded in §12 and the tooling-computed content digest; malformed approval bytes or a stale digest fail the local check. Production migration signatures and authenticated reviewer evidence remain required by their existing rules.')
+    # Production-vector receipt instructions follow §12; historical child-check prose stays intact.
+    lines=[]
+    for line in doc.splitlines(keepends=True):
+        if line.startswith(('Review-','For V1, admit a newly written event')):
+            line=line.replace('and the six-field UNAPPROVED receipt remain unchanged','remain unchanged, and the current §12 owner approval validates')
+            line=line.replace('and six-field UNAPPROVED receipt unchanged','unchanged, and validate the current §12 owner approval')
+            line=line.replace('and the six-field UNAPPROVED receipt','; validate the current §12 owner approval')
+            line=line.replace('and six-field UNAPPROVED receipt','; validate the current §12 owner approval')
+        lines.append(line)
+    doc=''.join(lines)
+    parent={
+        'BH2-11':'I44 open ledger implementation/evidence follow-ups with accepted spec dispositions; every O-row has a Story 6.6 owner/blocking gate/closure evidence; runtime work remains open',
+        'BH2-12':'§12 owner approval in this conversation and tooling-computed digest; local checks finish Story 6.5, Story 6.6 starts on owner request; D-RESUME/D-SPLIT history is preserved',
+        'BH2-13':'Reproducible parent base 288a61908f4661fed52bb791f928292fe7d90180 and historical integration snapshot '+BASE+'; actual reviewed input revisions/file/model hashes remain checked, without freezing unrelated owner changes',
+        'BH2-14':'I47 focused source/model/byte gate; O-06/O-07/O-11 remain open implementation obligations; historical boundary captures are preserved and FW1 retains the relevant rerun gate',
+    }
+    for finding,value in parent.items():
+        doc=re.sub(r'^\| '+finding+r' \|[^\n]*',f'| {finding} | {value} |',doc,flags=re.M)
+    doc=doc.replace('**Review pass 2: proposed dispositions pending §12.**','**Review pass 2: accepted spec dispositions.**')
+    doc=doc.replace('| Parent finding | Proposed disposition and exact gate |','| Parent finding | Accepted spec disposition and focused gate |')
+    doc=doc.replace('O-06 successor boundary gate','O-06 focused input-pin checks').replace('O-07 successor boundary gate','O-07 focused missing-input checks').replace('O-11 successor boundary gate','O-11 focused bookkeeping/digest checks')
+    doc=doc.replace('O-06/O-07/O-11 retain replacement boundary-gate ownership.','O-06/O-07/O-11 retain focused validation ownership.')
+    doc=doc.replace('I44 keeps all 47 pending integrated ledger entries open with proposed dispositions; integrator amendment/refusal and obligation-owner closure triggers are explicit.',
+                    'I44 keeps all 47 integrated implementation/evidence follow-ups open with accepted spec dispositions; material technical changes receive owner review and closure requires completed evidence.')
+    doc=doc.replace('The gate pins the current baseline and every input revision/file/model hash,',
+                    'The gate checks each actual reviewed input revision/file/model hash,')
+    doc=doc.replace('removed verifier fence, forbidden path and an input pin','removed verifier fence, an actual input pin and malformed/stale approval bytes')
+    doc=doc.replace('after any candidate, imported input, constructor or verifier change and before §12 presentation;',
+                    'after a relevant candidate, imported input, constructor or verifier change;')
+    doc=doc.replace('Historical child acceptance failure at its old correction baseline remains evidence; current preservation belongs to this run.',
+                    'Historical child acceptance failure and whole-repository preservation captures remain evidence; active checks retain only the actual reviewed inputs.')
+    doc=doc.replace('Any change requires rerun, fresh digest and fresh approval;',
+                    'Relevant changes require focused checks and a tooling-refreshed digest; material technical changes also require owner review, while this requested policy amendment is already approved;')
+    obligations={
+        6:'Port the focused actual reviewed source/model pin checks into Story 6.6 validation. Missing or changed reviewed inputs refuse; unrelated owner commits and working-tree changes do not.',
+        7:'Check missing actual reviewed inputs and incorrect source/model pins, with a focused positive control for unrelated changes and submodule advancement; no whole-repository untracked/missing-path freeze.',
+        11:'Keep bookkeeping limited to the reviewed change; validate exact actual input/file/block hashes, verifier identities and approved content digest. The old whole-tree inventory is historical, not an active ancestry/gitlink freeze.',
+    }
+    for number,value in obligations.items():
+        doc=re.sub(rf'^\| O-{number:02} \|[^|]*\|',f'| O-{number:02} | {value} |',doc,flags=re.M)
+    title='### 11.7 Story 6.6 verification obligations and review focus points\n'
+    doc=doc.replace(title,title+'\nAll 20 obligations remain open implementation/evidence follow-ups; owner approval accepts their design, not their completion.\n') if 'All 20 obligations remain open implementation/evidence follow-ups;' not in doc else doc
+    section='''## 12. Owner approval and local checks
+
+Owner approval in this conversation is sufficient. Jérôme Piquot stated “I Jérôme Piquot approve” and then requested “all this seems too complex for a project with one contibutor. make validation simple and pragmatic.” This administrative validation amendment is requested and approved. Story 6.5 can be marked done after the relevant local checks pass. Story 6.6 has an approved design and starts when the owner requests it; it has no separate authorization ritual. Material technical changes still receive owner review. Production cryptography, tenant/operator permissions, CAS/fences, deployment qualification and runtime test requirements retain their existing rules, including AD-26’s separate production-profile approval and qualification requirements. Imported D9's content-bound human approval is satisfied here by the conversational owner approval and recorded tooling digest; its provider requirements remain unchanged.
+
+Tooling computes SHA-256 over the exact UTF-8, LF, no-BOM bytes from the start of this document through the newline before the unique full-line receipt marker. The six receipt fields below are excluded. Tooling records and checks that digest; the owner does not need to repeat it. The fields retain their order and fixed scope. Approver names the owner; ApprovalDateUtc is an administrative recording date, not proof of the conversation's source time. Authorization and ApprovalEvidence record the conversational approval and requested amendment; conversational evidence is sufficient. A malformed receipt or stale digest fails the local check. An updated digest alone does not approve a material technical change.
+
+'''
+    start=doc.index('## 12.')
+    command=doc.index('Exact recomputation from repository root',start)
+    doc=doc[:start]+section+doc[command:]
+    # Convert only the 47 baseline-owned identities; preserve all unrelated current bytes.
+    pattern=r'^- source_spec:[^\n]*(?:\n  [^\n]*)*'
+    def identity(row):
+        return tuple(next((line for line in row.splitlines() if line.startswith(prefix)),None)
+                     for prefix in ('- source_spec: ','  summary: ','  evidence: '))
+    baseline=committed('_bmad-output/implementation-artifacts/deferred-work.md').decode()
+    owned={identity(row) for row in re.findall(pattern,baseline,re.M)
+           if re.search(r'^  status: dispositioned pending approval',row,re.M)}
+    assert len(owned)==47
+    def disposition(row):
+        if identity(row[0]) not in owned:return row[0]
+        lines=[]
+        for line in row[0].splitlines(keepends=True):
+            if not line.startswith(('  status: open — proposed','  status: dispositioned pending approval')):
+                lines.append(line);continue
+            reference=re.search(r'(normative rule \[I-\d+\].*?|Story 6\.6 verification obligation O-\d\d.*?|Story 6\.6 successor boundary-gate obligation .*?)(?:\. It takes effect|; closes only|, pending exact|$)',line.rstrip('\n'))
+            assert reference is not None, line
+            citation=reference[1].replace('successor integration boundary gate','focused input/approval checks').replace('successor boundary-gate obligation','focused validation obligation')
+            withdrawn=re.search(r'O-(?:06|07|11) withdrawn',line)
+            if withdrawn:citation='Story 6.6 verification obligation '+withdrawn[0][:4]+', focused input/approval checks (§11.7)'
+            lines.append('  status: open — accepted spec disposition (2026-10-04): '+citation+'; implementation/evidence follow-up remains open until completed in Story 6.6.'+ ('\n' if line.endswith('\n') else ''))
+        return ''.join(lines)
+    return doc,re.sub(pattern,disposition,ledger,flags=re.M)
+
+def record_owner_approval(doc):
+    pinned=('verify.py','independent-answers.mjs','source-manifest.json','metadata-adapter-contract.md','build-integration.py','preserved-hold-predicates.json')
+    for name in pinned:
+        pattern=r'(^\| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/'+re.escape(name)+r'` \| `)[0-9a-f]{64}(` \|$)'
+        doc,count=re.subn(pattern,lambda match:match[1]+digest((OUT/name).read_bytes())+match[2],doc,flags=re.M)
+        assert count==1,name
+    marker='<!-- APPROVAL RECEIPT: mutable fields below -->\n'
+    body=doc.split(marker)[0]
+    return body+marker+'ApprovalDigest: '+digest(body.encode())+'\nApprover: Jérôme Piquot\nApprovalDateUtc: 2026-10-04T13:52:31Z\nApprovalScope: Story 6.5 AD-13 normative artifact\nAuthorization: Owner approved the specification and requested this pragmatic validation amendment.\nApprovalEvidence: This conversation: “I Jérôme Piquot approve”; subsequent request to make validation simple and pragmatic.\n'
+
 if __name__ == '__main__':
+    if sys.argv[1:]==['--pragmatic-policy']:
+        current_ledger=(ART/'deferred-work.md').read_text()
+        doc,ledger=owner_policy((ART/'spec-event-versioning-upcasting.md').read_text(),current_ledger)
+        write(ART/'spec-event-versioning-upcasting.md',record_owner_approval(doc))
+        if ledger!=current_ledger:write(ART/'deferred-work.md',ledger)
+        print('updated owner approval, focused validation and accepted open follow-ups')
+        raise SystemExit(0)
     OUT.mkdir(exist_ok=True)
     manifest_path = OUT / 'source-manifest.json'
     if not manifest_path.exists():
@@ -264,12 +374,7 @@ if __name__ == '__main__':
     pos=doc.index('### 11.5 Disposition register')
     doc=doc[:pos]+pins+doc[pos:]
     write(ART/'spec-event-versioning-upcasting.md',doc)
-    ledger=committed('_bmad-output/implementation-artifacts/deferred-work.md').decode()
-    for number in (6,7,11):
-        ledger=re.sub(r'^  status: dispositioned pending approval[^\n]*\(O-'+f'{number:02}'+r' withdrawn\)[^\n]*$',f'  status: open — proposed Story 6.6 verification obligation O-{number:02}, successor integration boundary gate (§11.7); closes only after exact §12 approval and owning immutable gate evidence.',ledger,flags=re.M)
-    # The O-11 line has no explicit parenthetical marker.
-    ledger=re.sub(r'^  status: dispositioned pending approval[^\n]*\[I-47\][^\n]*$', '  status: open — proposed Story 6.6 successor boundary-gate obligation O-06/O-07/O-11 (§11.7), pending exact §12 approval and owning gate evidence; historical integrity script remains immutable.',ledger,flags=re.M)
-    ledger=ledger.replace('  status: dispositioned pending approval (2026-09-30):', '  status: open — proposed disposition pending approval (2026-10-04):')
+    ledger=(ART/'deferred-work.md').read_text()
     doc=doc.replace("A closed entry's `status:` line reads `dispositioned pending approval`, because its disposition takes effect only when the §12 receipt validates.", "Every pending entry's status remains `open` and carries a proposed disposition; it takes effect only when the §12 receipt validates. The Story 6.5 integrator owns re-evaluation on any candidate amendment, receipt refusal or invalidation, in the same update that changes this register/ledger; the named Story 6.6 verification owner closes an obligation only on its blocking-gate immutable evidence.")
     doc=doc.replace('**Operator surfaces.** The hold-inventory actors, index, gauge and Admin view ([I-37]); the publication-resume operation with its audit, window-closure and reconciliation records ([I-45], [I-46]);', '**Operator surfaces.** D8 addressed owner registry, single Operations epoch, authoritative inventory gauge and scope-bound Admin paging; D3 publication resume with same execution-control owner, signed audit/window closure and capsule-bound legacy phase;')
     write(ART/'spec-event-versioning-upcasting.md',doc)
@@ -332,5 +437,7 @@ The preserved child `cursor_sign` prefix-hash and `public.cursor-envelope` liter
     pin_table+=''.join(f'| Current uncommitted `_bmad-output/implementation-artifacts/6-5-integration/{name}` | `{digest((OUT/name).read_bytes())}` |\n' for name in pinned)
     pos=doc.index('### 11.5 Disposition register')
     doc=doc[:pos]+pin_table+'\n'+doc[pos:]
-    write(ART/'spec-event-versioning-upcasting.md',doc)
+    doc,ledger=owner_policy(doc,ledger)
+    write(ART/'spec-event-versioning-upcasting.md',record_owner_approval(doc))
+    write(ART/'deferred-work.md',ledger)
     print('spliced D1–D9, wire schemas/literals, dispositions, outcomes, compatibility and successor gates')

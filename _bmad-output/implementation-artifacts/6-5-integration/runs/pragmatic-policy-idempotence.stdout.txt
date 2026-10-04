@@ -1,0 +1,1 @@
+passed: idempotent policy-only splice, 47 status-line changes only, historical prose preserved, all 20 obligations open

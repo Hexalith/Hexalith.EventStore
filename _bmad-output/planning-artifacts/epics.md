@@ -4539,9 +4539,9 @@ So that Story 6.6 can implement one consistent, content-bound contract.
 
 **Dependencies:** Stories 6.5a, 6.5b, 6.5c, and 6.5d provide reviewed section candidates and dispositions. Story 6.5 integration splices and cites them and adds no new record, codec, state, or exit; a gap that would need one returns to the owner (decision D-SPLIT, 2026-09-30). Current contracts, storage/replay/projection/subscription paths, and package compatibility remain inputs. Epic 8's optional protection engine is not a prerequisite.
 
-**Classification:** Architecture/readiness gate. Completion authorizes Story 6.6 only after the named content-bound human approval; it does not count as runtime implementation progress.
+**Classification:** Architecture/readiness gate. The owner’s approval in this conversation accepts the design. Story 6.6 starts when the owner requests implementation; specification completion does not count as runtime implementation progress.
 
-**Current reconciliation:** Story 6.5 remains in progress and is blocked on Story 6.5d. `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is the loop-1 integration of 6.5a–6.5c (commit `288a6190`) and remains an unapproved draft with an `UNAPPROVED` receipt. `IEventContract.EventType` supplies a stable kebab-case discriminator, but persisted/wire events remain CLR-name-oriented without a payload schema version or shared upcaster, and published cancellation seams remain inconsistent. Review pass 1 routed nine bad_spec groups and one intent gap to integration-invented rules, and review pass 2 returned 67 raw findings on the same mechanisms, so the owner moved them to Story 6.5d (D-SPLIT, `sprint-change-proposal-2026-09-30.md`). The draft does not grant completion or implementation authority.
+**Current reconciliation:** The reviewed outputs of Stories 6.5a–6.5d are integrated into `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`. Jérôme Piquot approved the design in this conversation and requested pragmatic validation for one contributor. Story 6.5 is complete. Three original reviews and their 16 corrected findings remain recorded; the focused reused-investigator amendment review is complete with both findings corrected, and all six relevant local checks passed. Approval accepts the specification; all 20 runtime/provider verification obligations and 47 implementation/evidence follow-ups remain open. Story 6.6 starts when the owner requests it.
 
 **Acceptance Criteria:**
 
@@ -4551,9 +4551,9 @@ So that Story 6.6 can implement one consistent, content-bound contract.
 **And** every `BH37-1` through `BH37-10` finding has an explicit accepted or rejected disposition with no unresolved decision deferred into Story 6.6.
 
 **Given** Story 6.5 completion is requested
-**When** `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` and its exact-content six-field receipt are checked
-**Then** the scope, digest, metadata and registry rules, matrices, compatibility/migration plan, vectors, named human approver, date, and explicit Story 6.6 authorization all validate
-**And** missing, stale, self-declared, conditional, or scope-mismatched approval keeps Story 6.5 from completion and Story 6.6 unauthorized.
+**When** the integrated artifact and relevant local checks are reviewed
+**Then** its metadata and registry rules, matrices, compatibility/migration plan, vectors and actual reviewed input pins validate, and the owner’s conversational approval is recorded with a tooling-computed content digest
+**And** normal owner commits, unrelated working-tree changes and submodule advancement do not block completion; material technical changes still receive owner review.
 
 ### Story 6.5a: Event Contract, Writer, and Migration Evidence Spec
 
@@ -4607,16 +4607,16 @@ So that old and new event history can be processed safely without CLR-name coupl
 
 **UX coverage:** Type Catalog, stream, replay, and failure surfaces may show support-safe canonical event contract type, stored/current payload version, legacy/upcast state, hop count, and cancellation/failure reason. They do not render raw or protected payloads, promote assembly-qualified CLR names as public identity, expose secrets/provider internals/stack traces, or describe failed partial replay as current state.
 
-**Dependencies:** Stories 6.5a, 6.5b, 6.5c, and 6.5d must have completed their reviewed specification work, and Story 6.5 must be complete with a valid approval explicitly authorizing this implementation. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
+**Dependencies:** Stories 6.5a, 6.5b, 6.5c, and 6.5d must have completed their reviewed specification work, and Story 6.5 must be complete with the owner-approved design. Implementation starts when the owner requests Story 6.6. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
 
-**Current reconciliation:** Story 6.6 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is an unapproved draft without named human content approval or explicit valid authorization. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
+**Current reconciliation:** Story 6.6 remains backlog with an owner-approved design in `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`. It is ready to start when the owner requests implementation; no runtime work has begun. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
 
 **Acceptance Criteria:**
 
 **Given** Story 6.6 implementation preflight runs
 **When** Stories 6.5a–6.5d and the Story 6.5 artifact and approval are inspected
-**Then** the four focused specification stories have reviewed outputs, `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` exists, its accepted version/content identity and named approval are valid, all required decisions are closed, and it explicitly authorizes Story 6.6
-**And** implementation and tests trace to exact approved sections; absent, stale, conditional, or scope-mismatched approval stops work rather than choosing metadata, upcasting, identity, or cancellation semantics locally.
+**Then** the four focused specification stories have reviewed outputs, the integrated artifact exists, its reviewed content identity and recorded owner approval validate, all required design decisions are closed, and the owner has requested this implementation
+**And** implementation and tests trace to the approved sections; material technical changes return to the owner for review.
 
 **Given** a new `IEventContract` event is returned by domain processing
 **When** its wire and persisted envelopes are built

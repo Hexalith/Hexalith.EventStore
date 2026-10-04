@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-10-03'
+last_updated: '2026-10-04'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -229,7 +229,7 @@ development_status:
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
   6-4-projection-cost-and-sequence-guard-implementation: backlog
   # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
-  6-5-event-versioning-and-upcasting-spec: in-progress
+  6-5-event-versioning-and-upcasting-spec: done
   6-5a-event-contract-writer-and-migration-evidence-spec: done
   6-5b-verified-read-replay-and-projection-spec: done
   6-5c-publication-subscription-and-rollout-spec: done

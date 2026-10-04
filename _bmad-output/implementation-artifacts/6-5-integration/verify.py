@@ -1,5 +1,6 @@
-"""Current-baseline preservation and exact integration evidence; no runtime authority."""
+"""Focused reviewed-input, codec and owner-approval checks; no runtime authority."""
 from pathlib import Path
+from datetime import datetime, timezone
 import argparse
 import ast
 import contextlib
@@ -8,7 +9,6 @@ import hmac
 import io
 import importlib.util
 import json
-import os
 import re
 import struct
 import subprocess
@@ -57,41 +57,11 @@ def allowed(path):
 def scope(manifest, extra_paths=()):
     require(manifest['baseline'] == BASE and set(manifest['allowedFiles']) == ALLOW
             and manifest['allowedDirectory'] == PREFIX, 'scope-configuration')
-    require(subprocess.run(['git','merge-base','--is-ancestor',BASE,'HEAD'],cwd=ROOT).returncode == 0,
-            'baseline-ancestry')
-    baseline = {}
-    for item in git('ls-tree','-r','-z',BASE).split(b'\0'):
-        if item:
-            meta,path=item.split(b'\t',1)
-            mode,kind,oid=meta.decode().split()
-            baseline[path.decode()]=(mode,kind,oid)
-    require(set(baseline) == set(manifest['entries']), 'baseline-path-set')
-    changes = set(extra_paths)
-    for command in [('diff','--name-only',BASE,'HEAD'),('diff','--name-only',BASE),
-                    ('diff','--cached','--name-only',BASE),('ls-files','--others','--exclude-standard')]:
-        changes.update(git(*command).decode().splitlines())
-    require(all(allowed(p) for p in changes), 'outside-scope-path')
-    for path,(mode,kind,oid) in baseline.items():
-        entry=manifest['entries'][path]
-        require((entry['mode'],entry['kind'],entry['oid']) == (mode,kind,oid),'baseline-tree-entry')
-        if allowed(path):
-            continue
-        p=ROOT/path
-        require(p.exists() or p.is_symlink(), 'outside-scope-missing')
-        if kind == 'blob':
-            require(sha(git('cat-file','blob',oid)) == entry['blobSha256'], 'baseline-blob')
-            require(p.is_symlink() == (mode == '120000'), 'outside-scope-file-kind')
-            if mode == '120000':
-                require(os.readlink(p) == entry['linkTarget'], 'outside-scope-link-target')
-                data = os.fsencode(os.readlink(p))
-            else:
-                data = p.read_bytes()
-                require(bool(p.lstat().st_mode & 0o111) == (mode == '100755'), 'outside-scope-file-mode')
-            require(sha(data) == entry['worktreeSha256'],'outside-scope-bytes')
-        else:
-            require(git('-C',path,'rev-parse','HEAD').decode().strip() == oid, 'root-gitlink-head')
-            require(not git('-C',path,'status','--porcelain','--untracked-files=all').strip(), 'root-gitlink-worktree')
-    return {'trackedBaselinePaths':len(baseline),'changedAllowedPaths':len(changes)}
+    # This describes the documentation change, not a permanent repository freeze.
+    # inputs() separately checks only the actual reviewed source/model bytes.
+    return {'documentationFiles':sorted(ALLOW),'integrationDirectory':PREFIX,
+            'historicalBaseline':BASE,'repositoryFreeze':False,
+            'ignoredUnrelatedPaths':sorted({p for p in extra_paths if not allowed(p)})}
 
 def document_input_pins(manifest, doc):
     table=doc.split('### 11.4',1)[1].split('#### Current immutable D import pins',1)[0]
@@ -302,6 +272,27 @@ def blocks(doc):
     require(signed==old_signed,'immutable-public-signed-literals')
     return {'bashVerifiers':len(actual),'signedVerifierBlocksExecuted':2,'signedLiteralLines':len(signed)}
 
+def owned_ledger(ledger):
+    old=git('show',BASE+':_bmad-output/implementation-artifacts/deferred-work.md').decode()
+    def records(text):return re.findall(r'^- source_spec:[^\n]*(?:\n  [^\n]*)*',text,re.M)
+    def identity(row):
+        return tuple(next((line for line in row.splitlines() if line.startswith(prefix)),None)
+                     for prefix in ('- source_spec: ','  summary: ','  evidence: '))
+    expected={identity(row):row for row in records(old)
+              if re.search(r'^  status: dispositioned pending approval',row,re.M)}
+    require(len(expected)==47 and all(None not in key for key in expected),'ledger-owned-baseline')
+    current=records(ledger)
+    for key,original in expected.items():
+        matches=[row for row in current if identity(row)==key]
+        require(len(matches)==1,'ledger-owned-record')
+        statuses=re.findall(r'^  status: (.*)$',matches[0],re.M)
+        old_status=re.search(r'^  status: (.*)$',original,re.M)[1]
+        citation=re.search(r'O-\d\d',old_status) or re.search(r'\[I-\d+\]',old_status)
+        require(len(statuses)==1 and statuses[0].startswith('open — accepted spec disposition') and
+                'implementation/evidence follow-up remains open' in statuses[0] and
+                citation is not None and citation[0] in statuses[0],'ledger-47-open-followups')
+    return len(expected)
+
 def dispositions(doc):
     pass1=doc.split('**Review pass 1.',1)[1].split('**Review pass 2:',1)[0]
     pass1_ids=[i.strip() for ids in re.findall(r'^\| ((?:VG|BH|E)[^|]+) \|',pass1,re.M) for i in ids.split(',')]
@@ -311,15 +302,15 @@ def dispositions(doc):
     require(raw_pass1 is not None,'raw-pass1-dispositions')
     raw_pass1_ids=re.findall(r'^\| ((?:VG|BH|E)[^ |]+) \|',raw_pass1[1],re.M)
     require(len(pass1_ids)==len(set(pass1_ids))==len(raw_pass1_ids)==59 and set(pass1_ids)==set(raw_pass1_ids),'raw-pass1-dispositions')
-    section=doc.split('**Review pass 2: proposed dispositions',1)[1].split('### 11.6',1)[0]
+    section=doc.split('**Review pass 2: accepted spec dispositions',1)[1].split('### 11.6',1)[0]
     ids=re.findall(r'^\| ((?:VG2|BH2|E2)-[^ |]+) \|',section,re.M)
     raw=(ART/'story-6-5-review-pass-2-findings.md').read_text()
     raw_ids=set(re.findall(r'\*\*((?:VG2|BH2|E2)-[^:* ]+)(?: \(confirmed\))?:',raw))
     require(len(ids)==67 and len(set(ids))==67 and set(ids)==raw_ids,'raw-pass2-dispositions')
     meanings={
         'VG2-1':['16','reduce_set'],'VG2-5':['B','label'],'VG2-6':['offset','destination'],'VG2-7':['identity','count'],
-        'BH2-11':['open ledger','owner','O-row'],'BH2-12':['named','receipt','D-RESUME','D-SPLIT'],
-        'BH2-13':['288a61908f4661fed52bb791f928292fe7d90180',BASE],'BH2-14':['O-06','O-07','O-11','boundary'],
+        'BH2-11':['open ledger','owner','O-row'],'BH2-12':['owner approval','conversation','D-RESUME','D-SPLIT'],
+        'BH2-13':['288a61908f4661fed52bb791f928292fe7d90180',BASE],'BH2-14':['O-06','O-07','O-11','focused'],
         'BH2-15':['maintenance/security','manual','D-RELEASE'],'BH2-17':['independent Node','preimages'],
         'E2-27':['attach','refusal','unchanged'],'E2-33':['labeled B','swapped-label'],'E2-37':['exact-status','EventsStored','PublishFailed'],
     }
@@ -333,13 +324,9 @@ def dispositions(doc):
     require([r[0] for r in rows]==[f'O-{i:02}' for i in range(1,21)],'obligation-accounting')
     require(all('Story 6.6' in l and 'blocking' in l and 'immutable' in l for _,l in rows),'obligation-owner-gate-evidence')
     require(all(len(l.split('|')) == 4 for _,l in rows),'obligation-table-cells')
-    ledger=(ART/'deferred-work.md').read_text();old=git('show',BASE+':_bmad-output/implementation-artifacts/deferred-work.md').decode()
-    current_lines=ledger.splitlines();old_lines=old.splitlines()
-    require(len(current_lines)==len(old_lines),'ledger-outside-lines')
-    changed=[(a,b) for a,b in zip(old_lines,current_lines) if a!=b]
-    require(len(changed)==47 and all(a.startswith('  status: dispositioned pending approval') and b.startswith('  status: open — proposed') for a,b in changed),'ledger-47-open-proposals')
+    owned_ledger((ART/'deferred-work.md').read_text())
     require('FW1' in doc and 'rerun this gate' in doc,'fw1-rerun-gate')
-    return {'pass1Findings':len(pass1_ids),'pass2Findings':len(ids),'childRouted':54,'parentFindings':13,'bh37Findings':10,'obligations':20,'openProposals':47}
+    return {'pass1Findings':len(pass1_ids),'pass2Findings':len(ids),'childRouted':54,'parentFindings':13,'bh37Findings':10,'obligations':20,'openImplementationFollowups':47}
 
 def normative_text(raw):
     marker=b'<!-- APPROVAL RECEIPT: mutable fields below -->\n'
@@ -353,9 +340,20 @@ def normative_text(raw):
 def approval(raw):
     normative_text(raw);marker=b'<!-- APPROVAL RECEIPT: mutable fields below -->\n'
     body,receipt=raw.split(marker)
-    require(receipt.decode().splitlines()==[
-        'ApprovalDigest: UNAPPROVED','Approver: UNAPPROVED','ApprovalDateUtc: UNAPPROVED',
-        'ApprovalScope: Story 6.5 AD-13 normative artifact','Authorization: UNAPPROVED','ApprovalEvidence: UNAPPROVED'], 'unapproved-receipt')
+    labels=['ApprovalDigest','Approver','ApprovalDateUtc','ApprovalScope','Authorization','ApprovalEvidence']
+    lines=receipt.decode().splitlines()
+    require(receipt.endswith(b'\n') and len(lines)==len(labels) and
+            all(line.startswith(label+': ') for label,line in zip(labels,lines)),'approval-receipt-fields')
+    fields={label:line[len(label)+2:] for label,line in zip(labels,lines)}
+    require(re.fullmatch('[0-9a-f]{64}',fields['ApprovalDigest']) is not None and
+            hmac.compare_digest(fields['ApprovalDigest'],sha(body)),'approval-digest')
+    require(fields['ApprovalScope']=='Story 6.5 AD-13 normative artifact','approval-scope')
+    require(fields['Approver']=='Jérôme Piquot' and
+            fields['Authorization'] not in ('','UNAPPROVED') and
+            'I Jérôme Piquot approve' in fields['ApprovalEvidence'],'owner-approval-record')
+    try:recorded=datetime.fromisoformat(fields['ApprovalDateUtc'].replace('Z','+00:00'))
+    except ValueError:raise Refusal('approval-recording-date')
+    require(fields['ApprovalDateUtc'].endswith('Z') and recorded.tzinfo==timezone.utc,'approval-recording-date')
     return sha(body)
 
 def current_pins(doc):
@@ -368,6 +366,43 @@ def current_pins(doc):
     require('jsonb' not in adapter.split('```sql')[1].split('```')[0] and 'registry_scope_hash' in adapter,'adapter-byte-domain')
     require(32+2+8+10+1024+1024+128==2228 and 2228<2704,'adapter-index-width')
     return len(rows)
+
+def pragmatic_controls(doc,manifest):
+    from unittest.mock import patch
+    controls=[]
+    # No repository-wide Git query can make ordinary owner changes fail this seam.
+    unrelated=['README.md','tests/owner-change.cs','references/Hexalith.AI.Tools']
+    def repository_query(*args):raise AssertionError('repository freeze queried')
+    with patch.dict(globals(),{'git':repository_query}):
+        descriptive=scope(manifest,unrelated)
+    require(descriptive['ignoredUnrelatedPaths']==sorted(unrelated) and
+            descriptive['repositoryFreeze'] is False,'unrelated-owner-changes')
+    controls.append({'control':'unrelated owner commit/worktree/submodule changes',
+                     'owningCheck':'unrelated-owner-changes','result':'accepted without repository queries'})
+    def refuses(owner,action):
+        try:action()
+        except Refusal as error:
+            require(str(error)==owner,'mutation-owning-failure-'+owner)
+            return {'mutation':owner,'owningFailure':str(error),'result':'rejected'}
+        raise Refusal('mutation-survived-'+owner)
+    wrong=json.loads(json.dumps(manifest))
+    wrong['inputs'][CANDIDATES['a']]['sha256']='0'*64
+    controls.append(refuses('immutable-input-pin',lambda:inputs(wrong,doc)))
+    raw=doc.encode()
+    controls.append(refuses('approval-digest',lambda:approval(raw.replace(b'# Event Versioning And Upcasting',b'# Changed approval body',1))))
+    controls.append(refuses('receipt-bytes',lambda:approval(raw.replace(b'\n',b'\r\n'))))
+    controls.append(refuses('approval-receipt-fields',lambda:approval(raw.replace(b'ApprovalDigest: ',b'RelabelledDigest: ',1))))
+    ledger=(ART/'deferred-work.md').read_text()
+    appended=ledger+'\n- source_spec: `owner-unrelated.md`\n  summary: Unrelated owner follow-up.\n  evidence: Owner progress outside Story 6.5.\n  status: open\n'
+    edited=ledger.replace('  status: open\n','  status: resolved by unrelated owner work\n',1)
+    require(edited!=ledger and owned_ledger(appended)==owned_ledger(edited)==47,'unrelated-ledger-progress')
+    controls.append({'control':'unrelated ledger append and status edit','owningCheck':'unrelated-ledger-progress','result':'accepted'})
+    owned=next(row for row in re.findall(r'^- source_spec:[^\n]*(?:\n  [^\n]*)*',ledger,re.M)
+               if '  status: open — accepted spec disposition' in row)
+    controls.append(refuses('ledger-owned-record',lambda:owned_ledger(ledger.replace(owned,'',1))))
+    controls.append(refuses('ledger-owned-record',lambda:owned_ledger(ledger.replace(owned,owned.replace('  summary: ','  summary: Changed owned identity: ',1),1))))
+    controls.append(refuses('ledger-47-open-followups',lambda:owned_ledger(ledger.replace(owned,owned.replace('  status: open — accepted spec disposition','  status: resolved',1),1))))
+    return controls
 
 def review_fix_controls(doc,manifest):
     def refuses(owner,action):
@@ -434,15 +469,22 @@ def mutation_controls(doc,manifest):
     wrong=doc.replace('`fa9dcf5c6ce3b8fe79a1b4bb6fee665f65431c8be5e10ac4af34ced59e6fb02e`','`0a9dcf5c6ce3b8fe79a1b4bb6fee665f65431c8be5e10ac4af34ced59e6fb02e`',1)
     controls.append(refuses('c-inline-offset-vectors',lambda:vectors(wrong)))
     controls.append(refuses('verifier-identities-count',lambda:blocks(doc.replace('```bash\nnode','```python\nnode',1))))
-    controls.append(refuses('outside-scope-path',lambda:scope(manifest,['src/forbidden.cs'])))
+    controls.extend(pragmatic_controls(doc,manifest))
     wrong=doc.replace('31f63fc0ea54043e7b821f311b28d3e856667789eac9eca8f79807f6d2e74444','01f63fc0ea54043e7b821f311b28d3e856667789eac9eca8f79807f6d2e74444',1)
     controls.append(refuses('document-input-pin',lambda:inputs(manifest,wrong)))
     return controls
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--mutations',action='store_true')
-    parser.add_argument('--review-fixes',action='store_true');args=parser.parse_args()
+    parser.add_argument('--review-fixes',action='store_true')
+    parser.add_argument('--pragmatic-policy',action='store_true');args=parser.parse_args()
     raw=DOC.read_bytes();doc=normative_text(raw);manifest=json.loads((HERE/'source-manifest.json').read_text())
+    if args.pragmatic_policy:
+        print(json.dumps({'result':'passed','authority':'Owner approved; Story 6.6 ready on owner request',
+            'scope':scope(manifest),'immutableInputs':inputs(manifest,doc),'dispositions':dispositions(doc),
+            'currentPins':current_pins(doc),'controls':pragmatic_controls(doc,manifest),
+            'normativeDigest':approval(raw)},sort_keys=True))
+        return
     if args.review_fixes:
         # Only the edited-byte/pin/hold/cursor/model-selection seams; full verification belongs to the parent.
         adapter=(HERE/'metadata-adapter-contract.md').read_text()
@@ -453,7 +495,7 @@ def main():
         require('complete retained closure/authentication sources' not in c5 and
                 'authenticated active execution control/current-window claim' in c5 and
                 'never requires those reclaimed artifacts' in c5,'c5-reclaimed-history')
-        print(json.dumps({'result':'passed','authority':'UNAPPROVED; Story 6.6 unauthorized',
+        print(json.dumps({'result':'passed','authority':'Owner approved; Story 6.6 ready on owner request',
             'pins':document_input_pins(manifest,doc),'heldPredicates':held_predicates(doc),
             'cursor':cursor_answers(doc),'currentPins':current_pins(doc),'controls':review_fix_controls(doc,manifest),
             'normativeDigest':approval(raw)},sort_keys=True))
@@ -462,7 +504,7 @@ def main():
             'vectors':vectors(doc),'constructors':parent_answers(doc),'blocks':blocks(doc),
             'heldPredicates':held_predicates(doc),'inventoryCursor':cursor_answers(doc),
             'dispositions':dispositions(doc),'currentPins':current_pins(doc),'normativeDigest':approval(raw),
-            'authority':'UNAPPROVED; Story 6.6 unauthorized; fixtures do not prove provider behavior'}
+            'authority':'Owner approved; Story 6.6 ready on owner request; fixtures do not prove provider behavior'}
     if args.mutations:result['mutations']=mutation_controls(doc,manifest)
     print(json.dumps(result,sort_keys=True))
 

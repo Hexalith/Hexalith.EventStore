@@ -2,7 +2,7 @@
 title: 'Story 6.5: Event Versioning And Upcasting Spec'
 type: 'feature'
 created: '2026-09-26'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'cbbe41501ba722731bf36b2c343efdef4ac714fb'
@@ -18,13 +18,13 @@ context:
 
 **Problem:** Stable `IEventContract.EventType` exists, but persisted events and consumers still use CLR names without a payload schema version. Identity checks and cancellation behavior differ across append, replay, projection, and subscription paths, leaving event evolution unsafe to implement without a frozen contract.
 
-**Approach:** Produce `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` as the versioned AD-13 gate. Inventory the current paths, fix the future metadata, registry, upcast, identity, failure, cancellation, and migration contracts, then obtain content-bound human approval that explicitly authorizes Story 6.6. This story changes no runtime behavior.
+**Approach:** Produce `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` as the versioned AD-13 design. Inventory the current paths, fix the future metadata, registry, upcast, identity, failure, cancellation, and migration contracts, run the relevant checks and record the owner's approval. Story 6.6 starts when the owner requests implementation. This story changes no runtime behavior.
 
 ## Boundaries & Constraints
 
 **Always:** Specify exact field names, types, defaults, grammar, uniqueness, legacy version, and mapping for canonical kebab-case identity; distinguish metadata-envelope, domain-service, and payload versions. Preserve stored bytes, `MessageId`, sequence, correlation, protection metadata, and actor-owned commits. Require one shared allow-listed read pipeline and pre-append/pre-dispatch identity checks. Define numeric chain/payload limits, typed failures, checkpoint/last-good-state and cancellation/commit behavior, additive legacy adapters, mixed-version rollout/rollback, provider-portable evidence, support-safe diagnostics, and a closed 6.6 slicing decision.
 
-**Never:** Implement 6.6, edit runtime/tests/public contracts, change `sprint-status.yaml` manually, rewrite history on read, guess unknown types, load arbitrary types, silently complete poison deliveries, claim AOT/trimming support, or depend on Epic 8 protection. Do not self-approve or authorize 6.6 without named human approval, date, exact digest, and explicit authorization.
+**Never:** Implement 6.6, edit runtime/tests/public contracts, rewrite history on read, guess unknown types, load arbitrary types, silently complete poison deliveries, claim AOT/trimming support, or depend on Epic 8 protection. Record actual owner approval; do not invent it. Synchronize only Story 6.5's completion status through the workflow after its relevant checks pass.
 
 **Decisions (owner, 2026-09-29):**
 - D-NFR12: AD-13 carries an NFR12 breaking-change proposal, approved by the same receipt, covering the `EventsStored`+`Retryable=false` publication-exhausted hold on every shipped surface (repository search is the floor), Admin `TimelineLimit` beyond 1,000 events/64 MiB, and long-stream (>~32,768 events) full-replay holds after activation; Story 6.6 ships SemVer-major. Nothing is deferred to 6.6.
@@ -43,6 +43,7 @@ context:
   They move to a focused child spec story, Story 6.5d, under the children's routing bar. Story 6.5 integration then imports 6.5d exactly as it imported 6.5a–6.5c. D-RESUME stays in force as a 6.5d requirement. Story 6.5 is blocked until 6.5d is done.
 - D-ARCH (owner, 2026-10-04): “do recommended” authorizes closing the PostgreSQL architecture handoff within Story 6.5. Extend this run's permitted paths to `_bmad-output/planning-artifacts/architecture.md` and `6-5-integration/metadata-adapter-contract.md`. Make focused AD-1/AD-26 amendments and specify the already selected adapter's exact schema/caps/indexes, transaction contract, migration/rollback ownership and least-privilege OpenBao credentials. Keep actor event/snapshot mutation authority and separate production-profile/qualification approval. Use the chosen backend and existing owner records; add no generic provider/migration framework or new runtime mechanism.
 - D-RELEASE (owner, 2026-10-04): “do recommended” authorizes compatible maintenance/security publication through the existing current-main manual workflow while 6.6 progresses. Reuse API/wire/package-consumer and focused inactive-path evidence. Compatible dormant preparation is not automatically a shipped breaking change; genuine breaking commits remain honestly classified and require SemVer-major. Retain the hold whenever compatibility is unproven or incomplete breaking changes have reached main; expose the complete approved incompatible set only in the major release. Add no maintenance lane, release-version override or CI mutation in 6.5.
+- D-VALIDATION (owner, 2026-10-04): “I Jérôme Piquot approve” approves the presented technical candidate. The subsequent request “make validation simple and pragmatic” explicitly replaces the formal approval and whole-repository freeze policy. Owner approval in this conversation is sufficient; no signed external record, authenticated source timestamp, manually repeated hash or exact authorization sentence is required. Keep checks of actual reviewed inputs, examples and relevant regressions; normal owner commits, unrelated work and submodule advancement do not invalidate them. Preserve historical captures and production/runtime requirements. Update the administrative approval record and Story 6.5 trackers after those checks pass. Story 6.6 is ready and starts on owner request. Use one focused independent review of this administrative amendment with the reused investigator; retain the completed three original reviews. No Git or runtime mutation is authorized.
 
 </frozen-after-approval>
 
@@ -51,37 +52,37 @@ context:
 
 All short artifact paths below resolve under `_bmad-output/implementation-artifacts/`.
 
-- `spec-event-versioning-upcasting.md` — sole normative AD-13 target; current 2,825-line loop-1 candidate is reproducible at `288a61908f4661fed52bb791f928292fe7d90180`, SHA-256 `c474df76a687b2798757051efbdb382bb6b9650f7bd7a7637d0c67bfc5e7b715`. Preserve §12's byte-hash rule, exact authorization sentence and six receipt fields. Old scratchpad backups are historical, never prerequisites.
+- `spec-event-versioning-upcasting.md` — sole normative AD-13 target. The historical loop-1 candidate remains reproducible at `288a61908f4661fed52bb791f928292fe7d90180`, SHA-256 `c474df76a687b2798757051efbdb382bb6b9650f7bd7a7637d0c67bfc5e7b715`. Current §12 accepts the owner’s conversational approval and records the content digest automatically; the old exact authorization sentence is superseded. Old scratchpad backups are historical, never prerequisites.
 - `spec-6-5a-event-contract-writer-and-migration-evidence.md`, `spec-6-5b-verified-read-replay-and-projection.md`, `spec-6-5c-publication-subscription-and-rollout.md` and completed `-2.md` records — reviewed A/B/C inputs already imported; §11.4's file/model hashes still match. Keep source files immutable. Preserve public bytes, unowned known answers and V17/V20/V22/V23 signed fixtures.
 - `spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md` — reviewed simplified D1–D9, last content revision `b1558b06a1a1771a10e1c0fe76b54a417c96558e`, SHA-256 `6d7e9326671572e07426329c6f57fb38879589e04c155290b04a82df184a1e98`. Completed `-2.md`/`-3.md` retain owner decisions, correction evidence and review limits. D9 is the exact import/activation map.
 - `6-5d-simplification/obligations.md`, `known-answers.json`, `verify.py`, integer-safe `independent-answers.mjs` and shared-key constructor — normative schemas/literals and bounded local evidence. Copy required schema tables/literals into AD-13 so its digest covers the complete contract; cite exact full committed revisions and file/block hashes. Preserve the entire child directory and execution records; archives are historical.
 - Parent replacements: I-06 ← D5; I-10/I-14/I-15/I-16 ← D3/D4; I-12/I-17 ← D5; I-29/I-30/I-31 ← D1/D6; I-36/I-37 ← D2/D7/D8; I-45/I-46 ← D2/D3. Amend I-01/I-26/I-28 to match whole-batch reservation, eight-envelope single queue and bootstrap precharges. Retain all unrelated A/B/C hold predicates when replacing the inventory.
 - Amend imported C1/C2/C4/C5 in place: batch reservation before separate pin install; window/member/send authority; captured physical custody distinct from route completion; permanent operation-terminal fence distinct from resume-window fence. Replace obsolete old hold/redrive/repair/reconciliation families, routes, purposes and answers throughout §§7–11; keep no competing rule.
 - `story-6-5-review-pass-2-findings.md` — 13 parent findings: VG2-1/5/6/7, BH2-11/12/13/14/15/17, E2-27/33/37. The other 54 have exact D obligations. Historical review/triage/design-note files remain immutable.
-- `deferred-work.md` — preserve unrelated entries, five non-story open entries, two earlier resolutions, D-SPLIT child closure and RW1. Pending integrated dispositions remain open until exact approval; I-44 names the integrator's amendment/refusal duty. Restore O-06/O-07/O-11 as evidence obligations under D-CLOSE.
-- New `6-5-integration/` — current-baseline preservation/traceability verifier, pinned source manifest, independent surviving-codec constructor and recorded checks. Current child `acceptance.py` cannot serve as this run's gate: it refuses newer owner history and pins the pre-integration parent. Preserve it and report its historical failure; do not repin or weaken it.
-- Source inventory is read-only: `src/Hexalith.EventStore.Contracts/Events/{IEventContract,EventContractMetadata}.cs`, Server `EventEnvelope`, `AggregateActor`, `EventStreamReader`, Client replay/subscription, gateway controllers and Admin query/filter surfaces. Since the old baseline, 138 source/test/docs files changed; recovery remains one 30-second attempt at AggregateActor:2207, and AdminStreamQueryController now has seven full-read call sites. Refresh citations against current HEAD, including exact enum filters.
-- `../planning-artifacts/architecture.md` AD-1/AD-13/AD-26, `scripts/validate-publication-preflight.sh`, `.github/workflows/release.yml`, `.releaserc.json`, `.editorconfig`, `.gitattributes` and build/test configuration — read-only constraints, except architecture scope as authorized by D-ARCH. No `src/`, `tests/`, `docs/`, `tools/`, `scripts/`, CI, dependencies, submodules, epics, sprint-status or Git mutation.
+- `deferred-work.md` — preserve unrelated entries, earlier resolutions, D-SPLIT child closure and RW1 during this amendment. The 47 accepted specification dispositions remain open implementation/evidence follow-ups. Check those owned records without freezing unrelated ledger progress; O-06/O-07/O-11 retain focused evidence obligations.
+- New `6-5-integration/` — input-focused traceability verifier, recorded source inputs, independent surviving-codec constructor and local check results. D-VALIDATION replaces the whole-repository freeze with descriptive change scope. Historical child `acceptance.py` and its old correction baseline remain archived evidence, not a required current check. Keep its sources and pins unchanged.
+- Source inventory is read-only: `src/Hexalith.EventStore.Contracts/Events/{IEventContract,EventContractMetadata}.cs`, Server `EventEnvelope`, `AggregateActor`, `EventStreamReader`, Client replay/subscription, gateway controllers and Admin query/filter surfaces. The integrated inventory describes its recorded source snapshot; Story 6.6 checks its affected sources and symbols at its current revision.
+- `../planning-artifacts/architecture.md` AD-1/AD-13/AD-26, `scripts/validate-publication-preflight.sh`, `.github/workflows/release.yml`, `.releaserc.json`, `.editorconfig`, `.gitattributes` and build/test configuration — read-only constraints, except architecture scope as authorized by D-ARCH. D-VALIDATION also permits the Story 6.5/6.6 reconciliation paragraphs in `../planning-artifacts/epics.md` and the Story 6.5 status/date in `sprint-status.yaml`. No runtime, tests, scripts, CI, dependencies, submodules or Git mutation.
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- [x] `6-5-integration/source-manifest.json`, `verify.py` — pin current canonical baseline, complete child inputs, revisions/hashes and preserved outside-scope bytes/gitlinks; audit committed, worktree and untracked paths with an explicit allowed set. Retain present child-preservation failure as historical evidence and reproduce child literals using existing integer-safe constructors.
+- [x] `6-5-integration/source-manifest.json`, `verify.py` — retain the historical source inventory and check the actual reviewed child/source/model input pins. D-VALIDATION removes the whole-repository freeze. Preserve old captures and reproduce child literals using existing integer-safe constructors.
 - [x] `../planning-artifacts/architecture.md`, `6-5-integration/metadata-adapter-contract.md` — close AD-1/AD-26's exact adapter documentation contract under D-ARCH. Preserve actor mutation authority and the separate unapproved production/profile gate. Do not choose new record, codec, state or exit policy locally.
 - [x] `spec-event-versioning-upcasting.md` — splice the reviewed D1–D9 and supporting schema/literal contracts; replace all owned I-rules and amend imported C1/C2/C4/C5 in place. Reconcile §§8.1/10.1/10.2/10.3/11: BC-15 legacy claim outage, BC-16 tombstone/410/reuse, authoritative exact-status filters, activation order, current public routes, budgets and legacy recovery prerequisites. Apply D-RELEASE's compatible-maintenance/complete-major policy. Cite D9's actual provider/crash obligations without claiming fixture proof.
 - [x] `spec-event-versioning-upcasting.md`, `6-5-integration/verify.py`, `independent-answers.mjs` — resolve VG2-1/5/6/7, BH2-17 and E2-33: derive all 16 same-attempt pairs from pinned A `reduce_set`; compare exact labeled B results and inline C offset/destination vectors; enforce verifier identities and counts; independently reconstruct surviving parent codecs. Exercise each demonstrated corrupting edit and require its owning failure. Import reviewed D bounded cases/constructors without promising per-guard coverage.
 - [x] `spec-event-versioning-upcasting.md`, `deferred-work.md` — reconcile BH37-1..10, every raw pass-1/pass-2 finding and ledger entry to one disposition. Keep unapproved entries open with proposed disposition/citation; give each O-row Story 6.6 ownership, gate and closure evidence. Restore O-06/O-07/O-11 for the replacement boundary gate, carry FW1 as an explicit rerun gate, retain RW1 unchanged, cite D6's mismatched-attach conflict/refusal, and remove obsolete O-10/O-20 mechanisms.
-- [ ] `6-5-integration/verification-results.json`, this execution record — record focused verification and three review lenses, individual finding dispositions and exact immutable input hashes; append D-RESUME/D-SPLIT and review-log supersessions without deleting history. Recompute AD-13 digest. Present the completed candidate for the separate §12 approval. Keep 6.5 in progress and 6.6 unauthorized until all receipt checks succeed.
+- [x] `6-5-integration/verification-results.json`, this execution record — retain completed reviews and historical captures, record focused verification and the independent amendment review, and synchronize completion after the owner's existing approval and current relevant checks. D-VALIDATION supersedes the former external receipt and whole-repository freeze requirements; it starts no Story 6.6 runtime work.
 
 **Acceptance Criteria:**
 
 - Given completed reviewed 6.5a–d inputs, when the integrated artifact is traced, then every metadata, writer, reader, publication, migration, identity, cancellation and compatibility seam has one exact schema/algorithm/bound/outcome/vector; no superseded rule survives, no mechanism is invented, and no implementation decision remains open.
-- Given BH37-1..10, pass-1 groups, the 54 D-owned rows and 13 parent findings, when the register and ledger are checked, then each has one explicit disposition, each verification obligation has named story/gate/evidence ownership, and pending approval never claims resolution or runtime authority.
+- Given BH37-1..10, pass-1 groups, the 54 D-owned rows and 13 parent findings, when the register and ledger are checked, then each has one explicit disposition, each verification obligation has named story/gate/evidence ownership, and accepted specification dispositions never claim runtime resolution or implementation completion.
 - Given the approved architecture/release choices, when compatibility and activation are inspected, then the metadata deployment contract is exact and architecture-consistent, every changed public behavior is classified (including exact filters, BC-15/16), and the approved maintenance/major policy is stated without a fictitious release lane.
 - Given the revised verification gates, when baseline checks and targeted corruptions run, then every required block runs, labeled values and independent constructors agree, and each demonstrated regression fails its owning check; local-model success remains distinct from unproven provider behavior.
-- Given current baseline and subsequent repository state, when the preservation gate runs, then all outside-scope content, child inputs/archives/checkpoints, public signed fixtures, unrelated trackers/ledger entries and root gitlinks remain unchanged; absent/untracked/committed outside-scope changes fail rather than being exempted or silently repinned.
-- Given Story 6.5 completion is requested, when §12's exact bytes and receipt are verified, then a named authenticated human, matching digest and source UTC, immutable approval capture, fixed scope and exact explicit 6.6 authorization validate. Otherwise the five receipt values remain UNAPPROVED, 6.5 is incomplete and 6.6 unauthorized. Build-plan approval alone does not satisfy this criterion.
+- Given the owner continues ordinary repository work, when Story 6.5 validation runs, then unrelated commits, files and submodule changes do not fail it; the actual reviewed child inputs, model blocks and public fixtures remain checked against their recorded pins. Preserve user changes and historical evidence without silently repinning an input.
+- Given the owner's approval and requested validation amendment, when the relevant checks pass and the administrative §12 record names Jérôme Piquot and this conversation, then Story 6.5 is complete. Tooling records its current digest and recording date; neither an external authenticated capture nor a magic authorization sentence is required. Story 6.6 can be requested separately.
 
 ## Implementation Notes
 
@@ -147,6 +148,7 @@ The latest review snapshot is v37 with `BH37-1` through `BH37-10` open. Its prio
 
 
 - 2026-10-04 planning supersession. **Trigger:** completed simplified 6.5d and its correction review; retained 13 parent pass-2 findings; historical source/preservation drift. **Amendment:** replace obsolete map/tasks/checks with the D9 splice plan, reproducible committed base, current-baseline preservation and independent/labeled verification; restore the exact-content human-approval completion criterion and D-CLOSE tooling obligations. Q-ARCH/Q-RELEASE were resolved by D-ARCH/D-RELEASE on 2026-10-04; their previous pending state remains planning history. **Known-bad state avoided:** approving contradictory old/new holds, silently removing gates, treating fixture or plan approval as runtime authority, or relying on vanished scratchpad bytes. **KEEP:** every prior history entry, original frozen intent, A/B/C candidates, child archives/checkpoints/public literals, original §12 receipt/hash rule and unrelated owner changes. The earlier “Amendment: pending” line describes pass 1; D-RESUME was resolved on 2026-09-30 and is now supplied by reviewed D3 rather than integration-authored mechanism.
+- 2026-10-04 owner-directed validation amendment. **Trigger:** Jérôme Piquot approved the presented candidate and explicitly requested simple, pragmatic validation for one contributor. **Amendment:** D-VALIDATION replaces the external authenticated receipt, magic authorization sentence and whole-repository freeze; ordinary conversation approval plus relevant checks is sufficient. Update the active administrative policy and trackers while retaining the reviewed technical contracts and follow-ups. **Known-bad state avoided:** requiring repeated approval ceremonies or rejecting unrelated owner work. **KEEP:** reviewed child inputs, public bytes, event-evolution semantics, production security/provider/runtime gates, previous reports and check captures, unrelated user changes. The older KEEP instructions for §12's former wording and UNAPPROVED state are explicitly superseded by the owner's latest instruction.
 
 ## Review Triage Log
 
@@ -255,18 +257,18 @@ Parent verification must detect the demonstrated defects rather than mirror its 
 
 ## Verification
 
-From repository root after implementation:
+From repository root after a relevant change:
 
-- `python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py` — exact input pins, complete verifier identities/counts, parent/child labeled vectors and independent answers; current scope/preservation, disposition/obligation accounting and exact unapproved receipt pass. Targeted wrong transition, swapped label, modified offset, omitted block and forbidden-path controls fail their named owning checks.
-- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py` — reviewed bounded behavior cases pass without modifying sources.
-- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/mutations.py` and `python3 _bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py` — exact owning refusal/removal checks pass; run the integer-safe independent literal constructors through the parent gate.
-- `python3 scripts/check-deferred-work.py --json` — exit 0, preserving unrelated classification/counts; the parent gate separately verifies approval-pending statuses and obligations that this legacy checker does not inspect.
-- `git diff --check` — exit 0; source-manifest gate separately enforces the exact allowed diff/committed/untracked paths from full current baseline.
+- `python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py --mutations` — reviewed input pins, exact codecs/literals and independent known answers, approved content digest and corruption controls. Unrelated repository work is accepted.
+- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py` — reviewed bounded behavior cases.
+- `python3 _bmad-output/implementation-artifacts/6-5d-simplification/mutations.py` and `python3 _bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py` — existing regression and corruption controls.
+- `python3 scripts/check-deferred-work.py --json` — consistent ledger classifications; the integration check verifies the 47 accepted open implementation/evidence follow-ups and all 20 obligations.
+- `git diff --check` — whitespace validation.
 
-Historical blockers are reported separately: the existing child `acceptance.py` exits 1 for newer owner commits and pins the old parent; its checkpoint/pins are not updated. Pre-integration A/B checksum checks and the second C integrity block remain historical. No .NET build or Aspire start is required for artifact-only planning/integration. The final authenticated §12 gate is distinct from these local checks and from build-plan approval.
+These local checks plus the owner’s conversational approval finish Story 6.5. Earlier child acceptance and whole-repository preservation failures remain historical evidence. No .NET build or Aspire start is needed for this artifact-only amendment. Production provider qualification and runtime test requirements remain implementation obligations.
 
 
-### 2026-10-04 current-baseline integration execution
+### Historical: 2026-10-04 integration execution before D-VALIDATION
 
 The reviewed D1–D9 sections, complete wire schemas/known answers and immutable-input pins are integrated into AD-13. D-ARCH's focused AD-1/AD-26 handoff and exact application-owned metadata adapter contract are documented. D-RELEASE's existing current-main compatible maintenance/security workflow and complete-major/publication-hold policy are retained. No runtime, tests, CI, dependencies, submodules or Git state were mutated.
 
@@ -283,7 +285,7 @@ Final reviewed-and-corrected candidate normative-body SHA-256 (not approval): `b
 The workflow's terminal presentation is complete within the authorized artifact-only scope. Its generic done/commit/sprint-update instructions do not override the frozen §12 gate or the approved preservation boundary: no commit or sprint-status mutation is made, Story 6.5 remains in progress, and Story 6.6 is unauthorized. The candidate awaits a named authenticated human, exact digest/source UTC, immutable approval capture, fixed scope and explicit authorization sentence under §12.
 
 
-### 2026-10-04 targeted review corrections
+### Historical: 2026-10-04 targeted review corrections before D-VALIDATION
 
 The review correction changes raw-byte receipt framing, complete displayed source-pin accounting, exact candidate selection, consumed preserved-predicate/closed inventory mappings, existing-schema inventory audience and independent HS256/generation vectors, bounded authenticated SQL readback, and C5 current-window/rolling-accumulator authority without reclaimed-history requirements. No child source/literal, prior reviewed snapshot, original verification result or prepatch run/review capture is rewritten. The corrected authorizing files and inline adapter/vector bytes have freshly regenerated current-content pins.
 
@@ -292,3 +294,25 @@ Only the edited seams were checked by `verify.py --review-fixes`, the existing N
 Corrected normative-body SHA-256 (not approval): `7d9af4ba95ff8a7ae4b103fdadc8af2b6986bc24ae858e982843a494d36fbe42`.
 
 - Final P6 precision: C5 authenticates the active window’s retained signed claim/carrier; reclaimed first-window claims are not required. The targeted rerun passes at corrected normative-body SHA-256 `245e4c59ad69034e0163a715e746f69a8aa9e142a1b7490f68ec6764f4d08b24` (not approval), captured separately in [review-fix-final-checks.json](6-5-integration/review-fix-final-checks.json). Earlier targeted captures remain unchanged historical evidence.
+
+### 2026-10-04 owner-directed pragmatic validation amendment
+
+D-VALIDATION is the current governing approval and validation policy. It supersedes the older whole-repository preservation and authenticated receipt requirements above; their prior executions and review logs remain historical. The technical event-evolution contracts, original inputs, production authentication/authorization, transaction/fence behavior and provider qualification stay unchanged.
+
+The amendment changes only administrative validation: short owner approval policy and recorded receipt in AD-13; input-focused validation in `6-5-integration/verify.py`; matching generator policy and active register/ledger wording; this execution record; and the Story 6.5 entries in `epics.md` and `sprint-status.yaml`. Existing owner work in `.gitattributes`, packaging tests and `SecretsProtectionTests.cs` is preserved. No runtime, CI, dependencies, submodules or Git changes are made.
+
+- [x] Replace the approval ceremony with the already stated owner's conversational approval and automatically recorded metadata.
+- [x] Remove whole-repository freeze failures; retain actual input pins, byte/codec/known-answer checks and focused regressions.
+- [x] Run the existing relevant local checks and one independent review with the reused investigator, preserve earlier evidence, and synchronize Story 6.5 completion.
+
+No new owner decision or irreversible action is needed. The requested policy change authorizes these reversible edits without another approval round.
+
+### Final completion under D-VALIDATION
+
+Jérôme Piquot’s conversational approval accepts the reviewed technical design and the requested administrative validation amendment. Story 6.5 is done. Story 6.6 has an approved design, remains backlog and starts when the owner requests implementation.
+
+The focused reused-investigator review found a remaining whole-ledger freeze and stale administrative approval wording. Both are corrected and independently confirmed with no remaining findings. Unrelated ledger additions/edits are accepted; the 47 owned follow-ups remain open and checked. All 20 implementation/provider verification obligations remain open. Technical contracts, signed fixture bytes and production gates are unchanged.
+
+All six relevant commands passed on the final content: integration and corruption controls, D bounded verification, D mutations, D focused regressions, deferred-work consistency and whitespace. Exact results are in `6-5-integration/runs/pragmatic-20261004T141209Z/results.json`; the current summary is `6-5-integration/verification-results.json`, and the focused review is `6-5-integration/reviews/pragmatic-validation.md`. Historical summaries and captures are retained. The receipt’s digest is computed and checked by tooling; the owner has no hash or external evidence ceremony.
+
+Only the Story 6.5 status and date are synchronized in sprint tracking, with comments unchanged. No Story 6.6 runtime work or Git mutation is performed.
