@@ -15,6 +15,14 @@ public sealed record DomainServiceWireResult(
     bool IsRejection,
     IReadOnlyList<DomainServiceWireEvent> Events,
     string? ResultPayload = null) {
+    /// <summary>Gets the event writer mode echoed by a version-aware domain service.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? WriterMode { get; init; }
+
+    /// <summary>Gets the event registry fingerprint echoed by a version-aware domain service.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RegistryFingerprint { get; init; }
+
     /// <summary>
     /// Converts a <see cref="DomainResult"/> into a wire-safe representation.
     /// </summary>
@@ -34,14 +42,3 @@ public sealed record DomainServiceWireResult(
         return new DomainServiceWireResult(result.IsRejection, events, resultPayload);
     }
 }
-
-/// <summary>
-/// Serialized representation of a single domain event.
-/// </summary>
-/// <param name="EventTypeName">The fully-qualified event type name.</param>
-/// <param name="Payload">Serialized event payload bytes.</param>
-/// <param name="SerializationFormat">Payload serialization format (defaults to <c>json</c>).</param>
-public sealed record DomainServiceWireEvent(
-    string EventTypeName,
-    byte[] Payload,
-    string SerializationFormat = "json");

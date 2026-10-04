@@ -44,6 +44,14 @@ public record EventEnvelope(
     [property: DataMember] string SerializationFormat,
     [property: DataMember] byte[] Payload,
     [property: DataMember] IDictionary<string, string>? Extensions) {
+    /// <summary>Gets the canonical event contract type when available.</summary>
+    [DataMember]
+    public string? EventContractType { get; init; }
+
+    /// <summary>Gets the payload schema version when available.</summary>
+    [DataMember]
+    public int? PayloadVersion { get; init; }
+
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
     public AggregateIdentity Identity => new(TenantId, Domain, AggregateId);
 

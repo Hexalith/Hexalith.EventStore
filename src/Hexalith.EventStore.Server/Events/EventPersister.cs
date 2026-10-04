@@ -58,7 +58,13 @@ public partial class EventPersister(
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         _ = currentSequence + 1;
-        var preparedEvents = new List<(string EventTypeName, PayloadProtectionResult ProtectionResult, IDictionary<string, string> Extensions)>(domainResult.Events.Count);
+        var preparedEvents = new List<(
+            string EventTypeName,
+            PayloadProtectionResult ProtectionResult,
+            IDictionary<string, string> Extensions,
+            string? EventContractType,
+            int? PayloadVersion,
+            int MetadataVersion)>(domainResult.Events.Count);
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
         for (int i = 0; i < domainResult.Events.Count; i++) {
@@ -72,6 +78,15 @@ public partial class EventPersister(
             string serializationFormat = eventPayload is ISerializedEventPayload serializedEvent
                 ? serializedEvent.SerializationFormat
                 : "json";
+            string? eventContractType = eventPayload is ISerializedEventPayload versionedEvent
+                ? versionedEvent.EventContractType
+                : null;
+            int? payloadVersion = eventPayload is ISerializedEventPayload versionedPayload
+                ? versionedPayload.PayloadVersion
+                : null;
+            int metadataVersion = eventPayload is ISerializedEventPayload versionedMetadata
+                ? versionedMetadata.MetadataVersion ?? 1
+                : 1;
 
             PayloadProtectionResult protectionResult = await payloadProtectionService
                 .ProtectEventPayloadAsync(
@@ -87,7 +102,7 @@ public partial class EventPersister(
                 extensions: (IDictionary<string, string>?)null,
                 metadata: protectionResult.Metadata);
 
-            preparedEvents.Add((eventTypeName, protectionResult, extensions));
+            preparedEvents.Add((eventTypeName, protectionResult, extensions, eventContractType, payloadVersion, metadataVersion));
         }
 
         long firstGlobalPosition = await _globalPositionAllocator
@@ -95,7 +110,13 @@ public partial class EventPersister(
             .ConfigureAwait(false);
 
         for (int i = 0; i < preparedEvents.Count; i++) {
-            (string eventTypeName, PayloadProtectionResult protectionResult, IDictionary<string, string> extensions) = preparedEvents[i];
+            (
+                string eventTypeName,
+                PayloadProtectionResult protectionResult,
+                IDictionary<string, string> extensions,
+                string? eventContractType,
+                int? payloadVersion,
+                int metadataVersion) = preparedEvents[i];
             long sequenceNumber = currentSequence + 1 + i;
             long globalPosition = firstGlobalPosition > 0
                 ? checked(firstGlobalPosition + i)
@@ -115,10 +136,13 @@ public partial class EventPersister(
                 UserId: command.UserId,
                 DomainServiceVersion: domainServiceVersion,
                 EventTypeName: eventTypeName,
-                MetadataVersion: 1,
+                MetadataVersion: metadataVersion,
                 SerializationFormat: protectionResult.SerializationFormat,
                 Payload: protectionResult.PayloadBytes,
-                Extensions: extensions);
+                Extensions: extensions) {
+                EventContractType = eventContractType,
+                PayloadVersion = payloadVersion,
+            };
 
             envelopes.Add(envelope);
 

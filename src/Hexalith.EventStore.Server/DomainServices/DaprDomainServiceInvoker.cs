@@ -7,6 +7,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -193,8 +194,20 @@ public partial class DaprDomainServiceInvoker(
         for (int i = 0; i < wireResult.Events.Count; i++) {
             DomainServiceWireEvent wireEvent = wireResult.Events[i];
             events[i] = wireResult.IsRejection
-                ? new SerializedRejectionEventPayload(wireEvent.EventTypeName, wireEvent.Payload, wireEvent.SerializationFormat)
-                : new SerializedEventPayload(wireEvent.EventTypeName, wireEvent.Payload, wireEvent.SerializationFormat);
+                ? new SerializedDomainRejectionEventPayload(
+                    wireEvent.EventTypeName,
+                    wireEvent.Payload,
+                    wireEvent.SerializationFormat,
+                    wireEvent.MetadataVersion,
+                    wireEvent.EventContractType,
+                    wireEvent.PayloadVersion)
+                : new SerializedDomainEventPayload(
+                    wireEvent.EventTypeName,
+                    wireEvent.Payload,
+                    wireEvent.SerializationFormat,
+                    wireEvent.MetadataVersion,
+                    wireEvent.EventContractType,
+                    wireEvent.PayloadVersion);
         }
 
         DomainResult result = new(events);
@@ -381,12 +394,6 @@ public partial class DaprDomainServiceInvoker(
         eventPayload is ISerializedEventPayload serializedPayload
             ? serializedPayload.EventTypeName
             : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
-
-    private sealed record SerializedEventPayload(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
-        : ISerializedEventPayload;
-
-    private sealed record SerializedRejectionEventPayload(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
-        : ISerializedEventPayload, IRejectionEvent;
 
     private sealed record PayloadDomainResult(IReadOnlyList<IEventPayload> Events, string Payload) : DomainResult(Events) {
         public override string? ResultPayload => Payload;

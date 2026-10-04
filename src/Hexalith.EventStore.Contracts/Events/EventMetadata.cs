@@ -35,6 +35,12 @@ public record EventMetadata(
     string EventTypeName,
     int MetadataVersion,
     string SerializationFormat) {
+    /// <summary>Gets the canonical event contract type for versioned events.</summary>
+    public string? EventContractType { get; init; }
+
+    /// <summary>Gets the payload schema version for versioned events.</summary>
+    public int? PayloadVersion { get; init; }
+
     /// <summary>Gets the unique event message identifier (ULID, non-empty).</summary>
     public string MessageId { get; } = !string.IsNullOrWhiteSpace(MessageId)
         ? MessageId

@@ -13,4 +13,13 @@ public interface ISerializedEventPayload : IEventPayload {
 
     /// <summary>Gets the payload serialization format (e.g. <c>json</c>).</summary>
     string SerializationFormat { get; }
+
+    /// <summary>Gets the metadata envelope version when explicitly supplied.</summary>
+    int? MetadataVersion => null;
+
+    /// <summary>Gets the canonical event contract type when explicitly supplied.</summary>
+    string? EventContractType => null;
+
+    /// <summary>Gets the payload schema version when explicitly supplied.</summary>
+    int? PayloadVersion => null;
 }

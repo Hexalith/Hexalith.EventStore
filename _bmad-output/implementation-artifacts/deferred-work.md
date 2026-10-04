@@ -5309,3 +5309,7 @@ status: open
   summary: `epics.md` Story 6.1 "Current reconciliation" still says Story 6.1 is backlog and `spec-folded-snapshot.md` is absent, although the artifact exists with normative digest `0b456b5f…` and a named approval.
   evidence: `_bmad-output/planning-artifacts/epics.md:4273` at `2242ad55`. Story 6.2 dependency inspection reads this record, and `epic-6-context.md` blocks treating 6.2 as authorized until it is reconciled. `sprint-change-proposal-2026-09-23.md` item 4 already proposes the correction; it was not applied. Deferred because the fix edits a planning spec, and the 6.1 digest may change if the 2026-10-04 review decisions reopen the normative body.
   status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
+  summary: The Admin actor-state inspector returns raw aggregate event keys (`{actorId}:events:{N}`) to Admin, so raw event payloads reach a support surface.
+  evidence: `src/Hexalith.EventStore.Admin.Server/Services/KnownActorTypes.cs:31` lists the key; `DaprInfrastructureQueryService.ReadActorStateKeyAsync` returns the stored JSON value and its byte size. Owner decision D5 (2026-10-04) limits Story 6.2 to redacting the snapshot key. Deferred because event-key redaction is Epic 7 Admin hygiene, outside folded-snapshot scope.
+  status: open

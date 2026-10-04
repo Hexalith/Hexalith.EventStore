@@ -2,11 +2,12 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '6-6-event-versioning-and-upcasting-implementation'
 planning_revision: '2242ad55a1b678828df8aa093fd92399c29af5bf'
+baseline_commit: '1329b35e52852952ecb2c94aabf100674e9691e3'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/6-6-implementation-map.md'
