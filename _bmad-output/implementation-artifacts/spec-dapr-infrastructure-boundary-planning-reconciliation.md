@@ -2,7 +2,7 @@
 title: 'Apply the Dapr Infrastructure Boundary Proposal'
 type: 'refactor'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'in-progress'
 route: 'dispatch'
 baseline_commit: 'ff7f07d1ff12b94c7b53646581ca3843b2c09548'
 concurrent_paths:

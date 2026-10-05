@@ -96,6 +96,15 @@ remain fenced, and M1–M8 acceptance is still open.
 
 ### Re-derivation requirements from resumed review
 
+The subsequent [composed logical-read verification](evidence/story-6-6/verification-2026-10-05-composed-logical-read-boundary.md)
+records manifest route checks, shared page ownership, separate readable-source
+accounting, fixed head/floor/ETag checks on the production V1 reader, and a
+Development Dapr two-sidecar/restart application-byte test. The current-amendment
+source preflight is separate from the historical AD-13 approval verifier and
+grants no activation authority. The exact missing per-domain manifest, trusted
+loader/catalog closure, route/proof binding and production profile still block
+consumer activation. V2 remains fenced; no M1–M8 task or O-row is closed.
+
 Current follow-up implementation and exact verification evidence is recorded in [Story 6.6 follow-up evidence](evidence/story-6-6/verification-2026-10-04-followup.md). Internal registry/hash/options, bounded local E/F execution, registered implementation/type/validator bindings, an optional bounded producer/renderer and default incremental V1 response admission have been added alongside the review repairs. The final-source Release build and standard package consumer checks passed; full Server regression retained two unrelated failures and 25 existing skips. These results do not establish authenticated production reader, startup readiness, complete dependency closure or M1–M8 acceptance. Remaining local omissions and the actual provider/profile authority boundary are recorded separately; status remains `in-progress`.
 
 - `Server/DomainServices/DaprDomainServiceInvoker.cs` and `Server/Events/EventPersister.cs`: reject unsolicited V2 on the current legacy-only production path before state mutation; do not invent activation authority. A later real negotiated V2 path requires the amended Dapr capability and consumer gates.

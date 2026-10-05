@@ -3,7 +3,7 @@
 Date: 2026-10-05  
 Project: Hexalith.EventStore  
 Requested by: Administrator  
-Status: Complete proposal — P1–P7 individually approved; final review and implementation approval pending  
+Status: Initial planning/documentation slice applied — runtime qualifications and detached crypto-amendment approval remain pending  
 Review mode: Incremental, selected by the user after initial draft preparation  
 Scope: Moderate — direct adjustment within existing epics
 
@@ -346,3 +346,22 @@ Success criteria:
 | 6.5 Handoff confirmation | [!] | Plan prepared; final implementation routing follows approval. |
 
 Workflow state: Step 3 complete with P1–P7 approved and retained. The complete proposal is saved and presented at Step 4 for **Continue** (proceed to final approval) or **Edit** (revise the proposal). Step 5 complete-proposal implementation approval has not been obtained. No runtime, dependency, frozen-spec, sprint-status or implementation-authorization record was changed; individual review decisions are recorded here.
+
+
+## 6. Subsequent Approval And Application Disposition — 2026-10-05
+
+The user explicitly instructed implementation of `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`, with that specification as the sole source of truth. This authorizes its bounded initial planning/documentation slice. It does not approve a crypto amendment, qualification result, provider dependency, exception, provisioning, runtime/topology change, release, production deployment, consumer migration or readiness claim.
+
+The earlier header status (“Complete proposal — P1–P7 individually approved; final review and implementation approval pending”), checklist outstanding items and Step 4–5 workflow state above are retained as the prior review checkpoint. The subsequent implementation instruction and application below supersede the pending application/handoff disposition only for this slice. Individual P1–P7 decisions remain historical approvals of the stated policy/planning changes; no approval is transferred to new frozen bytes or evidence.
+
+| Proposal | Applied output | Remaining owned gate |
+| --- | --- | --- |
+| P1 | PRD §8.4, FR37 Dapr qualification and supporting FR/NFR traceability | 3.17 final inventory/guard and relevant live/profile correctness; existing readiness failures remain. |
+| P2 | AD-1/AD-3/AD-23/AD-26 and accurately labelled infrastructure/transport diagrams | Actor ownership, 6.6 stricter amendment and all AD-26 production/ratification gates remain. |
+| P3 | Backlog 3.17 epic criteria and actionable implementation specification; 3.16 dependency policy; preliminary guide/register | No guard implemented; complete evaluated/transitive/linked/generated/HTTP/credential inventory, negatives and analysis limits in 3.17. |
+| P4 | Backlog 2.13 epic criteria and actionable implementation specification; retained Redis explicitly unresolved | Real two-host/sidecar delivery/reconnect/duplicates/outage/tenant-denial qualification, then approved replacement or separate exact-scope exception. |
+| P5 | Current payload authority reconciled in architecture/epics/8.1 wrapper; conditional 8.6 criteria; detached draft amendment for §§5/11/16 and PF-01 | Amendment draft/unapproved, operation suitability unresolved, affected 8.3–8.11 impact and exact-content reapproval/predecessor gates. Shared authority/packets/fixtures/validators unchanged; no provider SDK selected. |
+| P6 | Public portability claims qualified and guide links added; 7.11 Dapr-path evidence and UX transport/tenant obligations recorded | Routes/states/freshness/authorization unchanged; backend tools supply isolated setup/fault/physical diagnostics only, never replacement Dapr correctness evidence. |
+| P7 | Exact 2.13/3.17 backlog rows and synchronized update dates; epic lists/coverage/handoffs agree | All pre-existing tracker values and guarded blocks retained, including 6.6/8.3 in progress and 8.6 backlog; no qualification/completion inferred. |
+
+The initial planning/documentation handoff is applied. Implementation and qualification follow the new owned backlog specifications and existing authority controls; the current accepted-exception register is empty. No input/evidence digest is repinned, frozen payload authority rewritten, provider chosen, service provisioned or runtime/topology/submodule altered by this slice. Verification of changed documentation, tracker preservation, current payload hashes, frozen vectors and the individual Contracts lane is recorded with the implementation handoff; it supplies no live qualification or readiness approval.

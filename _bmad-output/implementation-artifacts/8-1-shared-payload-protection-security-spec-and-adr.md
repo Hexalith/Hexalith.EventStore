@@ -40,18 +40,25 @@ source_files:
 
 # Story 8.1: Shared Payload-Protection Security Spec And ADR
 
-Status: in-progress
+Status: done
 
 <!-- Note: Story 8.1 was reopened on 2026-09-13 because Story 8.2 preflight found missing exact
      signatures. Replacement digest de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e
      received content-bound approval as AR-20260913-01; Story 8.2 is authorized and Stories
-     8.3-8.11 remain blocked by their recorded predecessors. -->
+     8.2 completion and Story 8.3 authorization were then approved as AR-20260914-01.
+     Story 8.3 remains in progress; later stories retain their predecessor gates. -->
 
 ## Story
 
 As a platform security owner,
 I want the shared payload-protection ownership and durable security contract approved before implementation,
 so that the engine cannot make story-local choices that strand persisted history or weaken key custody.
+
+## Current Authority Reconciliation — 2026-10-05
+
+Story 8.1 remains done as a specification/authorization artifact. The unchanged shared authority is approved-authorized at normative SHA-256 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` and full-file SHA-256 `542f0b6e4ebe24c02a403ed7af511a03d1a4b6ef5c83b789254fbb055a563c82`. `AR-20260913-01` approves that replacement; `AR-20260914-01` approves Story 8.2 and authorizes Story 8.3. Story 8.3 remains in progress under its frozen specification and existing constructibility approvals; no successor/G5 completion follows. The earlier approval, reproduction results, reopening history, and task records below remain evidence for their original bytes. This wrapper is separate from the shared authority’s hash bindings.
+
+The [Dapr amendment](spec-shared-payload-protection-dapr-amendment-2026-10-05.md) is a detached draft/unapproved proposal for §§5/11/16 and PF-01. Policy approval authorizes drafting/qualification planning only. It approves no new crypto bytes, adapter, package, provider exception, provisioning, or repinned evidence.
 
 ## Story Context
 
@@ -469,6 +476,8 @@ OpenAI Codex (GPT-5)
 - `_bmad-output/implementation-artifacts/evidence/story-8-2/preflight-before-adr-amendment.md` (new preflight evidence)
 
 ### Change Log
+
+- 2026-10-05: Reconciled the present summary to the existing done state and current AR-20260913-01/AR-20260914-01 authority; retained all historical evidence and linked the detached unapproved Dapr amendment.
 
 - 2026-07-16: Established authoritative Story 8.1 baseline and traceability; status remains in progress and Story 8.2 remains not authorized.
 - 2026-07-16: Froze payload-protection ownership, package graph, explicit opt-in/no-op default, and production-safe startup matrix.

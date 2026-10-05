@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-04
+# last_updated: 2026-10-05
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-10-04'
+last_updated: '2026-10-05'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -112,6 +112,7 @@ development_status:
   2-10-outbound-dapr-routing-header-ownership: done
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
+  2-13-dapr-notification-distribution-qualification: backlog
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -160,6 +161,7 @@ development_status:
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
   # it excludes non-Hexalith, .NET and Aspire upgrades, which epics.md:2849 requires.
   3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
+  3-17-dapr-boundary-inventory-and-enforcement: backlog
   epic-3-retrospective: done
 
   epic-4: in-progress

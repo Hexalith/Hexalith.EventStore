@@ -16,7 +16,7 @@ prd_finalize_assessed: 2026-09-10
 prd_finalize_reviewed_head: dd55a6d1e128989777ae6c47459da0f746e84e53
 prd_finalize_baseline_status: examined-dirty-unapproved
 created: 2026-07-05
-updated: 2026-09-26
+updated: 2026-10-05
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -345,7 +345,7 @@ Story 1.20 does not cover deployed-runtime parity, payload-protection G5, or Par
 
 | ID | Requirement |
 | --- | --- |
-| FR37 | EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available. |
+| FR37 | EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend accessed through a suitable Dapr cryptography component; any operation unavailable through Dapr requires a documented, narrowly scoped architecture exception under section 8.4 while preserving the approved durable formats, custody, typed failure, and rollback contracts, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available. |
 
 **Done evidence:** The approved security ADR exists; package/API inventory and production-backend integration are verified; EventStore owner goldens and Parties dual-provider compatibility pass; rollback succeeds after `pdenc-v2` writes; and the G5 packet records exact source, package, backend, review, limitation, historical-data, and rollback identity.
 
@@ -461,6 +461,20 @@ The top-level FR/NFR IDs remain stable. The clause IDs below expose existing ind
 - Sample UI command submission remains a demo of accepted submission, not proof of downstream completion.
 - Tenants UI must preserve projection-confirmed success states.
 - Admin UI must hide or disable deferred operations; any remaining endpoint returns `501`.
+
+### 8.4 Dapr Infrastructure Boundary
+
+EventStore application and shared runtime code MUST use Dapr building blocks and components whenever they support the required infrastructure operation. This includes persistence and actors, messaging, service invocation, configuration, secrets, bindings, scheduling/workflows, and cryptographic provider operations where applicable. Application code MUST NOT add a database driver, broker client, cloud SDK, direct provider HTTP call, connection string, or provider schema dependency for a capability available through a suitable Dapr interface.
+
+Suitability is evaluated against the required operation and its correctness, security, compatibility, and operational guarantees on an identified runtime/component profile. Convenience, familiarity, or an unmeasured performance preference is not a capability gap. A missing SDK convenience method does not justify bypassing an available supported Dapr API. Select the highest applicable abstraction; a generic binding carrying application-owned SQL or provider protocols does not establish portability or override actor ownership.
+
+If Dapr cannot provide a required operation, record the missing guarantee and evidence, alternatives considered, the narrowly isolated adapter, its owner, exact allowed paths, and review/removal trigger in an architecture exception. Obtain the architecture owner's decision before introducing that dependency. Unknown suitability requires qualification. Never silently fall back to direct infrastructure after a Dapr failure.
+
+Provider-specific provisioning, Dapr component configuration, and deployment/backup administration remain platform operations. Local pure computation and deliberately scoped test doubles/diagnostics are not runtime infrastructure adapters. Neither category may expose a bypass to application code. Approved exceptions are exact-purpose and exact-path, not blanket permissions. Public HTTP/browser SignalR and governed telemetry exports are distinct transport edges; classify them explicitly rather than inventing provider-adapter authority.
+
+Acceptance requires every runtime infrastructure operation to map to a qualified Dapr API/component or a documented, accepted exception, with the required guarantees, exact runtime/component versions, and observed evidence. Story 3.17 owns the evaluated inventory and deterministic guard; changed operations must pass their relevant live Dapr, security, and compatibility tests. Retained Redis notification distribution is unresolved under Story 2.13, and crypto key-operation suitability remains unresolved under Story 8.6 and the detached draft amendment. This policy accepts no exception or qualification and changes no readiness verdict.
+
+This constraint supports FR5, FR8, FR32, FR34, FR37, NFR12, NFR17, and NFR19 without changing their identities, primary ownership, actor-state authority, or existing readiness/production gates. See the [infrastructure-boundary guide](../../docs/concepts/dapr-infrastructure-boundary.md) and [accepted-exception register](../../docs/architecture/dapr-infrastructure-exceptions.yaml).
 
 ## 9. MVP Scope
 
@@ -605,6 +619,16 @@ Each row classifies what the story's own `epics.md` section declares. A declarat
 | NFR17 | 3.14, 5.6, 5.8, 7.7 | 3.12, 5.7, 5.9, 7.6, 7.8-7.10, 8.1, 8.6, 8.11 | NFR17-C5 is unassigned; blocking clause gap. 8.1 and 8.11 are literal range endpoints. |
 | NFR18 | **Unassigned** | 6.5, 6.6 | Required documentation outcome has no primary owner; blocking. |
 | NFR19 | 8.11 | 6.5, 6.6, 8.1-8.7, 8.9, 8.10 | Declared for the separately gated post-MVP commitment; not part of Phase 4 MVP readiness. |
+
+### 11.2.1 Supporting Dapr Boundary Coverage
+
+| Constraint / supporting requirements | Owning follow-up | Evidence required |
+| --- | --- | --- |
+| §8.4; FR5, FR8, FR32, FR34; NFR12, NFR17 | Story 3.17, supported by existing state/topology/security owners | Evaluated runtime and transitive graphs, linked/generated inputs, operation/call-site inventory, credential/HTTP bypass negatives, valid Dapr/tooling cases, and explicit analysis limits. |
+| §8.4; FR16; NFR5, NFR12, NFR15, NFR16 | Story 2.13, preserving Story 2.8 contract ownership | Real two-host/independent-sidecar delivery, reconnect/rejoin, duplicate, outage, and tenant-denial evidence; a qualified replacement or separately accepted bounded exception. NFR5's primary-owner gap remains open. |
+| §8.4; FR37; NFR19 | Story 8.6, gated by the draft Dapr amendment and existing Epic 8 predecessors | Exact-version key operations, custody/identity/profile/failure and buffer guarantees, historical reads, and rollback; renewed exact-digest approvals for affected evidence. |
+
+These are supporting constraints and backlog ownership, not replacement primary declarations or passing gates. The existing §11.4 failures, OR8/OR14 reconciliation controls, and Epic 8 post-MVP boundary remain in force; no input/evidence digest is repinned by this policy slice.
 
 ### 11.3 Required Follow-On Readiness Work
 

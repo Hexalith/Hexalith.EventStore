@@ -72,7 +72,7 @@ public sealed class DaprEventEvolutionLogicalReadbackLiveSidecarTests(DaprTestCo
             (await ReadStateAsync<AggregateMetadata>(fixture.DaprHttpEndpoint, identity,
                 identity.MetadataKey).ConfigureAwait(true)).CurrentSequence.ShouldBe(1);
 
-            EventEnvelope[] inspected = await primary.ReadEventsRangeAsync(1, 1, 1).ConfigureAwait(true);
+            EventEnvelope[] inspected = await primary.ReadEventsRangeAsync(0, 1, 1).ConfigureAwait(true);
             inspected.Length.ShouldBe(1);
             RequireSameLogicalEvent(inspected[0], originalBytes, originalMessageId, originalDigest);
         }

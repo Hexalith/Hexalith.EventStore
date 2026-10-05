@@ -1,0 +1,53 @@
+# Preliminary planning register; Story 3.17 owns the final validated schema/guard.
+schema_version: 1
+updated: '2026-10-05'
+status: preliminary-unqualified
+policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
+inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
+accepted_exceptions: []
+unresolved:
+  - id: signalr-replica-distribution
+    disposition: unresolved-retained-runtime-integration
+    owner: SignalR transport owner with Architecture and Test owners
+    owner_story: 2-13-dapr-notification-distribution-qualification
+    operations:
+      - self-hosted-hub-cross-replica-distribution
+      - authenticated-connection-and-group-membership
+    observed_paths:
+      - src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs
+      - src/Hexalith.EventStore/Hexalith.EventStore.csproj
+      - src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj
+    observed_configuration:
+      - EventStore:SignalR:BackplaneRedisConnectionString
+      - EVENTSTORE_SIGNALR_REDIS
+    candidate_interfaces:
+      - Dapr pub/sub fan-out to local hubs
+      - Dapr bindings.azure.signalr output binding
+    required_evidence:
+      - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
+      - negotiation-group-membership-reconnect-rejoin-and-tenant-denial
+      - ordering-duplicates-outage-freshness-compatibility-and-rollback
+    decision: pending-qualification-and-architecture-owner-decision
+    review_removal_trigger: >-
+      Resolve in Story 2.13 before extending or retiring the backplane; a runtime,
+      component, distribution, or topology change requires renewed qualification.
+  - id: payload-production-key-operations
+    disposition: unresolved-planned-integration
+    owner: Payload owner with Architecture, Security, Operations, and Release owners
+    owner_story: 8-6-azure-key-vault-production-adapter-conformance
+    operations:
+      - current-version-discovery-and-key-profile-validation
+      - exact-version-wrap-and-unwrap
+    planned_paths:
+      - src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/
+    candidate_interfaces:
+      - Dapr cryptography API with crypto.azure.keyvault
+    required_evidence:
+      - exact-runtime-client-component-and-emitted-provider-api-versions
+      - rsa-hsm-profile-identity-custody-cancellation-retry-and-typed-failures
+      - pdenc-v2-aad-buffer-ownership-historical-reads-and-post-v2-rollback
+    decision: pending-qualification-and-detached-amendment-reapproval
+    review_removal_trigger: >-
+      Resolve before provider dependency selection or Story 8.6 implementation;
+      any approved design, profile, format, or dependency change rebinds affected
+      predecessor, release, compatibility, and G5 evidence.

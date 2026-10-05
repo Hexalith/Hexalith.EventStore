@@ -18,21 +18,29 @@ internal sealed class DaprLogicalEventReader
     private readonly IActorStateManager _stateManager;
     private readonly IEventPayloadProtectionService _protection;
     private readonly EventLogicalViewResolver _resolver;
+    private readonly int _maximumReadablePageBytes;
 
     /// <summary>Creates the shared actor-state logical reader without provider-specific access.</summary>
     internal DaprLogicalEventReader(IActorStateManager stateManager,
-        IEventPayloadProtectionService protection, EventLogicalViewResolver resolver)
+        IEventPayloadProtectionService protection, EventLogicalViewResolver resolver,
+        int maximumReadablePageBytes = 64 * 1024 * 1024)
     {
         _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
         _protection = protection ?? throw new ArgumentNullException(nameof(protection));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        if (maximumReadablePageBytes is < 1 or > 64 * 1024 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumReadablePageBytes));
+        }
+
+        _maximumReadablePageBytes = maximumReadablePageBytes;
     }
 
     /// <summary>Returns the resolved current view only after addressed, readable, allow-listed state readback.</summary>
     internal async Task<DaprLogicalEventView> ReadAsync(AggregateIdentity identity, long sequenceNumber,
         CancellationToken cancellationToken, string? expectedAggregateType = null)
         => await ReadCoreAsync(identity, sequenceNumber, cancellationToken, expectedAggregateType,
-            new EventBufferBudget(), 128L * 1024 * 1024, 64L * 1024 * 1024).ConfigureAwait(false);
+            new EventBufferBudget(), 128L * 1024 * 1024, _maximumReadablePageBytes).ConfigureAwait(false);
 
     private async Task<DaprLogicalEventView> ReadCoreAsync(AggregateIdentity identity, long sequenceNumber,
         CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
@@ -126,7 +134,7 @@ internal sealed class DaprLogicalEventReader
                 throw new InvalidOperationException("AddressMismatch: actor event bytes changed during logical resolution.");
             }
 
-            return new DaprLogicalEventView(source, resolved);
+            return new DaprLogicalEventView(source, resolved, outcome.PayloadBytes.Length);
         }
         finally
         {
@@ -183,7 +191,7 @@ internal sealed class DaprLogicalEventReader
                 cancellationToken.ThrowIfCancellationRequested();
                 DaprLogicalEventView view = await ReadCoreAsync(identity, startSequence + index,
                     cancellationToken, aggregateType, budget,
-                    128L * 1024 * 1024 - storedBytes, 64L * 1024 * 1024 - readableBytes).ConfigureAwait(false);
+                    128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes).ConfigureAwait(false);
                 views[index] = view;
                 storedBytes = checked(storedBytes + view.StoredPayloadLength);
                 if (storedBytes > 128L * 1024 * 1024)
@@ -191,8 +199,8 @@ internal sealed class DaprLogicalEventReader
                     throw new InvalidOperationException("RawEnvelopeLimit: a logical event page exceeds 128 MiB of stored payload bytes.");
                 }
 
-                readableBytes = checked(readableBytes + view.Resolved.Payload.Length);
-                if (readableBytes > 64L * 1024 * 1024)
+                readableBytes = checked(readableBytes + view.ReadablePayloadLength);
+                if (readableBytes > _maximumReadablePageBytes)
                 {
                     throw new InvalidOperationException("ReadableLimit: a logical event page exceeds 64 MiB.");
                 }

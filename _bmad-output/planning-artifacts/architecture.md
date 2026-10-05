@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: draft
 created: 2026-07-05
-updated: 2026-09-23
+updated: 2026-10-05
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -58,20 +58,27 @@ OQ8 admission follows the content-bound authority recorded in AD-25. EventStore 
 
 ```mermaid
 flowchart LR
-    Client[REST / UI / Admin / CLI / MCP] --> Edge[EventStore policy edge]
+    Client[REST / UI / Admin / CLI / MCP] -->|public HTTP; authorization at edge| Edge[EventStore policy edge]
+    Client <-.->|browser SignalR; scoped groups| Hub[Notification hubs]
     Edge --> Catalog[Route + idempotency catalogs]
-    Catalog -->|command| Admission[Idempotency admission actor]
-    Catalog -->|projection query| Read[(Read models + checkpoints)]
-    Catalog -->|handler query| Query[Domain query handler]
-    Admission -->|current fence| Aggregate[AggregateActor]
-    Aggregate --> Domain[Domain service]
-    Domain --> Aggregate
-    Aggregate --> State[(DAPR actor state)]
-    Aggregate --> PubSub{{DAPR pub/sub}}
-    PubSub --> Projection[Projection consumers]
-    Projection --> Read
+    Catalog -->|Dapr state API; catalog activation| Sidecar[Dapr sidecar]
+    Catalog -->|Dapr actor invocation| Admission[Idempotency admission actor]
+    Catalog -->|projection query via actor / Dapr state| Read[(Read models + checkpoints)]
+    Catalog -->|Dapr service invocation| Query[Domain query handler]
+    Admission -->|current fence; actor invocation| Aggregate[AggregateActor]
+    Aggregate -->|Dapr service invocation| Domain[Domain service]
+    Domain -->|invocation response| Aggregate
+    Aggregate -->|IActorStateManager| State[(Dapr actor state)]
+    Aggregate -->|Dapr publish API| PubSub{{Dapr pub/sub}}
+    PubSub -->|sidecar subscription delivery| Projection[Projection consumers]
+    Projection -->|Dapr state API; qualified transactions| Read
     Read -->|payload + AD-14 metadata| Edge
     Query -->|payload + AD-14 metadata| Edge
+    Sidecar -->|Secrets API; AD-24 profile gate| Secrets[(Configured secret component)]
+    Sidecar -.->|key operations; 8.6 unresolved| Crypto[(Candidate crypto component)]
+    Sidecar -.->|notification binding; 2.13 unresolved| Binding[Candidate notification binding]
+    Hub -.->|retained direct adapter; 2.13 unresolved, no accepted exception| Redis[(Redis backplane)]
+    Edge -->|governed OpenTelemetry / OTLP transport| Telemetry[Telemetry sink]
 ```
 
 > **Implementation status:** Adopted decisions are not delivery evidence. Production workload promotion, traffic, consumer migration, and production-readiness claims remain prohibited until the final Implementation Status and Production Gates table is satisfied.
@@ -91,10 +98,10 @@ flowchart LR
 
 - **Binds:** FR1-FR37, NFR1-NFR19
 - **Prevents:** incompatible CRUD and event-sourcing implementations.
-- **Rule:** The platform uses CQRS, DDD, and event sourcing over DAPR state, actors, pub/sub, and service invocation. Aspire owns the local orchestration seed; production is governed by AD-26. For Story 6.6, the owner's 2026-10-05 Dapr-only direction supersedes the 2026-10-04 direct PostgreSQL metadata-adapter permission. Aggregate/event/snapshot and existing actor drain-registration mutations remain solely IActorStateManager-owned. Other coordinator state may use Dapr state/actor APIs after capability qualification. Application code does not access PostgreSQL or Dapr private actor-state keys/tables/caches. Domain modules receive no direct persistence authority. See the [Story 6.6 Dapr-only amendment](../implementation-artifacts/story-6-6-dapr-only-amendment.md).
+- **Rule:** The platform uses CQRS, DDD, and event sourcing with Dapr as the required infrastructure boundary whenever the required capability is supported. Apply PRD §8.4 to all EventStore runtime packages and hosts. Provider dependencies belong behind Dapr components; an unavailable operation requires an evidence-backed, owned, exact-path architecture exception. Unknown suitability stays unresolved. A generic binding carrying application-owned SQL or provider protocols is not evidence of backend portability and cannot bypass actor state ownership. Select the highest applicable Dapr abstraction and qualify its actual correctness, security, compatibility, and operational guarantees. Aspire owns the local orchestration seed; production is governed by AD-26. For Story 6.6, the owner's 2026-10-05 Dapr-only direction supersedes the 2026-10-04 direct PostgreSQL metadata-adapter permission. Aggregate/event/snapshot and existing actor drain-registration mutations remain solely IActorStateManager-owned. Other coordinator state may use Dapr state/actor APIs after capability qualification. Application code does not access PostgreSQL or Dapr private actor-state keys/tables/caches. Domain modules receive no direct persistence authority. See the [Story 6.6 Dapr-only amendment](../implementation-artifacts/story-6-6-dapr-only-amendment.md).
 
 Epic 3 encodes Story 3.13 as the rejected `v3.94.1` disposition, Story 3.14 as the corrective release, and
-Story 3.15 as positive parity closure; it remains open for the approved Story 3.16 maintenance follow-up.
+Story 3.15 as positive parity closure; it remains open for the approved Story 3.16 maintenance follow-up and backlog Story 3.17 boundary inventory/enforcement.
 Planning or story status never authorizes release, deployment, consumer removal, or positive `v3.94.1`
 closure.
 
@@ -108,7 +115,7 @@ closure.
 
 - **Binds:** FR11-FR16, FR23-FR32, NFR1-NFR4, NFR14
 - **Prevents:** external adapters bypassing authorization, tenant validation, idempotency, status, ETag, error, and observability policy.
-- **Rule:** External command and query entry points delegate to EventStore platform APIs. Direct state-store reads are allowed only through named, tenant-authorized, support-safe adapters over platform-owned operational state. External code never performs generic-key reads or direct mutations.
+- **Rule:** External command and query entry points delegate to EventStore platform APIs. Reads of platform-owned operational state use named, tenant-authorized, support-safe adapters through Dapr APIs. This permits neither provider drivers nor reads of Dapr private actor-state keys/tables. Actor-owned state is addressed through its actor boundary. External callers never receive generic-key access or direct mutation authority.
 
 ### AD-4 - Generated REST Lives In Dedicated External API Hosts [ADOPTED]
 
@@ -250,7 +257,7 @@ explicit final chained call for every sidecar-routed client.
 
 - **Binds:** FR37, NFR1-NFR4, NFR6-NFR7, NFR9-NFR10, NFR12, NFR16-NFR17, NFR19, Parties G5
 - **Prevents:** domain-specific incompatible envelope encryption and key custody.
-- **Rule:** EventStore owns the optional `pdenc-v2` format, byte-stable authenticated data, mechanics, provider registry, conformance tests, and release proof. Backward readers preserve `json+pdenc-v1`, `json-redacted`, legacy, and snapshot compatibility. Domain extensions use `IPersonalDataPolicy` and `IErasureStateProvider`; domains own legal policy and operators own production key custody. The no-op provider remains default until registration. Typed failures, key-buffer zeroing, cache invalidation, a non-Development backend, historical-read and rollout evidence, consumer parity, and rollback are mandatory gates. The prerequisite specification is approved-authorized at SHA-256 `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` by `AR-20260801-01`; successor gates still apply.
+- **Rule:** EventStore owns the optional `pdenc-v2` format, byte-stable authenticated data, mechanics, provider registry, conformance tests, and release proof. Backward readers preserve `json+pdenc-v1`, `json-redacted`, legacy, and snapshot compatibility. Domain extensions use `IPersonalDataPolicy` and `IErasureStateProvider`; domains own legal policy and operators own production key custody. The no-op provider remains default until registration. Typed failures, key-buffer zeroing, cache invalidation, a non-Development backend, historical-read and rollout evidence, consumer parity, and rollback are mandatory gates. The current replacement prerequisite specification is approved-authorized at normative SHA-256 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` (full-file SHA-256 `542f0b6e4ebe24c02a403ed7af511a03d1a4b6ef5c83b789254fbb055a563c82`) by `AR-20260913-01`. `AR-20260914-01` approves Story 8.2 and authorizes Story 8.3; its existing in-progress lifecycle and frozen intent remain unchanged. Historical `AR-20260801-01` applies only to its original `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` bytes. PRD §8.4 requires Dapr key-operation qualification before provider SDK selection. The [detached Dapr amendment](../implementation-artifacts/spec-shared-payload-protection-dapr-amendment-2026-10-05.md) is draft/unapproved: it rewrites no shared authority bytes, conveys no implementation authority, and cannot reuse old approvals for new bytes. Unsupported operations return to Architecture/Security for a compatible design, separately reviewed format migration, or exact-path exception. Preserve `pdenc-v2`/AAD, custody, typed failures, historical reads, rollback, successor approvals, and Story 8.8 atomic package inventory; a Dapr secret store is not a cryptographic key-operation component.
 
 ### AD-24 - Production DAPR Secrets Use OpenBao [ADOPTED]
 
@@ -288,6 +295,8 @@ authority, or consumer-migration authority.
 - **Rule:** The self-managed Kubernetes production profile uses independent DAPR sidecars, component `statestore` with stable `state.postgresql` v1 and `actorStateStore: true`, the production resiliency policy, an approved durable broker, AD-24 OpenBao, and OQ8 profile `oq8-postgresql-v1`. Redis is Development/test only; Cosmos templates are alternatives, not authorizing evidence.
 
 **AD-13 metadata handoff (D-ARCH, 2026-10-04; superseded for Story 6.6 on 2026-10-05).** The [earlier metadata-adapter contract](../implementation-artifacts/6-5-integration/metadata-adapter-contract.md) records the reviewed PostgreSQL SERIALIZABLE design. It is retained as historical approval evidence but grants no current Story 6.6 application SQL authority. The [Dapr-only amendment](../implementation-artifacts/story-6-6-dapr-only-amendment.md) now governs actor-owned state and any new control records. Dapr transaction/ETag behavior must be qualified at its API boundary; no independent physical-byte or historical-generation receipt is claimed. The following production proof gate remains required.
+
+**Operation/component qualification.** Every supported profile identifies the Dapr API/component used by each infrastructure operation, its required guarantees, exact runtime/client/component versions, and observed acceptance evidence. ETags, transactional scope, TTL, ordering, and failure behavior are qualified per component. Sharing a physical backend does not imply transactions across actors, state components, pub/sub, or external systems. A backend change includes configuration, data migration where needed, and requalification even when application code remains unchanged. Story 3.17 owns the final inventory/guard; Stories 2.13 and 8.6 own unresolved notification/key-operation qualifications. Retained direct Redis is not an accepted exception. Existing AD-26 ratification and production gates still fail closed.
 
 **Production proof.** The Platform deployment owner publishes one versioned, canonical `deploy/dapr/production-profile.yaml`. This path is the sole declared production-profile inventory slot; its canonical-byte SHA-256, computed by the publication-authority validator from retained file bytes, is the complete authorizing inventory. The file is absent, so no profile currently authorizes promotion. Its digest must bind the exact DAPR runtime image and CLI compatibility, Kubernetes/sidecar mode, PostgreSQL and broker components, app IDs, scopes and ACLs, resiliency, OpenBao contract digest, route/idempotency catalog digests, restore posture, and required evidence. Cosmos and Development/test profiles are excluded; adding, replacing, or retiring an authorizing profile requires approved architecture change and a new canonical digest. A separately authorized immutable candidate may be published under AD-11 solely to produce evidence; candidate publication and `evidence-validated` never grant `release-available` or `production-promoted`. A validator must bind the same immutable subject's authenticated release-owner and deployment-owner predecessor records to the exact canonical profile digest and all two-host/shared-backend and production-path gates. Production promotion, traffic, consumer migration, readiness claims, and an approved production identity remain prohibited while any record, profile, proof, or AD-26 owner ratification is missing.
 
@@ -398,7 +407,7 @@ tests/                                    # per-project unit and integration tes
 deploy/                                   # DAPR and target-environment assets
 ```
 
-The approved future package boundary is `Hexalith.EventStore.PayloadProtection` for the provider-neutral engine and `Hexalith.EventStore.PayloadProtection.AzureKeyVault` for the selected adapter. Neither project currently exists; both remain non-authorizing until the AD-23 implementation and atomic release-inventory gates are met.
+The frozen package boundary names `Hexalith.EventStore.PayloadProtection` for the provider-neutral engine and `Hexalith.EventStore.PayloadProtection.AzureKeyVault` for the production adapter. The non-packable core exists under in-progress Story 8.3; the adapter remains absent and backlog. The draft Dapr amendment proposes qualification before the adapter dependency choice. Any package identity/count change requires reapproval and Story 8.8’s atomic release-inventory gate; no package or release authority changes here.
 
 ```mermaid
 flowchart TB
@@ -419,8 +428,10 @@ flowchart TB
         AppHost --> TenantsApi
         AppHost --> Sample
         AppHost --> Security
-        ES --> Redis
-        Tenants --> Redis
+        DevSidecars[Dapr sidecars]
+        ES -->|Dapr APIs| DevSidecars
+        Tenants -->|Dapr APIs| DevSidecars
+        DevSidecars -->|state / pub-sub components| Redis
         TenantsApi -->|service invocation only| ES
     end
     subgraph ExistingNotWired[Existing project, production-gated]
@@ -431,9 +442,9 @@ flowchart TB
         PostgreSQL[(PostgreSQL actor state)]
         Broker{{Approved durable broker}}
         OpenBao[(OpenBao)]
-        Sidecars --> PostgreSQL
-        Sidecars --> Broker
-        Sidecars --> OpenBao
+        Sidecars -->|actor / state component| PostgreSQL
+        Sidecars -->|pub-sub component| Broker
+        Sidecars -->|Secrets API component| OpenBao
     end
     ES -. catalog + topology proof .-> Sidecars
     Operations -. AD-31 wiring proof .-> Sidecars

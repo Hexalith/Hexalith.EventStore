@@ -2,13 +2,15 @@
 
 # DAPR Component Configuration Reference
 
-This is the comprehensive reference for all DAPR building blocks used by Hexalith.EventStore. It covers every component — State Store, Pub/Sub, Actors, Configuration, and Resiliency — with complete, copy-pasteable YAML examples for each supported backend. Use this page to understand what each component does, how to configure it for your target infrastructure, and what persistence guarantees each backend provides. This page assumes you know .NET but not DAPR — all DAPR concepts are defined on first use.
+This reference describes the core DAPR State Store, Pub/Sub, Actors, Configuration, and Resiliency configuration used by Hexalith.EventStore, with YAML examples for candidate backend profiles. Use this page to understand what each component does, how to configure it for your target infrastructure, and what persistence guarantees each backend provides. This page assumes you know .NET but not DAPR — all DAPR concepts are defined on first use.
 
 > **Prerequisites:** [Prerequisites and Local Dev Environment](../getting-started/prerequisites.md) | [Deployment Progression Guide](deployment-progression.md)
 
 ## Overview
 
-Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure concerns away from application code. A "building block" is a DAPR API that your application calls instead of talking directly to infrastructure. DAPR translates those API calls into backend-specific operations via pluggable components.
+The core examples cover five DAPR building blocks that abstract infrastructure concerns away from application code. A "building block" is a DAPR API that your application calls instead of talking directly to infrastructure. DAPR translates those API calls into backend-specific operations via pluggable components.
+
+Apply the [Dapr infrastructure boundary](../concepts/dapr-infrastructure-boundary.md) to every runtime operation. Component configuration and availability do not establish suitability: qualify exact runtime/client/component versions, ETags, transaction scope, TTL, ordering, failure, security, and compatibility for each supported profile, with migration where needed. Sharing a backend supplies no cross-actor/component/system transaction guarantee. Secrets, cryptography, and notification bindings have separate operation contracts; the pending crypto and SignalR qualifications are not established by these examples. The current direct Redis backplane remains unresolved under Story 2.13, and accepted exceptions are recorded only after an evidence-backed architecture decision. Production/profile readiness gates remain required.
 
 | Building Block | Purpose in Hexalith                                     | DAPR Component Type                                                                 |
 | -------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------- |

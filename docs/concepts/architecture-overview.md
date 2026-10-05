@@ -30,11 +30,13 @@ flowchart TB
         Actor[Aggregate Actor]
         Query[Query Handling / Projection Access]
         SignalRHub[Projection Changed Hub]
+        RedisBackplane[(Optional Redis backplane)]
         Placement([Actor Placement])
 
         Client -->|REST| EventStore
         ReadClient -->|REST queries| EventStore
-        ReadClient <-.->|SignalR| SignalRHub
+        ReadClient <-.->|browser SignalR; tenant-scoped groups| SignalRHub
+        SignalRHub -.->|current direct adapter; 2.13 unresolved| RedisBackplane
         EventStore --> Admission
         Admission -. signed current fence .-> Actor
         EventStore --> Actor
@@ -47,7 +49,8 @@ flowchart TB
         SampleSidecar -->|Response| CmdSidecar
         CmdSidecar -->|Persist| StateStore[(State Store)]
         CmdSidecar -->|Publish| PubSub{{Pub/Sub}}
-        PubSub -->|Projection changed| EventStore
+        PubSub -->|subscription delivery| CmdSidecar
+        CmdSidecar -->|Dapr app channel| EventStore
         CmdSidecar -->|Resolve| ConfigStore[/Config Store/]
         Placement -->|Assign| Admission
         Placement -->|Assign| Actor
@@ -75,15 +78,15 @@ All services, sidecars, and infrastructure connections run within the Aspire App
 
 ## What Is DAPR?
 
-DAPR (Distributed Application Runtime) is a runtime that sits alongside your application as a sidecar process, providing building blocks like state management, pub/sub messaging, and service-to-service communication through a simple HTTP/gRPC API. Hexalith uses DAPR so that your domain code and the infrastructure it runs on are completely decoupled — you write business logic, DAPR handles the plumbing, and you can swap that plumbing without touching your code.
+DAPR (Distributed Application Runtime) sits alongside your application as a sidecar process, providing building blocks such as state management, pub/sub messaging, and service invocation through HTTP/gRPC APIs. Hexalith keeps domain behavior independent of backend clients and requires suitable Dapr interfaces for runtime infrastructure operations. Backend changes must preserve the required semantics and pass profile-specific qualification.
 
-In the topology diagram above, every connection to a cylinder, hexagon, or parallelogram goes through a DAPR sidecar. Your application code never talks directly to Redis, PostgreSQL, or any other backend — it talks to DAPR, and DAPR talks to the backend. This separation is what makes infrastructure portability possible: changing the backend means changing a DAPR component YAML file, not your application code.
+State, pub/sub, and configuration edges use Dapr APIs/components. Public HTTP, browser SignalR, and governed telemetry exports are separate transport edges. The current optional SignalR scale-out adapter directly uses Redis and remains unresolved under Story 2.13; no accepted exception or Dapr replacement is claimed. The [Dapr infrastructure-boundary guide](dapr-infrastructure-boundary.md) records the preliminary classifications and qualification gates.
 
 ## DAPR Building Blocks
 
-Hexalith.EventStore uses five DAPR building blocks. Each building block is an API category that abstracts a specific infrastructure concern — think of them as standardized interfaces between your application and the outside world. The sections below explain what each one does, why Hexalith needs it, and where to go for deeper DAPR-specific documentation.
+The core topology below describes five DAPR building blocks. Each building block is an API category that abstracts a specific infrastructure concern — think of them as standardized interfaces between your application and the outside world. The sections below explain what each one does, why Hexalith needs it, and where to go for deeper DAPR-specific documentation.
 
-The current quickstart uses Redis as the backend for the state store, pub/sub, and configuration store. In production, you can replace any of these with enterprise-grade alternatives (PostgreSQL, Azure Cosmos DB, Apache Kafka, Azure Service Bus) by swapping DAPR component YAML files — no code changes required.
+The current quickstart uses Redis components for local state, pub/sub, and optional configuration. Component YAML expresses backend selection, but a backend is supported only after its concurrency, transaction scope, TTL, ordering, failure, security, and compatibility guarantees are proven for the identified profile. Examples of alternative components do not authorize production deployment, and data migration may be required.
 
 ### State Store
 
@@ -189,15 +192,15 @@ The defining principle of Hexalith domain services is **zero infrastructure acce
 - Never manages its own persistence or event publishing
 - Contains only pure functions: `Handle(Command, State?) → DomainResult`
 
-This is not just a sample convention — it is a core Hexalith design principle. Your domain services work identically regardless of what infrastructure DAPR is wired to. To switch from Redis to PostgreSQL, you change one YAML file — zero code changes, zero recompilation.
+This is a core Hexalith design principle: domain behavior stays independent of backend clients. Switching a state component requires preserving actor ownership and qualifying the new profile, including any required data migration; component availability alone does not prove equivalent behavior.
 
 DAPR enforces component-level scoping so domain services cannot access infrastructure directly. The state store, pub/sub, and config store components are scoped to `eventstore` only — domain services are explicitly denied access at the DAPR level.
 
 ### Infrastructure Portability
 
-Because all infrastructure access goes through DAPR building blocks, switching backends is a configuration change — not a code change. To switch from Redis to PostgreSQL, you change one YAML file — zero code changes, zero recompilation. The same applies to pub/sub backends (Redis Streams to RabbitMQ to Apache Kafka to Azure Service Bus) and configuration stores.
+EventStore uses Dapr for infrastructure operations supported by qualified components. Backend selection is expressed through component configuration; each change must preserve required semantics and pass the supported-profile tests, with data migration where necessary. Operation-specific exceptions require evidence, owner, exact paths, and review/removal trigger in the [boundary inventory and exception register](dapr-infrastructure-boundary.md#preliminary-classification). Domain behavior remains independent of backend clients.
 
-This portability extends to your domain services automatically. Since domain services have zero infrastructure access, they work identically on any DAPR-supported backend. You can develop locally against Redis and deploy to production against Azure Cosmos DB without modifying a single line of application code.
+The inventory is preliminary, and the accepted-exception register is empty. Direct Redis notification distribution and crypto key-operation suitability remain owned qualification work under Stories 2.13 and 8.6. Story 3.17 owns the final evaluated inventory and enforcement guard; adopting the policy does not establish full runtime conformance or production readiness.
 
 ### Domain Service Resolution
 

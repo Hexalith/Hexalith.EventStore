@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Security.Cryptography;
 
 using Dapr.Actors.Runtime;
 
@@ -313,6 +314,37 @@ public sealed class DaprLogicalEventReaderTests
     }
 
     [Fact]
+    public async Task ShrinkingUpcastsCannotBypassReadableSourcePageLimit()
+    {
+        using EventDomainRegistry registry = CreateRegistry(upcasting: true);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        var upcaster = new ShrinkingLogicalEventUpcaster();
+        var budget = new EventBufferBudget();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UnixEpoch, null)));
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{Identity.EventStreamKeyPrefix}{sequence}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent() with { SequenceNumber = sequence }));
+        }
+        var executor = new EventUpcastChainExecutor(registry,
+            new Dictionary<(string, int), RegisteredEventUpcaster>
+            {
+                [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
+            }, static (_, _, _, _, _, _) => { });
+        var reader = new DaprLogicalEventReader(stateManager, new NoOpEventPayloadProtectionService(),
+            new EventLogicalViewResolver(registry, executor), maximumReadablePageBytes: 3);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadPageAsync(Identity, "r", 1, 2, CancellationToken.None, sharedBudget: budget)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("ReadableLimit");
+        upcaster.Calls.ShouldBe(1);
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task MissingAddressedEventRefusesBeforeProtection()
     {
         using EventDomainRegistry registry = CreateRegistry();
@@ -400,7 +432,7 @@ public sealed class DaprLogicalEventReaderTests
         DomainServiceVersion: "v1", EventTypeName: "Legacy.Event", MetadataVersion: 1,
         SerializationFormat: "json", Payload: [1, 2], Extensions: null);
 
-    private static EventDomainRegistry CreateRegistry()
+    private static EventDomainRegistry CreateRegistry(bool upcasting = false)
     {
         DirectoryInfo? root = new(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Hexalith.EventStore.slnx")))
@@ -411,6 +443,35 @@ public sealed class DaprLogicalEventReaderTests
             "tests", "Hexalith.EventStore.Client.Tests", "Events", "Fixtures", "EventRegistryV17.json");
         Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(
             File.ReadAllText(path))!;
+        if (upcasting)
+        {
+            byte[] descriptor = Convert.FromHexString(fixture["DescriptorRow"]);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(descriptor.AsSpan(22, 4), 2);
+            byte[] firstVersion = Convert.FromHexString(fixture["VersionRow"]);
+            byte[] secondVersion = firstVersion.ToArray();
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(secondVersion.AsSpan(13, 4), 2);
+            using var edge = new EventEvolutionBinaryWriter(1024);
+            edge.WriteByte(0x45); edge.WriteString("d"); edge.WriteString("evt"); edge.WriteInt32(1); edge.WriteUInt16(12);
+            edge.WriteByte(1); edge.WriteInt32(2);
+            edge.WriteByte(2); edge.WriteString("json");
+            edge.WriteByte(3); edge.WriteString("json");
+            edge.WriteByte(4); edge.WriteString("serializer");
+            edge.WriteByte(5); edge.WriteHash(new byte[32]);
+            edge.WriteByte(6); edge.WriteHash(new byte[32]);
+            edge.WriteByte(7); edge.WriteString("test-upcaster");
+            edge.WriteByte(8);
+            using (FileStream assembly = File.OpenRead(typeof(ShrinkingLogicalEventUpcaster).Assembly.Location))
+            {
+                edge.WriteHash(SHA256.HashData(assembly));
+            }
+            edge.WriteByte(9); edge.WriteHash(new byte[32]);
+            edge.WriteByte(10); edge.WriteString("no-payload-identity");
+            edge.WriteByte(11); edge.WriteHash(new byte[32]);
+            edge.WriteByte(12); edge.WriteHash(new byte[32]);
+            return new EventDomainRegistry("d", [Convert.FromHexString(fixture["AliasRow"]), descriptor,
+                firstVersion, secondVersion, edge.CopyEncodedBytes(), Convert.FromHexString(fixture["SharedRow"])]);
+        }
+
         return new EventDomainRegistry("d", [
             Convert.FromHexString(fixture["AliasRow"]),
             Convert.FromHexString(fixture["DescriptorRow"]),

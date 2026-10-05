@@ -1,0 +1,158 @@
+[
+  {
+    "displayName": "eventstore-admin-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "eventstore-admin",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.Admin.Server.Host.csproj"
+  },
+  {
+    "displayName": "eventstore-admin-ui",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.Admin.UI.csproj"
+  },
+  {
+    "displayName": "eventstore-admin-ui-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "eventstore",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.csproj"
+  },
+  {
+    "displayName": "eventstore-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "local-auth-admin-password",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-admin-password"
+  },
+  {
+    "displayName": "local-auth-admin-user-id",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-admin-user-id"
+  },
+  {
+    "displayName": "local-auth-admin-username",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-admin-username"
+  },
+  {
+    "displayName": "local-auth-sample-password",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-sample-password"
+  },
+  {
+    "displayName": "local-auth-sample-user-id",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-sample-user-id"
+  },
+  {
+    "displayName": "local-auth-sample-username",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-sample-username"
+  },
+  {
+    "displayName": "local-auth-signing-key",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:local-auth-signing-key"
+  },
+  {
+    "displayName": "sample-api-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "sample-api",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.Sample.Api.csproj"
+  },
+  {
+    "displayName": "sample-blazor-ui-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "sample-blazor-ui",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.Sample.BlazorUI.csproj"
+  },
+  {
+    "displayName": "sample-dapr-cli",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "sample",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.EventStore.Sample.csproj"
+  },
+  {
+    "displayName": "security-eventstore-client-password",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:security-eventstore-client-password"
+  },
+  {
+    "displayName": "security-eventstore-client-username",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Parameters:security-eventstore-client-username"
+  },
+  {
+    "displayName": "security",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "quay.io/keycloak/keycloak:26.6"
+  },
+  {
+    "displayName": "tenants-api-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "tenants-api",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.Tenants.Api.csproj"
+  },
+  {
+    "displayName": "tenants-dapr-cli",
+    "state": "Finished",
+    "waitingFor": null,
+    "source": "dapr"
+  },
+  {
+    "displayName": "tenants",
+    "state": "Running",
+    "waitingFor": null,
+    "source": "Hexalith.Tenants.csproj"
+  }
+]

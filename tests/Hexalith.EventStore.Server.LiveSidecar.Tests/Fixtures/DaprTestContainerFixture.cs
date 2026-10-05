@@ -51,8 +51,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     // version and platform: the container ports are 50005/50006, but recent CLIs remap them to
     // 6050/6060 on the host. Probing both candidates removes the stale OS predicate that made the
     // fixture abort on a perfectly healthy control plane.
-    private static readonly int[] PlacementPortCandidates = [50005, 6050];
-    private static readonly int[] SchedulerPortCandidates = [50006, 6060];
+    private static readonly int[] PlacementPortCandidates = DaprTestInfrastructurePorts.ReadCandidates("EVENTSTORE_TEST_PLACEMENT_PORT", 50005, 6050);
+    private static readonly int[] SchedulerPortCandidates = DaprTestInfrastructurePorts.ReadCandidates("EVENTSTORE_TEST_SCHEDULER_PORT", 50006, 6060);
     private static int _placementPort;
     private static int _schedulerPort;
 
@@ -88,7 +88,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             : throw new InvalidOperationException(
                 $"The Dapr {serviceName} host port has not been resolved. "
                 + "VerifyPrerequisitesAsync must complete before a sidecar is started.");
-    private const int RedisPort = 6379;
+    private static readonly int RedisPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_REDIS_PORT", 6379);
     private const int HealthTimeoutSeconds = 60;
     private const int WarmUpTimeoutSeconds = 45;
     private static readonly Lazy<Task<RedisConnectionMultiplexer>> RedisConnection =
@@ -1572,30 +1572,5 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             $"Last HTTP error: {lastError}\n" +
             $"--- replica daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedReplicaStdout(), 2000)}\n" +
             $"--- replica daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedReplicaStderr(), 2000)}");
-    }
-}
-
-internal sealed class LiveIncrementCounterIdempotencyIntentAdapter : IIdempotencyIntentAdapter
-{
-    public string CommandType => "IncrementCounter";
-
-    public string AdapterId => "live-counter";
-
-    public string OperationId => "increment-counter";
-
-    public int DescriptorVersion => 1;
-
-    public IdempotencyReplayRetentionTier RetentionTier => IdempotencyReplayRetentionTier.Mutation;
-
-    public IdempotencyCanonicalIntent CreateIntent(IdempotencyIntentCommand command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        return new IdempotencyCanonicalIntent(
-            $"{command.Tenant}/{command.Domain}/{command.AggregateId}",
-            command.Payload,
-            SemanticOptions: null,
-            PolicyVersion: "live-test-v1",
-            DelegatedTaskScope: null,
-            CredentialScope: null);
     }
 }

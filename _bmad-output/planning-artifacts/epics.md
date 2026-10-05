@@ -103,7 +103,7 @@ FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstonin
 
 FR36: Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval.
 
-FR37: EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available.
+FR37: EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend accessed through a suitable Dapr cryptography component; any operation unavailable through Dapr requires a documented, narrowly scoped architecture exception under PRD §8.4 while preserving the approved durable formats, custody, typed failure, and rollback contracts, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available.
 
 ### NonFunctional Requirements
 
@@ -146,6 +146,8 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 NFR19: Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested.
 
 ### Additional Requirements
+
+- Apply PRD §8.4 to every EventStore runtime infrastructure operation: qualified Dapr API/component first, evidence-backed exact-operation/path exception only after architecture-owner decision, unknown suitability unresolved, and no direct-provider fallback after Dapr failure. Story 3.17 owns final inventory/guard; 2.13 owns notification qualification; 8.6 owns crypto qualification behind the detached draft amendment. Actor ownership, 6.6’s stricter prohibition, credentials/scopes, tenant isolation, compatibility, and readiness gates remain unchanged.
 
 - This is a brownfield architecture; no starter-template or greenfield scaffold is specified. Stories must evolve the existing structural seed and `src/Hexalith.EventStore.Admin.UI` rather than create parallel platform or UI hosts.
 - Preserve CQRS, DDD, and event sourcing on DAPR state, actors, pub/sub, and service invocation, with Aspire as the local orchestration and deployable-topology seed.
@@ -327,6 +329,7 @@ Domain authors can build complete EventStore-backed services without recreating 
 Developers can expose typed external REST APIs and build interactive clients through supported gateway contracts while preserving metadata, scoping, and projection truth.
 **Primary users:** External API host developers, interactive UI developers, and domain integrators
 **FRs covered:** FR11-FR16
+**Story set:** 2.1–2.13; backlog 2.13 supports FR16/NFR5/NFR12/NFR15/NFR16 and PRD §8.4 without replacing 2.8 contract ownership or closing existing NFR5 readiness debt.
 **Cross-cutting coverage:** NFR2, NFR5, NFR12-NFR16; UX-DR42, with shared consumer-flow acceptance coverage for UX-DR20, UX-DR25-UX-DR27, UX-DR30, UX-DR38, and UX-DR40
 **Implementation notes:** Build on the completed gateway and metadata seams from Epic 1, but deliver dedicated external API hosts and client-only interactive hosts as a complete, independently usable integration pattern. Preserve route-bound query provenance, gateway-authoritative absolute-or-absent command-status locations, and handler-owned replacement of outbound DAPR control-plane headers.
 
@@ -334,7 +337,8 @@ Developers can expose typed external REST APIs and build interactive clients thr
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
 **Primary users:** Release maintainers, platform maintainers, deployment operators, and consuming-module owners
 **FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity
-**Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17
+**Story set:** 3.1–3.17; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement.
+**Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
 **Implementation notes:** Repository and release reliability delivers value independently of later runtime work. `v3.94.1` remains immutable rejected evidence; only the separately authorized corrective release plus independent Story 3.15 verification may establish positive deployed-runtime parity. Planning, implementation, approval of this epic, and story completion never authorize an external publication; each external release mutation requires its separately bound durable authority record.
 
 ### Epic 4: Operators Can Trust Command and Event Integrity
@@ -406,6 +410,8 @@ Gate evaluators can prove which failed gate a corrective change is authorized to
 **Evidence-state rule:** `evidence-ready` is distinct from `externally-authorized` and `mutation-complete`. Preparing or validating evidence never authorizes publication, deployment, consumer infrastructure removal, or another external mutation; only the exact required authority plus successful bound mutation reaches the latter state.
 
 **Post-MVP additive rule:** Epic 8 remains additive, opt-in, and disabled by default. Phase 4 MVP code must not require payload-protection engine packages, provider credentials, or engine runtime services, and the existing no-op/default behavior remains valid until explicit registration.
+
+**Dapr policy application (2026-10-05):** This bounded planning slice adds 2.13/3.17 and conditional 8.6 qualification, preserving all existing primary requirement identities, historical approvals, tracker values, readiness/production blocks, shared authority/fixtures/validators and 8.3 frozen intent. The draft crypto amendment is unapproved. Input/evidence digests remain unchanged; this slice does not close OR8/OR14 or establish a renewed approved baseline.
 
 **Source-drift rule:** The frontmatter records SHA-256 digests for all five confirmed input documents before story generation. Final validation recomputes every digest and fails visibly on drift; changed inputs require reconciliation and renewed approval rather than silent continuation.
 
@@ -1985,6 +1991,54 @@ So that consumer migration is reproducible, maintainer-approved, and honest abou
 **Then** maintainer `jpiquot` accepts the exact published Tenants SHA, the EventStore umbrella gitlink records it, accepted CI checks are bound, and the final and prior receipts identify all carried or superseded evidence
 **And** later working-tree drift, a newer dependency head, deferred guard generalizations, or an unrelated gitlink cannot silently replace the accepted identity.
 
+### Story 2.13: Dapr Notification Distribution Qualification
+
+As an operator,
+I want notification distribution to use a qualified Dapr path wherever feasible,
+So that infrastructure choice does not leak into application delivery contracts.
+
+**Requirements coverage:** Supporting FR16, NFR5, NFR12, NFR15, NFR16 and PRD §8.4; Story 2.8 keeps FR16 contract ownership. No whole-requirement/NFR5 primary closure or readiness pass is claimed.
+
+**Architecture constraints:** AD-1, AD-8, AD-9, AD-10, AD-12. Preserve `ProjectionChanged`, `ProjectionChangedDetail`, scoped groups, metadata bounds and projection-confirmed UI behavior.
+
+**UX coverage:** Supporting canonical freshness/availability, reconnect/rejoin and tenant-isolation obligations; no route, wireframe or state redesign.
+
+**Dependencies:** Delivered Story 2.8 contract/authorization baseline and existing live/profile/release gates. Coordinate the final disposition with 3.17 without making qualification and inventory cyclic prerequisites. External service access/provisioning remains separately authorized.
+
+**Current reconciliation:** Backlog. Retain direct Redis `AddStackExchangeRedis` registration, both EventStore/Gateway package references and Gateway-linked source pending evidence. `BackplaneRedisConnectionString` / `EVENTSTORE_SIGNALR_REDIS` are unresolved runtime configuration, not accepted exceptions. See the [actionable story specification](../implementation-artifacts/2-13-dapr-notification-distribution-qualification.md).
+
+**Acceptance Criteria:**
+
+**Given** the current self-hosted topology and Dapr pub/sub local-hub fan-out / Azure SignalR output-binding candidates
+**When** exact-profile operation/guarantee comparisons are retained
+**Then** negotiation, authenticated group membership, delivery to every relevant replica, scaling, ordering, duplicates, outage, credentials and tenant authorization are supported, gap-evidenced or unresolved
+**And** competing-consumer delivery to one replica or binding/component existence cannot establish equivalence.
+
+**Given** a selected suitable Dapr design
+**When** two real hosts with independent sidecars and clients on each replica exercise projection-confirmed changes, reconnect/rejoin/restart, duplicates/out-of-order delivery and outages
+**Then** all relevant authorized clients retain signal/detail compatibility, scoped groups, 16-entry/2,048-byte metadata limits, opaque keys, suppression above Debug and honest freshness/availability
+**And** persisted projection evidence governs success; transport acknowledgement never supplies completion.
+
+**Given** anonymous, wrong/conflicting/malformed tenant, forged group/scope or changed/expired authorization
+**When** connections negotiate, join/rejoin or receive cross-replica delivery
+**Then** application authorization denies before disclosure and no tenant/group leak or downstream mutation occurs on either replica
+**And** sidecar scopes or caller app IDs create no tenant grant.
+
+**Given** neither Dapr candidate meets the required behavior
+**When** reproducible exact-profile gap evidence and alternatives are reviewed
+**Then** only an architecture-owner decision may accept an isolated Redis exception with evidence, owner, exact paths and review/removal trigger
+**And** unknown suitability or incomplete investigation stays unresolved; no exception is approved by this proposal.
+
+**Given** a qualified and approved replacement
+**When** the runtime transition is implemented
+**Then** both host graphs, linked-source registration/options, AppHost/deployment/subscription assets, credentials/scopes/health, documentation and tests change together
+**And** direct Redis runtime packages/configuration retire only after compatibility and rollback proof; no silent provider fallback is added.
+
+**Given** completion is requested
+**When** the real-process/sidecar matrix, logical persisted readback, compatibility/rollback and named decision evidence pass
+**Then** the packet records the proven Dapr replacement or separately accepted exact-scope exception, exact identities/commands/results and limits, and synchronizes 3.17’s disposition
+**And** skipped/unknown cases remain unproven rather than qualification or conformance claims.
+
 ## Epic 3: Maintainers Can Release Reproducible, Verifiable Artifacts
 
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
@@ -2820,7 +2874,7 @@ So that operators have a positive deployment-grade identity without relying on o
 **Then** this packet may be used as immutable EventStore evidence but does not itself authorize either action
 **And** deployment requires its own authority, while consumer removal requires the separate authenticated Consumer-owner receipt bound to that consumer repository/commit, packet subject, capability catalog, applicable-mode matrix, and exact removal subject; Parties 8.6 and G5 remain outside this story.
 
-**Current reconciliation (2026-09-26):** By dated owner decision (`sprint-change-proposal-2026-09-26.md`), Story 3.15 is `done` for FR36-C2 evidence validation only: subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`, 3/3 receipts, retained validator exit 0, selected index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Both owner roles map to one account and the Test Architect record is self-attested, so this is not three-party review. G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; Story 9.2 owns G-HIGH-RISK. The story reopens to `in-progress` on validator failure, subject re-mint, or a G-HIGH-RISK Assurance Control evaluation that rejects the evidence. Epic 3 stays `in-progress` for Story 3.16.
+**Current reconciliation (2026-09-26):** By dated owner decision (`sprint-change-proposal-2026-09-26.md`), Story 3.15 is `done` for FR36-C2 evidence validation only: subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`, 3/3 receipts, retained validator exit 0, selected index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Both owner roles map to one account and the Test Architect record is self-attested, so this is not three-party review. G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; Story 9.2 owns G-HIGH-RISK. The story reopens to `in-progress` on validator failure, subject re-mint, or a G-HIGH-RISK Assurance Control evaluation that rejects the evidence. Epic 3 stays `in-progress` for Story 3.16 and backlog Story 3.17; the added boundary work does not change the existing technical/historical evidence.
 
 ### Story 3.16: Latest-Compatible Dependency And Root Submodule Refresh
 
@@ -2830,7 +2884,7 @@ So that current development uses the latest compatible dependency set without we
 
 Requirements coverage: Supporting FR19 and FR21 as scheduled maintenance; primary FR19 ownership stays with Story 3.3 and primary FR21 ownership with Story 3.5. A refresh re-exercises those requirements and cannot independently close either. Supporting NFR9, NFR11, and NFR12.
 
-Architecture constraints: AD-11 through AD-13. Builds remains the sole NuGet version authority; stable, prerelease, framework-coupled, and major families move only with compatible evidence; root gitlinks use exact reachable commits; nested submodules are excluded.
+Architecture constraints: AD-1, AD-9, AD-11 through AD-13 and PRD §8.4. Before accepting an infrastructure dependency change, consult Story 3.17’s inventory and PRD §8.4; a catalog upgrade cannot establish an exception or introduce a direct provider integration. Builds remains the sole NuGet version authority; stable, prerelease, framework-coupled, and major families move only with compatible evidence; root gitlinks use exact reachable commits; nested submodules are excluded.
 
 Dependencies: Completed Story 3.11 supplies the audit and validation contract but remains immutable. Existing Story 3.13 through 3.15 evidence remains bound to its original identities. Current unrelated Story 1.21 work must be preserved.
 
@@ -2893,7 +2947,55 @@ When final evidence is assembled
 Then it binds exact before/after catalog rows, retained exceptions, configured-source results and UTC time, Builds/EventStore/submodule SHAs, commands/results, package and gitlink rollback groups, documentation snapshots, limitations, and named Builds/EventStore maintainer approvals
 And it performs or implies no NuGet publication, deployment, nested-submodule action, commit, push, merge, or rewrite of Story 3.11 or Story 3.13 through 3.15 evidence without separate authority.
 
-<!-- Epic 3 story set includes the approved Story 3.16 maintenance follow-up. -->
+<!-- Epic 3 story set includes Story 3.16 maintenance and backlog Story 3.17 boundary inventory/enforcement. -->
+
+### Story 3.17: Dapr Boundary Inventory And Enforcement
+
+As a maintainer,
+I want runtime infrastructure dependencies mapped to Dapr capabilities or explicit exceptions,
+So that new work cannot silently introduce provider coupling.
+
+**Requirements coverage:** Supporting FR5, FR8, FR32, FR34, NFR12, NFR17 and PRD §8.4; existing primary owners/readiness debt remain unchanged.
+
+**Architecture constraints:** AD-1, AD-3, AD-9, AD-11, AD-12; preserve actor ownership and 6.6’s stricter Dapr-only/product-evidence rules.
+
+**UX coverage:** No UI change; safe diagnostics and unchanged transport/tenant/freshness contracts.
+
+**Dependencies:** Approved boundary policy and existing Contracts architecture/packaging evaluation lane (`DependencyModeEvaluationTests.cs`). Coordinate 2.13/8.6 qualification without blocking initial inventory/guard work or creating cycles. Story 3.16 consults this inventory/policy before accepting infrastructure dependencies.
+
+**Current reconciliation:** Backlog. The published guide/register are preliminary and unqualified; accepted exceptions are empty. Story 1.11’s domain scans do not enforce this whole-platform boundary. See the [actionable story specification](../implementation-artifacts/3-17-dapr-boundary-inventory-and-enforcement.md).
+
+**Acceptance Criteria:**
+
+**Given** production libraries, hosts, samples and generated-host inputs
+**When** Debug/source and Release/package graphs and supported configuration branches are evaluated
+**Then** direct/transitive package/project integrations, effective/linked/conditional/generated compilation inputs, runtime assets, call sites and credentials/configuration are inventoried with provenance and exact paths
+**And** catalog entries, namespace/name scans or test-folder assumptions alone cannot supply runtime coverage; gaps/stale assets stay unresolved.
+
+**Given** a runtime infrastructure operation
+**When** the inventory row is recorded
+**Then** it binds required guarantees, Dapr API/component/profile, exact versions, qualification evidence/disposition, owner/story and review/removal trigger, including raw provider HTTP and configuration-based integration
+**And** tooling/provisioning/public transport/telemetry are purpose-classified without leaking provider authority into runtime or accessing private actor storage.
+
+**Given** the final inventory and exception schema
+**When** the existing Contracts architecture/packaging guard runs
+**Then** it deterministically rejects prohibited dependencies/call sites/configuration and invalid, stale or overbroad exceptions, requiring exact operation/path, gap evidence/alternatives, owner, architecture decision and review/removal trigger
+**And** no global provider-namespace or test-folder exemption can reach shipped runtime inputs.
+
+**Given** isolated database/broker, transitive/linked/generated-provider, direct-provider HTTP and application-credential fixtures
+**When** the guard runs
+**Then** each prohibited fixture fails, while valid Dapr and narrowly scoped tooling/synthetic accepted-exception cases pass only their intended scope
+**And** moving/packing a test file into runtime or expanding exception paths fails; synthetic fixtures create no production exception.
+
+**Given** supported profiles and provider configuration
+**When** credential/call-site flow is inspected
+**Then** application provider credentials and direct HTTP/SDK fallback are prevented wherever Dapr supplies the operation
+**And** AppHost provisioning and deliberate fault injection remain bounded and cannot leak into shared clients, generated hosts or runtime assets.
+
+**Given** the guard/inventory are published
+**When** conformance and limitations are reported
+**Then** guide/register, evaluated denominator, exact commands/results, representative negatives and unresolved owned 2.13/8.6 work agree
+**And** dynamic/native/reflection/external-package/configuration/egress analysis limits are explicit; static checks cannot establish full network enforcement or whole-runtime conformance while unresolved rows remain.
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
@@ -5342,7 +5444,7 @@ So that success cannot be inferred only from HTTP status, polling text, or mock 
 
 **Requirements coverage:** Primary ownership of NFR16's shared persisted-evidence/readback slice; supporting FR34 IntegrationTests recovery and NFR7 no-silent-loss verification.
 
-**Architecture constraints:** AD-6, AD-7, AD-8, and AD-12. Helpers preserve stable identity and projection scope, distinguish freshness signals from durable truth, and expose evidence for assertions without replacing the production path or hiding provider assumptions.
+**Architecture constraints:** AD-1, AD-3, AD-6, AD-7, AD-8, AD-12 and PRD §8.4. Helpers preserve stable identity and projection scope, distinguish freshness signals from durable truth, and expose evidence for assertions without replacing the production path or hiding provider assumptions.
 
 **UX coverage:** No primary UX-DR ownership. These helpers verify the authoritative command/projection/recovery/audit evidence later consumed by Story 7.19; screenshots, rendered text, `202`, SignalR, and UI state alone are not persisted evidence.
 
@@ -5364,8 +5466,8 @@ So that success cannot be inferred only from HTTP status, polling text, or mock 
 
 **Given** provider-portable behavior is under test
 **When** state is read back
-**Then** helpers prefer DAPR/platform contracts and keep backend-specific Redis/PostgreSQL/broker adapters behind an explicit capability/profile selected by the test
-**And** direct Redis key/hash assumptions cannot satisfy a provider-neutral claim, while a provider-specific conformance test names and records that dependency rather than hiding it.
+**Then** acceptance exercises application operations through Dapr and verifies logical persisted values via the appropriate Dapr state/actor boundary
+**And** direct backend tooling is permitted only for explicitly identified isolated setup, deliberate fault injection or physical diagnostics outside shipped runtime paths; it cannot substitute for Dapr-path correctness evidence or make private actor storage an application contract. Story 6.6 retains its stricter prohibition on direct-database product evidence.
 
 **Given** eventual consistency or asynchronous recovery must settle
 **When** a helper waits for evidence
@@ -5394,7 +5496,7 @@ So that success cannot be inferred only from HTTP status, polling text, or mock 
 
 **Given** existing integration scenarios migrate
 **When** helper adoption and compatibility are reviewed
-**Then** duplicated ad hoc polling/key decoding is removed where the shared contract applies, intentional provider-specific reads remain documented, and public testing-package changes are additive and warnings-as-errors clean
+**Then** duplicated ad hoc polling/key decoding is removed where the shared contract applies, intentional backend setup/fault/physical-diagnostic reads remain purpose-documented and isolated from application correctness evidence, and public testing-package changes are additive and warnings-as-errors clean
 **And** migration does not weaken assertions, replace production stores with fakes, or make tests pass by broadening timeouts or accepting more terminal states.
 
 **Given** Story 7.11 completion is requested
@@ -6034,7 +6136,7 @@ So that the engine cannot make story-local choices that strand persisted history
 
 **Dependencies:** No Epic 8 implementation dependency. The existing `IEventPayloadProtectionService`, provider-neutral metadata/outcome/workflow/redaction contracts, Story 22.7 preservation inventory, current 14-package manifest, and exact inspected EventStore/Parties source identities are specification inputs only.
 
-**Current reconciliation:** Story 8.1 is complete as an authorization artifact. `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` is tracked with `status: approved-authorized`; its normative SHA-256 recomputes exactly to `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`; detached packet `AR-20260801-01` records named approval in every mandatory role and explicitly authorizes Story 8.2. The repository still has no engine/adapter project, consistent with the artifact's no-runtime boundary. Stories 8.3–8.11 remain dependency-gated.
+**Current reconciliation (2026-10-05):** Story 8.1 remains done as an authorization artifact. The unchanged shared spec is `approved-authorized` at normative SHA-256 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` and full-file SHA-256 `542f0b6e4ebe24c02a403ed7af511a03d1a4b6ef5c83b789254fbb055a563c82`. `AR-20260913-01` approves the replacement; `AR-20260914-01` approves 8.2 and authorizes 8.3. Historical `AR-20260801-01` remains evidence only for its original `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` bytes. The non-packable core exists under in-progress 8.3; the production adapter remains absent/backlog. The [Dapr amendment](../implementation-artifacts/spec-shared-payload-protection-dapr-amendment-2026-10-05.md) is detached draft/unapproved, with no shared-authority rewrite or transferred approval. All later predecessor/G5 gates remain in force.
 
 **Acceptance Criteria:**
 
@@ -6073,10 +6175,10 @@ So that the engine cannot make story-local choices that strand persisted history
 **Then** unique LF/no-BOM markers produce the recorded SHA-256, incorporated fixture/vector hashes match, OD-01–OD-06 have no open material finding, every mandatory role is named/dated `Approved` for that same digest, and residual risks are explicitly accepted
 **And** author self-review, group aliases, story completion, issue status, planning approval, boolean flags, implied silence, a different digest, or a changed normative byte cannot grant authorization.
 
-**Given** detached approval packet `AR-20260801-01` is verified
+**Given** replacement approval `AR-20260913-01` and successor packet `AR-20260914-01` are verified
 **When** its reviewer identity, timestamp, digest, source identities, vector environments/results, findings, accepted risks, roles, and final disposition are compared with the normative rules
-**Then** Story 8.2 is `AUTHORIZED` only for exact-digest/source preflight and its bounded contracts/goldens implementation
-**And** the packet does not authorize Stories 8.3–8.11, production provisioning, package/release mutation, Server enablement, Parties edits, provider credentials, deletion of the local rollback path, or G5.
+**Then** the replacement approval authorizes only bounded 8.2 work, and the separate successor packet approves 8.2 and authorizes only bounded 8.3 under its frozen intent
+**And** no packet authorizes 8.4–8.11, the new Dapr amendment, provisioning, package/release mutation, Server enablement, Parties edits, provider credentials, deletion of the rollback path or G5.
 
 **Given** current repository sources have advanced beyond the inspected Story 8.1 baselines
 **When** Story 8.2 activation is considered
@@ -6085,7 +6187,7 @@ So that the engine cannot make story-local choices that strand persisted history
 
 **Given** Story 8.1 completion is validated
 **When** artifact structure/traceability, marker/digest, vector registry, two-toolchain plus independent reproduction, source register, ownership/package/custody, compatibility, threat/no-leak, sequence, and detached approval checks run
-**Then** the exact approved artifact remains `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md`, its current digest and authorization are reproducible, and only Story 8.2 is enabled under the stated preflight
+**Then** the exact approved artifact remains `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md`, its current digest and authority are reproducible, and 8.2/8.3 authorization is bounded by the respective exact-content packets
 **And** the package manifest remains 14, no engine/adapter/runtime/provider/Parties mutation is present, and no completion or G5 claim exceeds the content-bound evidence.
 
 ### Story 8.2: Payload-Protection Contracts And Golden Vectors
@@ -6100,15 +6202,15 @@ So that later engine slices implement one byte-exact durable protocol.
 
 **UX coverage:** No direct UX requirement applies. Contract diagnostics and fixtures use bounded reason codes and synthetic data only; they expose no payload, credential, provider-private detail, or user-facing legal-policy copy.
 
-**Dependencies:** Story 8.1's exact normative digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`, detached approval `AR-20260801-01`, and explicit Story 8.2 authorization. Current-source compatibility must be reverified before editing because the approved source baseline is historical.
+**Dependencies:** Story 8.1's exact replacement normative digest `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`, detached approval `AR-20260913-01`, and explicit Story 8.2 authorization; completion/8.3 authorization is separately bound by `AR-20260914-01`. Current-source compatibility must be reverified before editing because the approved source baseline is historical.
 
-**Current reconciliation:** Story 8.2 is backlog but explicitly authorized to start after its exact-digest/source preflight. `Hexalith.EventStore.Contracts/Security` already contains `IEventPayloadProtectionService`, metadata/carrier, readable/unreadable outcomes, stable reason codes, crypto-shredding workflow, backup admission, and readability decisions. The Story 8.1-selected personal-data policy, erasure-state, payload-kind, v2 context/snapshot carrier/completion types and repository-owned frozen vector fixtures are absent; no payload-protection engine project exists.
+**Current reconciliation (2026-10-05):** Story 8.2 is done under `AR-20260914-01`, which approves its exact reviewed additive contracts/frozen vectors and authorizes 8.3. The existing Contracts surface, fixture bytes, two-toolchain verifiers and approval/evidence packets remain unchanged. The provider-neutral non-packable core exists under in-progress 8.3; later successors remain gated. This reconciliation repins no proof or validator and grants no Dapr-amendment authority.
 
 **Acceptance Criteria:**
 
 **Given** Story 8.2 activation is requested
 **When** its preflight runs against the working baseline
-**Then** the Story 8.1 normative markers, LF/no-BOM rule, SHA-256, fixture references, `AR-20260801-01` identities/roles/disposition, and `story_8_2_authorized` state match exactly, while current EventStore public/source/package identities and preservation seams are recorded and compared with the approved baseline
+**Then** the Story 8.1 normative markers, LF/no-BOM rule, SHA-256, fixture references, `AR-20260913-01` identities/roles/disposition, and `story_8_2_authorized` state match exactly, while current EventStore public/source/package identities and preservation seams are recorded and compared with the approved baseline
 **And** a digest mismatch, altered normative byte, missing approval, incompatible drift, unresolved ambiguity, or working-tree uncertainty blocks code and returns the affected decision to the ADR rather than selecting a default.
 
 **Given** the existing Contracts security surface is inventoried
@@ -6170,7 +6272,7 @@ So that cryptographic behavior is shared without coupling to one key provider.
 
 **Dependencies:** Story 8.2 must be complete with an immutable evidence packet that matches the approved Story 8.1 digest and explicitly authorizes Story 8.3. No current ledger status or partial contract implementation substitutes for that gate.
 
-**Current reconciliation:** Story 8.3 is backlog and dependency-blocked pending Story 8.2 evidence. No `Hexalith.EventStore.PayloadProtection` project currently exists. Existing protection interfaces, metadata, no-op behavior, and Server hooks remain the preservation baseline; this story creates a non-packable provider-neutral project but does not integrate it into Server or release it.
+**Current reconciliation (2026-10-05):** Story 8.3 remains in progress under `AR-20260914-01`, the frozen core specification and existing constructibility approvals. `Hexalith.EventStore.PayloadProtection` exists as a provider-neutral non-packable core. Its frozen intent/evidence, no-provider/no-Server boundary and tracker value are preserved byte-for-byte; the detached Dapr draft requires impact/reapproval review before any affected successor change and does not claim 8.3 completion.
 
 **Acceptance Criteria:**
 
@@ -6388,80 +6490,65 @@ So that domains retain legal policy while reusable mechanics remain consistent.
 ### Story 8.6: Azure Key Vault Production Adapter Conformance
 
 As an operations and security owner,
-I want one real production adapter to conform without transferring key custody,
+I want one real production adapter to conform through qualified Dapr key operations without transferring custody,
 So that provider-neutral engine claims are proven against an operated service.
 
-**Requirements coverage:** Primary ownership of FR37's production-backend adapter/conformance slice; supporting NFR1/NFR3/NFR4 confidentiality, diagnostics, and operational behavior, NFR17 pinned environment evidence, and NFR19 real-backend failure/custody semantics.
+**Requirements coverage:** Primary ownership of FR37’s production-backend adapter/conformance slice; supporting NFR1/NFR3/NFR4, NFR17, NFR19 and PRD §8.4. Existing confidentiality, no-leak, compatibility, custody and rollback criteria remain mandatory.
 
-**Architecture constraints:** AD-11–AD-13 and AD-23. Azure is an outward companion adapter, dependencies are centrally versioned and evidence-pinned, provider/operator custody remains external, real-service persisted evidence is mandatory, and no provider mutation occurs without separately bound authority.
+**Architecture constraints:** AD-1, AD-9, AD-11–AD-13, AD-23. Qualify the pinned Dapr runtime/client/API and `crypto.azure.keyvault` candidate before choosing provider dependencies. The frozen §§5/11/16 and PF-01 currently prescribe a direct Azure adapter; the [detached Dapr amendment](../implementation-artifacts/spec-shared-payload-protection-dapr-amendment-2026-10-05.md) is draft/unapproved and must pass exact-content review before affected implementation. Policy approval does not rewrite frozen bytes or authorize provider SDKs/exceptions.
 
-**UX coverage:** No direct UX implementation applies. Readiness, metrics, audit, and typed outcomes expose only bounded backend/profile/version fingerprints and safe reason codes—never vault/key URIs, credentials, provider request/error text, key material, or payloads.
+**UX coverage:** No UI change. Readiness/metrics/audit/outcomes expose bounded safe backend/profile/version fingerprints and reason codes, never vault/key URIs, credentials, provider bodies, key material or payloads.
 
-**Dependencies:** Both Stories 8.4 and 8.5 must be complete with immutable packets matching Story 8.3/8.2/8.1 evidence and explicit authorization for Story 8.6. Azure subscription/resource, identity, network, vault/key, fault-injection, and cleanup actions additionally require named Security/Operations/IaC authority.
+**Dependencies:** Both approved 8.4 and 8.5 packets must match 8.3/8.2/8.1 and explicitly authorize 8.6; the affected Dapr amendment/design and story/evidence reapproval gates must close. Azure resource/identity/network/fault-injection/cleanup additionally needs named Security/Operations/IaC authority. Inventory disposition coordinates with 3.17 without creating a prerequisite cycle.
 
-**Current reconciliation:** Story 8.6 is backlog and dependency-blocked. No `Hexalith.EventStore.PayloadProtection.AzureKeyVault` project or centrally selected Azure SDK dependency exists, and no repository evidence proves a conforming Azure environment. Story 8.1 selected the profile but explicitly deferred stable SDK/API selection and PF-01 source/API reverification to this story; no Azure resource is assumed to exist or be authorized.
+**Current reconciliation:** Backlog and dependency-blocked; adapter absent, Dapr key-operation suitability unknown, no provider SDK/API/package selected, no conforming live Azure environment proven. The frozen Premium/RSA-HSM custody and pdenc-v2/AAD remain authority. Retain historical SDK-selection decisions as evidence for their original approved bytes; they cannot bypass PRD §8.4 or approve this amendment.
 
 **Acceptance Criteria:**
 
-**Given** Story 8.6 activation is requested
-**When** technical and external-authority preflight runs
-**Then** it validates the approved normative digest and all Story 8.2–8.5 contract/core/compatibility/lifecycle packets, confirms both parallel predecessor approvals explicitly authorize 8.6, and records the exact Azure environment owner, mutation scope, credentials/custody boundary, cleanup/retention plan, and authorization receipt
-**And** missing/stale approval, inconsistent route/lifecycle semantics, unapproved subscription/resource access, shared production data/key use, or ambiguous cleanup authority blocks provisioning and implementation evidence.
+**Given** qualification/activation is requested
+**When** source, normative digest, predecessors, amended-design approvals and external authority are verified
+**Then** the exact approved identities, mutation scope, custody/cleanup/retention plan and resource receipt are recorded
+**And** missing/stale/mismatched approval, production data/key reuse or ambiguous service authority blocks implementation/provisioning evidence.
 
-**Given** Azure service/SDK selection is finalized
-**When** PF-01 reverifies current official Azure Key Vault and .NET SDK documentation/packages
-**Then** stable non-preview `Azure.Identity` and `Azure.Security.KeyVault.Keys` versions supporting the repository target are centrally pinned with package hashes/dependency lock/SBOM, exact assembly/file versions and effective REST API version are recorded, and SDK retry behavior is configured within Story 8.5's total budget
-**And** `.csproj` versions, previews, floating ranges, credential-chain fallbacks, unrecorded SDK/API defaults, nested retry multiplication, or an API chosen from memory cannot enter the adapter.
+**Given** production key operations are required
+**When** the pinned Dapr runtime, client/HTTP/gRPC API and crypto component are qualified
+**Then** exact-version wrap/unwrap, strong current-version discovery, RSA-HSM-3072/non-exportability/operation validation, RSA-OAEP-256, deterministic identity/least privilege/private connectivity, cancellation, combined retry budgets, constructive typed failures, custody/buffer ownership/zeroing, historical decryptability and rollback have per-operation exact-profile evidence
+**And** component existence, an encrypt/decrypt happy path, a missing SDK convenience method or a Dapr secret store is insufficient; unknown rows remain unresolved and unsupported operations return to Architecture/Security for a compatible design, separately reviewed format migration or isolated evidence-backed exception.
 
-**Given** the companion adapter project is created
-**When** dependency and package graphs are inspected
-**Then** `src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/Hexalith.EventStore.PayloadProtection.AzureKeyVault.csproj` targets the approved framework, sets `IsPackable=false`, depends inward on the engine plus centrally governed Azure SDKs, and owns only Azure options/validation, credential/client construction, capability probe, wrap/unwrap, strong version selection, and constructive response classification
-**And** it duplicates no Contracts/core/state/policy code, references no domain/UI/consumer, supplies no control-plane/IaC implementation, changes no release manifest, and cannot become enabled by mere assembly presence.
+**Given** a qualified and approved Dapr design
+**When** the companion adapter and options contract are implemented
+**Then** supported provider operations traverse Dapr, application options use logical component/key identities, deployment owns endpoint/authentication/scopes/identity, dependencies are centrally governed and `IsPackable=false` remains
+**And** only a documented separately accepted unsupported operation may retain provider-specific application options/dependencies in exact isolated paths; no direct Azure SDK is selected from the old story prescription, no release manifest changes, Contracts/core duplication or automatic enablement occurs. Package identity/count changes remain 8.8’s atomic concern.
 
-**Given** `EventStore:PayloadProtection:AzureKeyVault` configuration is supplied
-**When** closed options validation runs
-**Then** `VaultUri`, `KeyName`, optional `ManagedIdentityClientId`, fixed `ExpectedKeySize=3072`, fixed `WrapAlgorithm=RSA-OAEP-256`, bounded `KeyVersionRefreshInterval`, and bounded `RequestTimeout` obey every frozen URI/name/environment/time rule and reject unknown fields
-**And** options cannot contain tenant/client secret, certificate, token, private key, wrapped DEK, connection string, managed-HSM/secret-store endpoint, non-HTTPS or malformed vault URI, arbitrary key version, algorithm downgrade, or unsupported timeout.
+**Given** the component/provider identity and startup contract are validated
+**When** readiness probes run
+**Then** closed options/TLS and deterministic system- or selected user-assigned identity meet the approved environment/ambiguity rules; an enabled time-valid provider-generated non-exportable RSA-HSM-3072 current version has exactly wrap/unwrap operations and matching identity, and a fresh 32-byte RSA-OAEP-256 wrap/unwrap probe is compared in fixed time and zeroed with state/lifecycle capabilities checked
+**And** missing/ambiguous identity, ambient/developer/credential fallback outside approved Development, key administration/export/secret/certificate access, malformed profile, probe mismatch or unsupported Dapr metadata/operation guarantees fail closed or return to review. A probe grants no key creation/rotation or production conformance.
 
-**Given** the adapter runs outside exact Development
-**When** credentials are constructed
-**Then** it uses exactly system-assigned or explicitly selected user-assigned `ManagedIdentityCredential`, fails when identity selection is ambiguous/missing, and performs no interactive/control-plane/secret/certificate operation
-**And** Azure CLI, IDE, environment client secret, default credential chain, workload fallback, production developer credential, or application permission to create/import/rotate/delete/recover/backup/restore/purge/release keys or modify roles/network is forbidden.
+**Given** new wraps, historical unwraps or provider failures occur
+**When** exact versions, freshness, cancellation, retry/breaker and reconciliation behavior are observed through Dapr
+**Then** new wraps use the strongly validated current version, historical unwrap uses the recorded exact version, refresh failure blocks stale new wraps, identity/algorithm/length and owned buffers are checked, and structured conditions preserve denied/unavailable/missing/deleted/consistency/cancellation mappings
+**And** no current-version fallback, local RSA, algorithm/key downgrade, message-text inference, permanent-failure retry, nested retry multiplication, deletion inference without lifecycle proof, blind ambiguous replay or direct-provider fallback occurs.
 
-**Given** readiness starts
-**When** the adapter validates its real data-plane boundary
-**Then** it validates TLS/closed options, authenticates, strongly reads `KeyName`, requires one enabled/time-valid provider-generated non-exportable 3072-bit `RSA-HSM` current version with exactly wrap/unwrap operations and matching versioned vault/name id, then wraps/unwraps a fresh 32-byte probe with `RsaOaep256`, compares in fixed time, zeroes all probe buffers, and revalidates state/lifecycle capabilities
-**And** mismatch makes readiness false; probe success neither persists a record nor proves production conformance, grants permission, or lets the application create/rotate/delete the KEK.
+**Given** a separately authorized isolated real-service environment
+**When** custody and conformance are tested
+**Then** ordinary Premium vault, RSA-HSM-3072 KEK, 90-day immutable soft-delete/purge protection, private endpoint/DNS, disabled public access/trusted-service bypass, diagnostic sink, key-scoped least-privilege runtime identity and distinct provisioning identity satisfy the unchanged profile, with qualified Dapr app/component scopes and authentication
+**And** software key, Managed-HSM substitution, public endpoint, broad/admin identity, production data/key, Dapr secret store, emulator/LocalDevelopment or mock cannot satisfy the gate.
 
-**Given** runtime wrap/unwrap executes
-**When** current or historical exact-version keys are selected
-**Then** new wraps use only the latest strongly validated enabled current version, historical unwrap uses the exact recorded versioned provider id, response identity/algorithm/length are verified, and all input/output buffers follow Story 8.3/8.5 ownership and zeroing rules
-**And** refresh failure blocks new wrap after the approved interval while preserving exact historical unwrap where safe; current-version fallback, local RSA, RSA1_5, RSA-OAEP/SHA-1, software/exportable/imported key, EC/symmetric Managed-HSM profile, or response-text inference is rejected.
+**Given** real persisted wrapped-key/v2 event/snapshot history
+**When** wrap/persist/restart/read, rotation/rewrap, identity/service denials, exact-version 404/disabled/expired keys, throttling/Retry-After, timeouts/network/5xx/TLS failure, cancellation/breaker, ambiguous mutation, stale-cache invalidation and post-v2 rollback prerequisites execute
+**Then** logical Dapr state/actor readback, exact typed outcomes, key/version/profile and custody evidence, no-leak/zeroing, redacted environment identities, runtime/client/component/provider API/package versions, UTC interval, commands/results and limitations are retained
+**And** mocks prove classifier logic only; notification/status/configuration or one state row cannot establish conformance or cross-component transaction guarantees.
 
-**Given** identity, network, service, key, or response failures occur
-**When** constructive classification runs
-**Then** configured-identity/401/403/network-policy denials, token/service/network transients, exact-version 404, disabled/expired/not-yet-valid/deleted key, 408/429/5xx, TLS identity failure, cancellation, invalid profile/algorithm/size, malformed response, returned-id mismatch, and ambiguous wrap/state transition map to the exact approved denied/unavailable/missing/deleted/consistency/cancellation behavior with correct retry/breaker/reconciliation policy
-**And** messages/stack traces/URIs/request IDs are never classification inputs, permanent failures never retry, deletion is never inferred without lifecycle evidence, and ambiguous mutations are never replayed or declared complete blindly.
+**Given** deletion/erasure/backup/rollback is assessed
+**When** evidence is reviewed
+**Then** online wrapped-DEK invalidation is distinguished from destruction/expiry of all recoverable replicas/exports/backups/restore/DR copies, old KEK versions/key records and historical readers are retained, and unknown copies stay pending/operator-required
+**And** recoverable KEK deletion, primary-row/cache invalidation or provider audit never certifies full immediate per-subject erasure.
 
-**Given** the production-equivalent conformance environment is provisioned under separate authority
-**When** its posture is independently inspected
-**Then** it uses a dedicated subscription/resource group, ordinary Premium vault, provider-generated RSA-HSM-3072 KEK, 90-day immutable soft-delete/purge protection, private endpoint/DNS, disabled public access/trusted-service bypass, diagnostic sink, dedicated user-assigned runtime identity with key-scoped Key Vault Crypto Service Encryption User or exact custom data actions, and an ephemeral runner inside the VNet
-**And** production tenant data/key, shared prod/non-prod vault/identity/KEK, public endpoint, software key, broad vault/control-plane role, application provisioning identity, DAPR secret store, emulator, LocalDevelopment, or mock cannot satisfy custody posture.
-
-**Given** real-service conformance executes
-**When** wrap/persist/restart/read, rotation/rewrap, 401, 403, exact-version 404, disabled/expired key, bounded 429/Retry-After, timeout, DNS/network/5xx, cancellation, breaker transitions, ambiguous state mutation, stale-cache invalidation, protected snapshot, and rollback prerequisites are exercised
-**Then** persisted wrapped-key/provider-state and exact typed outcomes agree with Stories 8.4–8.5, raw evidence records redacted resource hashes, region/profile/key attributes/version fingerprint, RBAC/network/SDK/API/package identities, UTC interval, source/spec hashes, and cleanup/retention state, and every owned buffer passes no-leak/zeroing checks
-**And** a mock handler proves only classifier logic; one happy-path capability probe, status code, interface, configuration, or state-store row cannot establish real backend conformance.
-
-**Given** deletion, backup, or crypto-erasure is discussed
-**When** evidence wording is reviewed
-**Then** it distinguishes online wrapped-DEK invalidation from expiry/destruction of every approved replica/export/backup/restore/DR copy, retains KEK versions and required key records for history/rollback, and keeps unknown copies pending/operator-required
-**And** 90-day recoverable KEK deletion, primary-row deletion, cache invalidation, vault audit, or EventStore completion cannot falsely certify immediate/full subject erasure or authorize shared-KEK removal.
-
-**Given** Story 8.6 completion is requested
-**When** central dependency/API verification, adapter unit/classification/options/startup tests, real isolated service conformance/fault injection, persisted provider/state evidence, RBAC/network/custody review, retry/breaker/zeroing/no-leak scans, and authorized cleanup/retention disposition pass
-**Then** an immutable packet binds source SHA, normative and predecessor hashes, package/API identities, redacted Azure environment/authority, commands/results, retained resources/limitations, and named Security/Operations/EventStore/Test approvals
-**And** only Story 8.7 may be explicitly authorized; both projects remain non-packable and no Server integration, external release, production enablement, Parties mutation, key deletion beyond the authorized test disposition, or G5 claim occurs.
+**Given** completion is requested
+**When** operation qualification, approved design/profile, live Dapr custody/failure/persistence/compatibility/no-leak/rollback and dependency/API checks pass
+**Then** an immutable packet binds exact amended/base and predecessor identities, Dapr/component/provider/source/package evidence, authority, commands/results, cleanup/retention/limits and named Architecture/Security/Operations/EventStore/Release/Test approvals
+**And** only 8.7 may be explicitly authorized; no Server enablement, external release, production traffic, Parties migration, unauthorized key/resource mutation or G5 closure follows. This planning reconciliation leaves 8.6 backlog and qualification unresolved.
 
 ### Story 8.7: Server Persistence And Snapshot Integration
 
