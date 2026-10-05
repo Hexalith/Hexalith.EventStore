@@ -165,7 +165,12 @@ public class EventPublicationIntegrationTests {
         ((int)committedAtWrite["pending_command_count"]).ShouldBe(0);
 
         // A later command really advances the stream before a fresh actor handles the first command again.
-        _ = await actor.ProcessCommandAsync(CreateTestEnvelope(correlationId: "corr-later-proof"));
+        CommandEnvelope laterCommand = CreateTestEnvelope(correlationId: "corr-later-proof");
+        _ = await actor.ProcessCommandAsync(laterCommand);
+        CommandStatusRecord laterCompleted = (await statuses.ReadStatusAsync(laterCommand.TenantId, laterCommand.MessageId)).ShouldNotBeNull();
+        laterCompleted.Status.ShouldBe(CommandStatus.Completed);
+        laterCompleted.EventCount.ShouldBe(2);
+        laterCompleted.CommittedEventSequence.ShouldBe(4);
         var recreatedState = new InMemoryStateManager();
         foreach ((string key, object value) in state.CommittedState)
         {
@@ -176,6 +181,8 @@ public class EventPublicationIntegrationTests {
             = CreateInMemoryActor(observer, recreatedState);
         EventEnvelope[] recreatedEvents = await recreated.GetEventsAsync(0);
         recreatedEvents.Select(envelope => envelope.SequenceNumber).ShouldBe(new long[] { 1, 2, 3, 4 });
+        recreatedEvents.Where(envelope => envelope.CorrelationId == laterCommand.CorrelationId)
+            .Select(envelope => envelope.SequenceNumber).ShouldBe(new long[] { 3, 4 });
         ((IdempotencyRecord)recreatedState.CommittedState[$"idempotency:{command.MessageId}"]).ShouldBe(terminal);
         CommandStatusRecord beforeDuplicate = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId)).ShouldNotBeNull();
         beforeDuplicate.ShouldBe(completed);
