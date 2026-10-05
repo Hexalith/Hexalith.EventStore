@@ -929,7 +929,7 @@ public sealed class ReminderCoordinatorTests
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
     }
 
-    /// <summary>Name collisions retain both witnesses and cannot hide either source's overlap with a third effect.</summary>
+    /// <summary>A name collision keeps the evidence digests of both same-name intents as quarantine records and cannot hide either source's overlap with a third effect.</summary>
     /// <param name="shareSecondSource">Whether the third witness shares the second same-name intent's source.</param>
     /// <param name="inputOrder">The permutation of the three current intents.</param>
     /// <param name="future">Whether the colliding intents are future work rather than due work.</param>

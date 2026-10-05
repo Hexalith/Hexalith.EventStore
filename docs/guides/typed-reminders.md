@@ -48,7 +48,9 @@ The contract also binds its callers:
   the receipt.
 - `(source domain, source aggregate, source sequence, kind, target)` must be
   unique among a target's current intents. Intents that share it share one
-  effect identity, and both are quarantined as `effect-collision`.
+  effect identity, and both are quarantined as `effect-collision`. A witness
+  collision on a shared name is recorded as `witness-collision` even when that
+  name also shares an effect identity.
 - Retain the source coordinates when retrying the same logical submission.
   For the same kind and target, a distinct logical submission needs distinct
   committed source-event coordinates throughout the lifetime of the stream.
@@ -106,7 +108,9 @@ corrupted evidence. It is quarantined and never executed.
 3. Quarantine two different intents that map to one reminder name as
    `witness-collision`, and a stored witness whose name now carries different
    evidence. Quarantine intents with different names that share one effect
-   identity as `effect-collision`. None of them is submitted.
+   identity as `effect-collision`. A witness collision on a shared name is
+   recorded as `witness-collision` even when that name also shares an effect
+   identity. None of them is submitted.
 4. Write the tenant registry and the tenant candidate index by compare-and-swap,
    before anything is scheduled. This runs whenever the item holds work, so an
    index restored from an older backup regains its candidates; it writes
