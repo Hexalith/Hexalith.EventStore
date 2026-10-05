@@ -15,6 +15,9 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <summary>Gets or sets an observer invoked after an accepted conditional write, before its caller re-reads.</summary>
     public Action<string>? AfterTrySave { get; set; }
 
+    /// <summary>Gets or sets an observer invoked before an unconditional write, including an audit attempt.</summary>
+    public Action<string>? BeforeSave { get; set; }
+
     /// <summary>Gets the number of reads through the coordinator store.</summary>
     public int Reads { get; private set; }
 
@@ -29,9 +32,12 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <inheritdoc/>
     public Task SaveAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
         where TValue : class
-        => FailDispositionWrites && key.Contains(":disposition:", StringComparison.Ordinal)
+    {
+        BeforeSave?.Invoke(key);
+        return FailDispositionWrites && key.Contains(":disposition:", StringComparison.Ordinal)
             ? throw new InvalidOperationException("Synthetic audit store outage.")
             : inner.SaveAsync(storeName, key, value, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public async Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default)
