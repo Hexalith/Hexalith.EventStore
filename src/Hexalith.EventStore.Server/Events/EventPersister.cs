@@ -43,6 +43,7 @@ public partial class EventPersister(
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(domainResult);
         ArgumentException.ThrowIfNullOrWhiteSpace(domainServiceVersion);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (domainResult.Events.Count == 0) {
             return new EventPersistResult(0, []);
@@ -82,14 +83,19 @@ public partial class EventPersister(
 
         // Load current metadata to get sequence number
         ConditionalValue<AggregateMetadata> metadataResult = await stateManager
-            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
 
         long currentSequence = metadataResult.HasValue ? metadataResult.Value.CurrentSequence : 0;
+        if (currentSequence < 0) {
+            throw new InvalidOperationException("Invalid aggregate metadata: CurrentSequence cannot be negative.");
+        }
+
+        long newSequence = checked(currentSequence + domainResult.Events.Count);
 
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
-        _ = currentSequence + 1;
         var preparedEvents = new List<(
             string EventTypeName,
             PayloadProtectionResult ProtectionResult,
@@ -104,6 +110,7 @@ public partial class EventPersister(
         try {
 
             foreach ((IEventPayload eventPayload, string eventTypeName, string serializationFormat, string? eventContractType, int? payloadVersion, int metadataVersion) in validatedPayloads) {
+                cancellationToken.ThrowIfCancellationRequested();
                 byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
                     ? serialized.PayloadBytes
                     : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
@@ -136,8 +143,10 @@ public partial class EventPersister(
             long firstGlobalPosition = await _globalPositionAllocator
                 .AllocateAsync(domainResult.Events.Count, cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
 
             for (int i = 0; i < preparedEvents.Count; i++) {
+                cancellationToken.ThrowIfCancellationRequested();
                 (
                     string eventTypeName,
                     PayloadProtectionResult protectionResult,
@@ -185,15 +194,15 @@ public partial class EventPersister(
                 Log.PersistingEvent(logger, key, eventTypeName, sequenceNumber);
 
                 await stateManager
-                    .SetStateAsync(key, envelope)
+                    .SetStateAsync(key, envelope, cancellationToken)
                     .ConfigureAwait(false);
             }
 
             // Update aggregate metadata with new sequence and timestamp
-            long newSequence = currentSequence + domainResult.Events.Count;
+            cancellationToken.ThrowIfCancellationRequested();
             await stateManager
                 .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
-                    newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1))
+                    newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1), cancellationToken)
                 .ConfigureAwait(false);
 
             Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);

@@ -1380,7 +1380,8 @@ public partial class AggregateActor(
                                 aggregateType: aggregateType,
                                 command: command,
                                 domainResult: domainResult,
-                                domainServiceVersion: domainServiceVersion)
+                                domainServiceVersion: domainServiceVersion,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
                         // Step 5b: Snapshot creation (Story 3.9)
@@ -4637,6 +4638,11 @@ public partial class AggregateActor(
                     stage: ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage),
                     sequenceNumber: envelope.SequenceNumber);
             }
+
+            // The actor's legacy replay route is still active for V1 events. Check
+            // the application-owned logical digest before forwarding plaintext to
+            // a domain service; older V1 rows without the additive field remain valid.
+            EventLogicalDigest.RequireMatching(envelope, outcome.SerializationFormat!, outcome.PayloadBytes!);
 
             readable.Add(envelope with {
                 Payload = outcome.PayloadBytes!,

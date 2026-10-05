@@ -92,6 +92,33 @@ public class AggregateActorDomainResultTests {
     }
 
     [Fact]
+    public async Task ProcessCommandAsync_CorruptLogicalDigest_StopsBeforeDomainInvocation() {
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        _ = ctx.StateManager.TryGetStateAsync<AggregateMetadata>(
+                "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(1, DateTimeOffset.UtcNow, null)));
+        var stored = new EventEnvelope(
+            "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", 1,
+            "json", [1, 2, 3], null);
+        stored = stored with {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(stored, "json",
+                EventLogicalDigest.HashPayload(stored.Payload)),
+        };
+        _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
+                "test-tenant:test-domain:agg-001:events:1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored with { Payload = [4, 5, 6] }));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeFalse();
+        _ = ctx.Invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public void ToContractEventEnvelope_PreservesVersionMetadataForVerifiedRoutes() {
         var stored = new EventEnvelope(
             "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0, DateTimeOffset.UtcNow,
@@ -274,6 +301,23 @@ public class AggregateActorDomainResultTests {
             Arg.Is<string>(s => s.Contains(":events:")),
             Arg.Any<EventEnvelope>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_DomainSuccess_ForwardsCallerCancellationToEventStaging() {
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        using var cancellation = new CancellationTokenSource();
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope(), cancellation.Token);
+
+        result.Accepted.ShouldBeTrue();
+        await ctx.StateManager.Received(1).SetStateAsync(
+            Arg.Is<string>(key => key.Contains(":events:", StringComparison.Ordinal)),
+            Arg.Any<EventEnvelope>(),
+            cancellation.Token);
     }
 
     [Fact]

@@ -115,7 +115,6 @@ public class PayloadProtectionHookTests {
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
         var capturingProvider = new CapturingProtectionProvider();
         var persister = new EventPersister(stateManager, Substitute.For<ILogger<EventPersister>>(), capturingProvider);
 
@@ -127,7 +126,7 @@ public class PayloadProtectionHookTests {
             domainServiceVersion: "v1",
             cancellationToken: cts.Token);
 
-        capturingProvider.LastCancellationToken.IsCancellationRequested.ShouldBeTrue();
+        capturingProvider.LastCancellationToken.ShouldBe(cts.Token);
     }
 
     [Fact]

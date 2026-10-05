@@ -13,6 +13,36 @@ internal static class EventLogicalDigest
     /// <summary>Hashes the logical payload once before optional payload protection.</summary>
     internal static byte[] HashPayload(ReadOnlySpan<byte> payload) => SHA256.HashData(payload);
 
+    /// <summary>Verifies a returned logical payload against its application-owned digest when present.</summary>
+    /// <remarks>Historical V1 events without this additive digest remain readable.</remarks>
+    internal static void RequireMatching(EventEnvelope envelope, string applicationFormat, ReadOnlySpan<byte> applicationPayload)
+    {
+        ArgumentNullException.ThrowIfNull(envelope);
+        if (envelope.ApplicationPayloadDigest is null)
+        {
+            if (envelope.MetadataVersion == 2)
+            {
+                throw new InvalidOperationException("LogicalDigestMismatch: a versioned event lacks its application digest.");
+            }
+
+            return;
+        }
+
+        byte[] payloadHash = HashPayload(applicationPayload);
+        try
+        {
+            string actual = Compute(envelope, applicationFormat, payloadHash);
+            if (!string.Equals(envelope.ApplicationPayloadDigest, actual, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("LogicalDigestMismatch: actor logical event bytes or metadata changed.");
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(payloadHash);
+        }
+    }
+
     /// <summary>Binds the payload hash to addressed identity, message lineage, type, version and original format.</summary>
     internal static string Compute(EventEnvelope envelope, string applicationFormat, ReadOnlySpan<byte> payloadHash)
     {

@@ -85,6 +85,55 @@ public class EventPersisterTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
     }
 
+    [Fact]
+    public async Task PersistEventsAsync_PreCanceledRequestDoesNotReadOrStageState() {
+        (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) =
+            CreatePersisterWithAllocator();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => persister.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]),
+            "v1", cancellation.Token));
+
+        stateManager.ReceivedCalls().ShouldBeEmpty();
+        allocator.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_CancellationAfterMetadataReadDoesNotStageState() {
+        (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) =
+            CreatePersisterWithAllocator();
+        using var cancellation = new CancellationTokenSource();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, cancellation.Token)
+            .Returns(_ => {
+                cancellation.Cancel();
+                return new ConditionalValue<AggregateMetadata>(false, default!);
+            });
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => persister.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]),
+            "v1", cancellation.Token));
+
+        allocator.CallCount.ShouldBe(0);
+        _ = stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(), Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_SequenceOverflowRefusesBeforeReservationOrWrite() {
+        (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) =
+            CreatePersisterWithAllocator();
+        ConfigureExistingMetadata(stateManager, long.MaxValue);
+
+        _ = await Should.ThrowAsync<OverflowException>(() => persister.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1"));
+
+        allocator.CallCount.ShouldBe(0);
+        _ = stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(), Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
+    }
+
     // === 6.1: New aggregate -- first event gets sequence 1, metadata created with CurrentSequence=1 ===
 
     [Fact]

@@ -99,6 +99,21 @@ public class EventStreamReaderTests {
     }
 
     [Fact]
+    public async Task RehydrateAsync_RejectsEventWhoseAddressDiffersFromItsKey() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 1);
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true,
+                CreateTestEvent(1) with { TenantId = "other-tenant" }));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: CancellationToken.None));
+
+        error.Message.ShouldContain("AddressMismatch");
+    }
+
+    [Fact]
     public async Task RehydrateAsync_CompatibilityInterfaceRejectsPreCanceledCall() {
         var fake = new FakeEventStreamReader();
         IEventStreamReader reader = fake;

@@ -119,8 +119,16 @@ public partial class EventStreamReader(
                 throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
             }
 
-            LegacyEventReadGuard.RequireUnversioned(eventResult.Value);
-            events.Add(eventResult.Value);
+            EventEnvelope stored = eventResult.Value;
+            if (!string.Equals(stored.TenantId, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(stored.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(stored.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+                || stored.SequenceNumber != seq || stored.Payload is null) {
+                throw new InvalidOperationException("AddressMismatch: actor event identity or sequence disagrees with its key.");
+            }
+
+            LegacyEventReadGuard.RequireUnversioned(stored);
+            events.Add(stored);
         }
 
         cancellationToken.ThrowIfCancellationRequested();

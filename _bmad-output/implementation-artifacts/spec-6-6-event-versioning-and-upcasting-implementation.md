@@ -80,6 +80,11 @@ records focused tests and a warning-free Release build. The reader is not yet
 wired into production consumers; actor-head/route checks and live Dapr proof
 remain open. V2 writes remain fenced and no M1–M8 task is complete.
 
+The subsequent [V1 read-safety verification](evidence/story-6-6/verification-2026-10-05-v1-read-safety.md)
+records actor rehydration digest checks, addressed stream reads, production
+cancellation forwarding and the affected Server test results. This remains
+partial evidence; the shared reader and M1–M8 acceptance are still open.
+
 ### Re-derivation requirements from resumed review
 
 Current follow-up implementation and exact verification evidence is recorded in [Story 6.6 follow-up evidence](evidence/story-6-6/verification-2026-10-04-followup.md). Internal registry/hash/options, bounded local E/F execution, registered implementation/type/validator bindings, an optional bounded producer/renderer and default incremental V1 response admission have been added alongside the review repairs. The final-source Release build and standard package consumer checks passed; full Server regression retained two unrelated failures and 25 existing skips. These results do not establish authenticated production reader, startup readiness, complete dependency closure or M1–M8 acceptance. Remaining local omissions and the actual provider/profile authority boundary are recorded separately; status remains `in-progress`.

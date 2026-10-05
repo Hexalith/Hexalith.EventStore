@@ -80,26 +80,7 @@ internal sealed class DaprLogicalEventReader
                     sequenceNumber: sequenceNumber);
             }
 
-            if (source.MetadataVersion == 2 && source.ApplicationPayloadDigest is null)
-            {
-                throw new InvalidOperationException("LogicalDigestMismatch: a versioned event lacks its application digest.");
-            }
-            if (source.ApplicationPayloadDigest is not null)
-            {
-                byte[] applicationHash = EventLogicalDigest.HashPayload(outcome.PayloadBytes);
-                try
-                {
-                    string actual = EventLogicalDigest.Compute(source, outcome.SerializationFormat, applicationHash);
-                    if (!string.Equals(source.ApplicationPayloadDigest, actual, StringComparison.Ordinal))
-                    {
-                        throw new InvalidOperationException("LogicalDigestMismatch: actor logical event bytes or metadata changed.");
-                    }
-                }
-                finally
-                {
-                    CryptographicOperations.ZeroMemory(applicationHash);
-                }
-            }
+            EventLogicalDigest.RequireMatching(source, outcome.SerializationFormat, outcome.PayloadBytes);
 
             ResolvedLogicalEvent resolved = await _resolver.ResolveAsync(identity.Domain,
                 source.EventTypeName, source.MetadataVersion, source.EventContractType, source.PayloadVersion,
