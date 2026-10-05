@@ -5392,3 +5392,14 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Story 6.1 wire validation accepts a receipt that omits its contract type.
   evidence: The runner compares `r.get("type", contract)` with the expected contract, so a missing type matches. This is the Story 6.1 evidence runner.
+
+## Deferred from: code review of spec-6-6-event-versioning-and-upcasting-implementation-2.md (2026-10-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Route Admin stream reconstruction (state-at, bisect, blame, step, sandbox) through the shared Story 6.6 evolution reader.
+  evidence: Review of `65ac85a2`. `AdminStreamQueryController` still passes typed event lists to `DaprAggregateStateReconstructor.ReconstructAsync` at seven call sites, while the actor's command and manual-snapshot paths use `DaprProductionLogicalEventReader` for a pinned domain. This is pre-existing and out of slice scope: stream diagnostics stay on their current code until the split diagnostics spec lands. The commit message's "replay and reconstruction share one Dapr reader" does not cover these sites.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Unverified medium: `ReconstructAddressedAsync` does not re-check the metadata ETag across a multi-page range.
+  evidence: Review of `65ac85a2`. `EventStreamReader` ends with `RequireUnchangedMetadataAsync`, but `ReconstructAddressedAsync` relies only on per-page before/after checks. This duplicates the two open cross-page ETag rows above. Settle them together by showing a supported same-head, same-floor ETag change within one actor turn across more than 256 events.
+  status: open
