@@ -18,6 +18,89 @@ public sealed class DaprLogicalEventReaderTests
     private static readonly AggregateIdentity Identity = new("tenant", "d", "aggregate");
 
     [Fact]
+    public async Task ReadsBoundedAddressedPageAtStableLogicalHead()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        AggregateMetadata metadata = new(2, DateTimeOffset.UnixEpoch, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+        EventEnvelope first = CreateEvent();
+        EventEnvelope second = first with { SequenceNumber = 2, MessageId = "message-2" };
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, first));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, second));
+        _ = protection.TryUnprotectEventPayloadAsync(Identity, Arg.Any<string>(),
+            Arg.Any<byte[]>(), "json", Arg.Any<EventStorePayloadProtectionMetadata>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(PayloadUnprotectionOutcome.Readable([1, 2], "json",
+                EventStorePayloadProtectionMetadata.Unprotected())));
+        var reader = CreateReader(registry, stateManager, protection);
+
+        using DaprLogicalEventPage page = await reader.ReadPageAsync(
+            Identity, "route", 1, 2, CancellationToken.None).ConfigureAwait(true);
+
+        page.StartSequence.ShouldBe(1);
+        page.ActorHead.ShouldBe(2);
+        page.Events.Select(static view => view.SequenceNumber).ShouldBe([1L, 2L]);
+        _ = await stateManager.Received(2).TryGetStateAsync<AggregateMetadata>(
+            Identity.MetadataKey, Arg.Any<CancellationToken>()).ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task WrongAggregateTypeInPageRefusesBeforeProtection()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(1, DateTimeOffset.UnixEpoch, null)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent()));
+        var reader = CreateReader(registry, stateManager, protection);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadPageAsync(Identity, "wrong-route", 1, 1, CancellationToken.None)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("AddressMismatch");
+        _ = protection.DidNotReceiveWithAnyArgs().TryUnprotectEventPayloadAsync(
+            default!, default!, default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task ChangedActorHeadRefusesCompletedLogicalPage()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                    new AggregateMetadata(1, DateTimeOffset.UnixEpoch, null)),
+                new ConditionalValue<AggregateMetadata>(true,
+                    new AggregateMetadata(2, DateTimeOffset.UnixEpoch, null)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent()));
+        _ = protection.TryUnprotectEventPayloadAsync(Identity, Arg.Any<string>(),
+            Arg.Any<byte[]>(), "json", Arg.Any<EventStorePayloadProtectionMetadata>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(PayloadUnprotectionOutcome.Readable([1, 2], "json",
+                EventStorePayloadProtectionMetadata.Unprotected())));
+        var reader = CreateReader(registry, stateManager, protection);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadPageAsync(Identity, "route", 1, 1, CancellationToken.None)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("SourceHeadChanged");
+    }
+
+    [Fact]
     public async Task ReadsAddressedDaprValueAndResolvesAliasWithoutChangingStoredBytes()
     {
         using EventDomainRegistry registry = CreateRegistry();

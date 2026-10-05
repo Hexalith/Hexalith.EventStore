@@ -22,11 +22,29 @@ internal static class ProjectionEventWireBuilder {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
 
+        // Validate the complete addressed batch before invoking a protection provider
+        // or constructing any handler-facing projection event.
+        long previousSequence = 0;
+        for (int i = 0; i < events.Count; i++) {
+            EventEnvelope envelope = events[i]
+                ?? throw new InvalidOperationException("AddressMismatch: projection batch contains a null event.");
+            if (!string.Equals(envelope.TenantId, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(envelope.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(envelope.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+                || envelope.SequenceNumber <= 0
+                || envelope.Payload is null
+                || (i > 0 && (previousSequence == long.MaxValue || envelope.SequenceNumber != previousSequence + 1))) {
+                throw new InvalidOperationException("AddressMismatch: projection batch does not match its addressed contiguous stream.");
+            }
+
+            LegacyEventReadGuard.RequireUnversioned(envelope);
+            previousSequence = envelope.SequenceNumber;
+        }
+
         var projectionEvents = new ProjectionEventDto[events.Count];
         for (int i = 0; i < events.Count; i++) {
             EventEnvelope envelope = events[i];
             cancellationToken.ThrowIfCancellationRequested();
-            LegacyEventReadGuard.RequireUnversioned(envelope);
             EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
                 .Read(envelope.Extensions);
             if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
@@ -68,6 +86,8 @@ internal static class ProjectionEventWireBuilder {
                 payload = outcome.PayloadBytes!;
                 serializationFormat = outcome.SerializationFormat!;
             }
+
+            EventLogicalDigest.RequireMatching(envelope, serializationFormat, payload);
 
             projectionEvents[i] = new ProjectionEventDto(
                 envelope.EventTypeName,

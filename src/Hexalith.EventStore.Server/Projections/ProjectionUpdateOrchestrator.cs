@@ -117,12 +117,6 @@ internal partial class ProjectionUpdateOrchestrator(
                 new ActorId(identity.ActorId),
                 AggregateActorTypeName);
 
-            // Full replay remains the safe immediate-delivery contract until
-            // projection handlers receive prior state or become explicitly incremental-aware.
-            EventEnvelope[] events = await aggregateProxy
-                .GetEventsAsync(0)
-                .ConfigureAwait(false);
-
             long lastDeliveredSequence = 0;
             try {
                 lastDeliveredSequence = await checkpointTracker
@@ -132,6 +126,14 @@ internal partial class ProjectionUpdateOrchestrator(
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
             }
+
+            // Full replay remains the safe immediate-delivery contract until
+            // projection handlers receive prior state or become explicitly incremental-aware.
+            // Read the checkpoint first so later fixed-head/current-path admission can
+            // prove zero-history work without moving this read across a handler effect.
+            EventEnvelope[] events = await aggregateProxy
+                .GetEventsAsync(0)
+                .ConfigureAwait(false);
 
             if (events.Length == 0) {
                 // Drift detection covers the canonical "stale checkpoint + empty stream" case

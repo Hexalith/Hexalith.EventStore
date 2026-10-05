@@ -14,6 +14,7 @@ internal sealed class DaprLogicalEventView : IDisposable
         CorrelationId = source.CorrelationId;
         CausationId = source.CausationId;
         SequenceNumber = source.SequenceNumber;
+        StoredPayloadLength = source.Payload.Length;
         _resolved = resolved;
     }
 
@@ -28,6 +29,9 @@ internal sealed class DaprLogicalEventView : IDisposable
 
     /// <summary>Gets the unchanged aggregate-local sequence.</summary>
     internal long SequenceNumber { get; }
+
+    /// <summary>Gets the measured logical stored-payload byte count for page admission.</summary>
+    internal int StoredPayloadLength { get; }
 
     /// <summary>Gets the privately owned current event view.</summary>
     internal ResolvedLogicalEvent Resolved => _resolved;

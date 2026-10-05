@@ -99,6 +99,19 @@ public class EventStreamReaderTests {
     }
 
     [Fact]
+    public async Task RehydrateAsync_OversizedLegacyArrayRefusesBeforeEventReads() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 32_769);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: CancellationToken.None));
+
+        error.Message.ShouldContain("LegacyArrayLimit");
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RehydrateAsync_RejectsEventWhoseAddressDiffersFromItsKey() {
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
         ConfigureMetadata(stateManager, TestIdentity, 1);

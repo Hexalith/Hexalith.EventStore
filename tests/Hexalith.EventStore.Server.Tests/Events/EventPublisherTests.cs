@@ -89,7 +89,7 @@ public class EventPublisherTests {
     }
 
     [Fact]
-    public async Task PublishEventsAsync_PreservesCompleteVersionTupleInActualPublishedEnvelope() {
+    public async Task PublishEventsAsync_VersionedEventWithValidDigestDoesNotReachBroker() {
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope original = CreateTestEnvelope(eventTypeName: "order-created") with {
             MetadataVersion = 2,
@@ -103,17 +103,73 @@ public class EventPublisherTests {
 
         EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [original], "corr-001");
 
-        result.Success.ShouldBeTrue();
-        await daprClient.Received(1).PublishEventAsync(
-            "pubsub", "test-tenant.test-domain.events",
-            Arg.Is<EventEnvelope>(actual => actual.MetadataVersion == original.MetadataVersion
-                && actual.EventContractType == original.EventContractType
-                && actual.PayloadVersion == original.PayloadVersion
-                && actual.ApplicationPayloadDigest == original.ApplicationPayloadDigest
-                && actual.EventTypeName == original.EventTypeName
-                && actual.MessageId == original.MessageId
-                && actual.Payload.SequenceEqual(original.Payload)),
-            Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>());
+        result.Success.ShouldBeFalse();
+        result.PublishedCount.ShouldBe(0);
+        await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync(
+            default!, default!, default(EventEnvelope)!, default(Dictionary<string, string>)!, default);
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_ChangedLogicalPayloadDoesNotReachBroker() {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope original = CreateTestEnvelope();
+        original = original with {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(original, "json",
+                EventLogicalDigest.HashPayload(original.Payload)),
+        };
+        EventEnvelope changed = original with { Payload = [9, 8, 7] };
+
+        EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [changed], "corr-001");
+
+        result.Success.ShouldBeFalse();
+        result.PublishedCount.ShouldBe(0);
+        await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync(
+            default!, default!, default(EventEnvelope)!, default(Dictionary<string, string>)!, default);
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_VersionedEventWithoutDigestDoesNotReachBroker() {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope versioned = CreateTestEnvelope(eventTypeName: "order-created") with {
+            MetadataVersion = 2,
+            EventContractType = "order-created",
+            PayloadVersion = 1,
+        };
+
+        EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [versioned], "corr-001");
+
+        result.Success.ShouldBeFalse();
+        result.PublishedCount.ShouldBe(0);
+        await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync(
+            default!, default!, default(EventEnvelope)!, default(Dictionary<string, string>)!, default);
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_LaterCrossTenantEventDoesNotPartiallyPublishBatch() {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope first = CreateTestEnvelope(sequenceNumber: 1);
+        EventEnvelope foreign = CreateTestEnvelope(sequenceNumber: 2) with { TenantId = "other-tenant" };
+
+        EventPublishResult result = await publisher.PublishEventsAsync(
+            TestIdentity, [first, foreign], "corr-001");
+
+        result.Success.ShouldBeFalse();
+        result.PublishedCount.ShouldBe(0);
+        await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync(
+            default!, default!, default(EventEnvelope)!, default(Dictionary<string, string>)!, default);
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_LaterSequenceGapDoesNotPartiallyPublishBatch() {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+
+        EventPublishResult result = await publisher.PublishEventsAsync(
+            TestIdentity, [CreateTestEnvelope(1), CreateTestEnvelope(3)], "corr-001");
+
+        result.Success.ShouldBeFalse();
+        result.PublishedCount.ShouldBe(0);
+        await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync(
+            default!, default!, default(EventEnvelope)!, default(Dictionary<string, string>)!, default);
     }
 
     // --- Task 6.1: Single event CloudEvents metadata ---

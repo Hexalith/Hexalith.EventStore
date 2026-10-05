@@ -59,7 +59,7 @@ public partial class EventPublisher(
         }
 
         // Extract CausationId from first event envelope (all events in batch share same CausationId)
-        string causationId = events[0].CausationId ?? correlationId;
+        string causationId = events[0]?.CausationId ?? correlationId;
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPublish, ActivityKind.Producer);
@@ -74,6 +74,7 @@ public partial class EventPublisher(
         int publishedCount = 0;
 
         try {
+            ValidateAddressedBatch(identity, events);
             if (IsTestPublishFaultActive(publisherOptions, correlationId, hostEnvironment)) {
                 string failureReason = $"Configured test publish fault is active for correlation id {correlationId}.";
                 Log.TestPublishFaultInjected(logger, correlationId, identity.TenantId, identity.Domain, identity.AggregateId, topic);
@@ -163,6 +164,15 @@ public partial class EventPublisher(
                     _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage={ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage)} ReasonCode={decision.ReasonCode}"));
                     return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(decision.ReasonCode));
                 }
+
+                // The application digest binds the original logical payload and addressed
+                // metadata. A readable protection result is not evidence that the bytes still
+                // match the actor-owned event, so refuse publication before constructing the
+                // broker envelope when this logical readback has changed.
+                EventLogicalDigest.RequireMatching(
+                    eventEnvelope,
+                    unprotectOutcome.SerializationFormat!,
+                    unprotectOutcome.PayloadBytes!);
 
                 var protectionResult = new PayloadProtectionResult(
                     unprotectOutcome.PayloadBytes!,
@@ -254,6 +264,30 @@ public partial class EventPublisher(
 
             ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "publish");
             return new EventPublishResult(false, publishedCount, safeFailureReason);
+        }
+    }
+
+    private static void ValidateAddressedBatch(AggregateIdentity identity, IReadOnlyList<EventEnvelope> events) {
+        long previousSequence = 0;
+        for (int index = 0; index < events.Count; index++) {
+            EventEnvelope envelope = events[index]
+                ?? throw new InvalidOperationException("AddressMismatch: publication batch contains a null event.");
+            if (!string.Equals(envelope.TenantId, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(envelope.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(envelope.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+                || envelope.SequenceNumber <= 0
+                || envelope.Payload is null
+                || (index > 0 && (previousSequence == long.MaxValue || envelope.SequenceNumber != previousSequence + 1))) {
+                throw new InvalidOperationException("AddressMismatch: publication batch does not match its addressed contiguous stream.");
+            }
+
+            if (envelope.MetadataVersion != 1
+                || envelope.EventContractType is not null
+                || envelope.PayloadVersion is not null) {
+                throw new InvalidOperationException("CapabilityMismatch: versioned publication requires a qualified route proof.");
+            }
+
+            previousSequence = envelope.SequenceNumber;
         }
     }
 

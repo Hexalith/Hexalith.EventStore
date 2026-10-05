@@ -2094,7 +2094,10 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(registration);
 
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(0).Returns(new[] { CreateTestEnvelope(2), CreateTestEnvelope(5) });
+        _ = aggregateActor.GetEventsAsync(0).Returns(new[] {
+            CreateTestEnvelope(1), CreateTestEnvelope(2), CreateTestEnvelope(3),
+            CreateTestEnvelope(4), CreateTestEnvelope(5),
+        });
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
         _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
@@ -2975,7 +2978,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        EventEnvelope[] events = [CreateTestEnvelope(2), CreateTestEnvelope(7), CreateTestEnvelope(11)];
+        EventEnvelope[] events = [CreateTestEnvelope(1), CreateTestEnvelope(2), CreateTestEnvelope(3)];
         _ = aggregateActor.GetEventsAsync(0).Returns(events);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
@@ -2995,8 +2998,8 @@ public class ProjectionUpdateOrchestratorTests {
         body.Domain.ShouldBe("test-domain");
         body.AggregateId.ShouldBe("agg-001");
         body.Events.Length.ShouldBe(events.Length);
-        body.Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 2, 7, 11 });
-        body.Events.Select(e => e.MessageId).ShouldBe(new string?[] { "msg-2", "msg-7", "msg-11" });
+        body.Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 1, 2, 3 });
+        body.Events.Select(e => e.MessageId).ShouldBe(new string?[] { "msg-1", "msg-2", "msg-3" });
         body.Events.Select(e => e.UserId).ShouldBe(new string?[] { "user-1", "user-1", "user-1" });
     }
 

@@ -1,0 +1,97 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+
+using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Registration;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Client.Tests.Registration;
+
+public sealed class EventEvolutionManifestRegistrationTests
+{
+    [Fact]
+    public void RegistrationPinsAnOwnedManifestAndRejectsInvalidOrDuplicateCandidates()
+    {
+        ReadOnlyMemory<byte>[] rows = FixtureRows();
+        byte[] mutableRow = rows[0].ToArray();
+        rows[0] = mutableRow;
+        string fingerprint = Convert.ToHexStringLower(EventRegistryFingerprintCodec.Compute("d", rows));
+        var services = new ServiceCollection();
+
+        Should.Throw<InvalidOperationException>(() => services.AddEventStoreEventEvolutionManifestCandidate(
+            "d", rows, new string('0', 64)));
+        services.Count.ShouldBe(0);
+        Should.Throw<ArgumentException>(() => services.AddEventStoreEventEvolutionManifestCandidate(
+            "d", rows, fingerprint.ToUpperInvariant()));
+        services.Count.ShouldBe(0);
+        Should.Throw<ArgumentException>(() => services.AddEventStoreEventEvolutionManifestCandidate(
+            "d", rows, fingerprint, 64L * 1024 * 1024));
+        services.Count.ShouldBe(0);
+
+        _ = services.AddEventStoreEventEvolutionManifestCandidate("d", rows, fingerprint);
+        Should.Throw<InvalidOperationException>(() => services.AddEventStoreEventEvolutionManifestCandidate("d", rows, fingerprint));
+        services.Count.ShouldBe(1);
+
+        mutableRow[0] = 0; // The registry must own a copy of every admitted row.
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventEvolutionManifestCandidate candidate = provider.GetRequiredKeyedService<EventEvolutionManifestCandidate>("d");
+        candidate.Registry.Fingerprint.ShouldBe(fingerprint);
+        provider.GetKeyedService<EventEvolutionManifestCandidate>("another-domain").ShouldBeNull();
+        using ServiceProvider secondProvider = services.BuildServiceProvider();
+        provider.Dispose();
+        secondProvider.GetRequiredKeyedService<EventEvolutionManifestCandidate>("d")
+            .Registry.GetCurrentVersion("evt").ShouldBe(1);
+    }
+
+    [Fact]
+    public void RegisteredCandidateChecksSuppliedClosureButDoesNotGrantReadiness()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "event-registry-candidate-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string dependencyFile = Path.Combine(directory, "domain.dll");
+            File.WriteAllBytes(dependencyFile, [1, 2, 3]);
+            ReadOnlyMemory<byte>[] rows = [.. FixtureRows(), DependencyRow(File.ReadAllBytes(dependencyFile))];
+            string fingerprint = Convert.ToHexStringLower(EventRegistryFingerprintCodec.Compute("d", rows));
+            var services = new ServiceCollection();
+            _ = services.AddEventStoreEventEvolutionManifestCandidate("d", rows, fingerprint);
+            using ServiceProvider provider = services.BuildServiceProvider();
+            EventEvolutionManifestCandidate candidate = provider.GetRequiredKeyedService<EventEvolutionManifestCandidate>("d");
+            var root = new EventDependencyIdentity("domain", "managed");
+            EventResolvedDependency[] graph = [new(root, "1.0", "locked", dependencyFile, [])];
+
+            candidate.RequireSuppliedLocalClosure(graph, [root], CancellationToken.None);
+            Should.Throw<InvalidOperationException>(() => candidate.RequireSuppliedLocalClosure(
+                graph, [new EventDependencyIdentity("missing", "managed")], CancellationToken.None));
+            File.WriteAllBytes(dependencyFile, [1, 2, 4]);
+            Should.Throw<InvalidOperationException>(() => candidate.RequireSuppliedLocalClosure(graph, [root], CancellationToken.None));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static ReadOnlyMemory<byte>[] FixtureRows()
+    {
+        Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Events", "Fixtures", "EventRegistryV17.json")))!;
+        return [Convert.FromHexString(fixture["AliasRow"]), Convert.FromHexString(fixture["DescriptorRow"]),
+            Convert.FromHexString(fixture["VersionRow"]), Convert.FromHexString(fixture["SharedRow"])];
+    }
+
+    private static byte[] DependencyRow(byte[] content)
+    {
+        using var writer = new EventEvolutionBinaryWriter(4096);
+        writer.WriteByte(0x47);
+        writer.WriteString("d");
+        writer.WriteString("domain");
+        writer.WriteString("managed");
+        writer.WriteUInt16(3);
+        writer.WriteByte(1); writer.WriteString("1.0");
+        writer.WriteByte(2); writer.WriteHash(SHA256.HashData(content));
+        writer.WriteByte(3); writer.WriteString("locked");
+        return writer.CopyEncodedBytes();
+    }
+}

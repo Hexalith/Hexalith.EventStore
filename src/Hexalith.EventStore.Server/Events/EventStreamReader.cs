@@ -69,8 +69,8 @@ public partial class EventStreamReader(
         long lastSnapshotSequence = snapshot?.SequenceNumber ?? 0;
 
         // Determine read range based on snapshot presence
-        int startSequence;
-        int eventCount;
+        long startSequence;
+        long requestedCount;
 
         if (snapshot is not null) {
             // AC #8: snapshot at current sequence -- no tail events needed
@@ -86,23 +86,25 @@ public partial class EventStreamReader(
             }
 
             // AC #4: read only tail events from snapshot.SequenceNumber + 1
-            startSequence = checked((int)(snapshot.SequenceNumber + 1));
-            eventCount = checked((int)(currentSequence - snapshot.SequenceNumber));
+            startSequence = checked(snapshot.SequenceNumber + 1);
+            requestedCount = checked(currentSequence - snapshot.SequenceNumber);
         }
         else {
             // AC #3: no snapshot, full replay from sequence 1
             startSequence = 1;
-            eventCount = checked((int)currentSequence);
+            requestedCount = currentSequence;
         }
+
+        var arrayBudget = new LegacyEventArrayBudget(requestedCount);
+        int eventCount = checked((int)requestedCount);
 
         // IActorStateManager is scoped to the actor turn and is not safe for concurrent access.
         // Keep reads ordered to avoid corrupting the actor state's internal change-tracking cache.
         string keyPrefix = identity.EventStreamKeyPrefix;
 
         var events = new List<EventEnvelope>(eventCount);
-        int endExclusive = startSequence + eventCount;
-
-        for (int seq = startSequence; seq < endExclusive; seq++) {
+        for (int offset = 0; offset < eventCount; offset++) {
+            long seq = startSequence + offset;
             cancellationToken.ThrowIfCancellationRequested();
             ConditionalValue<EventEnvelope> eventResult;
             try {
@@ -128,6 +130,7 @@ public partial class EventStreamReader(
             }
 
             LegacyEventReadGuard.RequireUnversioned(stored);
+            arrayBudget.Add(stored);
             events.Add(stored);
         }
 

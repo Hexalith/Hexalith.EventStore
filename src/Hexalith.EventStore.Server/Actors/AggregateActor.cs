@@ -1833,14 +1833,16 @@ public partial class AggregateActor(
             return [];
         }
 
-        int startSequence = checked((int)(fromSequence + 1));
-        int eventCount = checked((int)(currentSequence - fromSequence));
+        long requestedCount = checked(currentSequence - fromSequence);
+        var arrayBudget = new LegacyEventArrayBudget(requestedCount);
+        int eventCount = checked((int)requestedCount);
+        long startSequence = checked(fromSequence + 1);
         string keyPrefix = identity.EventStreamKeyPrefix;
 
-        int endExclusive = startSequence + eventCount;
         var events = new List<EventEnvelope>(eventCount);
 
-        for (int seq = startSequence; seq < endExclusive; seq++) {
+        for (int offset = 0; offset < eventCount; offset++) {
+            long seq = startSequence + offset;
             ConditionalValue<EventEnvelope> eventResult;
             try {
                 eventResult = await StateManager
@@ -1856,6 +1858,7 @@ public partial class AggregateActor(
             }
 
             LegacyEventReadGuard.RequireUnversioned(eventResult.Value);
+            arrayBudget.Add(eventResult.Value);
             events.Add(eventResult.Value);
         }
 

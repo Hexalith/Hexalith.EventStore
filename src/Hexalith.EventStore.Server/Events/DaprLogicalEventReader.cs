@@ -27,7 +27,7 @@ internal sealed class DaprLogicalEventReader
 
     /// <summary>Returns the resolved current view only after addressed, readable, allow-listed state readback.</summary>
     internal async Task<DaprLogicalEventView> ReadAsync(AggregateIdentity identity, long sequenceNumber,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, string? expectedAggregateType = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sequenceNumber);
@@ -53,6 +53,8 @@ internal sealed class DaprLogicalEventReader
         if (!string.Equals(source.TenantId, identity.TenantId, StringComparison.Ordinal)
             || !string.Equals(source.Domain, identity.Domain, StringComparison.Ordinal)
             || !string.Equals(source.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+            || (expectedAggregateType is not null
+                && !string.Equals(source.AggregateType, expectedAggregateType, StringComparison.Ordinal))
             || source.SequenceNumber != sequenceNumber || source.Payload is null)
         {
             throw new InvalidOperationException("AddressMismatch: actor event identity or sequence disagrees with its key.");
@@ -101,6 +103,88 @@ internal sealed class DaprLogicalEventReader
             }
 
             CryptographicOperations.ZeroMemory(storedHash);
+        }
+    }
+
+    /// <summary>Reads a bounded contiguous logical page pinned to one actor metadata head.</summary>
+    /// <remarks>The two metadata reads are Dapr logical observations, not provider attestations.</remarks>
+    internal async Task<DaprLogicalEventPage> ReadPageAsync(AggregateIdentity identity, string aggregateType,
+        long startSequence, int maxCount, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(startSequence);
+        if (maxCount is < 1 or > 256)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxCount));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        ConditionalValue<AggregateMetadata> before = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
+        long head = before.HasValue ? before.Value.CurrentSequence : 0;
+        if (head < 0)
+        {
+            throw new InvalidOperationException("SourceHeadChanged: actor metadata has an invalid negative head.");
+        }
+
+        int count = startSequence > head ? 0 : (int)Math.Min(maxCount, head - startSequence + 1);
+        var views = new DaprLogicalEventView[count];
+        long storedBytes = 0;
+        long readableBytes = 0;
+        try
+        {
+            for (int index = 0; index < count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                DaprLogicalEventView view = await ReadAsync(identity, startSequence + index,
+                    cancellationToken, aggregateType).ConfigureAwait(false);
+                views[index] = view;
+                storedBytes = checked(storedBytes + view.StoredPayloadLength);
+                if (storedBytes > 128L * 1024 * 1024)
+                {
+                    throw new InvalidOperationException("RawEnvelopeLimit: a logical event page exceeds 128 MiB of stored payload bytes.");
+                }
+
+                readableBytes = checked(readableBytes + view.Resolved.Payload.Length);
+                if (readableBytes > 64L * 1024 * 1024)
+                {
+                    throw new InvalidOperationException("ReadableLimit: a logical event page exceeds 64 MiB.");
+                }
+            }
+
+            ConditionalValue<AggregateMetadata> after = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (after.HasValue != before.HasValue
+                || (after.HasValue && (after.Value.CurrentSequence != head
+                    || after.Value.RetainedFloor != before.Value.RetainedFloor)))
+            {
+                throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during the logical page read.");
+            }
+
+            return new DaprLogicalEventPage(startSequence, head, views);
+        }
+        catch
+        {
+            foreach (DaprLogicalEventView? view in views)
+            {
+                view?.Dispose();
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<ConditionalValue<AggregateMetadata>> ReadMetadataAsync(
+        AggregateIdentity identity, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _stateManager.TryGetStateAsync<AggregateMetadata>(
+                identity.MetadataKey, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            throw new EventDeserializationException(-1, identity.ActorId, error);
         }
     }
 }

@@ -50,6 +50,22 @@ internal static class EventDependencyClosureVerifier
         }
         finally { foreach (EventRegistryRow row in pinned) { row.Dispose(); } }
 
+        RequireResolvedGraph(registry, resolvedGraph, executedRoots, cancellationToken);
+    }
+
+    /// <summary>Checks a supplied graph after the registered manifest has already matched its caller-supplied pin.</summary>
+    /// <remarks>This check alone cannot establish that the supplied roots and loader graph are complete.</remarks>
+    internal static void RequireResolvedGraph(
+        EventDomainRegistry registry,
+        IReadOnlyList<EventResolvedDependency> resolvedGraph,
+        IReadOnlyList<EventDependencyIdentity> executedRoots,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(resolvedGraph);
+        ArgumentNullException.ThrowIfNull(executedRoots);
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (executedRoots.Count is < 1 or > 65_536 || resolvedGraph.Count is < 1 or > 65_536)
         {
             throw new InvalidOperationException("CapabilityMismatch: an executing dependency closure requires bounded roots and graph nodes.");

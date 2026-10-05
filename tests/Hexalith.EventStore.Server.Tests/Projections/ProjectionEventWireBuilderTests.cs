@@ -50,6 +50,45 @@ public sealed class ProjectionEventWireBuilderTests {
         exception.Message.ShouldContain("RollbackReaderCapabilityHold");
     }
 
+    [Fact]
+    public async Task BuildAsync_ChangedLogicalPayloadRefusesProjectionWire() {
+        EventEnvelope original = CreateEnvelope(1, 101);
+        original = original with {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(original, "json",
+                EventLogicalDigest.HashPayload(original.Payload)),
+        };
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            ProjectionEventWireBuilder.BuildAsync(
+                new NoOpEventPayloadProtectionService(), s_identity,
+                [original with { Payload = [9] }], CancellationToken.None));
+
+        exception.Message.ShouldContain("LogicalDigestMismatch");
+    }
+
+    [Fact]
+    public async Task BuildAsync_LaterForeignEventRefusesWholeBatch() {
+        EventEnvelope first = CreateEnvelope(1, 101);
+        EventEnvelope foreign = CreateEnvelope(2, 104) with { TenantId = "tenant-b" };
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            ProjectionEventWireBuilder.BuildAsync(
+                new NoOpEventPayloadProtectionService(), s_identity,
+                [first, foreign], CancellationToken.None));
+
+        exception.Message.ShouldContain("AddressMismatch");
+    }
+
+    [Fact]
+    public async Task BuildAsync_LaterSequenceGapRefusesWholeBatch() {
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            ProjectionEventWireBuilder.BuildAsync(
+                new NoOpEventPayloadProtectionService(), s_identity,
+                [CreateEnvelope(1, 101), CreateEnvelope(3, 103)], CancellationToken.None));
+
+        exception.Message.ShouldContain("AddressMismatch");
+    }
+
     private static EventEnvelope CreateEnvelope(long sequenceNumber, long globalPosition) => new(
         MessageId: $"message-{sequenceNumber}",
         AggregateId: s_identity.AggregateId,

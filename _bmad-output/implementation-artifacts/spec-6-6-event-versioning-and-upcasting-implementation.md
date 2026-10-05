@@ -85,6 +85,15 @@ records actor rehydration digest checks, addressed stream reads, production
 cancellation forwarding and the affected Server test results. This remains
 partial evidence; the shared reader and M1–M8 acceptance are still open.
 
+The [logical-page and V1 consumer safety evidence](evidence/story-6-6/verification-2026-10-05-logical-page-safety.md)
+records publisher/projection digest and addressed-batch checks, a bounded
+legacy-array read guard, an internal fixed-head Dapr logical page, and an
+explicit pinned-manifest candidate registration with a supplied local closure
+check. It names the missing authoritative domain inputs, production registry
+readiness and signed route/proof seams. The
+page is not wired into production consumers; V2 and proof-dependent activation
+remain fenced, and M1–M8 acceptance is still open.
+
 ### Re-derivation requirements from resumed review
 
 Current follow-up implementation and exact verification evidence is recorded in [Story 6.6 follow-up evidence](evidence/story-6-6/verification-2026-10-04-followup.md). Internal registry/hash/options, bounded local E/F execution, registered implementation/type/validator bindings, an optional bounded producer/renderer and default incremental V1 response admission have been added alongside the review repairs. The final-source Release build and standard package consumer checks passed; full Server regression retained two unrelated failures and 25 existing skips. These results do not establish authenticated production reader, startup readiness, complete dependency closure or M1–M8 acceptance. Remaining local omissions and the actual provider/profile authority boundary are recorded separately; status remains `in-progress`.
