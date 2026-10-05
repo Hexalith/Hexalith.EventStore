@@ -15,7 +15,7 @@ internal static class ProtectedDataDiagnosticRedactor {
     public const string DefaultStage = "unspecified";
 
     public static string RedactException(Exception exception, string? stage)
-        => BuildSafeText(GetReasonCode(exception), GetStage(exception, stage));
+        => BuildSafeText(GetReasonCode(exception, stage), GetStage(exception, stage));
 
     public static string BuildSafeText(string? reasonCode, string? stage)
         => $"Protected data diagnostic details were redacted. ReasonCode={SafeReasonCode(reasonCode)}; Stage={SafeStage(stage)}.";
@@ -78,10 +78,13 @@ internal static class ProtectedDataDiagnosticRedactor {
             }));
     }
 
-    private static string GetReasonCode(Exception exception)
+    private static string GetReasonCode(Exception exception, string? stage)
         => exception is ProtectedDataUnreadableException protectedException
             ? protectedException.ReasonCode
-            : DefaultReasonCode;
+            : stage == "rehydrate"
+                && LogicalEventReadRejection.IsRejection(exception)
+                ? LogicalEventReadRejection.ReasonCode
+                : DefaultReasonCode;
 
     private static string? GetStage(Exception exception, string? fallbackStage)
         => exception is ProtectedDataUnreadableException protectedException
@@ -92,6 +95,7 @@ internal static class ProtectedDataDiagnosticRedactor {
     private static string SafeReasonCode(string? value)
         => value switch {
             DefaultReasonCode => DefaultReasonCode,
+            LogicalEventReadRejection.ReasonCode => LogicalEventReadRejection.ReasonCode,
             ProtectedDataReadabilityDecision.ReadableCode => ProtectedDataReadabilityDecision.ReadableCode,
             ProtectedDataReadabilityDecision.DeferredValidationCode => ProtectedDataReadabilityDecision.DeferredValidationCode,
             ProtectedDataReadabilityDecision.RestoreConflictCode => ProtectedDataReadabilityDecision.RestoreConflictCode,

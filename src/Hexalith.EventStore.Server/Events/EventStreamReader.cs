@@ -119,7 +119,6 @@ public partial class EventStreamReader(
         string keyPrefix = identity.EventStreamKeyPrefix;
 
         var events = new List<EventEnvelope>(eventCount);
-        List<EventEnvelope>? effectiveEvents = null;
         if (productionReader is null) {
             for (int offset = 0; offset < eventCount; offset++) {
                 long seq = startSequence + offset;
@@ -155,20 +154,20 @@ public partial class EventStreamReader(
         else {
             aggregateType ??= await productionReader.ReadStoredAggregateTypeAsync(
                 identity, startSequence, cancellationToken).ConfigureAwait(false);
-            DaprProductionLogicalReplay replay = snapshotReplay is null
+            using DaprProductionLogicalReplay replay = snapshotReplay is null
                 ? await productionReader.ReadRangeAsync(
                     identity, aggregateType, startSequence, eventCount, cancellationToken,
-                    currentSequence, metadata.RetainedFloor).ConfigureAwait(false)
+                    currentSequence, metadata.RetainedFloor, includeDomainView: false, arrayBudget).ConfigureAwait(false)
                 : await snapshotReplay.ReadReplayRangeAsync(
                     productionReader, identity, aggregateType, startSequence, eventCount, cancellationToken,
-                    currentSequence, metadata.RetainedFloor).ConfigureAwait(false);
-            foreach (EventEnvelope stored in replay.StoredEvents) {
-                arrayBudget.Add(stored);
-                events.Add(stored);
+                    currentSequence, metadata.RetainedFloor, includeDomainView: false, arrayBudget).ConfigureAwait(false);
+            if (replay.Evolved) {
+                throw new InvalidOperationException("CapabilityMismatch: evolved replay requires a verified effective event route.");
             }
 
-            if (replay.Evolved) {
-                effectiveEvents = [.. replay.DomainEvents];
+            foreach (EventEnvelope stored in replay.StoredEvents) {
+                LegacyEventReadGuard.RequireUnversioned(stored);
+                events.Add(stored);
             }
         }
 
@@ -185,9 +184,7 @@ public partial class EventStreamReader(
             SnapshotState: snapshot?.State,
             Events: events,
             LastSnapshotSequence: lastSnapshotSequence,
-            CurrentSequence: currentSequence) {
-            EffectiveEvents = effectiveEvents,
-        };
+            CurrentSequence: currentSequence);
     }
 
     private async Task RequireUnchangedMetadataAsync(AggregateIdentity identity, AggregateMetadata expected,

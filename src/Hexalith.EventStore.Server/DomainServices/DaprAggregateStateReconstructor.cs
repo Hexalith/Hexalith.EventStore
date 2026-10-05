@@ -231,6 +231,10 @@ public sealed class DaprAggregateStateReconstructor(
                 count: (int)upToSequence,
                 cancellationToken,
                 expectedActorHead: upToSequence).ConfigureAwait(false);
+            if (replay.Evolved) {
+                replay.Dispose();
+                throw new InvalidOperationException("CapabilityMismatch: evolved replay requires a verified effective event route.");
+            }
         }
         catch (OperationCanceledException) {
             throw;
@@ -248,19 +252,22 @@ public sealed class DaprAggregateStateReconstructor(
             AggregateReconstructionErrorCategory category = exception.Message.Contains("UnknownEventContract", StringComparison.Ordinal)
                 || exception.Message.Contains("CapabilityMismatch", StringComparison.Ordinal)
                 || exception.Message.Contains("UpcasterContractViolation", StringComparison.Ordinal)
+                || exception.Message.Contains("RollbackReaderCapabilityHold", StringComparison.Ordinal)
                 ? AggregateReconstructionErrorCategory.UnsupportedVersion
                 : AggregateReconstructionErrorCategory.Unexpected;
             return AggregateReconstructionResult.Failed(category, exception.Message);
         }
 
-        return await ReconstructAsync(
-            identity,
-            aggregateType,
-            replay.DomainEvents,
-            upToSequence,
-            includeTimeline,
-            requestId,
-            cancellationToken).ConfigureAwait(false);
+        using (replay) {
+            return await ReconstructAsync(
+                identity,
+                aggregateType,
+                replay.DomainEvents,
+                upToSequence,
+                includeTimeline,
+                requestId,
+                cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static string ResolveReplayVersion(IReadOnlyList<EventEnvelope> events, long upToSequence) {

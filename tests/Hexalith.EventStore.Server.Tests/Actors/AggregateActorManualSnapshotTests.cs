@@ -257,6 +257,7 @@ public class AggregateActorManualSnapshotTests {
         return reconstructor;
     }
 
+    /// <summary>Verifies keyed logical history refusal produces a safe reason without staging a snapshot.</summary>
     [Fact]
     public async Task CreateManualSnapshotAsync_RejectedLogicalHistoryDoesNotSnapshotStoredPayloads() {
         var identity = new AggregateIdentity("tenant", "d", "aggregate");
@@ -285,11 +286,10 @@ public class AggregateActorManualSnapshotTests {
             .Returns(new ConditionalValue<EventEnvelope>(true, stored));
 
         using EventEvolutionManifestCandidate candidate = DaprProductionLogicalEventReaderTests.CreateUpcastingCandidate();
-        var reconstructor = new DaprAggregateStateReconstructor(
-            Substitute.For<Dapr.Client.DaprClient>(),
-            Substitute.For<IHttpClientFactory>(),
-            Substitute.For<IDomainServiceResolver>(),
-            NullLogger<DaprAggregateStateReconstructor>.Instance);
+        using var handler = new CanonicalLogicalReplayHandler();
+        using var httpClient = new HttpClient(handler);
+        using var dapr = new Dapr.Client.DaprClientBuilder().Build();
+        var reconstructor = DaprProductionLogicalEventReaderTests.CreateCanonicalReconstructor(dapr, httpClient, out _);
         var snapshotManager = new SnapshotManager(
             Options.Create(new SnapshotOptions()),
             Substitute.For<ILogger<SnapshotManager>>(),
@@ -315,9 +315,54 @@ public class AggregateActorManualSnapshotTests {
         ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-rejected");
 
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("logical-event-read-rejected");
         stored.Payload.ShouldBe([1, 2]);
         stateManager.ReceivedCalls().Any(call =>
             call.GetMethodInfo().Name is "SaveStateAsync" or "SetStateAsync").ShouldBeFalse();
+        handler.Requests.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies keyed manual snapshots persist canonical plaintext state after one addressed range read.</summary>
+    [Fact]
+    public async Task CreateManualSnapshotAsync_KeyedV1HistoryReconstructsCanonicalStateWithOneRangeRead() {
+        var identity = new AggregateIdentity("tenant", "d", "aggregate");
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope[] stored = DaprProductionLogicalEventReaderTests.StoreCanonicalHistory(stateManager);
+        using EventEvolutionManifestCandidate candidate = DaprProductionLogicalEventReaderTests.CreateCandidate();
+        IEventPayloadProtectionService protection = DaprProductionLogicalEventReaderTests.CreateCanonicalProtection();
+        using var handler = new CanonicalLogicalReplayHandler();
+        using var httpClient = new HttpClient(handler);
+        using var dapr = new Dapr.Client.DaprClientBuilder().Build();
+        var reconstructor = DaprProductionLogicalEventReaderTests.CreateCanonicalReconstructor(dapr, httpClient, out _);
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(),
+            new NoOpEventPayloadProtectionService());
+        SnapshotRecord? snapshot = null;
+        _ = stateManager.SetStateAsync(identity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>())
+            .Returns(call => { snapshot = call.ArgAt<SnapshotRecord>(1); return Task.CompletedTask; });
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(_ => snapshot is null ? new ConditionalValue<SnapshotRecord>(false, default!) : new ConditionalValue<SnapshotRecord>(true, snapshot));
+        var host = ActorHost.CreateForTest<AggregateActor>(new ActorTestOptions { ActorId = new ActorId(identity.ActorId) });
+        var actor = new AggregateActor(host, Substitute.For<ILogger<AggregateActor>>(), Substitute.For<IDomainServiceInvoker>(),
+            snapshots, protection, Substitute.For<ICommandStatusStore>(), Substitute.For<IEventPublisher>(),
+            Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()),
+            Substitute.For<IDeadLetterPublisher>(), new KeyedEvolutionProvider(candidate, reconstructor));
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-canonical");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
+        result.ReasonCode.ShouldBeNull();
+        SnapshotRecord committed = snapshot.ShouldNotBeNull();
+        committed.SequenceNumber.ShouldBe(3);
+        committed.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(6);
+        handler.Requests.ShouldHaveSingleItem().Events.Count.ShouldBe(3);
+        _ = await stateManager.Received(2).TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>());
+        _ = await stateManager.Received(1).TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>());
+        _ = await stateManager.Received(1).TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}3", Arg.Any<CancellationToken>());
+        _ = await protection.Received(3).TryUnprotectEventPayloadAsync(identity, Arg.Any<string>(), Arg.Any<byte[]>(), "json",
+            Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>());
+        stored.All(e => e.Payload.SequenceEqual(new byte[] { 9, (byte)e.SequenceNumber })).ShouldBeTrue();
+        await stateManager.Received(1).SaveStateAsync();
     }
 
     private static Task SeedStreamAsync(
@@ -404,19 +449,4 @@ public class AggregateActorManualSnapshotTests {
                     : null;
     }
 
-    private sealed class KeyedEvolutionProvider(
-        EventEvolutionManifestCandidate candidate,
-        DaprAggregateStateReconstructor reconstructor) : IKeyedServiceProvider {
-        public object? GetService(Type serviceType)
-            => serviceType == typeof(IAggregateStateReconstructor) ? reconstructor : null;
-
-        public object? GetKeyedService(Type serviceType, object? serviceKey)
-            => serviceType == typeof(EventEvolutionManifestCandidate) && Equals(serviceKey, "d")
-                ? candidate
-                : null;
-
-        public object GetRequiredKeyedService(Type serviceType, object? serviceKey)
-            => GetKeyedService(serviceType, serviceKey)
-                ?? throw new InvalidOperationException($"No keyed service for {serviceType}.");
-    }
 }

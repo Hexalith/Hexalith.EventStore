@@ -35,7 +35,8 @@ internal sealed class LegacyEventArrayBudget
         }
 
         long metadataBytes = 0;
-        foreach (string? value in new[] {
+        foreach (string? value in new[]
+        {
             envelope.MessageId, envelope.AggregateId, envelope.AggregateType, envelope.TenantId,
             envelope.Domain, envelope.CorrelationId, envelope.CausationId, envelope.UserId,
             envelope.DomainServiceVersion, envelope.EventTypeName, envelope.SerializationFormat,
@@ -62,6 +63,20 @@ internal sealed class LegacyEventArrayBudget
 
         _payloadBytes += envelope.Payload.LongLength;
         _accountedBytes += added;
+    }
+
+    /// <summary>Charges a distinct domain payload before its plaintext copy is allocated.</summary>
+    internal void AddDomainPayload(int length)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        if (length > MaximumPayloadBytes - _payloadBytes
+            || length > MaximumAccountedBytes - _accountedBytes)
+        {
+            throw LimitExceeded();
+        }
+
+        _payloadBytes += length;
+        _accountedBytes += length;
     }
 
     private static InvalidOperationException LimitExceeded()

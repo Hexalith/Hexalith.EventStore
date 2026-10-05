@@ -34,6 +34,7 @@ public sealed class DaprProductionLogicalEventReaderTests
 {
     private static readonly AggregateIdentity Identity = new("tenant", "d", "aggregate");
 
+    /// <summary>Verifies a mismatched caller pin is refused before any actor read.</summary>
     [Fact]
     public void WrongCallerPinFailsBeforeActorRead()
     {
@@ -52,6 +53,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         stateManager.ReceivedCalls().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies zero-hop V1 reads retain the original actor payload and message identity.</summary>
     [Fact]
     public async Task ZeroHopV1ReplayKeepsStoredBytesAndMessageId()
     {
@@ -70,6 +72,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies historical V1 history without an additive digest remains readable.</summary>
     [Fact]
     public async Task HistoricalV1WithoutDigestStaysReadable()
     {
@@ -88,6 +91,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         stored.Payload.ShouldBe([1, 2]);
     }
 
+    /// <summary>Verifies digest mismatches refuse replay and reconstruction before domain resolution.</summary>
     [Fact]
     public async Task DigestMismatchFailsClosedBeforeDomainResolution()
     {
@@ -106,11 +110,17 @@ public sealed class DaprProductionLogicalEventReaderTests
         InvalidOperationException direct = await Should.ThrowAsync<InvalidOperationException>(() =>
             reader.ReadPageAsync(Identity, "r", 1, 1, CancellationToken.None)).ConfigureAwait(true);
         direct.Message.ShouldContain("LogicalDigestMismatch");
+        var stream = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
+        InvalidOperationException replayError = await Should.ThrowAsync<InvalidOperationException>(() =>
+            stream.RehydrateAsync(Identity, null, CancellationToken.None, reader, "r")).ConfigureAwait(true);
+        replayError.Message.ShouldContain("LogicalDigestMismatch");
 
         AggregateReconstructionResult result = await reconstructor.ReconstructAddressedAsync(
             Identity, "r", reader, CreateSnapshotManager(), upToSequence: 1).ConfigureAwait(true);
 
         result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
+        result.Message.ShouldContain("LogicalDigestMismatch");
         result.StateJson.ShouldBeNull();
         result.LastAppliedSequenceNumber.ShouldBe(0);
         stored.Payload.ShouldBe([1, 2]);
@@ -118,9 +128,10 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies unknown aliases and versioned sources are refused before protection work.</summary>
     [Theory]
     [InlineData("missing-alias", 1, null, null, "UnknownEventContract")]
-    [InlineData("evt", 2, "evt", 2, "UnknownEventContract")]
+    [InlineData("evt", 2, "evt", 2, "RollbackReaderCapabilityHold")]
     public async Task MissingMappingOrVersion2FailsBeforeProtection(
         string eventType, int metadataVersion, string? contractType, int? payloadVersion, string reason)
     {
@@ -146,6 +157,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             default!, default!, default!, default!, default!, default);
     }
 
+    /// <summary>Verifies an unbound required hop returns no partial replay or actor mutation.</summary>
     [Fact]
     public async Task BrokenChainFailsWithoutPartialReplay()
     {
@@ -162,6 +174,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies a retained-floor violation is refused before reading events.</summary>
     [Fact]
     public async Task IncompletePrefixFailsBeforeEventRead()
     {
@@ -179,6 +192,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
     }
 
+    /// <summary>Verifies actor-read cancellation escapes without publishing partial replay.</summary>
     [Fact]
     public async Task CancellationDuringActorReadPublishesNoPartialResult()
     {
@@ -203,8 +217,9 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies evolved payloads cannot enter either legacy domain route.</summary>
     [Fact]
-    public async Task UpcastReplayKeepsStoredBytesAndExposesEffectivePayload()
+    public async Task EvolvedReplayAndReconstructionRefuseWithoutAnEffectiveRoute()
     {
         using EventDomainRegistry registry = CreateRegistry(upcasting: true);
         (IActorStateManager stateManager, EventEnvelope stored) = StoreCurrentV1();
@@ -213,21 +228,23 @@ public sealed class DaprProductionLogicalEventReaderTests
         var replay = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
         SnapshotManager snapshots = CreateSnapshotManager();
 
-        RehydrationResult? result = await replay.RehydrateAsync(
-            Identity, snapshot: null, CancellationToken.None, reader, "r", snapshots).ConfigureAwait(true);
-
-        _ = result.ShouldNotBeNull();
-        result.Events.ShouldHaveSingleItem().Payload.ShouldBe([1, 2]);
-        result.Events[0].MessageId.ShouldBe("message");
-        _ = result.EffectiveEvents.ShouldNotBeNull();
-        result.EffectiveEvents.ShouldHaveSingleItem().Payload.ShouldBe([1]);
-        result.EffectiveEvents[0].MessageId.ShouldBe("message");
-        result.EffectiveEvents[0].MetadataVersion.ShouldBe(1);
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => replay.RehydrateAsync(
+            Identity, snapshot: null, CancellationToken.None, reader, "r", snapshots)).ConfigureAwait(true);
+        error.Message.ShouldContain("CapabilityMismatch");
+        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        AggregateReconstructionResult result = await reconstructor.ReconstructAddressedAsync(
+            Identity, "r", reader, snapshots, 1).ConfigureAwait(true);
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.Message.ShouldContain("CapabilityMismatch");
+        result.StateJson.ShouldBeNull();
         stored.Payload.ShouldBe([1, 2]);
-        upcaster.Calls.ShouldBe(1);
+        upcaster.Calls.ShouldBe(2);
+        resolver.ReceivedCalls().ShouldBeEmpty();
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies unsupported addressed history reaches neither domain resolution nor partial state.</summary>
     [Fact]
     public async Task AddressedReconstructionRejectsUnsupportedHistoryWithoutPartialState()
     {
@@ -248,26 +265,409 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies addressed plaintext reconstruction matches the canonical Apply replay.</summary>
     [Fact]
     public async Task AddressedReconstructionOfCurrentV1ReachesCanonicalReplay()
     {
         using EventDomainRegistry registry = CreateRegistry();
-        (IActorStateManager stateManager, EventEnvelope stored) = StoreCurrentV1(includeDigest: true);
-        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
-        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope[] stored = StoreCanonicalHistory(stateManager);
+        IEventPayloadProtectionService protection = CreateCanonicalProtection();
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint, protection: protection);
+        using var handler = new CanonicalLogicalReplayHandler();
+        using var httpClient = new HttpClient(handler);
+        using var dapr = new Dapr.Client.DaprClientBuilder().Build();
+        var reconstructor = CreateCanonicalReconstructor(dapr, httpClient, out IDomainServiceResolver resolver);
 
         AggregateReconstructionResult result = await reconstructor.ReconstructAddressedAsync(
-            Identity, "r", reader, CreateSnapshotManager(), upToSequence: 1).ConfigureAwait(true);
+            Identity, "r", reader, CreateSnapshotManager(), upToSequence: 3).ConfigureAwait(true);
 
-        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
-        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnknownAggregateType);
-        result.StateJson.ShouldBeNull();
-        result.LastAppliedSequenceNumber.ShouldBe(0);
-        stored.Payload.ShouldBe([1, 2]);
+        result.Status.ShouldBe(AggregateReconstructionStatus.Succeeded);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.None);
+        result.LastAppliedSequenceNumber.ShouldBe(3);
+        using JsonDocument state = JsonDocument.Parse(result.StateJson!);
+        state.RootElement.GetProperty("count").GetInt32().ShouldBe(6);
+        AggregateReconstructionRequest request = handler.Requests.ShouldHaveSingleItem();
+        request.Events.Select(e => e.SequenceNumber).ShouldBe([1L, 2L, 3L]);
+        request.Events[0].Payload.ShouldBe(JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(1)));
+        stored.All(e => e.Payload.SequenceEqual(new byte[] { 9, (byte)e.SequenceNumber })).ShouldBeTrue();
+        result.ShouldBe(Hexalith.EventStore.Client.Aggregates.AggregateReplayer.Replay<LogicalReplayState>(request));
         _ = await resolver.Received(1).ResolveAsync(Identity.TenantId, Identity.Domain, "v1", Arg.Any<CancellationToken>())
             .ConfigureAwait(true);
     }
 
+    /// <summary>Verifies declared payload versions cannot bypass the production V1 source fence.</summary>
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(true, 2)]
+    public async Task DeclaredVersionedHistoryStillRejectsAtReplayAndReconstruction(bool upcasting, int payloadVersion)
+    {
+        using EventDomainRegistry registry = CreateRegistry(upcasting);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope stored = CreateEvent() with
+        {
+            MetadataVersion = 2,
+            EventTypeName = "evt",
+            EventContractType = "evt",
+            PayloadVersion = payloadVersion,
+        };
+        Store(stateManager, stored);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint,
+            upcasting ? new ShrinkingLogicalEventUpcaster() : null);
+        var stream = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            stream.RehydrateAsync(Identity, null, CancellationToken.None, reader, "r")).ConfigureAwait(true);
+        error.Message.ShouldContain("RollbackReaderCapabilityHold");
+        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        AggregateReconstructionResult result = await reconstructor.ReconstructAddressedAsync(
+            Identity, "r", reader, CreateSnapshotManager(), 1).ConfigureAwait(true);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.Message.ShouldContain("RollbackReaderCapabilityHold");
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.StateJson.ShouldBeNull();
+        resolver.ReceivedCalls().ShouldBeEmpty();
+        stored.MetadataVersion.ShouldBe(2);
+        stored.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies complete page boundaries and refusal when the pinned retained floor changes.</summary>
+    [Fact]
+    public async Task MultiPageRangeKeepsContiguousSequencesAndPinsRetainedFloor()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, _) = StoreCurrentV1(head: 258, count: 258);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        using DaprProductionLogicalReplay range = await reader.ReadRangeAsync(
+            Identity, "r", 1, 258, CancellationToken.None, 258, expectedRetainedFloor: 1,
+            includeDomainView: false).ConfigureAwait(true);
+        range.ActorHead.ShouldBe(258);
+        range.RetainedFloor.ShouldBe(1);
+        range.StoredEvents.Count.ShouldBe(258);
+        range.StoredEvents.Select(e => e.SequenceNumber).ShouldBe(Enumerable.Range(1, 258).Select(i => (long)i));
+        range.DomainEvents.ShouldBeEmpty();
+        _ = await stateManager.Received(4).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
+            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(258, DateTimeOffset.UnixEpoch, "etag")),
+                new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(258, DateTimeOffset.UnixEpoch, "etag")),
+                new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(258, DateTimeOffset.UnixEpoch, "etag", 2)));
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadRangeAsync(Identity, "r", 1, 258, CancellationToken.None, 258, includeDomainView: false))
+            .ConfigureAwait(true);
+        error.Message.ShouldContain("SourceHeadChanged");
+    }
+
+    /// <summary>Verifies production snapshot-tail replay preserves the typed-reader result.</summary>
+    [Fact]
+    public async Task SnapshotTailReplayMatchesTheTypedReader()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, _) = StoreCurrentV1(head: 3, count: 3);
+        var snapshot = new SnapshotRecord(1, new { Count = 1 }, DateTimeOffset.UnixEpoch, "d", "aggregate", "tenant");
+        var stream = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
+        RehydrationResult typed = (await stream.RehydrateAsync(Identity, snapshot, CancellationToken.None)
+            .ConfigureAwait(true)).ShouldNotBeNull();
+        RehydrationResult logical = (await stream.RehydrateAsync(Identity, snapshot, CancellationToken.None,
+            CreateReader(registry, stateManager, registry.Fingerprint), "r", CreateSnapshotManager())
+            .ConfigureAwait(true)).ShouldNotBeNull();
+        logical.Events.ShouldBe(typed.Events);
+        logical.Events.Select(e => e.SequenceNumber).ShouldBe([2L, 3L]);
+        logical.SnapshotState.ShouldBe(typed.SnapshotState);
+        logical.LastSnapshotSequence.ShouldBe(1);
+        logical.CurrentSequence.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a binding-free production caller pin refuses a required upcast hop.</summary>
+    [Fact]
+    public async Task CallerPinWithRequiredHopFailsClosed()
+    {
+        using EventEvolutionManifestCandidate candidate = CreateUpcastingCandidate();
+        (IActorStateManager stateManager, _) = StoreCurrentV1();
+        var reader = DaprProductionLogicalEventReader.FromCallerPin(stateManager,
+            new NoOpEventPayloadProtectionService(), candidate).ShouldNotBeNull();
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadRangeAsync(Identity, "r", 1, 1, CancellationToken.None, 1)).ConfigureAwait(true);
+        error.Message.ShouldContain("CapabilityMismatch");
+    }
+
+    /// <summary>Verifies mapping and prefix failures keep typed outcomes at replay and reconstruction entry points.</summary>
+    [Theory]
+    [InlineData("mapping", "UnknownEventContract", AggregateReconstructionErrorCategory.UnsupportedVersion)]
+    [InlineData("floor", "ReplayRestartRequired", AggregateReconstructionErrorCategory.Unexpected)]
+    [InlineData("missing", "The addressed logical prefix is incomplete.", AggregateReconstructionErrorCategory.Unexpected)]
+    public async Task ReaderRefusalsReachBothEntryPointsWithNoPartialState(
+        string scenario, string reason, AggregateReconstructionErrorCategory category)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, _) = StoreCurrentV1(head: 2, count: 1);
+        if (scenario == "mapping")
+        {
+            Store(stateManager, CreateEvent() with { EventTypeName = "missing" }, head: 2, count: 2);
+        }
+        if (scenario == "floor")
+        {
+            _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "etag", 2)));
+        }
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var stream = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
+        Exception error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            stream.RehydrateAsync(Identity, null, CancellationToken.None, reader, "r")).ConfigureAwait(true);
+        if (scenario == "missing")
+        {
+            error.ShouldBeOfType<MissingEventException>().SequenceNumber.ShouldBe(2);
+        }
+        else
+        {
+            error.Message.ShouldContain(reason);
+        }
+        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        AggregateReconstructionResult result = await reconstructor.ReconstructAddressedAsync(
+            Identity, "r", reader, CreateSnapshotManager(), 2).ConfigureAwait(true);
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(category);
+        result.Message.ShouldContain(reason);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.StateJson.ShouldBeNull();
+        if (scenario == "missing")
+        {
+            result.FailedSequenceNumber.ShouldBe(2);
+        }
+        resolver.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies addressed cancellation propagates the caller token before domain replay.</summary>
+    [Fact]
+    public async Task AddressedCancellationPreservesTheCallerTokenAndNeverInvokesDomainReplay()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, _) = StoreCurrentV1(head: 2, count: 2);
+        using var cancellation = new CancellationTokenSource();
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(_ => { cancellation.Cancel(); return new ConditionalValue<EventEnvelope>(true, CreateEvent() with { SequenceNumber = 2 }); });
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => reconstructor.ReconstructAddressedAsync(
+            Identity, "r", reader, CreateSnapshotManager(), 2, cancellationToken: cancellation.Token)).ConfigureAwait(true);
+        _ = await stateManager.Received(1).TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}2", cancellation.Token).ConfigureAwait(true);
+        resolver.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies oversized ranges fail within their retained budget before later pages are read.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RangeBudgetRejectsBeforeReadingLaterPages(bool includeDomainView)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope stored = CreateEvent() with { Payload = new byte[160 * 1024] };
+        Store(stateManager, stored, head: 768, count: 768);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadRangeAsync(Identity, "r", 1, 768, CancellationToken.None, 768,
+                includeDomainView: includeDomainView)).ConfigureAwait(true);
+        error.Message.ShouldContain("LegacyArrayLimit");
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{Identity.EventStreamKeyPrefix}513", Arg.Any<CancellationToken>()).ConfigureAwait(true);
+    }
+
+    /// <summary>Proves that domain copies consume the range budget when the stored range alone fits.</summary>
+    [Fact]
+    public async Task DomainCopiesExhaustTheBudgetForAnOtherwiseAdmittedMultiPageRange()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope stored = CreateEvent() with { Payload = new byte[128 * 1024] };
+        Store(stateManager, stored, head: 258, count: 258);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        using DaprProductionLogicalReplay range = await reader.ReadRangeAsync(
+            Identity, "r", 1, 258, CancellationToken.None, 258, includeDomainView: false).ConfigureAwait(true);
+
+        range.StoredEvents.Count.ShouldBe(258);
+        range.DomainEvents.ShouldBeEmpty();
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadRangeAsync(Identity, "r", 1, 258, CancellationToken.None, 258, includeDomainView: true))
+            .ConfigureAwait(true);
+        error.Message.ShouldContain("LegacyArrayLimit");
+    }
+
+    /// <summary>Proves cancellation after partial plaintext copying clears the allocation before it can escape.</summary>
+    [Fact]
+    public void DomainCopyCancellationClearsThePartiallyWrittenDestination()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var payload = new PartialCopyCancellationPayload(cancellation);
+        byte[] destination = new byte[payload.Length];
+        EventEnvelope source = CreateEvent();
+
+        OperationCanceledException error = Should.Throw<OperationCanceledException>(() =>
+            DaprProductionLogicalEventReader.CopyDomainEvent(source, payload, "json", destination));
+
+        payload.CopiedBytes.ShouldBe(2);
+        error.CancellationToken.ShouldBe(cancellation.Token);
+        destination.ShouldBe([0, 0, 0, 0]);
+        source.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies the addressed reconstruction count limit is checked before actor access.</summary>
+    [Fact]
+    public async Task AddressedReconstructionCountLimitRejectsBeforeActorRead()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        AggregateReconstructionResult result = await CreateReconstructor(out _).ReconstructAddressedAsync(
+            Identity, "r", reader, CreateSnapshotManager(), 32_769).ConfigureAwait(true);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
+        result.Message.ShouldContain("LegacyArrayLimit");
+        stateManager.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies opaque metadata and provider failures retain their safe protected-data reasons.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProtectionFailuresKeepTheirTypedReason(bool opaque)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        EventEnvelope stored = CreateEvent();
+        if (opaque)
+        {
+            stored = stored with
+            {
+                Extensions = EventStorePayloadProtectionMetadataCarrier.Write(
+                (IDictionary<string, string>?)null, EventStorePayloadProtectionMetadata.ProviderOpaque())
+            };
+        }
+        else
+        {
+            _ = protection.TryUnprotectEventPayloadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(),
+                Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+                .Returns<Task<PayloadUnprotectionOutcome>>(_ => throw new InvalidOperationException("provider-secret"));
+        }
+        Store(stateManager, stored);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint, protection: protection);
+        ProtectedDataUnreadableException error = await Should.ThrowAsync<ProtectedDataUnreadableException>(() =>
+            reader.ReadPageAsync(Identity, "r", 1, 1, CancellationToken.None)).ConfigureAwait(true);
+        error.Reason.ShouldBe(opaque ? UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation
+            : UnreadableProtectedDataReason.ProviderUnavailable);
+        error.Message.ShouldNotContain("provider-secret");
+        if (opaque)
+        {
+            protection.ReceivedCalls().ShouldBeEmpty();
+        }
+        var reconstructor = CreateReconstructor(out IDomainServiceResolver resolver);
+        _ = await Should.ThrowAsync<ProtectedDataUnreadableException>(() => reconstructor.ReconstructAddressedAsync(
+            Identity, "r", reader, CreateSnapshotManager(), 1)).ConfigureAwait(true);
+        resolver.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies provider plaintext is cleared while an owned domain copy survives until disposal.</summary>
+    [Fact]
+    public async Task DistinctProviderPlaintextIsClearedWhileTheDomainCopyLivesUntilRangeDisposal()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, EventEnvelope stored) = StoreCurrentV1();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        byte[] plaintext = [3, 4];
+        _ = protection.TryUnprotectEventPayloadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(),
+            Arg.Any<byte[]>(), "json", Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(PayloadUnprotectionOutcome.Readable(plaintext, "json", EventStorePayloadProtectionMetadata.Unprotected())));
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint, protection: protection);
+        using DaprProductionLogicalReplay range = await reader.ReadRangeAsync(
+            Identity, "r", 1, 1, CancellationToken.None, 1).ConfigureAwait(true);
+        plaintext.ShouldBe([0, 0]);
+        byte[] domainPayload = range.DomainEvents.ShouldHaveSingleItem().Payload;
+        domainPayload.ShouldBe([3, 4]);
+        domainPayload.ShouldNotBeSameAs(stored.Payload);
+        range.Dispose();
+        domainPayload.ShouldBe([0, 0]);
+        stored.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies distinct provider plaintext is cleared after cancellation or digest refusal.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DistinctProviderPlaintextIsClearedOnCancellationOrDigestRefusal(bool cancel)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, EventEnvelope stored) = StoreCurrentV1(includeDigest: true);
+        using var cancellation = new CancellationTokenSource();
+        byte[] plaintext = [7, 8];
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.TryUnprotectEventPayloadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(),
+            "json", Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (cancel) { cancellation.Cancel(); }
+                return Task.FromResult(PayloadUnprotectionOutcome.Readable(plaintext, "json", EventStorePayloadProtectionMetadata.Unprotected()));
+            });
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint, protection: protection);
+        if (cancel)
+        {
+            _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+                reader.ReadPageAsync(Identity, "r", 1, 1, cancellation.Token)).ConfigureAwait(true);
+        }
+        else
+        {
+            InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+                reader.ReadPageAsync(Identity, "r", 1, 1, cancellation.Token)).ConfigureAwait(true);
+            error.Message.ShouldContain("LogicalDigestMismatch");
+        }
+        plaintext.ShouldBe([0, 0]);
+        stored.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies typed and keyed command rehydration deliver equivalent plaintext current state.</summary>
+    [Fact]
+    public async Task CanonicalV1CommandStateMatchesTypedRehydrationWithPlaintextPayloads()
+    {
+        using EventEvolutionManifestCandidate candidate = CreateCandidate();
+        var command = new CommandEnvelope("command", Identity.TenantId, Identity.Domain, Identity.AggregateId,
+            "CreateOrder", [1], "correlation", null, "user", null);
+        DomainServiceCurrentState? typedState = null;
+        DomainServiceCurrentState? logicalState = null;
+        for (int lane = 0; lane < 2; lane++)
+        {
+            IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+            EventEnvelope[] stored = StoreCanonicalHistory(stateManager);
+            IEventPayloadProtectionService protection = CreateCanonicalProtection();
+            IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+            _ = invoker.InvokeAsync(command, Arg.Any<object?>(), Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    if (lane == 0) { typedState = call.ArgAt<object>(1).ShouldBeOfType<DomainServiceCurrentState>(); }
+                    else { logicalState = call.ArgAt<object>(1).ShouldBeOfType<DomainServiceCurrentState>(); }
+                    return DomainResult.NoOp();
+                });
+            ICommandAggregateTypeResolver resolver = Substitute.For<ICommandAggregateTypeResolver>();
+            _ = resolver.ResolveAsync(command, Arg.Any<CancellationToken>()).Returns("r");
+            var host = ActorHost.CreateForTest<AggregateActor>(new ActorTestOptions { ActorId = new ActorId(Identity.ActorId) });
+            var actor = new AggregateActor(host, Substitute.For<ILogger<AggregateActor>>(), invoker,
+                Substitute.For<ISnapshotManager>(), protection, Substitute.For<ICommandStatusStore>(),
+                Substitute.For<IEventPublisher>(), Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()),
+                Substitute.For<IDeadLetterPublisher>(), lane == 1 ? new KeyedCandidateProvider(candidate) : null, resolver);
+            ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+            CommandProcessingResult outcome = await actor.ProcessCommandAsync(command).ConfigureAwait(true);
+            outcome.Accepted.ShouldBeTrue();
+            stored.All(e => e.Payload.SequenceEqual(new byte[] { 9, (byte)e.SequenceNumber })).ShouldBeTrue();
+        }
+        typedState.ShouldNotBeNull();
+        logicalState.ShouldNotBeNull();
+        JsonSerializer.Serialize(logicalState).ShouldBe(JsonSerializer.Serialize(typedState));
+        logicalState.Events.Count.ShouldBe(3);
+        logicalState.Events[0].Payload.ShouldBe(JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(1)));
+        logicalState.CurrentSequence.ShouldBe(3);
+    }
+
+    /// <summary>Verifies a current V1 caller pin needs no separate chain registration.</summary>
     [Fact]
     public async Task CallerSuppliedPinReadsHistoricalV1WithoutASeparateChainRegistration()
     {
@@ -289,6 +689,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         stored.Payload.ShouldBe([1, 2]);
     }
 
+    /// <summary>Verifies versioned reconstruction publishes no partial aggregate state.</summary>
     [Fact]
     public async Task Version2ReconstructionAppliesNoPartialState()
     {
@@ -315,6 +716,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default).ConfigureAwait(true);
     }
 
+    /// <summary>Verifies the implicit V1 persister refuses a versioned triplet before actor mutation.</summary>
     [Fact]
     public async Task ImplicitV1WriterStillRejectsVersionedTripletBeforeMutation()
     {
@@ -350,6 +752,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = allocator.DidNotReceiveWithAnyArgs().AllocateAsync(default, default);
     }
 
+    /// <summary>Verifies caller-pin hop refusal leaves replay and actor state unpublished.</summary>
     [Fact]
     public async Task FromCallerPinOnHopRegistryFailsClosedWithoutPartialReplayOrStateSave()
     {
@@ -368,6 +771,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             call.GetMethodInfo().Name is "SaveStateAsync" or "SetStateAsync").ShouldBeFalse();
     }
 
+    /// <summary>Verifies pinned production replay reads only the contiguous tail after a snapshot.</summary>
     [Fact]
     public async Task ProductionReplayWithSnapshotBehindHeadReturnsOnlyTheTail()
     {
@@ -387,6 +791,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         result.CurrentSequence.ShouldBe(2);
     }
 
+    /// <summary>Verifies logical rehydration refusal carries its safe code and bypasses domain invocation.</summary>
     [Fact]
     public async Task RejectedLogicalReadFailsTheCommandBeforeInvoke()
     {
@@ -402,6 +807,9 @@ public sealed class DaprProductionLogicalEventReaderTests
             new ActorTestOptions { ActorId = new ActorId(Identity.ActorId) });
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDeadLetterPublisher deadLetter = Substitute.For<IDeadLetterPublisher>();
+        ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
+        _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>()).Returns("r");
         var actor = new AggregateActor(
             host,
             logger,
@@ -412,8 +820,9 @@ public sealed class DaprProductionLogicalEventReaderTests
             Substitute.For<IEventPublisher>(),
             Options.Create(new EventDrainOptions()),
             Options.Create(new BackpressureOptions()),
-            Substitute.For<IDeadLetterPublisher>(),
-            new KeyedCandidateProvider(candidate));
+            deadLetter,
+            new KeyedCandidateProvider(candidate),
+            aggregateTypeResolver);
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         var command = new CommandEnvelope(
             MessageId: "msg-logical",
@@ -430,10 +839,55 @@ public sealed class DaprProductionLogicalEventReaderTests
         CommandProcessingResult result = await actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeFalse();
+        result.FailureReason.ShouldContain("logical-event-read-rejected");
+        _ = await deadLetter.Received(1).PublishDeadLetterAsync(Identity,
+            Arg.Is<DeadLetterMessage>(message => message.ReasonCode == "logical-event-read-rejected"
+                && message.ErrorMessage.Contains("logical-event-read-rejected", StringComparison.Ordinal)
+                && !message.ErrorMessage.Contains(Identity.AggregateId, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
         stored.Payload.ShouldBe([1, 2]);
         _ = stateManager.Received().TryGetStateAsync<EventEnvelope>(
             $"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>());
         invoker.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Proves an invocation-time writer fence keeps generic diagnostics after successful logical rehydration.</summary>
+    [Fact]
+    public async Task WriterCapabilityMismatchDoesNotReceiveTheLogicalReadRejectionCode()
+    {
+        using EventEvolutionManifestCandidate candidate = CreateCandidate();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope[] stored = StoreCanonicalHistory(stateManager);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<DomainResult>>(_ => throw new InvalidOperationException(
+                "CapabilityMismatch: an implicit V1 writer returned a versioned event."));
+        IDeadLetterPublisher deadLetter = Substitute.For<IDeadLetterPublisher>();
+        ICommandAggregateTypeResolver resolver = Substitute.For<ICommandAggregateTypeResolver>();
+        _ = resolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>()).Returns("r");
+        var host = ActorHost.CreateForTest<AggregateActor>(new ActorTestOptions { ActorId = new ActorId(Identity.ActorId) });
+        var actor = new AggregateActor(host, Substitute.For<ILogger<AggregateActor>>(), invoker,
+            Substitute.For<ISnapshotManager>(), CreateCanonicalProtection(), Substitute.For<ICommandStatusStore>(),
+            Substitute.For<IEventPublisher>(), Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()),
+            deadLetter, new KeyedCandidateProvider(candidate), resolver);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+        var command = new CommandEnvelope("writer-command", Identity.TenantId, Identity.Domain, Identity.AggregateId,
+            "CreateOrder", [1], "writer-correlation", null, "user", null);
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(command).ConfigureAwait(true);
+
+        result.Accepted.ShouldBeFalse();
+        result.FailureReason.ShouldContain("protected-data-diagnostic-redacted");
+        result.FailureReason.ShouldNotContain("logical-event-read-rejected");
+        _ = await invoker.Received(1).InvokeAsync(command,
+            Arg.Is<object?>(state => state is DomainServiceCurrentState && ((DomainServiceCurrentState)state).EventCount == 3),
+            Arg.Any<CancellationToken>());
+        _ = await deadLetter.Received(1).PublishDeadLetterAsync(Identity,
+            Arg.Is<DeadLetterMessage>(message => message.ReasonCode == null
+                && message.ErrorMessage.Contains("protected-data-diagnostic-redacted", StringComparison.Ordinal)
+                && !message.ErrorMessage.Contains("logical-event-read-rejected", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+        stored.All(e => e.Payload.SequenceEqual(new byte[] { 9, (byte)e.SequenceNumber })).ShouldBeTrue();
     }
 
     private static DaprProductionLogicalEventReader CreateReader(
@@ -514,7 +968,9 @@ public sealed class DaprProductionLogicalEventReaderTests
         DomainServiceVersion: "v1", EventTypeName: "Legacy.Event", MetadataVersion: 1,
         SerializationFormat: "json", Payload: [1, 2], Extensions: null);
 
-    private static EventEvolutionManifestCandidate CreateCandidate()
+    /// <summary>Builds the fixture domain's pinned, current-V1 manifest candidate.</summary>
+    /// <returns>The disposable caller-supplied fixture pin.</returns>
+    internal static EventEvolutionManifestCandidate CreateCandidate()
     {
         DirectoryInfo? root = new(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Hexalith.EventStore.slnx")))
@@ -534,6 +990,64 @@ public sealed class DaprProductionLogicalEventReaderTests
         ];
         using var registry = new EventDomainRegistry("d", rows);
         return new EventEvolutionManifestCandidate("d", rows, registry.Fingerprint, referencedManifestBytes: 0);
+    }
+
+    /// <summary>Configures three addressed events whose stored bytes differ from their logical payloads.</summary>
+    /// <param name="stateManager">The substitute actor state manager to configure.</param>
+    /// <returns>The immutable stored envelopes used to verify replay leaves history unchanged.</returns>
+    internal static EventEnvelope[] StoreCanonicalHistory(IActorStateManager stateManager)
+    {
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(3, DateTimeOffset.UnixEpoch, "etag")));
+        var events = new EventEnvelope[3];
+        for (int i = 0; i < events.Length; i++)
+        {
+            int sequence = i + 1;
+            EventEnvelope envelope = CreateEvent() with
+            {
+                SequenceNumber = sequence,
+                MessageId = $"message-{sequence}",
+                Payload = [9, (byte)sequence],
+            };
+            byte[] plaintext = JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(sequence));
+            events[i] = envelope with
+            {
+                ApplicationPayloadDigest = EventLogicalDigest.Compute(envelope, "json", EventLogicalDigest.HashPayload(plaintext)),
+            };
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}{sequence}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, events[i]));
+        }
+
+        return events;
+    }
+
+    /// <summary>Creates a provider that returns independently owned canonical plaintext from fixture storage bytes.</summary>
+    /// <returns>The non-identity protection service used by replay and command-state tests.</returns>
+    internal static IEventPayloadProtectionService CreateCanonicalProtection()
+    {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.TryUnprotectEventPayloadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(),
+            Arg.Any<byte[]>(), "json", Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(PayloadUnprotectionOutcome.Readable(
+                JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(call.ArgAt<byte[]>(2)[1])), "json",
+                EventStorePayloadProtectionMetadata.Unprotected())));
+        return protection;
+    }
+
+    /// <summary>Creates the addressed reconstructor with a registered fixture domain and canonical replay transport.</summary>
+    /// <param name="dapr">The Dapr client that constructs the invocation request.</param>
+    /// <param name="httpClient">The client whose handler runs the real canonical Apply replay.</param>
+    /// <param name="resolver">The configured domain registration resolver.</param>
+    /// <returns>The reconstructor used by positive replay and manual-snapshot controls.</returns>
+    internal static DaprAggregateStateReconstructor CreateCanonicalReconstructor(
+        Dapr.Client.DaprClient dapr, HttpClient httpClient, out IDomainServiceResolver resolver)
+    {
+        resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => new DomainServiceRegistration("domain", "process-command", call.ArgAt<string>(0), call.ArgAt<string>(1), "v1"));
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        return new DaprAggregateStateReconstructor(dapr, factory, resolver, NullLogger<DaprAggregateStateReconstructor>.Instance);
     }
 
     private static EventDomainRegistry CreateRegistry(bool upcasting = false)
@@ -560,6 +1074,8 @@ public sealed class DaprProductionLogicalEventReaderTests
         return new EventDomainRegistry("d", CreateUpcastingRows(fixture));
     }
 
+    /// <summary>Builds the fixture domain's caller pin whose retained V1 events require an upcast hop.</summary>
+    /// <returns>The disposable caller-supplied upcasting fixture manifest.</returns>
     internal static EventEvolutionManifestCandidate CreateUpcastingCandidate()
     {
         ReadOnlyMemory<byte>[] rows = CreateUpcastingRows(LoadFixture());
@@ -632,17 +1148,4 @@ public sealed class DaprProductionLogicalEventReaderTests
         return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path))!;
     }
 
-    private sealed class KeyedCandidateProvider(EventEvolutionManifestCandidate candidate) : IKeyedServiceProvider
-    {
-        public object? GetService(Type serviceType) => null;
-
-        public object? GetKeyedService(Type serviceType, object? serviceKey)
-            => serviceType == typeof(EventEvolutionManifestCandidate) && Equals(serviceKey, "d")
-                ? candidate
-                : null;
-
-        public object GetRequiredKeyedService(Type serviceType, object? serviceKey)
-            => GetKeyedService(serviceType, serviceKey)
-                ?? throw new InvalidOperationException($"No keyed service for {serviceType}.");
-    }
 }
