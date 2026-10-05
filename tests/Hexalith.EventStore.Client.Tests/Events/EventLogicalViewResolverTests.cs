@@ -78,4 +78,34 @@ public sealed class EventLogicalViewResolverTests
 
         error.Message.ShouldContain("CapabilityMismatch");
     }
+
+    [Fact]
+    public async Task SharedBudgetIncludesEarlierEffectiveOwnersAndReleasesFailedCopy()
+    {
+        using EventDomainRegistry registry = EventUpcastChainExecutorTests.CreateRegistry();
+        var upcaster = new LeaseRecordingEventUpcaster();
+        var executor = new EventUpcastChainExecutor(registry,
+            new Dictionary<(string, int), RegisteredEventUpcaster>
+            {
+                [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
+            }, static (_, _, _, _, _, _) => { });
+        var resolver = new EventLogicalViewResolver(registry, executor);
+        var budget = new EventBufferBudget(6);
+        byte[] source = [1, 2];
+        using ResolvedLogicalEvent first = await resolver.ResolveAsync("d", "evt", 2, "evt", 2,
+            "json", source, CancellationToken.None, budget).ConfigureAwait(true);
+        using ResolvedLogicalEvent second = await resolver.ResolveAsync("d", "evt", 2, "evt", 2,
+            "json", source, CancellationToken.None, budget).ConfigureAwait(true);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await resolver.ResolveAsync("d", "evt", 2, "evt", 2, "json", source,
+                CancellationToken.None, budget).ConfigureAwait(true));
+
+        error.Message.ShouldContain("ScratchLimit");
+        budget.LiveBytes.ShouldBe(4);
+        source.ShouldBe([1, 2]);
+        first.Dispose();
+        second.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+    }
 }

@@ -72,6 +72,12 @@ internal sealed class EventDomainRegistry : IDisposable
         return row.GetIntField(2);
     }
 
+    /// <summary>Gets the aggregate route explicitly declared for an allow-listed event contract.</summary>
+    internal string GetAggregateRoute(string canonicalType)
+        => _current.TryGetValue(canonicalType, out EventRegistryRow? row)
+            ? row.GetTextField(1)
+            : throw new InvalidOperationException("UnknownEventContract: the canonical event type is not allow-listed.");
+
     /// <summary>Gets the exact registered version descriptor.</summary>
     internal EventRegistryRow GetVersion(string canonicalType, int version)
         => _versions.TryGetValue((canonicalType, version), out EventRegistryRow? row)

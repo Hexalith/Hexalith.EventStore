@@ -85,6 +85,60 @@ public class EventStreamReaderTests {
         result.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(2, 1, "etag")]
+    [InlineData(1, 2, "etag")]
+    [InlineData(1, 1, "changed")]
+    public async Task RehydrateAsync_ChangedHeadFloorOrETagRefusesCompleteResult(
+        long observedHead, long observedFloor, string observedETag) {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        AggregateMetadata before = new(1, DateTimeOffset.UnixEpoch, "etag");
+        AggregateMetadata after = new(observedHead, DateTimeOffset.UnixEpoch, observedETag, observedFloor);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, before),
+                new ConditionalValue<AggregateMetadata>(true, after));
+        EventEnvelope stored = CreateTestEvent(1);
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("SourceHeadChanged");
+        stored.Payload.ShouldBe([1, 2, 3]);
+        _ = stateManager.DidNotReceiveWithAnyArgs().SetStateAsync(default!, default(EventEnvelope)!, default);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_UnavailablePrefixRefusesBeforeEventRead() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(5, DateTimeOffset.UnixEpoch, null, 3)));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("ReplayRestartRequired");
+        _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_CurrentSnapshotChecksHeadWithoutReadingEvents() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(5, DateTimeOffset.UnixEpoch, null)),
+                new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(6, DateTimeOffset.UnixEpoch, null)));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, CreateTestSnapshot(5))).ConfigureAwait(true);
+
+        error.Message.ShouldContain("SourceHeadChanged");
+        _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
+    }
+
     [Fact]
     public async Task RehydrateAsync_PreCanceledRequestDoesNotReadMetadata() {
         (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();

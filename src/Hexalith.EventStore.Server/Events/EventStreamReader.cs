@@ -67,6 +67,10 @@ public partial class EventStreamReader(
 
         long currentSequence = metadata.CurrentSequence;
         long lastSnapshotSequence = snapshot?.SequenceNumber ?? 0;
+        if (metadata.RetainedFloor < 1
+            || (metadata.RetainedFloor > currentSequence && metadata.RetainedFloor - currentSequence > 1)) {
+            throw new InvalidOperationException("SourceHeadChanged: actor metadata has an invalid retained floor.");
+        }
 
         // Determine read range based on snapshot presence
         long startSequence;
@@ -75,6 +79,7 @@ public partial class EventStreamReader(
         if (snapshot is not null) {
             // AC #8: snapshot at current sequence -- no tail events needed
             if (snapshot.SequenceNumber >= currentSequence) {
+                await RequireUnchangedMetadataAsync(identity, metadata, cancellationToken).ConfigureAwait(false);
                 sw.Stop();
                 Log.RehydrationCompleteSnapshotAtCurrent(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
 
@@ -93,6 +98,10 @@ public partial class EventStreamReader(
             // AC #3: no snapshot, full replay from sequence 1
             startSequence = 1;
             requestedCount = currentSequence;
+        }
+
+        if (startSequence < metadata.RetainedFloor) {
+            throw new InvalidOperationException("ReplayRestartRequired: the requested prefix is below the retained floor.");
         }
 
         var arrayBudget = new LegacyEventArrayBudget(requestedCount);
@@ -135,6 +144,7 @@ public partial class EventStreamReader(
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        await RequireUnchangedMetadataAsync(identity, metadata, cancellationToken).ConfigureAwait(false);
 
         sw.Stop();
 
@@ -147,6 +157,25 @@ public partial class EventStreamReader(
             Events: events,
             LastSnapshotSequence: lastSnapshotSequence,
             CurrentSequence: currentSequence);
+    }
+
+    private async Task RequireUnchangedMetadataAsync(AggregateIdentity identity, AggregateMetadata expected,
+        CancellationToken cancellationToken) {
+        ConditionalValue<AggregateMetadata> observed;
+        try {
+            observed = await stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is not OperationCanceledException) {
+            throw new EventDeserializationException(-1, identity.ActorId, error);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!observed.HasValue || observed.Value.CurrentSequence != expected.CurrentSequence
+            || observed.Value.RetainedFloor != expected.RetainedFloor
+            || !string.Equals(observed.Value.ETag, expected.ETag, StringComparison.Ordinal)) {
+            throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during stream rehydration.");
+        }
     }
 
     private static partial class Log {

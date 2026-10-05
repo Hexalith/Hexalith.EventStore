@@ -56,6 +56,9 @@ jobs:
       - name: Initialize root-declared submodules
         run: git -c submodule.recurse=false submodule update --init
 
+      - name: Verify current Dapr-only event evolution boundary
+        run: python3 scripts/verify-event-evolution.py --mutations
+
       - name: Initialize .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:

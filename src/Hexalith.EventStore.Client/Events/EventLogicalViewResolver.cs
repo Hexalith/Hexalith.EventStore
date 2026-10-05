@@ -23,7 +23,8 @@ internal sealed class EventLogicalViewResolver
     /// <summary>Returns an owned current view while retaining the original application bytes unchanged.</summary>
     internal async ValueTask<ResolvedLogicalEvent> ResolveAsync(string domain, string eventTypeName,
         int metadataVersion, string? eventContractType, int? payloadVersion, string serializationFormat,
-        ReadOnlyMemory<byte> originalApplicationPayload, CancellationToken cancellationToken)
+        ReadOnlyMemory<byte> originalApplicationPayload, CancellationToken cancellationToken,
+        EventBufferBudget? sharedBudget = null, string? aggregateType = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal))
@@ -50,6 +51,8 @@ internal sealed class EventLogicalViewResolver
             throw new InvalidOperationException("UnknownEventContract: incomplete or unsupported event metadata.");
         }
 
+        RequireAggregateRoute(canonicalType, aggregateType);
+
         if (!string.Equals(serializationFormat, sourceFormat, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("UnknownEventContract: source format disagrees with its registered version.");
@@ -59,7 +62,7 @@ internal sealed class EventLogicalViewResolver
             throw new InvalidOperationException("ReadableLimit: logical source payload exceeds 64 MiB.");
         }
 
-        var budget = new EventBufferBudget();
+        EventBufferBudget budget = sharedBudget ?? new EventBufferBudget();
         EventBufferReservation reservation = budget.Reserve(originalApplicationPayload.Length);
         byte[]? sourceBytes = null;
         byte[]? before = null;
@@ -120,6 +123,43 @@ internal sealed class EventLogicalViewResolver
             {
                 CryptographicOperations.ZeroMemory(before);
             }
+        }
+    }
+
+    /// <summary>Refuses an addressed route that disagrees with the immutable domain manifest.</summary>
+    internal void RequireSourceRoute(string domain, string eventTypeName, int metadataVersion,
+        string? eventContractType, int? payloadVersion, string aggregateType)
+    {
+        if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("UnknownEventContract: event domain is not the registered domain.");
+        }
+
+        string canonicalType;
+        if (metadataVersion == 1 && eventContractType is null && payloadVersion is null)
+        {
+            (canonicalType, _, _) = _registry.ResolveAlias(eventTypeName);
+        }
+        else if (metadataVersion == 2 && eventContractType is not null && payloadVersion is >= 1 and <= 1024
+            && string.Equals(eventTypeName, eventContractType, StringComparison.Ordinal))
+        {
+            canonicalType = eventContractType;
+            _ = _registry.GetVersion(canonicalType, payloadVersion.Value);
+        }
+        else
+        {
+            throw new InvalidOperationException("UnknownEventContract: incomplete or unsupported event metadata.");
+        }
+
+        RequireAggregateRoute(canonicalType, aggregateType);
+    }
+
+    private void RequireAggregateRoute(string canonicalType, string? aggregateType)
+    {
+        if (aggregateType is not null
+            && !string.Equals(_registry.GetAggregateRoute(canonicalType), aggregateType, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("AddressMismatch: event contract belongs to another aggregate route.");
         }
     }
 }
