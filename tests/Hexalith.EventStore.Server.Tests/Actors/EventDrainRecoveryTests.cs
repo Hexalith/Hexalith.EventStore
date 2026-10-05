@@ -335,25 +335,32 @@ public class EventDrainRecoveryTests {
     [InlineData("record-carried-causation", 8L)]
     [InlineData("wrong-count", null)]
     [InlineData("missing-command-type", null)]
+    [InlineData("record-wrong-identity", null)]
+    [InlineData("record-legacy", null)]
+    [InlineData("record-missing-command-type", null)]
     [InlineData("wrong-domain", null)]
     [InlineData("wrong-aggregate", null)]
     public async Task Durable_drain_proof_uses_its_verified_range_instead_of_the_aggregate_head(string scenario, long? expected)
     {
         (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
+        bool recordCarriesCausation = scenario is "record-carried-causation"
+            or "record-wrong-identity" or "record-legacy" or "record-missing-command-type";
         UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
-            StartSequence = 7, EndSequence = 8, MessageId = scenario is "legacy" ? null : scenario is "wrong-identity" ? "other" : "command-8",
+            StartSequence = 7, EndSequence = 8,
+            MessageId = scenario is "legacy" or "record-legacy" ? null
+                : scenario is "wrong-identity" or "record-wrong-identity" ? "other" : "command-8",
             EventCount = scenario is "wrong-count" ? 3 : 2,
-            CommandType = scenario is "missing-command-type" ? "" : "CreateOrder",
+            CommandType = scenario is "missing-command-type" or "record-missing-command-type" ? "" : "CreateOrder",
             CausationId = scenario switch {
                 "record-wrong-causation" => "other",
-                "record-carried-causation" => "cause-drain",
+                _ when recordCarriesCausation => "cause-drain",
                 _ => null,
             },
         };
         state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
         ConfigureEventsInState(state, 2, startSequence: 7, causationId: "cause-drain");
-        if (scenario is not "missing-idempotency" and not "record-carried-causation")
+        if (scenario is not "missing-idempotency" && !recordCarriesCausation)
         {
             var idempotency = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null,
                 DateTimeOffset.UtcNow, EventCount: 2, MessageId: "command-8", CommandType: "CreateOrder",
@@ -495,6 +502,56 @@ public class EventDrainRecoveryTests {
             .ConfigureAwait(true);
 
         CommandStatusRecord completed = (await statuses.ReadStatusAsync("test-tenant", "msg-stale").ConfigureAwait(true)).ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.CommittedEventSequence.ShouldBe(2);
+        completed.Domain.ShouldBe("test-domain");
+    }
+
+    [Fact]
+    public async Task Resume_publish_failure_drain_reports_committed_sequence_without_an_idempotency_record()
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeEventPublisher publisher, _) = CreateInMemoryActor(statuses, state);
+        const string messageId = "msg-resume-fail";
+        const string correlationId = "corr-resume-fail";
+        const string causationId = "cause-resume-fail";
+        var checkpoint = new PipelineState(
+            correlationId, CommandStatus.EventsStored, "CreateOrder", DateTimeOffset.UtcNow.AddMinutes(-5),
+            EventCount: 2, RejectionEventType: null, MessageId: messageId, CausationId: causationId,
+            StartSequence: 1, EndSequence: 2);
+        await state.SetStateAsync($"test-tenant:test-domain:agg-001:pipeline:{correlationId}", checkpoint).ConfigureAwait(true);
+        await state.SetStateAsync("test-tenant:test-domain:agg-001:metadata",
+            new AggregateMetadata(2, DateTimeOffset.UtcNow, null)).ConfigureAwait(true);
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", new EventEnvelope(
+                $"evt-{sequence}", "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+                DateTimeOffset.UtcNow, correlationId, causationId, "system", "1.0.0", "OrderCreated", 1, "json", [1], null))
+                .ConfigureAwait(true);
+        }
+
+        await state.SaveStateAsync().ConfigureAwait(true);
+        publisher.SetupFailure();
+        CommandEnvelope incoming = new(
+            MessageId: messageId, TenantId: "test-tenant", Domain: "test-domain", AggregateId: "agg-001",
+            CommandType: "CreateOrder", Payload: [1], CorrelationId: correlationId, CausationId: causationId,
+            UserId: "system", Extensions: null);
+        CommandProcessingResult failed = await actor.ProcessCommandAsync(incoming).ConfigureAwait(true);
+
+        failed.Accepted.ShouldBeTrue();
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        var drain = (UnpublishedEventsRecord)state.CommittedState[$"drain:{messageId}"];
+        drain.CausationId.ShouldBe(causationId);
+        state.CommittedState.ContainsKey($"idempotency:{messageId}").ShouldBeTrue();
+        await state.RemoveStateAsync($"idempotency:{messageId}").ConfigureAwait(true);
+        await state.SaveStateAsync().ConfigureAwait(true);
+        publisher.ClearFailure();
+
+        await actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(messageId), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync("test-tenant", messageId).ConfigureAwait(true)).ShouldNotBeNull();
         completed.Status.ShouldBe(CommandStatus.Completed);
         completed.CommittedEventSequence.ShouldBe(2);
         completed.Domain.ShouldBe("test-domain");

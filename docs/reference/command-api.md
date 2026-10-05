@@ -37,7 +37,7 @@ Swagger UI is available at `/swagger`. The machine-readable OpenAPI spec is avai
 
 ### Correlation ID
 
-The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request only. It does not set the command body's `correlationId`, which defaults to `messageId` and identifies command status and downstream command processing. The header and the command `correlationId` can differ even when the request sends the header.
+The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request for tracing and support, including the `correlationId` field on ProblemDetails. It does not set the command body's `correlationId`. That body value defaults to `messageId`, is carried on status records and events, and is not the status lookup key: lookup uses `messageId`. The header and the command `correlationId` can differ even when the request sends the header.
 
 ### Request Body Size Limit
 
@@ -160,7 +160,7 @@ Content-Type: application/json
 {"correlationId":"01HKQXYZ0000000000000000C3","messageId":"01HKQXYZ0000000000000000C3"}
 ```
 
-`Location` uses the response `messageId`: the first writer's execution id (`result.MessageId`, or the submitted `messageId` when the result has none). An idempotency-key retry can therefore return a different `messageId` than the request body. `X-Correlation-ID` identifies this HTTP request. Middleware copies a valid request header or generates one, and it never writes the command `correlationId`. Those values can differ even when the request includes the header.
+`Location` uses the response `messageId`: the first writer's execution id, or the submitted `messageId` when the result has none. An idempotency-key retry can therefore return a different `messageId` than the request body. `X-Correlation-ID` identifies this HTTP request for tracing and support. Middleware copies a valid request header or generates one, and it never writes the command `correlationId`.
 
 ### Error Responses
 
@@ -318,14 +318,14 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 | statusCode         | integer  | Numeric enum value (0-7).                                                                                  |
 | timestamp          | string   | ISO 8601 timestamp of last status update.                                                                  |
 | aggregateId        | string?  | Populated when processing begins.                                                                          |
-| domain             | string?  | Aggregate domain on actor-written processing and terminal status records, including rejections. Null on the initial `Received` status, on drain `PublishFailed` and exhaustion advisories, on legacy records, and on pre-actor concurrency conflicts. |
+| domain             | string?  | Aggregate domain on actor-written processing and terminal status records, including rejections. Null on the initial `Received` status, on drain `PublishFailed` and exhaustion advisories, on legacy records, and on concurrency-conflict rejections written by the API or the submit handler. |
 | eventCount         | integer? | Number of events produced (Completed status only).                                                         |
 | committedEventSequence | integer? | Last aggregate event sequence durably committed by this command when an exact eventful range is verified. Null when proof is unavailable. |
 | rejectionEventType | string?  | Rejection event type name (Rejected status only).                                                          |
 | failureReason      | string?  | Error description (PublishFailed status only).                                                             |
 | timeoutDuration    | string?  | ISO 8601 duration format, e.g., `"PT30S"` (TimedOut status only). Produced by `XmlConvert.ToString(TimeSpan)`. |
 
-`committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, a rejection, a legacy status, or a recovery whose command-specific range cannot be verified. Publication recovery reports the sequence when the persisted envelopes match the drain record's command causation, including a stale-checkpoint handoff that carries that causation on the drain record. A drain record written before that field existed can still report the sequence when its recoverable idempotency record supplies the same verified causation. Actor-written processing and terminal records retain the command domain even when they reject or cannot provide sequence proof. The first `Received` status and drain publication-failure or exhaustion advisories omit `domain`, as do legacy records and pre-actor concurrency conflicts. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
+`committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, a rejection, a legacy status, or a recovery whose command-specific range cannot be verified. Publication recovery reports the sequence when the persisted envelopes match the drain record's command causation, including a stale-checkpoint handoff that carries that causation on the drain record. A drain record written before that field existed can still report the sequence when its recoverable idempotency record supplies the same verified causation. Actor-written processing and terminal records retain the command domain even when they reject or cannot provide sequence proof. The first `Received` status and drain publication-failure or exhaustion advisories omit `domain`, as do legacy records and concurrency-conflict rejections written by the API or the submit handler. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
 
 **Example — completed command:**
 
@@ -545,17 +545,17 @@ $ TOKEN="${CALLER_SUPPLIED_ACCESS_TOKEN}"
 $ curl -X POST "${EVENTSTORE_URL}/api/v1/commands" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"messageId":"01HKQXYZ0000000000000000A1","tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
+  -d '{"messageId":"01HKQXYZ0000000000000000F6","tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
 ```
 
 ```json
-{ "correlationId": "01HKQXYZ0000000000000000A1", "messageId": "01HKQXYZ0000000000000000A1" }
+{ "correlationId": "01HKQXYZ0000000000000000F6", "messageId": "01HKQXYZ0000000000000000F6" }
 ```
 
 **Step 3 — Poll status:**
 
 ```bash
-$ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
+$ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000F6" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -563,8 +563,8 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 
 ```json
 {
-    "correlationId": "01HKQXYZ0000000000000000A1",
-    "messageId": "01HKQXYZ0000000000000000A1",
+    "correlationId": "01HKQXYZ0000000000000000F6",
+    "messageId": "01HKQXYZ0000000000000000F6",
     "tenantId": "tenant-a",
     "status": "Completed",
     "statusCode": 4,
