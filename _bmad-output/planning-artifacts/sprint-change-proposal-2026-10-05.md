@@ -3,7 +3,7 @@
 Date: 2026-10-05  
 Project: Hexalith.EventStore  
 Requested by: Administrator  
-Status: Draft — P1–P5 approved; P6–P7 pending incremental review  
+Status: Complete proposal — P1–P7 individually approved; final review and implementation approval pending  
 Review mode: Incremental, selected by the user after initial draft preparation  
 Scope: Moderate — direct adjustment within existing epics
 
@@ -98,7 +98,7 @@ MVP functionality stays intact. Boundary enforcement and any required correction
 
 ## 4. Detailed Change Proposals
 
-All NEW text below forms the proposed change set. Only this proposal file is written during this review stage. P1–P5 were approved by the user on 2026-10-05; P6–P7 remain pending individual Approve/Edit/Skip decisions. Individual approvals retain those edits in the proposal; they do not imply approval of the complete change set.
+All NEW text below forms the proposed change set. Only this proposal file is written during this review stage. P1–P7 were individually approved by the user on 2026-10-05 and are retained without revision. Incremental review is complete; the complete proposal now awaits final review and implementation approval under Steps 4–5.
 
 ### P1 — PRD: project-wide infrastructure rule
 
@@ -243,6 +243,8 @@ Rationale: remove the planned automatic SDK bypass without weakening the securit
 
 ### P6 — Documentation, testing evidence and UX alignment
 
+**Review decision:** Approved by the user on 2026-10-05 (reply: “approve” to Edit 6 of 7).
+
 Target: `docs/concepts/architecture-overview.md`, “Infrastructure Portability”.
 
 **OLD:** “Because all infrastructure access goes through DAPR building blocks, switching backends is a configuration change — not a code change.”
@@ -264,6 +266,8 @@ Target: Epic 7, Story 7.11 persisted-state evidence acceptance.
 UX disposition: no wireframe change. Preserve the canonical UX states and routes; test that transport/component failures retain honest freshness and availability, and that switching distribution does not change authorization or group isolation. UI copy does not expose backend credentials, internal endpoints or exception mechanics.
 
 ### P7 — Backlog, tracking and handoff synchronization
+
+**Review decision:** Approved by the user on 2026-10-05 (reply: “approve” to Edit 7 of 7).
 
 **OLD:** Epic 2 ends at 2.12; Epic 3 ends at 3.16. The current sprint tracker has no 2.13 or 3.17.
 
@@ -337,8 +341,8 @@ Success criteria:
 | 5.5 Handoff plan | [x] | Named roles and deliverables; not yet executed. |
 | 6.1 Checklist review | [x] | Outstanding approval and implementation work explicit. |
 | 6.2 Proposal accuracy | [x] | Source anchors and scope checked; runtime claims remain unproven. |
-| 6.3 Explicit approval | [!] | Pending user review/approval of this proposal. |
+| 6.3 Explicit approval | [!] | All seven edits individually approved; complete-proposal implementation approval remains pending. |
 | 6.4 Sprint updates | [!] | Proposed rows prepared; apply after approval. |
 | 6.5 Handoff confirmation | [!] | Plan prepared; final implementation routing follows approval. |
 
-Workflow state: P1–P5 approved and retained; paused at Step 3 on P6 for **Approve**, **Edit** or **Skip**. After individual review, the refined complete proposal proceeds to Steps 4–5. Complete-proposal implementation approval has not been obtained. No runtime, dependency, frozen-spec, sprint-status or implementation-authorization record was changed; individual review decisions are recorded here.
+Workflow state: Step 3 complete with P1–P7 approved and retained. The complete proposal is saved and presented at Step 4 for **Continue** (proceed to final approval) or **Edit** (revise the proposal). Step 5 complete-proposal implementation approval has not been obtained. No runtime, dependency, frozen-spec, sprint-status or implementation-authorization record was changed; individual review decisions are recorded here.
