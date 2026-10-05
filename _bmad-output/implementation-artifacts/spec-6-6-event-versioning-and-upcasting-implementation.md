@@ -13,21 +13,21 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/6-6-implementation-map.md'
 ---
 
-<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+<frozen-after-approval reason="human-owned intent — renegotiated by owner on 2026-10-05 for Dapr-only storage">
 
 ## Intent
 
 **Problem:** Persisted/wire events lack stable versioned identity, and consumers have no shared authenticated evolution pipeline. Processing and cancellation differ across durable boundaries.
 
-**Approach:** Implement the approved AD-13 design in `spec-event-versioning-upcasting.md`, through its four ordered slices, across writers, readers, consumers and recovery.
+**Approach:** Implement versioned event identity and deterministic upcasting across writers, readers, consumers and recovery through Dapr state, actors, pub/sub and service invocation. The [Dapr-only amendment](story-6-6-dapr-only-amendment.md) supersedes conflicting provider-specific parts of the earlier approved AD-13 design.
 
 ## Boundaries & Constraints
 
-**Always:** Follow approved schemas, budgets, signing purposes, outcomes and activation order exactly. Preserve stored bytes, MessageIds, actor commits, last-good state and compatibility adapters. Propagate cancellation to the defined durable boundary. Verify every consumer through one allow-listed reader. Material design changes return to the owner.
+**Always:** Follow compatible approved schemas, budgets, outcomes and activation order. Preserve application payload bytes, MessageIds, actor commits, last-good state and compatibility adapters. Propagate cancellation to the defined durable boundary. Verify every consumer through one allow-listed evolution service. Keep unavailable proof-dependent operations fenced.
 
-**Scope:** Local implementation, tests and existing CI gates, including one Npgsql `10.0.3` central pin in `references/Hexalith.Builds/Props/Directory.Packages.props` and a versionless Server reference. This named submodule edit is part of the approval scope; inspect its owning guidance first.
+**Scope:** Local implementation, tests and existing CI gates. Remove the direct PostgreSQL adapter, Server Npgsql reference, and Story 6.6 Npgsql pin in Builds. New persistence code must call Dapr actor/state APIs only.
 
-**Never:** Rewrite history, re-execute committed commands for publication resume, invent provider authority, relax gates or modify unrelated dependencies. Snapshot/projection-cost redesign and Epic 8 protection are excluded. Deployment, publication and offline retained-data migration require their existing separate authority; absent production qualification keeps activation fenced.
+**Never:** Rewrite history, re-execute committed commands for publication resume, claim provider-signed or historical-generation evidence from Dapr logical readback, relax gates or modify unrelated dependencies. Snapshot/projection-cost redesign and Epic 8 protection are excluded. Deployment, publication and offline retained-data migration require their existing separate authority; absent production qualification keeps activation fenced.
 
 ## I/O & Edge-Case Matrix
 
@@ -36,48 +36,61 @@ context:
 | Current, legacy or mixed history | Canonical effective state; immutable stored evidence |
 | Invalid identity/chain, unreadable payload or unavailable evidence | Approved typed outcome; no partial state, checkpoint or handler effect |
 | Cancellation before/after commit | No pre-commit mutation; preserve committed truth and bounded recovery |
-| Retry, resume, owner takeover or rollback | Same durable identities; fenced authority, idempotent effects and receipts |
+| Retry, resume, owner takeover or rollback | Same durable identities; fenced authority, idempotent effects and Dapr logical readback |
 
 </frozen-after-approval>
 
 ## Code Map
 
-[Implementation map](6-6-implementation-map.md) M1–M8 records exact existing/new files, reusable symbols, normative sections, test anchors and gates. AD-13's approved digest is `bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050`; its preflight passed.
+[Implementation map](6-6-implementation-map.md) M1–M8 records the previous plan and the current Dapr-only corrections. AD-13's approved digest `bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050` and its passing preflight describe the earlier design, not this amendment. A revised preflight and evidence set are required before claiming Story 6.6 completion.
 
 ## Tasks & Acceptance
 
 **Execution, in dependency order:**
 
 - [ ] `src/Hexalith.EventStore.Contracts/Events/`, `src/Hexalith.EventStore.Client/Events/` — M1: add compatible metadata, registry, codecs and bounded upcaster interfaces; preserve constructors and legacy wire behavior.
-- [ ] `src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs`, `src/Hexalith.EventStore.Server/Events/`, `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` — M2: bounded evidence-writing V1 producer, exact actor save/readback and authenticated shared reader; keep slice 1 additive. Update invoker streaming before admission.
-- [ ] `src/Hexalith.EventStore.Server/Control/`, `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`, named Builds pin — M3: shared PostgreSQL adapter, fences, quota/queue, registry/epoch and scope claims before hold producers; V2 stays dormant.
+- [ ] `src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs`, `src/Hexalith.EventStore.Server/Events/`, `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` — M2: bounded V1 producer, actor same-save logical evidence/readback and shared Dapr-backed evolution reader; keep slice 1 additive. Update invoker streaming before admission.
+- [ ] Dapr actor/state APIs — M3: define and qualify the Dapr control owner, ETag/transaction capability and recovery boundaries needed by actual hold producers; V2 stays dormant. The former PostgreSQL adapter is withdrawn.
 - [ ] `src/Hexalith.EventStore.Contracts/Replay/`, `src/Hexalith.EventStore.Client/Handlers/`, `src/Hexalith.EventStore.DomainService/DomainQueryDispatcher.cs` — M4: private paged replay, async processing, verified reconstruction and scoped query intake; propagate original tokens and fence versioned cache access.
-- [ ] `src/Hexalith.EventStore.Server/Projections/`, `src/Hexalith.EventStore.Client/Projections/`, `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs` — M5: verified full/incremental dispatch, certified named generations, checkpoint and query visibility; preserve legacy key ownership.
+- [ ] `src/Hexalith.EventStore.Server/Projections/`, `src/Hexalith.EventStore.Client/Projections/`, `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs` — M5: verified full/incremental dispatch, application-owned named generations with Dapr logical readback, checkpoint and query visibility; preserve legacy key ownership.
 - [ ] `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`, `src/Hexalith.EventStore.Client/Subscriptions/` — M6: exact carriers/pins, membership and effect receipts; verify before marker/handler and preserve first-response/status authority.
-- [ ] `src/Hexalith.EventStore/Controllers/`, `src/Hexalith.EventStore.Operations/`, `src/Hexalith.EventStore.Admin.UI/` — M7: signed same-event resume, capture/redrive, hold inventory and safe diagnostics; audit SDK/CLI/Admin filters and activate only approved slice changes.
-- [ ] `tests/`, `scripts/verify-event-evolution.py`, `.github/workflows/ci.yml` — M8: production-path matrices, timed mutation checks, API/wire/package consumers and two-host provider evidence; close O-01–O-20 and owned follow-ups before final V2/major gate.
+- [ ] `src/Hexalith.EventStore/Controllers/`, `src/Hexalith.EventStore.Operations/`, `src/Hexalith.EventStore.Admin.UI/` — M7: authorized same-event resume, Dapr logical capture/redrive, hold inventory and safe diagnostics; audit SDK/CLI/Admin filters and activate only qualified slice changes.
+- [ ] `tests/`, `scripts/verify-event-evolution.py`, `.github/workflows/ci.yml` — M8: production-path matrices, timed mutation checks, API/wire/package consumers and two-host Dapr evidence; re-evaluate O-01–O-20 against the amendment before final V2/major gate.
 
 **Acceptance Criteria:**
 
-- Given the reviewed inputs and owner request, when preflight runs, then current approval/input checks pass and implementation traces to the approved sections.
+- Given the earlier reviewed inputs and owner's Dapr-only correction, when preflight runs, then historical approval is distinguished from this amendment and implementation traces to the current Dapr-only boundary.
 - Given any supported history, when each consumer executes, then effective objects and persisted aggregate/projection end-state equal the canonical baseline with original bytes unchanged.
 - Given invalid or cancelled work, when each durable boundary is exercised, then typed outcomes preserve last-good truth and produce zero forbidden mutation or disclosure.
-- Given concurrent recovery and mixed fleets, when crash/rollback matrices run, then source evidence, fences, receipts and stable identities prevent duplicate effects or incompatible admission.
-- Given completion, when all affected regressions, compatibility and provider lanes run, then required checks pass without unexpected skips; only proven obligations close. Missing production authority or required evidence leaves the story incomplete.
+- Given concurrent recovery and mixed fleets, when crash/rollback matrices run through Dapr APIs, then durable intent, logical readback, fences and stable identities prevent duplicate effects or incompatible admission within the demonstrated Dapr capability boundary.
+- Given completion, when all affected regressions, compatibility and Dapr live-sidecar lanes run, then required checks pass without unexpected skips; only proven obligations close. Missing production authority or required evidence leaves the story incomplete.
 
 ## Implementation Notes
+
+### Dapr-only slice — 2026-10-05
+
+The dormant SQL control adapter, its tests and Npgsql footprint were removed.
+An unregistered addressed `IActorStateManager` logical reader now resolves
+allow-listed event versions through the Client upcaster kernel; new V1 writes
+carry an application payload/metadata digest that publication preserves. The
+reader verifies the digest after unprotection when present, while historical
+V1 values without it remain readable. This is logical application evidence,
+not provider attestation. The [transition evidence](evidence/story-6-6/dapr-only-transition-2026-10-05.md)
+records focused tests and a warning-free Release build. The reader is not yet
+wired into production consumers; actor-head/route checks and live Dapr proof
+remain open. V2 writes remain fenced and no M1–M8 task is complete.
 
 ### Re-derivation requirements from resumed review
 
 Current follow-up implementation and exact verification evidence is recorded in [Story 6.6 follow-up evidence](evidence/story-6-6/verification-2026-10-04-followup.md). Internal registry/hash/options, bounded local E/F execution, registered implementation/type/validator bindings, an optional bounded producer/renderer and default incremental V1 response admission have been added alongside the review repairs. The final-source Release build and standard package consumer checks passed; full Server regression retained two unrelated failures and 25 existing skips. These results do not establish authenticated production reader, startup readiness, complete dependency closure or M1–M8 acceptance. Remaining local omissions and the actual provider/profile authority boundary are recorded separately; status remains `in-progress`.
 
-- `Server/DomainServices/DaprDomainServiceInvoker.cs` and `Server/Events/EventPersister.cs`: reject unsolicited V2 on the current legacy-only production path before state mutation; do not invent activation authority. A later real negotiated V2 path requires all approved capability/provider gates.
+- `Server/DomainServices/DaprDomainServiceInvoker.cs` and `Server/Events/EventPersister.cs`: reject unsolicited V2 on the current legacy-only production path before state mutation; do not invent activation authority. A later real negotiated V2 path requires the amended Dapr capability and consumer gates.
 - `Server/Events/EventPublisher.cs`: preserve both additive metadata fields when constructing publication envelopes, with actual published-envelope assertions.
 - `Client/Events/BoundedScratchAllocator.cs`: reserve total live capacity atomically before allocation, release only after clearing; initial scratch bytes must be zero; nested/concurrent requests must refuse over-budget work.
 - `Contracts/Events/AuthenticatedRawEventPage.cs`: snapshot caller event references once before validation/copy; establish composed bounded ownership and clearing rather than claiming summed source length proves live memory.
 - Both `Contracts/Events/VerifiedEffective*` DTOs: validate fixed-array sizes before copying and enforce approved claim/payload limits without confusing current zero-hop V1 payloads with hopped payloads. Production ingress must enforce the complete encoded property/page budgets before JSON materialization.
 - `Server.Tests/Events/EventEnvelopeTests.cs`: add JSON/DataContract non-null V2 round-trip regression coverage.
-- Preserve the KEEP constraints recorded in the resumed review; acceptance still requires the complete M1–M8 implementation and compatibility/provider evidence. Do not mark partial repairs as story completion.
+- Preserve the compatible KEEP constraints recorded in the resumed review; acceptance still requires the amended M1–M8 implementation and compatibility/Dapr evidence. Do not mark partial repairs as story completion.
 
 - This run adds bounded payload/scratch primitives, event-view contracts, an authenticated raw-page contract, metadata tuple validation, and metadata-preserving actor mapping. The M1 registry/codecs, M2 bounded producer/authenticated reader, and M3–M8 runtime integrations and evidence are not complete; no task checkbox is marked complete.
 - The workflow baseline is `1329b35e52852952ecb2c94aabf100674e9691e3`. During the run, `HEAD` advanced concurrently to `f3dc36b934336920b3c7e4bcec5cf52c6327df9d`; that commit and its unrelated Story 6.1 changes were preserved as external input.
@@ -86,7 +99,9 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
-- 2026-10-05 — Recorded the owner review requests for the [PostgreSQL transaction-capture extension](evidence/story-6-6/postgresql-capture-extension-decision.md) and [managed/native loader boundary](evidence/story-6-6/dependency-loader-decision.md). Both are proposals; M1–M8 and activation remain open while their decisions and qualification evidence are pending.
+- 2026-10-05 — Owner directed implementation to stay within Dapr. The [Dapr-only amendment](story-6-6-dapr-only-amendment.md) supersedes the earlier direct PostgreSQL/provider-extension design for Story 6.6. Removed dormant SQL adapter and dependency footprint; V2 and proof-dependent activation remain fenced. Earlier approval digest and provider tests remain historical evidence, not current acceptance.
+
+- 2026-10-05 — Recorded the earlier [PostgreSQL transaction-capture extension](evidence/story-6-6/postgresql-capture-extension-decision.md), since withdrawn by the Dapr-only direction, and the separate pending [managed/native loader boundary](evidence/story-6-6/dependency-loader-decision.md). M1–M8 and activation remain open.
 
 - 2026-10-04 — Resumed review identified unsolicited V2 admission, publication tuple loss, live scratch accounting, private-copy lifetime, raw-page reference substitution and unbounded transport copies. Added explicit re-derivation requirements above to avoid premature writes/unvalidated inputs. KEEP legacy APIs/wire null omission, metadata mapping/validation, immutable copies, source limits, token forwarding and passing regressions. Existing committed code/external Story 6.1 work is preserved; this run has no runtime changes to revert.
 

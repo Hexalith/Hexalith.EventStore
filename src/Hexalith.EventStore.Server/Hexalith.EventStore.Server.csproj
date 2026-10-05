@@ -9,7 +9,6 @@
     <InternalsVisibleTo Include="Hexalith.EventStore" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Gateway" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
-    <InternalsVisibleTo Include="Hexalith.EventStore.Server.PostgreSql.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Tests" />
@@ -37,7 +36,6 @@
     <PackageReference Include="Dapr.Actors.AspNetCore" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
 </Project>

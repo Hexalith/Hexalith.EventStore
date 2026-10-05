@@ -4603,20 +4603,20 @@ So that old and new event history can be processed safely without CLR-name coupl
 
 **Requirements coverage:** Primary ownership of FR33's event-versioning/upcasting, event-identity validation, and cancellation-seam runtime outcomes; supporting NFR7 no-silent-loss, NFR12 compatibility, NFR16 persisted production-path evidence, NFR18 documented reflection posture, and NFR19 protected-data safety.
 
-**Architecture constraints:** AD-5, AD-6, AD-7, AD-12, and AD-13. Implementation conforms exactly to the approved Story 6.5 artifact, preserves immutable persisted history, uses one allow-listed evolution pipeline across consumers, and keeps actor/dispatcher durable boundaries authoritative.
+**Architecture constraints:** AD-1, AD-5, AD-6, AD-7, AD-12, and AD-13. Implementation follows the Story 6.5 artifact where compatible with the owner's Dapr-only amendment, preserves immutable application history, uses one allow-listed evolution pipeline across consumers, and keeps actor/dispatcher durable boundaries authoritative.
 
 **UX coverage:** Type Catalog, stream, replay, and failure surfaces may show support-safe canonical event contract type, stored/current payload version, legacy/upcast state, hop count, and cancellation/failure reason. They do not render raw or protected payloads, promote assembly-qualified CLR names as public identity, expose secrets/provider internals/stack traces, or describe failed partial replay as current state.
 
 **Dependencies:** Stories 6.5a, 6.5b, 6.5c, and 6.5d must have completed their reviewed specification work, and Story 6.5 must be complete with the owner-approved design. Implementation starts when the owner requests Story 6.6. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
 
-**Current reconciliation:** Story 6.6 remains backlog with an owner-approved design in `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`. It is ready to start when the owner requests implementation; no runtime work has begun. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
+**Current reconciliation (2026-10-05):** Story 6.6 is in progress. The owner directed implementation to stay within the Dapr abstraction. The [Dapr-only amendment](../implementation-artifacts/story-6-6-dapr-only-amendment.md) supersedes direct PostgreSQL/provider-extension requirements in the earlier approved design while retaining its historical review record. Partial contracts, bounded primitives and legacy-path guards exist; the shared production evolution pipeline and complete Dapr/consumer qualification remain open. V2 admission remains fenced.
 
 **Acceptance Criteria:**
 
 **Given** Story 6.6 implementation preflight runs
 **When** Stories 6.5a–6.5d and the Story 6.5 artifact and approval are inspected
-**Then** the four focused specification stories have reviewed outputs, the integrated artifact exists, its reviewed content identity and recorded owner approval validate, all required design decisions are closed, and the owner has requested this implementation
-**And** implementation and tests trace to the approved sections; material technical changes return to the owner for review.
+**Then** the four focused specification stories have reviewed outputs, the integrated historical artifact and its approval validate as earlier evidence, and the owner's Dapr-only amendment is present
+**And** implementation and tests trace to the amended Dapr boundary without treating the earlier digest as approval of this changed design.
 
 **Given** a new `IEventContract` event is returned by domain processing
 **When** its wire and persisted envelopes are built
@@ -4674,8 +4674,8 @@ So that old and new event history can be processed safely without CLR-name coupl
 **And** payloads, protected bytes, CLR assembly details, secrets, cross-tenant identifiers, provider internals, and stack traces remain redacted or absent.
 
 **Given** Story 6.6 completion is requested
-**When** new-event persistence, mixed legacy/current replay, every upcast-chain topology, registry startup failure, metadata substitution, protected readability, all consumer-path equivalence, cancellation at every boundary, rolling upgrade/rollback, public API compatibility, and Admin evidence tests run through production serializers, actors, dispatchers, handlers, state stores, pub/sub, and DAPR/Redis sidecars
-**Then** persisted stream bytes remain immutable, reconstructed aggregate/projection/end state equals the canonical current-version baseline, failures produce zero forbidden downstream mutation, and exact token/registry/upcast evidence satisfies the approved matrices
+**When** new-event persistence, mixed legacy/current replay, every upcast-chain topology, registry startup failure, metadata substitution, protected readability, all consumer-path equivalence, cancellation at every boundary, rolling upgrade/rollback, public API compatibility, and Admin evidence tests run through production serializers, actors, dispatchers, handlers, Dapr state/actor APIs, pub/sub, and live sidecars
+**Then** persisted application payload bytes remain immutable, reconstructed aggregate/projection/end state equals the canonical current-version baseline, failures produce zero forbidden downstream mutation, and exact token/registry/upcast evidence satisfies the amended matrices
 **And** focused unit/contract/integration tests, full affected-project regressions, warnings-as-errors Release build, package/API compatibility checks, and live-sidecar lanes pass with no unexpected skips, warnings, errors, or leaked processes; folded-snapshot, projection-cost, and optional protection-engine redesign remain outside this story.
 
 <!-- Epic 6 story set confirmed complete for planning. -->

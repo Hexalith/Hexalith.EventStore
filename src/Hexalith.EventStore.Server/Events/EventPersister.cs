@@ -96,91 +96,115 @@ public partial class EventPersister(
             IDictionary<string, string> Extensions,
             string? EventContractType,
             int? PayloadVersion,
-            int MetadataVersion)>(domainResult.Events.Count);
+            int MetadataVersion,
+            string ApplicationFormat,
+            byte[] ApplicationPayloadHash)>(domainResult.Events.Count);
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
-        foreach ((IEventPayload eventPayload, string eventTypeName, string serializationFormat, string? eventContractType, int? payloadVersion, int metadataVersion) in validatedPayloads) {
-            byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
-                ? serialized.PayloadBytes
-                : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+        try {
 
-            PayloadProtectionResult protectionResult = await payloadProtectionService
-                .ProtectEventPayloadAsync(
-                    identity,
-                    eventPayload,
-                    eventTypeName,
-                    payloadBytes,
-                    serializationFormat,
-                    cancellationToken)
+            foreach ((IEventPayload eventPayload, string eventTypeName, string serializationFormat, string? eventContractType, int? payloadVersion, int metadataVersion) in validatedPayloads) {
+                byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
+                    ? serialized.PayloadBytes
+                    : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+                byte[] applicationPayloadHash = EventLogicalDigest.HashPayload(payloadBytes);
+
+                try {
+                    PayloadProtectionResult protectionResult = await payloadProtectionService
+                        .ProtectEventPayloadAsync(
+                            identity,
+                            eventPayload,
+                            eventTypeName,
+                            payloadBytes,
+                            serializationFormat,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
+                        extensions: (IDictionary<string, string>?)null,
+                        metadata: protectionResult.Metadata);
+
+                    preparedEvents.Add((eventTypeName, protectionResult, extensions, eventContractType, payloadVersion,
+                        metadataVersion, serializationFormat, applicationPayloadHash));
+                }
+                catch {
+                    System.Security.Cryptography.CryptographicOperations.ZeroMemory(applicationPayloadHash);
+                    throw;
+                }
+            }
+
+            long firstGlobalPosition = await _globalPositionAllocator
+                .AllocateAsync(domainResult.Events.Count, cancellationToken)
                 .ConfigureAwait(false);
 
-            IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
-                extensions: (IDictionary<string, string>?)null,
-                metadata: protectionResult.Metadata);
+            for (int i = 0; i < preparedEvents.Count; i++) {
+                (
+                    string eventTypeName,
+                    PayloadProtectionResult protectionResult,
+                    IDictionary<string, string> extensions,
+                    string? eventContractType,
+                    int? payloadVersion,
+                    int metadataVersion,
+                    string applicationFormat,
+                    byte[] applicationPayloadHash) = preparedEvents[i];
+                long sequenceNumber = currentSequence + 1 + i;
+                long globalPosition = firstGlobalPosition > 0
+                    ? checked(firstGlobalPosition + i)
+                    : 0;
 
-            preparedEvents.Add((eventTypeName, protectionResult, extensions, eventContractType, payloadVersion, metadataVersion));
-        }
+                var envelope = new EventEnvelope(
+                    MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
+                    AggregateId: identity.AggregateId,
+                    AggregateType: aggregateType,
+                    TenantId: identity.TenantId,
+                    Domain: identity.Domain,
+                    SequenceNumber: sequenceNumber,
+                    GlobalPosition: globalPosition,
+                    Timestamp: timestamp,
+                    CorrelationId: command.CorrelationId,
+                    CausationId: causationId,
+                    UserId: command.UserId,
+                    DomainServiceVersion: domainServiceVersion,
+                    EventTypeName: eventTypeName,
+                    MetadataVersion: metadataVersion,
+                    SerializationFormat: protectionResult.SerializationFormat,
+                    Payload: protectionResult.PayloadBytes,
+                    Extensions: extensions) {
+                    EventContractType = eventContractType,
+                    PayloadVersion = payloadVersion,
+                };
 
-        long firstGlobalPosition = await _globalPositionAllocator
-            .AllocateAsync(domainResult.Events.Count, cancellationToken)
-            .ConfigureAwait(false);
+                envelope = envelope with {
+                    ApplicationPayloadDigest = EventLogicalDigest.Compute(envelope, applicationFormat, applicationPayloadHash),
+                };
 
-        for (int i = 0; i < preparedEvents.Count; i++) {
-            (
-                string eventTypeName,
-                PayloadProtectionResult protectionResult,
-                IDictionary<string, string> extensions,
-                string? eventContractType,
-                int? payloadVersion,
-                int metadataVersion) = preparedEvents[i];
-            long sequenceNumber = currentSequence + 1 + i;
-            long globalPosition = firstGlobalPosition > 0
-                ? checked(firstGlobalPosition + i)
-                : 0;
+                envelopes.Add(envelope);
 
-            var envelope = new EventEnvelope(
-                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
-                AggregateId: identity.AggregateId,
-                AggregateType: aggregateType,
-                TenantId: identity.TenantId,
-                Domain: identity.Domain,
-                SequenceNumber: sequenceNumber,
-                GlobalPosition: globalPosition,
-                Timestamp: timestamp,
-                CorrelationId: command.CorrelationId,
-                CausationId: causationId,
-                UserId: command.UserId,
-                DomainServiceVersion: domainServiceVersion,
-                EventTypeName: eventTypeName,
-                MetadataVersion: metadataVersion,
-                SerializationFormat: protectionResult.SerializationFormat,
-                Payload: protectionResult.PayloadBytes,
-                Extensions: extensions) {
-                EventContractType = eventContractType,
-                PayloadVersion = payloadVersion,
-            };
+                string key = $"{identity.EventStreamKeyPrefix}{sequenceNumber}";
 
-            envelopes.Add(envelope);
+                Log.PersistingEvent(logger, key, eventTypeName, sequenceNumber);
 
-            string key = $"{identity.EventStreamKeyPrefix}{sequenceNumber}";
+                await stateManager
+                    .SetStateAsync(key, envelope)
+                    .ConfigureAwait(false);
+            }
 
-            Log.PersistingEvent(logger, key, eventTypeName, sequenceNumber);
-
+            // Update aggregate metadata with new sequence and timestamp
+            long newSequence = currentSequence + domainResult.Events.Count;
             await stateManager
-                .SetStateAsync(key, envelope)
+                .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
+                    newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1))
                 .ConfigureAwait(false);
+
+            Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);
+
+            return new EventPersistResult(newSequence, envelopes);
         }
-
-        // Update aggregate metadata with new sequence and timestamp
-        long newSequence = currentSequence + domainResult.Events.Count;
-        await stateManager
-            .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
-                newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1))
-            .ConfigureAwait(false);
-
-        Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);
-
-        return new EventPersistResult(newSequence, envelopes);
+        finally {
+            foreach (var prepared in preparedEvents) {
+                System.Security.Cryptography.CryptographicOperations.ZeroMemory(prepared.ApplicationPayloadHash);
+            }
+        }
     }
 
     private static void ValidateEventVersionMetadata(

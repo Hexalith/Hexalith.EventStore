@@ -96,6 +96,10 @@ public class EventPublisherTests {
             EventContractType = "order-created",
             PayloadVersion = 7,
         };
+        original = original with {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(original, "json",
+                EventLogicalDigest.HashPayload(original.Payload)),
+        };
 
         EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [original], "corr-001");
 
@@ -105,6 +109,7 @@ public class EventPublisherTests {
             Arg.Is<EventEnvelope>(actual => actual.MetadataVersion == original.MetadataVersion
                 && actual.EventContractType == original.EventContractType
                 && actual.PayloadVersion == original.PayloadVersion
+                && actual.ApplicationPayloadDigest == original.ApplicationPayloadDigest
                 && actual.EventTypeName == original.EventTypeName
                 && actual.MessageId == original.MessageId
                 && actual.Payload.SequenceEqual(original.Payload)),

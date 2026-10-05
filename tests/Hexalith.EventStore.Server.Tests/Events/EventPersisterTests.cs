@@ -225,6 +225,9 @@ public class EventPersisterTests {
         envelope.MetadataVersion.ShouldBe(1);                    // 14. MetadataVersion
         envelope.SerializationFormat.ShouldBe("json");           // 15. SerializationFormat
         envelope.Payload.Length.ShouldBeGreaterThan(0);          // Payload populated
+        envelope.ApplicationPayloadDigest.ShouldNotBeNullOrWhiteSpace();
+        envelope.ApplicationPayloadDigest.ShouldBe(EventLogicalDigest.Compute(envelope, "json",
+            EventLogicalDigest.HashPayload(envelope.Payload)));
     }
 
     [Fact]

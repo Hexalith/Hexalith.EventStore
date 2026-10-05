@@ -13,6 +13,9 @@ internal sealed class EventUpcastChainExecutor
     private readonly FrozenDictionary<(string Type, int Version), RegisteredEventUpcaster> _upcasters;
     private readonly EventVersionValidator _validateVersion;
 
+    /// <summary>Gets the exact registry instance admitted by this executor.</summary>
+    internal EventDomainRegistry Registry => _registry;
+
     /// <summary>Captures immutable registrations; source authentication and complete runtime attestation remain caller prerequisites.</summary>
     internal EventUpcastChainExecutor(EventDomainRegistry registry,
         IReadOnlyDictionary<(string Type, int Version), RegisteredEventUpcaster> upcasters,

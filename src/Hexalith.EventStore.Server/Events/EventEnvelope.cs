@@ -54,6 +54,11 @@ public record EventEnvelope(
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? PayloadVersion { get; init; }
 
+    /// <summary>Gets an application-owned digest of the original logical payload and addressed metadata.</summary>
+    [DataMember(EmitDefaultValue = false)]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ApplicationPayloadDigest { get; init; }
+
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
     public AggregateIdentity Identity => new(TenantId, Domain, AggregateId);
 

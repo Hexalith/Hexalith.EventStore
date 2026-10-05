@@ -159,6 +159,7 @@ public class EventEnvelopeTests {
             MetadataVersion = 2,
             EventContractType = "order-created",
             PayloadVersion = 7,
+            ApplicationPayloadDigest = new string('a', 64),
         };
         EventEnvelope copy;
         if (dataContract) {
@@ -177,7 +178,19 @@ public class EventEnvelopeTests {
         copy.EventTypeName.ShouldBe("order-created");
         copy.EventContractType.ShouldBe("order-created");
         copy.PayloadVersion.ShouldBe(7);
+        copy.ApplicationPayloadDigest.ShouldBe(original.ApplicationPayloadDigest);
         copy.Payload.ShouldBe(original.Payload);
+    }
+
+    [Fact]
+    public void LegacyEnvelope_OmitsAbsentApplicationDigestFromBothSerializers() {
+        EventEnvelope original = CreateTestEnvelope();
+        JsonSerializer.Serialize(original).ShouldNotContain("ApplicationPayloadDigest");
+
+        var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(EventEnvelope));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        System.Text.Encoding.UTF8.GetString(stream.ToArray()).ShouldNotContain("ApplicationPayloadDigest");
     }
 
 }

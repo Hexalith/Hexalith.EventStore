@@ -195,6 +195,7 @@ public partial class EventPublisher(
                     Extensions: publishExtensions) {
                     EventContractType = eventEnvelope.EventContractType,
                     PayloadVersion = eventEnvelope.PayloadVersion,
+                    ApplicationPayloadDigest = eventEnvelope.ApplicationPayloadDigest,
                 };
 
                 var metadata = new Dictionary<string, string> {

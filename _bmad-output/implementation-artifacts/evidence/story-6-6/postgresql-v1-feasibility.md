@@ -1,5 +1,11 @@
 # PostgreSQL v1 feasibility — Story 6.6
 
+**Decision update (2026-10-05):** The owner directed Story 6.6 to stay within
+the Dapr abstraction. The provider-extension recommendation below is historical;
+the current implementation follows the [Dapr-only amendment](../../story-6-6-dapr-only-amendment.md).
+The observations still describe why Dapr logical readback cannot be presented as
+physical-envelope or historical-generation attestation.
+
 The recommended stock-provider feasibility probe ran successfully. Its result is
 **no-go for stock Dapr PostgreSQL v1 as the authenticated historical receipt
 authority required by AD-13 §3**. PostgreSQL remains the proposed backend; this

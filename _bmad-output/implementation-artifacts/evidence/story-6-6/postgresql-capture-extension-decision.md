@@ -1,6 +1,6 @@
 # Story 6.6 provider decision: PostgreSQL actor transaction capture
 
-**Status:** Proposed for owner review. No provider extension or runtime activation is approved by this record.
+**Status:** Withdrawn on 2026-10-05 by the owner's Dapr-only direction. This document is retained as historical feasibility/design evidence. No provider extension or runtime activation is approved by this record. The current Story 6.6 boundary is the [Dapr-only amendment](../../story-6-6-dapr-only-amendment.md).
 
 ## Evidence and requested decision
 
