@@ -109,31 +109,47 @@ else if (args[0] == "metadata")
 else if (args[0] == "wire")
 {
     string typeName = args[1] == "query" ? "Hexalith.EventStore.Contracts.Queries.QueryEnvelope" : "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto";
-    Type type;
-    try { type = Find(typeName); }
-    catch (NotSupportedException) { type = Find("Hexalith.EventStore.Server.Actors.QueryEnvelope"); }
-    object value;
-    if (args[2] == "json")
+    Type? type;
+    try
     {
-        value = JsonSerializer.Deserialize(File.ReadAllBytes(args[3]), type, options) ?? throw new InvalidOperationException("Null wire value.");
-        File.WriteAllBytes(args[4], JsonSerializer.SerializeToUtf8Bytes(value, type, options));
+        type = Find(typeName);
+    }
+    catch (NotSupportedException)
+    {
+        type = null;
+    }
+
+    if (type is null)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new { assertions = 1, handling = "unsupported-contract-type", type = typeName }));
     }
     else
     {
-        var serializer = new DataContractSerializer(type);
-        if (args[2] == "to-xml")
+        object value;
+        if (args[2] == "json")
         {
             value = JsonSerializer.Deserialize(File.ReadAllBytes(args[3]), type, options) ?? throw new InvalidOperationException("Null wire value.");
+            File.WriteAllBytes(args[4], JsonSerializer.SerializeToUtf8Bytes(value, type, options));
         }
         else
         {
-            using var input = File.OpenRead(args[3]);
-            value = serializer.ReadObject(input) ?? throw new InvalidOperationException("Null wire value.");
+            var serializer = new DataContractSerializer(type);
+            if (args[2] == "to-xml")
+            {
+                value = JsonSerializer.Deserialize(File.ReadAllBytes(args[3]), type, options) ?? throw new InvalidOperationException("Null wire value.");
+            }
+            else
+            {
+                using var input = File.OpenRead(args[3]);
+                value = serializer.ReadObject(input) ?? throw new InvalidOperationException("Null wire value.");
+            }
+
+            using var output = File.Create(args[4]);
+            serializer.WriteObject(output, value);
         }
-        using var output = File.Create(args[4]);
-        serializer.WriteObject(output, value);
+
+        Console.WriteLine(JsonSerializer.Serialize(new { assertions = 1, type = type.FullName, inputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[3]))), outputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[4]))), fields = type.GetProperties().Where(p => p.Name is "OriginalActorId" or "AuthenticatedWorkloadId" or "IsDelegated" or "DelegationId" or "Scopes" or "Audience" or "GlobalPosition" or "SequenceNumber" or "UserId" or "TenantId" or "Domain" or "AggregateId" or "QueryType" or "Payload" or "CorrelationId" or "EntityId" or "IsGlobalAdmin" or "Paging" or "EventTypeName" or "SerializationFormat" or "Timestamp" or "MessageId").ToDictionary(p => p.Name, p => p.GetValue(value)) }));
     }
-    Console.WriteLine(JsonSerializer.Serialize(new { assertions = 1, type = type.FullName, inputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[3]))), outputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[4]))), fields = type.GetProperties().Where(p => p.Name is "OriginalActorId" or "AuthenticatedWorkloadId" or "IsDelegated" or "DelegationId" or "Scopes" or "Audience" or "GlobalPosition" or "SequenceNumber" or "UserId" or "TenantId" or "Domain" or "AggregateId" or "QueryType" or "Payload" or "CorrelationId" or "EntityId" or "IsGlobalAdmin" or "Paging" or "EventTypeName" or "SerializationFormat" or "Timestamp" or "MessageId").ToDictionary(p => p.Name, p => p.GetValue(value)) }));
 }
 else
 {

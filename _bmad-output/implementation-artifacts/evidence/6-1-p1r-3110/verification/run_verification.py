@@ -102,6 +102,16 @@ assert files, 'Empty source closure'
 print(json.dumps({'coordinate':coordinate,'repository':str(root),'files':files},sort_keys=True))
 """
 INVENTORY_SQL = "select coalesce(json_agg(json_build_object('key',key,'sha256',encode(sha256(convert_to(value::text,'UTF8')),'hex'),'sequence',case when key like '%:metadata' then value->>'currentSequence' else null end,'floor',case when key like '%:metadata' then value->>'retainedFloor' else null end,'snapshotSequence',case when key like '%:snapshot' then value->>'sequenceNumber' else null end) order by key),'[]') from state;"
+RETAINED_FLOOR_SQL = "update state set value=jsonb_set(value,'{retainedFloor}','5') where key like '%tenant-a:counter:fixture:metadata'; delete from state where key like '%tenant-a:counter:fixture:events:%' and (split_part(key,':',7))::int < 5;"
+INVALID_EVIDENCE_SQL = {
+    "invalid-floor": "update state set value=jsonb_set(value,'{retainedFloor}','0') where key like '%tenant-a:counter:fixture:metadata'",
+    "unreadable": "update state set value='\"unreadable-fixture\"'::jsonb where key like '%tenant-a:counter:fixture:events:7'",
+    "protected": "update state set value=jsonb_set(value,'{serializationFormat}','\"json+pdenc-v1\"') where key like '%tenant-a:counter:fixture:events:7'",
+    "unknown-type": "update state set value=jsonb_set(value,'{eventTypeName}','\"P1R.UnknownEvent\"') where key like '%tenant-a:counter:fixture:events:7'",
+    "unknown-version": "update state set value=jsonb_set(value,'{metadataVersion}','987') where key like '%tenant-a:counter:fixture:events:7'",
+}
+CONTRACT_WIRE_TYPES = {"query": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope", "projection": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"}
+SERVER_QUERY_SUBSTITUTE = "Hexalith.EventStore.Server.Actors.QueryEnvelope"
 DOMAIN_REQUIRED = PACKAGE_IDS - {"Hexalith.EventStore.Server"}
 
 RESOURCE_INSPECT_FORMAT = '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"started":{{json .State.StartedAt}},"invocation":{{json (index .Config.Labels "hexalith.p1r.invocation")}}}'
@@ -161,7 +171,7 @@ def canonical(value):
 
 
 def utc():
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="microseconds")
 
 
 def write(path, value):
@@ -236,7 +246,9 @@ def receipt_json(command):
     require(command["exit_code"] == 0 or 200 <= command["exit_code"] < 300, "Operation did not succeed")
     diagnostic = command.get("diagnostic", "")
     require(isinstance(diagnostic, str) and sha(diagnostic.encode()) == command["output_sha256"], "Operation output differs from literal receipt")
-    return json.loads(diagnostic.strip().splitlines()[-1])
+    lines = [line for line in diagnostic.strip().splitlines() if line.strip()]
+    require(lines, "Operation receipt has no evidence")
+    return json.loads(lines[-1])
 
 
 def validate_graphs(directory, commands, lane):
@@ -302,7 +314,7 @@ def validate_support(directory, commands, rows):
             for path, value in closure["files"].items():
                 expected = committed[path]
                 require(value["git_blob"] == expected["git_blob"] and value["committed_sha256"] == expected["committed_sha256"] and value["sha256"] in expected["permitted_sha256"], "Source input differs from approved committed bytes")
-            require(any(c["argv"] == ["git", "ls-tree", SOURCES["projects_baseline"], "references/" + name] and c["exit_code"] == 0 and c["diagnostic"].split()[2] == coordinate for c in commands), "Sibling coordinate lacks approved gitlink receipt")
+            require(any(c["argv"] == ["git", "ls-tree", SOURCES["projects_baseline"], "references/" + name] and c["exit_code"] == 0 and len(c["diagnostic"].split()) > 2 and c["diagnostic"].split()[2] == coordinate for c in commands), "Sibling coordinate lacks approved gitlink receipt")
         comparison = json.loads((directory / "source-comparison.json").read_text())
         require(comparison["coordinates"] == SOURCES and comparison["current_inventory"] == {p:r["sha256"] for p,r in closures["Hexalith.EventStore"]["files"].items() if p.startswith("src/")}, "Source comparison inventory/coordinates differ from committed closure")
         require(any(c["argv"] == ["git", "diff", "--name-status", SOURCES["selected"], SOURCES["current"], "--", "src"] and c["exit_code"] == 0 and sha(c["diagnostic"].encode()) == c["output_sha256"] and c["diagnostic"].splitlines() == comparison["selected_to_current"] for c in commands), "Source comparison lacks executed diff")
@@ -420,7 +432,8 @@ def validate_operations(directory, commands, rows, inventories, current, closure
             new_events = {k:v for k,v in new.items() if ":events:" in k}
             require(all(new_events.get(k) == v for k,v in prior_events.items()) and len(new_events) == len(prior_events)+1 and all(k in prior_events or k.endswith("tenant-a:counter:fixture:events:13") for k in new_events), "Append altered prior events or wrote an unrelated event")
             require(all(new.get(k) == v for k,v in old.items() if not k.endswith("tenant-a:counter:fixture:metadata")), "Append changed prior snapshot or other tenant state")
-            metadata = next(v for k,v in new.items() if k.endswith("tenant-a:counter:fixture:metadata"))
+            metadata = next((v for k,v in new.items() if k.endswith("tenant-a:counter:fixture:metadata")), None)
+            require(metadata is not None, "Append metadata is absent")
             require(metadata["sequence"] == "13", "Append metadata sequence differs")
         return before,after
     def sequence(receipts,tenant,count,lane):
@@ -481,19 +494,26 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 for lane,mode in ((direction[0],"to-xml" if form=="xml" else "json"),(direction[1],form),(direction[0],form)):
                     candidates=[c for c in probes(receipts,lane,"wire") if c["argv"][3:5]==[kind,mode] and c not in calls]
                     require(candidates,"Missing cross-version wire operation");calls.append(candidates[0])
-                observed=[receipt_json(c) for c in calls];value=wire_fixture(kind,shape)
-                require(case["fixture_input"]==value and observed[0]["inputSha256"]==written_fixture_hash(value) and observed[1]["inputSha256"]==observed[0]["outputSha256"] and observed[2]["inputSha256"]==observed[1]["outputSha256"] and case["wire_hashes"]==[r["outputSha256"] for r in observed],"Wire bytes do not form this fixture's actual round trip")
-                require([case[k] for k in ("first_fields","middle_fields","final_fields")]==[r["fields"] for r in observed],"Wire fields differ from typed operations")
-                expected={"OriginalActorId":"fixture-human","AuthenticatedWorkloadId":"fixture-workload","IsDelegated":True,"DelegationId":"fixture-delegation","Scopes":value["scopes"],"Audience":value["audience"]} if shape=="dual" else {"GlobalPosition":987} if kind=="projection" else {"UserId":"fixture-user"}
-                common=common_wire_fields(value)
-                require(all(k in observed[0]["fields"] and observed[0]["fields"][k] == v for k,v in common.items()), "Initial typed writer lost common wire fields")
-                require(all(all(k in r["fields"] and r["fields"][k] == v for k,v in common.items()) for r in observed[1:]), "Common wire fields changed across versions")
-                expected.update(common)
-                preserved=all(k in r["fields"] and r["fields"][k]==v for r in observed[1:] for k,v in expected.items())
-                if direction[0] in {VERSIONS[0],"current"}: require(all(observed[0]["fields"].get(k)==v for k,v in expected.items()),"Initial typed writer lost supplied fixture fields")
-                require(case["preserved"]==preserved and all(r["fields"].get("UserId")=="fixture-user" for r in observed),"Wire preservation label contradicts observations")
-                if shape=="legacy": require(all(all(r["fields"].get(k) is None for k in ("OriginalActorId","AuthenticatedWorkloadId","DelegationId","Scopes","Audience")) and r["fields"].get("IsDelegated",False) is False for r in observed),"Legacy delegated defaults changed")
-                disposition="compatible" if preserved else "incompatible"
+                observed=[receipt_json(c) for c in calls];contract=CONTRACT_WIRE_TYPES[kind]
+                require(all(r.get("type") != SERVER_QUERY_SUBSTITUTE for r in observed), "Server query envelope substitution")
+                if any(r.get("handling")=="unsupported-contract-type" for r in observed):
+                    require(all(r.get("type")==contract for r in observed if r.get("handling")=="unsupported-contract-type") and case.get("preserved") is False, "Unsupported contract type reported as a round trip")
+                    disposition="incompatible"
+                else:
+                    require(all(r.get("type", contract)==contract for r in observed), "Contract wire type substituted")
+                    value=wire_fixture(kind,shape)
+                    require(case["fixture_input"]==value and observed[0]["inputSha256"]==written_fixture_hash(value) and observed[1]["inputSha256"]==observed[0]["outputSha256"] and observed[2]["inputSha256"]==observed[1]["outputSha256"] and case["wire_hashes"]==[r["outputSha256"] for r in observed],"Wire bytes do not form this fixture's actual round trip")
+                    require([case[k] for k in ("first_fields","middle_fields","final_fields")]==[r["fields"] for r in observed],"Wire fields differ from typed operations")
+                    expected={"OriginalActorId":"fixture-human","AuthenticatedWorkloadId":"fixture-workload","IsDelegated":True,"DelegationId":"fixture-delegation","Scopes":value["scopes"],"Audience":value["audience"]} if shape=="dual" else {"GlobalPosition":987} if kind=="projection" else {"UserId":"fixture-user"}
+                    common=common_wire_fields(value)
+                    require(all(k in observed[0]["fields"] and observed[0]["fields"][k] == v for k,v in common.items()), "Initial typed writer lost common wire fields")
+                    require(all(all(k in r["fields"] and r["fields"][k] == v for k,v in common.items()) for r in observed[1:]), "Common wire fields changed across versions")
+                    expected.update(common)
+                    preserved=all(k in r["fields"] and r["fields"][k]==v for r in observed[1:] for k,v in expected.items())
+                    if direction[0] in {VERSIONS[0],"current"}: require(all(observed[0]["fields"].get(k)==v for k,v in expected.items()),"Initial typed writer lost supplied fixture fields")
+                    require(case["preserved"]==preserved and all(r["fields"].get("UserId")=="fixture-user" for r in observed),"Wire preservation label contradicts observations")
+                    if shape=="legacy": require(all(all(r["fields"].get(k) is None for k in ("OriginalActorId","AuthenticatedWorkloadId","DelegationId","Scopes","Audience")) and r["fields"].get("IsDelegated",False) is False for r in observed),"Legacy delegated defaults changed")
+                    disposition="compatible" if preserved else "incompatible"
             elif name in {"full-replay","snapshot-tail","retained-covered","retained-uncovered","missing-event","metadata-write"}:
                 writer,reader,variant=case["writer"],case["reader"],case["variant"]
                 require(identity==writer+"-to-"+reader+("-"+variant if variant!="default" else ""),"Replay case/lane mismatch")
@@ -504,7 +524,9 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 before,after=invariant(case,name=="metadata-write")
                 expected_events=set(range(5,13)) if name in {"retained-covered","retained-uncovered","metadata-write"} else set(range(1,13))-{7 if variant=="interior" else 12} if name=="missing-event" else set(range(1,13))
                 require({int(r["key"].rsplit(":",1)[1]) for r in before["domain_rows"] if "tenant-a:counter:fixture:events:" in r["key"]}==expected_events and {int(r["key"].rsplit(":",1)[1]) for r in before["domain_rows"] if "tenant-b:counter:fixture:events:" in r["key"]}=={1,2,3},"Replay persisted fixture is incomplete/substituted")
-                metadata=next(r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata"))
+                metadata_rows=[r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")]
+                require(len(metadata_rows)==1, "Replay metadata is absent")
+                metadata=metadata_rows[0]
                 require(metadata["sequence"]=="12" and metadata["floor"] in ({"5"} if name in {"retained-covered","retained-uncovered","metadata-write"} else {"1",None}),"Replay fixture metadata differs")
                 snapshots=[r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:snapshot")]
                 if name in {"snapshot-tail","retained-covered","metadata-write"}: require(len(snapshots)==1 and snapshots[0]["snapshotSequence"]=="9","Missing actual covering snapshot fixture")
@@ -519,7 +541,9 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 disposition="compatible"
                 if name=="metadata-write":
                     _,append=actor(receipts,reader,"tenant-a","IncrementCounter",0);require(append["accepted"] and append["eventCount"]==1,"Missing real append")
-                    floor=next(r["floor"] for r in after["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata"));disposition="compatible" if floor=="5" else "incompatible"
+                    floors=[r["floor"] for r in after["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")]
+                    require(len(floors)==1, "Append metadata is absent")
+                    disposition="compatible" if floors[0]=="5" else "incompatible"
             elif name=="invalid-evidence":
                 lane,mutation=case["lane"],case["mutation"];require(identity==lane+"-"+mutation,"Invalid-evidence case mismatch");seeds(receipts,lane)
                 _,outcome=actor(receipts,lane,"tenant-a","AssertCounter",12)
@@ -530,7 +554,13 @@ def validate_operations(directory, commands, rows, inventories, current, closure
             elif name.endswith("restore"):
                 source_lane=VERSIONS[0] if name=="post-upgrade-restore" else VERSIONS[1];seeds(receipts,source_lane);host_proof(receipts,VERSIONS[1]);host_proof(receipts,VERSIONS[1],"domain")
                 before=inventory(case,"source_inventory_sha256");restored=inventory(case,"restored_inventory_sha256");after=inventory(case,"restored_replay_sha256")
-                require(before["rows"]==restored["rows"] and restored["database_identity_sha256"]!=before["database_identity_sha256"] and before["domain_rows"]==after["domain_rows"] and restored["database_identity_sha256"]==after["database_identity_sha256"],"Restoration inventory/invariants differ")
+                require(before["rows"]==restored["rows"] and restored["database_identity_sha256"]!=before["database_identity_sha256"] and restored["database_identity_sha256"]==after["database_identity_sha256"],"Restoration inventory/invariants differ")
+                if name=="post-upgrade-restore":
+                    def event_map(rows):
+                        return {r["key"]:r["sha256"] for r in rows if ":events:" in r["key"]}
+                    require(event_map(before["domain_rows"])==event_map(restored["domain_rows"])==event_map(after["domain_rows"]),"Restoration inventory/invariants differ")
+                else:
+                    require(before["domain_rows"]==after["domain_rows"],"Restoration inventory/invariants differ")
                 dumps=[c for c in receipts if "pg_dump" in c["argv"] and c["exit_code"]==0 and c["output_sha256"]==case["backup_sha256"] and c.get("output_bytes")==case["backup_bytes"]]
                 restores=[c for c in receipts if "pg_restore" in c["argv"] and c["exit_code"]==0 and c.get("input_sha256")==case["backup_sha256"] and c.get("input_bytes")==case["backup_bytes"]]
                 require(len(dumps)==len(restores)==1 and dumps[0]["id"]<restores[0]["id"],"Dump/restore must consume this case's actual command receipts")
@@ -546,7 +576,20 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                     require(dumps[0]["id"]<append["id"]<restores[0]["id"] and any(c["argv"][:1]==["dotnet"] and str(c["argv"][1]).endswith("/3.110.0/host/bin/Release/net10.0/Host.dll") and c["finished_utc"]<=restores[0]["started_utc"] and c["id"]>append["id"] for c in receipts),"Pre-upgrade backup/write/stop/restore chronology differs")
                 for tenant,count in (("tenant-a",12),("tenant-b",3)):
                     _,outcome=actor(receipts,VERSIONS[1],tenant,"AssertCounter",count);require(outcome["accepted"] and outcome["eventCount"]==0,"Restored actor control failed");sequence(receipts,tenant,count,VERSIONS[1])
-                disposition="compatible"
+                if name=="post-upgrade-restore":
+                    require(any("'{retainedFloor}','5'" in c["argv"][-1] and "delete from state" in c["argv"][-1] for c in receipts if "psql" in c["argv"]),"Post-upgrade restore lacks a retained-floor stream")
+                    source_meta=[r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")]
+                    replayed_meta=[r for r in after["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")]
+                    require(len(source_meta)==1 and source_meta[0].get("floor")=="5","Post-upgrade backup never stored RetainedFloor")
+                    require({int(r["key"].rsplit(":",1)[1]) for r in before["domain_rows"] if "tenant-a:counter:fixture:events:" in r["key"]}==set(range(5,13)),"Post-upgrade retained stream is incomplete")
+                    stable={r["key"]:r for r in before["domain_rows"] if not r["key"].endswith("tenant-a:counter:fixture:metadata")}
+                    require(stable=={r["key"]:r for r in after["domain_rows"] if not r["key"].endswith("tenant-a:counter:fixture:metadata")},"Downgrade changed events or other tenant state")
+                    replayed=replayed_meta[0] if len(replayed_meta)==1 else None
+                    if replayed is not None:
+                        require(replayed.get("sequence")==source_meta[0].get("sequence"),"Downgrade changed metadata sequence")
+                    disposition="compatible" if replayed is not None and replayed.get("floor")=="5" else "incompatible"
+                else:
+                    disposition="compatible"
             elif name=="mixed-api":
                 if "client-" in identity:
                     client,host=case["client"],case["host"];seeds(receipts,host);host_proof(receipts,host)
@@ -605,6 +648,13 @@ def validate_operations(directory, commands, rows, inventories, current, closure
 
 
 def validate(directory):
+    try:
+        return _validate_packet(directory)
+    except (IndexError, StopIteration) as error:
+        raise ValueError("Invalid evidence: " + type(error).__name__) from error
+
+
+def _validate_packet(directory):
     directory = directory.resolve()
     require(directory.is_dir(), "Result directory missing")
     lines = (directory / "SHA256SUMS").read_text().splitlines()
@@ -1338,6 +1388,13 @@ class Runner:
                         initial = self.probe(direction[0], "wire", kind, "to-xml" if format == "xml" else "json", path, first)
                         middle = self.probe(direction[1], "wire", kind, "xml" if format == "xml" else "json", first, second)
                         final = self.probe(direction[0], "wire", kind, "xml" if format == "xml" else "json", second, third)
+                        contract = CONTRACT_WIRE_TYPES[kind]
+                        steps = (initial, middle, final)
+                        self.assertion(all(step.get("type") != SERVER_QUERY_SUBSTITUTE for step in steps), "Server query envelope substitution")
+                        if any(step.get("handling") == "unsupported-contract-type" for step in steps):
+                            self.assertion(all(step.get("handling") != "unsupported-contract-type" or step.get("type") == contract for step in steps), "Unsupported wire type differs")
+                            incompatible = True
+                            return {"direction": list(direction), "format": format, "shape": shape, "fixture_input": value, "preserved": False, "handling": "unsupported-contract-type"}
                         self.assertion(first.is_file() and second.is_file() and third.is_file(), "Missing cross-version round trip")
                         expected = {"OriginalActorId": "fixture-human", "AuthenticatedWorkloadId": "fixture-workload", "IsDelegated": True, "DelegationId": "fixture-delegation", "Scopes": value["scopes"], "Audience": value["audience"]} if shape == "dual" else {"GlobalPosition": 987} if kind == "projection" else {"UserId": "fixture-user"}
                         common = common_wire_fields(value)
@@ -1547,7 +1604,7 @@ class Runner:
                 original = self.seed(writer, database, interval)
                 self.assertion(len([r for r in original["domain_rows"] if ":events:" in r["key"]]) == 15, "Committed seed events missing")
                 if scenario in {"retained-covered", "retained-uncovered", "metadata-write"}:
-                    self.sql(database, "update state set value=jsonb_set(value,'{retainedFloor}','5') where key like '%tenant-a:counter:fixture:metadata'; delete from state where key like '%tenant-a:counter:fixture:events:%' and (split_part(key,':',7))::int < 5;")
+                    self.sql(database, RETAINED_FLOOR_SQL)
                 if scenario == "retained-uncovered":
                     self.sql(database, "delete from state where key like '%tenant-a:counter:fixture:snapshot';" if variant == "absent" else "update state set value=jsonb_set(jsonb_set(value,'{sequenceNumber}','2'),'{state,count}','2') where key like '%tenant-a:counter:fixture:snapshot';")
                 if scenario == "missing-event":
@@ -1586,6 +1643,9 @@ class Runner:
         lane = VERSIONS[0] if scenario == "post-upgrade-restore" else VERSIONS[1]
         database = self.database()
         before = self.seed(lane, database, 10)
+        if scenario == "post-upgrade-restore":
+            self.sql(database, RETAINED_FLOOR_SQL)
+            before = self.inventory(database)
         dump = self.run(["docker", "exec", self.pg, "pg_dump", "-U", "postgres", "-Fc", database], binary=True)
         path = self.scratch / (scenario + ".dump")
         path.write_bytes(dump)
@@ -1605,22 +1665,31 @@ class Runner:
             self.assertion(self.http("GET", f"http://127.0.0.1:{self.host_port}/sequence/{tenant}/fixture") == count, "Restored sequence differs")
         self.stop_nodes()
         after = self.inventory(restored)
-        self.assertion(before["domain_rows"] == after["domain_rows"], "Restored replay mutated domain data")
+        compatible = True
+        if scenario == "post-upgrade-restore":
+            def event_map(rows):
+                return {r["key"]: r["sha256"] for r in rows if ":events:" in r["key"]}
+            self.assertion(event_map(before["domain_rows"]) == event_map(after["domain_rows"]), "Restored replay rewrote event bytes")
+            source_meta = next((r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")), None)
+            replayed_meta = next((r for r in after["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata")), None)
+            self.assertion(source_meta is not None and source_meta.get("floor") == "5", "Post-upgrade backup lacks retained floor")
+            stable = {r["key"]: r["sha256"] for r in before["domain_rows"] if not r["key"].endswith("tenant-a:counter:fixture:metadata")}
+            replayed_stable = {r["key"]: r["sha256"] for r in after["domain_rows"] if not r["key"].endswith("tenant-a:counter:fixture:metadata")}
+            self.assertion(stable == replayed_stable, "Downgrade changed events or other tenant state")
+            if replayed_meta is not None:
+                self.assertion(replayed_meta.get("sequence") == source_meta.get("sequence"), "Downgrade changed metadata sequence")
+            compatible = replayed_meta is not None and replayed_meta.get("floor") == "5"
+        else:
+            self.assertion(before["domain_rows"] == after["domain_rows"], "Restored replay mutated domain data")
         self.persist_inventory(scenario + "-before", before)
         self.persist_inventory(scenario + "-restored", copied)
         self.persist_inventory(scenario + "-after", after)
-        return [{"id": "quiesced-full-backup", "assertions": self.current_assertions, "command_ids": [c["id"] for c in self.commands[command_start:]], "backup_sha256": sha(dump), "backup_bytes": len(dump), "source_inventory_sha256": before["sha256"], "restored_inventory_sha256": copied["sha256"], "restored_replay_sha256": after["sha256"], "inventory_commands": {"source_inventory_sha256": before["query_command_id"], "restored_inventory_sha256": copied["query_command_id"], "restored_replay_sha256": after["query_command_id"]}, "containment_only": scenario == "pre-upgrade-restore"}], "compatible"
+        return [{"id": "quiesced-full-backup", "assertions": self.current_assertions, "command_ids": [c["id"] for c in self.commands[command_start:]], "backup_sha256": sha(dump), "backup_bytes": len(dump), "source_inventory_sha256": before["sha256"], "restored_inventory_sha256": copied["sha256"], "restored_replay_sha256": after["sha256"], "inventory_commands": {"source_inventory_sha256": before["query_command_id"], "restored_inventory_sha256": copied["query_command_id"], "restored_replay_sha256": after["query_command_id"]}, "containment_only": scenario == "pre-upgrade-restore"}], "compatible" if compatible else "incompatible"
 
     def invalid(self, lanes=VERSIONS):
         cases = []
         unsafe = False
-        mutations = {
-            "invalid-floor": "update state set value=jsonb_set(value,'{retainedFloor}','0') where key like '%tenant-a:counter:fixture:metadata'",
-            "unreadable": "update state set value='\"unreadable-fixture\"'::jsonb where key like '%tenant-a:counter:fixture:events:7'",
-            "protected": "update state set value=jsonb_set(value,'{serializationFormat}','\"json+pdenc-v1\"') where key like '%tenant-a:counter:fixture:events:7'",
-            "unknown-type": "update state set value=jsonb_set(value,'{eventTypeName}','\"P1R.UnknownEvent\"') where key like '%tenant-a:counter:fixture:events:7'",
-            "unknown-version": "update state set value=jsonb_set(value,'{metadataVersion}','987') where key like '%tenant-a:counter:fixture:events:7'",
-        }
+        mutations = INVALID_EVIDENCE_SQL
         for lane in lanes:
             for mutation, sql in mutations.items():
                 def execute(lane=lane, mutation=mutation, sql=sql):
@@ -1768,7 +1837,7 @@ def main(arguments=None):
     if options.validate:
         try:
             results = validate(options.validate)
-        except (ValueError, KeyError, OSError, json.JSONDecodeError) as error:
+        except (ValueError, KeyError, OSError, json.JSONDecodeError, IndexError, StopIteration) as error:
             print("INVALID: " + str(error), file=sys.stderr)
             return 2
         print("VALID: complete hash-bound investigation; P1R remains unqualified")
@@ -1862,7 +1931,7 @@ def main(arguments=None):
         seal(output)
     try:
         validate(output)
-    except (ValueError, KeyError, OSError, json.JSONDecodeError) as error:
+    except (ValueError, KeyError, OSError, json.JSONDecodeError, IndexError, StopIteration) as error:
         print("RETAINED NONPASSING: " + str(error), file=sys.stderr)
         return 2
     return results["exit_code"]

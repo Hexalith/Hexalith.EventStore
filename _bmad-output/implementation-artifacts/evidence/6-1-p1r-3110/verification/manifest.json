@@ -31,16 +31,16 @@
     "host/Host.csproj": "bd61eefd7e15d41b67219f4766e8e31dafb0322c87169d3a3030c997b00da13a",
     "host/Program.cs": "6a5b7e24e9b431c9b32baa9eb062ca004b556b344b3af594cfbeb896be3ed5a7",
     "probe/Probe.csproj": "86a82c2f17d572ce40d7cfb166f30bb9e9944f7055239176b8a4d5128765a38f",
-    "probe/Program.cs": "718928ea96252b5d4b897298437784e2f0a063633ec52aa52bc33e5247806e09",
-    "run_verification.py": "b43188c1b069915078911fd52431153ede62a1fe9a057dee5a53110e58bc3c41",
-    "test_run_verification.py": "96e5e308ff4b9ea0262526ad52bd748f2b2fec2501a181067e7357d705123007"
+    "probe/Program.cs": "e6e2de287f4efc0edf6b96466a22a9f8418c886a9659f2ee8fe480a193be2620",
+    "run_verification.py": "1edcf801ac1aa85c0eb434150c0a8c9345562e4ce74433c75eb3a623115d29b1",
+    "test_run_verification.py": "2ec7f1726636055025dd2643d6d2ab2d102fe73ece56e3eb75067ab6c87b70ef"
   },
   "limitations": [
     "Metadata floor, delegated query authority, projection watermark and recovery status fields are lost through rollback consumption; selected actor contracts and watermark helper are absent in rollback.",
     "Invalid floor, protected serialization marker and unknown metadata version are accepted unsafely by selected, rollback and current source.",
     "Selected/current shared scope is measured equivalent; Reminder contracts/actors, registration and Dapr.Actors.AspNetCore dependency remain outside that scope.",
     "Fenced and trusted-effect controls exercise actual dispatch and null-argument validation, not successful effects.",
-    "Post-upgrade restore passed ordinary untrimmed/snapshot fixtures; this does not erase retained-metadata or API downgrade incompatibility.",
+    "Attempt 17 post-upgrade restore passed an ordinary untrimmed/snapshot fixture and remains historical. The current runner requires a retained-floor stream and records incompatible when downgrade drops that floor. No fresh capture was taken, and this does not grant retained-metadata compatibility or P1R usability.",
     "Pre-upgrade restoration contains only the earlier backup and discards later selected writes; any rollback-policy change requires a later named owner decision.",
     "Attempts 13/14 retain unrelated shared-resource drift. Attempt 15 completed the prior fixtures with unchanged shared resources; the selected hardened invocation is rejected because an unrelated shared container disappeared. Its owned cleanup and all operation bindings pass. Seven incompatible dispositions remain; no qualification or owner acceptance is granted."
   ],

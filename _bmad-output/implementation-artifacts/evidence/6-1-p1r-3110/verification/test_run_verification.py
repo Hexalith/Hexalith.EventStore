@@ -249,9 +249,13 @@ class EvidenceTests(unittest.TestCase):
             command["finished_utc"] = instant.isoformat()
         self.fixture_nodes = []
 
+    def probe_binary(self, lane):
+        return "/fixture/"+lane+"/probe/bin/"+("Debug" if lane=="current" else "Release")+"/net10.0/Probe.dll"
+
     def nodes(self,lane,hashes=None):
         self.finish_nodes()
-        hashes=hashes or verifier.PUBLISHED_DLL_HASHES[lane]
+        if hashes is None:
+            hashes=self.current_hashes if lane=="current" else verifier.PUBLISHED_DLL_HASHES[lane]
         for kind,required in (("host",verifier.HOST_REQUIRED),("domain",verifier.DOMAIN_REQUIRED)):
             configuration="Debug" if lane=="current" else "Release"
             application = self.add_command(["dotnet","/fixture/"+lane+"/"+kind+"/bin/"+configuration+"/net10.0/"+kind.capitalize()+".dll"],node_environment={"ASPNETCORE_URLS":"http://127.0.0.1:12345","DAPR_HTTP_PORT":"12345"})
@@ -284,6 +288,33 @@ class EvidenceTests(unittest.TestCase):
             rows.append({"key":"fixture:"+tenant+":counter:fixture:metadata","sha256":verifier.sha(tenant.encode()),"sequence":str(count),"floor":"1"})
         return sorted(rows,key=lambda r:r["key"])
 
+    def stream_rows(self, start=1, count=12, floor="1", snapshot=None, sequence=None, extra=None):
+        rows=[]
+        for index in range(start, count+1):
+            rows.append({"key":"fixture:tenant-a:counter:fixture:events:"+str(index),"sha256":verifier.sha(("tenant-a"+str(index)).encode()),"sequence":None,"floor":None})
+        if extra is not None:
+            rows.append({"key":"fixture:tenant-a:counter:fixture:events:"+str(extra),"sha256":verifier.sha(("tenant-a"+str(extra)).encode()),"sequence":None,"floor":None})
+        for index in range(1,4):
+            rows.append({"key":"fixture:tenant-b:counter:fixture:events:"+str(index),"sha256":verifier.sha(("tenant-b"+str(index)).encode()),"sequence":None,"floor":None})
+        meta_sequence=str(count if sequence is None else sequence)
+        rows.append({"key":"fixture:tenant-a:counter:fixture:metadata","sha256":verifier.sha(("tenant-a"+meta_sequence+str(floor)).encode()),"sequence":meta_sequence,"floor":floor})
+        rows.append({"key":"fixture:tenant-b:counter:fixture:metadata","sha256":verifier.sha(b"tenant-b"),"sequence":"3","floor":"1"})
+        if snapshot is not None:
+            rows.append({"key":"fixture:tenant-a:counter:fixture:snapshot","sha256":verifier.sha(("snapshot"+str(snapshot)).encode()),"sequence":None,"floor":None,"snapshotSequence":str(snapshot)})
+        return sorted(rows,key=lambda r:r["key"])
+
+    def retained_stream_rows(self):
+        return self.stream_rows(start=5, floor="5")
+
+    def next_database(self):
+        self.database_index=getattr(self,"database_index",0)
+        name="p1r_db"+str(self.database_index)
+        self.database_index+=1
+        return name
+
+    def psql(self, database, statement):
+        self.add_command(["docker","exec","a"*64,"psql","-U","postgres","-d",database,"-At","-v","ON_ERROR_STOP=1","-c",statement])
+
     def inventory_evidence(self,database,rows,name):
         self.finish_nodes()
         if not any("createdb" in c["argv"] and c["argv"][-1] == database for c in self.commands):
@@ -297,11 +328,11 @@ class EvidenceTests(unittest.TestCase):
     def seed_evidence(self,lane):
         self.nodes(lane)
         for tenant,count in (("tenant-a",12),("tenant-b",3)):
-            self.add_command(["dotnet","/fixture/"+lane+"/probe/bin/Release/net10.0/Probe.dll","seed","http://127.0.0.1:12345",tenant,"fixture",str(count)],{"committedEvents":count,"hydratedCount":count,"assertions":2*(count+1)})
+            self.add_command(["dotnet",self.probe_binary(lane),"seed","http://127.0.0.1:12345",tenant,"fixture",str(count)],{"committedEvents":count,"hydratedCount":count,"assertions":2*(count+1)})
 
     def actor_evidence(self,lane,tenant,count=12,kind="AssertCounter",accepted=True):
         outcome={"accepted":accepted,"eventCount":1 if kind=="IncrementCounter" and accepted else 0,"assertions":1,"failureReason":None,"failureCategory":None,"errorSha256":None}
-        command=self.add_command(["dotnet","/fixture/"+lane+"/probe/bin/Release/net10.0/Probe.dll","actor","http://127.0.0.1:12345",tenant,"fixture","fixture-correlation",kind,str(count)],outcome)
+        command=self.add_command(["dotnet",self.probe_binary(lane),"actor","http://127.0.0.1:12345",tenant,"fixture","fixture-correlation",kind,str(count)],outcome)
         return command,outcome
 
     def persisted_pass(self):
@@ -342,7 +373,13 @@ class EvidenceTests(unittest.TestCase):
         self.provenance_pass();self.runtime_evidence();start=len(self.commands)
         lane=verifier.VERSIONS[0] if scenario=="post-upgrade-restore" else verifier.VERSIONS[1]
         self.seed_evidence(lane)
-        before=self.inventory_evidence("p1r_source",self.state_rows(),"restore-before")
+        if scenario=="post-upgrade-restore":
+            self.add_command(["docker","exec","a"*64,"createdb","-U","postgres","p1r_source"])
+            self.add_command(["docker","exec","a"*64,"psql","-U","postgres","-d","p1r_source","-At","-v","ON_ERROR_STOP=1","-c",verifier.RETAINED_FLOOR_SQL])
+            rows=self.retained_stream_rows()
+        else:
+            rows=self.state_rows()
+        before=self.inventory_evidence("p1r_source",rows,"restore-before")
         dump=self.add_command(["docker","exec","a"*64,"pg_dump","-U","postgres","-Fc","p1r_source"],output_sha256="b"*64,output_bytes=10,binary_output_retained=False)
         if scenario=="pre-upgrade-restore":
             self.nodes(verifier.VERSIONS[0]);self.actor_evidence(verifier.VERSIONS[0],"tenant-a",0,"IncrementCounter")
@@ -350,12 +387,12 @@ class EvidenceTests(unittest.TestCase):
         self.finish_nodes()
         self.add_command(["docker","exec","a"*64,"createdb","-U","postgres","p1r_restored"])
         self.add_command(["docker","exec","-i","a"*64,"pg_restore","-U","postgres","-d","p1r_restored","--exit-on-error"],input_sha256="b"*64,input_bytes=10)
-        copied=self.inventory_evidence("p1r_restored",self.state_rows(),"restore-copied")
+        copied=self.inventory_evidence("p1r_restored",rows,"restore-copied")
         self.nodes(verifier.VERSIONS[1])
         for tenant,count in (("tenant-a",12),("tenant-b",3)):
             self.actor_evidence(verifier.VERSIONS[1],tenant,count)
             self.add_command(["HTTP","GET","http://127.0.0.1:12345/sequence/"+tenant+"/fixture"],count)
-        after=self.inventory_evidence("p1r_restored",self.state_rows(),"restore-after")
+        after=self.inventory_evidence("p1r_restored",rows,"restore-after")
         case={"id":"quiesced-full-backup","assertions":1,"command_ids":[c["id"] for c in self.commands[start:]],"backup_sha256":"b"*64,"backup_bytes":10,"source_inventory_sha256":before["sha256"],"restored_inventory_sha256":copied["sha256"],"restored_replay_sha256":after["sha256"],"inventory_commands":{"source_inventory_sha256":before["query_command_id"],"restored_inventory_sha256":copied["query_command_id"],"restored_replay_sha256":after["query_command_id"]},"containment_only":scenario=="pre-upgrade-restore"}
         row=next(r for r in self.results["scenarios"] if r["id"]==scenario)
         row.update(execution="passed",compatibility="compatible",assertions=1,cases=[case],command_ids=case["command_ids"])
@@ -462,11 +499,12 @@ class EvidenceTests(unittest.TestCase):
     def current_identity(self):
         self.source_evidence()
         hashes={name:verifier.sha(name.encode()) for name in verifier.PACKAGE_IDS}
+        self.current_hashes=hashes
         built={}
         for project in ("Host","Domain","Probe"):
             built[project]={name:hashes[name] for name in verifier.graph_packages("current",project)}
             self.graph_evidence("current",project,hashes)
-        loaded={"assemblies":[{"name":name,"version":"3.110.0.0","sha256":hashes[name]} for name in sorted(verifier.PROBE_ASSEMBLIES)]}
+        loaded={"assemblies":[{"name":name,"version":"3.110.0.0","sha256":hashes[name]} for name in sorted(verifier.PROBE_ASSEMBLIES)],"actorMethods":["ProcessCommandAsync"]}
         verifier.write(self.directory / "artifacts/current-identity.json",{"lane":"current","packages":[],"built_assemblies":built,"loaded":loaded})
         self.nodes("current",hashes)
         self.save();verifier.validate(self.directory)
@@ -642,12 +680,16 @@ class EvidenceTests(unittest.TestCase):
 
     def test_wire_controls_reject_substituted_fields_hashes_and_labels(self):
         for kind in ("query","projection"):
-            for mutation in ("fields","hashes","disposition"):
+            for mutation in ("fields","hashes","disposition","substitution"):
                 with self.subTest(kind=kind,mutation=mutation):
                     # Start with an independently validating positive fixture for every mutation.
                     row=self.wire_pass(kind)
                     if mutation=="fields": row["cases"][0]["middle_fields"]["UserId"]="substituted"
                     elif mutation=="hashes": row["cases"][0]["wire_hashes"][0]="f"*64
+                    elif mutation=="substitution":
+                        command=next(c for c in self.commands if c["id"] in row["cases"][0]["command_ids"] and c["argv"][2:3]==["wire"])
+                        observed=json.loads(command["diagnostic"]);observed["type"]=verifier.SERVER_QUERY_SUBSTITUTE
+                        command["diagnostic"]=json.dumps(observed,sort_keys=True)+"\n";command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
                     else: row["compatibility"]="compatible"
                     self.save();self.reject()
                     row.update(execution="unavailable",compatibility="unverified",assertions=0,cases=[{"id":"blocked","assertions":0,"command_ids":[1]}])
@@ -833,6 +875,356 @@ class EvidenceTests(unittest.TestCase):
         command["request_observation_sha256"]=verifier.sha(verifier.canonical(command["request_observation"]))
         self.save()
         with self.assertRaisesRegex(ValueError,"literal request hash"):
+            verifier.validate(self.directory)
+
+
+    def rewrite_inventory(self, filename, mutate):
+        path=self.directory/"inventories"/filename
+        value=json.loads(path.read_text())
+        mutate(value["rows"])
+        value["domain_rows"]=[r for r in value["rows"] if ":events:" in r["key"] or r["key"].endswith((":snapshot",":metadata"))]
+        value["sha256"]=verifier.sha(verifier.canonical(value["rows"]))
+        value["query_output"]=json.dumps(value["rows"])+"\n"
+        receipt=self.commands[value["query_command_id"]-1]
+        receipt.update(diagnostic=value["query_output"],output_sha256=verifier.sha(value["query_output"].encode()))
+        verifier.write(path,value)
+        return value
+
+    def inventory_name(self, scenario, case, label):
+        return scenario+"-"+case["writer"]+"-"+case["reader"]+"-"+case["variant"]+"-"+label+".json"
+
+    def mark_missing_event(self, lane):
+        suffix="/"+lane+"/host/bin/"+("Debug" if lane=="current" else "Release")+"/net10.0/Host.dll"
+        host=next(c for c in reversed(self.commands) if str(c["argv"][1]).endswith(suffix))
+        diagnostic="CorrelationId=fixture-correlation ExceptionType=MissingEventException\n"
+        host.update(diagnostic=diagnostic,output_sha256=verifier.sha(diagnostic.encode()),runtime_failures=[{"correlation_id":"fixture-correlation","category":"missing-event"}])
+        return host["id"]
+
+    def open_stream(self, scenario, writer, reader, variant="default"):
+        start=len(self.commands)
+        database=self.next_database()
+        self.seed_evidence(writer)
+        retained=scenario in {"retained-covered","retained-uncovered","metadata-write"}
+        snapshot=9 if scenario in {"snapshot-tail","retained-covered","metadata-write"} else 2 if scenario=="retained-uncovered" and variant=="non-covering" else None
+        omitted=7 if variant=="interior" else 12 if variant=="tail" else None
+        rows=self.stream_rows(start=5 if retained else 1, floor="5" if retained else "1", snapshot=snapshot)
+        if omitted:
+            rows=[r for r in rows if not r["key"].endswith(":events:"+str(omitted))]
+        self.add_command(["docker","exec","a"*64,"createdb","-U","postgres",database])
+        if retained:
+            self.psql(database, verifier.RETAINED_FLOOR_SQL)
+        if scenario=="retained-uncovered":
+            self.psql(database, "delete from state where key like '%tenant-a:counter:fixture:snapshot';" if variant=="absent" else "update state set value=jsonb_set(jsonb_set(value,'{sequenceNumber}','2'),'{state,count}','2') where key like '%tenant-a:counter:fixture:snapshot';")
+        if scenario=="missing-event":
+            self.psql(database, "delete from state where key like '%tenant-a:counter:fixture:events:"+str(omitted)+"';")
+        before=self.inventory_evidence(database, rows, scenario+"-"+writer+"-"+reader+"-"+variant+"-before")
+        self.nodes(reader)
+        rejected=scenario in {"retained-uncovered","missing-event"}
+        _,outcome=self.actor_evidence(reader,"tenant-a",accepted=not rejected)
+        self.actor_evidence(reader,"tenant-b",3)
+        self.add_command(["HTTP","GET","http://127.0.0.1:12345/sequence/tenant-a/fixture"],12)
+        failure_ids=[self.mark_missing_event(reader)] if rejected else []
+        if scenario=="metadata-write":
+            self.actor_evidence(reader,"tenant-a",0,"IncrementCounter")
+            rows=self.stream_rows(start=5, floor="5", snapshot=9, sequence=13, extra=13)
+        after=self.inventory_evidence(database, rows, scenario+"-"+writer+"-"+reader+"-"+variant+"-after")
+        return {"id":writer+"-to-"+reader+("-"+variant if variant!="default" else ""),"writer":writer,"reader":reader,"variant":variant,"assertions":1,"command_ids":[c["id"] for c in self.commands[start:]],"before_sha256":before["sha256"],"after_sha256":after["sha256"],"inventory_commands":{"before_sha256":before["query_command_id"],"after_sha256":after["query_command_id"]},"actor_outcome":outcome,"failure_category":"missing-event" if rejected else None,"failure_command_ids":failure_ids}
+
+    def stream_pass(self, scenario, directions=None):
+        self.provenance_pass();self.runtime_evidence()
+        directions=directions or ((verifier.VERSIONS,) if scenario=="metadata-write" else (verifier.VERSIONS, tuple(reversed(verifier.VERSIONS))))
+        variants=("absent","non-covering") if scenario=="retained-uncovered" else ("interior","tail") if scenario=="missing-event" else ("default",)
+        cases=[self.open_stream(scenario, writer, reader, variant) for writer, reader in directions for variant in variants]
+        row=next(r for r in self.results["scenarios"] if r["id"]==scenario)
+        row.update(execution="passed",compatibility="compatible",assertions=len(cases),cases=cases,command_ids=[i for case in cases for i in case["command_ids"]])
+        self.save();verifier.validate(self.directory)
+        return row
+
+    def test_replay_disposition_rejects_an_incomplete_stream(self):
+        row=self.stream_pass("full-replay");case=row["cases"][0]
+        for label in ("before","after"):
+            value=self.rewrite_inventory(self.inventory_name("full-replay", case, label), lambda rows: rows.remove(next(r for r in rows if r["key"].endswith(":events:1"))))
+            case[label+"_sha256"]=value["sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "incomplete"):
+            verifier.validate(self.directory)
+
+    def test_snapshot_disposition_rejects_a_noncovering_snapshot(self):
+        row=self.stream_pass("snapshot-tail");case=row["cases"][0]
+        def retarget(rows):
+            next(r for r in rows if r["key"].endswith(":snapshot"))["snapshotSequence"]="8"
+        for label in ("before","after"):
+            value=self.rewrite_inventory(self.inventory_name("snapshot-tail", case, label), retarget)
+            case[label+"_sha256"]=value["sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "covering snapshot"):
+            verifier.validate(self.directory)
+
+    def test_retained_floor_disposition_rejects_a_different_floor(self):
+        row=self.stream_pass("retained-covered");case=row["cases"][0]
+        def retarget(rows):
+            next(r for r in rows if r["key"].endswith("tenant-a:counter:fixture:metadata"))["floor"]="1"
+        for label in ("before","after"):
+            value=self.rewrite_inventory(self.inventory_name("retained-covered", case, label), retarget)
+            case[label+"_sha256"]=value["sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "metadata differs"):
+            verifier.validate(self.directory)
+
+    def test_metadata_disposition_requires_the_appended_floor(self):
+        row=self.stream_pass("metadata-write");case=row["cases"][0]
+        value=self.rewrite_inventory(self.inventory_name("metadata-write", case, "after"), lambda rows: next(r for r in rows if r["key"].endswith("tenant-a:counter:fixture:metadata")).update(floor="1"))
+        case["after_sha256"]=value["sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "contradicts"):
+            verifier.validate(self.directory)
+
+    def invalid_cases(self, lanes):
+        cases=[]
+        for lane in lanes:
+            for mutation, statement in verifier.INVALID_EVIDENCE_SQL.items():
+                start=len(self.commands);database=self.next_database();self.seed_evidence(lane)
+                self.add_command(["docker","exec","a"*64,"createdb","-U","postgres",database]);self.psql(database, statement)
+                rows=self.stream_rows()
+                before=self.inventory_evidence(database, rows, "invalid-"+lane+"-"+mutation+"-before")
+                self.nodes(lane)
+                _,outcome=self.actor_evidence(lane,"tenant-a",accepted=False)
+                after=self.inventory_evidence(database, rows, "invalid-"+lane+"-"+mutation+"-after")
+                cases.append({"id":lane+"-"+mutation,"lane":lane,"mutation":mutation,"handling":"rejected","actor_outcome":outcome,"assertions":1,"command_ids":[c["id"] for c in self.commands[start:]],"before_sha256":before["sha256"],"after_sha256":after["sha256"],"inventory_commands":{"before_sha256":before["query_command_id"],"after_sha256":after["query_command_id"]}})
+        return cases
+
+    def test_invalid_evidence_acceptance_cannot_remain_compatible(self):
+        self.provenance_pass();self.runtime_evidence();start=len(self.commands)
+        cases=self.invalid_cases(verifier.VERSIONS)
+        row=next(r for r in self.results["scenarios"] if r["id"]=="invalid-evidence")
+        row.update(execution="passed",compatibility="compatible",assertions=len(cases),cases=cases,command_ids=[i for case in cases for i in case["command_ids"]])
+        self.save();verifier.validate(self.directory)
+        case=cases[0]
+        command=next(c for c in self.commands if c["id"] in case["command_ids"] and len(c["argv"])>2 and c["argv"][2]=="actor" and c["argv"][4]=="tenant-a")
+        outcome=json.loads(command["diagnostic"]);outcome["accepted"]=True
+        command["diagnostic"]=json.dumps(outcome,sort_keys=True)+"\n";command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
+        case.update(actor_outcome=outcome,handling="accepted-unsafe")
+        self.save()
+        with self.assertRaisesRegex(ValueError, "contradicts"):
+            verifier.validate(self.directory)
+
+    def wire_group(self, kind, source=False):
+        name="query-wire" if kind=="query" else "projection-wire"
+        cases=[];start=len(self.commands)
+        for identity in sorted(verifier.expected_cases(name, source)):
+            first,middle,form,shape=identity.split("-");direction=[first,middle]
+            value=verifier.wire_fixture(kind,shape);case_start=len(self.commands)
+            fields={"UserId":"fixture-user","SequenceNumber":3} if kind=="projection" else {"UserId":"fixture-user","OriginalActorId":None,"AuthenticatedWorkloadId":None,"IsDelegated":False,"DelegationId":None,"Scopes":None,"Audience":None}
+            fields.update(verifier.common_wire_fields(value))
+            if kind=="projection": fields["GlobalPosition"]=987
+            if shape=="dual": fields.update(OriginalActorId="fixture-human",AuthenticatedWorkloadId="fixture-workload",IsDelegated=True,DelegationId="fixture-delegation",Scopes=value["scopes"],Audience=value["audience"])
+            observations=[];input_hash=verifier.written_fixture_hash(value)
+            for index,(lane,mode) in enumerate(((first,"to-xml" if form=="xml" else "json"),(middle,form),(first,form))):
+                observed=copy.deepcopy(fields)
+                writer=index==0 and lane in {verifier.VERSIONS[0],"current"}
+                if kind=="projection": observed["GlobalPosition"]=987 if writer else 0
+                elif shape=="dual" and not writer:
+                    observed.update(OriginalActorId=None,AuthenticatedWorkloadId=None,IsDelegated=False,DelegationId=None,Scopes=None,Audience=None)
+                output_hash=verifier.sha((identity+str(index)).encode())
+                observation={"fields":observed,"inputSha256":input_hash,"outputSha256":output_hash,"assertions":1}
+                self.add_command(["dotnet",self.probe_binary(lane),"wire",kind,mode,"/fixture/in","/fixture/out"],observation)
+                observations.append(observation);input_hash=output_hash
+            preserved=shape=="legacy"
+            cases.append({"id":identity,"direction":direction,"format":form,"shape":shape,"assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"fixture_input":value,"first_fields":observations[0]["fields"],"middle_fields":observations[1]["fields"],"final_fields":observations[2]["fields"],"wire_hashes":[o["outputSha256"] for o in observations],"preserved":preserved})
+        compatibility="compatible" if all(case["preserved"] for case in cases) else "incompatible"
+        return {"id":name,"assertions":len(cases),"command_ids":[c["id"] for c in self.commands[start:]],"cases":cases,"compatibility":compatibility}
+
+    def legacy_group(self, lane):
+        cases=[];start=len(self.commands)
+        for convention in ("pascal","web"):
+            value={"CurrentSequence":12,"LastModified":"2026-01-01T00:00:00Z","ETag":"fixture-etag"}
+            if convention=="web": value={k[0].lower()+k[1:]:v for k,v in value.items()}
+            observed={"assertions":3,"currentSequence":12,"floor":1,"inputSha256":verifier.written_fixture_hash(value),"outputSha256":verifier.sha((convention+lane).encode())}
+            case_start=len(self.commands)
+            self.add_command(["dotnet",self.probe_binary(lane),"metadata","/fixture/in","/fixture/out",convention],observed)
+            cases.append({"id":convention+"-floor-None","assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"fixture_input":value,"currentSequence":observed["currentSequence"],"floor":observed["floor"],"inputSha256":observed["inputSha256"],"outputSha256":observed["outputSha256"]})
+        return {"id":"legacy-metadata","assertions":len(cases),"command_ids":[c["id"] for c in self.commands[start:]],"cases":cases,"compatibility":"compatible"}
+
+    def current_build_case(self):
+        closures=json.loads((self.directory/"source-input-closure.json").read_text())
+        identity=json.loads((self.directory/"artifacts/current-identity.json").read_text())
+        while self.commands and self.commands[-1].get("fixture_cleanup"):
+            self.commands.pop()
+        start=len(self.commands)
+        for project in ("Host","Domain","Probe"):
+            target="/fixture/current/"+project.lower()+"/"+project+".csproj"
+            source=["-p:UseCurrentSource=true","-p:EventStoreSourceRoot="+closures["Hexalith.EventStore"]["repository"],"-p:HexalithCommonsRoot="+closures["Hexalith.Commons"]["repository"]]
+            self.add_command(["dotnet","restore",target,"--configfile","/fixture/current/NuGet.Config","--no-http-cache","--disable-parallel",*source])
+            self.add_command(["dotnet","build",target,"--no-restore","-c","Debug","-p:UseSharedCompilation=false",*source])
+            self.graph_evidence("current", project, self.current_hashes)
+        self.add_command(["dotnet",self.probe_binary("current"),"identity"],identity["loaded"])
+        return {"id":"current-build","assertions":1,"packages":0,"actor_methods":identity["loaded"]["actorMethods"],"command_ids":[c["id"] for c in self.commands[start:]]}
+
+    def stream_group(self, scenario, directions):
+        start=len(self.commands)
+        variants=("absent","non-covering") if scenario=="retained-uncovered" else ("interior","tail") if scenario=="missing-event" else ("default",)
+        cases=[self.open_stream(scenario, writer, reader, variant) for writer, reader in directions for variant in variants]
+        return {"id":scenario,"assertions":len(cases),"command_ids":[c["id"] for c in self.commands[start:]],"cases":cases,"compatibility":"compatible"}
+
+    def checkout_pass(self):
+        self.runtime_evidence();self.current_identity()
+        directions=((verifier.VERSIONS[0],"current"),("current",verifier.VERSIONS[0]))
+        groups=[self.current_build_case(),self.legacy_group("current"),self.wire_group("query",True),self.wire_group("projection",True)]
+        for name in ("full-replay","snapshot-tail","retained-covered","retained-uncovered","missing-event","metadata-write"):
+            groups.append(self.stream_group(name, directions))
+        start=len(self.commands)
+        invalid=self.invalid_cases(("current",))
+        groups.append({"id":"invalid-evidence","assertions":len(invalid),"command_ids":[c["id"] for c in self.commands[start:]],"cases":invalid,"compatibility":"compatible"})
+        row=next(r for r in self.results["scenarios"] if r["id"]=="checkout")
+        row.update(execution="passed",compatibility="incompatible" if any(group.get("compatibility")=="incompatible" for group in groups) else "compatible",assertions=sum(group["assertions"] for group in groups),cases=groups,command_ids=[i for group in groups for i in group["command_ids"]])
+        self.save();verifier.validate(self.directory)
+        return row
+
+    def test_checkout_label_mismatch_is_rejected(self):
+        row=self.checkout_pass()
+        next(group for group in row["cases"] if group["id"]=="legacy-metadata")["compatibility"]="incompatible"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "contradicts nested"):
+            verifier.validate(self.directory)
+
+    def mixed_pass(self):
+        self.provenance_pass();self.runtime_evidence();cases=[];start=len(self.commands)
+        for client, host in (verifier.VERSIONS, tuple(reversed(verifier.VERSIONS))):
+            case_start=len(self.commands);database=self.next_database();self.seed_evidence(host)
+            self.add_command(["docker","exec","a"*64,"createdb","-U","postgres",database]);rows=self.stream_rows()
+            before=self.inventory_evidence(database, rows, "mixed-"+client+"-"+host+"-before")
+            self.nodes(host);self.actor_evidence(client,"tenant-a");self.actor_evidence(client,"tenant-b",3)
+            after=self.inventory_evidence(database, rows, "mixed-"+client+"-"+host+"-after")
+            cases.append({"id":client+"-client-"+host+"-host","client":client,"host":host,"assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"before_sha256":before["sha256"],"after_sha256":after["sha256"],"inventory_commands":{"before_sha256":before["query_command_id"],"after_sha256":after["query_command_id"]}})
+        case_start=len(self.commands);self.nodes(verifier.VERSIONS[0])
+        value={"retryable":True,"recoveryReasonCode":"fixture-recovery","drainAttemptCount":2}
+        self.add_command(["HTTP","POST","http://127.0.0.1:12345/status/tenant-a/fixture-status"],request_observation=value)
+        self.add_command(["HTTP","GET","http://127.0.0.1:12345/status/tenant-a/fixture-status"],value)
+        self.nodes(verifier.VERSIONS[1])
+        self.add_command(["HTTP","GET","http://127.0.0.1:12345/status/tenant-a/fixture-status"],{})
+        cases.append({"id":"status-downgrade","assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"selected_keys":sorted(value),"old_keys":[],"handling":"lost-recovery-tristate"})
+        for mint, consume, identity in ((verifier.VERSIONS[0], verifier.VERSIONS[1], "cursor-downgrade"), (verifier.VERSIONS[1], verifier.VERSIONS[0], "cursor-upgrade")):
+            case_start=len(self.commands);digest=verifier.sha(("opaque-"+identity).encode());self.nodes(mint)
+            self.add_command(["HTTP","GET","http://127.0.0.1:12345/cursor-mint"],confidential_observations={"cursor_sha256":digest})
+            self.nodes(consume)
+            observed={"tenantId":"tenant-a","domain":"counter","aggregateId":"fixture","queryType":"fixture","payload":"e30=","correlationId":"fixture-correlation","userId":"fixture-user","paging":{"cursor":{"sha256":digest}}}
+            decoded={"decoded":True,"position":"position-3"}
+            for result in (decoded, {"decoded":False}):
+                payload=verifier.base64.b64encode(json.dumps(result).encode()).decode()
+                self.add_command(["HTTP","POST","http://127.0.0.1:12345/query"],{"payloadBytes":payload},request_observation=observed)
+            cases.append({"id":identity,"assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"mint":mint,"consume":consume,"cursor_sha256":digest,"scope":"tenant-a|watermark:987","decode_outcome":decoded,"tamper_rejected":True,"key_material_retained":False})
+        for label, lane, outcome in (("old", verifier.VERSIONS[1], {"method":"AddProjectionWatermark","handling":"unsupported-client-method"}), ("selected", verifier.VERSIONS[0], {"method":"AddProjectionWatermark","handling":"executed","scope":"tenant:tenant-a|watermark:987","invalid_watermark_rejected":True})):
+            case_start=len(self.commands)
+            self.add_command(["dotnet",self.probe_binary(lane),"cursor-scope"],outcome)
+            cases.append({"id":label+"-cursor-scope","assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],**outcome})
+        for host, label in ((verifier.VERSIONS[1], "old"), (verifier.VERSIONS[0], "selected")):
+            node_start=len(self.commands);self.nodes(host);node_ids=[c["id"] for c in self.commands[node_start:]]
+            for method in ("ProcessFencedCommandAsync","ProcessTrustedEffectAsync","GetRetainedFloorAsync"):
+                case_start=len(self.commands)
+                detail="" if host==verifier.VERSIONS[0] and method=="GetRetainedFloorAsync" else method+"ReqBody deserializer has no knowledge" if host==verifier.VERSIONS[1] else "ArgumentNullException"
+                outcome="returned" if host==verifier.VERSIONS[0] and method=="GetRetainedFloorAsync" else "rejected"
+                self.add_command(["dotnet",self.probe_binary(verifier.VERSIONS[0]),"capability","http://127.0.0.1:12345",method],{"outcome":outcome,"method":method,"detail":detail})
+                cases.append({"id":label+"-dispatcher-"+method,"method":method,"outcome":outcome,"detail_sha256":verifier.sha(detail.encode()),"handling":"unsupported-old-actor-contract" if host==verifier.VERSIONS[1] else "selected-dispatcher-executed","assertions":1,"command_ids":node_ids+[c["id"] for c in self.commands[case_start:]]})
+        row=next(r for r in self.results["scenarios"] if r["id"]=="mixed-api")
+        row.update(execution="passed",compatibility="incompatible",assertions=len(cases),cases=cases,command_ids=[c["id"] for c in self.commands[start:]])
+        self.save();verifier.validate(self.directory)
+        return row
+
+    def test_old_dispatcher_success_is_rejected(self):
+        row=self.mixed_pass()
+        case=next(item for item in row["cases"] if item["id"]=="old-dispatcher-ProcessFencedCommandAsync")
+        command=next(c for c in self.commands if c["id"] in case["command_ids"] and len(c["argv"])>2 and c["argv"][2]=="capability")
+        observed=json.loads(command["diagnostic"]);observed["outcome"]="returned"
+        command["diagnostic"]=json.dumps(observed,sort_keys=True)+"\n";command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
+        case["outcome"]="returned"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "unsupported old dispatcher"):
+            verifier.validate(self.directory)
+
+    def failure_cleanup_pass(self):
+        start=len(self.commands);cases=[]
+        for name, script, code in (("startup-failure","raise SystemExit(7)",7),("timeout","import time; time.sleep(10)",124),("cancellation","import time; time.sleep(10)",130)):
+            case_start=len(self.commands)
+            self.add_command([sys.executable,"-c",script],code=code)
+            cases.append({"id":name,"assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]]})
+        row=next(r for r in self.results["scenarios"] if r["id"]=="failure-cleanup")
+        row.update(execution="passed",compatibility="compatible",assertions=len(cases),cases=cases,command_ids=[c["id"] for c in self.commands[start:]])
+        self.save();verifier.validate(self.directory)
+        return row
+
+    def test_failure_cleanup_exit_outside_expected_codes_is_rejected(self):
+        self.failure_cleanup_pass()
+        command=next(c for c in self.commands if c["argv"][1:]==["-c","import time; time.sleep(10)"] and c["exit_code"]==124)
+        command["exit_code"]=9
+        self.save()
+        with self.assertRaisesRegex(ValueError, "lifecycle failure"):
+            verifier.validate(self.directory)
+
+    def test_post_upgrade_without_retained_floor_stream_is_rejected(self):
+        self.restore_pass()
+        command=next(c for c in self.commands if "psql" in c["argv"] and "retainedFloor" in c["argv"][-1])
+        command["argv"][-1]="select 1"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "retained-floor stream"):
+            verifier.validate(self.directory)
+
+    def test_post_upgrade_dropped_floor_cannot_be_labeled_compatible(self):
+        row,_=self.restore_pass();case=row["cases"][0]
+        value=self.rewrite_inventory("restore-after.json", lambda rows: next(r for r in rows if r["key"].endswith("tenant-a:counter:fixture:metadata")).update(floor=None))
+        case["restored_replay_sha256"]=value["sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "contradicts"):
+            verifier.validate(self.directory)
+        row["compatibility"]="incompatible"
+        self.save()
+        result=verifier.validate(self.directory)
+        self.assertFalse(result["qualified"])
+        self.assertEqual(row["compatibility"],"incompatible")
+
+    def test_unsupported_contract_type_cannot_pass_as_a_round_trip(self):
+        row=self.wire_pass("query");case=row["cases"][0]
+        for command in self.commands:
+            if command["id"] in case["command_ids"] and len(command["argv"])>2 and command["argv"][2]=="wire":
+                observed={"assertions":1,"handling":"unsupported-contract-type","type":verifier.CONTRACT_WIRE_TYPES["query"]}
+                command["diagnostic"]=json.dumps(observed,sort_keys=True)+"\n"
+                command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
+        case["preserved"]=False
+        self.save();verifier.validate(self.directory)
+        case["preserved"]=True
+        self.save()
+        with self.assertRaisesRegex(ValueError, "round trip"):
+            verifier.validate(self.directory)
+
+    def test_empty_operation_receipt_is_invalid_evidence(self):
+        command={"exit_code":0,"diagnostic":"\n","output_sha256":verifier.sha(b"\n")}
+        with self.assertRaisesRegex(ValueError, "no evidence"):
+            verifier.receipt_json(command)
+
+    def test_short_gitlink_receipt_is_invalid_evidence(self):
+        self.provenance_pass()
+        command=next(c for c in self.commands if c["argv"][:2]==["git","ls-tree"])
+        command["diagnostic"]="short\n"
+        command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
+        self.save()
+        with self.assertRaisesRegex(ValueError, "gitlink"):
+            verifier.validate(self.directory)
+
+    def test_validation_index_and_stop_errors_are_invalid_evidence(self):
+        for error in (IndexError("split"), StopIteration()):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(verifier, "_validate_packet", side_effect=error):
+                    with self.assertRaisesRegex(ValueError, "Invalid evidence: "+type(error).__name__):
+                        verifier.validate(self.directory)
+
+    def test_lifetime_clock_uses_subsecond_timestamps(self):
+        self.assertRegex(verifier.utc(), r"\.\d{6}\+00:00$")
+
+    def test_writer_quiescence_compares_subsecond_timestamps(self):
+        row,dump=self.restore_pass()
+        writer=next(c for c in self.commands if c["id"] in row["command_ids"] and c.get("node_environment"))
+        writer["finished_utc"]=dump["started_utc"].replace("+00:00",".100000+00:00")
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Writers were not quiesced"):
             verifier.validate(self.directory)
 
 
