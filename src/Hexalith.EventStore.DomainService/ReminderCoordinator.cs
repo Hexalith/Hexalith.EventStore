@@ -581,8 +581,11 @@ internal sealed class ReminderCoordinator
             valid.Add((intent!, CreateWitness(intent!, now)));
         }
 
-        // Classify effect overlap before collapsing names: either same-name witness may share its effect
-        // with a third name, and discarding either source would let that third witness execute.
+        // Shared effect identities are quarantined because the target rejects a second submission on a
+        // semantic-digest conflict, or silently replays the first receipt. Classify that overlap before
+        // collapsing names: either same-name witness may share its effect with a third name, and discarding
+        // either source would let that third witness execute. A witness collision on a shared name is
+        // recorded as witness-collision even when that name also shares an effect identity.
         foreach (IGrouping<string, string> shared in valid
             .GroupBy(pair => EffectIdentityCodec.ComputeEffectId(
                 CreateEffectIdentity(target.Tenant, target.Domain, target.Aggregate, pair.Intent)), pair => pair.Witness.ReminderName)
