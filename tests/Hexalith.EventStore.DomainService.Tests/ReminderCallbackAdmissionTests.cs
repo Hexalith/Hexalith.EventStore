@@ -24,6 +24,123 @@ public sealed class ReminderCallbackAdmissionTests
     private const string ReminderRoute = "/actors/EventStoreReminderActor/wra-X/method/remind/date-wrs-X";
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>Malformed actor identifiers are refused before store access, including an alias of an audit key.</summary>
+    [Theory]
+    [InlineData("audit-key")]
+    [InlineData("short")]
+    [InlineData("long")]
+    [InlineData("lowercase")]
+    [InlineData("excluded-letter")]
+    [InlineData("wrong-prefix")]
+    public async Task InvalidActorIdPreservesAuditWithoutStoreAccess(string malformed)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderDispositionRecord audit = harness.Disposition(actorId, name).ShouldNotBeNull();
+        string auditKey = ReminderStateKeys.Disposition(harness.Options.ActorTypeName, actorId, name);
+        var original = await harness.Store.GetAsync<ReminderDispositionRecord>(harness.Options.StateStoreName, auditKey);
+        string invalidActorId = malformed switch
+        {
+            "audit-key" => actorId + ":disposition:" + name,
+            "short" => actorId[..^1],
+            "long" => actorId + "0",
+            "lowercase" => actorId.ToLowerInvariant(),
+            "excluded-letter" => "wra-I" + actorId[5..],
+            _ => "bad-" + actorId[4..],
+        };
+        int reads = harness.CoordinatorStore.Reads;
+        int sourceReads = harness.Source.Reads;
+        int keys = harness.Store.Count;
+
+        (await harness.FireAsync(invalidActorId, name)).ShouldBeNull();
+
+        harness.CoordinatorStore.Reads.ShouldBe(reads);
+        harness.Source.Reads.ShouldBe(sourceReads);
+        harness.Store.Count.ShouldBe(keys);
+        harness.Disposition(actorId, name).ShouldBe(audit);
+        (await harness.Store.GetAsync<ReminderDispositionRecord>(harness.Options.StateStoreName, auditKey)).ETag.ShouldBe(original.ETag);
+        harness.SchedulerFor(invalidActorId).Cancelled.ShouldBeEmpty();
+        harness.SchedulerFor(invalidActorId).Armed.ShouldBeEmpty();
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
+    /// <summary>A callback quarantine survives removal or changed stream evidence until operator disposition.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task QuarantinedWitnessSurvivesIntentRemoval(bool changedEvidence)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Translator = _ => throw new FormatException("synthetic undecodable payload");
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Quarantined);
+        ReminderEntry quarantined = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        harness.Source.Translator = null;
+        harness.Source.Set(Item, changedEvidence ? [intent with { Payload = [1] }] : []);
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Submitted.ShouldBe(0);
+        result.Cancelled.ShouldBe(0);
+        result.Quarantined.ShouldBe(1);
+        ReminderItemState state = harness.ItemState(actorId).ShouldNotBeNull();
+        state.Entries.ShouldHaveSingleItem().ShouldBe(quarantined);
+        state.Quarantine.ShouldBeEmpty();
+        harness.Disposition(actorId, name).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        harness.Disposition(actorId, name)!.ReasonCode.ShouldBe("translation-failed");
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Status.Snapshot().Quarantined.ShouldBe(1);
+    }
+
+    /// <summary>Translation cancellation unrelated to host shutdown is malformed evidence on either submission path.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TranslationCancellationWithoutShutdownIsQuarantined(bool callback)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, callback ? harness.Time.Now.AddHours(1) : harness.Time.Now);
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.Source.Translator = _ => throw new OperationCanceledException("synthetic translator cancellation");
+
+        if (callback)
+        {
+            _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+            harness.Time.Advance(TimeSpan.FromHours(1));
+            (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Quarantined);
+        }
+        else
+        {
+            (await harness.CreateRegistrar().ConvergeAsync(Item)).Quarantined.ShouldBe(1);
+        }
+
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.Status.ShouldBe(ReminderEntryStatus.Quarantined);
+        retained.LastReasonCode.ShouldBe("translation-failed");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, name).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("translation-failed");
+        harness.Tokens.Requests.ShouldBeEmpty();
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.Status.Snapshot().Quarantined.ShouldBe(1);
+    }
+
     /// <summary>A superseded witness is an audited no-op: nothing is submitted, the reminder is cancelled, and the current witness is armed.</summary>
     [Fact]
     public async Task StaleWitnessIsAuditedNoOpAndCancelled()

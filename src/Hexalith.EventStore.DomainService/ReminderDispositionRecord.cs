@@ -6,8 +6,10 @@ using Hexalith.EventStore.Contracts.Reminders;
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>
-/// The latest durable audit disposition of one reminder subject. It is written before pending state is
-/// released, so an acknowledged outcome always has audit evidence.
+/// The latest durable audit disposition of one reminder subject. Witness release waits for this audit.
+/// Independent <see cref="ReminderQuarantineRecord"/> evidence can be persisted when its audit fails and is
+/// audited again on every convergence. An entry-quarantine transition whose audit fails retains the witness
+/// as <see cref="ReminderEntryStatus.Retrying"/> with <c>audit-unavailable</c>.
 /// </summary>
 /// <param name="Tenant">The canonical tenant.</param>
 /// <param name="ActorId">The <c>wra-</c> actor identifier.</param>

@@ -31,7 +31,7 @@ internal sealed class FakeTrustedEffectSubmitter : ITrustedEffectSubmitter
     public TrustedEffectDisposition Disposition { get; set; } = TrustedEffectDisposition.Success;
 
     /// <summary>Gets or sets an override applied to every returned receipt, such as a mismatched effect identifier.</summary>
-    public Func<TrustedEffectResult, TrustedEffectResult>? ReceiptOverride { get; set; }
+    public Func<TrustedEffectResult, TrustedEffectResult?>? ReceiptOverride { get; set; }
 
     /// <inheritdoc/>
     public Task<TrustedEffectResult> SubmitAsync(
@@ -89,5 +89,5 @@ internal sealed class FakeTrustedEffectSubmitter : ITrustedEffectSubmitter
         return receipt;
     }
 
-    private TrustedEffectResult Returned(TrustedEffectResult receipt) => ReceiptOverride?.Invoke(receipt) ?? receipt;
+    private TrustedEffectResult Returned(TrustedEffectResult receipt) => ReceiptOverride is null ? receipt : ReceiptOverride.Invoke(receipt)!;
 }

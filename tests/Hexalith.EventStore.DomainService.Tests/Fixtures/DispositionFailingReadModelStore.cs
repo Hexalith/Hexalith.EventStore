@@ -12,10 +12,19 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <summary>Gets or sets a predicate that rejects selected conditional writes.</summary>
     public Func<string, bool>? RejectTrySave { get; set; }
 
+    /// <summary>Gets or sets an observer invoked after an accepted conditional write, before its caller re-reads.</summary>
+    public Action<string>? AfterTrySave { get; set; }
+
+    /// <summary>Gets the number of reads through the coordinator store.</summary>
+    public int Reads { get; private set; }
+
     /// <inheritdoc/>
     public Task<ReadModelEntry<TValue>> GetAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         where TValue : class
-        => inner.GetAsync<TValue>(storeName, key, cancellationToken);
+    {
+        Reads++;
+        return inner.GetAsync<TValue>(storeName, key, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public Task SaveAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
@@ -25,11 +34,22 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
             : inner.SaveAsync(storeName, key, value, cancellationToken);
 
     /// <inheritdoc/>
-    public Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default)
+    public async Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default)
         where TValue : class
-        => RejectTrySave?.Invoke(key) == true
-            ? Task.FromResult(false)
-            : inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
+    {
+        if (RejectTrySave?.Invoke(key) == true)
+        {
+            return false;
+        }
+
+        bool saved = await inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
+        if (saved)
+        {
+            AfterTrySave?.Invoke(key);
+        }
+
+        return saved;
+    }
 
     /// <inheritdoc/>
     public Task<bool> TryEraseAsync(string storeName, string key, string etag, CancellationToken cancellationToken = default)

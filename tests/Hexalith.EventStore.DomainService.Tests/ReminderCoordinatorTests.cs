@@ -17,6 +17,84 @@ public sealed class ReminderCoordinatorTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>A non-canonical domain is rejected before reading or mutating any durable state.</summary>
+    [Fact]
+    public async Task NonCanonicalTargetDomainIsRejected()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderTarget nonCanonical = Item with { Domain = "Widget" };
+        harness.Source.Set(nonCanonical, ReminderTestHarness.Intent(nonCanonical, harness.Time.Now));
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => harness.CreateCoordinator().ConvergeAsync(
+            actorId, nonCanonical, harness.SchedulerFor(actorId), CancellationToken.None));
+
+        harness.CoordinatorStore.Reads.ShouldBe(0);
+        harness.Store.Count.ShouldBe(0);
+        harness.Source.Reads.ShouldBe(0);
+        harness.Candidates().ShouldBeEmpty();
+        harness.SchedulerFor(actorId).ArmCalls.ShouldBe(0);
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
+    /// <summary>Convergence refuses a missing purpose before delegation or submission and retains an audited retry.</summary>
+    [Fact]
+    public async Task UnconfiguredPurposeOnConvergenceIsDeniedAndRetained()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now);
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.Options.Purposes.Clear();
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Submitted.ShouldBe(0);
+        result.Unresolved.ShouldBe(1);
+        harness.Tokens.Requests.ShouldBeEmpty();
+        harness.Submitter.Calls.ShouldBeEmpty();
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retained.LastReasonCode.ShouldBe("purpose-unconfigured");
+        retained.Attempts.ShouldBe(1);
+        ReminderDispositionRecord audit = harness.Disposition(actorId, name).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Denied);
+        audit.ReasonCode.ShouldBe("purpose-unconfigured");
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+    }
+
+    /// <summary>A foreign write after an accepted CAS cannot be adopted and overwritten by this turn.</summary>
+    [Fact]
+    public async Task ForeignWriteAfterSaveFailsClosed()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        string key = ReminderStateKeys.Item(harness.Options.ActorTypeName, actorId);
+        harness.Source.Set(Item, ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2)));
+        ReminderItemState? winner = null;
+        harness.CoordinatorStore.AfterTrySave = savedKey =>
+        {
+            if (savedKey == key && winner is null)
+            {
+                winner = harness.ItemState(actorId).ShouldNotBeNull() with { Version = 42 };
+                harness.SeedItemState(actorId, winner);
+            }
+        };
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(0);
+        result.Submitted.ShouldBe(0);
+        result.Unresolved.ShouldBe(1);
+        JsonSerializer.Serialize(harness.ItemState(actorId)).ShouldBe(JsonSerializer.Serialize(winner.ShouldNotBeNull()));
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
+    }
+
     /// <summary>A mismatched actor and target are rejected before any read, state write, indexing, or scheduling.</summary>
     [Fact]
     public async Task ConvergeRejectsTargetThatDoesNotDeriveActor()
@@ -1419,9 +1497,12 @@ public sealed class ReminderCoordinatorTests
         harness.Candidates().ShouldHaveSingleItem();
     }
 
-    /// <summary>A receipt for another effect identity is uncertain: nothing is released.</summary>
-    [Fact]
-    public async Task MismatchedReceiptIsRetained()
+    /// <summary>A mismatched, undefined, or absent receipt is uncertain: nothing is released.</summary>
+    [Theory]
+    [InlineData("effect-id")]
+    [InlineData("disposition")]
+    [InlineData("null")]
+    public async Task MismatchedReceiptIsRetained(string invalidReceipt)
     {
         var harness = new ReminderTestHarness();
         string actorId = ReminderTestHarness.ActorId(Item);
@@ -1429,7 +1510,12 @@ public sealed class ReminderCoordinatorTests
         harness.Source.Set(Item, intent);
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
         harness.Time.Advance(TimeSpan.FromHours(1));
-        harness.Submitter.ReceiptOverride = receipt => receipt with { EffectId = "NOT-THIS-EFFECT" };
+        harness.Submitter.ReceiptOverride = receipt => invalidReceipt switch
+        {
+            "effect-id" => receipt with { EffectId = "NOT-THIS-EFFECT" },
+            "disposition" => receipt with { Disposition = (TrustedEffectDisposition)99 },
+            _ => null,
+        };
 
         ReminderDisposition? disposition = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
 
@@ -1439,6 +1525,9 @@ public sealed class ReminderCoordinatorTests
         retained.LastReasonCode.ShouldBe("receipt-mismatch");
         harness.Candidates().ShouldHaveSingleItem();
         harness.SchedulerFor(actorId).Cancelled.ShouldBeEmpty();
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Retrying);
+        audit.ReasonCode.ShouldBe("receipt-mismatch");
     }
 
     /// <summary>A delegation issuer that throws fails the submission closed as <c>delegation-failed</c>.</summary>
