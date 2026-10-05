@@ -22,8 +22,15 @@ public partial class EventStreamReader(
         => RehydrateAsync(identity, snapshot, CancellationToken.None);
 
     /// <summary>Rehydrates the legacy stream while forwarding the originating cancellation token.</summary>
-    public async Task<RehydrationResult?> RehydrateAsync(
-        AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken) {
+    public Task<RehydrationResult?> RehydrateAsync(
+        AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken)
+        => RehydrateAsync(identity, snapshot, cancellationToken, productionReader: null, aggregateType: null, snapshotReplay: null);
+
+    /// <summary>Rehydrates through the shared production reader when the caller supplies a pin and chain.</summary>
+    internal async Task<RehydrationResult?> RehydrateAsync(
+        AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken,
+        DaprProductionLogicalEventReader? productionReader, string? aggregateType,
+        SnapshotManager? snapshotReplay = null) {
         ArgumentNullException.ThrowIfNull(identity);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -112,35 +119,57 @@ public partial class EventStreamReader(
         string keyPrefix = identity.EventStreamKeyPrefix;
 
         var events = new List<EventEnvelope>(eventCount);
-        for (int offset = 0; offset < eventCount; offset++) {
-            long seq = startSequence + offset;
-            cancellationToken.ThrowIfCancellationRequested();
-            ConditionalValue<EventEnvelope> eventResult;
-            try {
-                eventResult = await stateManager
-                    .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                throw new EventDeserializationException(seq, identity.ActorId, ex);
-            }
-            cancellationToken.ThrowIfCancellationRequested();
+        List<EventEnvelope>? effectiveEvents = null;
+        if (productionReader is null) {
+            for (int offset = 0; offset < eventCount; offset++) {
+                long seq = startSequence + offset;
+                cancellationToken.ThrowIfCancellationRequested();
+                ConditionalValue<EventEnvelope> eventResult;
+                try {
+                    eventResult = await stateManager
+                        .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) {
+                    throw new EventDeserializationException(seq, identity.ActorId, ex);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            if (!eventResult.HasValue) {
-                throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                if (!eventResult.HasValue) {
+                    throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+                }
+
+                EventEnvelope stored = eventResult.Value;
+                if (!string.Equals(stored.TenantId, identity.TenantId, StringComparison.Ordinal)
+                    || !string.Equals(stored.Domain, identity.Domain, StringComparison.Ordinal)
+                    || !string.Equals(stored.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+                    || stored.SequenceNumber != seq || stored.Payload is null) {
+                    throw new InvalidOperationException("AddressMismatch: actor event identity or sequence disagrees with its key.");
+                }
+
+                LegacyEventReadGuard.RequireUnversioned(stored);
+                arrayBudget.Add(stored);
+                events.Add(stored);
+            }
+        }
+        else {
+            aggregateType ??= await productionReader.ReadStoredAggregateTypeAsync(
+                identity, startSequence, cancellationToken).ConfigureAwait(false);
+            DaprProductionLogicalReplay replay = snapshotReplay is null
+                ? await productionReader.ReadRangeAsync(
+                    identity, aggregateType, startSequence, eventCount, cancellationToken,
+                    currentSequence, metadata.RetainedFloor).ConfigureAwait(false)
+                : await snapshotReplay.ReadReplayRangeAsync(
+                    productionReader, identity, aggregateType, startSequence, eventCount, cancellationToken,
+                    currentSequence, metadata.RetainedFloor).ConfigureAwait(false);
+            foreach (EventEnvelope stored in replay.StoredEvents) {
+                arrayBudget.Add(stored);
+                events.Add(stored);
             }
 
-            EventEnvelope stored = eventResult.Value;
-            if (!string.Equals(stored.TenantId, identity.TenantId, StringComparison.Ordinal)
-                || !string.Equals(stored.Domain, identity.Domain, StringComparison.Ordinal)
-                || !string.Equals(stored.AggregateId, identity.AggregateId, StringComparison.Ordinal)
-                || stored.SequenceNumber != seq || stored.Payload is null) {
-                throw new InvalidOperationException("AddressMismatch: actor event identity or sequence disagrees with its key.");
+            if (replay.Evolved) {
+                effectiveEvents = [.. replay.DomainEvents];
             }
-
-            LegacyEventReadGuard.RequireUnversioned(stored);
-            arrayBudget.Add(stored);
-            events.Add(stored);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -156,7 +185,9 @@ public partial class EventStreamReader(
             SnapshotState: snapshot?.State,
             Events: events,
             LastSnapshotSequence: lastSnapshotSequence,
-            CurrentSequence: currentSequence);
+            CurrentSequence: currentSequence) {
+            EffectiveEvents = effectiveEvents,
+        };
     }
 
     private async Task RequireUnchangedMetadataAsync(AggregateIdentity identity, AggregateMetadata expected,

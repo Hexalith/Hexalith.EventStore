@@ -340,6 +340,54 @@ public partial class SnapshotManager(
         return SnapshotLoadResult.Readable(readable);
     }
 
+    /// <summary>Reads one checked logical page through the shared production reader.</summary>
+    internal Task<DaprLogicalEventPage> ReadReplayPageAsync(
+        DaprProductionLogicalEventReader reader,
+        AggregateIdentity identity,
+        string aggregateType,
+        long startSequence,
+        int maxCount,
+        CancellationToken cancellationToken,
+        long? expectedActorHead = null,
+        long? expectedRetainedFloor = null) {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(options.Value);
+        cancellationToken.ThrowIfCancellationRequested();
+        return reader.ReadPageAsync(
+            identity,
+            aggregateType,
+            startSequence,
+            maxCount,
+            cancellationToken,
+            expectedActorHead,
+            expectedRetainedFloor);
+    }
+
+    /// <summary>Reads a checked logical range through the shared production reader.</summary>
+    internal Task<DaprProductionLogicalReplay> ReadReplayRangeAsync(
+        DaprProductionLogicalEventReader reader,
+        AggregateIdentity identity,
+        string aggregateType,
+        long startSequence,
+        int count,
+        CancellationToken cancellationToken,
+        long expectedActorHead,
+        long? expectedRetainedFloor = null) {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(options.Value);
+        cancellationToken.ThrowIfCancellationRequested();
+        return reader.ReadRangeAsync(
+            identity,
+            aggregateType,
+            startSequence,
+            count,
+            cancellationToken,
+            expectedActorHead,
+            expectedRetainedFloor);
+    }
+
     private async Task<int> GetIntervalAsync(string tenantId, string domain, string aggregateType, CancellationToken cancellationToken) {
         if (snapshotPolicyResolver is not null) {
             int? persistedInterval = await snapshotPolicyResolver

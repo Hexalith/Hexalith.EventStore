@@ -24,9 +24,14 @@ internal sealed class EventEvolutionManifestCandidate : IDisposable
             Registry.Dispose();
             throw new InvalidOperationException("CapabilityMismatch: the local registry fingerprint differs from the gateway pin.");
         }
+
+        PinnedFingerprint = pinnedFingerprint;
     }
 
     internal EventDomainRegistry Registry { get; }
+
+    /// <summary>Gets the caller-supplied registry pin. It is not a provider attestation.</summary>
+    internal string PinnedFingerprint { get; }
 
     /// <summary>Checks a supplied local dependency graph without advertising registry readiness.</summary>
     internal void RequireSuppliedLocalClosure(

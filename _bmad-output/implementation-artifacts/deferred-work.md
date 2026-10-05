@@ -5372,3 +5372,23 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Show support-safe stream version and typed failure diagnostics.
   evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Unverified medium: compare Story 6.6 logical page ETags across a multi-page range.
+  evidence: Each page compares its own before/after ETag, and no same-head/floor generation change between pages was demonstrated. Settle it with an active range longer than one page where metadata ETag changes while head and floor stay equal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Story 6.6 split ledger rows omit status and use absolute source paths.
+  evidence: The three reader-split rows and the earlier Dapr review rows were already in the ledger before this reader change. Neighboring rows carry `status`, and these do not.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Unverified medium: Story 6.1 post-upgrade verifier can mis-order subsecond timestamps and collapse duplicate event keys.
+  evidence: `utc()` now emits microseconds and the runner maps events by key. Re-run `test_writer_quiescence_compares_subsecond_timestamps` and a duplicate-key inventory to settle the claimed false result. This is the Story 6.1 evidence runner, not the replay reader.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Story 6.1 evidence validator replaces IndexError and StopIteration with the exception type name.
+  evidence: `validate()` catches those types and raises `Invalid evidence:` plus the type name, discarding the original message. The runner is outside the replay reader.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Story 6.1 wire validation accepts a receipt that omits its contract type.
+  evidence: The runner compares `r.get("type", contract)` with the expected contract, so a missing type matches. This is the Story 6.1 evidence runner.

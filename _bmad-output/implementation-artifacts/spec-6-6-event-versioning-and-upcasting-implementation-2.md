@@ -2,7 +2,7 @@
 title: 'Story 6.6: Shared Evolution Reader For Replay'
 type: 'feature'
 created: '2026-10-05'
-status: 'draft'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '6-6-event-versioning-and-upcasting-implementation'
@@ -51,10 +51,10 @@ context:
 
 **Execution:**
 
-- [ ] `src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs` — add a new single-type production reader beside this file that returns an addressed logical page only after digest, prefix, head, floor, and ETag checks, using the existing registry and chain for a caller-supplied pin.
-- [ ] `src/Hexalith.EventStore.Server/Events/EventStreamReader.cs` and `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` — read replay pages through that reader and keep zero-hop V1 bytes compatible.
-- [ ] `src/Hexalith.EventStore.Server/DomainServices/DaprAggregateStateReconstructor.cs` and `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` — reconstruct and rehydrate through the same reader, and keep the existing digest check on the domain forward path.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/` — cover the matrix rows for replay and reconstruction, including digest mismatch, unsupported version, and cancellation. Assert the existing V2 write fence still rejects before mutation.
+- [x] `src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs` — add a new single-type production reader beside this file that returns an addressed logical page only after digest, prefix, head, floor, and ETag checks, using the existing registry and chain for a caller-supplied pin.
+- [x] `src/Hexalith.EventStore.Server/Events/EventStreamReader.cs` and `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` — read replay pages through that reader and keep zero-hop V1 bytes compatible.
+- [x] `src/Hexalith.EventStore.Server/DomainServices/DaprAggregateStateReconstructor.cs` and `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` — reconstruct and rehydrate through the same reader, and keep the existing digest check on the domain forward path.
+- [x] `tests/Hexalith.EventStore.Server.Tests/` — cover the matrix rows for replay and reconstruction, including digest mismatch, unsupported version, and cancellation. Assert the existing V2 write fence still rejects before mutation.
 
 **Acceptance Criteria:**
 
@@ -68,6 +68,29 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Finding | Verdict / evidence | Route |
+| --- | --- | --- |
+| BH1 empty upcaster map and no closure check | false: `FromCallerPin` binds the caller pin's registry and no invented callable. A required hop throws `CapabilityMismatch`. `RequireSuppliedLocalClosure` needs a graph the actor does not have; the candidate constructor already checks the pin. | reject |
+| BH2 zero-hop drops effective copies and skips the legacy version guard | false: zero-hop V1 must stay on the stored envelope. `EnsureEventsReadableForDomainAsync` still checks the digest. A version the registry rejects never reaches `RehydrationResult.Events`. | reject |
+| BH3 same-version rewrite is not applied | false: zero-hop V1 is required to stay byte-compatible with the typed read, so the stored envelope remains the domain input. | reject |
+| BH4 addressed reconstruction always starts at sequence 1 | false: the only caller passes the current head after a full rehydrate that already rejects a start below the retained floor. A shorter prefix is not a reached call. | reject |
+| BH5 logical rejection text is replaced | medium: `ReconstructAddressedAsync` keeps `UnsupportedVersion` for three message fragments and otherwise returns `Unexpected` with the fixed text "Addressed logical replay was rejected." Digest, address, and restart reasons are dropped. `Unexpected` is the only fitting category for a digest mismatch. | patch |
+| BH6 cross-page ETag and unauthenticated aggregate type | maybe-false: each page already compares its own before/after ETag, and `ReadCoreAsync` then checks tenant, domain, aggregate id, and sequence. A same-head/floor ETag change between pages was not demonstrated. The type read is rechecked by that page. | defer |
+| BH7 evolved digest and uncleared range copies | false: `ToContractEventEnvelope` does not forward `ApplicationPayloadDigest`, and the stored-envelope digest check still runs. Range copies die with the thrown stack frame. | reject |
+| BH8 spec still in progress and canonical reconstruction expects failure | false: this spec is `in-review` and its Verification section names three commands. The reconstruction fact stops at `UnknownAggregateType` because the substitute resolver returns null. | reject |
+| BH9 new ledger rows omit status and use absolute paths | medium, not this slice: the three split rows and the Dapr review rows were already in the ledger. This reader change does not own that format. | defer |
+| BH10 post-upgrade verifier timestamp and row comparison | maybe-false, not this slice: `utc()` now uses microseconds and the runner compares event maps by key. The claimed `'.'` versus `'+'` sort failure was not re-executed. | defer |
+| BH11 validator hides IndexError text | medium, not this slice: `validate()` replaces `IndexError` and `StopIteration` with the exception type name. That runner is the Story 6.1 evidence tool. | defer |
+| BH12 Tenants gitlink versus the reconciliation sentence | false: the reconciliation sentence describes its own completion commit. The Tenants gitlink move is a separate change since the baseline. | reject |
+| EC1 snapshot prefix stays pre-upcast | false: a hop required by the production pin fails closed in `FromCallerPin` before a snapshot fold returns. | reject |
+| EC2 upcast output can exceed the page cap | false: the production pin registers no upcaster, so an expanding hop cannot return a page. | reject |
+| EC3 missing wire type defaults to the contract | medium, not this slice: the Story 6.1 runner uses `r.get("type", contract)`. | defer |
+| EC4 duplicate event keys collapse in the runner map | medium, not this slice: the Story 6.1 runner builds `event_map` by key. | defer |
+| VG1 command path never proves the invoker sees the logical view | medium: reader tests do not construct `AggregateActor` with a keyed candidate. Filed disposition stands. | patch |
+| VG2 snapshot tail through the production reader is untested | medium: every new `RehydrateAsync` call passes `snapshot: null`. The tail limit exists in code and has no production-reader test. | patch |
+| VG3 manual snapshot never enters addressed reconstruction | medium: existing manual-snapshot tests use a provider that is not `IKeyedServiceProvider`. | patch |
+| VG4 `FromCallerPin` hop failure is untested | medium: the broken-chain fact uses `CreateReader`, not `FromCallerPin`. | patch |
 
 ## Design Notes
 

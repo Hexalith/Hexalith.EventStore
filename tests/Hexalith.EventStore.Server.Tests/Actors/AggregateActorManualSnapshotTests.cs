@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Security;
@@ -11,9 +12,12 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.Events;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -253,6 +257,69 @@ public class AggregateActorManualSnapshotTests {
         return reconstructor;
     }
 
+    [Fact]
+    public async Task CreateManualSnapshotAsync_RejectedLogicalHistoryDoesNotSnapshotStoredPayloads() {
+        var identity = new AggregateIdentity("tenant", "d", "aggregate");
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope stored = new(
+            MessageId: "message",
+            AggregateId: identity.AggregateId,
+            AggregateType: "r",
+            TenantId: identity.TenantId,
+            Domain: identity.Domain,
+            SequenceNumber: 1,
+            GlobalPosition: 0,
+            Timestamp: DateTimeOffset.UnixEpoch,
+            CorrelationId: "correlation",
+            CausationId: "causation",
+            UserId: "user",
+            DomainServiceVersion: "v1",
+            EventTypeName: "Legacy.Event",
+            MetadataVersion: 1,
+            SerializationFormat: "json",
+            Payload: [1, 2],
+            Extensions: null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+
+        using EventEvolutionManifestCandidate candidate = DaprProductionLogicalEventReaderTests.CreateUpcastingCandidate();
+        var reconstructor = new DaprAggregateStateReconstructor(
+            Substitute.For<Dapr.Client.DaprClient>(),
+            Substitute.For<IHttpClientFactory>(),
+            Substitute.For<IDomainServiceResolver>(),
+            NullLogger<DaprAggregateStateReconstructor>.Instance);
+        var snapshotManager = new SnapshotManager(
+            Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(),
+            new NoOpEventPayloadProtectionService());
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId(identity.ActorId) });
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var actor = new AggregateActor(
+            host,
+            logger,
+            Substitute.For<IDomainServiceInvoker>(),
+            snapshotManager,
+            new NoOpEventPayloadProtectionService(),
+            Substitute.For<ICommandStatusStore>(),
+            Substitute.For<IEventPublisher>(),
+            Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
+            Substitute.For<IDeadLetterPublisher>(),
+            new KeyedEvolutionProvider(candidate, reconstructor));
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-rejected");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        stored.Payload.ShouldBe([1, 2]);
+        stateManager.ReceivedCalls().Any(call =>
+            call.GetMethodInfo().Name is "SaveStateAsync" or "SetStateAsync").ShouldBeFalse();
+    }
+
     private static Task SeedStreamAsync(
         FaultInjectingActorStateManager stateManager,
         AggregateIdentity identity)
@@ -335,5 +402,21 @@ public class AggregateActorManualSnapshotTests {
                 : serviceType == typeof(IOptions<ActorRuntimeOptions>)
                     ? _actorOptions
                     : null;
+    }
+
+    private sealed class KeyedEvolutionProvider(
+        EventEvolutionManifestCandidate candidate,
+        DaprAggregateStateReconstructor reconstructor) : IKeyedServiceProvider {
+        public object? GetService(Type serviceType)
+            => serviceType == typeof(IAggregateStateReconstructor) ? reconstructor : null;
+
+        public object? GetKeyedService(Type serviceType, object? serviceKey)
+            => serviceType == typeof(EventEvolutionManifestCandidate) && Equals(serviceKey, "d")
+                ? candidate
+                : null;
+
+        public object GetRequiredKeyedService(Type serviceType, object? serviceKey)
+            => GetKeyedService(serviceType, serviceKey)
+                ?? throw new InvalidOperationException($"No keyed service for {serviceType}.");
     }
 }

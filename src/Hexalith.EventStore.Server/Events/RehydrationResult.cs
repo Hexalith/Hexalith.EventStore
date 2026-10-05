@@ -19,4 +19,10 @@ public record RehydrationResult(
 
     /// <summary>Gets whether a snapshot was used during rehydration.</summary>
     public bool UsedSnapshot => SnapshotState is not null;
+
+    /// <summary>
+    /// Gets domain-facing events when upcasting changed an in-memory payload.
+    /// Null keeps the stored envelopes, which are the zero-hop V1 view.
+    /// </summary>
+    public IReadOnlyList<EventEnvelope>? EffectiveEvents { get; init; }
 }

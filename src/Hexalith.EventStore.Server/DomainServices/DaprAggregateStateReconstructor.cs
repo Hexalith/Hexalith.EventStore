@@ -195,6 +195,74 @@ public sealed class DaprAggregateStateReconstructor(
         }
     }
 
+    /// <summary>Reconstructs from an addressed actor range only after the shared production reader accepts it.</summary>
+    internal async Task<AggregateReconstructionResult> ReconstructAddressedAsync(
+        AggregateIdentity identity,
+        string aggregateType,
+        DaprProductionLogicalEventReader reader,
+        SnapshotManager snapshotReplay,
+        long upToSequence,
+        bool includeTimeline = false,
+        string? requestId = null,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(snapshotReplay);
+        if (upToSequence <= 0) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "UpToSequence must be positive for an addressed logical replay.");
+        }
+
+        if (upToSequence > int.MaxValue) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "UpToSequence exceeds the addressed logical page budget.");
+        }
+
+        DaprProductionLogicalReplay replay;
+        try {
+            replay = await snapshotReplay.ReadReplayRangeAsync(
+                reader,
+                identity,
+                aggregateType,
+                startSequence: 1,
+                count: (int)upToSequence,
+                cancellationToken,
+                expectedActorHead: upToSequence).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (ProtectedDataUnreadableException) {
+            throw;
+        }
+        catch (MissingEventException exception) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "The addressed logical prefix is incomplete.",
+                failedSequenceNumber: exception.SequenceNumber);
+        }
+        catch (InvalidOperationException exception) {
+            AggregateReconstructionErrorCategory category = exception.Message.Contains("UnknownEventContract", StringComparison.Ordinal)
+                || exception.Message.Contains("CapabilityMismatch", StringComparison.Ordinal)
+                || exception.Message.Contains("UpcasterContractViolation", StringComparison.Ordinal)
+                ? AggregateReconstructionErrorCategory.UnsupportedVersion
+                : AggregateReconstructionErrorCategory.Unexpected;
+            return AggregateReconstructionResult.Failed(category, exception.Message);
+        }
+
+        return await ReconstructAsync(
+            identity,
+            aggregateType,
+            replay.DomainEvents,
+            upToSequence,
+            includeTimeline,
+            requestId,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private static string ResolveReplayVersion(IReadOnlyList<EventEnvelope> events, long upToSequence) {
         string version = events
             .Where(e => e.SequenceNumber <= upToSequence)

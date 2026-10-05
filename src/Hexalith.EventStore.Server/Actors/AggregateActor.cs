@@ -10,6 +10,7 @@ using Dapr.Actors.Runtime;
 
 using Grpc.Core;
 
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Identity;
@@ -23,6 +24,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -1257,9 +1259,18 @@ public partial class AggregateActor(
                         var eventStreamReader = new EventStreamReader(
                             StateManager,
                             Host.LoggerFactory.CreateLogger<EventStreamReader>());
+                        DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(command.Domain);
+                        string? replayAggregateType = await ResolveReplayAggregateTypeAsync(
+                            productionReader, command, cancellationToken).ConfigureAwait(false);
 
                         rehydrationResult = await eventStreamReader
-                            .RehydrateAsync(command.AggregateIdentity, existingSnapshot, cancellationToken)
+                            .RehydrateAsync(
+                                command.AggregateIdentity,
+                                existingSnapshot,
+                                cancellationToken,
+                                productionReader,
+                                replayAggregateType,
+                                snapshotManager as SnapshotManager)
                             .ConfigureAwait(false);
 
                         lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
@@ -1277,12 +1288,13 @@ public partial class AggregateActor(
                                 command.AggregateIdentity,
                                 rehydrationResult.Events,
                                 cancellationToken).ConfigureAwait(false);
+                        IReadOnlyList<EventEnvelope> domainEvents = rehydrationResult?.EffectiveEvents ?? readableEvents;
 
                         currentState = rehydrationResult is null
                             ? null
                             : new DomainServiceCurrentState(
                                 rehydrationResult.SnapshotState,
-                                [.. readableEvents.Select(ToContractEventEnvelope)],
+                                [.. domainEvents.Select(ToContractEventEnvelope)],
                                 rehydrationResult.LastSnapshotSequence,
                                 rehydrationResult.CurrentSequence);
 
@@ -2375,8 +2387,15 @@ public partial class AggregateActor(
             return null;
         }
 
+        DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(identity.Domain);
         RehydrationResult? fullReplay = await eventStreamReader
-            .RehydrateAsync(identity, snapshot: null, cancellationToken: cancellationToken)
+            .RehydrateAsync(
+                identity,
+                snapshot: null,
+                cancellationToken: cancellationToken,
+                productionReader: productionReader,
+                aggregateType: null,
+                snapshotReplay: snapshotManager as SnapshotManager)
             .ConfigureAwait(false);
         if (fullReplay is null || fullReplay.Events.Count == 0) {
             return null;
@@ -2386,18 +2405,35 @@ public partial class AggregateActor(
             identity,
             fullReplay.Events,
             cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<EventEnvelope> domainEvents = fullReplay.EffectiveEvents ?? readableEvents;
 
-        string aggregateType = readableEvents[^1].AggregateType;
-        AggregateReconstructionResult reconstruction = await reconstructor
-            .ReconstructAsync(
+        string aggregateType = domainEvents[^1].AggregateType;
+        AggregateReconstructionResult reconstruction;
+        if (productionReader is not null
+            && reconstructor is DaprAggregateStateReconstructor addressed
+            && snapshotManager is SnapshotManager snapshotPages) {
+            reconstruction = await addressed.ReconstructAddressedAsync(
                 identity,
                 aggregateType,
-                readableEvents,
+                productionReader,
+                snapshotPages,
                 currentSequence,
                 includeTimeline: false,
                 requestId: correlationId,
-                cancellationToken)
-            .ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            reconstruction = await reconstructor
+                .ReconstructAsync(
+                    identity,
+                    aggregateType,
+                    domainEvents,
+                    currentSequence,
+                    includeTimeline: false,
+                    requestId: correlationId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         if (reconstruction.Status != AggregateReconstructionStatus.Succeeded
             || reconstruction.LastAppliedSequenceNumber != currentSequence
@@ -4687,6 +4723,35 @@ public partial class AggregateActor(
             },
             envelope.Payload,
             envelope.Extensions is null ? null : new Dictionary<string, string>(envelope.Extensions));
+
+    private DaprProductionLogicalEventReader? TryCreateProductionReader(string domain)
+    {
+        if (serviceProvider is not IKeyedServiceProvider keyedServices || string.IsNullOrWhiteSpace(domain))
+        {
+            return null;
+        }
+
+        return DaprProductionLogicalEventReader.FromCallerPin(
+            StateManager,
+            payloadProtectionService,
+            keyedServices.GetKeyedService<EventEvolutionManifestCandidate>(domain));
+    }
+
+    private async Task<string?> ResolveReplayAggregateTypeAsync(
+        DaprProductionLogicalEventReader? productionReader,
+        CommandEnvelope command,
+        CancellationToken cancellationToken)
+    {
+        if (productionReader is null || commandAggregateTypeResolver is null)
+        {
+            return null;
+        }
+
+        string? resolved = await commandAggregateTypeResolver
+            .ResolveAsync(command, cancellationToken)
+            .ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(resolved) ? null : resolved.Trim();
+    }
 
     private async Task<string> ResolveAggregateTypeAsync(CommandEnvelope command, CancellationToken cancellationToken) {
         if (commandAggregateTypeResolver is not null) {

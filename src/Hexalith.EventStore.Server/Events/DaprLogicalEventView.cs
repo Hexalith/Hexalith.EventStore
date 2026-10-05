@@ -10,6 +10,7 @@ internal sealed class DaprLogicalEventView : IDisposable
     /// <summary>Captures immutable source metadata and takes ownership of the resolved payload.</summary>
     internal DaprLogicalEventView(EventEnvelope source, ResolvedLogicalEvent resolved, int readablePayloadLength)
     {
+        Source = source;
         MessageId = source.MessageId;
         CorrelationId = source.CorrelationId;
         CausationId = source.CausationId;
@@ -18,6 +19,9 @@ internal sealed class DaprLogicalEventView : IDisposable
         ReadablePayloadLength = readablePayloadLength;
         _resolved = resolved;
     }
+
+    /// <summary>Gets the addressed stored envelope. Its payload bytes stay the actor value.</summary>
+    internal EventEnvelope Source { get; }
 
     /// <summary>Gets the unchanged stored message identifier.</summary>
     internal string MessageId { get; }
