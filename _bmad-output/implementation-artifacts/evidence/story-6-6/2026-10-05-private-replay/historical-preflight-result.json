@@ -1,0 +1,16 @@
+{
+  "command": [
+    "python3",
+    "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+    "--mutations"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "display_command": "python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py --mutations",
+  "ended_utc": "2026-10-05T16:15:41.098076+00:00",
+  "exit_code": 0,
+  "output_file": "historical-preflight.log",
+  "output_sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96",
+  "seconds": 2.203,
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+  "started_utc": "2026-10-05T16:15:38.895240+00:00"
+}

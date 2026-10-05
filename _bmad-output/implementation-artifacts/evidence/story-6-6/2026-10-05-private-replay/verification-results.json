@@ -1,0 +1,80 @@
+{
+  "activation": false,
+  "completed": false,
+  "gates": {
+    "current_dapr_boundary_mutations": {
+      "exit_code": 0,
+      "per_mutation_timeout_seconds": 10,
+      "rejected_mutations": 11
+    },
+    "debug_client_build": {
+      "errors": 0,
+      "exit_code": 0,
+      "warnings": 0
+    },
+    "debug_client_suite": {
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 949,
+      "skipped": 0
+    },
+    "debug_domainservice_build": {
+      "errors": 0,
+      "exit_code": 0,
+      "warnings": 0
+    },
+    "debug_domainservice_suite": {
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 425,
+      "skipped": 0
+    },
+    "historical_approval_mutations": {
+      "exit_code": 0,
+      "open_followups": 47,
+      "open_obligations": 20
+    },
+    "package_only_client_consumer": {
+      "consumers": 1,
+      "exit_code": 0
+    },
+    "release_contracts_suite_with_inventory": {
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 2241,
+      "skipped": 0
+    },
+    "release_package_inventory": {
+      "exit_code": 0,
+      "published": false,
+      "version": "999.0.0-ci-test"
+    },
+    "release_replay_focus": {
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 49,
+      "skipped": 0
+    },
+    "release_server_suite": {
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 3690,
+      "skipped": 25
+    },
+    "release_solution_build": {
+      "errors": 0,
+      "exit_code": 0,
+      "warnings": 0
+    }
+  },
+  "limits": [
+    "Unregistered local session; no durable CAS/readback or continuation.",
+    "Legacy last-good serialization remains without production working-graph qualification.",
+    "No M1-M8 checkbox or O-row is closed."
+  ],
+  "production_profile_present": false,
+  "source_files": 10,
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+  "story": "6-6-event-versioning-and-upcasting-implementation",
+  "v2_writes": "fenced"
+}

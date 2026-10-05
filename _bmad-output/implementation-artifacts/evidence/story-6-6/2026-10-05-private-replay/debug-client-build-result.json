@@ -1,0 +1,20 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+    "--configuration",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "display_command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+  "ended_utc": "2026-10-05T16:15:45.365747+00:00",
+  "exit_code": 0,
+  "output_file": "debug-client-build.log",
+  "output_sha256": "483053e2787ec52d90459543830c598b140dd915da6c75a188c920daebd0c56a",
+  "seconds": 7.657,
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+  "started_utc": "2026-10-05T16:15:37.710511+00:00"
+}

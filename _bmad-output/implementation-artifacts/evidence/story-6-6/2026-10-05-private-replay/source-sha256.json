@@ -1,0 +1,12 @@
+{
+  "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs": "3bbcd3acf950ee5a8dc0eb5e2963c5c8910a43cf9aa081e29e4d3cfcdfeafb85",
+  "src/Hexalith.EventStore.Client/Aggregates/PrivatePagedReplayStateSession.cs": "4a403a2a80ac572a58904990645a80c1afcfb1274ab59168a0747aad75d8c4a5",
+  "src/Hexalith.EventStore.Client/Aggregates/PrivateReplayPageScope.cs": "f18b4917c30c85d5cc4eed8658b3d20a148639ad0b0e56dd1cb9771070ddf74f",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/AggregateReplayerTests.cs": "a9571d717efeb01b0ef1fa885e99c516b2f28212905af6053834f48d0ce63e3c",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/ManualReplayTimeProvider.cs": "b5dd47266e87040f27c20c19845635c23ee1e04965b9b88c6fe8615ef3284489",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/MutatingReplayFailureState.cs": "fb2f9593221bba41e6e7f4919f6ab7e2f197c4a5ca82a516a17c50d741b9b6b1",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/OpaqueReplayStateMemory.cs": "f58f646d7032eec74189d58345abda64954d032bd3f895b9d09eb89e4d75767e",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/PrivatePagedReplayStateSessionTests.cs": "44ecfcb1546a54b30d3177261837a3a67ee8792ea953e8282c334af6d354f3a7",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/UnserializableInitialReplayState.cs": "cd36ccae79fc774698fa752474d23cbcbb83c7f657975336984a2c3dacf7c730",
+  "tests/Hexalith.EventStore.Client.Tests/Aggregates/UnserializableReplayState.cs": "541f3747ba6c9c0e4b94dfc4f83054d9cce2537ae9a98e088b04d2db469e636a"
+}

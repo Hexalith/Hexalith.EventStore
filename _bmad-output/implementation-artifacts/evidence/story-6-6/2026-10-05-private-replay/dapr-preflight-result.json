@@ -1,0 +1,16 @@
+{
+  "command": [
+    "python3",
+    "scripts/verify-event-evolution.py",
+    "--mutations"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "display_command": "python3 scripts/verify-event-evolution.py --mutations",
+  "ended_utc": "2026-10-05T16:15:40.050858+00:00",
+  "exit_code": 0,
+  "output_file": "dapr-preflight.log",
+  "output_sha256": "cffff4f09b818c3249eb6c1c69ccfbf3839182d3bc8b734a9386f47d3c1f6188",
+  "seconds": 1.159,
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+  "started_utc": "2026-10-05T16:15:38.892276+00:00"
+}

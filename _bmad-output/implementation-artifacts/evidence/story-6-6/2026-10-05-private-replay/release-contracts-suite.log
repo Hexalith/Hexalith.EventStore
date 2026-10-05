@@ -1,0 +1,142 @@
+  Discovering: Hexalith.EventStore.Contracts.Tests
+  Discovered:  Hexalith.EventStore.Contracts.Tests
+  Starting:    Hexalith.EventStore.Contracts.Tests
+Validating isolated package-only consumer for Hexalith.EventStore.Contracts...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-4p6ba4v_/PackageConsumer.csproj (in 693 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-4p6ba4v_/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.35
+Validating isolated package-only consumer for Hexalith.EventStore.Client...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-fdehxvxc/PackageConsumer.csproj (in 949 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-fdehxvxc/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.43
+Validating isolated package-only consumer for Hexalith.EventStore.Server...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-v3f_1qbd/PackageConsumer.csproj (in 1.67 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-v3f_1qbd/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.61
+Validating isolated package-only consumer for Hexalith.EventStore.SignalR...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-skbym_cg/PackageConsumer.csproj (in 752 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-skbym_cg/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.04
+Validating isolated package-only consumer for Hexalith.EventStore.Testing...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-qqyuu2h2/PackageConsumer.csproj (in 1.58 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-qqyuu2h2/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.33
+Validating isolated package-only consumer for Hexalith.EventStore.Testing.Integration...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-9n3iikig/PackageConsumer.csproj (in 3.53 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-9n3iikig/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.30
+Validating isolated package-only consumer for Hexalith.EventStore.Aspire...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-mq5v4jiv/PackageConsumer.csproj (in 1.87 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-mq5v4jiv/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.50
+Validating isolated package-only consumer for Hexalith.EventStore.ServiceDefaults...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-e38s__59/PackageConsumer.csproj (in 1.09 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-e38s__59/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.00
+Validating isolated package-only consumer for Hexalith.EventStore.DomainService...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-25khhdxv/PackageConsumer.csproj (in 1.04 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-25khhdxv/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.99
+Validating isolated package-only consumer for Hexalith.EventStore.RestApi.Generators...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-w2duf00q/PackageConsumer.csproj (in 246 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-w2duf00q/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.07
+Validating isolated package-only consumer for Hexalith.EventStore.Gateway...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-98on8r1q/PackageConsumer.csproj (in 1.14 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-98on8r1q/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.42
+Validating isolated package-only consumer for Hexalith.EventStore.Admin.Abstractions...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-guunopl6/PackageConsumer.csproj (in 428 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-guunopl6/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.74
+Validating isolated package-only consumer for Hexalith.EventStore.Admin.Server...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-t6igoqe4/PackageConsumer.csproj (in 1.35 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-t6igoqe4/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.88
+Validating isolated tool consumer for Hexalith.EventStore.Admin.Cli...
+The template "Dotnet local tool manifest file" was created successfully.
+
+You can invoke the tool from this directory using the following commands: 'dotnet tool run eventstore-admin' or 'dotnet eventstore-admin'.
+Tool 'hexalith.eventstore.admin.cli' (version '999.0.0-ci-test') was successfully installed. Entry is added to the manifest file /tmp/eventstore-package-tool-consumer-udr5rub0/dotnet-tools.json.
+Validated 13 isolated package-only consumers and 1 isolated tool consumers at version 999.0.0-ci-test.
+  Finished:    Hexalith.EventStore.Contracts.Tests (ID = '8e6c530ff7042b4b885ca2f39ec4fe4a2e92f08869b65fabe27974a4d11bb3bd')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Contracts.Tests  Total: 2241, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 262.927s

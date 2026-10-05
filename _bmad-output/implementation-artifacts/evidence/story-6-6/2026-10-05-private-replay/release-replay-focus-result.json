@@ -1,0 +1,20 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+    "-noLogo",
+    "-class",
+    "Hexalith.EventStore.Client.Tests.Aggregates.PrivatePagedReplayStateSessionTests",
+    "-class",
+    "Hexalith.EventStore.Client.Tests.Aggregates.AggregateReplayerTests"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "display_command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo -class Hexalith.EventStore.Client.Tests.Aggregates.PrivatePagedReplayStateSessionTests -class Hexalith.EventStore.Client.Tests.Aggregates.AggregateReplayerTests",
+  "ended_utc": "2026-10-05T16:19:26.933707+00:00",
+  "exit_code": 0,
+  "output_file": "release-replay-focus.log",
+  "output_sha256": "5bc3b83aff0e7320ba70fc308cb9a355134977b4b916380e0cc99c9ac1a6c9bd",
+  "seconds": 0.504,
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+  "started_utc": "2026-10-05T16:19:26.429567+00:00"
+}

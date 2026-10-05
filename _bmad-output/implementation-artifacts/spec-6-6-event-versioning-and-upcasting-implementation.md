@@ -105,6 +105,14 @@ acceptance checkbox or activation fence changes.
 
 ### Re-derivation requirements from resumed review
 
+The [private replay ownership verification](evidence/story-6-6/verification-2026-10-05-private-replay-ownership.md)
+records an unregistered charged private session, synchronous successor capture,
+scoped local handles, cancellation/expiry clearing, bounded contiguous timeline
+controls and immutable legacy last-good state on mutating Apply failure. Local
+sealing confers no durable progress. Dapr page ledgers/pins, authenticated
+serializer/source/continuation binding and protected timeline storage remain
+open; all M1–M8 tasks, O-rows and activation fences are unchanged.
+
 The subsequent [composed logical-read verification](evidence/story-6-6/verification-2026-10-05-composed-logical-read-boundary.md)
 records manifest route checks, shared page ownership, separate readable-source
 accounting, fixed head/floor/ETag checks on the production V1 reader, and a
@@ -130,6 +138,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-05 — Recorded local [private replay ownership and last-good state](evidence/story-6-6/verification-2026-10-05-private-replay-ownership.md) implementation and verification. Distinguished unregistered preparation from durable page authority, documented added legacy serialization work and kept all M1–M8 acceptance and activation gates open.
 
 - 2026-10-05 — Recorded local [V1 intake, ownership and compatibility repairs](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md), scoped package/compiled-consumer checks and Development live fallback evidence. Kept the canonical baseline, frozen intent, in-progress status and all M1–M8 acceptance requirements unchanged.
 

@@ -97,6 +97,13 @@ public static class AggregateReplayer {
 
         var state = new TState();
         long lastApplied = 0;
+        // Retain detached canonical bytes before domain code can mutate a working object.
+        // A failing Apply must never turn that damaged object into last-good evidence.
+        if (!TrySerializeState(state, out string? lastGoodStateJson)) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "Aggregate initial state could not be serialized during replay.");
+        }
 
         foreach (ReplayEventEnvelope evt in eligible) {
             if (evt.MetadataVersion != 1) {
@@ -229,9 +236,8 @@ public static class AggregateReplayer {
                 _ = applyMethod.Invoke(state, [deserialized]);
             }
             catch (TargetInvocationException) {
-                string stateJson = SerializeState(state);
                 return AggregateReconstructionResult.Partial(
-                    stateJson: stateJson,
+                    stateJson: lastGoodStateJson,
                     lastAppliedSequenceNumber: lastApplied,
                     failedSequenceNumber: evt.SequenceNumber,
                     failedEventType: evt.EventTypeName,
@@ -244,21 +250,40 @@ public static class AggregateReplayer {
                     timeline: includeTimeline ? timeline : null);
             }
 
+            if (!TrySerializeState(state, out string? successorStateJson)) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.Unexpected,
+                    "Aggregate state could not be serialized after Apply during replay.",
+                    failedSequenceNumber: evt.SequenceNumber,
+                    failedEventType: evt.EventTypeName,
+                    lastAppliedSequenceNumber: lastApplied);
+            }
+
             lastApplied = evt.SequenceNumber;
+            lastGoodStateJson = successorStateJson;
 
             timeline?.Add(new AggregateReconstructionTimelineEntry(
                     SequenceNumber: evt.SequenceNumber,
                     EventTypeName: evt.EventTypeName,
-                    StateJson: SerializeState(state)));
+                    StateJson: lastGoodStateJson));
         }
 
         return AggregateReconstructionResult.Succeeded(
-            stateJson: SerializeState(state),
+            stateJson: lastGoodStateJson,
             lastAppliedSequenceNumber: lastApplied,
             timeline: includeTimeline ? timeline : null);
     }
 
-    private static string SerializeState<TState>(TState state)
-        where TState : class
-        => JsonSerializer.Serialize(state, EventStorePayloadSerialization.Options);
+    private static bool TrySerializeState<TState>(TState state,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? stateJson)
+        where TState : class {
+        try {
+            stateJson = JsonSerializer.Serialize(state, EventStorePayloadSerialization.Options);
+            return true;
+        }
+        catch (Exception error) when (error is not OperationCanceledException) {
+            stateJson = null;
+            return false;
+        }
+    }
 }

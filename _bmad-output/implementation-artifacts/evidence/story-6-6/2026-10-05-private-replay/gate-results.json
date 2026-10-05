@@ -1,0 +1,261 @@
+{
+  "gates": [
+    {
+      "command": [
+        "python3",
+        "scripts/verify-event-evolution.py",
+        "--mutations"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "python3 scripts/verify-event-evolution.py --mutations",
+      "ended_utc": "2026-10-05T16:15:40.050858+00:00",
+      "exit_code": 0,
+      "output_file": "dapr-preflight.log",
+      "output_sha256": "cffff4f09b818c3249eb6c1c69ccfbf3839182d3bc8b734a9386f47d3c1f6188",
+      "seconds": 1.159,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:15:38.892276+00:00"
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+      "ended_utc": "2026-10-05T16:15:45.365747+00:00",
+      "exit_code": 0,
+      "output_file": "debug-client-build.log",
+      "output_sha256": "483053e2787ec52d90459543830c598b140dd915da6c75a188c920daebd0c56a",
+      "seconds": 7.657,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:15:37.710511+00:00"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-noLogo"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo",
+      "ended_utc": "2026-10-05T16:16:31.339029+00:00",
+      "exit_code": 0,
+      "output_file": "debug-client-suite.log",
+      "output_sha256": "3cb094cb08bac3a930825ce7efbafc052714cbb772a4d5c9da5865c192ce5be9",
+      "seconds": 6.086,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:16:25.253512+00:00",
+      "test_summary": {
+        "errors": 0,
+        "failed": 0,
+        "not_run": 0,
+        "seconds": 5.808,
+        "skipped": 0,
+        "total": 949
+      }
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+      "ended_utc": "2026-10-05T16:16:08.744084+00:00",
+      "exit_code": 0,
+      "output_file": "debug-domainservice-build.log",
+      "output_sha256": "185260ce8b807a6d126a7cbc73bd97031f929ac796e79e7e323bd46173e020dc",
+      "seconds": 3.126,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:16:05.617957+00:00"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-noLogo"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -noLogo",
+      "ended_utc": "2026-10-05T16:16:37.458514+00:00",
+      "exit_code": 0,
+      "output_file": "debug-domainservice-suite.log",
+      "output_sha256": "dc715dc787741821854c2313362fe653422e22aef271c1bcb146111fda8b7010",
+      "seconds": 11.025,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:16:26.433807+00:00",
+      "test_summary": {
+        "errors": 0,
+        "failed": 0,
+        "not_run": 0,
+        "seconds": 10.695,
+        "skipped": 0,
+        "total": 425
+      }
+    },
+    {
+      "command": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "--mutations"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py --mutations",
+      "ended_utc": "2026-10-05T16:15:41.098076+00:00",
+      "exit_code": 0,
+      "output_file": "historical-preflight.log",
+      "output_sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96",
+      "seconds": 2.203,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:15:38.895240+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/validate-consumer-package-references.py",
+        "/tmp/story-6-6-private-replay-packages",
+        "--package",
+        "Hexalith.EventStore.Client"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "python3 scripts/validate-consumer-package-references.py /tmp/story-6-6-private-replay-packages --package Hexalith.EventStore.Client",
+      "ended_utc": "2026-10-05T16:21:38.446468+00:00",
+      "exit_code": 0,
+      "output_file": "package-client-consumer.log",
+      "output_sha256": "51ed6c66419f71918631cd0444b90da56d14f6f077cb3bd503d6f135195d47d1",
+      "seconds": 4.696,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:21:33.750022+00:00"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/pack-release-packages.py",
+        "/tmp/story-6-6-private-replay-packages",
+        "0.0.0-ci-test"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "python3 scripts/pack-release-packages.py /tmp/story-6-6-private-replay-packages 0.0.0-ci-test",
+      "ended_utc": "2026-10-05T16:20:19.161023+00:00",
+      "exit_code": 0,
+      "output_file": "package-inventory.log",
+      "output_sha256": "cdf9bd98875425dc2f46e619ef475f3fcb90088ee04b74ed68c6e5895180ae61",
+      "seconds": 52.735,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:19:26.428809+00:00"
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--configuration",
+        "Release",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false",
+      "ended_utc": "2026-10-05T16:18:43.953833+00:00",
+      "exit_code": 0,
+      "output_file": "release-build.log",
+      "output_sha256": "0940103efabd3d3d57ffb387d24bef43bd0c2aeae0f5fd49371d410f9c0a4f4d",
+      "seconds": 64.15,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:17:39.807106+00:00"
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-noLogo"
+      ],
+      "display_command": "EVENTSTORE_PACKAGE_CONTRACT_DIR=/tmp/story-6-6-private-replay-packages dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noLogo",
+      "environment": {
+        "EVENTSTORE_PACKAGE_CONTRACT_DIR": "/tmp/story-6-6-private-replay-packages"
+      },
+      "exit_code": 0,
+      "failed": 0,
+      "origin_tool_session_id": 93490,
+      "output_file": "release-contracts-suite.log",
+      "output_sha256": "b99b09b2a682327d2d775c06ae9d5c27ef5b6ae636904b6ecdc9785e016ac9b7",
+      "passed": 2241,
+      "skipped": 0,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "test_seconds": 262.927,
+      "test_summary": {
+        "errors": 0,
+        "failed": 0,
+        "not_run": 0,
+        "seconds": 262.927,
+        "skipped": 0,
+        "total": 2241
+      }
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-noLogo",
+        "-class",
+        "Hexalith.EventStore.Client.Tests.Aggregates.PrivatePagedReplayStateSessionTests",
+        "-class",
+        "Hexalith.EventStore.Client.Tests.Aggregates.AggregateReplayerTests"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo -class Hexalith.EventStore.Client.Tests.Aggregates.PrivatePagedReplayStateSessionTests -class Hexalith.EventStore.Client.Tests.Aggregates.AggregateReplayerTests",
+      "ended_utc": "2026-10-05T16:19:26.933707+00:00",
+      "exit_code": 0,
+      "output_file": "release-replay-focus.log",
+      "output_sha256": "5bc3b83aff0e7320ba70fc308cb9a355134977b4b916380e0cc99c9ac1a6c9bd",
+      "seconds": 0.504,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:19:26.429567+00:00",
+      "test_summary": {
+        "errors": 0,
+        "failed": 0,
+        "not_run": 0,
+        "seconds": 0.215,
+        "skipped": 0,
+        "total": 49
+      }
+    },
+    {
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-noLogo"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "display_command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -noLogo",
+      "ended_utc": "2026-10-05T16:17:11.792368+00:00",
+      "exit_code": 0,
+      "output_file": "release-server-suite.log",
+      "output_sha256": "2efb21e116e3e5e6fef66e804febf65a07877f5c2ac059b95e555ccbe95189e5",
+      "seconds": 46.54,
+      "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29",
+      "started_utc": "2026-10-05T16:16:25.255270+00:00",
+      "test_summary": {
+        "errors": 0,
+        "failed": 0,
+        "not_run": 0,
+        "seconds": 46.055,
+        "skipped": 25,
+        "total": 3715
+      }
+    }
+  ],
+  "source_inventory_sha256": "beb008ccb675d8dbc892ad3115a5334d104dad03a4180ca6db4f7d34af9bfc29"
+}

@@ -327,6 +327,7 @@ public class AggregateReplayerTests {
         result.FailedEventType.ShouldBe(nameof(CounterIncremented));
     }
 
+    /// <summary>Checks the first failing Apply returns the unchanged initial canonical state.</summary>
     [Fact]
     public void Replay_ApplyMethodThrows_ReturnsPartialAtLastGoodSequence() {
         ReplayEventEnvelope[] events = [
@@ -344,6 +345,60 @@ public class AggregateReplayerTests {
         _ = result.StateJson.ShouldNotBeNull();
         _ = result.Message.ShouldNotBeNull();
         result.Message.ShouldContain("Apply");
+        using JsonDocument state = JsonDocument.Parse(result.StateJson);
+        state.RootElement.GetProperty("callCount").GetInt32().ShouldBe(0);
+    }
+
+    /// <summary>Checks failed mutations cannot change the returned state or earlier timeline.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Replay_LaterApplyMutatesThenThrows_ReturnsThePreviousCanonicalState(bool includeTimeline) {
+        ReplayEventEnvelope[] events = [
+            BuildEnvelope(1, nameof(CounterIncremented)),
+            BuildEnvelope(2, nameof(CounterDecremented)),
+        ];
+        AggregateReconstructionResult result = AggregateReplayer.Replay<MutatingReplayFailureState>(
+            BuildRequest(events, 2, includeTimeline));
+
+        result.Status.ShouldBe(AggregateReconstructionStatus.Partial);
+        result.LastAppliedSequenceNumber.ShouldBe(1);
+        result.FailedSequenceNumber.ShouldBe(2);
+        CountFromState(result.StateJson).ShouldBe(1);
+        if (includeTimeline) {
+            result.Timeline.ShouldNotBeNull().Count.ShouldBe(1);
+            result.Timeline[0].StateJson.ShouldBe(result.StateJson);
+        }
+        else {
+            result.Timeline.ShouldBeNull();
+        }
+    }
+
+    /// <summary>Checks initial serialization fails safely before Apply without leaking a getter error.</summary>
+    [Fact]
+    public void Replay_InitialStateSerializationFailure_ReturnsTypedFailureWithoutState() {
+        AggregateReconstructionResult result = AggregateReplayer.Replay<UnserializableInitialReplayState>(
+            BuildRequest([BuildEnvelope(1, nameof(CounterIncremented))], 1, includeTimeline: true));
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.StateJson.ShouldBeNull();
+        result.Timeline.ShouldBeNull();
+        result.Message.ShouldNotBeNull().ShouldNotContain("secret-initial-state");
+    }
+
+    /// <summary>Checks failed successor serialization emits no damaged or authoritative partial state.</summary>
+    [Fact]
+    public void Replay_StateSerializationFailureAfterApply_ReturnsTypedFailureWithoutState() {
+        AggregateReconstructionResult result = AggregateReplayer.Replay<UnserializableReplayState>(
+            BuildRequest([BuildEnvelope(1, nameof(CounterIncremented))], 1, includeTimeline: true));
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.FailedSequenceNumber.ShouldBe(1);
+        result.StateJson.ShouldBeNull();
+        result.Timeline.ShouldBeNull();
+        result.Message.ShouldNotBeNull().ShouldNotContain("secret-payload-in-getter");
     }
 
     [Theory]
