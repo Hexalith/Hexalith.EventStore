@@ -333,6 +333,7 @@ public class EventDrainRecoveryTests {
     [InlineData("missing-idempotency", null)]
     [InlineData("record-wrong-causation", null)]
     [InlineData("record-carried-causation", 8L)]
+    [InlineData("record-rejection", null)]
     [InlineData("wrong-count", null)]
     [InlineData("missing-command-type", null)]
     [InlineData("record-wrong-identity", null)]
@@ -344,9 +345,10 @@ public class EventDrainRecoveryTests {
     {
         (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
         bool recordCarriesCausation = scenario is "record-carried-causation"
-            or "record-wrong-identity" or "record-legacy" or "record-missing-command-type";
+            or "record-wrong-identity" or "record-legacy" or "record-missing-command-type" or "record-rejection";
         UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
             StartSequence = 7, EndSequence = 8,
+            IsRejection = scenario is "record-rejection",
             MessageId = scenario is "legacy" or "record-legacy" ? null
                 : scenario is "wrong-identity" or "record-wrong-identity" ? "other" : "command-8",
             EventCount = scenario is "wrong-count" ? 3 : 2,
@@ -394,11 +396,12 @@ public class EventDrainRecoveryTests {
                 Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
             return;
         }
-        CommandStatusRecord completed = store.ReceivedCalls().Select(call => call.GetArguments())
-            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord { Status: CommandStatus.Completed })
+        CommandStatus expectedStatus = scenario is "record-rejection" ? CommandStatus.Rejected : CommandStatus.Completed;
+        CommandStatusRecord terminal = store.ReceivedCalls().Select(call => call.GetArguments())
+            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord status && status.Status == expectedStatus)
             .Select(args => (CommandStatusRecord)args[2]!).Single();
-        completed.CommittedEventSequence.ShouldBe(expected);
-        completed.Domain.ShouldBe("test-domain");
+        terminal.CommittedEventSequence.ShouldBe(expected);
+        terminal.Domain.ShouldBe("test-domain");
         await state.Received().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 

@@ -37,7 +37,7 @@ Swagger UI is available at `/swagger`. The machine-readable OpenAPI spec is avai
 
 ### Correlation ID
 
-The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request for tracing and support, including the `correlationId` field on ProblemDetails. It does not set the command body's `correlationId`. That body value defaults to `messageId`, is carried on status records and events, and is not the status lookup key: lookup uses `messageId`. The header and the command `correlationId` can differ even when the request sends the header.
+The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request for tracing and support, including the `correlationId` field on ProblemDetails. It does not set the command body's `correlationId`. That body value defaults to `messageId` and is carried on status records and events. `messageId` is the primary status lookup key; correlation lookup is a bounded compatibility fallback that succeeds only when it resolves to exactly one command and returns `409 Conflict` when ambiguous. The header and the command `correlationId` can differ even when the request sends the header.
 
 ### Request Body Size Limit
 
@@ -53,7 +53,7 @@ All request and response JSON properties use **camelCase** (e.g., `aggregateId`,
 
 - `messageId` is the ULID-safe identity used by command status, archive, event metadata, and aggregate-local recovery checkpoints. It is not treated as opaque secret material.
 - `idempotencyKey` is an optional opaque logical retry scope. EventStore derives tenant/key digests and canonical intent through a registered server-owned adapter; it never persists, logs, returns, or sends the raw value downstream.
-- `correlationId` identifies the current request for tracing. It does not define idempotency.
+- The command body's `correlationId` is carried on status records and events. It does not define idempotency.
 
 For one opaque key, equivalent retries may carry fresh public `messageId` and `correlationId` values. EventStore reuses the first writer's durable internal execution identities and current fence. A different canonical mutation conflicts. After result expiry, both equivalent and different intents receive the same consumed-key response; the key never becomes fresh again.
 
@@ -570,7 +570,9 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000F6" \
     "statusCode": 4,
     "timestamp": "2026-03-01T10:30:00.000Z",
     "aggregateId": "counter-1",
-    "eventCount": 1
+    "domain": "counter",
+    "eventCount": 1,
+    "committedEventSequence": 1
 }
 ```
 
