@@ -3,7 +3,7 @@
 Date: 2026-10-05  
 Project: Hexalith.EventStore  
 Requested by: Administrator  
-Status: Initial planning/documentation slice applied — runtime qualifications and detached crypto-amendment approval remain pending  
+Status: Initial planning/documentation slice applied — runtime qualifications and detached crypto-amendment approval remain pending
 Review mode: Incremental, selected by the user after initial draft preparation  
 Scope: Moderate — direct adjustment within existing epics
 
