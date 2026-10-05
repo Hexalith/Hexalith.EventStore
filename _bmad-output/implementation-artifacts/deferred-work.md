@@ -5321,3 +5321,54 @@ status: open
   summary: Story 6.6's M2 version negotiation, bounded writer, authenticated raw actor readback, and shared reader are not wired into production paths.
   evidence: `DomainServiceRequestRouter` still has no mode/fingerprint negotiation, and the new `IAuthenticatedRawEventSource` has no provider implementation or actor same-save/readback integration. Typed reads are not an approved fallback; Story 6.6 remains incomplete.
   status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Unverified medium: qualify actual Dapr actor-cache behavior for Story 6.6 metadata rechecks.
+  evidence: Both readers reuse IActorStateManager; upstream SDK 1.17.9 returns tracked successful values. Demonstrate a supported actor/failover metadata change without a corresponding tracker update and verify the reader result before declaring stale-read failure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Clear distinct plaintext protection output before releasing the Story 6.6 reader reservation.
+  evidence: DaprLogicalEventReader.cs:108-148 only clears protectedCopy; distinct outcome.PayloadBytes remains uncleared after success or readable-limit refusal/cancellation. Blind 2 and Edge 2 share this verified high runtime defect; runtime edits are outside the source planning intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Resize or transfer readable-output reservations after Story 6.6 unprotection resolves actual ownership.
+  evidence: DaprLogicalEventReader.cs:105 retains 64 MiB while EventLogicalViewResolver and EventUpcastChainExecutor allocate two further copies. A valid 22 MiB no-op payload charges 130.5 MiB while actual private payload copies total 66 MiB; Blind 3 and Edge 1 confirm this medium runtime defect.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Unverified medium: assess cross-page metadata generation identity before integrating Story 6.6 paging.
+  evidence: ReadPageAsync accepts expected head/floor and DaprLogicalEventPage omits ETag. Establish an active multi-page caller and a supported same-head/floor generation transition to determine whether inconsistent generations can actually be accepted.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Make the Story 6.6 V2-fence preflight reject disabled executable fences hidden behind matching comment text.
+  evidence: A parent process-private probe changed metadataVersion == 2 to == 3 and prefixed a fence-shaped comment; scripts/verify-event-evolution.py still returned passed/fenced. The actual runtime fence and evidence bytes were preserved; this medium verifier issue is outside the planning intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Bound the Story 6.6 application-storage symbol scan claim and cover factory-created database calls.
+  evidence: A parent process-private probe with DbProviderFactories.GetFactory, inferred CreateConnection and Open passed scripts/verify-event-evolution.py. Its regex misses that actual provider-call pattern; 3.17 already owns final evaluated/HTTP/credential inventory and declared analysis limits.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Prove fresh activation/rehydration in the Story 6.6 restart live evidence.
+  evidence: DaprEventEvolutionLogicalReadbackLiveSidecarTests restarts the primary while its replica remains active; post-restart proxies may route to the remaining actor owner. Current persisted readback does not identify a freshly rehydrated owner. This medium live-proof gap is outside the planning intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Add Story 6.6 metadata admission/snapshot regression coverage through the logical reader API.
+  evidence: Reader tests use short metadata with Extensions=null; removing the 512 KiB admission calls would leave them passing. Cover fixed-field/extension limits, provider non-invocation, callback isolation, snapshot failure and reservation cleanup. Blind 9 and Gap 1 share this medium test gap.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Unverified medium: establish bounded ordinary-lane termination for the Story 6.6 live scenario.
+  evidence: The new scenario creates proxies without explicit request/scenario deadlines, unlike fixture warm-up. Verify default SDK timeout/retry behavior and placement/sidecar failure termination; no genuinely unbounded call was demonstrated.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
+  summary: Verify explicit Story 6.6 infrastructure overrides exclude all default candidate ports.
+  evidence: DaprTestInfrastructurePortsTests covers Parse only; neither it nor the successful native run detects defaults appended after an override. Exercise ReadCandidates with unavailable overrides/reachable defaults or assert the entire override-only candidate list. Gap 2 is a pre-verified medium test gap.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Route projection dispatch through the shared Story 6.6 evolution reader.
+  evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Verify publication and subscription carriers before marker or handler work.
+  evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Show support-safe stream version and typed failure diagnostics.
+  evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.

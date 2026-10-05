@@ -2,7 +2,7 @@
 title: 'Apply the Dapr Infrastructure Boundary Proposal'
 type: 'refactor'
 created: '2026-10-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: 'ff7f07d1ff12b94c7b53646581ca3843b2c09548'
 concurrent_paths:
@@ -65,6 +65,30 @@ context:
 
 ## Review Triage Log
 
+### Independent Review — 2026-10-05
+
+All three context-free layers reviewed the full baseline diff, including concurrent Story 6.6 changes. Each finding is classified below before grouping. The frozen intent explicitly excludes runtime, guard, migration, fixture and validator changes; this build authored the planning slice only. The retained runtime follow-ups belong to the concurrent Story 6.6 work and do not establish its completion or qualification.
+
+| Finding | Verdict | Evidence and disposition |
+| --- | --- | --- |
+| Blind 1 — cached metadata rechecks | maybe-false | SDK 1.17.9 `ActorStateManager.TryGetStateAsync` returns successful tracked values; both readers reuse that manager. The precise bad outcome still needs a supported actor/failover scenario that changes metadata without updating its tracker; ordinary actor-owned mutations update the tracker. Defer as unverified medium to Story 6.6 profile/cache qualification. |
+| Blind 2 — distinct unprotection output cleanup | high | `DaprLogicalEventReader.ReadCoreAsync` clears only `protectedCopy`, then releases the readable reservation. Distinct readable provider output remains uncleared on success and refusal/cancellation paths, contrary to its private-owner cleanup contract. Defer the concurrent runtime defect. |
+| Blind 3 — readable reservation double counting | medium | The reader retains its 64 MiB protection-output admission while the resolver and zero-hop executor allocate their own charged copies. A 22 MiB no-op input is charged 130.5 MiB despite only 66 MiB of live private payload copies. Defer the concurrent runtime defect. |
+| Blind 4 — cross-page generation pin | maybe-false | The internal page API carries expected head/floor but no expected ETag. No active multi-page caller or supported same-head/floor generation transition was demonstrated; those are required to establish the alleged inconsistent result. Defer as unverified medium to the future Story 6.6 paging integration. |
+| Blind 5 — cumulative metadata omitted from raw limit | false | The code explicitly defines the 128 MiB check as stored **payload** bytes, matching `StoredPayloadLength`; metadata has a separate 512 KiB admission and pages cap count at 256. The finding's alternative of explicitly defining a payload-only limit is already satisfied. This does not claim complete future raw-envelope integration. |
+| Blind 6 — fence-shaped comment accepted | medium | A parent process-private probe disabled the executable V2 fence and prefixed the matching text as a comment; the source verifier still returned `passed` / `fenced`. This weakens that verifier's evidence without changing the actual runtime fence. Defer the concurrent Story 6.6 verifier limitation. |
+| Blind 7 — factory-created database access missed | medium | A parent process-private probe added `DbProviderFactories.GetFactory`, inferred `CreateConnection`, and `Open`; the source symbol scan still passed. The existing regex covers selected names, not the claimed general application database boundary. Defer the concurrent verifier limitation; 3.17 already requires explicit analysis limits and bypass negatives. |
+| Blind 8 — fresh rehydration after restart unproven | medium | The live scenario retains the replica while restarting the primary, and actor proxies can route to that remaining owner. Persisted readback and primary restart are observed, but the test does not prove fresh activation/rehydration. Defer the concurrent Story 6.6 evidence gap. |
+| Blind 9 — metadata snapshot/admission coverage | medium | The reader suite's standard event has short fields and null extensions; no focused metadata-boundary or snapshot-failure regression covers the new admission. The pre-verified gap-layer finding confirms the same missing boundary coverage. Defer the concurrent test gap. |
+| Blind 10 — temporary preservation helpers | false | Preservation acceptance is independently reproducible from the tracked canonical baseline, named shared normative/full-file hashes, existing tracked vector verifiers, and the tracker diff. Temporary helpers are convenient run inputs, not new approval/evidence authority or repinned packets. Parent checks independently matched 1,822 protected files and all 134 tracker values; no required immutable qualification packet is claimed here. |
+| Blind 11 — live scenario deadline | maybe-false | This scenario's proxy options omit an explicit request/scenario deadline, unlike the fixture warm-up's 15-second request timeout. A genuine unbounded call was not demonstrated; verify SDK default request/retry limits and ordinary-lane failure termination before declaring a defect. Defer as unverified medium to Story 6.6 live-test qualification. |
+| Edge 1 — 22 MiB no-op refusal | medium | Independently confirmed the same three-copy plus retained-64-MiB charge as Blind 3 by tracing reader, resolver, executor and `EventBufferBudget.Reserve`. Defer the same concurrent runtime defect. |
+| Edge 2 — refused distinct plaintext remains live | high | Independently confirmed the same cleanup omission as Blind 2: no owner captures/clears a distinct `outcome.PayloadBytes` before the new readable-limit refusal and final reservation release. Defer the same concurrent runtime defect. |
+| Gap 1 — metadata admission mutation survives tests | medium | Pre-verified regression gap: removing `RequireMetadataCapacity` would leave current small/null-extension reader tests passing while admitting oversized metadata. Defer to concurrent Story 6.6 tests; this planning slice changes none of those inputs. |
+| Gap 2 — override-only port candidates untested | medium | Pre-verified regression gap: port tests exercise `Parse`, not `ReadCandidates`; the successful native run never tests an unavailable explicit override alongside reachable defaults. Defer to concurrent Story 6.6 fixture verification. |
+
+Grouping and routing: Blind 2 / Edge 2 share the unowned readable-output cleanup defect; Blind 3 / Edge 1 share protection-output overreservation; Blind 9 / Gap 1 share missing metadata admission regression coverage. Each other survivor has its own root cause. All ten surviving groups route to `defer` because runtime/validator/live-fixture work is explicitly excluded from this planning intent. Blind 5 and Blind 10 are rejected on the refutations above. No planning `intent_gap`, `bad_spec`, or `patch` remains, and no frozen content was changed.
+
 ## Verification
 
 - `git diff --check ff7f07d1ff12b94c7b53646581ca3843b2c09548` — no whitespace errors; inspect scope/protected bytes.
@@ -88,3 +112,7 @@ context:
 - `git diff --check ff7f07d1ff12b94c7b53646581ca3843b2c09548` — **OUT-OF-SLICE BLOCKER**, exit 2: concurrently authored `_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-composed-logical-read/docker-forwarding-failure.log` has trailing whitespace at lines 82/84/86. Its evidence bytes are preserved. The same command restricted with `--` to the 14 reconciliation output paths — **PASS**, exit 0; no planning-slice whitespace errors. The implementation-spec verification addition is also whitespace-clean.
 
 These checks validate the bounded planning slice and preservation only. Story 3.17 guard/inventory implementation, Story 2.13 live distribution qualification and Story 8.6 key-operation qualification/amendment review remain backlog/gated, with no new exception, production/readiness, G5 or runtime-conformance result.
+
+Parent acceptance and review independently confirmed all ten tasks and three acceptance criteria against the unified baseline diff, including untracked inputs without staging. An additional pre-handoff snapshot comparison matched all 1,822 protected authority/evidence/fixture/validator files; duplicate-rejecting YAML comparison preserved all 134 existing tracker values and every comment except the authorized update date. The frozen build intent and shared-authority hash bindings remain unchanged. All three independent review layers completed; their ten grouped concurrent Story 6.6 follow-ups were appended to `deferred-work.md`, with unverified cases explicitly identified. No planning fix or unresolved planning acceptance gap remained after triage.
+
+The final scoped baseline whitespace check includes the deferred-work additions and passes after removing one assistant-added blank EOF line. `./node_modules/.bin/commitlint --config commitlint.config.mjs --edit /tmp/dapr-boundary-build-w1_jbxl4/commit-message.txt --verbose` validated the exact full local-completion message with repository-pinned CLI 21.1.0: zero problems and warnings, exit 0. Successful preflight output is retained at `/tmp/dapr-boundary-build-w1_jbxl4/commitlint-preflight.log`. The workflow's local commit includes only this build's remaining specification/review-ledger changes; concurrent work is preserved.
