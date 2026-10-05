@@ -18,8 +18,14 @@ public partial class EventStreamReader(
     IActorStateManager stateManager,
     ILogger<EventStreamReader> logger) : IEventStreamReader {
     /// <inheritdoc/>
-    public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null) {
+    public Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null)
+        => RehydrateAsync(identity, snapshot, CancellationToken.None);
+
+    /// <summary>Rehydrates the legacy stream while forwarding the originating cancellation token.</summary>
+    public async Task<RehydrationResult?> RehydrateAsync(
+        AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(identity);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var sw = Stopwatch.StartNew();
 
@@ -27,12 +33,13 @@ public partial class EventStreamReader(
         ConditionalValue<AggregateMetadata> metadataResult;
         try {
             metadataResult = await stateManager
-                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             throw new EventDeserializationException(-1, identity.ActorId, ex);
         }
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (!metadataResult.HasValue) {
             // AC #3 / AC #8: new aggregate with no events
@@ -96,22 +103,27 @@ public partial class EventStreamReader(
         int endExclusive = startSequence + eventCount;
 
         for (int seq = startSequence; seq < endExclusive; seq++) {
+            cancellationToken.ThrowIfCancellationRequested();
             ConditionalValue<EventEnvelope> eventResult;
             try {
                 eventResult = await stateManager
-                    .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
+                    .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 throw new EventDeserializationException(seq, identity.ActorId, ex);
             }
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (!eventResult.HasValue) {
                 throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
             }
 
+            LegacyEventReadGuard.RequireUnversioned(eventResult.Value);
             events.Add(eventResult.Value);
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         sw.Stop();
 

@@ -3,25 +3,30 @@ using System.Security.Cryptography;
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Binds an explicit callable to exact implementation identity, file bytes and canonical declared options.</summary>
-/// <remarks>Actual runtime setting equality and sealed dependency graph attestation remain separate requirements.</remarks>
+/// <remarks>A bound runtime source is checked before callback use; sealed dependency graph and startup readiness remain separate requirements.</remarks>
 internal sealed class EventImplementationBinding
 {
     private readonly string _implementationId;
     private readonly byte[] _assemblyHash;
     private readonly byte[] _optionsHash;
+    private readonly EventOptionRule[] _optionSchema;
+    private readonly Func<ReadOnlyMemory<byte>>? _runtimeOptions;
 
     /// <summary>Computes direct file and expanded schema hashes before callable use.</summary>
     internal EventImplementationBinding(string implementationId, Delegate implementation, ReadOnlyMemory<byte> canonicalOptions,
-        IReadOnlyList<EventOptionRule> optionSchema)
+        IReadOnlyList<EventOptionRule> optionSchema, Func<ReadOnlyMemory<byte>>? runtimeOptions = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(implementationId);
         ArgumentNullException.ThrowIfNull(implementation);
+        ArgumentNullException.ThrowIfNull(optionSchema);
         if (implementation.GetInvocationList().Length != 1)
         {
             throw new ArgumentException("A registered implementation must be one explicit callable.", nameof(implementation));
         }
         _implementationId = implementationId;
-        _optionsHash = EventOptionsManifestCodec.ComputeHash(canonicalOptions, optionSchema);
+        _optionSchema = optionSchema.ToArray();
+        _optionsHash = EventOptionsManifestCodec.ComputeHash(canonicalOptions, _optionSchema);
+        _runtimeOptions = runtimeOptions;
         string location = implementation.Method.Module.Assembly.Location;
         if (string.IsNullOrEmpty(location))
         {
@@ -36,11 +41,31 @@ internal sealed class EventImplementationBinding
     internal void RequireFields(EventRegistryRow descriptor, int implementationField)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
+        if (_runtimeOptions is not null) { RequireRuntimeOptions(); }
         if (!string.Equals(_implementationId, descriptor.GetTextField(implementationField), StringComparison.Ordinal)
             || !_assemblyHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 1))
             || !_optionsHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 2)))
         {
             throw new InvalidOperationException("CapabilityMismatch: implementation bytes or options disagree with the descriptor.");
         }
+    }
+
+    /// <summary>Checks current implementation-owned settings against the expanded declared options.</summary>
+    internal void RequireRuntimeOptions()
+    {
+        if (_runtimeOptions is null)
+        {
+            throw new InvalidOperationException("CapabilityMismatch: no runtime settings source is bound to this implementation.");
+        }
+
+        byte[] currentHash = EventOptionsManifestCodec.ComputeHash(_runtimeOptions(), _optionSchema);
+        try
+        {
+            if (!_optionsHash.AsSpan().SequenceEqual(currentHash))
+            {
+                throw new InvalidOperationException("CapabilityMismatch: executing runtime settings disagree with the sealed options manifest.");
+            }
+        }
+        finally { CryptographicOperations.ZeroMemory(currentHash); }
     }
 }

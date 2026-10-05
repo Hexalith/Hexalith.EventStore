@@ -45,6 +45,27 @@ namespace Hexalith.EventStore.DomainService;
 /// </code>
 /// </remarks>
 public static class EventStoreDomainServiceExtensions {
+    /// <summary>Opts one domain into bounded V1 result serialization using an exact, declared profile.</summary>
+    /// <remarks>The readable ceiling remains 1 MiB until a separately measured capability is admitted.</remarks>
+    public static IServiceCollection AddEventStoreBoundedV1DomainSerialization(
+        this IServiceCollection services,
+        string domain,
+        Action<BoundedV1DomainSerializerProfile> configure) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentNullException.ThrowIfNull(configure);
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(BoundedV1DomainResultProducer)
+            && descriptor.IsKeyedService && string.Equals(descriptor.ServiceKey as string, domain, StringComparison.Ordinal))) {
+            throw new ArgumentException("CapabilityMismatch: a bounded V1 serializer profile is already registered for this domain.", nameof(domain));
+        }
+
+        var profile = new BoundedV1DomainSerializerProfile();
+        configure(profile);
+        BoundedV1DomainResultProducer producer = profile.Build(1024 * 1024);
+        services.AddKeyedSingleton<BoundedV1DomainResultProducer>(domain, (_, _) => producer);
+        return services;
+    }
+
     /// <summary>
     /// The DAPR topic-discovery route the sidecar reads to learn a service's subscriptions, stored without a
     /// leading slash because that is the form DAPR's own MapSubscribeHandler registers.
@@ -222,20 +243,20 @@ public static class EventStoreDomainServiceExtensions {
             "/process",
             async (DomainServiceRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
                 DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false);
-                return serviceProvider.GetService<BoundedV1DomainResultProducer>() is not null
+                return DomainServiceRequestRouter.HasBoundedV1Producer(serviceProvider, request.Command.Domain)
                     ? (IResult)new BoundedV1WireResultResponse(result)
                     : Results.Ok(result);
             });
 
         _ = app.MapPost(
             "/replay-state",
-            (AggregateReconstructionRequest request, IServiceProvider serviceProvider)
-                => Results.Ok(DomainServiceRequestRouter.Replay(serviceProvider, request)));
+            async (AggregateReconstructionRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken)
+                => Results.Ok(await DomainServiceRequestRouter.ReplayAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false)));
 
         _ = app.MapPost(
             "/query",
-            async (QueryEnvelope query, IServiceProvider serviceProvider)
-                => Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, query).ConfigureAwait(false)));
+            async (QueryEnvelope query, IServiceProvider serviceProvider, CancellationToken cancellationToken)
+                => Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, query, cancellationToken).ConfigureAwait(false)));
 
         // /project — the stateless full-replay projection endpoint (Model a). Dispatches to the matching
         // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
@@ -244,8 +265,10 @@ public static class EventStoreDomainServiceExtensions {
         if (mapProjectionEndpoint) {
             _ = app.MapPost(
                 "/project",
-                (ProjectionRequest request, IServiceProvider serviceProvider) => {
+                (ProjectionRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
+                    cancellationToken.ThrowIfCancellationRequested();
                     ProjectionResponse? response = DomainProjectionDispatcher.Project(serviceProvider, request);
+                    cancellationToken.ThrowIfCancellationRequested();
                     return response is null ? Results.NotFound() : Results.Ok(response);
                 });
         }

@@ -52,6 +52,7 @@ public partial class SnapshotManager(
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
+        cancellationToken.ThrowIfCancellationRequested();
 
         try {
             SnapshotProtectionResult protectionResult = await payloadProtectionService
@@ -71,8 +72,9 @@ public partial class SnapshotManager(
                 ProtectionMetadata: protectionResult.Metadata);
 
             // Stage the snapshot write -- committed by caller's SaveStateAsync (D1)
+            cancellationToken.ThrowIfCancellationRequested();
             await stateManager
-                .SetStateAsync(identity.SnapshotKey, snapshot)
+                .SetStateAsync(identity.SnapshotKey, snapshot, cancellationToken)
                 .ConfigureAwait(false);
 
             logger.LogInformation(
@@ -109,17 +111,25 @@ public partial class SnapshotManager(
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
+        cancellationToken.ThrowIfCancellationRequested();
 
         try {
             ConditionalValue<SnapshotRecord> result = await stateManager
-                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
+                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (!result.HasValue) {
                 return null;
             }
 
             SnapshotRecord snapshot = result.Value;
+            if (!HasAddressedIdentity(snapshot, identity)) {
+                // A typed legacy snapshot is only a replay optimization. Retain a
+                // mismatched record for investigation and replay from event one.
+                Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+                return null;
+            }
 
             // Legacy snapshots persisted before Story 22.7a have no ProtectionMetadata. Map to the
             // explicit legacy compatibility record so callers never see a null sentinel.
@@ -208,7 +218,7 @@ public partial class SnapshotManager(
 
             try {
                 await stateManager
-                    .RemoveStateAsync(identity.SnapshotKey)
+                    .RemoveStateAsync(identity.SnapshotKey, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception removeEx) when (removeEx is not OperationCanceledException) {
@@ -233,12 +243,14 @@ public partial class SnapshotManager(
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
+        cancellationToken.ThrowIfCancellationRequested();
 
         ConditionalValue<SnapshotRecord> result;
         try {
             result = await stateManager
-                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
+                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException) {
             throw;
@@ -262,6 +274,11 @@ public partial class SnapshotManager(
         }
 
         SnapshotRecord snapshot = result.Value;
+        if (!HasAddressedIdentity(snapshot, identity)) {
+            Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+            return SnapshotLoadResult.Corrupt("AddressMismatch");
+        }
+
         EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
 
         if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
@@ -362,7 +379,23 @@ public partial class SnapshotManager(
             : EventStorePayloadProtectionMetadata.ProviderOpaque("forbidden");
     }
 
+    private static bool HasAddressedIdentity(SnapshotRecord? snapshot, AggregateIdentity identity)
+        => snapshot is not null
+            && string.Equals(snapshot.TenantId, identity.TenantId, StringComparison.Ordinal)
+            && string.Equals(snapshot.Domain, identity.Domain, StringComparison.Ordinal)
+            && string.Equals(snapshot.AggregateId, identity.AggregateId, StringComparison.Ordinal);
+
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 7101,
+            Level = LogLevel.Warning,
+            Message = "Mismatched snapshot retained; replay requires event history: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=SnapshotAddressMismatch")]
+        public static partial void MismatchedSnapshotRetained(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId);
+
         // Story 22.7b: unreadable protected snapshot. Carries safe envelope metadata + reason code
         // only — no snapshot state, no payload bytes, no key alias, no provider exception text.
         [LoggerMessage(

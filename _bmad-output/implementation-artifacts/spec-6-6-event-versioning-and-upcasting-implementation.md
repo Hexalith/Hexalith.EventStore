@@ -86,6 +86,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
+- 2026-10-05 — Recorded the owner review requests for the [PostgreSQL transaction-capture extension](evidence/story-6-6/postgresql-capture-extension-decision.md) and [managed/native loader boundary](evidence/story-6-6/dependency-loader-decision.md). Both are proposals; M1–M8 and activation remain open while their decisions and qualification evidence are pending.
+
 - 2026-10-04 — Resumed review identified unsolicited V2 admission, publication tuple loss, live scratch accounting, private-copy lifetime, raw-page reference substitution and unbounded transport copies. Added explicit re-derivation requirements above to avoid premature writes/unvalidated inputs. KEEP legacy APIs/wire null omission, metadata mapping/validation, immutable copies, source limits, token forwarding and passing regressions. Existing committed code/external Story 6.1 work is preserved; this run has no runtime changes to revert.
 
 - 2026-10-04 — Started Story 6.6 on owner request; recorded baseline `1329b35e52852952ecb2c94aabf100674e9691e3`, moved status to `in-progress`, and captured bounded implementation progress and remaining M1–M8 scope.

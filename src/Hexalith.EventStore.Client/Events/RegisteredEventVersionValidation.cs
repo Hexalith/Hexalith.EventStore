@@ -15,7 +15,8 @@ internal sealed class RegisteredEventVersionValidation
     /// <summary>Admits the two explicit callable implementations and their implementation-owned option schemas.</summary>
     internal RegisteredEventVersionValidation(EventDomainRegistry registry,
         string schemaId, EventVersionValidator schema, ReadOnlyMemory<byte> schemaOptions, IReadOnlyList<EventOptionRule> schemaRules,
-        string identityId, EventVersionValidator identity, ReadOnlyMemory<byte> identityOptions, IReadOnlyList<EventOptionRule> identityRules)
+        string identityId, EventVersionValidator identity, ReadOnlyMemory<byte> identityOptions, IReadOnlyList<EventOptionRule> identityRules,
+        Func<ReadOnlyMemory<byte>>? schemaRuntimeOptions = null, Func<ReadOnlyMemory<byte>>? identityRuntimeOptions = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(schema);
@@ -23,8 +24,8 @@ internal sealed class RegisteredEventVersionValidation
         _registry = registry;
         _schema = schema;
         _identity = identity;
-        _schemaBinding = new EventImplementationBinding(schemaId, schema, schemaOptions, schemaRules);
-        _identityBinding = new EventImplementationBinding(identityId, identity, identityOptions, identityRules);
+        _schemaBinding = new EventImplementationBinding(schemaId, schema, schemaOptions, schemaRules, schemaRuntimeOptions);
+        _identityBinding = new EventImplementationBinding(identityId, identity, identityOptions, identityRules, identityRuntimeOptions);
     }
 
     /// <summary>Checks both bindings before invoking either callback with independently expired immutable facades.</summary>

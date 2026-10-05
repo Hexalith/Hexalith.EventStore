@@ -102,6 +102,30 @@ public class DaprAggregateStateReconstructorTests {
     }
 
     [Fact]
+    public async Task ReconstructAsync_VersionedStoredEvent_FailsBeforeLegacyApplyRouting() {
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        var reconstructor = new DaprAggregateStateReconstructor(
+            Substitute.For<DaprClient>(),
+            Substitute.For<IHttpClientFactory>(),
+            resolver,
+            NullLogger<DaprAggregateStateReconstructor>.Instance);
+        ServerEventEnvelope versioned = BuildEnvelope(1) with {
+            EventTypeName = "counter-incremented",
+            MetadataVersion = 2,
+            EventContractType = "counter-incremented",
+            PayloadVersion = 2,
+        };
+
+        AggregateReconstructionResult result = await reconstructor.ReconstructAsync(
+            Identity, "Counter", [versioned], upToSequence: 1);
+
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.FailedSequenceNumber.ShouldBe(1);
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
     public async Task ReconstructAsync_NegativeUpToSequence_FailsBeforeResolution() {
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         var reconstructor = new DaprAggregateStateReconstructor(

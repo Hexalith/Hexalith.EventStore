@@ -3,6 +3,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;
 
@@ -82,6 +83,53 @@ public class EventStreamReaderTests {
 
         // Assert
         result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_PreCanceledRequestDoesNotReadMetadata() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        _ = stateManager.DidNotReceive().TryGetStateAsync<AggregateMetadata>(
+            TestIdentity.MetadataKey, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_CompatibilityInterfaceRejectsPreCanceledCall() {
+        var fake = new FakeEventStreamReader();
+        IEventStreamReader reader = fake;
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        fake.RehydrateCalls.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_ForwardsTokenAndStopsBetweenEventReads() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 2);
+        using var cancellation = new CancellationTokenSource();
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", cancellation.Token)
+            .Returns(_ => {
+                cancellation.Cancel();
+                return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(1));
+            });
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        _ = stateManager.Received(1).TryGetStateAsync<AggregateMetadata>(
+            TestIdentity.MetadataKey, cancellation.Token);
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -173,6 +221,26 @@ public class EventStreamReaderTests {
         ex.TenantId.ShouldBe("test-tenant");
         ex.Domain.ShouldBe("test-domain");
         ex.AggregateId.ShouldBe("agg-001");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_VersionedEvent_RefusesTypedLegacyReader() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 1);
+        EventEnvelope versioned = CreateTestEvent(1) with {
+            EventTypeName = "order-created",
+            MetadataVersion = 2,
+            EventContractType = "order-created",
+            PayloadVersion = 2,
+        };
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, versioned));
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => reader.RehydrateAsync(TestIdentity));
+
+        exception.Message.ShouldContain("RollbackReaderCapabilityHold");
     }
 
     [Fact]

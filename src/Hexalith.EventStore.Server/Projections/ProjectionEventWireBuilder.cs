@@ -25,6 +25,8 @@ internal static class ProjectionEventWireBuilder {
         var projectionEvents = new ProjectionEventDto[events.Count];
         for (int i = 0; i < events.Count; i++) {
             EventEnvelope envelope = events[i];
+            cancellationToken.ThrowIfCancellationRequested();
+            LegacyEventReadGuard.RequireUnversioned(envelope);
             EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
                 .Read(envelope.Extensions);
             if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {

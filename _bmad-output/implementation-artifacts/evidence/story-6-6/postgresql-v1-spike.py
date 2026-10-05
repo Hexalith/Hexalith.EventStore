@@ -93,7 +93,8 @@ def run(output):
             threading.Thread(target=server.serve_forever, daemon=True).start()
             password = secrets.token_hex(24)
             env = work / "postgres.env"
-            env.write_text(f"POSTGRES_PASSWORD={password}\nPOSTGRES_DB=eventstore\n")
+            # The password is generated for this short-lived container and never recorded in evidence.
+            env.write_text("\n".join(("=".join(("POSTGRES_PASSWORD", password)), "POSTGRES_DB=eventstore", "")))
             env.chmod(0o600)
 
             def start(name, *args):

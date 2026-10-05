@@ -422,7 +422,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
-    /// Proves request cancellation reaches the admission stage and prevents processor dispatch.
+    /// Proves a canceled request stops before admission or processor dispatch.
     /// </summary>
     [Fact]
     public async Task DomainServiceRequestRouter_Process_CanceledAdmissionStage_PropagatesCancellationWithoutProcessor() {
@@ -439,7 +439,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             () => DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest(), cancellation.Token));
 
         processor.InvocationCount.ShouldBe(0);
-        calls.ShouldBe(["auth"]);
+        calls.ShouldBeEmpty();
     }
 
     /// <summary>
@@ -772,6 +772,30 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         result.Metadata.Paging.PageSize.ShouldBe(10);
     }
 
+    [Fact]
+    public async Task DomainQueryDispatcher_Execute_ForwardsAndObservesOriginalCancellation() {
+        using var cancellation = new CancellationTokenSource();
+        IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
+        handler.Domain.Returns("widget");
+        handler.QueryType.Returns("get-widget");
+        CancellationToken observed = default;
+        handler.ExecuteAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(call => {
+            observed = call.ArgAt<CancellationToken>(1);
+            cancellation.Cancel();
+            return Task.FromResult(QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { value = 1 })));
+        });
+        var services = new ServiceCollection();
+        services.AddSingleton(handler);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        QueryEnvelope query = new("test-tenant", "widget", "widget-1", "get-widget", [], "corr-1", "test-user");
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+            () => DomainQueryDispatcher.ExecuteAsync(provider, query, cancellation.Token));
+
+        observed.ShouldBe(cancellation.Token);
+        exception.CancellationToken.ShouldBe(cancellation.Token);
+    }
+
     /// <summary>
     /// Proves the dispatcher returns a failure result when no handler matches the query.
     /// </summary>
@@ -1055,14 +1079,51 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         processor.InvocationCount.ShouldBe(reject ? 0 : 1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessRouter_PublicDomainProfileSelectsBoundedNormalAndRejection(bool reject) {
+        var calls = new List<string>();
+        using ServiceProvider provider = BuildAdmissionTestProvider(new RecordingWidgetProcessor(calls), services => {
+            services.AddEventStoreBoundedV1DomainSerialization("widget", profile => profile
+                .Add<WidgetCreated>("registered-normal", "json", 2, (_, stream, token) => {
+                    calls.Add("serialize-normal");
+                    return stream.WriteAsync("{}"u8.ToArray(), token).AsTask();
+                })
+                .Add<WidgetRejected>("registered-rejection", "json", 2, (_, stream, token) => {
+                    calls.Add("serialize-rejection");
+                    return stream.WriteAsync("{}"u8.ToArray(), token).AsTask();
+                }));
+            if (reject) { services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("gate", calls, false)); }
+        });
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+        result.Events.Single().EventTypeName.ShouldBe(reject ? "registered-rejection" : "registered-normal");
+        calls.ShouldBe(reject ? ["gate", "serialize-rejection"] : ["processor", "serialize-normal"]);
+    }
+
+    [Fact]
+    public void BoundedV1DomainRegistration_ScopesAliasesAndRejectsDuplicateDomainOrInvalidBound() {
+        var services = new ServiceCollection();
+        services.AddEventStoreBoundedV1DomainSerialization("widget", profile => profile
+            .Add<WidgetCreated>("same-alias", "json", 2, (_, _, _) => Task.CompletedTask));
+        services.AddEventStoreBoundedV1DomainSerialization("gadget", profile => profile
+            .Add<WidgetCreated>("same-alias", "json", 2, (_, _, _) => Task.CompletedTask));
+        Should.Throw<ArgumentException>(() => services.AddEventStoreBoundedV1DomainSerialization("widget", _ => { }));
+        Should.Throw<ArgumentException>(() => services.AddEventStoreBoundedV1DomainSerialization("other", profile => profile
+            .Add<WidgetCreated>("too-large", "json", 1024 * 1024 + 1, (_, _, _) => Task.CompletedTask)));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        DomainServiceRequestRouter.HasBoundedV1Producer(provider, "widget").ShouldBeTrue();
+        DomainServiceRequestRouter.HasBoundedV1Producer(provider, "gadget").ShouldBeTrue();
+        DomainServiceRequestRouter.HasBoundedV1Producer(provider, "other").ShouldBeFalse();
+    }
+
     [Fact]
     public async Task ProcessEndpoint_SelectedProfileUsesWindowRendererInsteadOfFrameworkWholeSerialization() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         _ = builder.AddEventStoreDomainService();
-        builder.Services.AddSingleton(new BoundedV1DomainResultProducer([
-            new(typeof(WidgetCreated), "bounded-é", "json", 2,
-                (_, stream, token) => stream.WriteAsync("{}"u8.ToArray(), token).AsTask()),
-        ]));
+        builder.Services.AddEventStoreBoundedV1DomainSerialization("widget", profile => profile
+            .Add<WidgetCreated>("bounded-é", "json", 2,
+                (_, stream, token) => stream.WriteAsync("{}"u8.ToArray(), token).AsTask()));
         await using WebApplication app = builder.Build();
         _ = app.UseEventStoreDomainService();
         (int status, string body) = await InvokeEndpointAsync(app, "/process", CreateProcessRequest());

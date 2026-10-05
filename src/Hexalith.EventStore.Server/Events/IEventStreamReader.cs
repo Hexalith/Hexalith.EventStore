@@ -20,4 +20,20 @@ public interface IEventStreamReader {
     /// or null for new aggregates with no events and no snapshot.
     /// </returns>
     Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null);
+
+    /// <summary>
+    /// Rehydrates with request cancellation. Older implementations keep the original
+    /// method and receive cancellation checks at its call boundaries.
+    /// </summary>
+    /// <param name="identity">The addressed aggregate identity.</param>
+    /// <param name="snapshot">An optional legacy snapshot.</param>
+    /// <param name="cancellationToken">The originating operation token.</param>
+    /// <returns>The complete legacy rehydration result, or null for an empty stream.</returns>
+    async Task<RehydrationResult?> RehydrateAsync(
+        AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        RehydrationResult? result = await RehydrateAsync(identity, snapshot).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
 }

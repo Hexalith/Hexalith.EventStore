@@ -25,6 +25,9 @@ public static class AggregateReplayer {
     public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request)
         where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.PagedContext is not null) {
+            throw new InvalidOperationException("ReplayRestartRequired: stored-alias replay cannot consume a paged context.");
+        }
 
         ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
         bool includeTimeline = request.IncludeTimeline;
@@ -80,7 +83,7 @@ public static class AggregateReplayer {
         long lastApplied = 0;
 
         foreach (ReplayEventEnvelope evt in eligible) {
-            if (evt.MetadataVersion < 1) {
+            if (evt.MetadataVersion != 1) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnsupportedVersion,
                     string.Format(

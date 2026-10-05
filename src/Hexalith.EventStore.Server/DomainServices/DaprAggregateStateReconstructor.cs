@@ -47,6 +47,20 @@ public sealed class DaprAggregateStateReconstructor(
                 "UpToSequence must be >= 0.");
         }
 
+        // This compatibility route forwards stored aliases and bytes directly to
+        // Apply. A versioned source needs the authenticated effective-view route;
+        // otherwise the old endpoint could apply source bytes as a current event.
+        foreach (EventEnvelope source in events) {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (source.SequenceNumber <= upToSequence
+                && (source.MetadataVersion != 1 || source.EventContractType is not null || source.PayloadVersion is not null)) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnsupportedVersion,
+                    "Versioned replay requires a verified effective event route.",
+                    failedSequenceNumber: source.SequenceNumber);
+            }
+        }
+
         string replayVersion;
         try {
             replayVersion = ResolveReplayVersion(events, upToSequence);

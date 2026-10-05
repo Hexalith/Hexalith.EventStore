@@ -16,13 +16,13 @@ internal sealed class RegisteredCurrentEventDeserializer
     /// <summary>Admits an explicit type and callable with implementation-owned canonical options.</summary>
     internal RegisteredCurrentEventDeserializer(Type currentType, string serializerId,
         Func<IReadOnlyPayload, CancellationToken, object> deserialize, ReadOnlyMemory<byte> canonicalOptions,
-        IReadOnlyList<EventOptionRule> optionSchema)
+        IReadOnlyList<EventOptionRule> optionSchema, Func<ReadOnlyMemory<byte>>? runtimeOptions = null)
     {
         ArgumentNullException.ThrowIfNull(currentType);
         ArgumentNullException.ThrowIfNull(deserialize);
         _currentType = currentType;
         _deserialize = deserialize;
-        _serializer = new EventImplementationBinding(serializerId, deserialize, canonicalOptions, optionSchema);
+        _serializer = new EventImplementationBinding(serializerId, deserialize, canonicalOptions, optionSchema, runtimeOptions);
         if (string.IsNullOrEmpty(currentType.Assembly.Location))
         {
             throw new ArgumentException("A current type assembly file must be resolvable.", nameof(currentType));

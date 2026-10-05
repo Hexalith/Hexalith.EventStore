@@ -334,15 +334,17 @@ public class AggregateReplayerTests {
         result.Message.ShouldContain("Apply");
     }
 
-    [Fact]
-    public void Replay_UnsupportedMetadataVersion_FailsWithUnsupportedVersion() {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public void Replay_UnsupportedMetadataVersion_FailsWithUnsupportedVersion(int metadataVersion) {
         ReplayEventEnvelope[] events = [
             new ReplayEventEnvelope(
                 SequenceNumber: 1,
                 EventTypeName: nameof(CounterIncremented),
                 Payload: Encoding.UTF8.GetBytes("{}"),
                 SerializationFormat: "json",
-                MetadataVersion: 0,
+                MetadataVersion: metadataVersion,
                 MessageId: "msg-1",
                 CorrelationId: null,
                 CausationId: null),
@@ -352,6 +354,7 @@ public class AggregateReplayerTests {
 
         result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
         result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.StateJson.ShouldBeNull();
     }
 
     [Fact]

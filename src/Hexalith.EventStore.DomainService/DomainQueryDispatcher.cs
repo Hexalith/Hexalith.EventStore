@@ -26,6 +26,7 @@ public static class DomainQueryDispatcher {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
 
         IDomainQueryHandler[] handlers = [.. serviceProvider
             .GetServices<IDomainQueryHandler>()
@@ -38,8 +39,10 @@ public static class DomainQueryDispatcher {
 
         IDomainQueryHandler? handler = handlers.SingleOrDefault();
 
-        return handler is null
+        QueryResult result = handler is null
             ? QueryResult.Failure($"No query handler is registered for domain '{query.Domain}' query type '{query.QueryType}'.")
             : await handler.ExecuteAsync(query, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 }

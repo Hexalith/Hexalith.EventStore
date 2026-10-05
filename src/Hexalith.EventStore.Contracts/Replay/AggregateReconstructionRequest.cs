@@ -21,4 +21,8 @@ public sealed record AggregateReconstructionRequest(
     long UpToSequence,
     IReadOnlyList<ReplayEventEnvelope> Events,
     bool IncludeTimeline,
-    string? RequestId);
+    string? RequestId) {
+    /// <summary>Gets the one-page verified context for an async paged replay call.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PagedContext? PagedContext { get; init; }
+}

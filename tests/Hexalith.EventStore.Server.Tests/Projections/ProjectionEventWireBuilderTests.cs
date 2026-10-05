@@ -34,6 +34,22 @@ public sealed class ProjectionEventWireBuilderTests {
         replayEvents.ShouldBe(firstEvents);
     }
 
+    [Fact]
+    public async Task BuildAsync_VersionedSource_RefusesLegacyProjectionWireBeforeHandler() {
+        EventEnvelope versioned = CreateEnvelope(1, 101) with {
+            EventTypeName = "order-changed",
+            MetadataVersion = 2,
+            EventContractType = "order-changed",
+            PayloadVersion = 2,
+        };
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            ProjectionEventWireBuilder.BuildAsync(
+                new NoOpEventPayloadProtectionService(), s_identity, [versioned], CancellationToken.None));
+
+        exception.Message.ShouldContain("RollbackReaderCapabilityHold");
+    }
+
     private static EventEnvelope CreateEnvelope(long sequenceNumber, long globalPosition) => new(
         MessageId: $"message-{sequenceNumber}",
         AggregateId: s_identity.AggregateId,

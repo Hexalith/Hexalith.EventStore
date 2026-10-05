@@ -109,6 +109,31 @@ public class SnapshotManagerTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task CreateSnapshot_ForwardsOriginalTokenToStateStage() {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        using var cancellation = new CancellationTokenSource();
+
+        await manager.CreateSnapshotAsync(TestIdentity, 100, new { Value = "state" }, stateManager,
+            cancellationToken: cancellation.Token);
+
+        await stateManager.Received(1).SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), cancellation.Token);
+    }
+
+    [Fact]
+    public async Task CreateSnapshot_PreCanceledRequestDoesNotStageState() {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => manager.CreateSnapshotAsync(
+            TestIdentity, 100, new { Value = "state" }, stateManager, cancellationToken: cancellation.Token));
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
     // === 8.7: CreateSnapshot includes sequence number ===
 
     [Fact]
@@ -173,6 +198,45 @@ public class SnapshotManagerTests {
 
         _ = result.ShouldNotBeNull();
         result.SequenceNumber.ShouldBe(100);
+    }
+
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("domain")]
+    [InlineData("aggregate")]
+    public async Task LoadSnapshot_AddressMismatchRetainsRecordAndReplaysFromStart(string changedField) {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        var snapshot = new SnapshotRecord(100, new { Value = "stored" }, DateTimeOffset.UtcNow,
+            "test-domain", "agg-001", "test-tenant");
+        snapshot = changedField switch {
+            "tenant" => snapshot with { TenantId = "other-tenant" },
+            "domain" => snapshot with { Domain = "other-domain" },
+            _ => snapshot with { AggregateId = "other-aggregate" },
+        };
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
+
+        SnapshotRecord? replaySnapshot = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
+        SnapshotLoadResult overwriteSnapshot = await manager.InspectSnapshotForManualOverwriteAsync(TestIdentity, stateManager);
+
+        replaySnapshot.ShouldBeNull();
+        overwriteSnapshot.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+        overwriteSnapshot.ReasonCode.ShouldBe("AddressMismatch");
+        await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LoadSnapshot_PreCanceledRequestDoesNotReadOrDelete() {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => manager.LoadSnapshotAsync(TestIdentity, stateManager, cancellationToken: cancellation.Token));
+
+        _ = stateManager.DidNotReceive().TryGetStateAsync<SnapshotRecord>(
+            TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }
 
     // === 8.11: SnapshotOptions default interval is 100 ===

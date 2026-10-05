@@ -77,6 +77,7 @@ internal static class EventOptionsManifestCodec
             }
 
             var defaults = new List<JsonDocument>();
+            var defaultTexts = new List<byte[]>();
             try
             {
                 foreach (EventOptionRule rule in rules.Values)
@@ -95,10 +96,13 @@ internal static class EventOptionsManifestCodec
 
                     byte[] defaultText = new UTF8Encoding(false, true).GetBytes(rule.CanonicalDefault!);
                     byte[]? canonicalDefault = null;
+                    bool retainedDefaultText = false;
                     try
                     {
                         JsonDocument document = JsonDocument.Parse(defaultText, new JsonDocumentOptions { MaxDepth = 64 });
                         defaults.Add(document);
+                        defaultTexts.Add(defaultText);
+                        retainedDefaultText = true;
                         ValidateType(document.RootElement, rule);
                         canonicalDefault = EventCanonicalJsonValueCodec.EncodeText(document.RootElement, checked((int)((64L * 1024 * 1024 - accounted) / 2)));
                         if (!canonicalDefault.AsSpan(0, canonicalDefault.Length - 1).SequenceEqual(defaultText))
@@ -110,7 +114,7 @@ internal static class EventOptionsManifestCodec
                     }
                     finally
                     {
-                        CryptographicOperations.ZeroMemory(defaultText);
+                        if (!retainedDefaultText) { CryptographicOperations.ZeroMemory(defaultText); }
                         if (canonicalDefault is not null) { CryptographicOperations.ZeroMemory(canonicalDefault); }
                     }
                 }
@@ -169,7 +173,11 @@ internal static class EventOptionsManifestCodec
                     }
                 }
             }
-            finally { foreach (JsonDocument document in defaults) { document.Dispose(); } }
+            finally
+            {
+                foreach (JsonDocument document in defaults) { document.Dispose(); }
+                foreach (byte[] defaultText in defaultTexts) { CryptographicOperations.ZeroMemory(defaultText); }
+            }
         }
         finally
         {

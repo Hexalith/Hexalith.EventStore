@@ -27,6 +27,12 @@ public static class DomainServiceRequestRouter {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.WriterMode is not null || request.RegistryFingerprint is not null
+            || request.CommandStateProof is not null || request.VerifiedEffectiveEvents is not null) {
+            throw new InvalidOperationException(
+                "CapabilityMismatch: this domain route has no authenticated versioned command-state intake.");
+        }
 
         DomainServiceAdmissionContext? admissionContext = null;
         EventStoreDomainDiagnostics? diagnostics = null;
@@ -46,20 +52,40 @@ public static class DomainServiceRequestRouter {
 
             if (admissionResult.IsRejected) {
                 var rejection = DomainResult.Rejection(admissionResult.RejectionEvents);
-                return await ProduceWireResultAsync(serviceProvider, rejection, cancellationToken).ConfigureAwait(false);
+                return await ProduceWireResultAsync(serviceProvider, request.Command.Domain, rejection, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        IDomainProcessor processor = serviceProvider.GetRequiredKeyedService<IDomainProcessor>(request.Command.Domain);
-        DomainResult result = await processor.ProcessAsync(request.Command, request.CurrentState).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        IAsyncDomainProcessor? asyncProcessor = serviceProvider.GetKeyedService<IAsyncDomainProcessor>(request.Command.Domain);
+        DomainResult result;
+        if (asyncProcessor is not null) {
+            result = await asyncProcessor.ProcessAsync(request.Command, request.CurrentState, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            IDomainProcessor processor = serviceProvider.GetRequiredKeyedService<IDomainProcessor>(request.Command.Domain);
+            cancellationToken.ThrowIfCancellationRequested();
+            result = await processor.ProcessAsync(request.Command, request.CurrentState).ConfigureAwait(false);
+        }
 
-        return await ProduceWireResultAsync(serviceProvider, result, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await ProduceWireResultAsync(serviceProvider, request.Command.Domain, result, cancellationToken).ConfigureAwait(false);
     }
 
+    internal static bool HasBoundedV1Producer(IServiceProvider serviceProvider, string domain)
+        => ResolveBoundedV1Producer(serviceProvider, domain) is not null;
+
+    private static BoundedV1DomainResultProducer? ResolveBoundedV1Producer(IServiceProvider serviceProvider, string domain)
+        => !string.IsNullOrWhiteSpace(domain)
+            ? serviceProvider.GetKeyedService<BoundedV1DomainResultProducer>(domain)
+                ?? serviceProvider.GetService<BoundedV1DomainResultProducer>()
+            : serviceProvider.GetService<BoundedV1DomainResultProducer>();
+
     private static async Task<DomainServiceWireResult> ProduceWireResultAsync(
-        IServiceProvider serviceProvider, DomainResult result, CancellationToken cancellationToken) {
+        IServiceProvider serviceProvider, string domain, DomainResult result, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
-        BoundedV1DomainResultProducer? producer = serviceProvider.GetService<BoundedV1DomainResultProducer>();
+        BoundedV1DomainResultProducer? producer = ResolveBoundedV1Producer(serviceProvider, domain);
         if (producer is not null) {
             return await producer.ProduceAsync(result, cancellationToken).ConfigureAwait(false);
         }
@@ -139,6 +165,9 @@ public static class DomainServiceRequestRouter {
     public static AggregateReconstructionResult Replay(IServiceProvider serviceProvider, AggregateReconstructionRequest request) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
+        if (request.PagedContext is not null) {
+            throw new InvalidOperationException("ReplayRestartRequired: legacy replay cannot consume a paged context.");
+        }
 
         IDomainProcessor? processor = serviceProvider.GetKeyedService<IDomainProcessor>(request.Domain);
         if (processor is null) {
@@ -159,6 +188,56 @@ public static class DomainServiceRequestRouter {
                 $"Aggregate type '{request.AggregateType}' is not owned by domain '{request.Domain}'.");
         }
 
-        return replay.Replay(request);
+        AggregateReconstructionResult result = replay.Replay(request);
+        if (result.Status == AggregateReconstructionStatus.InProgress) {
+            throw new InvalidOperationException("ReplayRestartRequired: legacy replay cannot return incomplete page state.");
+        }
+
+        return result;
+    }
+
+    /// <summary>Replays through an explicitly registered async aggregate route when available.</summary>
+    /// <param name="serviceProvider">The scoped request service provider.</param>
+    /// <param name="request">The reconstruction request.</param>
+    /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <returns>The reconstruction result.</returns>
+    public static async Task<AggregateReconstructionResult> ReplayAsync(
+        IServiceProvider serviceProvider,
+        AggregateReconstructionRequest request,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.PagedContext is not null) {
+            throw new InvalidOperationException(
+                "ReplayRestartRequired: this route has no authenticated paged source or private state session.");
+        }
+
+        IAsyncAggregateReplay[] asyncRoutes = serviceProvider
+            .GetKeyedServices<IAsyncAggregateReplay>(request.Domain)
+            .Where(route => route.CanReplayAggregateType(request.AggregateType))
+            .Take(2)
+            .ToArray();
+        if (asyncRoutes.Length > 1) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.UnknownAggregateType,
+                $"Aggregate type '{request.AggregateType}' has ambiguous async replay ownership in domain '{request.Domain}'.");
+        }
+
+        if (asyncRoutes.Length == 1) {
+            AggregateReconstructionResult result = await asyncRoutes[0].ReplayAsync(request, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.PagedContext is null && result.Status == AggregateReconstructionStatus.InProgress) {
+                throw new InvalidOperationException("ReplayRestartRequired: whole-array replay cannot return incomplete page state.");
+            }
+
+            return result;
+        }
+
+        // The old synchronous path is an explicit compatibility adapter. It can
+        // observe cancellation at either edge, but cannot interrupt Apply itself.
+        AggregateReconstructionResult legacyResult = Replay(serviceProvider, request);
+        cancellationToken.ThrowIfCancellationRequested();
+        return legacyResult;
     }
 }

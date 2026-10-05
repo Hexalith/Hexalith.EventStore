@@ -14,4 +14,7 @@ public enum AggregateReconstructionStatus {
 
     /// <summary>Replay could not produce trustworthy state. <see cref="AggregateReconstructionResult.StateJson"/> must not be presented as authoritative.</summary>
     Failed = 2,
+
+    /// <summary>One verified page was accepted without exposing authoritative final state.</summary>
+    InProgress = 3,
 }

@@ -11,6 +11,22 @@ namespace Hexalith.EventStore.Client.Tests.Events;
 public sealed class EventLocalImplementationBindingTests
 {
     [Fact]
+    public void RuntimeOptionsBindingAcceptsExpandedDefaultAndRejectsDriftOrAbsentSource()
+    {
+        byte[] runtime = "{\"mode\":\"safe\"}\n"u8.ToArray();
+        EventOptionRule[] schema = [new("mode", JsonValueKind.String, Required: false, CanonicalDefault: "\"safe\"")];
+        EventOptionsManifestCodec.ComputeHash("{}\n"u8.ToArray(), schema)
+            .ShouldBe(EventOptionsManifestCodec.ComputeHash(runtime, schema));
+        var bound = new EventImplementationBinding("test-implementation", (Action)(() => { }), "{}\n"u8.ToArray(), schema,
+            () => runtime);
+        bound.RequireRuntimeOptions();
+        runtime = "{\"mode\":\"fast\"}\n"u8.ToArray();
+        Should.Throw<InvalidOperationException>(bound.RequireRuntimeOptions);
+        var unbound = new EventImplementationBinding("test-implementation", (Action)(() => { }), "{}\n"u8.ToArray(), schema);
+        Should.Throw<InvalidOperationException>(unbound.RequireRuntimeOptions);
+    }
+
+    [Fact]
     public void DependencyFileCheckAcceptsExactManagedBytesAndRefusesDriftAndCancellation()
     {
         string file = Path.GetTempFileName();

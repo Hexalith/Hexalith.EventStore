@@ -211,6 +211,14 @@ public static class EventStoreServiceCollectionExtensions {
 
             // Keyed: domain-specific resolution (forward-looking for actor pipeline)
             _ = services.AddKeyedScoped(typeof(IDomainProcessor), aggregate.DomainName, aggregate.Type);
+
+            if (typeof(IAsyncDomainProcessor).IsAssignableFrom(aggregate.Type)) {
+                _ = services.AddKeyedScoped(typeof(IAsyncDomainProcessor), aggregate.DomainName, aggregate.Type);
+            }
+
+            if (typeof(IAsyncAggregateReplay).IsAssignableFrom(aggregate.Type)) {
+                _ = services.AddKeyedScoped(typeof(IAsyncAggregateReplay), aggregate.DomainName, aggregate.Type);
+            }
         }
 
         // Register projections as themselves and initialize optional post-construction services.

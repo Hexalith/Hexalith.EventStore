@@ -68,7 +68,7 @@ public class AggregateActorDomainResultTests {
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_RehydratedState_PreservesVersionMetadataInContractEvents() {
+    public async Task ProcessCommandAsync_RehydratedVersionedState_StopsBeforeLegacyInvoker() {
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
         _ = ctx.StateManager.TryGetStateAsync<AggregateMetadata>(
@@ -84,16 +84,23 @@ public class AggregateActorDomainResultTests {
                 "test-tenant:test-domain:agg-001:events:1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(true, stored));
 
-        Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState? observedState = null;
-        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
-            .Returns(call => {
-                observedState = call.ArgAt<object?>(1) as Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState;
-                return DomainResult.NoOp();
-            });
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
 
-        _ = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+        result.Accepted.ShouldBeFalse();
+        _ = ctx.Invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>());
+    }
 
-        var passedEvent = observedState!.Events.ShouldHaveSingleItem();
+    [Fact]
+    public void ToContractEventEnvelope_PreservesVersionMetadataForVerifiedRoutes() {
+        var stored = new EventEnvelope(
+            "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "order-created", 2, "json", [1, 2, 3], null) {
+            EventContractType = "order-created",
+            PayloadVersion = 7,
+        };
+
+        var passedEvent = AggregateActor.ToContractEventEnvelope(stored);
         passedEvent.Metadata.MetadataVersion.ShouldBe(2);
         passedEvent.Metadata.EventContractType.ShouldBe("order-created");
         passedEvent.Metadata.PayloadVersion.ShouldBe(7);

@@ -26,6 +26,10 @@ public sealed record AggregateReconstructionResult(
     AggregateReconstructionErrorCategory ErrorCategory,
     string? Message,
     IReadOnlyList<AggregateReconstructionTimelineEntry>? Timeline) {
+    /// <summary>Gets opaque private progress for an accepted but incomplete replay page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PagedProgress? PagedProgress { get; init; }
+
     /// <summary>Convenience factory for the success path.</summary>
     public static AggregateReconstructionResult Succeeded(
         string stateJson,

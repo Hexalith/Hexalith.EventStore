@@ -1251,7 +1251,7 @@ public partial class AggregateActor(
 
                     try {
                         existingSnapshot = await snapshotManager
-                            .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId)
+                            .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId, cancellationToken)
                             .ConfigureAwait(false);
 
                         var eventStreamReader = new EventStreamReader(
@@ -1259,7 +1259,7 @@ public partial class AggregateActor(
                             Host.LoggerFactory.CreateLogger<EventStreamReader>());
 
                         rehydrationResult = await eventStreamReader
-                            .RehydrateAsync(command.AggregateIdentity, existingSnapshot)
+                            .RehydrateAsync(command.AggregateIdentity, existingSnapshot, cancellationToken)
                             .ConfigureAwait(false);
 
                         lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
@@ -1854,6 +1854,7 @@ public partial class AggregateActor(
                 throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
             }
 
+            LegacyEventReadGuard.RequireUnversioned(eventResult.Value);
             events.Add(eventResult.Value);
         }
 
@@ -2370,7 +2371,7 @@ public partial class AggregateActor(
         }
 
         RehydrationResult? fullReplay = await eventStreamReader
-            .RehydrateAsync(identity)
+            .RehydrateAsync(identity, snapshot: null, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         if (fullReplay is null || fullReplay.Events.Count == 0) {
             return null;
@@ -4554,6 +4555,7 @@ public partial class AggregateActor(
                 throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
             }
 
+            LegacyEventReadGuard.RequireUnversioned(result.Value);
             events.Add(result.Value);
         }
 
@@ -4642,7 +4644,7 @@ public partial class AggregateActor(
         return readable;
     }
 
-    private static ContractEventEnvelope ToContractEventEnvelope(EventEnvelope envelope) =>
+    internal static ContractEventEnvelope ToContractEventEnvelope(EventEnvelope envelope) =>
         new(
             new ContractEventMetadata(
                 envelope.MessageId,
