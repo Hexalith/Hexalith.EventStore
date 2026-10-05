@@ -17,6 +17,33 @@ public sealed class ReminderDiagnosticsTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>A quarantined intent emits event 200207 with only its actor, evidence subject, and bounded reason.</summary>
+    [Fact]
+    public async Task QuarantineEmitsStructuredEvent()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        harness.Source.Set(Item, ReminderTestHarness.Intent(Item, harness.Time.Now) with { Payload = null! });
+        var logger = new ReminderDiagnosticLogger<ReminderCoordinator>();
+        var coordinator = new ReminderCoordinator(harness.Source, harness.CreateIndex(), harness.CoordinatorStore,
+            harness.CoordinatorStore, Options.Create(harness.Options), harness.Status, harness.Time, logger,
+            harness.Submitter, harness.Tokens);
+
+        (await coordinator.ConvergeAsync(actorId, Item, harness.SchedulerFor(actorId), CancellationToken.None)).Quarantined.ShouldBe(1);
+
+        ReminderQuarantineRecord record = harness.ItemState(actorId).ShouldNotBeNull().Quarantine.ShouldHaveSingleItem();
+        var entry = logger.Entries.Single(static entry => entry.EventId.Id == 200207);
+        entry.Level.ShouldBe(LogLevel.Error);
+        entry.Fields.Keys.Order().ShouldBe(new[] { "{OriginalFormat}", "ActorId", "Subject", "ReasonCode" }.Order());
+        entry.Fields["ActorId"].ShouldBe(actorId);
+        entry.Fields["Subject"].ShouldBe(record.EvidenceDigest);
+        entry.Fields["ReasonCode"].ShouldBe("payload-invalid");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldBe($"Reminder evidence quarantined: ActorId={actorId}, Subject={record.EvidenceDigest}, ReasonCode=payload-invalid");
+        entry.Message.ShouldNotContain(Item.Tenant);
+        entry.Message.ShouldNotContain(Item.Aggregate);
+    }
+
     /// <summary>An unreadable registry emits its fail-closed reason separately from the exception type.</summary>
     [Fact]
     public async Task InvalidRegistryEmitsStructuredScanFailure()

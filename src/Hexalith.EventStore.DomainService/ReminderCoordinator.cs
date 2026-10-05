@@ -194,7 +194,7 @@ internal sealed class ReminderCoordinator
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scheduler);
-        if (string.IsNullOrWhiteSpace(actorId) || string.IsNullOrWhiteSpace(reminderName))
+        if (!IsActorId(actorId) || string.IsNullOrWhiteSpace(reminderName))
         {
             return null;
         }
@@ -222,6 +222,24 @@ internal sealed class ReminderCoordinator
             ReminderLog.CallbackFailed(_logger, actorId, loggedName, exception.GetType().Name);
             return ReminderDisposition.Retrying;
         }
+    }
+
+    private static bool IsActorId(string? actorId)
+    {
+        if (actorId is null || actorId.Length != 56 || !actorId.StartsWith("wra-", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (char character in actorId.AsSpan(4))
+        {
+            if (!"0123456789ABCDEFGHJKMNPQRSTVWXYZ".Contains(character, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool IsSameTarget(ReminderItemState state, ReminderTarget target)
@@ -584,8 +602,10 @@ internal sealed class ReminderCoordinator
         // Shared effect identities are quarantined because the target rejects a second submission on a
         // semantic-digest conflict, or silently replays the first receipt. Classify that overlap before
         // collapsing names: either same-name witness may share its effect with a third name, and discarding
-        // either source would let that third witness execute. A witness collision on a shared name is
-        // recorded as witness-collision even when that name also shares an effect identity.
+        // either source would let that third witness execute. Two current intents with different evidence
+        // under one name are recorded as witness-collision even when that name shares an effect identity.
+        // A changed stored witness whose name participates in an effect collision is recorded as effect-collision
+        // during convergence; callback admission records its changed evidence as witness-collision.
         foreach (IGrouping<string, string> shared in valid
             .GroupBy(pair => EffectIdentityCodec.ComputeEffectId(
                 CreateEffectIdentity(target.Tenant, target.Domain, target.Aggregate, pair.Intent)), pair => pair.Witness.ReminderName)
@@ -698,9 +718,10 @@ internal sealed class ReminderCoordinator
             await _index.EnsureCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
         }
 
-        // Audit before releasing or recording. Obsolete witnesses are retained until both the audit and
+        // Audit before releasing witnesses. Obsolete witnesses are retained until both the audit and
         // Scheduler cancellation succeed. Quarantine transitions do not cancel the reminder when audit is
-        // unavailable, so the next convergence can retry without losing evidence.
+        // unavailable, so the next convergence can retry without losing evidence. Quarantine records are
+        // persisted independently of audit success and audited again on every convergence.
         var entryUpdates = new Dictionary<string, ReminderEntry?>(StringComparer.Ordinal);
         int cancelled = 0;
         foreach (ReminderEntry entry in obsolete)
@@ -1347,7 +1368,7 @@ internal sealed class ReminderCoordinator
         {
             command = _source.TranslateDueIntent(intent);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             // Translation is pure; a failure is malformed evidence and is retained, not dropped or retried hot.
             return Outcome(ReminderDisposition.Quarantined, "translation-failed");

@@ -16,8 +16,10 @@ namespace Hexalith.EventStore.Client.Reminders;
 /// convergence resubmits it and replays the receipt.</description></item>
 /// <item><description>Keep <c>(source domain, source aggregate, source sequence, kind, target)</c> unique among
 /// current intents. Intents that share it share one effect identity and are quarantined as
-/// <c>effect-collision</c>. A witness collision on a shared name is recorded as <c>witness-collision</c>
-/// even when that name also shares an effect identity.</description></item>
+/// <c>effect-collision</c>. Two current intents with different evidence under one name are recorded as
+/// <c>witness-collision</c> even when that name also shares an effect identity. Convergence records a changed
+/// stored witness whose name participates in an effect collision as <c>effect-collision</c>; callback admission records
+/// its changed evidence as <c>witness-collision</c>.</description></item>
 /// <item><description>Retain the source coordinates when retrying the same logical submission. For the same kind
 /// and target, a distinct logical submission needs distinct committed source-event coordinates: changing only
 /// the due instant or schedule revision retains the previous effect identity and replays its receipt or
