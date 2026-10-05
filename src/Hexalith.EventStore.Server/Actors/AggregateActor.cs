@@ -1692,7 +1692,8 @@ public partial class AggregateActor(
                         IdempotencyTimeProvider.GetUtcNow(),
                         RetryCount: 0,
                         LastFailureReason: publishResult.FailureReason,
-                        MessageId: command.MessageId);
+                        MessageId: command.MessageId,
+                        CausationId: commandIdentity.CausationId);
                     PipelineState originalRecoveryPipeline = eventsStoredState
                         ?? throw new InvalidOperationException("EventsStored checkpoint was not established.");
                     UnpublishedPublicationIndex originalPublicationIndex = await ReadPublicationIndexAsync()
@@ -2634,8 +2635,12 @@ public partial class AggregateActor(
             }
 
             if (publishResult.Success) {
-                string? committedCausationId = await TryReadDrainCausationIdAsync(record, trackingId)
-                    .ConfigureAwait(false);
+                // A causation carried on the drain record is authoritative, including stale-checkpoint
+                // handoff, which has no recoverable idempotency record. Only records written before
+                // the field existed consult idempotency.
+                string? committedCausationId = record.CausationId is not null
+                    ? record.CausationId
+                    : await TryReadDrainCausationIdAsync(record, trackingId).ConfigureAwait(false);
                 // Success: remove record, decrement backpressure counter, unregister reminder, update advisory status.
                 // The try region starts before the first mutation so a staging failure cannot hitchhike
                 // any earlier cleanup mutation onto the retry-record save in the outer failure path.
@@ -4084,7 +4089,8 @@ public partial class AggregateActor(
             IdempotencyTimeProvider.GetUtcNow(),
             RetryCount: 0,
             LastFailureReason: "stale_checkpoint_handoff",
-            MessageId: staleMessageId);
+            MessageId: staleMessageId,
+            CausationId: stalePipeline.CausationId);
 
         _ = await StoreDrainRecordAndRegisterReminderAsync(staleMessageId, unpublishedRecord)
             .ConfigureAwait(false);
@@ -4337,9 +4343,10 @@ public partial class AggregateActor(
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
 
+        CommandProcessingIdentity resumeIdentity = CreateCommandProcessingIdentity(command);
         await RecordIdempotencyAsync(
             idempotencyChecker,
-            CreateCommandProcessingIdentity(command),
+            resumeIdentity,
             failResult,
             IdempotencyRecordDisposition.Recoverable).ConfigureAwait(false);
 
@@ -4393,7 +4400,8 @@ public partial class AggregateActor(
                     LastFailureReason: failureReason,
                     MessageId: drainTrackingId,
                     DeadLettered: priorDrain?.DeadLettered ?? false,
-                    ReminderArmedAt: priorDrain?.ReminderArmedAt);
+                    ReminderArmedAt: priorDrain?.ReminderArmedAt,
+                    CausationId: resumeIdentity.CausationId);
                 recoveryEntryTracked = await StoreDrainRecordAndRegisterReminderAsync(
                     drainTrackingId,
                     unpublishedRecord).ConfigureAwait(false);

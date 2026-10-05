@@ -488,7 +488,7 @@ public class StateMachineIntegrationTests {
         _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<int>(true, 1));
 
-        CommandEnvelope envelope = CreateTestEnvelope();
+        CommandEnvelope envelope = CreateTestEnvelope(causationId: "msg-sm-test");
 
         // Act
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
@@ -509,6 +509,55 @@ public class StateMachineIntegrationTests {
             Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed
                 && status.CommittedEventSequence == 2 && status.Domain == envelope.Domain
                 && status.AggregateId == envelope.AggregateId));
+    }
+
+    [Fact]
+    public async Task ProcessCommand_ResumeFromEventsStored_WithholdsProofWhenEnvelopeCausationIsMissing()
+    {
+        // EventPersister stamps CausationId ?? CorrelationId. A null envelope causation therefore
+        // persists "corr-sm-test", while the checkpoint stores CausationId ?? MessageId ("msg-sm-test").
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, IEventPublisher eventPublisher) = CreateActor();
+        var existingPipeline = new PipelineState(
+            "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test",
+            StartSequence: 1, EndSequence: 2);
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(9, DateTimeOffset.UtcNow, null)));
+        for (int seq = 1; seq <= 2; seq++)
+        {
+            int s = seq;
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{s}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(
+                    true,
+                    new EventEnvelope(
+                        "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
+                        "corr-sm-test", "corr-sm-test", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
+        }
+
+        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 1));
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        result.Accepted.ShouldBeTrue();
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1),
+            "corr-sm-test",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        await statusStore.Received().WriteStatusAsync("test-tenant", envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed
+                && status.CommittedEventSequence == null && status.Domain == envelope.Domain));
     }
 
     [Fact]

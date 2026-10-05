@@ -27,6 +27,11 @@ namespace Hexalith.EventStore.Server.Actors;
 /// activated aggregate would postpone its own drain indefinitely. Trailing-optional so older
 /// persisted records still deserialize.
 /// </param>
+/// <param name="CausationId">
+/// Normalized command causation for this committed range. Publication recovery verifies persisted
+/// envelopes against it. Null on records written before the field existed; those fall back to a
+/// recoverable idempotency record. Trailing-optional so older persisted records still deserialize.
+/// </param>
 public record UnpublishedEventsRecord(
     string CorrelationId,
     long StartSequence,
@@ -39,7 +44,8 @@ public record UnpublishedEventsRecord(
     string? LastFailureReason,
     string? MessageId = null,
     bool DeadLettered = false,
-    DateTimeOffset? ReminderArmedAt = null) {
+    DateTimeOffset? ReminderArmedAt = null,
+    string? CausationId = null) {
     /// <summary>State key prefix for unpublished event records.</summary>
     public const string StateKeyPrefix = "drain:";
 
