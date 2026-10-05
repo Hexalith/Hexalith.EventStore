@@ -340,30 +340,6 @@ public partial class SnapshotManager(
         return SnapshotLoadResult.Readable(readable);
     }
 
-    /// <summary>Reads one checked logical page through the shared production reader.</summary>
-    internal Task<DaprLogicalEventPage> ReadReplayPageAsync(
-        DaprProductionLogicalEventReader reader,
-        AggregateIdentity identity,
-        string aggregateType,
-        long startSequence,
-        int maxCount,
-        CancellationToken cancellationToken,
-        long? expectedActorHead = null,
-        long? expectedRetainedFloor = null) {
-        ArgumentNullException.ThrowIfNull(reader);
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentNullException.ThrowIfNull(options.Value);
-        cancellationToken.ThrowIfCancellationRequested();
-        return reader.ReadPageAsync(
-            identity,
-            aggregateType,
-            startSequence,
-            maxCount,
-            cancellationToken,
-            expectedActorHead,
-            expectedRetainedFloor);
-    }
-
     /// <summary>Reads a checked logical range through the shared production reader.</summary>
     internal Task<DaprProductionLogicalReplay> ReadReplayRangeAsync(
         DaprProductionLogicalEventReader reader,
@@ -373,7 +349,9 @@ public partial class SnapshotManager(
         int count,
         CancellationToken cancellationToken,
         long expectedActorHead,
-        long? expectedRetainedFloor = null) {
+        long? expectedRetainedFloor = null,
+        bool includeDomainView = true,
+        LegacyEventArrayBudget? arrayBudget = null) {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(options.Value);
@@ -385,7 +363,9 @@ public partial class SnapshotManager(
             count,
             cancellationToken,
             expectedActorHead,
-            expectedRetainedFloor);
+            expectedRetainedFloor,
+            includeDomainView,
+            arrayBudget);
     }
 
     private async Task<int> GetIntervalAsync(string tenantId, string domain, string aggregateType, CancellationToken cancellationToken) {

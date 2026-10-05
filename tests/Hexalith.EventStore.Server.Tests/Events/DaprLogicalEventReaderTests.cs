@@ -363,6 +363,7 @@ public sealed class DaprLogicalEventReaderTests
             default!, default!, default!, default!, default!, default);
     }
 
+    /// <summary>Verifies changed logical bytes, metadata and absent V2 digests refuse resolution.</summary>
     [Fact]
     public async Task ChangedApplicationPayloadOrMetadataOrMissingV2DigestRefusesBeforeResolution()
     {
@@ -378,7 +379,7 @@ public sealed class DaprLogicalEventReaderTests
         _ = protection.TryUnprotectEventPayloadAsync(Identity, versioned.EventTypeName,
             Arg.Any<byte[]>(), versioned.SerializationFormat, Arg.Any<EventStorePayloadProtectionMetadata>(),
             Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(PayloadUnprotectionOutcome.Readable([1, 2], "json",
+            .Returns(_ => Task.FromResult(PayloadUnprotectionOutcome.Readable([1, 2], "json",
                 EventStorePayloadProtectionMetadata.Unprotected())));
         var reader = CreateReader(registry, stateManager, protection);
 

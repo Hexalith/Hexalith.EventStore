@@ -11,6 +11,10 @@ public static class EventEvolutionServiceCollectionExtensions
     /// <remarks>
     /// The caller must obtain the pin from the gateway's authoritative capability record.
     /// Resolved dependency closure, loader capture, corpus readiness and route proof are separate requirements.
+    /// Registration switches command rehydration and manual snapshot reconstruction for every aggregate
+    /// in this domain to the fail-closed allow-list reader. Missing mappings, incompatible aggregate
+    /// types, versioned sources and required upcast hops reject those reads. The production pin binds
+    /// no upcasters and runs no registered schema or identity validators.
     /// </remarks>
     /// <param name="services">The target service collection.</param>
     /// <param name="domain">The exact domain name carried by every registry row.</param>

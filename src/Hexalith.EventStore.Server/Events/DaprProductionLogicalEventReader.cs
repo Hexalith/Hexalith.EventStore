@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -47,7 +50,11 @@ internal sealed class DaprProductionLogicalEventReader
     }
 
     /// <summary>Builds a reader from a caller-supplied manifest pin. A missing pin stays on the typed path.</summary>
-    /// <remarks>No upcaster is invented. A required hop fails closed until an allow-listed callable is supplied.</remarks>
+    /// <remarks>
+    /// This production pin binds no upcasters and runs no registered schema or identity validators,
+    /// including for zero-hop events. A required hop fails closed. Allow-listed callable binding
+    /// remains blocked on trusted loader and catalog closure; the pin alone grants no V2 readiness.
+    /// </remarks>
     internal static DaprProductionLogicalEventReader? FromCallerPin(
         IActorStateManager stateManager,
         IEventPayloadProtectionService protection,
@@ -74,7 +81,7 @@ internal sealed class DaprProductionLogicalEventReader
     internal string PinnedFingerprint => _pinnedFingerprint;
 
     /// <summary>Reads one logical page only after the shared digest, prefix, head, floor, and ETag checks.</summary>
-    internal Task<DaprLogicalEventPage> ReadPageAsync(
+    internal async Task<DaprLogicalEventPage> ReadPageAsync(
         AggregateIdentity identity,
         string aggregateType,
         long startSequence,
@@ -82,8 +89,10 @@ internal sealed class DaprProductionLogicalEventReader
         CancellationToken cancellationToken,
         long? expectedActorHead = null,
         long? expectedRetainedFloor = null,
-        EventBufferBudget? sharedBudget = null)
-        => _pages.ReadPageAsync(
+        EventBufferBudget? sharedBudget = null,
+        LegacyEventArrayBudget? arrayBudget = null)
+    {
+        DaprLogicalEventPage page = await _pages.ReadPageAsync(
             identity,
             aggregateType,
             startSequence,
@@ -91,9 +100,26 @@ internal sealed class DaprProductionLogicalEventReader
             cancellationToken,
             expectedActorHead,
             expectedRetainedFloor,
-            sharedBudget);
+            sharedBudget,
+            requireUnversioned: true,
+            arrayBudget).ConfigureAwait(false);
+        try
+        {
+            foreach (DaprLogicalEventView view in page.Events)
+            {
+                LegacyEventReadGuard.RequireUnversioned(view.Source);
+            }
 
-    /// <summary>Reads a contiguous range as checked pages and copies the in-memory domain view before disposal.</summary>
+            return page;
+        }
+        catch
+        {
+            page.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Reads a contiguous range as checked pages with an optional owned domain view.</summary>
     internal async Task<DaprProductionLogicalReplay> ReadRangeAsync(
         AggregateIdentity identity,
         string aggregateType,
@@ -101,65 +127,86 @@ internal sealed class DaprProductionLogicalEventReader
         int count,
         CancellationToken cancellationToken,
         long expectedActorHead,
-        long? expectedRetainedFloor = null)
+        long? expectedRetainedFloor = null,
+        bool includeDomainView = true,
+        LegacyEventArrayBudget? arrayBudget = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(startSequence);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         cancellationToken.ThrowIfCancellationRequested();
+        arrayBudget ??= new LegacyEventArrayBudget(count);
+        var bufferBudget = new EventBufferBudget();
         var stored = new List<EventEnvelope>(count);
-        var domain = new List<EventEnvelope>(count);
+        var domain = new List<EventEnvelope>(includeDomainView ? count : 0);
+        var reservations = new List<EventBufferReservation>();
         bool evolved = false;
         long? pinnedFloor = expectedRetainedFloor;
-        for (int offset = 0; offset < count;)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            int size = Math.Min(PageSize, count - offset);
-            DaprLogicalEventPage page = await ReadPageAsync(
-                identity,
-                aggregateType,
-                startSequence + offset,
-                size,
-                cancellationToken,
-                expectedActorHead,
-                pinnedFloor).ConfigureAwait(false);
-            try
+            for (int offset = 0; offset < count;)
             {
-                pinnedFloor ??= page.RetainedFloor;
-                if (page.Events.Count != size
-                    || page.ActorHead != expectedActorHead
-                    || page.RetainedFloor != pinnedFloor
-                    || page.StartSequence != startSequence + offset)
+                cancellationToken.ThrowIfCancellationRequested();
+                int size = Math.Min(PageSize, count - offset);
+                DaprLogicalEventPage page = await ReadPageAsync(
+                    identity,
+                    aggregateType,
+                    startSequence + offset,
+                    size,
+                    cancellationToken,
+                    expectedActorHead,
+                    pinnedFloor,
+                    bufferBudget,
+                    arrayBudget).ConfigureAwait(false);
+                try
                 {
-                    throw new InvalidOperationException("ReplayRestartRequired: the logical page did not contain the complete prefix.");
-                }
-
-                foreach (DaprLogicalEventView view in page.Events)
-                {
-                    if (view.SequenceNumber != startSequence + stored.Count)
+                    pinnedFloor ??= page.RetainedFloor;
+                    if (page.Events.Count != size
+                        || page.ActorHead != expectedActorHead
+                        || page.RetainedFloor != pinnedFloor
+                        || page.StartSequence != startSequence + offset)
                     {
-                        throw new InvalidOperationException("AddressMismatch: logical page sequence is not a complete prefix.");
+                        throw new InvalidOperationException("ReplayRestartRequired: the logical page did not contain the complete prefix.");
                     }
 
-                    stored.Add(view.Source);
-                    if (!IsZeroHopV1(view))
+                    foreach (DaprLogicalEventView view in page.Events)
                     {
-                        evolved = true;
+                        if (view.SequenceNumber != startSequence + stored.Count)
+                        {
+                            throw new InvalidOperationException("AddressMismatch: logical page sequence is not a complete prefix.");
+                        }
+
+                        stored.Add(view.Source);
+                        if (!IsZeroHopV1(view))
+                        {
+                            evolved = true;
+                        }
+
+                        if (includeDomainView && IsZeroHopV1(view))
+                        {
+                            arrayBudget.AddDomainPayload(view.Resolved.Payload.Length);
+                            EventBufferReservation reservation = bufferBudget.Reserve(view.Resolved.Payload.Length);
+                            reservations.Add(reservation);
+                            domain.Add(CreateDomainEvent(view));
+                        }
                     }
-
-                    domain.Add(CreateDomainEvent(view));
                 }
-            }
-            finally
-            {
-                page.Dispose();
+                finally
+                {
+                    page.Dispose();
+                }
+
+                offset += size;
             }
 
-            offset += size;
+            return new DaprProductionLogicalReplay(expectedActorHead, pinnedFloor ?? 1, stored, domain, evolved, reservations);
         }
-
-        return new DaprProductionLogicalReplay(expectedActorHead, pinnedFloor ?? 1, stored, domain, evolved);
+        catch
+        {
+            new DaprProductionLogicalReplay(expectedActorHead, pinnedFloor ?? 1, stored, domain, evolved, reservations).Dispose();
+            throw;
+        }
     }
 
     /// <summary>Reads the stored aggregate type for a sequence the page reader will authenticate again.</summary>
@@ -212,26 +259,41 @@ internal sealed class DaprProductionLogicalEventReader
     internal static EventEnvelope CreateDomainEvent(DaprLogicalEventView view)
     {
         ArgumentNullException.ThrowIfNull(view);
-        EventEnvelope source = view.Source;
-        byte[] payload = new byte[view.Resolved.Payload.Length];
-        view.Resolved.Payload.CopyTo(0, payload);
-        if (IsZeroHopV1(view))
+        if (!IsZeroHopV1(view))
         {
-            return source with
-            {
-                Payload = payload,
-                SerializationFormat = view.Resolved.SerializationFormat,
-            };
+            throw new InvalidOperationException("CapabilityMismatch: evolved replay requires a verified effective event route.");
         }
 
-        return source with
+        EventEnvelope source = view.Source;
+        byte[] payload = new byte[view.Resolved.Payload.Length];
+        return CopyDomainEvent(source, view.Resolved.Payload, view.Resolved.SerializationFormat, payload);
+    }
+
+    /// <summary>Copies into an owned domain array, clearing it if copying or envelope construction fails.</summary>
+    /// <param name="source">The immutable stored event metadata.</param>
+    /// <param name="logicalPayload">The admitted readable payload.</param>
+    /// <param name="serializationFormat">The readable payload's registered format.</param>
+    /// <param name="destination">The privately owned allocation transferred to the domain envelope on success.</param>
+    /// <returns>The in-memory domain envelope with the owned readable payload.</returns>
+    internal static EventEnvelope CopyDomainEvent(
+        EventEnvelope source,
+        IReadOnlyPayload logicalPayload,
+        string serializationFormat,
+        byte[] destination)
+    {
+        try
         {
-            Payload = payload,
-            EventTypeName = view.Resolved.CanonicalType,
-            SerializationFormat = view.Resolved.SerializationFormat,
-            MetadataVersion = 1,
-            EventContractType = null,
-            PayloadVersion = null,
-        };
+            logicalPayload.CopyTo(0, destination);
+            return source with
+            {
+                Payload = destination,
+                SerializationFormat = serializationFormat,
+            };
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(destination);
+            throw;
+        }
     }
 }

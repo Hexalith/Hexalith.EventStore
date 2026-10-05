@@ -1,16 +1,22 @@
+using System.Security.Cryptography;
+
+using Hexalith.EventStore.Client.Events;
+
 namespace Hexalith.EventStore.Server.Events;
 
 /// <summary>Holds one addressed replay range after the production reader has accepted it.</summary>
 /// <remarks>Stored envelopes keep the actor payload. Domain envelopes are an in-memory view.</remarks>
-internal sealed class DaprProductionLogicalReplay
+internal sealed class DaprProductionLogicalReplay : IDisposable
 {
+    private readonly IReadOnlyList<EventBufferReservation> _domainReservations;
     /// <summary>Captures the pinned head and the stored and domain-facing envelopes.</summary>
     internal DaprProductionLogicalReplay(
         long actorHead,
         long retainedFloor,
         IReadOnlyList<EventEnvelope> storedEvents,
         IReadOnlyList<EventEnvelope> domainEvents,
-        bool evolved)
+        bool evolved,
+        IReadOnlyList<EventBufferReservation> domainReservations)
     {
         ArgumentNullException.ThrowIfNull(storedEvents);
         ArgumentNullException.ThrowIfNull(domainEvents);
@@ -19,6 +25,7 @@ internal sealed class DaprProductionLogicalReplay
         StoredEvents = storedEvents;
         DomainEvents = domainEvents;
         Evolved = evolved;
+        _domainReservations = domainReservations;
     }
 
     /// <summary>Gets the actor head pinned for every page in the range.</summary>
@@ -35,4 +42,18 @@ internal sealed class DaprProductionLogicalReplay
 
     /// <summary>Gets whether any event needed an upcast hop.</summary>
     internal bool Evolved { get; }
+
+    /// <summary>Clears private domain copies before releasing their live-buffer reservations.</summary>
+    public void Dispose()
+    {
+        foreach (EventEnvelope envelope in DomainEvents)
+        {
+            CryptographicOperations.ZeroMemory(envelope.Payload);
+        }
+
+        foreach (EventBufferReservation reservation in _domainReservations)
+        {
+            reservation.Dispose();
+        }
+    }
 }

@@ -40,11 +40,12 @@ internal sealed class DaprLogicalEventReader
     internal async Task<DaprLogicalEventView> ReadAsync(AggregateIdentity identity, long sequenceNumber,
         CancellationToken cancellationToken, string? expectedAggregateType = null)
         => await ReadCoreAsync(identity, sequenceNumber, cancellationToken, expectedAggregateType,
-            new EventBufferBudget(), 128L * 1024 * 1024, _maximumReadablePageBytes).ConfigureAwait(false);
+            new EventBufferBudget(), 128L * 1024 * 1024, _maximumReadablePageBytes,
+            requireUnversioned: false, arrayBudget: null).ConfigureAwait(false);
 
     private async Task<DaprLogicalEventView> ReadCoreAsync(AggregateIdentity identity, long sequenceNumber,
         CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
-        long maximumStoredBytes, long maximumReadableBytes)
+        long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sequenceNumber);
@@ -85,6 +86,13 @@ internal sealed class DaprLogicalEventReader
             throw new InvalidOperationException("RawEnvelopeLimit: the next logical event exceeds the remaining page capacity.");
         }
 
+        if (requireUnversioned)
+        {
+            LegacyEventReadGuard.RequireUnversioned(source);
+        }
+
+        arrayBudget?.Add(source);
+
         _resolver.RequireSourceRoute(source.Domain, source.EventTypeName, source.MetadataVersion,
             source.EventContractType, source.PayloadVersion, source.AggregateType);
 
@@ -95,6 +103,7 @@ internal sealed class DaprLogicalEventReader
 
         byte[] storedHash = SHA256.HashData(source.Payload);
         byte[]? protectedCopy = null;
+        byte[]? readablePayload = null;
         EventBufferReservation? protectedReservation = null;
         EventBufferReservation? readableReservation = null;
         try
@@ -105,9 +114,34 @@ internal sealed class DaprLogicalEventReader
             readableReservation = budget.Reserve(checked((int)maximumReadableBytes));
             protectedCopy = source.Payload.ToArray();
             EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadataCarrier.Read(source.Extensions);
-            PayloadUnprotectionOutcome outcome = await _protection.TryUnprotectEventPayloadAsync(
-                identity, source.EventTypeName, protectedCopy, source.SerializationFormat,
-                metadata, cancellationToken).ConfigureAwait(false);
+            if (metadata.State == PayloadProtectionState.ProviderOpaque)
+            {
+                throw new ProtectedDataUnreadableException(
+                    UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation,
+                    stage: ProtectedDataReadabilityDecisionStageCodes.Rehydrate,
+                    sequenceNumber: sequenceNumber);
+            }
+
+            PayloadUnprotectionOutcome outcome;
+            try
+            {
+                outcome = await _protection.TryUnprotectEventPayloadAsync(
+                    identity, source.EventTypeName, protectedCopy, source.SerializationFormat,
+                    metadata, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                throw new ProtectedDataUnreadableException(
+                    UnreadableProtectedDataReason.ProviderUnavailable,
+                    stage: ProtectedDataReadabilityDecisionStageCodes.Rehydrate,
+                    sequenceNumber: sequenceNumber);
+            }
+
+            readablePayload = outcome.PayloadBytes;
             cancellationToken.ThrowIfCancellationRequested();
             if (!outcome.IsReadable || outcome.PayloadBytes is null || outcome.SerializationFormat is null)
             {
@@ -138,6 +172,12 @@ internal sealed class DaprLogicalEventReader
         }
         finally
         {
+            if (readablePayload is not null && !ReferenceEquals(readablePayload, protectedCopy)
+                && !ReferenceEquals(readablePayload, source.Payload))
+            {
+                CryptographicOperations.ZeroMemory(readablePayload);
+            }
+
             if (protectedCopy is not null)
             {
                 CryptographicOperations.ZeroMemory(protectedCopy);
@@ -153,7 +193,8 @@ internal sealed class DaprLogicalEventReader
     /// <remarks>The two metadata reads are Dapr logical observations, not provider attestations.</remarks>
     internal async Task<DaprLogicalEventPage> ReadPageAsync(AggregateIdentity identity, string aggregateType,
         long startSequence, int maxCount, CancellationToken cancellationToken,
-        long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null)
+        long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null,
+        bool requireUnversioned = false, LegacyEventArrayBudget? arrayBudget = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
@@ -191,7 +232,8 @@ internal sealed class DaprLogicalEventReader
                 cancellationToken.ThrowIfCancellationRequested();
                 DaprLogicalEventView view = await ReadCoreAsync(identity, startSequence + index,
                     cancellationToken, aggregateType, budget,
-                    128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes).ConfigureAwait(false);
+                    128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes,
+                    requireUnversioned, arrayBudget).ConfigureAwait(false);
                 views[index] = view;
                 storedBytes = checked(storedBytes + view.StoredPayloadLength);
                 if (storedBytes > 128L * 1024 * 1024)

@@ -1260,8 +1260,9 @@ public partial class AggregateActor(
                             StateManager,
                             Host.LoggerFactory.CreateLogger<EventStreamReader>());
                         DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(command.Domain);
-                        string? replayAggregateType = await ResolveReplayAggregateTypeAsync(
-                            productionReader, command, cancellationToken).ConfigureAwait(false);
+                        string? replayAggregateType = productionReader is null
+                            ? null
+                            : await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
 
                         rehydrationResult = await eventStreamReader
                             .RehydrateAsync(
@@ -1312,7 +1313,8 @@ public partial class AggregateActor(
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.Processing, ex,
                             stateMachine, pipelineKeyPrefix,
-                            processActivity, startTicks, eventCount: null, cancellationToken).ConfigureAwait(false);
+                            processActivity, startTicks, eventCount: null, cancellationToken,
+                            logicalReadFailure: true).ConfigureAwait(false);
                     }
                 }
 
@@ -2353,7 +2355,9 @@ public partial class AggregateActor(
                 ManualSnapshotOutcome.InfrastructureFailure,
                 currentSequence,
                 identity.SnapshotKey,
-                "InfrastructureFailure",
+                LogicalEventReadRejection.IsRejection(ex)
+                    ? LogicalEventReadRejection.ReasonCode
+                    : "InfrastructureFailure",
                 "Manual snapshot creation failed.");
         }
     }
@@ -2388,33 +2392,15 @@ public partial class AggregateActor(
         }
 
         DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(identity.Domain);
-        RehydrationResult? fullReplay = await eventStreamReader
-            .RehydrateAsync(
-                identity,
-                snapshot: null,
-                cancellationToken: cancellationToken,
-                productionReader: productionReader,
-                aggregateType: null,
-                snapshotReplay: snapshotManager as SnapshotManager)
-            .ConfigureAwait(false);
-        if (fullReplay is null || fullReplay.Events.Count == 0) {
-            return null;
-        }
-
-        IReadOnlyList<EventEnvelope> readableEvents = await EnsureEventsReadableForDomainAsync(
-            identity,
-            fullReplay.Events,
-            cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<EventEnvelope> domainEvents = fullReplay.EffectiveEvents ?? readableEvents;
-
-        string aggregateType = domainEvents[^1].AggregateType;
         AggregateReconstructionResult reconstruction;
         if (productionReader is not null
             && reconstructor is DaprAggregateStateReconstructor addressed
             && snapshotManager is SnapshotManager snapshotPages) {
+            string storedAggregateType = await productionReader.ReadStoredAggregateTypeAsync(
+                identity, 1, cancellationToken).ConfigureAwait(false);
             reconstruction = await addressed.ReconstructAddressedAsync(
                 identity,
-                aggregateType,
+                storedAggregateType,
                 productionReader,
                 snapshotPages,
                 currentSequence,
@@ -2423,6 +2409,26 @@ public partial class AggregateActor(
                 cancellationToken).ConfigureAwait(false);
         }
         else {
+            RehydrationResult? fullReplay = await eventStreamReader
+                .RehydrateAsync(
+                    identity,
+                    snapshot: null,
+                    cancellationToken: cancellationToken,
+                    productionReader: productionReader,
+                    aggregateType: null,
+                    snapshotReplay: snapshotManager as SnapshotManager)
+                .ConfigureAwait(false);
+            if (fullReplay is null || fullReplay.Events.Count == 0) {
+                return null;
+            }
+
+            IReadOnlyList<EventEnvelope> readableEvents = await EnsureEventsReadableForDomainAsync(
+                identity,
+                fullReplay.Events,
+                cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<EventEnvelope> domainEvents = fullReplay.EffectiveEvents ?? readableEvents;
+
+            string aggregateType = domainEvents[^1].AggregateType;
             reconstruction = await reconstructor
                 .ReconstructAsync(
                     identity,
@@ -2433,6 +2439,10 @@ public partial class AggregateActor(
                     requestId: correlationId,
                     cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        if (LogicalEventReadRejection.IsRejection(reconstruction.Message)) {
+            throw new InvalidOperationException(reconstruction.Message);
         }
 
         if (reconstruction.Status != AggregateReconstructionStatus.Succeeded
@@ -4737,22 +4747,6 @@ public partial class AggregateActor(
             keyedServices.GetKeyedService<EventEvolutionManifestCandidate>(domain));
     }
 
-    private async Task<string?> ResolveReplayAggregateTypeAsync(
-        DaprProductionLogicalEventReader? productionReader,
-        CommandEnvelope command,
-        CancellationToken cancellationToken)
-    {
-        if (productionReader is null || commandAggregateTypeResolver is null)
-        {
-            return null;
-        }
-
-        string? resolved = await commandAggregateTypeResolver
-            .ResolveAsync(command, cancellationToken)
-            .ConfigureAwait(false);
-        return string.IsNullOrWhiteSpace(resolved) ? null : resolved.Trim();
-    }
-
     private async Task<string> ResolveAggregateTypeAsync(CommandEnvelope command, CancellationToken cancellationToken) {
         if (commandAggregateTypeResolver is not null) {
             string? resolved = await commandAggregateTypeResolver
@@ -4822,8 +4816,12 @@ public partial class AggregateActor(
         Activity? processActivity,
         long startTicks,
         int? eventCount,
-        CancellationToken cancellationToken) {
-        string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(exception, failureStage.ToString());
+        CancellationToken cancellationToken,
+        bool logicalReadFailure = false) {
+        bool logicalReadRejected = logicalReadFailure && LogicalEventReadRejection.IsRejection(exception);
+        string safeFailureReason = logicalReadRejected
+            ? ProtectedDataDiagnosticRedactor.BuildSafeText(LogicalEventReadRejection.ReasonCode, failureStage.ToString())
+            : ProtectedDataDiagnosticRedactor.RedactException(exception, failureStage.ToString());
         Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, safeFailureReason);
         _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "InfrastructureFailure"));
 
@@ -4849,6 +4847,14 @@ public partial class AggregateActor(
 
         var deadLetterMessage = DeadLetterMessage.FromException(
             command, failureStage, exception, eventCount);
+        if (logicalReadRejected)
+        {
+            deadLetterMessage = deadLetterMessage with
+            {
+                ErrorMessage = safeFailureReason,
+                ReasonCode = LogicalEventReadRejection.ReasonCode,
+            };
+        }
 
         // Best-effort dead-letter publication (AC #7) -- BEFORE SaveStateAsync (task 6.7)
         bool published;

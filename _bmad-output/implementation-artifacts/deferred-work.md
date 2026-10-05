@@ -5313,85 +5313,110 @@ status: open
   summary: The Admin actor-state inspector returns raw aggregate event keys (`{actorId}:events:{N}`) to Admin, so raw event payloads reach a support surface.
   evidence: `src/Hexalith.EventStore.Admin.Server/Services/KnownActorTypes.cs:31` lists the key; `DaprInfrastructureQueryService.ReadActorStateKeyAsync` returns the stored JSON value and its byte size. Owner decision D5 (2026-10-04) limits Story 6.2 to redacting the snapshot key. Deferred because event-key redaction is Epic 7 Admin hygiene, outside folded-snapshot scope.
   status: open
+## Deferred from: Story 6.6 event evolution implementation
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md`
   summary: Story 6.6's M1 allow-listed registry, sealed dependency closure, fingerprints, and executable upcast/downserialize chain are not implemented.
   evidence: The current diff adds bounded upcaster/downserializer interfaces and payload primitives but no registry, codec resolver, or execution path; the approved M1 task requires all of them. Story 6.6 remains in review and incomplete.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md`
-  summary: Story 6.6's M2 version negotiation, bounded writer, authenticated raw actor readback, and shared reader are not wired into production paths.
-  evidence: `DomainServiceRequestRouter` still has no mode/fingerprint negotiation, and the new `IAuthenticatedRawEventSource` has no provider implementation or actor same-save/readback integration. Typed reads are not an approved fallback; Story 6.6 remains incomplete.
+  summary: Story 6.6 writer negotiation and the remaining evolution consumers still require qualified production wiring.
+  evidence: Under the Dapr-only amendment, pinned command replay and manual snapshot reconstruction now use the shared Dapr logical reader. V2 and evolved domain routes remain fenced; production upcaster/validator binding, projection, publication, subscription and diagnostics integration are still open. Logical actor readback supplies no physical-byte or historical-generation receipt.
   status: open
+
+## Deferred from: Dapr infrastructure boundary reconciliation
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Unverified medium: qualify actual Dapr actor-cache behavior for Story 6.6 metadata rechecks.
   evidence: Both readers reuse IActorStateManager; upstream SDK 1.17.9 returns tracked successful values. Demonstrate a supported actor/failover metadata change without a corresponding tracker update and verify the reader result before declaring stale-read failure.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Clear distinct plaintext protection output before releasing the Story 6.6 reader reservation.
-  evidence: DaprLogicalEventReader.cs:108-148 only clears protectedCopy; distinct outcome.PayloadBytes remains uncleared after success or readable-limit refusal/cancellation. Blind 2 and Edge 2 share this verified high runtime defect; runtime edits are outside the source planning intent.
+  evidence: The shared reader is now reachable from pinned command replay and manual reconstruction. It clears distinct provider plaintext in its finally block on success, refusal and cancellation; owned reconstruction copies are charged and cleared on range disposal, while command replay creates no discarded domain copies. Regression: DistinctProviderPlaintextIsClearedWhileTheDomainCopyLivesUntilRangeDisposal.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Resize or transfer readable-output reservations after Story 6.6 unprotection resolves actual ownership.
   evidence: DaprLogicalEventReader.cs:105 retains 64 MiB while EventLogicalViewResolver and EventUpcastChainExecutor allocate two further copies. A valid 22 MiB no-op payload charges 130.5 MiB while actual private payload copies total 66 MiB; Blind 3 and Edge 1 confirm this medium runtime defect.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Unverified medium: assess cross-page metadata generation identity before integrating Story 6.6 paging.
   evidence: ReadPageAsync accepts expected head/floor and DaprLogicalEventPage omits ETag. Establish an active multi-page caller and a supported same-head/floor generation transition to determine whether inconsistent generations can actually be accepted.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Make the Story 6.6 V2-fence preflight reject disabled executable fences hidden behind matching comment text.
   evidence: A parent process-private probe changed metadataVersion == 2 to == 3 and prefixed a fence-shaped comment; scripts/verify-event-evolution.py still returned passed/fenced. The actual runtime fence and evidence bytes were preserved; this medium verifier issue is outside the planning intent.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Bound the Story 6.6 application-storage symbol scan claim and cover factory-created database calls.
   evidence: A parent process-private probe with DbProviderFactories.GetFactory, inferred CreateConnection and Open passed scripts/verify-event-evolution.py. Its regex misses that actual provider-call pattern; 3.17 already owns final evaluated/HTTP/credential inventory and declared analysis limits.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Prove fresh activation/rehydration in the Story 6.6 restart live evidence.
   evidence: DaprEventEvolutionLogicalReadbackLiveSidecarTests restarts the primary while its replica remains active; post-restart proxies may route to the remaining actor owner. Current persisted readback does not identify a freshly rehydrated owner. This medium live-proof gap is outside the planning intent.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Add Story 6.6 metadata admission/snapshot regression coverage through the logical reader API.
   evidence: Reader tests use short metadata with Extensions=null; removing the 512 KiB admission calls would leave them passing. Cover fixed-field/extension limits, provider non-invocation, callback isolation, snapshot failure and reservation cleanup. Blind 9 and Gap 1 share this medium test gap.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Unverified medium: establish bounded ordinary-lane termination for the Story 6.6 live scenario.
   evidence: The new scenario creates proxies without explicit request/scenario deadlines, unlike fixture warm-up. Verify default SDK timeout/retry behavior and placement/sidecar failure termination; no genuinely unbounded call was demonstrated.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Verify explicit Story 6.6 infrastructure overrides exclude all default candidate ports.
   evidence: DaprTestInfrastructurePortsTests covers Parse only; neither it nor the successful native run detects defaults appended after an override. Exercise ReadCandidates with unavailable overrides/reachable defaults or assert the entire override-only candidate list. Gap 2 is a pre-verified medium test gap.
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  status: open
+
+## Deferred from: Shared Story 6.6 reader implementation
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Route projection dispatch through the shared Story 6.6 evolution reader.
   evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+  status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Verify publication and subscription carriers before marker or handler work.
   evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+  status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Show support-safe stream version and typed failure diagnostics.
   evidence: Split from the 2117-token Story 6.6 spec so this change can stay on the shared reader plus replay and reconstruction.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Unverified medium: compare Story 6.6 logical page ETags across a multi-page range.
   evidence: Each page compares its own before/after ETag, and no same-head/floor generation change between pages was demonstrated. Settle it with an active range longer than one page where metadata ETag changes while head and floor stay equal.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Story 6.6 split ledger rows omit status and use absolute source paths.
-  evidence: The three reader-split rows and the earlier Dapr review rows were already in the ledger before this reader change. Neighboring rows carry `status`, and these do not.
+  evidence: The affected split/review rows now carry explicit status and repository-relative source paths under Story 6.6 or reconciliation headings.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Unverified medium: Story 6.1 post-upgrade verifier can mis-order subsecond timestamps and collapse duplicate event keys.
   evidence: `utc()` now emits microseconds and the runner maps events by key. Re-run `test_writer_quiescence_compares_subsecond_timestamps` and a duplicate-key inventory to settle the claimed false result. This is the Story 6.1 evidence runner, not the replay reader.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Story 6.1 evidence validator replaces IndexError and StopIteration with the exception type name.
   evidence: `validate()` catches those types and raises `Invalid evidence:` plus the type name, discarding the original message. The runner is outside the replay reader.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Story 6.1 wire validation accepts a receipt that omits its contract type.
   evidence: The runner compares `r.get("type", contract)` with the expected contract, so a missing type matches. This is the Story 6.1 evidence runner.
+  status: open
 
 ## Deferred from: code review of spec-6-6-event-versioning-and-upcasting-implementation-2.md (2026-10-05)
 
@@ -5402,4 +5427,46 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Unverified medium: `ReconstructAddressedAsync` does not re-check the metadata ETag across a multi-page range.
   evidence: Review of `65ac85a2`. `EventStreamReader` ends with `RequireUnchangedMetadataAsync`, but `ReconstructAddressedAsync` relies only on per-page before/after checks. This duplicates the two open cross-page ETag rows above. Settle them together by showing a supported same-head, same-floor ETag change within one actor turn across more than 256 events.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Bind allow-listed production upcasters and registered schema/identity validators to the caller pin.
+  evidence: FromCallerPin deliberately binds an empty upcaster map and a no-op validator. Required hops fail closed, and zero-hop schema/identity validation remains skipped. This binding seam is blocked on trusted loader and catalog closure; a verified effective domain route and fleet qualification are required before enabling evolved input or V2 writes.
+  status: open
+
+## Deferred from: replay-reader independent review (2026-10-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Stop Story 6.1 wire probing immediately after an unsupported contract result and verify the executed path.
+  evidence: BH-R1/EC-R2/VG-R2: Runner.wire invokes later supported probes before checking unsupported results, but the unsupported probe creates no output. A process-local reviewer reproduction raised FileNotFoundError. This earlier runner is unchanged by the replay-reader repair.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Validate fixture identity and completed wire-step bindings even when Story 6.1 reports an unsupported contract.
+  evidence: BH-R3: the unsupported branch in validate_operations skips fixture_input and completed-step type/hash bindings. The incompatible label grants no qualification, but evidence attribution can be substituted. Earlier Story 6.1 code remains preserved.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Make the Story 6.1 verifier control invocation reproducible with available, documented fixture and workspace prerequisites.
+  evidence: BH-R5: python3 -m unittest discover -s _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification -p test_run_verification.py -q ran 116 tests with 4 failures and 62 errors in this checkout. Missing attempt-10 identity artifacts and umbrella-layout/acceptance dependencies block reproduction; this is not a replay-reader test gate.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Preserve the legacy compiled UnpublishedEventsRecord constructor and Deconstruct signatures in the publication-recovery change.
+  evidence: BH-R6: adding optional positional CausationId replaces the prior 12-argument constructor and generated 12-output deconstructor. Compiled callers can fail despite JSON deserialization compatibility. The earlier publication change is unchanged here and excluded from the replay-reader frozen intent.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Qualify and correct conservative readable-output reservation accounting in the shared evolution primitive.
+  evidence: BH-R7: a retained 64 MiB provider reservation plus resolver/executor copies charges about 130.5 MiB for a 22 MiB no-op payload whose private copies total about 66 MiB. This pre-existing reservation and production reachability remain unchanged by this repair; all ceilings remain enforced.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Add discriminating metadata-admission and private-extension-snapshot controls for the shared evolution primitive.
+  evidence: BH-R9: the current short/null-extension fixtures would survive removal of the existing 512 KiB admission or snapshot isolation. Cover oversized fixed fields/extensions, callback mutation and cleanup after snapshot failure; these guards were not changed in this repair.
+  status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
+  summary: Move the publication-recovery DrainProofEvent test helper into its own C# file.
+  evidence: BH-R11b: the nested helper exists in the earlier unchanged EventDrainRecoveryTests change. The shared baseline requires one C# type per file; the correction belongs to that publication-recovery work, which this replay intent excludes.
   status: open
