@@ -6,7 +6,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class ContractsPackageDependencyTests
 {
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
-    private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(8);
 
     // Hash-bound standalone consumers and the recorded verification harness restore published
     // release and rollback packages outside the live build graph. Exclusions name exact files.

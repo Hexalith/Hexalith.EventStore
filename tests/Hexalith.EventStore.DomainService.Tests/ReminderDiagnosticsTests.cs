@@ -23,13 +23,13 @@ public sealed class ReminderDiagnosticsTests
     [InlineData(true)]
     public async Task MalformedCandidateIdentifierIsNotLogged(bool invalidTuple)
     {
-        const string secret = "secret-tenant:secret-domain:secret-aggregate:secret-token";
+        const string unloggedMarker = "unlogged-tenant:unlogged-domain:unlogged-aggregate:unlogged-marker";
         var harness = new ReminderTestHarness();
         string actorId = ReminderTestHarness.ActorId(Item);
         await harness.CreateIndex().EnsureCandidateAsync(Item, actorId, CancellationToken.None);
         string key = ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, Item.Tenant);
         var document = new ReminderTenantCandidates(Item.Tenant,
-            [new ReminderCandidate(invalidTuple ? string.Empty : Item.Domain, Item.Aggregate, secret)]);
+            [new ReminderCandidate(invalidTuple ? string.Empty : Item.Domain, Item.Aggregate, unloggedMarker)]);
         harness.Store.SeedRaw(harness.Options.StateStoreName, key, document);
         var before = await harness.Store.GetAsync<ReminderTenantCandidates>(harness.Options.StateStoreName, key);
         var logger = new ReminderDiagnosticLogger<ReminderReconciler>();
@@ -44,7 +44,7 @@ public sealed class ReminderDiagnosticsTests
         entry.Fields["ExceptionType"].ShouldBe(invalidTuple ? nameof(ArgumentException) : string.Empty);
         logger.Entries.Select(static entry => entry.Message)
             .Concat(logger.Entries.SelectMany(static entry => entry.Fields.Values).Select(static value => value?.ToString() ?? string.Empty))
-            .ShouldAllBe(value => !value.Contains(secret, StringComparison.Ordinal));
+            .ShouldAllBe(value => !value.Contains(unloggedMarker, StringComparison.Ordinal));
         var after = await harness.Store.GetAsync<ReminderTenantCandidates>(harness.Options.StateStoreName, key);
         ReminderTenantCandidates retained = after.Value.ShouldNotBeNull();
         retained.Tenant.ShouldBe(document.Tenant);
@@ -57,12 +57,12 @@ public sealed class ReminderDiagnosticsTests
     [Fact]
     public async Task RestoredSecretQuarantineReasonIsRepairedBeforeLogging()
     {
-        const string secret = "secret payload and delegation token";
+        const string unloggedEvidence = "unlogged payload and delegation evidence";
         var harness = new ReminderTestHarness();
         string actorId = ReminderTestHarness.ActorId(Item);
         string originalDigest = actorId[4..];
         harness.SeedItemState(actorId, new ReminderItemState(Item.Tenant, Item.Domain, Item.Aggregate, 1, [],
-            [new ReminderQuarantineRecord(originalDigest, secret, null, harness.Time.Now)]));
+            [new ReminderQuarantineRecord(originalDigest, unloggedEvidence, null, harness.Time.Now)]));
         var logger = new ReminderDiagnosticLogger<ReminderCoordinator>();
         var coordinator = new ReminderCoordinator(harness.Source, harness.CreateIndex(), harness.CoordinatorStore,
             harness.CoordinatorStore, Options.Create(harness.Options), harness.Status, harness.Time, logger,
@@ -81,7 +81,7 @@ public sealed class ReminderDiagnosticsTests
             && Equals(entry.Fields["ReasonCode"], "stored-quarantine-invalid"));
         logger.Entries.Select(static entry => entry.Message)
             .Concat(logger.Entries.SelectMany(static entry => entry.Fields.Values).Select(static value => value?.ToString() ?? string.Empty))
-            .ShouldAllBe(value => !value.Contains(secret, StringComparison.Ordinal));
+            .ShouldAllBe(value => !value.Contains(unloggedEvidence, StringComparison.Ordinal));
     }
 
     /// <summary>A quarantined intent emits event 200207 with only its actor, evidence subject, and bounded reason.</summary>
