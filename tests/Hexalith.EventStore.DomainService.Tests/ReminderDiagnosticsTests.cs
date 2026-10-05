@@ -17,6 +17,73 @@ public sealed class ReminderDiagnosticsTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>Malformed candidate identifiers never enter mismatch or tuple-validation exception diagnostics.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MalformedCandidateIdentifierIsNotLogged(bool invalidTuple)
+    {
+        const string secret = "secret-tenant:secret-domain:secret-aggregate:secret-token";
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        await harness.CreateIndex().EnsureCandidateAsync(Item, actorId, CancellationToken.None);
+        string key = ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, Item.Tenant);
+        var document = new ReminderTenantCandidates(Item.Tenant,
+            [new ReminderCandidate(invalidTuple ? string.Empty : Item.Domain, Item.Aggregate, secret)]);
+        harness.Store.SeedRaw(harness.Options.StateStoreName, key, document);
+        var before = await harness.Store.GetAsync<ReminderTenantCandidates>(harness.Options.StateStoreName, key);
+        var logger = new ReminderDiagnosticLogger<ReminderReconciler>();
+        using var reconciler = new ReminderReconciler(harness.CreateIndex(), harness.CreateRegistrar(), harness.Status,
+            Options.Create(harness.Options), harness.Time, logger);
+
+        (await reconciler.RunPassAsync(CancellationToken.None)).Incomplete.ShouldBe(1);
+
+        var entry = logger.Entries.Single(static entry => entry.EventId.Id == 200211);
+        entry.Fields["ActorId"].ShouldBe(invalidTuple ? "candidate-invalid" : actorId);
+        entry.Fields["ReasonCode"].ShouldBe(invalidTuple ? string.Empty : "actor-id-mismatch");
+        entry.Fields["ExceptionType"].ShouldBe(invalidTuple ? nameof(ArgumentException) : string.Empty);
+        logger.Entries.Select(static entry => entry.Message)
+            .Concat(logger.Entries.SelectMany(static entry => entry.Fields.Values).Select(static value => value?.ToString() ?? string.Empty))
+            .ShouldAllBe(value => !value.Contains(secret, StringComparison.Ordinal));
+        var after = await harness.Store.GetAsync<ReminderTenantCandidates>(harness.Options.StateStoreName, key);
+        ReminderTenantCandidates retained = after.Value.ShouldNotBeNull();
+        retained.Tenant.ShouldBe(document.Tenant);
+        retained.Candidates.ShouldHaveSingleItem().ShouldBe(document.Candidates.Single());
+        after.ETag.ShouldBe(before.ETag);
+        harness.Status.Snapshot().IncompleteScans.ShouldBe(1);
+    }
+
+    /// <summary>Unknown stored quarantine reasons are retained by digest and repaired before diagnostic emission.</summary>
+    [Fact]
+    public async Task RestoredSecretQuarantineReasonIsRepairedBeforeLogging()
+    {
+        const string secret = "secret payload and delegation token";
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        string originalDigest = actorId[4..];
+        harness.SeedItemState(actorId, new ReminderItemState(Item.Tenant, Item.Domain, Item.Aggregate, 1, [],
+            [new ReminderQuarantineRecord(originalDigest, secret, null, harness.Time.Now)]));
+        var logger = new ReminderDiagnosticLogger<ReminderCoordinator>();
+        var coordinator = new ReminderCoordinator(harness.Source, harness.CreateIndex(), harness.CoordinatorStore,
+            harness.CoordinatorStore, Options.Create(harness.Options), harness.Status, harness.Time, logger,
+            harness.Submitter, harness.Tokens);
+
+        (await coordinator.ConvergeAsync(actorId, Item, harness.SchedulerFor(actorId), CancellationToken.None)).Quarantined.ShouldBe(1);
+
+        ReminderQuarantineRecord repaired = harness.ItemState(actorId).ShouldNotBeNull().Quarantine.ShouldHaveSingleItem();
+        repaired.ReasonCode.ShouldBe("stored-quarantine-invalid");
+        repaired.EvidenceDigest.Length.ShouldBe(52);
+        repaired.EvidenceDigest.ShouldNotBe(originalDigest);
+        harness.Disposition(actorId, repaired.EvidenceDigest).ShouldNotBeNull().ReasonCode.ShouldBe("stored-quarantine-invalid");
+        harness.Candidates().ShouldHaveSingleItem();
+        harness.Submitter.Calls.ShouldBeEmpty();
+        logger.Entries.ShouldContain(entry => entry.EventId.Id == 200207
+            && Equals(entry.Fields["ReasonCode"], "stored-quarantine-invalid"));
+        logger.Entries.Select(static entry => entry.Message)
+            .Concat(logger.Entries.SelectMany(static entry => entry.Fields.Values).Select(static value => value?.ToString() ?? string.Empty))
+            .ShouldAllBe(value => !value.Contains(secret, StringComparison.Ordinal));
+    }
+
     /// <summary>A quarantined intent emits event 200207 with only its actor, evidence subject, and bounded reason.</summary>
     [Fact]
     public async Task QuarantineEmitsStructuredEvent()

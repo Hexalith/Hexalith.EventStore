@@ -17,6 +17,125 @@ public sealed class ReminderCoordinatorTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>Slow submission, audit, and cancellation failures start backoff when the failure is settled.</summary>
+    [Theory]
+    [InlineData(false, "submission")]
+    [InlineData(true, "submission")]
+    [InlineData(false, "audit")]
+    [InlineData(true, "audit")]
+    [InlineData(false, "cancellation")]
+    [InlineData(true, "cancellation")]
+    public async Task SlowFailureStartsBackoffAtSettlement(bool callback, string failure)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        FakeReminderScheduler scheduler = harness.SchedulerFor(actorId);
+        if (failure == "submission")
+        {
+            harness.Submitter.FailuresRemaining = 1;
+            harness.Submitter.OnSubmit = () => harness.Time.Advance(TimeSpan.FromSeconds(40));
+        }
+        else if (failure == "audit")
+        {
+            harness.CoordinatorStore.FailDispositionWrites = true;
+            harness.CoordinatorStore.BeforeSave = _ => harness.Time.Advance(TimeSpan.FromSeconds(40));
+        }
+        else
+        {
+            scheduler.CancelFailure = new InvalidOperationException("Synthetic slow cancellation failure.");
+            scheduler.OnCancel = () => harness.Time.Advance(TimeSpan.FromSeconds(40));
+        }
+
+        if (callback)
+        {
+            (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Retrying);
+        }
+        else
+        {
+            (await harness.CreateRegistrar().ConvergeAsync(Item)).Unresolved.ShouldBe(1);
+        }
+
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retained.UpdatedAt.ShouldBe(harness.Time.Now);
+        scheduler.Armed[name].DueTime.ShouldBe(harness.Options.RetryInitialDelay);
+        harness.Candidates().ShouldHaveSingleItem();
+        harness.Submitter.OnSubmit = null;
+        harness.CoordinatorStore.BeforeSave = null;
+        harness.CoordinatorStore.FailDispositionWrites = false;
+        scheduler.OnCancel = null;
+        scheduler.CancelFailure = null;
+
+        (await harness.CreateRegistrar().ConvergeAsync(Item)).Submitted.ShouldBe(0);
+        (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Retrying);
+        harness.Submitter.Calls.ShouldHaveSingleItem();
+        harness.Time.Advance(harness.Options.RetryInitialDelay);
+        (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Submitted);
+        harness.Submitter.Calls.Count.ShouldBe(2);
+        harness.Submitter.Receipts.ShouldHaveSingleItem();
+        harness.ItemState(actorId).ShouldBeNull();
+    }
+
+    /// <summary>A lost future reminder is armed from the clock after lookup, including a crossed deadline.</summary>
+    [Theory]
+    [InlineData(30, 90)]
+    [InlineData(180, 0)]
+    public async Task SlowFutureLookupUsesRemainingDelay(int lookupSeconds, int expectedSeconds)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddMinutes(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        FakeReminderScheduler scheduler = harness.SchedulerFor(actorId);
+        scheduler.Lose(name);
+        scheduler.OnLookup = () => harness.Time.Advance(TimeSpan.FromSeconds(lookupSeconds));
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(1);
+        result.Submitted.ShouldBe(0);
+        scheduler.Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(expectedSeconds));
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
+        harness.Candidates().ShouldHaveSingleItem();
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
+    /// <summary>Repairing a lost backoff reminder accounts for lookup latency and clamps an elapsed delay to zero.</summary>
+    [Theory]
+    [InlineData(10, 10)]
+    [InlineData(30, 0)]
+    public async Task SlowRetryLookupUsesRemainingDelay(int lookupSeconds, int expectedSeconds)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now);
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.Submitter.FailuresRemaining = 1;
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        harness.Time.Advance(TimeSpan.FromSeconds(10));
+        FakeReminderScheduler scheduler = harness.SchedulerFor(actorId);
+        scheduler.Lose(name);
+        scheduler.OnLookup = () => harness.Time.Advance(TimeSpan.FromSeconds(lookupSeconds));
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(1);
+        result.Submitted.ShouldBe(0);
+        scheduler.Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(expectedSeconds));
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().ShouldBe(retained);
+        harness.Candidates().ShouldHaveSingleItem();
+        harness.Submitter.Calls.ShouldHaveSingleItem();
+    }
+
     /// <summary>A non-canonical domain is rejected before reading or mutating any durable state.</summary>
     [Fact]
     public async Task NonCanonicalTargetDomainIsRejected()

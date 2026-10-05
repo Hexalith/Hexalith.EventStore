@@ -13,7 +13,8 @@ public sealed partial class EventStoreReminderOptions
     public const string SectionName = "EventStore:Reminders";
 
     /// <summary>
-    /// The longest delay <see cref="Task.Delay(TimeSpan)"/> and the reminder timers accept, in milliseconds.
+    /// The longest hosted delay <see cref="Task.Delay(TimeSpan)"/> accepts, in milliseconds. The shared option
+    /// ceiling also bounds retries; Dapr actor reminder due times support a longer range.
     /// </summary>
     private const double MaxDelayMilliseconds = uint.MaxValue - 1d;
 

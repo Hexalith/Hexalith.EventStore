@@ -24,6 +24,42 @@ public sealed class ReminderCallbackAdmissionTests
     private const string ReminderRoute = "/actors/EventStoreReminderActor/wra-X/method/remind/date-wrs-X";
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>Malformed siblings are durably captured before a valid callback can empty the authoritative source.</summary>
+    [Fact]
+    public async Task ValidCallbackRetainsMalformedSiblingAfterSourceIsEmptied()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderIntent malformed = intent with { Kind = "unsupported-sibling", SourceSequence = 4 };
+        harness.Source.Set(Item, intent, malformed);
+        harness.Submitter.OnSubmit = () =>
+        {
+            ReminderQuarantineRecord beforeSubmission = harness.ItemState(actorId).ShouldNotBeNull().Quarantine.ShouldHaveSingleItem();
+            beforeSubmission.ReasonCode.ShouldBe("kind-unsupported");
+            harness.Disposition(actorId, beforeSubmission.EvidenceDigest).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Quarantined);
+            harness.Source.Set(Item);
+        };
+        harness.Time.Advance(TimeSpan.FromHours(1));
+
+        (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Submitted);
+
+        ReminderItemState retained = harness.ItemState(actorId).ShouldNotBeNull();
+        retained.Entries.ShouldBeEmpty();
+        ReminderQuarantineRecord evidence = retained.Quarantine.ShouldHaveSingleItem();
+        evidence.ReasonCode.ShouldBe("kind-unsupported");
+        evidence.EvidenceDigest.Length.ShouldBe(52);
+        evidence.ReminderName.ShouldBeNull();
+        harness.Disposition(actorId, evidence.EvidenceDigest).ShouldNotBeNull().ReasonCode.ShouldBe("kind-unsupported");
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Submitter.Receipts.ShouldHaveSingleItem();
+        harness.Status.Snapshot().Quarantined.ShouldBe(1);
+    }
+
     /// <summary>Malformed actor identifiers are refused before store access, including an alias of an audit key.</summary>
     [Theory]
     [InlineData("audit-key")]

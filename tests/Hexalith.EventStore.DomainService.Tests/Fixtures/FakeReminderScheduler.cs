@@ -21,6 +21,12 @@ internal sealed class FakeReminderScheduler : IReminderScheduler
     /// <summary>Gets or sets a probe invoked before each accepted arm call.</summary>
     public Action<string>? OnArm { get; set; }
 
+    /// <summary>Gets or sets a probe invoked before each reminder lookup.</summary>
+    public Action? OnLookup { get; set; }
+
+    /// <summary>Gets or sets a probe invoked before each cancellation.</summary>
+    public Action? OnCancel { get; set; }
+
     /// <summary>Gets the number of accepted arm calls.</summary>
     public int ArmCalls { get; private set; }
 
@@ -40,13 +46,17 @@ internal sealed class FakeReminderScheduler : IReminderScheduler
 
     /// <inheritdoc/>
     public Task<bool> IsArmedAsync(string reminderName, CancellationToken cancellationToken)
-        => LookupFailure is not null
+    {
+        OnLookup?.Invoke();
+        return LookupFailure is not null
             ? throw LookupFailure
             : Task.FromResult(Armed.ContainsKey(reminderName));
+    }
 
     /// <inheritdoc/>
     public Task CancelAsync(string reminderName, CancellationToken cancellationToken)
     {
+        OnCancel?.Invoke();
         if (CancelFailure is not null)
         {
             throw CancelFailure;

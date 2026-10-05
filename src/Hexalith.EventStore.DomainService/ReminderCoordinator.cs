@@ -522,7 +522,11 @@ internal sealed class ReminderCoordinator
     private static bool IsValidPersistedQuarantine(ReminderQuarantineRecord? record)
         => record is not null
             && IsDigest(record.EvidenceDigest)
-            && !string.IsNullOrWhiteSpace(record.ReasonCode)
+            && record.ReasonCode is "intent-missing" or "target-mismatch" or "kind-unsupported" or "due-not-utc"
+                or "revision-invalid" or "source-sequence-invalid" or "payload-invalid" or "identity-invalid"
+                or "witness-collision" or "effect-collision" or "actor-collision" or "translation-failed"
+                or "translation-invalid" or "effect-identity-invalid" or "domain-invalid" or "tuple-mismatch"
+                or "stored-entry-invalid" or "stored-entry-duplicate" or "stored-quarantine-invalid"
             && record.RecordedAt.Offset == TimeSpan.Zero
             && (record.ReminderName is null || ReminderIdentityCodec.TryParseReminderName(record.ReminderName, out _, out _));
 
@@ -744,7 +748,7 @@ internal sealed class ReminderCoordinator
                     Status = ReminderEntryStatus.Retrying,
                     Attempts = entry.Attempts + 1,
                     LastReasonCode = reasonCode,
-                    UpdatedAt = now,
+                    UpdatedAt = _time.GetUtcNow(),
                 };
             }
         }
@@ -769,7 +773,7 @@ internal sealed class ReminderCoordinator
                     Status = ReminderEntryStatus.Retrying,
                     Attempts = original.Attempts + 1,
                     LastReasonCode = "audit-unavailable",
-                    UpdatedAt = now,
+                    UpdatedAt = _time.GetUtcNow(),
                 };
             }
         }
@@ -837,7 +841,12 @@ internal sealed class ReminderCoordinator
                     // reminder the Scheduler lost so the work is not stranded until a later full pass.
                     if (!await IsHeldAsync(scheduler, actorId, entry.ReminderName, cancellationToken).ConfigureAwait(false))
                     {
-                        TimeSpan retryDue = entry.UpdatedAt + Backoff(entry.Attempts) - operationNow;
+                        TimeSpan retryDue = entry.UpdatedAt + Backoff(entry.Attempts) - _time.GetUtcNow();
+                        if (retryDue < TimeSpan.Zero)
+                        {
+                            retryDue = TimeSpan.Zero;
+                        }
+
                         try
                         {
                             await scheduler.ArmAsync(entry.ReminderName, retryDue, _options.RetryMaxDelay, cancellationToken)
@@ -878,9 +887,11 @@ internal sealed class ReminderCoordinator
                 continue;
             }
 
+            operationNow = _time.GetUtcNow();
+            TimeSpan futureDue = current.Intent.DueUtc > operationNow ? current.Intent.DueUtc - operationNow : TimeSpan.Zero;
             try
             {
-                await scheduler.ArmAsync(entry.ReminderName, current.Intent.DueUtc - operationNow, _options.RetryMaxDelay, cancellationToken)
+                await scheduler.ArmAsync(entry.ReminderName, futureDue, _options.RetryMaxDelay, cancellationToken)
                     .ConfigureAwait(false);
                 armed++;
                 ReminderLog.Armed(_logger, actorId, entry.ReminderName);
@@ -905,7 +916,7 @@ internal sealed class ReminderCoordinator
                             Status = ReminderEntryStatus.Pending,
                             Attempts = entry.Attempts + 1,
                             LastReasonCode = "audit-unavailable",
-                            UpdatedAt = operationNow,
+                            UpdatedAt = _time.GetUtcNow(),
                         };
                 }
             }
@@ -920,7 +931,7 @@ internal sealed class ReminderCoordinator
                 if (entry.Status != ReminderEntryStatus.Pending
                     || !string.Equals(entry.LastReasonCode, "arm-failed", StringComparison.Ordinal))
                 {
-                    settledEntries[entry.ReminderName] = entry with { Status = ReminderEntryStatus.Pending, LastReasonCode = "arm-failed", UpdatedAt = operationNow };
+                    settledEntries[entry.ReminderName] = entry with { Status = ReminderEntryStatus.Pending, LastReasonCode = "arm-failed", UpdatedAt = _time.GetUtcNow() };
                 }
             }
         }
@@ -1097,7 +1108,44 @@ internal sealed class ReminderCoordinator
                 .ConfigureAwait(false);
         }
 
-        List<ReminderIntent> valid = [.. current.Where(intent => ValidateIntent(intent, target) is null)];
+        var valid = new List<ReminderIntent>();
+        var quarantine = new List<ReminderQuarantineRecord>(state.Quarantine);
+        var malformed = new List<ReminderQuarantineRecord>();
+        foreach (ReminderIntent? intent in current)
+        {
+            string? reason = ValidateIntent(intent, target);
+            if (reason is null)
+            {
+                valid.Add(intent!);
+                continue;
+            }
+
+            string digest = EvidenceDigest(intent);
+            _ = AddQuarantine(quarantine, digest, reason, null, _time.GetUtcNow());
+            malformed.Add(quarantine.First(record => string.Equals(record.EvidenceDigest, digest, StringComparison.Ordinal)));
+        }
+
+        // Capture every observed malformed sibling before a valid effect can change the source or release
+        // its witness. As in convergence, quarantine capture survives an audit outage; CAS failure prevents submission.
+        if (malformed.Count > 0)
+        {
+            await _index.EnsureCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
+            if (quarantine.Count != state.Quarantine.Count)
+            {
+                (ReminderItemState? captured, string? capturedETag) = await PersistAsync(
+                    key, WithEntries(state, state.Entries, quarantine), etag, cancellationToken).ConfigureAwait(false);
+                state = captured!;
+                etag = capturedETag;
+            }
+
+            foreach (ReminderQuarantineRecord record in malformed)
+            {
+                ReminderLog.Quarantined(_logger, actorId, record.EvidenceDigest, record.ReasonCode);
+                _ = await TryWriteDispositionAsync(state, actorId, record.EvidenceDigest, ReminderDisposition.Quarantined,
+                    record.ReasonCode, null, null, 0, _time.GetUtcNow(), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         List<ReminderIntent> matches = [.. valid.Where(intent => string.Equals(
             ReminderIdentityCodec.ComputeReminderName(intent), reminderName, StringComparison.Ordinal))];
 
@@ -1126,7 +1174,7 @@ internal sealed class ReminderCoordinator
                 .ConfigureAwait(false);
         }
 
-        if (entry.Status == ReminderEntryStatus.Retrying && entry.UpdatedAt + Backoff(entry.Attempts) > now)
+        if (entry.Status == ReminderEntryStatus.Retrying && entry.UpdatedAt + Backoff(entry.Attempts) > _time.GetUtcNow())
         {
             _status.RecordItem(actorId, CountUnresolved(state), CountQuarantined(state));
             return ReminderDisposition.Retrying;
@@ -1165,7 +1213,7 @@ internal sealed class ReminderCoordinator
                         Status = ReminderEntryStatus.Retrying,
                         Attempts = candidate.Attempts + 1,
                         LastReasonCode = "audit-unavailable",
-                        UpdatedAt = now,
+                        UpdatedAt = _time.GetUtcNow(),
                     }
                     : candidate),
                 state.Quarantine);
@@ -1204,7 +1252,7 @@ internal sealed class ReminderCoordinator
                         Status = ReminderEntryStatus.Retrying,
                         Attempts = candidate.Attempts + 1,
                         LastReasonCode = "cancel-failed",
-                        UpdatedAt = now,
+                        UpdatedAt = _time.GetUtcNow(),
                     }
                     : candidate),
                 held.Quarantine);
@@ -1281,6 +1329,7 @@ internal sealed class ReminderCoordinator
         List<(string Name, TimeSpan DueTime)> toRearm,
         CancellationToken cancellationToken)
     {
+        now = _time.GetUtcNow();
         switch (outcome.Disposition)
         {
             case ReminderDisposition.Submitted:
@@ -1302,10 +1351,10 @@ internal sealed class ReminderCoordinator
                         return (null, ReminderDisposition.Submitted);
                     }
 
-                    return Retry(entry, "cancel-failed", now, toRearm, actorId);
+                    return Retry(entry, "cancel-failed", toRearm, actorId);
                 }
 
-                return Retry(entry, "audit-unavailable", now, toRearm, actorId);
+                return Retry(entry, "audit-unavailable", toRearm, actorId);
 
             case ReminderDisposition.Quarantined:
                 if (await TryWriteDispositionAsync(state, actorId, entry.ReminderName, ReminderDisposition.Quarantined, outcome.ReasonCode, outcome.EffectId, null, entry.Attempts, now, cancellationToken)
@@ -1316,7 +1365,7 @@ internal sealed class ReminderCoordinator
                     return (Quarantine(entry, outcome.ReasonCode, now), ReminderDisposition.Quarantined);
                 }
 
-                return Retry(entry, "audit-unavailable", now, toRearm, actorId);
+                return Retry(entry, "audit-unavailable", toRearm, actorId);
 
             default:
                 int attempts = entry.Attempts + 1;
@@ -1327,7 +1376,7 @@ internal sealed class ReminderCoordinator
                     ReminderLog.Denied(_logger, actorId, entry.ReminderName, outcome.ReasonCode);
                 }
 
-                (ReminderEntry? retried, _) = Retry(entry, outcome.ReasonCode, now, toRearm, actorId);
+                (ReminderEntry? retried, _) = Retry(entry, outcome.ReasonCode, toRearm, actorId);
                 return (retried, outcome.Disposition);
         }
     }
@@ -1335,10 +1384,10 @@ internal sealed class ReminderCoordinator
     private (ReminderEntry? Entry, ReminderDisposition Applied) Retry(
         ReminderEntry entry,
         string reasonCode,
-        DateTimeOffset now,
         List<(string Name, TimeSpan DueTime)> toRearm,
         string actorId)
     {
+        DateTimeOffset now = _time.GetUtcNow();
         int attempts = entry.Attempts + 1;
         ReminderLog.Retrying(_logger, actorId, entry.ReminderName, reasonCode, attempts);
         toRearm.Add((entry.ReminderName, Backoff(attempts)));

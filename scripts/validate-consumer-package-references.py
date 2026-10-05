@@ -211,7 +211,7 @@ def write_consumer_project(
             string? reminderToken = await reminderTokens.GetDelegationTokenAsync(new ReminderDelegationRequest(
                 new TrustedEffectSubmission(syntheticIdentity, reminderCommand.CommandType, reminderCommand.Payload,
                     syntheticMessage, syntheticMessage),
-                "synthetic-worker", "synthetic-date-resume", ReminderIdentityCodec.ComputeReminderName(reminderIntents[0])));
+                "synthetic-worker", "synthetic-date-resume", syntheticMessage));
             if (reminderIntents.Count != 1 || reminderCommand.CommandType != "ResumeWidget"
                 || reminderToken != "synthetic-delegation" || typeof(IReminderRegistrar).GetMethod("ConvergeAsync") is null)
                 throw new InvalidOperationException("Typed reminder SDK API changed.");
@@ -231,7 +231,10 @@ def write_consumer_project(
             sealed class SyntheticReminderTokens : IReminderDelegationTokenProvider {
                 public Task<string?> GetDelegationTokenAsync(ReminderDelegationRequest request,
                     CancellationToken cancellationToken = default)
-                    => Task.FromResult<string?>(request.Purpose == "synthetic-date-resume" ? "synthetic-delegation" : null);
+                    => Task.FromResult<string?>(request.Purpose == "synthetic-date-resume"
+                        && request.CausationId == request.Submission.MessageId
+                        && request.CausationId == "wrk-" + EffectIdentityCodec.ComputeEffectId(request.Submission.Identity)
+                        ? "synthetic-delegation" : null);
             }
 
             sealed class SyntheticEffectHandler : HttpMessageHandler {

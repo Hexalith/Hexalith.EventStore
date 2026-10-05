@@ -86,6 +86,7 @@ internal sealed class ReminderReconciler(
             foreach (ReminderCandidate? candidate in tenantCandidates)
             {
                 candidates++;
+                string loggedActorId = "candidate-invalid";
                 try
                 {
                     if (candidate is null)
@@ -96,9 +97,10 @@ internal sealed class ReminderReconciler(
                     }
 
                     var target = new ReminderTarget(tenant, candidate.Domain, candidate.Aggregate);
-                    if (!string.Equals(ReminderCoordinator.ComputeActorId(target), candidate.ActorId, StringComparison.Ordinal))
+                    loggedActorId = ReminderCoordinator.ComputeActorId(target);
+                    if (!string.Equals(loggedActorId, candidate.ActorId, StringComparison.Ordinal))
                     {
-                        ReminderLog.CandidateFailed(_logger, candidate.ActorId, "actor-id-mismatch", string.Empty);
+                        ReminderLog.CandidateFailed(_logger, loggedActorId, "actor-id-mismatch", string.Empty);
                         incomplete++;
                         continue;
                     }
@@ -115,7 +117,7 @@ internal sealed class ReminderReconciler(
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
-                    ReminderLog.CandidateFailed(_logger, candidate?.ActorId ?? "candidate-missing", FailureReason(exception), exception.GetType().Name);
+                    ReminderLog.CandidateFailed(_logger, loggedActorId, FailureReason(exception), exception.GetType().Name);
                     incomplete++;
                 }
             }

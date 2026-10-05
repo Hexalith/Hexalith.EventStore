@@ -33,6 +33,9 @@ internal sealed class FakeTrustedEffectSubmitter : ITrustedEffectSubmitter
     /// <summary>Gets or sets an override applied to every returned receipt, such as a mismatched effect identifier.</summary>
     public Func<TrustedEffectResult, TrustedEffectResult?>? ReceiptOverride { get; set; }
 
+    /// <summary>Gets or sets a probe invoked when a submission reaches the synthetic authority.</summary>
+    public Action? OnSubmit { get; set; }
+
     /// <inheritdoc/>
     public Task<TrustedEffectResult> SubmitAsync(
         TrustedEffectSubmission submission,
@@ -40,6 +43,7 @@ internal sealed class FakeTrustedEffectSubmitter : ITrustedEffectSubmitter
         CancellationToken cancellationToken = default)
     {
         Calls.Add((submission, context));
+        OnSubmit?.Invoke();
         string effectId = EffectIdentityCodec.ComputeEffectId(submission.Identity);
         if (submission.MessageId != "wrk-" + effectId || submission.IdempotencyKey != submission.MessageId)
         {
