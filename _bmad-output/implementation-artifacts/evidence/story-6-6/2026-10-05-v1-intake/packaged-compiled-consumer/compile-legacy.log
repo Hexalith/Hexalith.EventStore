@@ -1,0 +1,12 @@
+["dotnet", "build", "/tmp/story-6-6-intake-compiled-package/fixture/LegacyConsumer/LegacyConsumer.csproj", "--configuration", "Release", "-m:1", "--nologo"]
+  Determining projects to restore...
+  Restored /tmp/story-6-6-intake-compiled-package/fixture/LegacyServer/LegacyServer.csproj (in 100 ms).
+  Restored /tmp/story-6-6-intake-compiled-package/fixture/LegacyConsumer/LegacyConsumer.csproj (in 106 ms).
+  LegacyServer -> /tmp/story-6-6-intake-compiled-package/fixture/LegacyServer/bin/Release/net10.0/Hexalith.EventStore.Server.dll
+  LegacyConsumer -> /tmp/story-6-6-intake-compiled-package/fixture/LegacyConsumer/bin/Release/net10.0/LegacyConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.16

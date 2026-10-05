@@ -20,10 +20,7 @@ internal sealed class BoundedV1WireResultResponse(DomainServiceWireResult result
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(result);
-        if (result.Events.Count > 1000 || result.WriterMode is not null || result.RegistryFingerprint is not null)
-        {
-            throw new InvalidOperationException("CapabilityMismatch: this renderer supports only the selected implicit V1 result.");
-        }
+        result = BoundedV1WireResultAdmission.Admit(result, cancellationToken);
 
         using var output = new BoundedV1WireWindowWriter(target, cancellationToken);
         await output.RawAsync("{\"isRejection\":"u8.ToArray()).ConfigureAwait(false);
@@ -32,11 +29,6 @@ internal sealed class BoundedV1WireResultResponse(DomainServiceWireResult result
         for (int i = 0; i < result.Events.Count; i++)
         {
             DomainServiceWireEvent item = result.Events[i];
-            if (item.MetadataVersion is not null || item.EventContractType is not null || item.PayloadVersion is not null)
-            {
-                throw new InvalidOperationException("CapabilityMismatch: unsolicited V2 metadata cannot enter the V1 renderer.");
-            }
-
             if (i > 0) { await output.RawAsync(","u8.ToArray()).ConfigureAwait(false); }
             await output.RawAsync("{\"eventTypeName\":"u8.ToArray()).ConfigureAwait(false);
             await output.StringAsync(item.EventTypeName).ConfigureAwait(false);

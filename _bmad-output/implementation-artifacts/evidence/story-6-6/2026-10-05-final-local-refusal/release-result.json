@@ -1,0 +1,15 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "Hexalith.EventStore.slnx",
+    "--configuration",
+    "Release",
+    "-m:1",
+    "-warnaserror",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "timeout_seconds": 240,
+  "exit_code": 0,
+  "log": "release-build.log"
+}

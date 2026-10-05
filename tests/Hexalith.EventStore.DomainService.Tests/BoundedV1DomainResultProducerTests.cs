@@ -5,6 +5,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
+/// <summary>Checks once-only bounded V1 production and complete response admission before output.</summary>
 public sealed class BoundedV1DomainResultProducerTests
 {
     [Fact]
@@ -136,6 +137,49 @@ public sealed class BoundedV1DomainResultProducerTests
         await Should.ThrowAsync<InvalidOperationException>(() => BoundedV1WireResultResponse.WriteAsync(output,
             new DomainServiceWireResult(false, []) { WriterMode = "V2" }, CancellationToken.None));
         output.Length.ShouldBe(0);
+    }
+
+    /// <summary>Checks invalid later metadata and Unicode fail before an earlier event can flush response bytes.</summary>
+    [Fact]
+    public async Task WireRendererRefusesInvalidLaterEventBeforeAnyResponseBytes()
+    {
+        var first = new DomainServiceWireEvent("legacy", new byte[100_000]);
+        DomainServiceWireEvent[] invalidLater = [first, new("versioned", [1]) { MetadataVersion = 2 }];
+        using var output = new MemoryStream();
+        await Should.ThrowAsync<InvalidOperationException>(() => BoundedV1WireResultResponse.WriteAsync(
+            output, new DomainServiceWireResult(false, invalidLater), CancellationToken.None));
+        output.Length.ShouldBe(0);
+
+        await Should.ThrowAsync<ArgumentException>(() => BoundedV1WireResultResponse.WriteAsync(
+            output, new DomainServiceWireResult(false, [first, new("\ud800", [1])]), CancellationToken.None));
+        output.Length.ShouldBe(0);
+    }
+
+    /// <summary>Checks complete encoded and escaped metadata limits are admitted before output.</summary>
+    [Fact]
+    public async Task WireRendererPreflightsCompleteEncodedAndEscapedMetadataBudgets()
+    {
+        byte[] sharedPayload = new byte[50 * 1024 * 1024];
+        using var output = new MemoryStream();
+        (await Should.ThrowAsync<InvalidOperationException>(() => BoundedV1WireResultResponse.WriteAsync(
+            output, new DomainServiceWireResult(false, [new("a", sharedPayload), new("b", sharedPayload)]),
+            CancellationToken.None))).Message.ShouldContain("ResultLimit");
+        output.Length.ShouldBe(0);
+        (await Should.ThrowAsync<InvalidOperationException>(() => BoundedV1WireResultResponse.WriteAsync(
+            output, new DomainServiceWireResult(false, [new(new string('\u0001', 90_000), [1])]),
+            CancellationToken.None))).Message.ShouldContain("MetadataLimit");
+        output.Length.ShouldBe(0);
+    }
+
+    /// <summary>Checks one caller-owned count observation drives admission, snapshot allocation and rendering.</summary>
+    [Fact]
+    public async Task WireRendererCapturesCollectionCountOnceBeforeAdmission()
+    {
+        var changing = new ChangingCountWireEvents(new("legacy", [1]));
+        using var output = new MemoryStream();
+        await BoundedV1WireResultResponse.WriteAsync(output, new DomainServiceWireResult(false, changing), CancellationToken.None);
+        changing.CountReads.ShouldBe(1);
+        output.Length.ShouldBeGreaterThan(0);
     }
 
     private static BoundedV1DomainResultProducer Producer(int maximum, Func<IEventPayload, Stream, CancellationToken, Task> serialize)

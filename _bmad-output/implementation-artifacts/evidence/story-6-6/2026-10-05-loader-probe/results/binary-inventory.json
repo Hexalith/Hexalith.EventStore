@@ -1,0 +1,72 @@
+[
+  {
+    "path": "results/binaries/Probe.Host.deps.json",
+    "sha256": "94594db14eb61c259eea064fba082d67e4ffe84a35b2e750db1be01694c537b6",
+    "bytes": 402
+  },
+  {
+    "path": "results/binaries/Probe.Host.dll",
+    "sha256": "fab8d6739c8c16921c7aa48a2b7707531a156c34a99bb30019d8f46de81e8e07",
+    "bytes": 23552
+  },
+  {
+    "path": "results/binaries/Probe.Host.pdb",
+    "sha256": "4fed6764b76bdda0e340fa1409c90b8eeff7abf795910da08d49ce501ce636b8",
+    "bytes": 13304
+  },
+  {
+    "path": "results/binaries/Probe.Host.runtimeconfig.json",
+    "sha256": "9950d4583cfc9a106857c0d5b8a75b53e8774852b57b80bc3823a74d44a4d87f",
+    "bytes": 330
+  },
+  {
+    "path": "results/binaries/Probe.Declared.dll",
+    "sha256": "821275197f474a1349acbb1aea419d70601f7e47d9e085297203d6ba007a9d73",
+    "bytes": 4096
+  },
+  {
+    "path": "results/binaries/Probe.Declared.pdb",
+    "sha256": "305838adf18c43b55680eb883073b6613bb833c9b772ce23024337eab785ed7a",
+    "bytes": 10844
+  },
+  {
+    "path": "results/binaries/Probe.Plugin.deps.json",
+    "sha256": "4c63c715a763c862d673e198620ebf8fd7016ae522cc7a1f2cd93d3dfcdcd96e",
+    "bytes": 1126
+  },
+  {
+    "path": "results/binaries/Probe.Plugin.dll",
+    "sha256": "7a0afbd308482ed7899f54c1bb0d451027cf8b30c2c0e43ecff54e32aedce354",
+    "bytes": 6656
+  },
+  {
+    "path": "results/binaries/Probe.Plugin.pdb",
+    "sha256": "c54e9b01e2741108b2f17f10f0d3a9fa432eaeaa5551af51e604272ef43289f4",
+    "bytes": 11248
+  },
+  {
+    "path": "results/binaries/Probe.Declared.deps.json",
+    "sha256": "031094bfc1216c5834133810190b6b4adf443e1137a57fce2df74712214e3c04",
+    "bytes": 414
+  },
+  {
+    "path": "results/binaries/Probe.Undeclared.deps.json",
+    "sha256": "0beaaba4d06945b33ec0354e9b1af53d6d69453f2d79ec051c50ddd0963dcfb1",
+    "bytes": 420
+  },
+  {
+    "path": "results/binaries/Probe.Undeclared.dll",
+    "sha256": "cd8ef42b20a4906726ac7e3e5f54c7cad779782629a6d5dd813807713b4719d1",
+    "bytes": 4096
+  },
+  {
+    "path": "results/binaries/Probe.Undeclared.pdb",
+    "sha256": "308731a5efc88c90df879a518a8cba830dee72ba4a017fb689e25e5aa2e9481e",
+    "bytes": 10856
+  },
+  {
+    "path": "results/binaries/libprobe_unmanifested.so",
+    "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3",
+    "bytes": 15784
+  }
+]

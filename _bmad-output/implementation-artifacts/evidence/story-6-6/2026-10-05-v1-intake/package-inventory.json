@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg",
+    "sha256": "6105fa57c4186b3ee7da642e1efb4ae7caad14e16d11dd6eab03147a93533f36"
+  },
+  {
+    "name": "Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg",
+    "sha256": "181f9d54ac2b620a3cc50a087c61fba8b407c20b18ce84ad4539402120d17737"
+  },
+  {
+    "name": "Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg",
+    "sha256": "38e055b4e3e6a5e839508a022f81d4544d35f8a4e1cfaf0ca122ac86b3812442"
+  },
+  {
+    "name": "Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg",
+    "sha256": "9e915d2aa4f05803e429e947e20bef84c9979834c128afd37fe70815e4d4aa09"
+  },
+  {
+    "name": "Hexalith.EventStore.Client.999.0.0-ci-test.nupkg",
+    "sha256": "b606bff4646f1f110aaf3f194c2e28d56475a0b370ae1d62057b948fb14d4249"
+  },
+  {
+    "name": "Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg",
+    "sha256": "e356bef647b5563f06696dee2156e5c18fae0baa0dd4d0a25e67c145f7d814f3"
+  },
+  {
+    "name": "Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg",
+    "sha256": "d84644a63b1fd2e43b9a8f1e35323b83ac727742027555f28ce1de5a7aa0f4c2"
+  },
+  {
+    "name": "Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg",
+    "sha256": "8b39802dc532e79ec2e8846b92916ed91a3a97f2299420ee5091ea22636f9aed"
+  },
+  {
+    "name": "Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg",
+    "sha256": "9dc10d5b47d01f774ee1531a607cd65c07ca2513d38ca2a5627440d049f67008"
+  },
+  {
+    "name": "Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
+    "sha256": "3ba920221f2841bba536b84d9e74d1e12a10f28946d1de22099f3a6c6c848d57"
+  },
+  {
+    "name": "Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg",
+    "sha256": "37476ca6dee379cd13e66e0c996cf83c9d00e2bab35bbc9637093c0a02c20aaa"
+  },
+  {
+    "name": "Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg",
+    "sha256": "319824c15598ae085eba22541329987aac36388fd7b10fe16a5821e45733fd81"
+  },
+  {
+    "name": "Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg",
+    "sha256": "ec74665f0640f3e1af28e94f985622df1d3ecf78bd0887ce5bb1ee3820ae8d4c"
+  },
+  {
+    "name": "Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg",
+    "sha256": "25ba6076f672ed0d0076eb9fd9152d4cd816be2d38039cffadd56edc4b44693f"
+  }
+]

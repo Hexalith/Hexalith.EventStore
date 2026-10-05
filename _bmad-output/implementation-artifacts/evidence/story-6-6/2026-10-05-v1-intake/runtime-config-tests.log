@@ -1,0 +1,8 @@
+["dotnet", "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll", "-class", "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.DaprTestRuntimeConfigurationTests"]
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = 'c929bbbfdb9fb5c64afc6af44b98c3d339daa5307c96509b5cfdc4895a2fb300')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 5, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.123s

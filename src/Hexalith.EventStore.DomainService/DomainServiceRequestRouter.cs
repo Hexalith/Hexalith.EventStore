@@ -169,6 +169,11 @@ public static class DomainServiceRequestRouter {
             throw new InvalidOperationException("ReplayRestartRequired: legacy replay cannot consume a paged context.");
         }
 
+        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request);
+        if (refusal is not null) {
+            return refusal;
+        }
+
         IDomainProcessor? processor = serviceProvider.GetKeyedService<IDomainProcessor>(request.Domain);
         if (processor is null) {
             return AggregateReconstructionResult.Failed(
@@ -213,6 +218,11 @@ public static class DomainServiceRequestRouter {
                 "ReplayRestartRequired: this route has no authenticated paged source or private state session.");
         }
 
+        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request);
+        if (refusal is not null) {
+            return refusal;
+        }
+
         IAsyncAggregateReplay[] asyncRoutes = serviceProvider
             .GetKeyedServices<IAsyncAggregateReplay>(request.Domain)
             .Where(route => route.CanReplayAggregateType(request.AggregateType))
@@ -239,5 +249,19 @@ public static class DomainServiceRequestRouter {
         AggregateReconstructionResult legacyResult = Replay(serviceProvider, request);
         cancellationToken.ThrowIfCancellationRequested();
         return legacyResult;
+    }
+
+    private static AggregateReconstructionResult? RefuseVersionedReplay(AggregateReconstructionRequest request) {
+        ReplayEventEnvelope? versioned = request.Events.FirstOrDefault(item => item.SequenceNumber <= request.UpToSequence
+            && (item.MetadataVersion != 1 || item.StoredEventContractType is not null || item.StoredPayloadVersion is not null
+                || item.StoredSerializationFormat is not null || item.StoredEventTypeName is not null
+                || item.StoredDigest is not null || item.RegistryFingerprint is not null || item.IsAdapted is not null
+                || item.EffectiveEventContractType is not null || item.EffectivePayloadVersion is not null
+                || item.EffectiveSerializationFormat is not null || item.EffectivePayload is not null));
+        return versioned is null ? null : AggregateReconstructionResult.Failed(
+            AggregateReconstructionErrorCategory.UnsupportedVersion,
+            "RollbackReaderCapabilityHold: this replay route cannot verify versioned effective input.",
+            failedSequenceNumber: versioned.SequenceNumber,
+            failedEventType: versioned.EventTypeName);
     }
 }

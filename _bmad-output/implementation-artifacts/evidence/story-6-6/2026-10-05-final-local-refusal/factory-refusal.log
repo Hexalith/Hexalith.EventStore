@@ -1,0 +1,1 @@
+{"check": "application-storage-boundary", "detail": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs: application database access is forbidden", "result": "failed"}

@@ -71,10 +71,10 @@ internal sealed class EventLogicalViewResolver
         {
             before = SHA256.HashData(originalApplicationPayload.Span);
             sourceBytes = originalApplicationPayload.ToArray();
-            using var source = new ImmutablePayload(sourceBytes, sourceBytes.Length, cancellationToken, reservation);
+            var source = new ImmutablePayload(sourceBytes, sourceBytes.Length, cancellationToken, reservation);
             sourceOwnsReservation = true;
             sourceBytes = null;
-            ImmutablePayload effective = await _executor.UpcastAsync(
+            ImmutablePayload effective = await _executor.UpcastOwnedAsync(
                 canonicalType, sourceVersion, source, budget, cancellationToken).ConfigureAwait(false);
             try
             {

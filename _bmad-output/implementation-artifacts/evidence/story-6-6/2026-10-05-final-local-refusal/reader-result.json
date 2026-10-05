@@ -1,0 +1,11 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Events.DaprLogicalEventReaderTests"
+  ],
+  "timeout_seconds": 60,
+  "exit_code": 0,
+  "log": "reader-focused.log"
+}

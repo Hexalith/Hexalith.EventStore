@@ -1,0 +1,9 @@
+{
+  "result": "fixture-startup-failed",
+  "owned_temporary_directory": "/tmp/story-6-6-loader-probe-0x3vc25a",
+  "first_mode": "pinned-managed",
+  "process_exit_code": -6,
+  "reason": "host framework observation baseline invalidated before invocation; no escape path exercised",
+  "compiled_source_snapshot": "compiled-source",
+  "runner_consumed": "runner-consumed.py"
+}

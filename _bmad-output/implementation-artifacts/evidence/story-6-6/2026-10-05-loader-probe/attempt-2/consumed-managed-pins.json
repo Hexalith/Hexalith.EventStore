@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "Probe.Plugin",
+    "Path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+    "Sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+  },
+  {
+    "Name": "Probe.Declared",
+    "Path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+    "Sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+  }
+]

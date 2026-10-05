@@ -14,6 +14,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Events;
 
+/// <summary>Checks Dapr logical event admission, private ownership and fixed-prefix refusal preserve stored evidence.</summary>
 public sealed class DaprLogicalEventReaderTests
 {
     private static readonly AggregateIdentity Identity = new("tenant", "d", "aggregate");
@@ -263,6 +264,149 @@ public sealed class DaprLogicalEventReaderTests
         page.Dispose();
         budget.LiveBytes.ShouldBe(0);
         Should.Throw<ObjectDisposedException>(() => page.Events[0].Resolved.Payload.CopyTo(0, new byte[2]));
+        page.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    /// <summary>Checks measured zero-hop V1 payloads fit the composed budget and disposal preserves actor bytes.</summary>
+    [Theory]
+    [InlineData(22)]
+    [InlineData(64)]
+    public async Task NoOpZeroHopReadsMeasuredLargeV1WithoutRedundantPrivateCopies(int payloadMiB)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        byte[] original = new byte[payloadMiB * 1024 * 1024];
+        original[0] = 17;
+        original[^1] = 91;
+        EventEnvelope stored = CreateEvent() with { Payload = original };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+        var budget = new EventBufferBudget();
+        var reader = CreateReader(registry, stateManager, new NoOpEventPayloadProtectionService());
+
+        using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 1,
+            CancellationToken.None, sharedBudget: budget);
+        budget.LiveBytes.ShouldBe(original.Length);
+        page.Events[0].Resolved.Payload.Length.ShouldBe(original.Length);
+        page.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+        original[0].ShouldBe((byte)17);
+        original[^1].ShouldBe((byte)91);
+    }
+
+    /// <summary>Checks actual provider ownership replaces its conservative reservation before resolver allocation.</summary>
+    [Fact]
+    public async Task DistinctProviderOutputReleasesProvenUnusedReservationBeforeResolution()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        byte[] original = new byte[22 * 1024 * 1024];
+        original[0] = 17;
+        byte[] providerOutput = original.ToArray();
+        EventEnvelope stored = CreateEvent() with { Payload = original };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+        _ = protection.TryUnprotectEventPayloadAsync(Identity, Arg.Any<string>(), Arg.Any<byte[]>(), "json",
+            Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+            .Returns(PayloadUnprotectionOutcome.Readable(providerOutput, "json", EventStorePayloadProtectionMetadata.Unprotected()));
+        var budget = new EventBufferBudget();
+        var reader = CreateReader(registry, stateManager, protection);
+
+        using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 1,
+            CancellationToken.None, sharedBudget: budget);
+        budget.LiveBytes.ShouldBe(original.Length);
+        providerOutput.All(static value => value == 0).ShouldBeTrue();
+        original[0].ShouldBe((byte)17);
+        page.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    /// <summary>Checks fixed-field and extension metadata ceilings refuse before protection and release snapshot admission.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OversizedMetadataRefusesBeforeProviderAndReleasesSnapshotCapacity(bool oversizedExtension)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        EventEnvelope source = oversizedExtension
+            ? CreateEvent() with { Extensions = new Dictionary<string, string> { ["application-note"] = new string('x', 90_000) } }
+            : CreateEvent() with { MessageId = new string('x', 90_000) };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, source));
+        var budget = new EventBufferBudget();
+        var reader = CreateReader(registry, stateManager, protection);
+
+        (await Should.ThrowAsync<InvalidOperationException>(() => reader.ReadPageAsync(Identity, "r", 1, 1,
+            CancellationToken.None, sharedBudget: budget))).Message.ShouldContain("MetadataLimit");
+        budget.LiveBytes.ShouldBe(0);
+        protection.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Checks a partial private extension snapshot failure releases admission before any provider callback.</summary>
+    [Fact]
+    public async Task ExtensionSnapshotEnumerationFailureReleasesCapacityBeforeProviderInvocation()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var budget = new EventBufferBudget();
+        var expected = new InvalidOperationException("Injected extension snapshot failure.");
+        var extensions = new ThrowingSnapshotExtensions(budget, expected);
+        EventEnvelope source = CreateEvent() with { Extensions = extensions };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, source));
+        var reader = CreateReader(registry, stateManager, protection);
+
+        InvalidOperationException actual = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.ReadPageAsync(Identity, "r", 1, 1, CancellationToken.None, sharedBudget: budget));
+
+        actual.ShouldBeSameAs(expected);
+        extensions.EnumeratorCalls.ShouldBe(1);
+        extensions.YieldedEntries.ShouldBe(1);
+        extensions.LiveBytesAtFailure.ShouldBe(512 * 1024);
+        budget.LiveBytes.ShouldBe(0);
+        protection.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>Checks a protection callback cannot substitute extension values in the private source snapshot.</summary>
+    [Fact]
+    public async Task CallbackMutationOfCallerExtensionsCannotChangeAdmittedMetadataSnapshot()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var extensions = new Dictionary<string, string> { ["application-note"] = "original" };
+        EventEnvelope source = CreateEvent() with { Extensions = extensions };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, source));
+        _ = protection.TryUnprotectEventPayloadAsync(Identity, Arg.Any<string>(), Arg.Any<byte[]>(), "json",
+            Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            {
+                extensions["application-note"] = "mutated";
+                return PayloadUnprotectionOutcome.Readable([1, 2], "json", EventStorePayloadProtectionMetadata.Unprotected());
+            });
+        var budget = new EventBufferBudget();
+        var reader = CreateReader(registry, stateManager, protection);
+
+        using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 1,
+            CancellationToken.None, sharedBudget: budget);
+        page.Events[0].Source.Extensions!["application-note"].ShouldBe("original");
+        extensions["application-note"].ShouldBe("mutated");
+        Should.Throw<NotSupportedException>(() => page.Events[0].Source.Extensions!["application-note"] = "substituted");
         page.Dispose();
         budget.LiveBytes.ShouldBe(0);
     }

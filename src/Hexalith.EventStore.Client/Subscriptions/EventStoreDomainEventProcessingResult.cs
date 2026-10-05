@@ -31,4 +31,7 @@ public enum EventStoreDomainEventProcessingResult {
     /// The message marker is currently owned by another processing attempt; delivery should remain retryable.
     /// </summary>
     RetryableInProgress,
+
+    /// <summary>The delivery needs an unavailable verified evolution capability and remains retryable without a marker or handler effect.</summary>
+    RetryableCapabilityMismatch,
 }

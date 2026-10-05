@@ -34,27 +34,25 @@ internal sealed class EventUpcastChainExecutor
     }
 
     /// <summary>Returns a charged exclusive current owner only after every hop has passed descriptor/schema/identity checks.</summary>
-    internal async ValueTask<ImmutablePayload> UpcastAsync(string canonicalType, int sourceVersion, IReadOnlyPayload source,
+    internal ValueTask<ImmutablePayload> UpcastAsync(string canonicalType, int sourceVersion, IReadOnlyPayload source,
         EventBufferBudget budget, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(budget);
-        cancellationToken.ThrowIfCancellationRequested();
-        int current = _registry.GetCurrentVersion(canonicalType);
-        _ = _registry.GetVersion(canonicalType, sourceVersion);
-        if (sourceVersion > current || current - sourceVersion > 16)
-        {
-            throw new InvalidOperationException("UpcasterContractViolation: source does not have an admitted bounded chain.");
-        }
+        RequireChain(canonicalType, sourceVersion, cancellationToken);
+        return UpcastOwnedAsync(canonicalType, sourceVersion,
+            ImmutablePayload.CopyFrom(source, budget, cancellationToken), budget, cancellationToken);
+    }
 
-        // Validate every callable before allocating or invoking an earlier hop.
-        for (int version = sourceVersion; version < current; version++)
-        {
-            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version));
-        }
-
-        ImmutablePayload owned = ImmutablePayload.CopyFrom(source, budget, cancellationToken);
+    /// <summary>Consumes an exclusive charged source owner without allocating a second copy.</summary>
+    /// <remarks>Ownership transfers at entry, including refusal and cancellation; success transfers the final owner to the caller.</remarks>
+    internal async ValueTask<ImmutablePayload> UpcastOwnedAsync(string canonicalType, int sourceVersion, ImmutablePayload owned,
+        EventBufferBudget budget, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(owned);
         try
         {
+            ArgumentNullException.ThrowIfNull(budget);
+            int current = RequireChain(canonicalType, sourceVersion, cancellationToken);
             Validate(owned, canonicalType, sourceVersion, cancellationToken);
             byte[] sealedDigest = owned.ComputeSha256();
             for (int version = sourceVersion; version < current; version++)
@@ -64,7 +62,6 @@ internal sealed class EventUpcastChainExecutor
                 {
                     throw new InvalidOperationException("UpcasterContractViolation: sealed input changed before the next hop.");
                 }
-
                 EventRegistryRow edge = _registry.GetEdge(canonicalType, version);
                 RegisteredEventUpcaster binding = GetBinding(canonicalType, version);
                 byte[] before = owned.ComputeSha256();
@@ -137,6 +134,25 @@ internal sealed class EventUpcastChainExecutor
             owned.Dispose();
             throw;
         }
+    }
+
+    private int RequireChain(string canonicalType, int sourceVersion, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        int current = _registry.GetCurrentVersion(canonicalType);
+        _ = _registry.GetVersion(canonicalType, sourceVersion);
+        if (sourceVersion > current || current - sourceVersion > 16)
+        {
+            throw new InvalidOperationException("UpcasterContractViolation: source does not have an admitted bounded chain.");
+        }
+
+        // Validate every callable before allocating or invoking an earlier hop.
+        for (int version = sourceVersion; version < current; version++)
+        {
+            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version));
+        }
+
+        return current;
     }
 
     private RegisteredEventUpcaster GetBinding(string canonicalType, int sourceVersion)

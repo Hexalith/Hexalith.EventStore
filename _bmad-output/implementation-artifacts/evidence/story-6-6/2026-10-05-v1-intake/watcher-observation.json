@@ -1,0 +1,14 @@
+{
+  "scope": "observational /proc count; not deduplicated and inaccessible processes omitted",
+  "observed_inotify_watch_lines": 1048544,
+  "observed_instances_with_watches": 177,
+  "inaccessible_or_exited_processes": 114,
+  "max_user_watches": 1048576,
+  "max_user_instances": 8192,
+  "tmp_free": "32 GiB",
+  "workspace_filesystem_free": "480 GiB",
+  "inference": "watcher quota exhaustion is consistent with the Dapr fatal watcher allocation error; disk has ample space",
+  "global_limits_changed": false,
+  "user_processes_stopped": false,
+  "supported_configuration_source": "https://docs.dapr.io/operations/components/component-updates/"
+}

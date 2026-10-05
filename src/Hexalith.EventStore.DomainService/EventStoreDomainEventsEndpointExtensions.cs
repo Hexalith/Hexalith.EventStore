@@ -58,6 +58,7 @@ public static class EventStoreDomainEventsEndpointExtensions {
             // failure. Attach a dead-letter topic to the subscription if these payloads must be retained.
             EventStoreDomainEventProcessingResult.FailedInvalidPayload => Results.Ok(),
             EventStoreDomainEventProcessingResult.RetryableInProgress => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
+            EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch => Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable),
             _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
         };
 }

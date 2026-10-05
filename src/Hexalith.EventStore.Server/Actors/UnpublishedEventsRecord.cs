@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>
@@ -32,6 +35,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// envelopes against it. Null on records written before the field existed; those fall back to a
 /// recoverable idempotency record. Trailing-optional so older persisted records still deserialize.
 /// </param>
+[method: JsonConstructor]
 public record UnpublishedEventsRecord(
     string CorrelationId,
     long StartSequence,
@@ -46,6 +50,53 @@ public record UnpublishedEventsRecord(
     bool DeadLettered = false,
     DateTimeOffset? ReminderArmedAt = null,
     string? CausationId = null) {
+    /// <summary>Preserves the twelve-member constructor used by already compiled publication-recovery callers.</summary>
+    [OverloadResolutionPriority(1)]
+    public UnpublishedEventsRecord(
+        string CorrelationId,
+        long StartSequence,
+        long EndSequence,
+        int EventCount,
+        string CommandType,
+        bool IsRejection,
+        DateTimeOffset FailedAt,
+        int RetryCount,
+        string? LastFailureReason,
+        string? MessageId = null,
+        bool DeadLettered = false,
+        DateTimeOffset? ReminderArmedAt = null)
+        : this(CorrelationId, StartSequence, EndSequence, EventCount, CommandType, IsRejection,
+            FailedAt, RetryCount, LastFailureReason, MessageId, DeadLettered, ReminderArmedAt, CausationId: null) {
+    }
+
+    /// <summary>Preserves the twelve-member deconstructor used by already compiled publication-recovery callers.</summary>
+    public void Deconstruct(
+        out string CorrelationId,
+        out long StartSequence,
+        out long EndSequence,
+        out int EventCount,
+        out string CommandType,
+        out bool IsRejection,
+        out DateTimeOffset FailedAt,
+        out int RetryCount,
+        out string? LastFailureReason,
+        out string? MessageId,
+        out bool DeadLettered,
+        out DateTimeOffset? ReminderArmedAt) {
+        CorrelationId = this.CorrelationId;
+        StartSequence = this.StartSequence;
+        EndSequence = this.EndSequence;
+        EventCount = this.EventCount;
+        CommandType = this.CommandType;
+        IsRejection = this.IsRejection;
+        FailedAt = this.FailedAt;
+        RetryCount = this.RetryCount;
+        LastFailureReason = this.LastFailureReason;
+        MessageId = this.MessageId;
+        DeadLettered = this.DeadLettered;
+        ReminderArmedAt = this.ReminderArmedAt;
+    }
+
     /// <summary>State key prefix for unpublished event records.</summary>
     public const string StateKeyPrefix = "drain:";
 

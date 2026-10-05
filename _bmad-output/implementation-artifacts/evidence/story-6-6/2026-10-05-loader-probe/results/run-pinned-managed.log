@@ -1,0 +1,2 @@
+Unhandled exception. System.IO.FileLoadException: CapabilityMismatch: not ready before invocation.
+   at Probe.Host.Program.Main(String[] args) in /tmp/story-6-6-loader-probe-0x3vc25a/fixture/Host/Program.cs:line 59

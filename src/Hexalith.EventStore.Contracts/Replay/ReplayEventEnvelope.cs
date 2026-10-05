@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Replay;
 
 /// <summary>
@@ -22,4 +24,48 @@ public sealed record ReplayEventEnvelope(
     int MetadataVersion,
     string MessageId,
     string? CorrelationId,
-    string? CausationId);
+    string? CausationId) {
+    /// <summary>Gets the canonical event contract identity when carried by a versioned source.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoredEventContractType { get; init; }
+
+    /// <summary>Gets the payload schema version when carried by a versioned source.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? StoredPayloadVersion { get; init; }
+
+    /// <summary>Gets the stored payload format provenance; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoredSerializationFormat { get; init; }
+
+    /// <summary>Gets the untrusted effective event identity hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EffectiveEventContractType { get; init; }
+
+    /// <summary>Gets the untrusted effective payload version hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? EffectivePayloadVersion { get; init; }
+
+    /// <summary>Gets the untrusted effective payload format hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EffectiveSerializationFormat { get; init; }
+
+    /// <summary>Gets a transport copy of the untrusted effective payload hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? EffectivePayload { get; init; }
+
+    /// <summary>Gets the original stored discriminator provenance; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoredEventTypeName { get; init; }
+
+    /// <summary>Gets a transport copy of the stored digest hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? StoredDigest { get; init; }
+
+    /// <summary>Gets the untrusted registry fingerprint hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RegistryFingerprint { get; init; }
+
+    /// <summary>Gets the untrusted adaptation hint; transport binding conveys no verification authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsAdapted { get; init; }
+}

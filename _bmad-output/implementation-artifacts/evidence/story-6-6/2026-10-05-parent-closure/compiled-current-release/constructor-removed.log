@@ -1,0 +1,2 @@
+["dotnet", "/tmp/story-6-6-parent-current-release-20261005/fixture/LegacyConsumer/bin/Release/net10.0/LegacyConsumer.dll"]
+Method not found: 'Void Hexalith.EventStore.Server.Actors.UnpublishedEventsRecord..ctor(System.String, Int64, Int64, Int32, System.String, Boolean, System.DateTimeOffset, Int32, System.String, System.String, Boolean, System.Nullable`1<System.DateTimeOffset>)'.

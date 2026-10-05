@@ -4,7 +4,26 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Events;
 
+/// <summary>Checks bounded payload, scratch and reservation ownership under refusal, cancellation and disposal.</summary>
 public sealed class BoundedPayloadPrimitiveTests {
+    /// <summary>Checks down-only reservation changes release unused capacity exactly once and cannot revive a disposed owner.</summary>
+    [Fact]
+    public void ReservationShrinksOnlyProvenUnusedCapacityAndPreservesOtherOwners() {
+        var budget = new EventBufferBudget(8);
+        EventBufferReservation reservation = budget.Reserve(8);
+        reservation.ShrinkTo(3);
+        budget.LiveBytes.ShouldBe(3);
+        using EventBufferReservation other = budget.Reserve(5);
+        Should.Throw<ArgumentOutOfRangeException>(() => reservation.ShrinkTo(4));
+        budget.LiveBytes.ShouldBe(8);
+        reservation.Dispose();
+        reservation.Dispose();
+        budget.LiveBytes.ShouldBe(5);
+        Should.Throw<ObjectDisposedException>(() => reservation.ShrinkTo(0));
+        other.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
     [Fact]
     public void Writer_SealsAndCopiesOutputWithoutExposingItsOwner() {
         using var writer = new BoundedPayloadWriter(8, CancellationToken.None);

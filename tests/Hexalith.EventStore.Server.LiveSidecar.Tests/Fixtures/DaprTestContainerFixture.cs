@@ -113,6 +113,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     private int _replicaDaprMetricsPort;
     private int _replicaDaprProfilePort;
     private string? _componentsDir;
+    private string? _runtimeConfigurationPath;
 
     private string? _previousDaprHttpPort;
     private string? _previousDaprGrpcPort;
@@ -211,6 +212,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             await VerifyPrerequisitesAsync().ConfigureAwait(false);
 
             _componentsDir = CreateComponentFiles();
+            _runtimeConfigurationPath = DaprTestRuntimeConfiguration.Create(
+                _componentsDir, Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPR_HOT_RELOAD"));
 
             await StartTestHostAsync().ConfigureAwait(false);
 
@@ -754,6 +757,11 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         };
 
         // The sidecar presents this token on every app-channel call, which the reminder callback filter requires.
+        if (_runtimeConfigurationPath is not null)
+        {
+            _daprProcess.StartInfo.Arguments += $" --config \"{_runtimeConfigurationPath}\"";
+        }
+
         _daprProcess.StartInfo.Environment["APP_API_TOKEN"] = AppApiToken;
 
         _daprProcess.OutputDataReceived += (_, e) =>
@@ -819,6 +827,11 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             },
             EnableRaisingEvents = true,
         };
+
+        if (_runtimeConfigurationPath is not null)
+        {
+            _replicaDaprProcess.StartInfo.Arguments += $" --config \"{_runtimeConfigurationPath}\"";
+        }
 
         _replicaDaprProcess.OutputDataReceived += (_, e) =>
         {

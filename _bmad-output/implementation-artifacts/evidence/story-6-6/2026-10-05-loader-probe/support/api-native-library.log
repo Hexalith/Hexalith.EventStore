@@ -1,0 +1,12 @@
+# System.Runtime.InteropServices.NativeLibrary
+
+Provides APIs for managing native libraries.
+
+Version: 10.0.12 | TFM: net10.0 | Library: /home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll | Source: Platform
+
+## Methods
+
+| Name | Digest | Signature | Description |
+| ---- | ------ | --------- | ----------- |
+| Load | `efff11671e` | `public static nint Load(string libraryName, System.Reflection.Assembly assembly, System.Nullable<System.Runtime.InteropServices.DllImportSearchPath> searchPath)` | Provides a high-level API for loading a native library. |
+| Load | `00f1bff9eb` | `public static nint Load(string libraryPath)` | Provides a simple API for loading a native library that wraps the OS loader and uses default flags. |

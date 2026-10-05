@@ -5,6 +5,8 @@ The approved 6.5 verifier remains a separate historical-design check. This gate
 checks application dependency and mutation ownership at the current source, and
 tests each negative policy input in a fresh process with an explicit timeout.
 Functional, compatibility and live-component evidence remain separate gates.
+The source denylist recognizes selected database symbols, including factory
+creation; it is not complete semantic/static analysis or a runtime inventory.
 """
 
 from __future__ import annotations
@@ -28,10 +30,16 @@ LOGICAL_READER = SERVER / "Events/DaprLogicalEventReader.cs"
 AMENDMENT = pathlib.Path("_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md")
 MUTATIONS = {
     "application-sql": "application-storage-boundary",
+    "application-sql-factory": "application-storage-boundary",
     "server-npgsql": "server-dependencies",
     "catalog-npgsql": "story-dependency-footprint",
     "persister-save": "actor-save-ownership",
     "v2-admission": "dormant-v2-writer",
+    "v2-comment-spoof": "dormant-v2-writer",
+    "v2-block-comment-spoof": "dormant-v2-writer",
+    "v2-string-spoof": "dormant-v2-writer",
+    "v2-disabled-branch": "dormant-v2-writer",
+    "v2-preprocessor-spoof": "dormant-v2-writer",
 }
 
 
@@ -48,6 +56,15 @@ def read(path: pathlib.Path, mutation: str | None) -> str:
     value = (ROOT / path).read_text(encoding="utf-8")
     if mutation == "application-sql" and path == LOGICAL_READER:
         value += "\nusing Npgsql;\n"
+    elif mutation == "application-sql-factory" and path == LOGICAL_READER:
+        factory_probe = (
+            '\n    private static void UnmanifestedFactoryProbe()\n    {\n'
+            '        var factory = System.Data.Common.DbProviderFactories.GetFactory("owned-probe-provider");\n'
+            '        using var connection = factory.CreateConnection();\n'
+            '        connection!.Open();\n    }\n'
+        )
+        closing = value.rindex("}")
+        value = value[:closing] + factory_probe + value[closing:]
     elif mutation == "server-npgsql" and path == SERVER_PROJECT:
         value = value.replace("</Project>", '<ItemGroup><PackageReference Include="Npgsql" /></ItemGroup></Project>')
     elif mutation == "catalog-npgsql" and path == BUILD_CATALOG:
@@ -56,7 +73,36 @@ def read(path: pathlib.Path, mutation: str | None) -> str:
         value += "\nawait stateManager.SaveStateAsync(cancellationToken);\n"
     elif mutation == "v2-admission" and path == PERSISTER:
         value = value.replace("if (metadataVersion == 2)", "if (metadataVersion == 3)")
+    elif mutation in {"v2-comment-spoof", "v2-block-comment-spoof", "v2-string-spoof"} and path == PERSISTER:
+        value = value.replace("if (metadataVersion == 2)", "if (metadataVersion == 3)")
+        fake = 'if (metadataVersion == 2) { throw new InvalidOperationException('
+        if mutation == "v2-comment-spoof":
+            spoof = "// " + fake + "\n"
+        elif mutation == "v2-block-comment-spoof":
+            spoof = "/* " + fake + " */\n"
+        else:
+            spoof = 'string fakeFence = "' + fake + '";\n'
+        value = spoof + value
+    elif mutation == "v2-disabled-branch" and path == PERSISTER:
+        value = value.replace("if (metadataVersion == 2)", "if (false && metadataVersion == 2)")
+    elif mutation == "v2-preprocessor-spoof" and path == PERSISTER:
+        value = value.replace("if (metadataVersion == 2)", "#if false\nif (metadataVersion == 2)")
+        value = value.replace("validatedPayloads.Add(", "#endif\nvalidatedPayloads.Add(", 1)
     return value
+
+
+def executable_csharp(value: str) -> str:
+    """Blank comments and string/character literals so documentation cannot satisfy a code fence.
+
+    This is a conservative source-policy scan, not a C# semantic verifier. The
+    fence check also requires its adjacent admission calls and refuses conditional
+    compilation; executed V2 refusal tests remain the runtime evidence.
+    """
+    noncode = re.compile(
+        r'//[^\r\n]*|/\*[\s\S]*?\*/|(?:\$?@|@\$)"(?:[^"]|"")*"'
+        r'|\$?"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''
+    )
+    return noncode.sub(lambda match: re.sub(r"[^\r\n]", " ", match.group()), value)
 
 
 def require_no_dependency(path: pathlib.Path, element_name: str, check: str, mutation: str | None) -> None:
@@ -71,7 +117,12 @@ def verify(mutation: str | None = None) -> dict:
     """Validate only current local policy, leaving unproven obligations open."""
     require_no_dependency(SERVER_PROJECT, "PackageReference", "server-dependencies", mutation)
     require_no_dependency(BUILD_CATALOG, "PackageVersion", "story-dependency-footprint", mutation)
-    forbidden = re.compile(r"\b(?:using\s+Npgsql|NpgsqlConnection|NpgsqlDataSource|SqlConnection|DbConnection)\b")
+    # A lexical symbol denylist, including inferred factory-created connections.
+    # It deliberately claims neither a C# call graph nor complete database inventory;
+    # reflection, generated/dynamic code and unlisted APIs require separate analysis.
+    forbidden = re.compile(
+        r"\b(?:using\s+Npgsql|NpgsqlConnection|NpgsqlDataSource|SqlConnection|DbConnection|DbProviderFactories)\b"
+    )
     source_count = 0
     for path in sorted((ROOT / SERVER).rglob("*.cs")):
         if "obj" in path.parts or "bin" in path.parts:
@@ -81,12 +132,16 @@ def verify(mutation: str | None = None) -> dict:
         if forbidden.search(read(relative, mutation)):
             raise BoundaryFailure("application-storage-boundary", f"{relative}: application database access is forbidden")
 
-    persister = read(PERSISTER, mutation)
+    persister = executable_csharp(read(PERSISTER, mutation))
     if re.search(r"\bSaveStateAsync\s*\(", persister):
         raise BoundaryFailure("actor-save-ownership", "EventPersister must stage state; AggregateActor owns saving")
-    fence = re.search(r"if\s*\(metadataVersion\s*==\s*2\)\s*\{\s*throw\s+new\s+InvalidOperationException\(", persister)
+    fence = re.search(
+        r"ValidateEventVersionMetadata\(eventTypeName,\s*metadataVersion,\s*eventContractType,\s*payloadVersion\);"
+        r"\s*if\s*\(metadataVersion\s*==\s*2\)\s*\{\s*throw\s+new\s+InvalidOperationException\([^;{}]*\);"
+        r"\s*\}\s*validatedPayloads\.Add\(", persister
+    )
     first_read = persister.index(".TryGetStateAsync<AggregateMetadata>")
-    if fence is None or fence.start() > first_read:
+    if fence is None or fence.start() > first_read or re.search(r"^\s*#", persister, re.MULTILINE):
         raise BoundaryFailure("dormant-v2-writer", "V2 admission must refuse before actor metadata read and mutation")
 
     amendment = (ROOT / AMENDMENT).read_bytes()
@@ -98,6 +153,7 @@ def verify(mutation: str | None = None) -> dict:
         "checks": sorted(set(MUTATIONS.values())),
         "v2_writes": "fenced",
         "production_qualification": "not established by this preflight",
+        "source_analysis_limits": "selected lexical symbols in Server C# source; no complete semantic/static or runtime inventory",
     }
 
 

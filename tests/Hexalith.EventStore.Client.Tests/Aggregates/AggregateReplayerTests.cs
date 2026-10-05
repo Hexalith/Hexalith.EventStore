@@ -17,6 +17,18 @@ namespace Hexalith.EventStore.Client.Tests.Aggregates;
 /// duplicate guard, all 7 failure categories), and the side-effect-free contract.
 /// </summary>
 public class AggregateReplayerTests {
+    /// <summary>Checks a versioned later event refuses the complete eligible batch before an earlier Apply can run.</summary>
+    [Fact]
+    public void Replay_VersionedLaterEventRefusesBeforeApplyAndRevealsNoPartialTimeline() {
+        ReplayEventEnvelope first = BuildEnvelope(1, nameof(CounterIncremented));
+        ReplayEventEnvelope second = BuildEnvelope(2, nameof(CounterIncremented)) with { StoredEventContractType = "evt", StoredPayloadVersion = 2 };
+        AggregateReconstructionResult result = AggregateReplayer.Replay<FailingState>(BuildRequest([first, second], 2, includeTimeline: true));
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.StateJson.ShouldBeNull();
+        result.Timeline.ShouldBeNull();
+    }
+
     // ---------------------------------------------------------------
     // Fixture: marker-event Counter aggregate (mirrors the seeded
     // tenant-a/counter/counter-1 stream). Empty-payload events make

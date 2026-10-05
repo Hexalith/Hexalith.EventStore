@@ -4,6 +4,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Events;
 
+/// <summary>Checks allow-listed logical resolution preserves original evidence and composes private owner budgets.</summary>
 public sealed class EventLogicalViewResolverTests
 {
     [Theory]
@@ -79,6 +80,7 @@ public sealed class EventLogicalViewResolverTests
         error.Message.ShouldContain("CapabilityMismatch");
     }
 
+    /// <summary>Checks retained effective owners remain charged and a refused successor releases its attempted private copy.</summary>
     [Fact]
     public async Task SharedBudgetIncludesEarlierEffectiveOwnersAndReleasesFailedCopy()
     {
@@ -90,7 +92,7 @@ public sealed class EventLogicalViewResolverTests
                 [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
             }, static (_, _, _, _, _, _) => { });
         var resolver = new EventLogicalViewResolver(registry, executor);
-        var budget = new EventBufferBudget(6);
+        var budget = new EventBufferBudget(5);
         byte[] source = [1, 2];
         using ResolvedLogicalEvent first = await resolver.ResolveAsync("d", "evt", 2, "evt", 2,
             "json", source, CancellationToken.None, budget).ConfigureAwait(true);

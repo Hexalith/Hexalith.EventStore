@@ -28,6 +28,7 @@ public static class DomainProjectionDispatcher {
     public static ProjectionResponse? Project(IServiceProvider serviceProvider, ProjectionRequest request) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
+        DomainProjectionEvolutionAdmission.RequireLegacy(request);
 
         IDomainProjectionHandler? handler = DomainProjectionHandlerRouteValidator
             .MaterializeAndValidate(serviceProvider.GetServices<IDomainProjectionHandler>())
@@ -737,6 +738,8 @@ public static class DomainProjectionDispatcher {
             || string.IsNullOrWhiteSpace(dispatchRequest.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
         }
+
+        DomainProjectionEvolutionAdmission.RequireLegacy(dispatchRequest.Request);
 
         try {
             NamingConventionEngine.ValidateKebabCase(dispatchRequest.Request.Domain, nameof(dispatchRequest.Request.Domain));

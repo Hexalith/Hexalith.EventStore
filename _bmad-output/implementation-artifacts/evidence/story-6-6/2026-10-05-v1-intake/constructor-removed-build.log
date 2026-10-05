@@ -1,0 +1,10 @@
+["dotnet", "build", "/tmp/story-6-6-intake-compiled-release/fixture/LegacyServer/LegacyServer.csproj", "--configuration", "Release", "-m:1", "--nologo"]
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LegacyServer -> /tmp/story-6-6-intake-compiled-release/fixture/LegacyServer/bin/Release/net10.0/Hexalith.EventStore.Server.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.80

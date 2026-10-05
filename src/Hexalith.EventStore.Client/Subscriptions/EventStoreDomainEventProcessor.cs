@@ -99,6 +99,21 @@ public class EventStoreDomainEventProcessor {
         EventStoreDomainEventEnvelope envelope,
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(envelope);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Metadata must be admitted before a completed marker can hide an incompatible
+        // redelivery. This legacy route cannot verify an effective versioned view.
+        if (envelope.MetadataVersion is not (null or 1)
+            || envelope.EventContractType is not null || envelope.PayloadVersion is not null
+            || envelope.StoredEventContractType is not null || envelope.StoredPayloadVersion is not null
+            || envelope.StoredSerializationFormat is not null || envelope.StoredEventTypeName is not null
+            || envelope.StoredDigest is not null || envelope.RegistryFingerprint is not null || envelope.IsAdapted is not null
+            || envelope.EffectiveEventContractType is not null || envelope.EffectivePayloadVersion is not null
+            || envelope.EffectiveSerializationFormat is not null || envelope.EffectivePayload is not null
+            || envelope.ReadableSerializationFormat is not null || envelope.ReadableExtensions is not null
+            || envelope.VerifiedEffectiveEvent is not null) {
+            return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
+        }
 
         if (!IsValidMessageId(envelope.MessageId)) {
             _logger.LogWarning("Skipping invalid domain-event envelope with an invalid message ID.");

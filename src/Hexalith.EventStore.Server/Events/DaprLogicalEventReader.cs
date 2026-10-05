@@ -108,11 +108,6 @@ internal sealed class DaprLogicalEventReader
         EventBufferReservation? readableReservation = null;
         try
         {
-            protectedReservation = budget.Reserve(source.Payload.Length);
-            // The existing protection seam returns an array, so reserve its complete
-            // admitted readable capacity before the provider can materialize it.
-            readableReservation = budget.Reserve(checked((int)maximumReadableBytes));
-            protectedCopy = source.Payload.ToArray();
             EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadataCarrier.Read(source.Extensions);
             if (metadata.State == PayloadProtectionState.ProviderOpaque)
             {
@@ -122,11 +117,28 @@ internal sealed class DaprLogicalEventReader
                     sequenceNumber: sequenceNumber);
             }
 
+            byte[] protectionInput;
+            if (_protection is NoOpEventPayloadProtectionService)
+            {
+                // The sealed platform no-op returns this same array and invokes no
+                // user code. The resolver takes the sole charged private copy below.
+                protectionInput = source.Payload;
+            }
+            else
+            {
+                protectedReservation = budget.Reserve(source.Payload.Length);
+                // An arbitrary array-returning provider retains its conservative
+                // output reservation; the no-op's alias needs no second capacity.
+                readableReservation = budget.Reserve(checked((int)maximumReadableBytes));
+                protectedCopy = source.Payload.ToArray();
+                protectionInput = protectedCopy;
+            }
+
             PayloadUnprotectionOutcome outcome;
             try
             {
                 outcome = await _protection.TryUnprotectEventPayloadAsync(
-                    identity, source.EventTypeName, protectedCopy, source.SerializationFormat,
+                    identity, source.EventTypeName, protectionInput, source.SerializationFormat,
                     metadata, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -155,6 +167,11 @@ internal sealed class DaprLogicalEventReader
             {
                 throw new InvalidOperationException("ReadableLimit: the next logical payload exceeds the remaining page capacity.");
             }
+
+            // The provider has returned: only its distinct actual array remains live.
+            // An alias of the protected input already has that input's reservation.
+            readableReservation?.ShrinkTo(ReferenceEquals(outcome.PayloadBytes, protectedCopy)
+                || ReferenceEquals(outcome.PayloadBytes, source.Payload) ? 0 : outcome.PayloadBytes.Length);
 
             EventLogicalDigest.RequireMatching(source, outcome.SerializationFormat, outcome.PayloadBytes);
 

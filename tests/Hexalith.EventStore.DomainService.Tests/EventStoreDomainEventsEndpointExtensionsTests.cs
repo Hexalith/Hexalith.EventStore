@@ -57,6 +57,7 @@ public sealed class EventStoreDomainEventsEndpointExtensionsTests {
     [InlineData(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch, StatusCodes.Status200OK)]
     [InlineData(EventStoreDomainEventProcessingResult.FailedInvalidPayload, StatusCodes.Status200OK)]
     [InlineData(EventStoreDomainEventProcessingResult.RetryableInProgress, StatusCodes.Status500InternalServerError)]
+    [InlineData(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch, StatusCodes.Status503ServiceUnavailable)]
     public void MapProcessingResult_MapsProcessorOutcomesIntentionally(
         EventStoreDomainEventProcessingResult processingResult,
         int expectedStatusCode) {

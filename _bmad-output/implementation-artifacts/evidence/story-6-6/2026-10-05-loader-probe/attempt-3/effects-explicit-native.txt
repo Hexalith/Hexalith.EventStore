@@ -1,0 +1,2 @@
+native:constructor
+native:export

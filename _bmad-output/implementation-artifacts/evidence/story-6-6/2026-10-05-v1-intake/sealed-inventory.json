@@ -1,0 +1,529 @@
+{
+  "scope": "uncommitted changed/authored source, configuration, tests, fixture and retained evidence bytes; excludes this inventory",
+  "canonical_baseline": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "head_before": "c447573fe4613fc3f9035dc4c5d001a89c0b5fbe",
+  "head_after": "c447573fe4613fc3f9035dc4c5d001a89c0b5fbe",
+  "head_stable_during_seal": true,
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 8273,
+      "sha256": "b96a8bac77937f43c9b4f156343370066daa02225e35cb07a537ef4307b57ab3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/amendment-preflight.log",
+      "bytes": 1646,
+      "sha256": "992a4dcb2aae101216112fcb0f9561e79d48cb9bbb575445648d5ca0ff2c8652"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-client-final.log",
+      "bytes": 2644,
+      "sha256": "35265918e474c9957b64aa051e325325dad0166b4df686666b35f4ab32ac39ff"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-client.log",
+      "bytes": 2241,
+      "sha256": "2057677850eca350959bb002b539af0359b87ad3667c17cbe44debb755b91267"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-contracts.log",
+      "bytes": 2158,
+      "sha256": "66e780a6a8c39483898b17d988e80ec4d4355e6d0a8022283becff2b6eca3028"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-domainservice.log",
+      "bytes": 1775,
+      "sha256": "3bc0494f454e544f40d6d678cb025522904a609a8b6c2a9cf0dccdae78bc8f4d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-live-fallback.log",
+      "bytes": 4229,
+      "sha256": "0b1a28eb8b5fb66b213d3d2068a89bd3fcbe5874913fef3297878f6cde7c1332"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-live.log",
+      "bytes": 4984,
+      "sha256": "24e3d613600a52a8823ff323fe68ac6ea4ce36d805effe296fc1b73a3cb77679"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-server-metadata-controls.log",
+      "bytes": 5723,
+      "sha256": "2faaae1073b149ec95e60d119df2f4fbf2dfe21c9c9b4ac2ee63d1e390b7508d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-server-release-final-tests.log",
+      "bytes": 4043,
+      "sha256": "701181b057d86f2e3752683d82edc0a7e4cecc2805668183087f59c7430bb7b1"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/build-server.log",
+      "bytes": 3566,
+      "sha256": "6e907c4f6f9b974c5c756c5c192e2e5e3cd8a8b02ad0f76c91d8d6ee859cf28a"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/builds.json",
+      "bytes": 1103,
+      "sha256": "c031949193a9b268030e8ff9fcbb294dd5450f33c106e37eef922954f94300fe"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/compile-legacy.log",
+      "bytes": 731,
+      "sha256": "6e47a575407ebe2641d7279a0f44a2733947a2f148b29f5073f1038441a87053"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/compiled-consumer-package.log",
+      "bytes": 890,
+      "sha256": "2f88d855000322079cf5b98a6bc426469d60988849845d3c5fc21d2a93d7eb5d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/compiled-consumer-release.log",
+      "bytes": 930,
+      "sha256": "aa15c2d7e5003dca63f276cbab0f2cb30540772d199bc461842680942c117cc2"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/compiled-consumer-result.json",
+      "bytes": 743,
+      "sha256": "e88609688afa9cbde35ed3d3260d8f62d5eda6d0bda8f584f78fc839352e8c57"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/compiled-package-input.json",
+      "bytes": 316,
+      "sha256": "f675a17ce52362f5d7947835f46ecb62cac455508302b08830aa58599a794962"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/constructor-removed-build.log",
+      "bytes": 438,
+      "sha256": "2ead001b7bf6a42892aac28d9ab89e6d43e3e57a6dc48386ee989508dce4f472"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/constructor-removed.log",
+      "bytes": 376,
+      "sha256": "04dbeaea745e77313308b56baee8444f9c2df5a7c983f9d3f1aed460c71c0e84"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/current-assembly.log",
+      "bytes": 153,
+      "sha256": "93fb4bd760283a017dc418a68566781d7819ed58ec0027dca0d1e30e9c87e049"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/deconstructor-removed-build.log",
+      "bytes": 438,
+      "sha256": "123fe10e984b5014d393318b77226ab486ade30dd2e714c058d7e60a91d9c06a"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/deconstructor-removed.log",
+      "bytes": 454,
+      "sha256": "5864c66763024739e6a90c0da7fbef364ae58c17721158b4c748a8384038afb5"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/deferred-check.log",
+      "bytes": 214417,
+      "sha256": "e24842699908975beb804cb51a9fc6e53450b16db0409e801ceb6eb9224ac274"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/development-live-hotreload-disabled.log",
+      "bytes": 5239,
+      "sha256": "e802162b0e5e54c42ec8a09633c3405e52b05e9728eaa77679d550f95ed691cc"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/development-live.log",
+      "bytes": 5156,
+      "sha256": "374f5dbe46c08b3f4b2d46dc4fb98c39d8fcdbc446e4b274fade8da0e215be95"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/diff-check.log",
+      "bytes": 27,
+      "sha256": "fe996e3f8e8dd2792f878567e525524dc33baecf59900a8f99192a65a5189273"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/final-check-1.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/final-check-2.log",
+      "bytes": 1582,
+      "sha256": "a3d7307c6cdb349763e583ee0a20a0bafb082d98576bc55a14728d7c33c24da9"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/final-check-3.log",
+      "bytes": 4965,
+      "sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/final-check-4.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/final-checks.json",
+      "bytes": 642,
+      "sha256": "13ba05387929805c6534871d8836b0b58b88bd22b31f6dd7ba961f3bc74ffce8"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/focused-client.log",
+      "bytes": 820,
+      "sha256": "c02d6c328b15e381f1a5bcaf528fe90253bea5726be7d96efa081fa52e3e493e"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/focused-contracts.log",
+      "bytes": 687,
+      "sha256": "5f58048c2ab9f8d9bb7f28debcccad66fbd9c3319cab66a4ccff2e16121ee1b6"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/focused-domainservice.log",
+      "bytes": 904,
+      "sha256": "a5a49672a52a28f6789785e0b07d726f8c50626b0b33d53b98faa6ce594ade65"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/focused-server.log",
+      "bytes": 850,
+      "sha256": "f16c404de1ac32db16f72571710629ab87233e560859150c3eca664184cf1603"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/focused.json",
+      "bytes": 1682,
+      "sha256": "aec57fca2ceec81061f4bee4278bab478d748f135730251110a8e618cd13b413"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/full-client.log",
+      "bytes": 2878,
+      "sha256": "c082c48d2afa7e59bf1e0a687e8b41ffbae2d5d3ceaa9c45051ac40d4ffa6089"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/full-contracts.log",
+      "bytes": 1050,
+      "sha256": "67abfabba838710f2a46580d17eff4d75a46338889a053c62075c2e854aed623"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/full-domainservice.log",
+      "bytes": 9202,
+      "sha256": "b9a0b3518e4b100a8e25de441dfea48cd61d4729b133ac962a94261bf2f0af4d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/full-server.log",
+      "bytes": 289679,
+      "sha256": "c8a65b7235346034fe7116d5d9ea76264a7046b62e8c6c446a895d8674d5122e"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/full.json",
+      "bytes": 703,
+      "sha256": "c1fa6df02b8d819b00c5f33091280e04b5a6076be9d3643e9ea61fa36fe344bc"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/historical-preflight.log",
+      "bytes": 5059,
+      "sha256": "09f328d50c56a3d1e87ed9a31f82dc3d208910e06b992db62c1344ea732b377d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/native-profile-failed.json",
+      "bytes": 521,
+      "sha256": "5aac1852616a254134216f6d80cffb438ebcfdcd828729adc0c0b1ba99d90617"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/native-profile-hotreload-disabled.json",
+      "bytes": 521,
+      "sha256": "b6a5198611977807477d3a3f51db5225d00d4b1ca0d4af1886781a7e3391e7fd"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/native-test-failed.log",
+      "bytes": 5822,
+      "sha256": "23cc8dcee3de710e7e90944e37f1fb7b273bf0ea57cae4657031efd4a63bf538"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/native-test-hotreload-disabled.log",
+      "bytes": 8632,
+      "sha256": "9695b6c89a4361dad194785049605636636514d1e2e6f0129cf3900318699f59"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/pack-release.log",
+      "bytes": 16724,
+      "sha256": "1be976dc996122326787cff857fc53d6754d642137ba03e617a821728b9e613c"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/package-fixtures.log",
+      "bytes": 889,
+      "sha256": "7dd9619bdc4083af112f637e55ca3129fbe1d1c5765d6aeefb79200becf05e6f"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/package-inventory.json",
+      "bytes": 2227,
+      "sha256": "fa26ff3d69d8b77b409e4afe88916f3eda337dfe12b0958391c554622292837e"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/compile-legacy.log",
+      "bytes": 732,
+      "sha256": "8f9c017ece418bd8f4b19bd0e42aefcd2f3eb7adcfcafca64c848c8079327ad7"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/constructor-removed-build.log",
+      "bytes": 438,
+      "sha256": "7e4f27ec86bc46eba3c8c82c05566d7cacced894d43b980d4aff48002c330290"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/constructor-removed.log",
+      "bytes": 376,
+      "sha256": "28ac0639a1a6af5ad5072649ec5892a7fd24018b4f341467b13b1b4ebcbd28a0"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/current-assembly.log",
+      "bytes": 153,
+      "sha256": "1cf33fe9be149d7b23102913214a3483cbc9d4b9dcdecdd3baee7d64d13760c6"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/deconstructor-removed-build.log",
+      "bytes": 438,
+      "sha256": "388b43c696e5b74023346c9af20220236acaba619bb8a8626865e6219930bc09"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/deconstructor-removed.log",
+      "bytes": 454,
+      "sha256": "6f6694297bf26bff45a5944b04d5fe1fce6525a51d143cd7a30d965255a92788"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/packaged-compiled-consumer/result.json",
+      "bytes": 743,
+      "sha256": "ee922a36edc4c5fbfd766660ef05f0e070d567d9da4dd98b6f9ec18a793bacfa"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/preflights.json",
+      "bytes": 516,
+      "sha256": "e969ad2fb5ba448245fd7c21cb6879dc371d58b793c2394126999bfe1b5d7771"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/release-build.log",
+      "bytes": 16266,
+      "sha256": "774a8284caaa98fa7f073693bf875bde457075d152fcf8ce43c0fb149691109c"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/release-gates.json",
+      "bytes": 786,
+      "sha256": "d4beae22e8e2458145d4a46002e97046fb10d51ad2076878b50a824222074411"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/run-native-live.py",
+      "bytes": 4001,
+      "sha256": "87c3acbaabf8d4713d6cba35cf365f49ccceb0f5dc93fad543791bb64f5faef1"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/runtime-config-tests.log",
+      "bytes": 767,
+      "sha256": "0663e06ebf2ed443e0f11d3bf3e47cfa731b4bba9bd8f8c781f37ce1e9667e8f"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/server-metadata-controls.log",
+      "bytes": 664,
+      "sha256": "79049495e6d85275f5f3e3812b9ed8b75972e7cfa7d8fe49b3c7430a8c0891fc"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-v1-intake/watcher-observation.json",
+      "bytes": 645,
+      "sha256": "33be75ed2bd023805c6963c110e55e74667c7bbe686fac4d4dedd98415c37061"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md",
+      "bytes": 11441,
+      "sha256": "63cdbaa405acddbf6989c4955ee6253353cb882f62e17e81966cd03e3a88d7e9"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+      "bytes": 29219,
+      "sha256": "63c4889a108847a2e5c50496499959dbf814a80c309471a2e0be91f70e862f95"
+    },
+    {
+      "path": "scripts/verify-event-evolution-compiled-consumer.py",
+      "bytes": 6338,
+      "sha256": "d29c3587740666a2cbbef7f1e5ab98831a1766e045dbaa13d0a0aa2b70c2d914"
+    },
+    {
+      "path": "scripts/verify-event-evolution.py",
+      "bytes": 8760,
+      "sha256": "624d2159f8799462a74bdb9d7414625877fffc9873e44af89c5646d6176f5dd6"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs",
+      "bytes": 14043,
+      "sha256": "632b592904ce5abcdeabcc199cf16e450839f6065f5b9087b359e5c77ae29afa"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventBufferReservation.cs",
+      "bytes": 1202,
+      "sha256": "8ff7ea6ffa78e5b3a677fcd50e0638d23a7d6263b84bbf981a491a0491763204"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventLogicalViewResolver.cs",
+      "bytes": 7165,
+      "sha256": "17000b0301e37a01414da062f3d2c980c0531b19c9fa8037010c02345a2dacec"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs",
+      "bytes": 8792,
+      "sha256": "e94e9a3c265414f080899a3958e1dbc68a127b13002f6848a6db3ffbc2897c02"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventEnvelope.cs",
+      "bytes": 6939,
+      "sha256": "14813717e9c5e8ded64bf7f07432836529929fd5f6399154eed0094c2624a17f"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProcessingResult.cs",
+      "bytes": 1612,
+      "sha256": "e5d2239dba7e7f71c43cb4152721333502cc69d19c8e1e3f767cb3a499f7e5d3"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProcessor.cs",
+      "bytes": 20082,
+      "sha256": "44d7f409980fe896dc0facaf2b61cc08bfeb31b1595b58e6ecd90c2c089e821a"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs",
+      "bytes": 8221,
+      "sha256": "cec81ea815c8245499c29f964e348bef257cd9c122d704780378f6899213960d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Projections/ProjectionRequest.cs",
+      "bytes": 1219,
+      "sha256": "8cc830aa7b30d14a7f65cc72ab6c97526759d20e1774b5e1ee953773bdf6ee9c"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Replay/ReplayEventEnvelope.cs",
+      "bytes": 4098,
+      "sha256": "5eb62f336c97f734a61ba0b490e75021342161a9cac19c7daf5ac8b18d4b6160"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/BoundedV1WireResultAdmission.cs",
+      "bytes": 4308,
+      "sha256": "47ce02925b485b506856ef31e9c7287cf12f8018c8ede31d58b4cf086985f06e"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/BoundedV1WireResultResponse.cs",
+      "bytes": 2776,
+      "sha256": "a159a20de803f27be1f3f5bf6ba5dceb276d69dd4e787674e210441ce8aba0e6"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs",
+      "bytes": 40540,
+      "sha256": "1f0632c56fb9c823fc6c8a4ba0349cc2b5cf09fedba49d79f8faeedd8cfa96e9"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainProjectionEvolutionAdmission.cs",
+      "bytes": 1725,
+      "sha256": "3df88bd4bbcd5f10dc744a811c41a0097de6c11916d02542ae0ce5e2a6826885"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs",
+      "bytes": 14141,
+      "sha256": "2e2799777cfd6e36f046b782965641ce50411f166b413430bc6476d76bbb63bd"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs",
+      "bytes": 61125,
+      "sha256": "728c074af6b07d6fbc1404b969496a34cd09ee47efa9a4fe74ee0ab94245690e"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/EventStoreDomainEventsEndpointExtensions.cs",
+      "bytes": 3714,
+      "sha256": "b74b438cc52bdc414f261c78e6d2618f22a8e5eff1c2f4f1864b7e8209f24f1d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/UnpublishedEventsRecord.cs",
+      "bytes": 7209,
+      "sha256": "afc4d04253a96f59af67adbbc9962c81e7829e66d041ff2f97b8db65227a024d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs",
+      "bytes": 16584,
+      "sha256": "31d5dd73eb0c7dddd155e51597c883552a29afa5c4450c7fea8db0e9309b6020"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Aggregates/AggregateReplayerTests.cs",
+      "bytes": 19771,
+      "sha256": "ef01139bd83e077f834801fc1b69b301978c0cab0647e9613ceb6143eca4fafe"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/BoundedPayloadPrimitiveTests.cs",
+      "bytes": 6680,
+      "sha256": "0c5279931af47c142a2bf80e813d82cdc3152c0aeb0e657998eb1d9c048c41eb"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventLogicalViewResolverTests.cs",
+      "bytes": 5559,
+      "sha256": "33e83f718f1747c355c1252e2a69861d150d8d003ff03f7e7f41b3f49f47a757"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Subscriptions/EventEvolutionSubscriptionAdmissionTests.cs",
+      "bytes": 5190,
+      "sha256": "ca360e3fd090dad466ba8ecf95deb117cb1bd7e072dd333bb57c1441bc265f08"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Events/EventEvolutionEvidenceTests.cs",
+      "bytes": 4669,
+      "sha256": "2607d086aff786afd7d4940aa46b253807946f156b44e3013b7abc6b46c54aad"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs",
+      "bytes": 10011,
+      "sha256": "b0e4050549d4210bcd465a83d48fa323a533cbceb6f0fbd8744ffa144901ed26"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/ChangingCountWireEvents.cs",
+      "bytes": 939,
+      "sha256": "9294aab1d36c838c78f1c6269c3698da593b3b263e8dedd7c70f1e28d95744b7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs",
+      "bytes": 6929,
+      "sha256": "c291852d29d77c9cd8ed0ea2b0f68fb0e7a19ba3a470dcaebc5bb029a8d22da1"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainEventsEndpointExtensionsTests.cs",
+      "bytes": 3337,
+      "sha256": "9bc5e5615f84cbfe52dabb24af9db34a95a97292c3dc5cdafecd4d937a32a041"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs",
+      "bytes": 69084,
+      "sha256": "5af656695ae07f939872135e50c83992a3586a7e8a8c9081ec900148176c321d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestRuntimeConfiguration.cs",
+      "bytes": 1285,
+      "sha256": "31c57d993d6bde7957de95b0751865f905ca90319216924c65a944bcd9b6b389"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestRuntimeConfigurationTests.cs",
+      "bytes": 1673,
+      "sha256": "ed61af7c028228310c913f8cf3bb39934d4a9b5372aa63078325a6ceddb772e3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Actors/UnpublishedEventsRecordCompatibilityTests.cs",
+      "bytes": 2139,
+      "sha256": "65e186f6fc2e02cb2e8b48091d7b08cbf8e98efe13813f06c66a6486be611100"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalEventReaderTests.cs",
+      "bytes": 35419,
+      "sha256": "5009d8075c5f482351bed98f6e72ef092e6f0ac194952dbd5c64218b573b8747"
+    },
+    {
+      "path": "tools/event-evolution-compatibility/LegacyConsumer/LegacyConsumer.csproj",
+      "bytes": 394,
+      "sha256": "a3322b5bef5cded4cfc8172dd68c2d9eb98cc698ecbd06af5ffe54a14f86fe17"
+    },
+    {
+      "path": "tools/event-evolution-compatibility/LegacyConsumer/Program.cs",
+      "bytes": 1377,
+      "sha256": "9d889ca533b7e05283dae689093acc8795124bc0a10cc61d81b050f1dec10b2f"
+    },
+    {
+      "path": "tools/event-evolution-compatibility/LegacyServer/LegacyServer.csproj",
+      "bytes": 321,
+      "sha256": "2b4186729354b3ea7df3180794fa8cd898f61b78e8485c800c83aca45d696753"
+    },
+    {
+      "path": "tools/event-evolution-compatibility/LegacyServer/UnpublishedEventsRecord.cs",
+      "bytes": 1410,
+      "sha256": "e0eff19e6c12bffbc37efc918ce18ad3ba87236340d3c0cbfddc83d4913463f3"
+    }
+  ]
+}

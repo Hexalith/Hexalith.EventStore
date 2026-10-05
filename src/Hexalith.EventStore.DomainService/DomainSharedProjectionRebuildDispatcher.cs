@@ -886,6 +886,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
                 }
 
+                DomainProjectionEvolutionAdmission.RequireLegacyEvents(request.Events);
                 ValidateEventHistory(request.Events, options.MaxRebuildEventCount);
                 break;
             case DomainSharedProjectionRebuildAction.Finalize:

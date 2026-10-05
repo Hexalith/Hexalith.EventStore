@@ -1,0 +1,18 @@
+[
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/dependency-loader-decision.md",
+    "sha256": "6ddb6e91ec8604de5b1697cb50fa8f1f11d25ebf051d8e8c6601d3469700abd5"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+    "sha256": "63c4889a108847a2e5c50496499959dbf814a80c309471a2e0be91f70e862f95"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
+    "sha256": "5caccde87475306057e8424a75c329301ca0a115dc3f83128df9062203520747"
+  },
+  {
+    "path": "global.json",
+    "sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654"
+  }
+]

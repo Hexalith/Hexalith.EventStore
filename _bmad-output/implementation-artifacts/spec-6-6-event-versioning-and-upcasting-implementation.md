@@ -94,6 +94,15 @@ readiness and signed route/proof seams. The
 page is not wired into production consumers; V2 and proof-dependent activation
 remain fenced, and M1–M8 acceptance is still open.
 
+The [V1 intake and compatibility repair evidence](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md)
+records whole-result bounded admission, composed readable/output ownership,
+dormant exact provenance members with refusal on legacy consumer routes, the
+restored twelve-member drain-record ABI, strengthened source-fence controls,
+the standard local package fixtures and separate Development live profiles.
+Authoritative manifests, trusted loader qualification, route/proof binding,
+control transactions and production/fleet qualification remain open. No M1–M8
+acceptance checkbox or activation fence changes.
+
 ### Re-derivation requirements from resumed review
 
 The subsequent [composed logical-read verification](evidence/story-6-6/verification-2026-10-05-composed-logical-read-boundary.md)
@@ -121,6 +130,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-05 — Recorded local [V1 intake, ownership and compatibility repairs](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md), scoped package/compiled-consumer checks and Development live fallback evidence. Kept the canonical baseline, frozen intent, in-progress status and all M1–M8 acceptance requirements unchanged.
 
 - 2026-10-05 — Owner directed implementation to stay within Dapr. The [Dapr-only amendment](story-6-6-dapr-only-amendment.md) supersedes the earlier direct PostgreSQL/provider-extension design for Story 6.6. Removed dormant SQL adapter and dependency footprint; V2 and proof-dependent activation remain fenced. Earlier approval digest and provider tests remain historical evidence, not current acceptance.
 

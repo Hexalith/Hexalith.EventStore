@@ -1,0 +1,1004 @@
+[
+  {
+    "mode": "pinned-managed",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "pinned-managed",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/pinned-managed.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.117,
+      "log": "run-pinned-managed.log",
+      "log_sha256": "a47d3db7224cbb9056470e9bab1949f44074872a3b47a8ca4e4dd963ca98f205"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "pinned-managed",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "mode": "ordinary-undeclared-managed",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "ordinary-undeclared-managed",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/ordinary-undeclared-managed.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.129,
+      "log": "run-ordinary-undeclared-managed.log",
+      "log_sha256": "fd5f5021e01fe6790a5fbeba43e5cb62cadcffb07789cf82a772994fd42f0bf5"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "ordinary-undeclared-managed",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "mode": "explicit-default-managed",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "explicit-default-managed",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/explicit-default-managed.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.138,
+      "log": "run-explicit-default-managed.log",
+      "log_sha256": "b05c3c83a7b3d768bcdf665fec6e74c4cd16d5bdb7ca3ab3f01551b19fbc94bf"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "explicit-default-managed",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "mode": "explicit-other-managed",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "explicit-other-managed",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/explicit-other-managed.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.133,
+      "log": "run-explicit-other-managed.log",
+      "log_sha256": "a3199a38f59ccd42ee1b1a0838f57683124d835251f71d6fbff7d4cb438ac00a"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "explicit-other-managed",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "mode": "ordinary-undeclared-native",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "ordinary-undeclared-native",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/ordinary-undeclared-native.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.146,
+      "log": "run-ordinary-undeclared-native.log",
+      "log_sha256": "ec97449179a021d1a8f858a57106f6614dc5db57e08a752b46d2bfa1cddd7a9b"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "ordinary-undeclared-native",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "mode": "explicit-native",
+    "execution": {
+      "command": [
+        "dotnet",
+        "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "explicit-native",
+        "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "/tmp/story-6-6-loader-probe-nw257blr/explicit-native.effects.txt"
+      ],
+      "working_directory": "/tmp/story-6-6-loader-probe-nw257blr",
+      "timeout_seconds": 20,
+      "timed_out": false,
+      "exit_code": 0,
+      "elapsed_seconds": 0.133,
+      "log": "run-explicit-native.log",
+      "log_sha256": "1d5dc4e3e09550dd0be888ad9532a56644c4ce2ec8d1ba38a3971270473b9459"
+    },
+    "consumed": [
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/fixture/Host/bin/Release/net10.0/Probe.Host.dll",
+        "sha256": "7e3519a2a72b36b34ba34029a28d947707647d3d1d95a33842bd4e946747ce16"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/managed-pins.json",
+        "sha256": "38d96d9226998b3fbf7b126e49c260291f43ef95b1be9a8c9e68f9bbba47660a"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d/Probe.Undeclared.dll",
+        "sha256": "1056e07f4f89120b66e7db22257c7c91533d0680b65aa231b9307368a0d3986d"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/libprobe_unmanifested.so",
+        "sha256": "8fb341d8cd4411254290f2a17b8274bacec0c8e7a5070dbe6463acf3616218f3"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086/Probe.Plugin.dll",
+        "sha256": "80d02699f8e5aa189e18b989fc1cd05ec1e99c60cfa9362416563d08d71dd086"
+      },
+      {
+        "path": "/tmp/story-6-6-loader-probe-nw257blr/content-addressed/8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362/Probe.Declared.dll",
+        "sha256": "8d0c94f37940fea042fc0270037c8f68bc4f01fcc81087a0c1409c925fa05362"
+      }
+    ],
+    "consumed_unchanged_after_execution": true,
+    "result": {
+      "mode": "explicit-native",
+      "callbackReturned": false,
+      "invocationError": "CapabilityMismatch: not ready before invocation.",
+      "capabilityRejected": true,
+      "candidateReadyAtEnd": false,
+      "managedResolutionCalls": 1,
+      "nativeResolutionCalls": 0,
+      "perAssemblyNativeResolverCalls": 0,
+      "effects": [],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "assembly-load-observed",
+          "detail": "System.Reflection.Metadata:Default",
+          "ready": true
+        },
+        {
+          "sequence": 2,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Reflection.Metadata:Default",
+          "ready": false
+        },
+        {
+          "sequence": 3,
+          "kind": "assembly-load-observed",
+          "detail": "System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 4,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.IO.MemoryMappedFiles:Default",
+          "ready": false
+        },
+        {
+          "sequence": 5,
+          "kind": "assembly-load-observed",
+          "detail": "System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 6,
+          "kind": "capability-invalidated",
+          "detail": "observed-unmanifested-managed-load:System.Collections.Immutable:Default",
+          "ready": false
+        },
+        {
+          "sequence": 7,
+          "kind": "managed-pin-verified",
+          "detail": "Probe.Plugin:80D02699F8E5AA189E18B989FC1CD05EC1E99C60CFA9362416563D08D71DD086",
+          "ready": false
+        },
+        {
+          "sequence": 8,
+          "kind": "pinned-root-load",
+          "detail": "Probe.Plugin",
+          "ready": false
+        },
+        {
+          "sequence": 9,
+          "kind": "assembly-load-observed",
+          "detail": "Probe.Plugin:fixture-pinned-candidate",
+          "ready": false
+        },
+        {
+          "sequence": 10,
+          "kind": "candidate-managed-resolution",
+          "detail": "System.Runtime",
+          "ready": false
+        },
+        {
+          "sequence": 11,
+          "kind": "host-before-invocation",
+          "detail": "",
+          "ready": false
+        },
+        {
+          "sequence": 12,
+          "kind": "host-capability-rejected",
+          "detail": "",
+          "ready": false
+        }
+      ],
+      "sharedFramework": [
+        {
+          "name": "System.Private.CoreLib",
+          "identity": "System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+          "sha256": "26304A2985357B9EE277F273667FCD9C892EDAE3EE6EBA76F739033E95EB39B3"
+        },
+        {
+          "name": "System.Runtime",
+          "identity": "System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+          "sha256": "417E7882E2A2689AAFBF86BD6256DB906357AFA775F58E3C86A94A9F119CC3EF"
+        },
+        {
+          "name": "System.Runtime.Loader",
+          "identity": "System.Runtime.Loader, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.Loader.dll",
+          "sha256": "20BB43CCADC7D94801A150A8D5CAAF74584F5C4709A02EB0C618A426B04E0F6C"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "identity": "System.Runtime.InteropServices, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.InteropServices.dll",
+          "sha256": "82286A808B40F176A758A1AD0FAEADCF170D92A90043ACA046160C90E5D54C74"
+        },
+        {
+          "name": "System.IO.FileSystem",
+          "identity": "System.IO.FileSystem, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.IO.FileSystem.dll",
+          "sha256": "739691AA3A6DEFE83930D2A48173A64D52D19BD64F25CDD9EDE35F546BE7571F"
+        }
+      ],
+      "scope": "isolated resolver and observation candidate only; no production loader adoption"
+    },
+    "effect_file_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

@@ -51,6 +51,22 @@ public static class AggregateReplayer {
                 failedEventType: string.Empty);
         }
 
+        // Refuse the complete eligible batch before creating state or invoking Apply.
+        // A legacy alias route cannot verify a canonical effective event carrier.
+        ReplayEventEnvelope? versioned = eligible.FirstOrDefault(static item => item.MetadataVersion != 1
+            || item.StoredEventContractType is not null || item.StoredPayloadVersion is not null
+            || item.StoredSerializationFormat is not null || item.StoredEventTypeName is not null
+            || item.StoredDigest is not null || item.RegistryFingerprint is not null || item.IsAdapted is not null
+            || item.EffectiveEventContractType is not null || item.EffectivePayloadVersion is not null
+            || item.EffectiveSerializationFormat is not null || item.EffectivePayload is not null);
+        if (versioned is not null) {
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.UnsupportedVersion,
+                "RollbackReaderCapabilityHold: legacy replay cannot consume a versioned event.",
+                failedSequenceNumber: versioned.SequenceNumber,
+                failedEventType: versioned.EventTypeName);
+        }
+
         // Duplicate / conflicting sequence guard: any two events sharing the same sequence
         // number cannot be unambiguously ordered, so reconstruction must fail explicitly
         // rather than pick one arbitrarily.

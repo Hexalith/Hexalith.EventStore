@@ -5339,7 +5339,8 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Resize or transfer readable-output reservations after Story 6.6 unprotection resolves actual ownership.
   evidence: DaprLogicalEventReader.cs:105 retains 64 MiB while EventLogicalViewResolver and EventUpcastChainExecutor allocate two further copies. A valid 22 MiB no-op payload charges 130.5 MiB while actual private payload copies total 66 MiB; Blind 3 and Edge 1 confirm this medium runtime defect.
-  status: open
+  resolution: The 2026-10-05 [repair evidence](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md) records exclusive resolver-to-executor ownership transfer, down-only reservations after provider return, passing 22/64 MiB no-op and 22 MiB distinct-output controls, clearing and zero retained budget. Typed ingress and provider-internal allocations remain unqualified; this closes the demonstrated redundant-copy accounting defect only.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Unverified medium: assess cross-page metadata generation identity before integrating Story 6.6 paging.
@@ -5349,12 +5350,14 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Make the Story 6.6 V2-fence preflight reject disabled executable fences hidden behind matching comment text.
   evidence: A parent process-private probe changed metadataVersion == 2 to == 3 and prefixed a fence-shaped comment; scripts/verify-event-evolution.py still returned passed/fenced. The actual runtime fence and evidence bytes were preserved; this medium verifier issue is outside the planning intent.
-  status: open
+  resolution: The 2026-10-05 [repair evidence](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md) records comment/literal blanking, adjacent executable admission checks and refusal of conditional compilation. Timed comment, block-comment, string, disabled-condition and preprocessor mutants all reject. This remains a conservative source policy, with no semantic or activation authority.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Bound the Story 6.6 application-storage symbol scan claim and cover factory-created database calls.
   evidence: A parent process-private probe with DbProviderFactories.GetFactory, inferred CreateConnection and Open passed scripts/verify-event-evolution.py. Its regex misses that actual provider-call pattern; 3.17 already owns final evaluated/HTTP/credential inventory and declared analysis limits.
-  status: open
+  resolution: The final 2026-10-05 [refusal checkpoint](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md#final-local-refusal-checkpoint) adds DbProviderFactories to the lexical denylist and rejects the exact GetFactory/inferred CreateConnection/Open mutant at application-storage-boundary in a ten-second subprocess. All eleven mutations pass. The script explicitly disclaims complete semantic/static/SQL/runtime inventory; Story 3.17's broader inventory remains separate.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Prove fresh activation/rehydration in the Story 6.6 restart live evidence.
@@ -5364,7 +5367,8 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Add Story 6.6 metadata admission/snapshot regression coverage through the logical reader API.
   evidence: Reader tests use short metadata with Extensions=null; removing the 512 KiB admission calls would leave them passing. Cover fixed-field/extension limits, provider non-invocation, callback isolation, snapshot failure and reservation cleanup. Blind 9 and Gap 1 share this medium test gap.
-  status: open
+  resolution: The final 2026-10-05 [refusal checkpoint](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md#final-local-refusal-checkpoint) records 24 passing reader tests without skips. Oversized fixed fields/extensions refuse before callbacks, callback mutation cannot replace the private snapshot, and an enumerator throws after one copied entry while 512 KiB is charged; the exact exception is preserved, provider calls remain empty and budget returns to zero.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dapr-infrastructure-boundary-planning-reconciliation.md`
   summary: Unverified medium: establish bounded ordinary-lane termination for the Story 6.6 live scenario.
@@ -5454,17 +5458,20 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Preserve the legacy compiled UnpublishedEventsRecord constructor and Deconstruct signatures in the publication-recovery change.
   evidence: BH-R6: adding optional positional CausationId replaces the prior 12-argument constructor and generated 12-output deconstructor. Compiled callers can fail despite JSON deserialization compatibility. The earlier publication change is unchanged here and excluded from the replay-reader frozen intent.
-  status: open
+  resolution: The 2026-10-05 [repair evidence](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md#package-and-already-compiled-consumer-evidence) records restored twelve-member overloads and an unchanged already-compiled consumer executed against both current Release and final packaged Server bytes. Removing either member independently produces MissingMethodException in a timed fresh process; CausationId JSON round trips also pass. This closes the exact prior-record ABI defect, not the broad API/wire/fleet compatibility matrix.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Qualify and correct conservative readable-output reservation accounting in the shared evolution primitive.
   evidence: BH-R7: a retained 64 MiB provider reservation plus resolver/executor copies charges about 130.5 MiB for a 22 MiB no-op payload whose private copies total about 66 MiB. This pre-existing reservation and production reachability remain unchanged by this repair; all ceilings remain enforced.
-  status: open
+  resolution: The 2026-10-05 [repair evidence](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md) records the same repaired accounting and passing large-payload/cleanup controls as the earlier reservation row. Provider reservations remain conservative before invocation and shrink only after actual ownership is known; existing ceilings remain enforced. Typed ingress and provider-internal allocation qualification remain open.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Add discriminating metadata-admission and private-extension-snapshot controls for the shared evolution primitive.
   evidence: BH-R9: the current short/null-extension fixtures would survive removal of the existing 512 KiB admission or snapshot isolation. Cover oversized fixed fields/extensions, callback mutation and cleanup after snapshot failure; these guards were not changed in this repair.
-  status: open
+  resolution: The final 2026-10-05 [refusal checkpoint](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md#final-local-refusal-checkpoint) covers fixed-field/extension limit refusal, callback isolation and partial-snapshot exception cleanup through the reader API, with provider non-invocation and zero retained budget. All 24 reader tests passed without skips; broader raw-property-presence and consumer qualification remain open.
+  status: done 2026-10-05
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-2.md`
   summary: Move the publication-recovery DrainProofEvent test helper into its own C# file.

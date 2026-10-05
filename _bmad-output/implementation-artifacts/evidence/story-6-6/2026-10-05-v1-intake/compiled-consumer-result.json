@@ -1,0 +1,21 @@
+{
+  "result": "passed",
+  "scope": "prior twelve-member UnpublishedEventsRecord ABI only; no Story 6.6 activation",
+  "executed_server_sha256": "26c342f09562840d0a027b7f4a1e60c7e0769e7f66ab3bd82f99fabdd6404ead",
+  "legacy_reference_sha256": "8e6b66d635d2232192992ddf99b3b93f39c4e4153a6a31513a0ea8325d7cbf14",
+  "already_compiled_consumer_sha256": "62bca4c36ca6350e222061632ea10b1eb35b62f90f57ffbb5e4585b3c15f95db",
+  "mutations": [
+    {
+      "mutation": "constructor-removed",
+      "result": "rejected",
+      "timeout_seconds": 20
+    },
+    {
+      "mutation": "deconstructor-removed",
+      "result": "rejected",
+      "timeout_seconds": 20
+    }
+  ],
+  "configuration": "Release",
+  "output": "/tmp/story-6-6-intake-compiled-release"
+}

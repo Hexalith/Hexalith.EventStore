@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python3",
+    "scripts/verify-event-evolution.py",
+    "--mutation",
+    "application-sql-factory"
+  ],
+  "timeout_seconds": 10,
+  "exit_code": 2,
+  "expected_exit_code": 2,
+  "log": "factory-refusal.log",
+  "result": {
+    "check": "application-storage-boundary",
+    "detail": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs: application database access is forbidden",
+    "result": "failed"
+  }
+}

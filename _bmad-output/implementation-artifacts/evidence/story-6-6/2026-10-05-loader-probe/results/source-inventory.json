@@ -1,0 +1,77 @@
+[
+  {
+    "path": "fixture/Declared/Declared.csproj",
+    "sha256": "4af5577fc23ce5da7d5087a1d6561ee27689327e2558f94fa324507ca0789768",
+    "bytes": 448
+  },
+  {
+    "path": "fixture/Declared/DeclaredEffect.cs",
+    "sha256": "50ed153717ea8d699b2a683c1e24062d0757b37340d96887a341ecc204e2742d",
+    "bytes": 374
+  },
+  {
+    "path": "fixture/Host/AssemblyObservation.cs",
+    "sha256": "b2d174d088f7824f560e3ac87479f1d08e7adfe9d7c4b8428895bde4136f02a8",
+    "bytes": 1614
+  },
+  {
+    "path": "fixture/Host/Host.csproj",
+    "sha256": "d8505b25cb7ce3931a9b97c0fc294f89b5ed1d4841277b02137dfcb0bd457f6e",
+    "bytes": 477
+  },
+  {
+    "path": "fixture/Host/PinnedAssembly.cs",
+    "sha256": "b846e8591591db83d85925b94bc8c51a837a267f431ea904ee69de9ac04df16b",
+    "bytes": 492
+  },
+  {
+    "path": "fixture/Host/PinnedLoadContext.cs",
+    "sha256": "47957546757c8c0d0bd35ef8c1b3d8a80e32afaa6c2a2717135aa6204da5a7a2",
+    "bytes": 3869
+  },
+  {
+    "path": "fixture/Host/ProbeAudit.cs",
+    "sha256": "31b1a122bdb2624b492b935992a202566fb7f64b21f8499333d2824f67a4804a",
+    "bytes": 1026
+  },
+  {
+    "path": "fixture/Host/Program.cs",
+    "sha256": "88aeb2d645629f1b9a76ad3c578add976b97102333c6d6d05b08ef1d4ba834b7",
+    "bytes": 5171
+  },
+  {
+    "path": "fixture/Plugin/Entry.cs",
+    "sha256": "d5c73d9705f83b4867885c7006c1e971f1a2a61eddf7ab84b4d3daeb0f55140f",
+    "bytes": 3388
+  },
+  {
+    "path": "fixture/Plugin/Plugin.csproj",
+    "sha256": "0f0c43932039a5a875d8ca1b4f2017b5f2341dffd985e2404726fd48c04fd324",
+    "bytes": 538
+  },
+  {
+    "path": "fixture/Undeclared/Undeclared.csproj",
+    "sha256": "8eb6e3476f1fe98592cb5d7f6a086cdef98f7b12ce27932f8a7332b1a7603b2c",
+    "bytes": 450
+  },
+  {
+    "path": "fixture/Undeclared/UndeclaredEffect.cs",
+    "sha256": "c17267d11f3fdbc6d48178ace127940a9ceb2a3bd2c5decd258d991e1db10b1d",
+    "bytes": 384
+  },
+  {
+    "path": "fixture/native/owned_fixture.c",
+    "sha256": "1ccf590177b0d2e978bd916c4fa7d573484672776b269f21c458d6174143856c",
+    "bytes": 844
+  },
+  {
+    "path": "run_probe.py",
+    "sha256": "aa42e3503a06648de60b3a86dd7a20eaca339316db5944801b6eaac79bf2e16b",
+    "bytes": 9867
+  },
+  {
+    "path": "repository:global.json",
+    "sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+    "bytes": 148
+  }
+]

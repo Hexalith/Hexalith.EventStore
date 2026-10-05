@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  Restored /tmp/story-6-6-loader-probe-0x3vc25a/fixture/Host/Host.csproj (in 53 ms).
+  Host -> /tmp/story-6-6-loader-probe-0x3vc25a/fixture/Host/bin/Release/net10.0/Probe.Host.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.06
