@@ -2630,6 +2630,8 @@ public partial class AggregateActor(
             }
 
             if (publishResult.Success) {
+                string? committedCausationId = await TryReadDrainCausationIdAsync(record, trackingId)
+                    .ConfigureAwait(false);
                 // Success: remove record, decrement backpressure counter, unregister reminder, update advisory status.
                 // The try region starts before the first mutation so a staging failure cannot hitchhike
                 // any earlier cleanup mutation onto the retry-record save in the outer failure path.
@@ -2720,7 +2722,8 @@ public partial class AggregateActor(
                                     && string.Equals(record.MessageId, trackingId, StringComparison.Ordinal)
                                     && !string.IsNullOrWhiteSpace(record.CommandType)
                                     && HasVerifiedEventRange(identity, events, record.StartSequence,
-                                        record.EndSequence, record.EventCount, record.CorrelationId)
+                                        record.EndSequence, record.EventCount, record.CorrelationId,
+                                        committedCausationId)
                                         ? record.EndSequence : null,
                             }).ConfigureAwait(false);
                 }
@@ -4184,7 +4187,7 @@ public partial class AggregateActor(
 
             rangeProofVerified = HasVerifiedCommandRange(command, existingPipeline, eventCount)
                 && HasVerifiedEventRange(command.AggregateIdentity, persistedEvents, resumeStart, resumeEnd,
-                    eventCount, command.CorrelationId);
+                    eventCount, command.CorrelationId, existingPipeline.CausationId);
 
             EventPublishResult publishResult = await eventPublisher
                 .PublishEventsAsync(
@@ -6048,10 +6051,45 @@ public partial class AggregateActor(
             && string.Equals(checkpoint.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
             && string.Equals(checkpoint.CommandType, command.CommandType, StringComparison.Ordinal);
 
-    private static bool HasVerifiedEventRange(AggregateIdentity identity, IReadOnlyList<EventEnvelope> events,
-        long start, long end, int count, string correlationId)
+    private async Task<string?> TryReadDrainCausationIdAsync(UnpublishedEventsRecord record, string trackingId)
     {
-        if (start <= 0 || end < start || count <= 0 || end - start + 1 != count || events.Count != count)
+        if (string.IsNullOrWhiteSpace(record.MessageId)
+            || !string.Equals(record.MessageId, trackingId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(record.CommandType))
+        {
+            return null;
+        }
+
+        try
+        {
+            ConditionalValue<IdempotencyRecord> stored = await StateManager
+                .TryGetStateAsync<IdempotencyRecord>(IdempotencyChecker.GetRecordKey(record.MessageId))
+                .ConfigureAwait(false);
+            IdempotencyRecord? command = stored.HasValue ? stored.Value : null;
+            return command is not null
+                && command.Disposition is IdempotencyRecordDisposition.Recoverable
+                && command.Accepted
+                && command.EventCount == record.EventCount
+                && !string.IsNullOrWhiteSpace(command.CausationId)
+                && string.Equals(command.MessageId, record.MessageId, StringComparison.Ordinal)
+                && string.Equals(command.CorrelationId, record.CorrelationId, StringComparison.Ordinal)
+                && string.Equals(command.CommandType, record.CommandType, StringComparison.Ordinal)
+                    ? command.CausationId : null;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception,
+                "Drain identity lookup failed; committed sequence proof is unavailable: TrackingId={TrackingId}",
+                trackingId);
+            return null;
+        }
+    }
+
+    private static bool HasVerifiedEventRange(AggregateIdentity identity, IReadOnlyList<EventEnvelope> events,
+        long start, long end, int count, string correlationId, string? causationId)
+    {
+        if (start <= 0 || end < start || count <= 0 || end - start + 1 != count || events.Count != count
+            || string.IsNullOrWhiteSpace(causationId))
         {
             return false;
         }
@@ -6062,7 +6100,8 @@ public partial class AggregateActor(
                 || !string.Equals(envelope.TenantId, identity.TenantId, StringComparison.Ordinal)
                 || !string.Equals(envelope.Domain, identity.Domain, StringComparison.Ordinal)
                 || !string.Equals(envelope.AggregateId, identity.AggregateId, StringComparison.Ordinal)
-                || !string.Equals(envelope.CorrelationId, correlationId, StringComparison.Ordinal))
+                || !string.Equals(envelope.CorrelationId, correlationId, StringComparison.Ordinal)
+                || !string.Equals(envelope.CausationId, causationId, StringComparison.Ordinal))
             {
                 return false;
             }

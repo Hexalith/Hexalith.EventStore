@@ -150,13 +150,15 @@ Example response (using `curl -i`):
 
 ```http
 HTTP/1.1 202 Accepted
-Location: https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+Location: https://localhost:5001/api/v1/commands/status/01HKQXYZ0000000000000000C3
 Retry-After: 1
-X-Correlation-ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+X-Correlation-ID: 01HKQXYZ0000000000000000E5
 Content-Type: application/json
 
-{"correlationId":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
+{"correlationId":"01HKQXYZ0000000000000000C3","messageId":"01HKQXYZ0000000000000000C3"}
 ```
+
+`Location` uses the submitted `messageId`. The `X-Correlation-ID` header traces this HTTP request and can differ from the command's `correlationId` when the request omits that header.
 
 ### Error Responses
 
@@ -314,14 +316,14 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 | statusCode         | integer  | Numeric enum value (0-7).                                                                                  |
 | timestamp          | string   | ISO 8601 timestamp of last status update.                                                                  |
 | aggregateId        | string?  | Populated when processing begins.                                                                          |
-| domain             | string?  | Aggregate domain when recorded. Null when scope was not retained or verified.                              |
+| domain             | string?  | Aggregate domain on actor-written status records, including rejections; null for legacy records and pre-actor conflicts. |
 | eventCount         | integer? | Number of events produced (Completed status only).                                                         |
 | committedEventSequence | integer? | Last aggregate event sequence durably committed by this command when an exact eventful range is verified. Null when proof is unavailable. |
 | rejectionEventType | string?  | Rejection event type name (Rejected status only).                                                          |
 | failureReason      | string?  | Error description (PublishFailed status only).                                                             |
 | timeoutDuration    | string?  | ISO 8601 duration format, e.g., `"PT30S"` (TimedOut status only). Produced by `XmlConvert.ToString(TimeSpan)`. |
 
-`committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, rejection, legacy status, or a recovery whose command-specific range cannot be verified; the domain may also be null for these cases. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
+`committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, rejection, legacy status, or a recovery whose command-specific range cannot be verified. Actor-written status records retain the command domain even when they reject or cannot provide sequence proof; legacy records and pre-actor conflicts may lack it. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
 
 **Example — completed command:**
 
@@ -354,7 +356,7 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
     "statusCode": 5,
     "timestamp": "2026-03-01T10:31:00.000Z",
     "aggregateId": "counter-1",
-    "domain": null,
+    "domain": "counter",
     "eventCount": null,
     "committedEventSequence": null,
     "rejectionEventType": "CounterAlreadyAtZero",
@@ -386,7 +388,7 @@ Terminal states: Completed, Rejected, PublishFailed, TimedOut. See [Command Life
 | 401 Unauthorized      | Missing or invalid JWT token                                    | —                                                 |
 | 403 Forbidden         | No `eventstore:tenant` claims found in JWT                      | RFC 7807 ProblemDetails                           |
 | 404 Not Found         | Command not found in authorized tenants                         | RFC 7807 ProblemDetails                           |
-| 409 Conflict          | Correlation ID matches multiple commands                       | RFC 7807 ProblemDetails; retry with `messageId`    |
+| 409 Conflict          | Identifier matches multiple records or authorized tenant scopes | RFC 7807 ProblemDetails; inspect the submitted command and tenant scope before retrying |
 | 429 Too Many Requests | Per-tenant rate limit exceeded                                  | RFC 7807 ProblemDetails with `Retry-After` header |
 
 > **Note:** A `404` response means the command was not found among your authorized tenants. This is intentional — the API does not distinguish between "command does not exist" and "you are not authorized for that tenant" to prevent tenant enumeration.
@@ -409,13 +411,15 @@ $ curl -X POST https://localhost:5001/api/v1/commands/replay/a1b2c3d4-e5f6-7890-
 
 ### Response — 202 Accepted
 
-`202 Accepted` means the replayed command was received and queued for asynchronous processing. It does NOT mean the replay succeeded — poll the status endpoint using the **new** correlation ID to check the result.
+`202 Accepted` means the replayed command was received and queued for asynchronous processing. It does NOT mean the replay succeeded — poll the status endpoint using the **new** `messageId` returned in the response.
 
-The response includes a `Location` header pointing to the status endpoint for the new correlation ID, and a `Retry-After: 1` header.
+The response includes a `Location` header pointing to the status endpoint for the new `messageId`, and a `Retry-After: 1` header.
 
 | Field                  | Type    | Description                                                                                                                |
 | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| correlationId          | string  | **New** correlation ID generated for the replayed command. Use this ID for status polling.                                 |
+| correlationId          | string  | **New** correlation ID generated for tracing the replayed command.                                                         |
+| messageId              | string? | **New** replayed command identity. Use this ID or the `Location` header for status polling.                                 |
+| originalMessageId      | string? | Original command identity when retained in the archive.                                                                    |
 | isReplay               | boolean | Always `true`.                                                                                                             |
 | previousStatus         | string  | Status before replay (Rejected, PublishFailed, or TimedOut). Always populated on a `202` response.                         |
 | originalCorrelationId  | string  | The correlation ID of the failed command that was replayed (matches the path parameter). Use to reconstruct the chain.     |
@@ -425,9 +429,11 @@ The response includes a `Location` header pointing to the status endpoint for th
 ```json
 {
     "correlationId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "messageId": "01HKQXYZ0000000000000000D4",
     "isReplay": true,
     "previousStatus": "Rejected",
-    "originalCorrelationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "originalCorrelationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "originalMessageId": "01HKQXYZ0000000000000000A1"
 }
 ```
 
@@ -541,7 +547,7 @@ $ curl -X POST "${EVENTSTORE_URL}/api/v1/commands" \
 ```
 
 ```json
-{ "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
+{ "correlationId": "01HKQXYZ0000000000000000A1", "messageId": "01HKQXYZ0000000000000000A1" }
 ```
 
 **Step 3 — Poll status:**
@@ -555,7 +561,7 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 
 ```json
 {
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "correlationId": "01HKQXYZ0000000000000000A1",
     "messageId": "01HKQXYZ0000000000000000A1",
     "tenantId": "tenant-a",
     "status": "Completed",

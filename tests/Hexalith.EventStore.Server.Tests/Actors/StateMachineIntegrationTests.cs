@@ -394,6 +394,7 @@ public class StateMachineIntegrationTests {
     [InlineData("domain", null)]
     [InlineData("aggregate", null)]
     [InlineData("correlation", null)]
+    [InlineData("causation", null)]
     [InlineData("sequence", null)]
     public async Task Committed_resume_completes_without_proof_when_persisted_envelopes_mismatch(string mismatch, long? expectedProof)
     {
@@ -416,7 +417,8 @@ public class StateMachineIntegrationTests {
                 mutate && mismatch == "domain" ? "other" : command.Domain,
                 mutate && mismatch == "sequence" ? 6 : sequence, 0, DateTimeOffset.UtcNow,
                 mutate && mismatch == "correlation" ? "other" : command.CorrelationId,
-                command.CausationId!, "system", "1.0.0", "TestEvent", 1, "json", [1], null);
+                mutate && mismatch == "causation" ? "other" : command.CausationId!,
+                "system", "1.0.0", "TestEvent", 1, "json", [1], null);
             await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", envelope);
         }
         await state.SaveStateAsync();
@@ -480,7 +482,7 @@ public class StateMachineIntegrationTests {
                     true,
                     new EventEnvelope(
                         "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
-                        "corr-sm-test", $"cause-{s}", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
+                        "corr-sm-test", "msg-sm-test", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
         }
 
         _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())

@@ -96,7 +96,8 @@ public class EventDrainRecoveryTests {
         IActorStateManager stateManager,
         int eventCount,
         string correlationId = "corr-drain",
-        int startSequence = 1) {
+        int startSequence = 1,
+        string? causationId = null) {
         int endSequence = startSequence + eventCount - 1;
         var metadata = new AggregateMetadata(endSequence, DateTimeOffset.UtcNow, null);
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(
@@ -106,7 +107,7 @@ public class EventDrainRecoveryTests {
         for (int seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
                 $"evt-msg-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
-                correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                correlationId, causationId ?? $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -307,6 +308,8 @@ public class EventDrainRecoveryTests {
     [InlineData("wrong-scope", null)]
     [InlineData("wrong-sequence", null)]
     [InlineData("wrong-correlation", null)]
+    [InlineData("wrong-causation", null)]
+    [InlineData("missing-idempotency", null)]
     [InlineData("wrong-count", null)]
     [InlineData("missing-command-type", null)]
     [InlineData("wrong-domain", null)]
@@ -321,14 +324,24 @@ public class EventDrainRecoveryTests {
         };
         state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
-        ConfigureEventsInState(state, 2, startSequence: 7);
+        ConfigureEventsInState(state, 2, startSequence: 7, causationId: "cause-drain");
+        if (scenario is not "missing-idempotency")
+        {
+            var idempotency = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null,
+                DateTimeOffset.UtcNow, EventCount: 2, MessageId: "command-8", CommandType: "CreateOrder",
+                Disposition: IdempotencyRecordDisposition.Recoverable);
+            state.TryGetStateAsync<IdempotencyRecord>("idempotency:command-8", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<IdempotencyRecord>(true, idempotency));
+        }
         state.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(30, DateTimeOffset.UtcNow, null)));
-        if (scenario is "wrong-scope" or "wrong-domain" or "wrong-aggregate" or "wrong-sequence" or "wrong-correlation")
+        if (scenario is "wrong-scope" or "wrong-domain" or "wrong-aggregate" or "wrong-sequence" or "wrong-correlation" or "wrong-causation")
         {
             EventEnvelope mismatched = new("event-7", scenario is "wrong-aggregate" ? "other" : "agg-001", "test-aggregate", scenario is "wrong-scope" ? "other" : "test-tenant",
                 scenario is "wrong-domain" ? "other" : "test-domain", scenario is "wrong-sequence" ? 6 : 7, 0, DateTimeOffset.UtcNow,
-                scenario is "wrong-correlation" ? "other" : "corr-drain", "cause", "user", "1.0.0", "OrderCreated", 1, "json", [1], null);
+                scenario is "wrong-correlation" ? "other" : "corr-drain",
+                scenario is "wrong-causation" ? "other" : "cause-drain",
+                "user", "1.0.0", "OrderCreated", 1, "json", [1], null);
             state.TryGetStateAsync<EventEnvelope>("test-tenant:test-domain:agg-001:events:7", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, mismatched));
         }
