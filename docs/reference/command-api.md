@@ -37,7 +37,7 @@ Swagger UI is available at `/swagger`. The machine-readable OpenAPI spec is avai
 
 ### Correlation ID
 
-The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request for tracing and support, including the `correlationId` field on ProblemDetails. It does not set the command body's `correlationId`. That body value defaults to `messageId` and is carried on status records and events. `messageId` is the primary status lookup key; correlation lookup is a bounded compatibility fallback that succeeds only when it resolves to exactly one command and returns `409 Conflict` when ambiguous. The header and the command `correlationId` can differ even when the request sends the header.
+The `X-Correlation-ID` header is optional on requests (the system generates one if missing) and always present on responses. It identifies this HTTP request for tracing and support, including the `correlationId` field on ProblemDetails. It does not set the command body's `correlationId`. That body value defaults to `messageId` and is carried on status records and events. Within each authorized tenant, an exact `messageId` match takes precedence over bounded correlation-index lookup. Across authorized tenants, every resolved match counts: an identifier that is a `messageId` in one tenant and a correlation ID in another returns `409 Conflict`. Correlation lookup succeeds only when it resolves to exactly one command; an ambiguous correlation index also returns `409 Conflict`. The header and the command `correlationId` can differ even when the request sends the header.
 
 ### Request Body Size Limit
 
@@ -294,7 +294,7 @@ Stable authorization reason codes are documented in [Forbidden](./problems/forbi
 
 ## GET /api/v1/commands/status/{messageId}
 
-Query the processing status of a previously submitted command. Retain the submitted `messageId` and use it for status lookup. The server searches authorized tenants for that exact command first; bounded correlation-index lookup and legacy status records support older callers that have only a correlation ID. An ambiguous correlation returns `409 Conflict`, so it cannot reliably identify one command.
+Query the processing status of a previously submitted command. Retain the submitted `messageId` and use it for status lookup. Within each authorized tenant, the server checks for an exact `messageId` match before bounded correlation-index lookup; legacy status records also support older callers that have only a correlation ID. Matches across all authorized tenants count together. An identifier that matches a `messageId` in one tenant and a correlation ID in another returns `409 Conflict`, as does an ambiguous correlation index, so a message ID does not resolve every cross-tenant ambiguity.
 
 ### Path Parameter
 
