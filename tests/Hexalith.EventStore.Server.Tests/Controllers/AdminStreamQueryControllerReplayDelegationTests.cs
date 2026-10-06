@@ -367,6 +367,93 @@ public class AdminStreamQueryControllerReplayDelegationTests {
     // Guard 3: ProblemDetails matrix
     // ---------------------------------------------------------------
 
+    /// <summary>Checks approved evolution outcomes map safely with no partial state or timeline.</summary>
+    [Theory]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", 503, "replay-hold")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", 422, "replay-limit")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", 409, "replay-conflict")]
+    public async Task GetAggregateStateAsync_EvolutionOutcomeMapsStatusAndExactSafeReason(
+        AggregateReconstructionErrorCategory category, string reason, int status, string slug) {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
+        IAggregateStateReconstructor reconstructor = BuildReconstructor(
+            AggregateReconstructionResult.Failed(category, "private payload and stack text") with { ReasonCode = reason });
+        AdminStreamQueryController controller = CreateController(actor, reconstructor);
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
+        response.StatusCode.ShouldBe(status);
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe($"urn:hexalith:eventstore:replay:{slug}");
+        problem.Extensions["reasonCode"].ShouldBe(reason);
+        problem.Detail.ShouldNotContain("private payload");
+        problem.Extensions.ContainsKey("stateJson").ShouldBeFalse();
+        problem.Extensions.ContainsKey("timeline").ShouldBeFalse();
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe(category == AggregateReconstructionErrorCategory.Hold ? "30" : string.Empty);
+    }
+
+    /// <summary>Checks contradictory evolution results never disclose state, timeline or private progress.</summary>
+    [Theory]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "success")]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "partial")]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "state")]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "timeline")]
+    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "progress")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "success")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "partial")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "state")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "timeline")]
+    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "progress")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "success")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "partial")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "state")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "timeline")]
+    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "progress")]
+    public async Task GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(
+        AggregateReconstructionErrorCategory category, string reason, string shape) {
+        AggregateReconstructionResult replay = AggregateReconstructionResult.Failed(category, "private-secret") with { ReasonCode = reason };
+        replay = shape switch {
+            "success" => replay with { Status = AggregateReconstructionStatus.Succeeded, StateJson = "{\"private-secret\":true}" },
+            "partial" => replay with { Status = AggregateReconstructionStatus.Partial },
+            "state" => replay with { StateJson = "{\"private-secret\":true}" },
+            "timeline" => replay with { Timeline = [new(1, "event", "{\"private-secret\":true}")] },
+            "progress" => replay with { PagedProgress = new("private-secret"u8.ToArray(), new byte[32], new byte[32], 1, 1, 1, false) },
+            _ => throw new ArgumentException("Unknown malformed replay shape.", nameof(shape)),
+        };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
+        AdminStreamQueryController controller = CreateController(actor, BuildReconstructor(replay));
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
+        response.StatusCode.ShouldBe(500);
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["errorCategory"].ShouldBe("Unexpected");
+        problem.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
+        System.Text.Json.JsonSerializer.Serialize(problem).ShouldNotContain("private-secret");
+        controller.Response.Headers.RetryAfter.ToString().ShouldBeEmpty();
+    }
+
+    /// <summary>Checks missing, unsafe and wrong-category typed reasons cannot be disclosed or treated as an approved outcome.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("private-secret-value")]
+    [InlineData("LegacyArrayLimit")]
+    public async Task GetAggregateStateAsync_UnknownTypedReasonFailsSafely(string? reason) {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
+        AdminStreamQueryController controller = CreateController(actor, BuildReconstructor(
+            AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Hold, "secret") with { ReasonCode = reason }));
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
+        response.StatusCode.ShouldBe(500);
+        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
+        problem.Detail.ShouldNotContain("secret");
+        controller.Response.Headers.RetryAfter.ToString().ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData(AggregateReconstructionErrorCategory.UnknownAggregateType, StatusCodes.Status404NotFound, "unknown-aggregate-type")]
     [InlineData(AggregateReconstructionErrorCategory.UnknownEventType, StatusCodes.Status422UnprocessableEntity, "unknown-event-type")]

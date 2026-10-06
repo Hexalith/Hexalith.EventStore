@@ -11,6 +11,7 @@ baseline_commit: '1329b35e52852952ecb2c94aabf100674e9691e3'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/6-6-implementation-map.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — renegotiated by owner on 2026-10-05 for Dapr-only storage">
@@ -139,6 +140,10 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
+- 2026-10-06 — Recorded [local trusted-code artifact qualification](evidence/story-6-6/verification-2026-10-06-trusted-code-artifacts.md): exact-file and supplied-graph refusal controls, manifest registration guards and accurate assurance limits. Consistent partial supplied graphs and replaceable paths remain unqualified for readiness; complete authoritative catalogs, immutable execution binding, observations and production evidence remain open. Frozen intent, baseline and all M1–M8 dispositions are unchanged.
+
+- 2026-10-06 — Owner selected reviewed trusted application code with “do recommended”. The [loader amendment](story-6-6-trusted-code-amendment.md) replaces the conflicting universal before-effect loader assurance, preserves the failed probe and historical approval inputs, and requires immutable artifact/pin admission and detection with subsequent capability loss. No activation gate or M1–M8 disposition changes.
+
 - 2026-10-05 — Recorded local [private replay ownership and last-good state](evidence/story-6-6/verification-2026-10-05-private-replay-ownership.md) implementation and verification. Distinguished unregistered preparation from durable page authority, documented added legacy serialization work and kept all M1–M8 acceptance and activation gates open.
 
 - 2026-10-05 — Recorded local [V1 intake, ownership and compatibility repairs](evidence/story-6-6/verification-2026-10-05-v1-intake-and-compatibility.md), scoped package/compiled-consumer checks and Development live fallback evidence. Kept the canonical baseline, frozen intent, in-progress status and all M1–M8 acceptance requirements unchanged.
@@ -225,3 +230,34 @@ One cohesive feature uses the existing four-slice policy. Slice 1 activates no b
 - Built Client assembly `-class Hexalith.EventStore.Client.Tests.Events.BoundedPayloadPrimitiveTests`: 4 passed, zero failed/skipped.
 - Built Server assembly, classes `EventPersisterTests`, `DaprDomainServiceInvokerTests`, and `AggregateActorDomainResultTests`: 110 passed, zero failed/skipped.
 - These are focused checks of existing code, not Story 6.6 completion, missing compatibility/provider evidence, or activation authorization.
+
+### Replay admission and cancellation slice — 2026-10-06
+
+The [local verification](evidence/story-6-6/verification-2026-10-06-replay-admission.md)
+records bounded private legacy replay admission, additive typed outcomes and
+safe Admin mapping, built-in cancellation propagation, and V1 producer input
+ownership. Review controls reproduced and fixed converter-cancellation and
+contradictory typed-result failures. Release builds, local regressions and
+package consumers were exercised; a separate SHA-bound Story 6.1 evidence
+snapshot still triggers the repository content guard.
+
+At the time of this slice, the [loader-policy options](evidence/story-6-6/dependency-loader-options-2026-10-06.md)
+were a proposal. The subsequent owner decision is recorded below. Missing manifests/catalog closure and
+production Dapr qualification still prevent activation. Frozen intent,
+`baseline_commit`, parent status and all M1–M8 task dispositions remain unchanged.
+
+### Reviewed trusted-code policy — 2026-10-06
+
+The owner approved the recommended option 3. The
+[current amendment](story-6-6-trusted-code-amendment.md) is a context input and
+controls the conflicting stronger loader assurance without repinning historical
+AD-13 approval. Complete authoritative catalogs and immutable artifact binding
+remain required before readiness; local supplied-graph checks confer no authority.
+
+The [local artifact qualification](evidence/story-6-6/verification-2026-10-06-trusted-code-artifacts.md)
+records exact-file, pin, graph and manifest refusal controls and aligns the
+existing primitives' assurance claims with this amendment. A consistent partial
+supplied graph and a successful hash of a replaceable path confer no readiness.
+Complete authoritative catalogs, immutable artifact execution binding, loader
+observations and production qualification remain required; no registrations or
+activation fences change.

@@ -3,7 +3,11 @@ using System.Text;
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Checks pinned registry bytes and a supplied resolved graph against exact G rows and dependency files.</summary>
-/// <remarks>This is a local verifier. It cannot capture or lock the loader, establish complete catalog roots, or advertise readiness.</remarks>
+/// <remarks>
+/// This local verifier checks supplied identities, versions, contexts, edges and current file bytes.
+/// It cannot establish a complete trusted catalog, bind execution to immutable checked artifacts,
+/// observe later loads or advertise readiness. Those requirements belong to the reviewed deployment.
+/// </remarks>
 internal static class EventDependencyClosureVerifier
 {
     private const long MaximumManifestBytes = 64L * 1024 * 1024;

@@ -10,7 +10,9 @@ public static class EventEvolutionServiceCollectionExtensions
     /// <summary>Validates and registers a pinned domain manifest without granting V2 readiness.</summary>
     /// <remarks>
     /// The caller must obtain the pin from the gateway's authoritative capability record.
-    /// Resolved dependency closure, loader capture, corpus readiness and route proof are separate requirements.
+    /// Complete reviewed dependency inventory, immutable artifact execution binding, loader observations,
+    /// corpus readiness and route proof are separate requirements. Local hash and supplied-graph checks
+    /// grant no readiness and provide no confinement of executing application code.
     /// Registration switches command rehydration and manual snapshot reconstruction for every aggregate
     /// in this domain to the fail-closed allow-list reader. Missing mappings, incompatible aggregate
     /// types, versioned sources and required upcast hops reject those reads. The production pin binds

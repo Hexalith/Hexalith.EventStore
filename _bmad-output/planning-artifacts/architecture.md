@@ -190,6 +190,7 @@ is package intent in every configuration, including Debug.
 - **Binds:** FR33, NFR8
 - **Prevents:** incompatible snapshot, projection, and upcaster formats.
 - **Rule:** Snapshot folding, projection sequence/cost guards, and upcaster ordering require an approved versioned spec and compatibility vectors before runtime work. An approved spec authorizes the next slice; it does not prove delivery.
+- **Story 6.6 loader policy:** The owner-approved [reviewed trusted-code amendment](../implementation-artifacts/story-6-6-trusted-code-amendment.md) requires immutable declared artifact/pin admission and detection with subsequent capability loss. It replaces the conflicting universal before-effect loader assurance without granting activation or hostile-code confinement.
 
 ### AD-14 - Query Evidence Crosses The Gateway As Platform Metadata [ADOPTED]
 

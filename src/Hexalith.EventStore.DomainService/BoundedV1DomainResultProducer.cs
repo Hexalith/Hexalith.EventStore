@@ -55,22 +55,30 @@ internal sealed class BoundedV1DomainResultProducer
     {
         ArgumentNullException.ThrowIfNull(result);
         cancellationToken.ThrowIfCancellationRequested();
-        int count = result.Events.Count;
-        if (count > 1000)
+        IReadOnlyList<IEventPayload> source = result.Events;
+        int count = source.Count;
+        if (count is < 0 or > 1000)
         {
             throw new InvalidOperationException("ResultLimit: a V1 domain result exceeds 1,000 events.");
         }
 
         // This bounded reference snapshot runs before any serializer callback.
         IEventPayload[] payloads = new IEventPayload[count];
+        for (int index = 0; index < count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            payloads[index] = source[index] ?? throw new InvalidOperationException("CapabilityMismatch: null event payload.");
+        }
+
         byte[]?[] serializedSources = new byte[]?[count];
+        byte[]?[] privateSources = new byte[]?[count];
         BoundedV1EventSerialization[] declarations = new BoundedV1EventSerialization[count];
         long encoded = 128;
         long declaredPayloads = 0;
         long serializedSourceBytes = 0;
         long largestPayload = 0;
-        bool isRejection = count > 0 && result.Events[0] is IRejectionEvent;
-        string? resultPayload = result.IsSuccess || result.IsNoOp ? result.ResultPayload : null;
+        bool isRejection = count > 0 && payloads[0] is IRejectionEvent;
+        string? resultPayload = !isRejection ? result.ResultPayload : null;
         if (resultPayload is not null)
         {
             encoded = checked(encoded + 6L * StrictUtf8.GetByteCount(resultPayload) + 2);
@@ -79,7 +87,7 @@ internal sealed class BoundedV1DomainResultProducer
         for (int i = 0; i < count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            IEventPayload payload = result.Events[i] ?? throw new InvalidOperationException("CapabilityMismatch: null event payload.");
+            IEventPayload payload = payloads[i];
             if (!_serializers.TryGetValue(payload.GetType(), out BoundedV1EventSerialization? serializer))
             {
                 throw new InvalidOperationException("CapabilityMismatch: no explicitly bounded V1 serializer is declared for this payload.");
@@ -121,7 +129,7 @@ internal sealed class BoundedV1DomainResultProducer
             encoded = checked(encoded + metadata + 4 * ((maximum + 2) / 3));
         }
 
-        long scratch = checked(serializedSourceBytes + declaredPayloads + largestPayload + 128 * 1024L + count * 256L + (resultPayload?.Length ?? 0) * 2L);
+        long scratch = checked(2 * serializedSourceBytes + declaredPayloads + largestPayload + 128 * 1024L + count * 256L + (resultPayload?.Length ?? 0) * 2L);
         if (encoded > MaximumResultBytes || scratch > MaximumScratchBytes)
         {
             throw new InvalidOperationException("ResultLimit: complete declared V1 result or live workspace exceeds its admitted capacity.");
@@ -130,12 +138,20 @@ internal sealed class BoundedV1DomainResultProducer
         var events = new List<DomainServiceWireEvent>(count);
         try
         {
+            // Every already-serialized source is private before the first serializer callback.
+            // A callback can mutate its own objects, but cannot substitute later admitted bytes.
+            for (int index = 0; index < count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                privateSources[index] = serializedSources[index]?.ToArray();
+            }
+
             for (int i = 0; i < count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 BoundedV1EventSerialization serializer = declarations[i];
                 using var sink = new BoundedV1PayloadStream(serializer.MaximumPayloadBytes, cancellationToken);
-                if (serializedSources[i] is byte[] serialized)
+                if (privateSources[i] is byte[] serialized)
                 {
                     sink.Write(serialized);
                 }
@@ -154,6 +170,13 @@ internal sealed class BoundedV1DomainResultProducer
         {
             foreach (DomainServiceWireEvent item in events) { CryptographicOperations.ZeroMemory(item.Payload); }
             throw;
+        }
+        finally
+        {
+            foreach (byte[]? sourceBytes in privateSources)
+            {
+                if (sourceBytes is not null) { CryptographicOperations.ZeroMemory(sourceBytes); }
+            }
         }
     }
 }

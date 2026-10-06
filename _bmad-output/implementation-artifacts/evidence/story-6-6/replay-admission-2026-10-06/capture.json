@@ -1,0 +1,196 @@
+{
+  "captured_utc": "2026-10-06T10:55:09.129299+00:00",
+  "scope": "Local replay admission/cancellation safety slice; no activation, production attestation or Story 6.6 completion",
+  "git_head_at_capture": "785d58fc99ce4c2751c0546ca6368e993c654ed9",
+  "preserved_spec_baseline": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "source_sha256": {
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs": "3d9a26ff2aaf19129244756d77e97156163cdd1f6c49252be1f15368fbebd02b",
+    "src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs": "4fe4d6ca85d223dd4d4d587f76ed0b9b5720e5b5333b7eb57a4acfcada66d77a",
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandDispatchMetadata.cs": "a337270839d33f7c7e45707f5d3166a1558414f23ee5ac49f948601d4cc3d866",
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandHandleMethod.cs": "321780254543b3c8ded72384188679e51b666f6f9feb6d1f5ac30fcaca1c05fe",
+    "src/Hexalith.EventStore.Client/Aggregates/LegacyReplayInput.cs": "866ad4c21c2ccfa506dbeb432007f8ab1566cf1702c02334d2c1da52a1cf12f6",
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs": "719d5e5d28a8bfeaf00b8542c3f8294824f358935efc40d8812b3e2e3b6eefc5",
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs": "a137b5dd17a6267b1d373b15d5c6f5dcb646ddb099263808d53250bc55e60703",
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs": "66e227246689a632723557fc18819280d4428f4a2d7299b030a0efc1a07522c0",
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs": "30705e3cc2c6240ba07b68d9e7ecef64b6dbca6452004a5720ffb20f9db3608e",
+    "src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs": "8f114dbaefdfa325138359594d25d7acbcf47af33c0ea22bfe4cb4f6aeca7a02",
+    "src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs": "78568efaa069ecd818862b0c9fa5b1de7c33918bc15fc25a2e3b2eb360a92c4d",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/BuiltInCancellationTests.cs": "12fa41e9825db8389b229ad835ca1a2cb6a43646c68dc9b31e6f605eafb85a4f",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayInputTests.cs": "20ec7ecf275b08788f2db8235d7fcb544a3d3c1108e1ef7cf224cd8c78aa1907",
+    "tests/Hexalith.EventStore.Contracts.Tests/Replay/ReplayEvolutionOutcomeTests.cs": "0885cd4ba92d5d8bf9ff7cf389fe412d246b57c678acfa48cc3aeb8a2c217cf5",
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs": "60dcc4511d27f6bbd6606089da79cc93b6fde44dd9a268f94c3cc2c97b828ecf",
+    "tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs": "2cd4565a076a9e45b8235e79b81b90767eeb4b020dcef07566c0c4ba5cf33664"
+  },
+  "assembly_sha256_at_capture": {
+    "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll": "587c3f84151d16d1c37a0b780111be98cb203dfcb4e8fc6acb1d4d6cae542838",
+    "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll": "82da2dfcc6a8a813ecc7e9ab9f3533aecf4ecd8fd2c0fd46c70a82bb6a674ce7",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll": "0fe00d759d2186bf86c990754497304e959019f19b9dd7a87430692a5bb18125",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll": "4203acd82ec3ad84370533e5b369c1e7df4892b598b81fe669965c6b31d09121"
+  },
+  "packages_sha256": {
+    "Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg": "1a3de7e349446230adff06295fe8bfa260f2dc4a2b493788c745b9cefe0ac0ed",
+    "Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg": "7acacbacf3d15118df22be7db46d7c6c533cb109f73d5d0fffc2c88b2072228c",
+    "Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg": "2b1d7ae0200fb467ab9bbe4cc04ccf4a0613fbd48b835e246bf2789df0c9842d",
+    "Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg": "2b9d6eb9780eabfc2439262f9864183da01f5e6503d6defa905a5d565acb353b",
+    "Hexalith.EventStore.Client.999.0.0-ci-test.nupkg": "59936df8f0139d064cccfbc82b5c2efb150edfc4657f5b2ad689d84066210e26",
+    "Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg": "4080106f258bc8027112cc34815cb1c2b3a370a0db5fd60d4c60e68e838ab0c6",
+    "Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg": "02aeadc14316150db6c8f102628efd8c5feb6731bca9093ffd1a32d405450ce1",
+    "Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg": "709ad3b52d1cb47e50925eb6225f6650063643a42d8178ab2f224e127ab507d9",
+    "Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg": "6420532c8381026b1aae0d40ee6fbc82a0fd389ace2a17705e50d758c03967ef",
+    "Hexalith.EventStore.Server.999.0.0-ci-test.nupkg": "c6dbf8ad5201504b204d1e5d051bd5d6d2c039fcb79695449434b1cd7638d95f",
+    "Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg": "3ab38c18617f0e65d0259bc3f4811e2ebe43ff9c40ace5887885f9e683931c68",
+    "Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg": "7737fdee0bcdeea7f1d4b5cf5eebc848b086c5399cfe2d70cc054656d71f1788",
+    "Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg": "e1736daabeb421fbe0c596dcbbd137c591b157348cc66771fc805b6d5ec61568",
+    "Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg": "b161671c2917f90defee58f2df91486d72c20d2895ea54778819c3a7a0bb7427"
+  },
+  "checks": [
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "retained_output": "client-release-final.summary.log",
+      "retention": "execution summary only",
+      "original_output_sha256": "9b5b07caf882f38ea00ab0486aa3c6dbc5896ea170a284ba740d01be3269d277",
+      "test_summary": "Hexalith.EventStore.Client.Tests  Total: 1056, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 4.032s",
+      "retained_output_sha256": "4ec0e673a51b8b245b3a677ab6e16372b46e77c2af35d599dade2331e496f0af",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "retained_output": "domain-release-final.summary.log",
+      "retention": "execution summary only",
+      "original_output_sha256": "2110be31d2d3c52addf5b5e6973fece4c97b4a3968edc01e074d374ddfafe4c1",
+      "test_summary": "Hexalith.EventStore.DomainService.Tests  Total: 427, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 2.101s",
+      "retained_output_sha256": "b2cf7d84eab503a2f1d3653a3e941e858219887d6484de3a27fb6ceebb3c48b8",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "retained_output": "server-release-final.summary.log",
+      "retention": "execution summary only",
+      "original_output_sha256": "b542ad952bd50064d74884eafb1109285ff8848367ae57e637e1eabdeca4e6a6",
+      "test_summary": "Hexalith.EventStore.Server.Tests  Total: 3769, Errors: 0, Failed: 1, Skipped: 25, Not Run: 0, Time: 33.507s",
+      "retained_output_sha256": "45415b5b0ceab5445aff9ca72547c585f25c38a51ff86320de1cd80a76fe93cc",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ReplayEvolutionOutcomeTests' -class '*PagedReplayContractTests'",
+      "retained_output": "contracts-release-final-focused.log",
+      "retention": "complete output",
+      "original_output_sha256": "81f785770daf89523f75e5913caca1761bd1e557e12ed2395e11a847c8f712a3",
+      "test_summary": "Hexalith.EventStore.Contracts.Tests  Total: 7, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.188s",
+      "retained_output_sha256": "81f785770daf89523f75e5913caca1761bd1e557e12ed2395e11a847c8f712a3",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*AdminStreamQueryControllerReplayDelegationTests'",
+      "retained_output": "server-release-final-focused.log",
+      "retention": "complete output",
+      "original_output_sha256": "7a39db4faed7ce91119df98e36f6ebc2b1c060c925c2d5b58ec056952b305f3b",
+      "test_summary": "Hexalith.EventStore.Server.Tests  Total: 42, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.280s",
+      "retained_output_sha256": "7a39db4faed7ce91119df98e36f6ebc2b1c060c925c2d5b58ec056952b305f3b",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*LegacyReplayInputTests' -class '*BuiltInCancellationTests'",
+      "retained_output": "client-release-post-rename.log",
+      "retention": "complete output",
+      "original_output_sha256": "265c93edb7f09585c21ad840b05d0563470d7f254db73821f13a169b13547853",
+      "test_summary": "Hexalith.EventStore.Client.Tests  Total: 70, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.323s",
+      "retained_output_sha256": "265c93edb7f09585c21ad840b05d0563470d7f254db73821f13a169b13547853",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false -p:GeneratePackageOnBuild=false",
+      "retained_output": "release-final-build.log",
+      "retention": "complete output",
+      "original_output_sha256": "44bd35d8fcf3cc89b42d56edbc8ccd9843732a7cb7b9f96ab0242a8142c1a994",
+      "test_summary": null,
+      "retained_output_sha256": "44bd35d8fcf3cc89b42d56edbc8ccd9843732a7cb7b9f96ab0242a8142c1a994",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false -p:GeneratePackageOnBuild=false",
+      "retained_output": "client-release-rename-build.log",
+      "retention": "complete output",
+      "original_output_sha256": "7c0cbfe1975c8997d7c84af1d9abfe5430e12cca577adcb2b44c923f06bd0d68",
+      "test_summary": null,
+      "retained_output_sha256": "7c0cbfe1975c8997d7c84af1d9abfe5430e12cca577adcb2b44c923f06bd0d68",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "python3 scripts/verify-event-evolution.py --mutations",
+      "retained_output": "current-final-preflight.log",
+      "retention": "complete output",
+      "original_output_sha256": "efd0b8d2c031bd4bfd3b92f26c1c6d781304891bcdc4fff879bcbe0a34c243a6",
+      "test_summary": null,
+      "retained_output_sha256": "efd0b8d2c031bd4bfd3b92f26c1c6d781304891bcdc4fff879bcbe0a34c243a6",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "python3 scripts/pack-release-packages.py /tmp/story-6-6-20261006/packages 999.0.0-ci-test",
+      "retained_output": "package-pack-retry.log",
+      "retention": "complete output",
+      "original_output_sha256": "4037f970f42cbfefeac0dbf95c395346e8e9335ebe9ed35a01642512e024b333",
+      "test_summary": null,
+      "retained_output_sha256": "4037f970f42cbfefeac0dbf95c395346e8e9335ebe9ed35a01642512e024b333",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "python3 tools/validate-release-packages.py /tmp/story-6-6-20261006/packages 999.0.0-ci-test",
+      "retained_output": "package-inventory-validation.log",
+      "retention": "complete output",
+      "original_output_sha256": "3bc8d896eb942434a75ed461a198eb170aeb7fd6c76c4f008686c224fe3b73a3",
+      "test_summary": null,
+      "retained_output_sha256": "3bc8d896eb942434a75ed461a198eb170aeb7fd6c76c4f008686c224fe3b73a3",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "EVENTSTORE_PACKAGE_CONTRACT_DIR=/tmp/story-6-6-20261006/packages dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*TrustedEffectPackageContractTests' -class '*PackagedReminderApiTests'",
+      "retained_output": "contracts-package-retry.log",
+      "retention": "complete output",
+      "original_output_sha256": "9dce5fca4d43ce20360272f4371ba63bdd79691f741e254b318e344c6c386782",
+      "test_summary": "Hexalith.EventStore.Contracts.Tests  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 37.146s",
+      "retained_output_sha256": "9dce5fca4d43ce20360272f4371ba63bdd79691f741e254b318e344c6c386782",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*CorrectiveOciProvenanceReleaseTests' -method '*RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs'",
+      "retained_output": "contracts-oci-retry.log",
+      "retention": "complete output",
+      "original_output_sha256": "58464b9a936bc3823b89abd533a7252b16ca48d2ab706d829231209412ba1aa5",
+      "test_summary": "Hexalith.EventStore.Contracts.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 9.170s",
+      "retained_output_sha256": "58464b9a936bc3823b89abd533a7252b16ca48d2ab706d829231209412ba1aa5",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SecretsProtectionTests' -method '*TrackedReusableContent_DoesNotContainUsableSecrets'",
+      "retained_output": "secrets-scan-retry.log",
+      "retention": "complete output",
+      "original_output_sha256": "9da225d88c9ae5b00f40498e34a31334fc2ff6843ca6d42ae4e99418e490a5c5",
+      "test_summary": "Hexalith.EventStore.Server.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 7.331s",
+      "retained_output_sha256": "6bb82a19bd9281fabb178247f6aa9da74b4dc26ccf23dbbe212de0f121cd2ad2",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*BuiltInCancellationTests'",
+      "phase": "pre-fix regression control; expected failure",
+      "retained_output": "client-review-red.log",
+      "retention": "complete output",
+      "original_output_sha256": "f43d545ddf69358d4865a2f4ed059b4659dcb668a7104a126d7e26dfabc81508",
+      "test_summary": "Hexalith.EventStore.Client.Tests  Total: 53, Errors: 0, Failed: 14, Skipped: 0, Not Run: 0, Time: 0.245s",
+      "retained_output_sha256": "4cfe4ab601d1b7d7c3a1d226b154bca6a0b426754cde5baabf1b82063a1ca67d",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*AdminStreamQueryControllerReplayDelegationTests'",
+      "phase": "pre-fix regression control; expected failure",
+      "retained_output": "server-review-red.log",
+      "retention": "complete output",
+      "original_output_sha256": "a8cbc4f2463bcbe7a8cb26752522daf06d7a0b4e3bafa5aa84afbacfc41334ba",
+      "test_summary": "Hexalith.EventStore.Server.Tests  Total: 42, Errors: 0, Failed: 15, Skipped: 0, Not Run: 0, Time: 0.320s",
+      "retained_output_sha256": "26b72cce4807b980d8b035d4f70de2c8725b148ba5acb040915fcfff8613205f",
+      "retained_line_endings": "LF; raw output hash retained separately"
+    }
+  ],
+  "open_repository_gate": "TrackedReusableContent_DoesNotContainUsableSecrets flags the preserved Story 6.1 source-candidate.diff:2590",
+  "concurrent_work": "Story 6.1 changed shared source and Git state; preserved without Git mutations by this run."
+}

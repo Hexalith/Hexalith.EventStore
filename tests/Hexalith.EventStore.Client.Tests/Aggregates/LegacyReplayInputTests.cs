@@ -141,10 +141,10 @@ public sealed class LegacyReplayInputTests
     public void PreCancellationPreservesTokenAndReadsNoSource()
     {
         var source = new ReplayInputProbeCollection(1, Event(1));
-        var token = new CancellationToken(true);
+        var requestCancellation = new CancellationToken(true);
         OperationCanceledException error = Should.Throw<OperationCanceledException>(
-            () => LegacyReplayInput.Capture(Request(source), token));
-        error.CancellationToken.ShouldBe(token);
+            () => LegacyReplayInput.Capture(Request(source), requestCancellation));
+        error.CancellationToken.ShouldBe(requestCancellation);
         source.CountReads.ShouldBe(0);
         source.IndexReads.ShouldBe(0);
     }

@@ -1,0 +1,232 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Hold, reason: "TimelineEvidenceHold", shape: "success") [FAIL]
+      Shouldly.ShouldAssertException : await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)
+          should be of type
+      Microsoft.AspNetCore.Mvc.ObjectResult
+          but was
+      Microsoft.AspNetCore.Mvc.OkObjectResult
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(428,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Hold, reason: "TimelineEvidenceHold", shape: "partial") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      503
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Hold, reason: "TimelineEvidenceHold", shape: "state") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      503
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Hold, reason: "TimelineEvidenceHold", shape: "timeline") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      503
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Hold, reason: "TimelineEvidenceHold", shape: "progress") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      503
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Limit, reason: "LegacyArrayLimit", shape: "success") [FAIL]
+      Shouldly.ShouldAssertException : await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)
+          should be of type
+      Microsoft.AspNetCore.Mvc.ObjectResult
+          but was
+      Microsoft.AspNetCore.Mvc.OkObjectResult
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(428,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Limit, reason: "LegacyArrayLimit", shape: "partial") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      422
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Limit, reason: "LegacyArrayLimit", shape: "state") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      422
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Limit, reason: "LegacyArrayLimit", shape: "timeline") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      422
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Limit, reason: "LegacyArrayLimit", shape: "progress") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      422
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Conflict, reason: "ReplayScalarInvalid", shape: "success") [FAIL]
+      Shouldly.ShouldAssertException : await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)
+          should be of type
+      Microsoft.AspNetCore.Mvc.ObjectResult
+          but was
+      Microsoft.AspNetCore.Mvc.OkObjectResult
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(428,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Conflict, reason: "ReplayScalarInvalid", shape: "partial") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      409
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Conflict, reason: "ReplayScalarInvalid", shape: "state") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      409
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Conflict, reason: "ReplayScalarInvalid", shape: "timeline") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      409
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(category: Conflict, reason: "ReplayScalarInvalid", shape: "progress") [FAIL]
+      Shouldly.ShouldAssertException : response.StatusCode
+          should be
+      500
+          but was
+      409
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Controllers.AdminStreamQueryControllerReplayDelegationTests.GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(AggregateReconstructionErrorCategory category, String reason, String shape)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 42, Errors: 0, Failed: 15, Skipped: 0, Not Run: 0, Time: 0.320s

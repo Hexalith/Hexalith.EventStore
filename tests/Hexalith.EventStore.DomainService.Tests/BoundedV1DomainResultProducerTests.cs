@@ -8,6 +8,43 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// <summary>Checks once-only bounded V1 production and complete response admission before output.</summary>
 public sealed class BoundedV1DomainResultProducerTests
 {
+    /// <summary>Checks enriched payload callbacks cannot replace an event reference after whole-result capture.</summary>
+    [Fact]
+    public async Task ResultGetterCannotSubstituteLaterEventBeforeAdmission()
+    {
+        int calls = 0;
+        var producer = Producer(16, (_, sink, _) => { calls++; sink.Write([1]); return Task.CompletedTask; });
+        IEventPayload[] source = [new BoundedProducerTestEvent(), new BoundedProducerTestEvent()];
+        var result = new MutatingBoundedProducerResult(source, () => source[1] = new BoundedProducerUnknownTestEvent());
+        DomainServiceWireResult produced = await producer.ProduceAsync(result, CancellationToken.None);
+        calls.ShouldBe(2);
+        produced.Events.Count.ShouldBe(2);
+        produced.Events[1].Payload.ShouldBe([1]);
+        source[1].ShouldBeOfType<BoundedProducerUnknownTestEvent>();
+    }
+
+    /// <summary>Checks an earlier serializer cannot mutate a later already-serialized source's private bytes.</summary>
+    [Fact]
+    public async Task SerializerCannotMutateLaterAdmittedSerializedBytes()
+    {
+        byte[] original = [1, 2];
+        var producer = new BoundedV1DomainResultProducer([
+            new(typeof(BoundedProducerTestEvent), "normal", "json", 16, (_, sink, _) =>
+            {
+                original[0] = 9;
+                sink.Write([3]);
+                return Task.CompletedTask;
+            }),
+            new(typeof(BoundedProducerSerializedTestEvent), "legacy-exact-alias", "json", 16,
+                (_, _, _) => throw new InvalidOperationException("Serialized input must not be serialized again.")),
+        ]);
+        DomainServiceWireResult produced = await producer.ProduceAsync(
+            DomainResult.Success([new BoundedProducerTestEvent(), new BoundedProducerSerializedTestEvent(original)]), CancellationToken.None);
+        produced.Events[0].Payload.ShouldBe([3]);
+        produced.Events[1].Payload.ShouldBe([1, 2]);
+        original.ShouldBe([9, 2]);
+    }
+
     [Fact]
     public async Task PreflightRejectsCompleteDeclaredResultBeforeCallingSerializer()
     {

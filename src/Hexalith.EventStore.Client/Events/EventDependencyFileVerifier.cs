@@ -3,10 +3,14 @@ using System.Security.Cryptography;
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Verifies exact bytes for one locally resolved managed or native G dependency.</summary>
-/// <remarks>This check does not prove graph completeness, a loader context, or manifest attestation.</remarks>
+/// <remarks>
+/// This local check compares bytes at a caller-selected path. It does not authenticate resolved
+/// identity or context claims, prove graph completeness, or bind later execution to those bytes.
+/// The reviewed deployment must separately preserve immutable artifacts and their execution binding.
+/// </remarks>
 internal static class EventDependencyFileVerifier
 {
-    /// <summary>Checks a G row against the file selected by the locked deployment loader.</summary>
+    /// <summary>Checks an exact G-row hash against the currently readable caller-selected file.</summary>
     internal static void RequireExactFile(EventRegistryRow dependency, string resolvedFile, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(dependency);

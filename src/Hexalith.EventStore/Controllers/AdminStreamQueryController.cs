@@ -1832,6 +1832,16 @@ public class AdminStreamQueryController(
     /// admin-ui-aggregate-state-replay-correctness.
     /// </summary>
     private IActionResult? MapReplayFailureToProblem(AggregateReconstructionResult replay) {
+        if (replay.ErrorCategory is AggregateReconstructionErrorCategory.Hold
+            or AggregateReconstructionErrorCategory.Limit or AggregateReconstructionErrorCategory.Conflict
+            && (replay.Status != AggregateReconstructionStatus.Failed
+                || replay.StateJson is not null || replay.Timeline is not null || replay.PagedProgress is not null
+                || !IsSupportedReplayReason(replay.ErrorCategory, replay.ReasonCode))) {
+            return MapReplayFailureToProblem(AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "Replay returned an unsupported typed outcome."));
+        }
+
         if (replay.Status == AggregateReconstructionStatus.Succeeded) {
             return null;
         }
@@ -1843,6 +1853,9 @@ public class AdminStreamQueryController(
             AggregateReconstructionErrorCategory.ApplyHandlerMissing => (StatusCodes.Status422UnprocessableEntity, "apply-handler-missing", "Apply handler missing"),
             AggregateReconstructionErrorCategory.ApplyFailed => (StatusCodes.Status409Conflict, "apply-failed", "Replay partially applied"),
             AggregateReconstructionErrorCategory.UnsupportedVersion => (StatusCodes.Status422UnprocessableEntity, "unsupported-version", "Unsupported event version"),
+            AggregateReconstructionErrorCategory.Hold => (StatusCodes.Status503ServiceUnavailable, "replay-hold", "Replay prerequisite unavailable"),
+            AggregateReconstructionErrorCategory.Limit => (StatusCodes.Status422UnprocessableEntity, "replay-limit", "Replay limit exceeded"),
+            AggregateReconstructionErrorCategory.Conflict => (StatusCodes.Status409Conflict, "replay-conflict", "Replay evidence conflict"),
             _ => (StatusCodes.Status500InternalServerError, "unexpected", "Unexpected replay failure"),
         };
 
@@ -1859,6 +1872,14 @@ public class AdminStreamQueryController(
             pd.Extensions["errorCategory"] = replay.ErrorCategory.ToString();
             pd.Extensions["message"] = safeMessage;
             pd.Extensions["lastAppliedSequenceNumber"] = replay.LastAppliedSequenceNumber;
+            if (replay.ErrorCategory is AggregateReconstructionErrorCategory.Hold
+                or AggregateReconstructionErrorCategory.Limit or AggregateReconstructionErrorCategory.Conflict) {
+                pd.Extensions["reasonCode"] = replay.ReasonCode;
+            }
+        }
+
+        if (replay.ErrorCategory == AggregateReconstructionErrorCategory.Hold) {
+            Response.Headers.RetryAfter = "30";
         }
 
         logger.LogWarning(
@@ -1870,6 +1891,20 @@ public class AdminStreamQueryController(
             replay.LastAppliedSequenceNumber);
         return problem;
     }
+
+    private static bool IsSupportedReplayReason(AggregateReconstructionErrorCategory category, string? reason)
+        => category switch {
+            AggregateReconstructionErrorCategory.Hold => reason is "RawSourceUnavailable" or "ActorCommitEvidenceHold"
+                or "HandlerCapabilityMismatch" or "UpcasterContractViolation" or "RollbackReaderCapabilityHold"
+                or "ReplayTranscriptCapabilityHold" or "TimelineEvidenceHold" or "TimelineProtectionHold"
+                or "ContinuationCapacityHold" or "CapabilityMismatch",
+            AggregateReconstructionErrorCategory.Limit => reason is "RawEnvelopeLimit" or "ReadableLimit" or "ProofLimit"
+                or "ScratchLimit" or "LegacyArrayLimit" or "TimelineLimit" or "CheckpointStateLimit"
+                or "FinalResponseLimit" or "NamedIndexLimit" or "ReadModelQueryLimit" or "MetadataLimit"
+                or "StateLimit" or "PayloadLimit" or "ResultLimit",
+            AggregateReconstructionErrorCategory.Conflict => reason is "ReplayScalarInvalid" or "ReplayRestartRequired",
+            _ => false,
+        };
 
     private async Task<AdminReadabilityResult> TryMakeAdminEventReadableAsync(
         AggregateIdentity identity,

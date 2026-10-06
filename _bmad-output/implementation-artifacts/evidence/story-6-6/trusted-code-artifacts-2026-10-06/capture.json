@@ -1,0 +1,296 @@
+{
+  "captured_at_utc": "2026-10-06T11:31:36.569516+00:00",
+  "head": "785d58fc99ce4c2751c0546ca6368e993c654ed9",
+  "workflow_baseline": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "frozen_intent_sha256": "de1751b9887e48f8302be092797eba2ab5bbb2595958dab3d7325bd380cf548d",
+  "scope": "Selected local trusted-code artifact primitives and qualification controls; not a complete build/catalog/dependency inventory",
+  "status": "in-progress",
+  "tasks_open": 8,
+  "activation": "V2 and proof-dependent operations remain fenced",
+  "selected_inputs": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventDependencyClosureVerifier.cs",
+      "bytes": 9127,
+      "sha256": "7d0bdb4429556a98628bcac96f76be36f5fe641a58750c323447c1c2e882ffbf"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventDependencyFileVerifier.cs",
+      "bytes": 2160,
+      "sha256": "44334204a9bed06d477cbf8b9eb958a8a4a2caf112257250dd59b5f9b7e243cc"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionManifestCandidate.cs",
+      "bytes": 2245,
+      "sha256": "163f1cf967b4c8a2d89e4574700742ec29b13551c7b07a314f78f0d4c8bc1172"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventResolvedDependency.cs",
+      "bytes": 1080,
+      "sha256": "d10d932174035361eff1759a9986b17d67c697583f267725605a1117362d1ed2"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Registration/EventEvolutionServiceCollectionExtensions.cs",
+      "bytes": 2731,
+      "sha256": "6ae0bbe841bab493a4a19f4c6706c3f96676b2191d72c26ef39357bd583079ea"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyClosureVerifierTests.cs",
+      "bytes": 14360,
+      "sha256": "361afaee4908faf3e1344dd84c086328259482a8e65c959fdfeb965fdd091b3b"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Registration/EventEvolutionManifestRegistrationTests.cs",
+      "bytes": 6688,
+      "sha256": "7de2a19bb2ba84268317e71fea8962fa2fc346e009c8c55044ef42662dceb871"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyFileVerifierTests.cs",
+      "bytes": 3360,
+      "sha256": "f0d8073b1cc13ebf479defc39d90112a11e0eed9b23714b14900d151307eef4b"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+      "bytes": 33095,
+      "sha256": "b37b21af754fad5297dbdf205425add149c91de5d4fe29b471fd37f5e8bbeec2"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/epic-6-context.md",
+      "bytes": 8476,
+      "sha256": "726c0f1b29f4fc8522567cb3302888305fb69018402163b0e4c30f91d1fb7bd1"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/6-6-implementation-map.md",
+      "bytes": 20805,
+      "sha256": "58bf5a1d8694820eb78db3e149ad06bcfa6ca22c103b96cb93ed64f1b3b30fd3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+      "bytes": 4969,
+      "sha256": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md",
+      "bytes": 5266,
+      "sha256": "2c1dc2e80d032a7f1622ab6f00057e9c0298ec2a1114df23e74a1ce28f5feaef"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-06-trusted-code-artifacts.md",
+      "bytes": 6532,
+      "sha256": "0eb0f4840dddfe58742976a4f7658f19dcff51c673d7118ee318d191b6f600a9"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventDependencyIdentity.cs",
+      "bytes": 249,
+      "sha256": "24cf55155872ccc9ff4456aa5675778132cad0cdfd17976211a632b66e0b96bb"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventDomainRegistry.cs",
+      "bytes": 9297,
+      "sha256": "bde65abdd94a914c8e4614e1cbd1df739ae55aa0dfe25c8083e50812aeaf8d37"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventRegistryRow.cs",
+      "bytes": 9556,
+      "sha256": "24dac006a1c349d63241e5c9e51b7049d7a9c1a3c2622dea0b22223de8cc7939"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventRegistryFingerprintCodec.cs",
+      "bytes": 4481,
+      "sha256": "fc5f5752a66eeeaf4ce220e3b050bab138608aa0bea6a92fd6977ed8e2c9a2b5"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionBinaryReader.cs",
+      "bytes": 3678,
+      "sha256": "52e61ed3c06774230139384d029715de38c416304549bdc8e7066b8cbf42b45d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionBinaryWriter.cs",
+      "bytes": 4809,
+      "sha256": "db73dbb6a430629f24eb3efbee665f47fb3ce3069a55b8cabd4acb2c02df44f8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/Fixtures/EventRegistryV17.json",
+      "bytes": 11881,
+      "sha256": "d4fb3ce6c7ecf6111e96d8ab4a2d64893ec9da30cdb9d12d7bd8b06dfdb01e0e"
+    },
+    {
+      "path": "scripts/verify-event-evolution.py",
+      "bytes": 9924,
+      "sha256": "01670f1864497cea5cee983d1d3475ebcea5fad7c94e506429220652706dbdd4"
+    }
+  ],
+  "compiled_assemblies": [
+    {
+      "path": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "bytes": 553472,
+      "sha256": "6fa85289827fc866425eac1fb526acd2321081dfa152c57918f625eba0e2417e"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "bytes": 1116672,
+      "sha256": "9ccc9e0c2bcc0f6ed46a64848249780874dd6cc67c30baf4a395545aa267a5a3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "bytes": 1229312,
+      "sha256": "38f183006eb749977424200bcddd89efaab3e3d3e49d5be45ffab8fc849616b7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "bytes": 5102080,
+      "sha256": "7192eab18f993834883a14128f966bd9d1b61e62a3e96768ab7a8e0825cdf0af"
+    }
+  ],
+  "commands": [
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+      "exit_code": 1,
+      "result": "CS8506/CS8131 in new test tuple switch; repaired",
+      "output": "client-debug-build.log"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+      "exit_code": 0,
+      "result": "0 warnings; 0 errors",
+      "output": "client-debug-build-retry.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo -class '*EventDependencyClosureVerifierTests' -class '*EventDependencyFileVerifierTests' -class '*EventEvolutionManifestRegistrationTests'",
+      "exit_code": 0,
+      "result": "39 passed; 0 failed; 0 skipped",
+      "output": "client-debug-focused.log"
+    },
+    {
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false",
+      "exit_code": 0,
+      "result": "0 warnings; 0 errors",
+      "output": "release-build.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo",
+      "exit_code": 0,
+      "result": "1099 passed; 0 failed; 0 skipped",
+      "output": "client-release-full.log"
+    },
+    {
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false",
+      "exit_code": 0,
+      "result": "final documented source; 0 warnings; 0 errors",
+      "output": "release-final-build.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll -noLogo",
+      "exit_code": 0,
+      "result": "final documented source; 1099 passed; 0 failed; 0 skipped",
+      "output": "client-release-final.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -noLogo -class '*SecretsProtectionTests' -method '*TrackedReusableContent_DoesNotContainUsableSecrets'",
+      "exit_code": 1,
+      "result": "1 failure; only existing SHA-bound Story 6.1 source-candidate.diff:2590; no skips",
+      "output": "server-content-guard.log"
+    },
+    {
+      "command": "python3 scripts/verify-event-evolution.py --mutations",
+      "exit_code": 0,
+      "result": "passed; 11 mutations rejected; Dapr-only scope",
+      "output": "current-preflight.log"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py --mutations",
+      "exit_code": 0,
+      "result": "passed; historical approval unchanged; 20 obligations and 47 follow-ups open",
+      "output": "historical-preflight.log"
+    },
+    {
+      "command": "python3 scripts/check-deferred-work.py --json",
+      "exit_code": 0,
+      "result": "passed",
+      "output": "deferred-work.log"
+    }
+  ],
+  "additional_checks": [
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "command": "test -f deploy/dapr/production-profile.yaml",
+      "exit_code": 1,
+      "result": "production profile absent"
+    },
+    {
+      "command": "story invariant assertions during capture",
+      "result": "frozen intent, baseline, status and eight open tasks preserved"
+    }
+  ],
+  "packet_files": [
+    {
+      "path": "client-debug-build-retry.log",
+      "bytes": 2063,
+      "sha256": "39975fef3975ab4c6e06be3282efd7ecd069cbb32d213d27b655f8a9a9b35b30"
+    },
+    {
+      "path": "client-debug-build.log",
+      "bytes": 5161,
+      "sha256": "b3e780a059fb5b939a63e3412b966be62b92a070f9301baa81e5a58bc3d168fd"
+    },
+    {
+      "path": "client-debug-focused.log",
+      "bytes": 404,
+      "sha256": "4789aa4a7ef4e56f53bcdfce46a840130c8f12f457a82416a5cdff9f9978fbcd"
+    },
+    {
+      "path": "client-release-final.log",
+      "bytes": 2700,
+      "sha256": "d3b05faa5064592d37bb6cfe722bce5918039a36ad3ec15e83e6ff9503973cf4"
+    },
+    {
+      "path": "client-release-full.log",
+      "bytes": 2700,
+      "sha256": "034768c8581c107e87d429267ad78a9a3194b51bafbaf45f5e4e3e72f16db76e"
+    },
+    {
+      "path": "current-preflight.log",
+      "bytes": 1833,
+      "sha256": "efd0b8d2c031bd4bfd3b92f26c1c6d781304891bcdc4fff879bcbe0a34c243a6"
+    },
+    {
+      "path": "deferred-work.log",
+      "bytes": 217313,
+      "sha256": "a1211deeee19b24451f2f43e765a15fbe07d2ed7db8d06a43d207ad62fb70ba3"
+    },
+    {
+      "path": "historical-preflight.log",
+      "bytes": 4965,
+      "sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96"
+    },
+    {
+      "path": "release-build.log",
+      "bytes": 11637,
+      "sha256": "a55978f7e502d3547761fe64d307c71bd71665d51f25289e5f1d080da9963140"
+    },
+    {
+      "path": "release-final-build.log",
+      "bytes": 10202,
+      "sha256": "039c1f54e232130dd00618de16e7a94fd7b8100d34e434fc7e81afd6fce9cab3"
+    },
+    {
+      "path": "selected-source.diff",
+      "bytes": 24334,
+      "sha256": "18bea8455e332110c2a8f6c84e1325eb478a03ca5910cb9919dfa9564f8f9e54"
+    },
+    {
+      "path": "server-content-guard.log",
+      "bytes": 1300,
+      "sha256": "9d6c2c22b256337f70282146f7db4fa485fb7a7bb0cb75fc285f9664475b2371"
+    }
+  ],
+  "not_qualified": [
+    "authoritative complete per-domain catalogs and serving-peer pins",
+    "immutable checked-artifact binding to actual execution",
+    "managed/native/reflection/late-load observations and subsequent capability loss",
+    "maximum-size startup/call cost or complete live-memory qualification",
+    "complete consumer, compatibility, Dapr recovery and production/fleet acceptance"
+  ]
+}

@@ -1,7 +1,10 @@
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Owns a validated, caller-pinned domain manifest before any readiness decision.</summary>
-/// <remarks>A caller-supplied graph check cannot prove loader capture, complete roots or deployment authority.</remarks>
+/// <remarks>
+/// A caller-supplied graph check cannot establish the complete reviewed catalog, immutable execution
+/// binding, loader observations or deployment authority.
+/// </remarks>
 internal sealed class EventEvolutionManifestCandidate : IDisposable
 {
     internal EventEvolutionManifestCandidate(

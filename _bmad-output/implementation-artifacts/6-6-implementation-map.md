@@ -2,6 +2,12 @@
 
 This map began as an index for the approved AD-13 design. The owner's 2026-10-05 [Dapr-only amendment](story-6-6-dapr-only-amendment.md) now supersedes its direct PostgreSQL and provider-proof portions for Story 6.6. Paths below resolve from the EventStore repository root. Earlier normative sections remain inputs only where compatible with that amendment. Unqualified proof-dependent operations remain fenced.
 
+The owner's 2026-10-06 [trusted-code loader amendment](story-6-6-trusted-code-amendment.md)
+also supersedes the conflicting universal before-effect loader guarantee. The
+reviewed catalog and dependency chain are trusted; immutable declared artifacts
+and pins must pass admission, while observations detect violations and fence
+subsequent capability. This decision supplies no catalog or activation evidence.
+
 ## Authority and investigation
 
 - Planning revision: `2242ad55a1b678828df8aa093fd92399c29af5bf`, clean `main` before workflow artifacts.
@@ -18,7 +24,7 @@ Normative scope: §§2–5, A2/A3/A4/A10, B2/B8 and §10.3.
 
 Modify Contracts `Events/EventMetadata.cs`, `Events/ISerializedEventPayload.cs`, `Commands/DomainServiceRequest.cs`, `Results/DomainServiceWireResult.cs` and the relevant `Replay/`, `Streams/` and projection records. Move `DomainServiceWireEvent` into its own `Results/DomainServiceWireEvent.cs` when modifying it. Preserve existing positional constructors, deconstruction, defaults and enum values; use additive nullable init properties and member-specific null omission. Distinguish absent properties from explicit null during raw admission.
 
-Reuse Client `Events/EventContractResolver.cs` and `Conventions/NamingConventionEngine.cs` grammar. Add the exact approved event descriptors, legacy aliases, immutable domain registry, bounded codecs/fingerprints and allow-listed deserializers under Client `Events/` and Contracts `Events/`. Add the named `IEventUpcaster`, `IV1Downserializer`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator` and `IReadOnlyPayload` interfaces in single-type files. Validate contiguous unique chains and retained-source reachability within 16 hops; seal dependency closure and distinguish registry, event-transform and handler compatibility identities. Register an explicit domain-specific `AggregateTerminated` rejection adapter instead of inventing an event identity.
+Reuse Client `Events/EventContractResolver.cs` and `Conventions/NamingConventionEngine.cs` grammar. Add the exact approved event descriptors, legacy aliases, immutable domain registry, bounded codecs/fingerprints and allow-listed deserializers under Client `Events/` and Contracts `Events/`. Add the named `IEventUpcaster`, `IV1Downserializer`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator` and `IReadOnlyPayload` interfaces in single-type files. Validate contiguous unique chains and retained-source reachability within 16 hops; verify the complete declared trusted dependency graph under the current loader amendment and distinguish registry, event-transform and handler compatibility identities. Register an explicit domain-specific `AggregateTerminated` rejection adapter instead of inventing an event identity.
 
 Tests: Contracts.Tests `Events/EventMetadataTests.cs`, `Results/DomainServiceWireResultTests.cs`, Client.Tests event resolver tests, new registry/codec/upcaster tests, and old-source/already-compiled consumer fixtures. Assert original bytes and known answers, registration-order independence, ambiguous aliases, chain topology, protection readability, mutation attempts and allocation refusal.
 

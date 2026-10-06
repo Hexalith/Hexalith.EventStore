@@ -1,0 +1,35 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj (in 259 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 259 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 259 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 262 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 275 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 276 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 279 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 276 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj (in 280 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 288 ms).
+  1 of 11 projects are up-to-date for restore.
+  Hexalith.Commons.UniqueIds -> /home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll
+  Successfully created package '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.nupkg'.
+  Successfully created package '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.snupkg'.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Hexalith.EventStore.Testing -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Testing/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyClosureVerifierTests.cs(76,96): error CS8506: No best type was found for the switch expression. [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyClosureVerifierTests.cs(76,82): error CS8131: Deconstruct assignment requires an expression with a type on the right-hand-side. [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj]
+
+Build FAILED.
+
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyClosureVerifierTests.cs(76,96): error CS8506: No best type was found for the switch expression. [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Events/EventDependencyClosureVerifierTests.cs(76,82): error CS8131: Deconstruct assignment requires an expression with a type on the right-hand-side. [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:25.60
