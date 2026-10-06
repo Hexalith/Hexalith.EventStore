@@ -21,10 +21,17 @@ class EvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.directory = pathlib.Path(self.temp.name)
+        protected = mock.patch.object(verifier, "preserved", return_value={"acceptance": "unchanged"})
+        protected.start()
+        self.addCleanup(protected.stop)
+        binaries = mock.patch.object(verifier, "shared_binary_paths", return_value={"/fixture/dapr", "/fixture/daprd"})
+        binaries.start()
+        self.addCleanup(binaries.stop)
         self.manifest = {"schema": "hexalith.p1r.verification.v1", "coordinates": verifier.SOURCES, "versions": list(verifier.VERSIONS), "runtime": {"dapr": "1.18.2", "postgresql": verifier.POSTGRES}, "usable_as_prerequisite": False, "owner_acceptance_granted": False, "preserved_before": {"acceptance": "unchanged"}, "preserved_after": {"acceptance": "unchanged"}, "fixture_hashes": {p: verifier.sha((verifier.HERE / p).read_bytes()) for p in verifier.FIXTURES}}
         self.results = {"qualified": False, "exit_code": 1, "scenarios": [{"id": name, "execution": "unavailable", "compatibility": "unverified", "command_ids": [1], "assertions": 0, "cases": [{"id": "blocked", "assertions": 0}]} for name in verifier.SCENARIOS]}
-        self.commands = [{"id": 1, "argv": ["fixture-command"], "cwd": "/fixture", "started_utc": "2026-10-04T01:00:00Z", "finished_utc": "2026-10-04T01:00:01Z", "exit_code": 1, "output_sha256": "a" * 64}]
-        self.cleanup = {"owned_processes_stopped": True, "owned_containers_removed": True, "scratch_removed": True, "shared_before": {"shared": "unchanged"}, "shared_after": {"shared": "unchanged"}, "shared_discovery_complete": True}
+        self.commands = [{"id": 1, "argv": ["fixture-command"], "cwd": "/fixture", "started_utc": "2026-10-04T01:00:00Z", "finished_utc": "2026-10-04T01:00:01Z", "exit_code": 1, "output_sha256": "a" * 64, "process_id": 10001, "process_returncode": 1}]
+        self.cleanup = {"invocation": "fixture-invocation", "owned_processes_stopped": True, "owned_containers_removed": True, "scratch_removed": True, "shared_before": {"shared": "unchanged"}, "shared_after": {"shared": "unchanged"}, "shared_discovery_complete": True}
+        self.shared_evidence()
         self.save()
 
     def tearDown(self):
@@ -41,6 +48,12 @@ class EvidenceTests(unittest.TestCase):
                 self.add_command(["docker","ps","-aq","--no-trunc","--filter","label=hexalith.p1r.invocation="+self.cleanup["invocation"]], fixture_cleanup=True)
             finally:
                 self.saving_cleanup = False
+        self.saving_cleanup = True
+        try:
+            self.shared_after_evidence()
+        finally:
+            self.saving_cleanup = False
+        self.cleanup["owned_processes"] = sorted({c["process_id"] for c in self.commands if "process_id" in c})
         def bind(cases):
             for case in cases:
                 case.setdefault("command_ids", [1])
@@ -202,8 +215,124 @@ class EvidenceTests(unittest.TestCase):
         rendered = output if output is not None else json.dumps(data, sort_keys=True) + "\n" if data is not None else ""
         instant = verifier.dt.datetime(2026,10,4,1,tzinfo=verifier.dt.timezone.utc) + verifier.dt.timedelta(seconds=2*len(self.commands))
         command = {"id": len(self.commands)+1, "argv": [str(a) for a in argv], "cwd": "/fixture", "started_utc": instant.isoformat(), "finished_utc": (instant+verifier.dt.timedelta(seconds=1)).isoformat(), "exit_code": code, "diagnostic": rendered, "output_sha256": verifier.sha(rendered.encode()), **extra}
+        if argv[0] not in {"HTTP", "os.killpg", "read-fixture"}:
+            command.update(process_id=10000+command["id"], process_returncode=code)
         self.commands.append(command)
         return command
+
+    def shared_phase_evidence(self, phase, **extra):
+        resource = {"id": "f"*64, "image": "sha256:"+"e"*64, "running": True, "started": "2026-10-04T00:00:00Z", "invocation": None}
+        discovery = self.add_command(["docker", "ps", "-aq", "--no-trunc"], output=resource["id"]+"\n", **extra)
+        inspection = self.add_command(["docker", "inspect", "--format", verifier.RESOURCE_INSPECT_FORMAT, resource["id"]], resource, **extra)
+        binaries = {binary: self.add_command([sys.executable, "-c", verifier.FILE_HASH_SCRIPT, binary, "hash-shared-binary"], output="a"*64+"\n", **extra)["id"] for binary in sorted(verifier.shared_binary_paths())}
+        self.cleanup.setdefault("shared_observations", {})[phase] = {"discovery_command_id": discovery["id"], "inspection_command_id": inspection["id"], "binary_command_ids": binaries}
+        if phase == "before":
+            self.cleanup["shared_"+phase] = {resource["id"]: {key:resource[key] for key in ("image", "running", "started")}, **{binary:"a"*64 for binary in binaries}}
+
+    def shared_evidence(self):
+        self.shared_phase_evidence("before")
+        self.cleanup["shared_after"] = copy.deepcopy(self.cleanup["shared_before"])
+
+    def shared_after_evidence(self):
+        self.shared_phase_evidence("after")
+
+    def reseal_cleanup(self):
+        verifier.write(self.directory / "cleanup.json", self.cleanup)
+        verifier.seal(self.directory)
+
+    def test_shared_snapshot_omissions_and_values_are_rejected_after_resealing(self):
+        verifier.validate(self.directory)
+        original = copy.deepcopy(self.cleanup)
+        for mutation in ("empty", "container", "binary", "value"):
+            with self.subTest(mutation=mutation):
+                self.cleanup = copy.deepcopy(original)
+                for phase in ("before", "after"):
+                    snapshot = self.cleanup["shared_"+phase]
+                    if mutation == "empty": snapshot.clear()
+                    elif mutation == "container": del snapshot["f"*64]
+                    elif mutation == "binary": del snapshot["/fixture/dapr"]
+                    else: snapshot["f"*64]["running"] = False
+                self.reseal_cleanup()
+                with self.assertRaisesRegex(ValueError, "Shared snapshot differs"):
+                    verifier.validate(self.directory)
+
+    def test_missing_shared_binary_receipt_binding_is_rejected_after_resealing(self):
+        for phase in ("before", "after"):
+            self.cleanup["shared_observations"][phase]["binary_command_ids"].pop("/fixture/dapr")
+            self.cleanup["shared_"+phase].pop("/fixture/dapr")
+        self.reseal_cleanup()
+        with self.assertRaisesRegex(ValueError, "Missing shared binary observations"):
+            verifier.validate(self.directory)
+
+    def test_protected_inventory_omissions_and_hashes_are_rejected_after_resealing(self):
+        verifier.validate(self.directory)
+        for value in ({}, {"acceptance": "wrong-hash"}):
+            with self.subTest(value=value):
+                self.manifest["preserved_before"] = value
+                self.manifest["preserved_after"] = value
+                self.save()
+                with self.assertRaisesRegex(ValueError, "Protected inventory differs"):
+                    verifier.validate(self.directory)
+
+    def test_omitted_and_substituted_processes_are_rejected_after_resealing(self):
+        verifier.validate(self.directory)
+        original = list(self.cleanup["owned_processes"])
+        for value in ([], original[1:], [99999, *original[1:]]):
+            with self.subTest(value=value):
+                self.cleanup["owned_processes"] = value
+                self.reseal_cleanup()
+                with self.assertRaisesRegex(ValueError, "Owned process inventory differs"):
+                    verifier.validate(self.directory)
+
+    def test_missing_process_terminal_outcome_is_rejected_after_resealing(self):
+        self.commands[0]["process_returncode"] = None
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Tracked process lacks terminal outcome"):
+            verifier.validate(self.directory)
+
+    def test_null_and_wrong_shape_evidence_is_invalid_without_traceback(self):
+        for name in ("manifest.json", "scenario-results.json", "commands.json", "cleanup.json"):
+            for value in (None, 7, [], "wrong-shape"):
+                with self.subTest(name=name, value=value):
+                    self.save()
+                    verifier.write(self.directory/name, value)
+                    verifier.seal(self.directory)
+                    with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                        self.assertEqual(verifier.main(["--validate", str(self.directory)]), 2)
+                    self.assertIn("INVALID:", stderr.getvalue())
+                    self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_recovered_scheduler_packet_validates_with_only_runtime_containers(self):
+        self.persisted_pass()
+        failed = "e"*64
+        runtime = json.loads((self.directory / "runtime-identity.json").read_text())
+        scheduler = runtime["images"]["scheduler"]["id"]
+        with tempfile.TemporaryDirectory() as scratch:
+            runner = verifier.Runner(self.directory, pathlib.Path(scratch))
+            runner.invocation = self.cleanup["invocation"]
+            runner.commands = self.commands
+            runner.containers = [identity for identity in self.cleanup["owned_containers"] if identity != scheduler]
+            attempts = []
+            def launch(role, image, arguments, **kwargs):
+                attempts.append(role)
+                identity = failed if len(attempts) == 1 else scheduler
+                (runner.scratch / "scheduler.cid").write_text(identity)
+                runner.containers.append(identity)
+                self.add_command(["docker", "run", "--name", "p1r-"+runner.invocation+"-scheduler", "--label", "hexalith.p1r.invocation="+runner.invocation, image], output="port is already allocated\n" if identity == failed else identity+"\n", code=125 if identity == failed else 0)
+                if identity == failed: raise ValueError("Command exited 125")
+                return identity, kwargs["host_port"]
+            def execute(argv, **kwargs):
+                self.assertEqual(argv[-1], failed)
+                data = {"id": failed, "invocation": runner.invocation} if argv[1] == "inspect" else None
+                command = self.add_command(argv, data=data, output=None if data else failed+"\n")
+                return command["diagnostic"]
+            with mock.patch.object(runner, "container", side_effect=launch), mock.patch.object(runner, "run", side_effect=execute):
+                self.assertEqual(runner.start_scheduler()[0], scheduler)
+            self.cleanup["owned_containers"] = runner.containers
+        self.assertEqual(set(self.cleanup["owned_containers"]), {row["id"] for row in runtime["images"].values()})
+        self.assertTrue(any(c["argv"] == ["docker", "rm", "-f", failed] and c["exit_code"] == 0 for c in self.commands))
+        self.save()
+        verifier.validate(self.directory)
 
     def source_evidence(self):
         closures = {}
@@ -1246,6 +1375,40 @@ class LifecycleTests(unittest.TestCase):
         self.runner.flush_logs()
         self.temp.cleanup()
 
+    def test_isolated_lanes_clear_startup_and_profiler_injection(self):
+        names = {"DOTNET_STARTUP_HOOKS", "DOTNET_ADDITIONAL_DEPS", "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES"}
+        names.update(prefix+"_"+suffix for prefix in ("DOTNET", "CORECLR", "COR") for suffix in ("ENABLE_PROFILING", "PROFILER", "PROFILER_PATH", "PROFILER_PATH_32", "PROFILER_PATH_64"))
+        with mock.patch.dict(os.environ, {name: "private-sentinel" for name in names}):
+            self.runner = verifier.Runner(self.output, self.runner.scratch)
+        self.assertTrue(all(name not in self.runner.env for name in names))
+        command = [sys.executable, "-c", "import json,os;print(json.dumps([name for name in " + repr(sorted(names)) + " if name in os.environ]))"]
+        for lane in (*verifier.VERSIONS, "current"):
+            self.assertEqual(json.loads(self.runner.run(command, env=self.runner.lane_env(lane))), [])
+
+    def test_real_startup_exit_keeps_healthy_output_and_final_lifetime(self):
+        ready = self.runner.scratch / "healthy-ready"
+        finish = self.runner.scratch / "healthy-finish"
+        script = "import pathlib,time\nprint('healthy-early',flush=True)\npathlib.Path("+repr(str(ready))+").write_text('ready')\nwhile not pathlib.Path("+repr(str(finish))+").exists(): time.sleep(.01)\nprint('healthy-late',flush=True)\n"
+        healthy = self.runner.start([sys.executable, "-c", script])
+        deadline = time.monotonic()+5
+        while not ready.exists() and time.monotonic() < deadline: time.sleep(.01)
+        self.assertTrue(ready.exists())
+        failed = self.runner.start([sys.executable, "-c", "print('failed-startup',flush=True);raise SystemExit(7)"])
+        failed.wait(timeout=5)
+        with self.assertRaisesRegex(RuntimeError, "exited during startup"):
+            self.runner.wait_http("http://127.0.0.1:12345/ready", failed)
+        self.assertTrue(any(process is healthy for process, *_ in self.runner.logs))
+        barrier = verifier.utc()
+        finish.write_text("finish")
+        healthy.wait(timeout=5)
+        self.runner.flush_logs()
+        receipt = next(c for c in self.runner.commands if c.get("process_id") == healthy.pid)
+        self.assertIn("healthy-early", receipt["diagnostic"])
+        self.assertIn("healthy-late", receipt["diagnostic"])
+        self.assertEqual(receipt["exit_code"], 0)
+        self.assertEqual(receipt["process_returncode"], 0)
+        self.assertGreater(receipt["finished_utc"], barrier)
+
     def test_interrupted_binary_commands_retain_only_hash_and_length(self):
         marker="PGDMP-fixture-raw-database-contents"
         command=[sys.executable,"-c","import sys,time;sys.stdout.write("+repr(marker)+");sys.stdout.flush();time.sleep(30)"]
@@ -1492,6 +1655,26 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(started.call_count, 2)
         self.assertEqual(executed.call_args_list[-1].args[0], ["docker", "rm", "-f", identity])
         self.assertEqual(self.runner.commands[0]["exit_code"], 125)
+        self.assertNotIn(identity, self.runner.containers)
+
+    def test_scheduler_retry_retires_a_verified_absent_failed_cid(self):
+        identity = "a"*64
+        attempts = []
+        def launch(*args, **kwargs):
+            attempts.append(args)
+            if len(attempts) == 1:
+                (self.runner.scratch / "scheduler.cid").write_text(identity)
+                self.runner.containers.append(identity)
+                self.runner.record(["docker", "run", "fixture"], verifier.utc(), 125, b"port is already allocated", self.runner.scratch)
+                raise ValueError("Command exited 125")
+            return "b"*64, kwargs["host_port"]
+        def inspect(argv, **kwargs):
+            self.runner.record(argv, verifier.utc(), 1, b"Error: No such object", self.runner.scratch)
+            return self.runner.commands[-1]["diagnostic"]
+        with mock.patch.object(self.runner, "container", side_effect=launch), mock.patch.object(self.runner, "run", side_effect=inspect):
+            self.runner.start_scheduler()
+        self.assertNotIn(identity, self.runner.containers)
+        self.assertTrue(any(c["argv"][-1] == identity and "No such object" in c["diagnostic"] for c in self.runner.commands))
 
     def test_scheduler_collision_cannot_remove_an_unrelated_container(self):
         identity = "a" * 64
@@ -1779,26 +1962,24 @@ raise SystemExit(v.main(['--out',sys.argv[1]]))
         topology = root / "unexpected-topology"
         output = root / "cancelled-invocation"
         command = "import pathlib,time; pathlib.Path(" + repr(str(ready)) + ").write_text('ready'); time.sleep(30)"
+        binaries = root / "cancel-bin"
+        binaries.mkdir()
+        docker = binaries / "docker"
+        docker.write_text("#!"+sys.executable+"\nimport sys\nassert sys.argv[1:]==['ps','-aq','--no-trunc']\n")
+        docker.chmod(0o700)
         # Only external-container discovery is stubbed: this isolated control owns no containers.
         # The real main loop, subprocess, SIGINT, receipts and filesystem/process cleanup all execute.
         script = """import pathlib,sys
 import run_verification as v
 class IsolatedRunner(v.Runner):
-    def shared(self):
-        return {}
     def prepare(self):
         return self.run([sys.executable, '-c', sys.argv[3]])
     def topology(self):
         pathlib.Path(sys.argv[2]).write_text('unexpected')
-    def run(self, argv, *args, **kwargs):
-        if str(argv[0]) == 'docker':
-            self.record(argv, v.utc(), 0, b'', self.scratch)
-            return ''
-        return super().run(argv, *args, **kwargs)
 v.Runner = IsolatedRunner
 raise SystemExit(v.main(['--out', sys.argv[1]]))
 """
-        process = subprocess.Popen([sys.executable, "-c", script, str(output), str(topology), command], cwd=verifier.HERE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        process = subprocess.Popen([sys.executable, "-c", script, str(output), str(topology), command], cwd=verifier.HERE, env=dict(os.environ, PATH=str(binaries)+os.pathsep+os.environ.get("PATH", "")), stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
         try:
             deadline = time.monotonic() + 8
             while not ready.exists() and process.poll() is None and time.monotonic() < deadline:

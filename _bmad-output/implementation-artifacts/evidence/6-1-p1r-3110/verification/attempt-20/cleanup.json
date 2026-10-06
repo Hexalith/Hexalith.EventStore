@@ -1,0 +1,193 @@
+{
+  "complete": true,
+  "discovery_errors": [],
+  "errors": [],
+  "invocation": "3555564be8324edda0ffe0361946eb8e",
+  "owned_containers": [
+    "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce",
+    "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0",
+    "2dbe907973ad334a48d51767f3f81752c276edb590a155d220676cae17bc94a2"
+  ],
+  "owned_containers_removed": true,
+  "owned_processes": [
+    62827,
+    62838,
+    62851,
+    62880,
+    62881,
+    62936,
+    62986,
+    62987,
+    63152,
+    63153,
+    63181,
+    63182,
+    63252,
+    63256,
+    63315,
+    63316,
+    63378,
+    63379,
+    63403,
+    63431,
+    63465,
+    63493,
+    63519,
+    63527,
+    63574,
+    63580,
+    63689,
+    63690,
+    63725,
+    63726,
+    63816,
+    63817,
+    63861,
+    63862,
+    63951,
+    63955,
+    63981,
+    64006,
+    64034,
+    64073,
+    64099,
+    64107,
+    64108,
+    64109,
+    64112,
+    64120,
+    64123,
+    64124,
+    64127,
+    64128,
+    64129,
+    67001,
+    67002,
+    67317,
+    67318,
+    67571,
+    67579,
+    67587,
+    67595,
+    67603,
+    67611,
+    67619,
+    67627,
+    67635,
+    67643,
+    67651,
+    67659,
+    67667,
+    67675,
+    67683,
+    67691,
+    67699,
+    67707,
+    67718,
+    67726,
+    67737,
+    67745,
+    67753,
+    67761,
+    67769,
+    67777,
+    67785,
+    67793,
+    67814,
+    67822,
+    67831,
+    67839,
+    67847,
+    67855,
+    67866,
+    67877,
+    67885,
+    67908,
+    67919,
+    67931,
+    67943,
+    67955,
+    67956,
+    67957,
+    67958,
+    67969,
+    67980,
+    67992,
+    68003,
+    68014,
+    68030,
+    68042,
+    68053,
+    68064,
+    68065
+  ],
+  "owned_processes_stopped": true,
+  "scratch_removed": true,
+  "shared_after": {
+    "/home/administrator/.dapr/bin/daprd": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c",
+    "/usr/local/bin/dapr": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5",
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "running": true,
+      "started": "2026-10-06T06:07:21.050873588Z"
+    },
+    "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-10-06T06:07:21.049240867Z"
+    },
+    "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-10-06T06:07:21.046062672Z"
+    },
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+      "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "running": true,
+      "started": "2026-10-06T06:07:21.047493128Z"
+    }
+  },
+  "shared_before": {
+    "/home/administrator/.dapr/bin/daprd": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c",
+    "/usr/local/bin/dapr": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5",
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "running": true,
+      "started": "2026-10-06T06:07:21.050873588Z"
+    },
+    "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-10-06T06:07:21.049240867Z"
+    },
+    "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+      "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "running": true,
+      "started": "2026-10-06T06:07:21.046062672Z"
+    },
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+      "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "running": true,
+      "started": "2026-10-06T06:07:21.047493128Z"
+    }
+  },
+  "shared_discovery_complete": true,
+  "shared_observations": {
+    "after": {
+      "binary_command_ids": {
+        "/home/administrator/.dapr/bin/daprd": 109,
+        "/usr/local/bin/dapr": 110
+      },
+      "discovery_command_id": 107,
+      "inspection_command_id": 108
+    },
+    "before": {
+      "binary_command_ids": {
+        "/home/administrator/.dapr/bin/daprd": 3,
+        "/usr/local/bin/dapr": 4
+      },
+      "discovery_command_id": 1,
+      "inspection_command_id": 2
+    }
+  }
+}

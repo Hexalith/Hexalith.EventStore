@@ -650,7 +650,7 @@ def validate_operations(directory, commands, rows, inventories, current, closure
 def validate(directory):
     try:
         return _validate_packet(directory)
-    except (IndexError, StopIteration) as error:
+    except (TypeError, IndexError, StopIteration) as error:
         raise ValueError("Invalid evidence: " + type(error).__name__) from error
 
 
@@ -677,6 +677,7 @@ def _validate_packet(directory):
             safe(json.loads(contents))
     manifest = json.loads((directory / "manifest.json").read_text())
     results = json.loads((directory / "scenario-results.json").read_text())
+    require(isinstance(manifest, dict) and isinstance(results, dict), "Malformed manifest or results shape")
     require(manifest["schema"] == "hexalith.p1r.verification.v1", "Unknown manifest schema")
     require(manifest["coordinates"] == SOURCES and manifest["versions"] == list(VERSIONS), "Coordinate drift")
     require(manifest["runtime"]["dapr"] == "1.18.2" and manifest["runtime"]["postgresql"] == POSTGRES, "Runtime drift")
@@ -685,6 +686,7 @@ def _validate_packet(directory):
     rows = results["scenarios"]
     require(len(rows) == len(SCENARIOS) and {r["id"] for r in rows} == set(SCENARIOS), "Missing or duplicate scenario")
     commands = json.loads((directory / "commands.json").read_text())
+    require(isinstance(commands, list) and all(isinstance(c, dict) for c in commands), "Malformed command inventory shape")
     by_id = {c["id"]: c for c in commands}
     require(len({c["id"] for c in commands}) == len(commands), "Duplicate command receipt")
     command_ids = {c["id"] for c in commands}
@@ -882,7 +884,19 @@ def _validate_packet(directory):
                 require({c["id"] for c in case["cases"]} == expected, "Missing shared current-source case")
                 require(all(c.get("assertions", 0) > 0 and "before_sha256" in c and "after_sha256" in c for c in case["cases"]), "Missing shared current-source persisted bindings")
     cleanup = json.loads((directory / "cleanup.json").read_text())
+    require(isinstance(cleanup, dict), "Malformed cleanup shape")
     require(cleanup["owned_processes_stopped"] and cleanup["owned_containers_removed"] and cleanup["scratch_removed"] and not cleanup.get("errors"), "Failed cleanup")
+    launched = {}
+    for command in commands:
+        if command["argv"][0] not in {"HTTP", "os.killpg", "read-fixture"}:
+            require("process_id" in command or command["exit_code"] == 127, "Executed command lacks tracked process identity")
+        if "process_id" in command:
+            pid = command["process_id"]
+            require(type(pid) is int and pid > 0 and type(command.get("process_returncode")) is int, "Tracked process lacks terminal outcome")
+            require(pid not in launched or launched[pid] == command["process_returncode"], "Conflicting process terminal outcomes")
+            launched[pid] = command["process_returncode"]
+    owned_processes = cleanup["owned_processes"]
+    require(isinstance(owned_processes, list) and len(owned_processes) == len(set(owned_processes)) and all(type(pid) is int for pid in owned_processes) and set(owned_processes) == set(launched), "Owned process inventory differs from executed processes")
     owned=cleanup.get("owned_containers", [])
     if owned:
         discovery=[c for c in commands if c["argv"] == ["docker", "ps", "-aq", "--no-trunc", "--filter", "label=hexalith.p1r.invocation="+cleanup["invocation"]]]
@@ -897,9 +911,34 @@ def _validate_packet(directory):
                 require(receipt_json(inspection) == {"id": identity, "invocation":cleanup["invocation"]}, "Cleanup ownership differs")
                 require(any(c["argv"] == ["docker", "rm", "-f", identity] and c["exit_code"] == 0 and inspection["id"] < c["id"] < discovery[-1]["id"] for c in commands), "Cleanup lacks successful owned-resource removal")
     require(cleanup.get("shared_discovery_complete") is True and isinstance(cleanup["shared_before"], dict) and isinstance(cleanup["shared_after"], dict), "Unknown shared-resource preservation")
+    snapshots = cleanup["shared_observations"]
+    require(set(snapshots) == {"before", "after"}, "Missing shared discovery bindings")
+    discoveries = [c for c in commands if c["argv"] == ["docker", "ps", "-aq", "--no-trunc"]]
+    require(len(discoveries) >= 2 and snapshots["before"]["discovery_command_id"] == discoveries[0]["id"] and snapshots["after"]["discovery_command_id"] == discoveries[-1]["id"], "Shared snapshots lack distinct before/after discoveries")
+    for phase, binding in snapshots.items():
+        discovery = by_id[binding["discovery_command_id"]]
+        require(discovery["exit_code"] == 0 and discovery["output_sha256"] == sha(discovery["diagnostic"].encode()), "Shared discovery receipt differs")
+        identities = discovery["diagnostic"].split()
+        require(len(identities) == len(set(identities)) and all(re.fullmatch(r"[0-9a-f]{64}", identity) for identity in identities), "Invalid shared discovery identity")
+        observed = {}
+        if identities:
+            inspection = by_id[binding["inspection_command_id"]]
+            require(inspection["argv"] == ["docker", "inspect", "--format", RESOURCE_INSPECT_FORMAT, *identities] and inspection["exit_code"] == 0 and inspection["output_sha256"] == sha(inspection["diagnostic"].encode()) and inspection["id"] > discovery["id"], "Shared inspection differs from complete discovery")
+            resources = [json.loads(line) for line in inspection["diagnostic"].splitlines()]
+            require(len(resources) == len(identities) and {r["id"] for r in resources} == set(identities) and all(set(r) == {"id", "image", "running", "started", "invocation"} for r in resources), "Shared inspection omitted resource identities")
+            observed.update({row["id"]: {key: row[key] for key in ("image", "running", "started")} for row in resources if row["invocation"] != cleanup["invocation"]})
+        else:
+            require(binding["inspection_command_id"] is None, "Unexpected empty-discovery inspection")
+        require(set(binding["binary_command_ids"]) == set(shared_binary_paths()), "Missing shared binary observations")
+        for binary, identity in binding["binary_command_ids"].items():
+            receipt = by_id[identity]
+            require(receipt["argv"][1:] == ["-c", FILE_HASH_SCRIPT, binary, "hash-shared-binary"] and receipt["exit_code"] == 0 and receipt["id"] > discovery["id"] and receipt["output_sha256"] == sha(receipt["diagnostic"].encode()) and re.fullmatch(r"[0-9a-f]{64}", receipt["diagnostic"].strip()), "Shared binary observation lacks executed hash")
+            observed[binary] = receipt["diagnostic"].strip()
+        require(cleanup["shared_"+phase] == observed, "Shared snapshot differs from complete discovery observations")
     require(cleanup["shared_before"] == cleanup["shared_after"], "Shared resource drift")
     require(results["exit_code"] == (0 if all(r["execution"] == "passed" and r["compatibility"] == "compatible" for r in rows) and not cleanup.get("errors") else 1), "Invocation exit status contradicts executed dispositions")
     require(manifest["preserved_before"] == manifest["preserved_after"], "Acceptance or historical evidence changed")
+    require(manifest["preserved_before"] == preserved(), "Protected inventory differs from independently checked workspace hashes")
     require(set(manifest["fixture_hashes"]) == FIXTURES, "Missing or unexpected fixture bindings")
     for relative, digest in manifest["fixture_hashes"].items():
         path = HERE / relative
@@ -923,6 +962,9 @@ class Runner:
         self.env = dict(os.environ, TMPDIR=str(self.scratch), DOTNET_CLI_HOME=str(self.scratch / "dotnet-home"), NUGET_SCRATCH=str(self.scratch / "nuget-scratch"), MSBUILDDISABLENODEREUSE="1", DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
         self.env.pop("DOTNET_ADDITIONAL_DEPS", None)
         self.env.pop("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", None)
+        for name in list(self.env):
+            if name == "DOTNET_STARTUP_HOOKS" or re.match(r"^(?:DOTNET|CORECLR|COR)_(?:ENABLE_PROFILING|PROFILER(?:_|$))", name):
+                self.env.pop(name)
         self.before = None
         self.discovery_errors = []
         self.container_launch_attempted = False
@@ -934,6 +976,7 @@ class Runner:
     def initialize(self):
         try:
             self.before = self.shared()
+            self.before_shared_observation = getattr(self, "last_shared_observation", None)
         except (Exception, KeyboardInterrupt) as error:
             self.discovery_errors.append({"phase": "before", "error": type(error).__name__})
             raise
@@ -960,6 +1003,8 @@ class Runner:
         process = None
         def record_output(code, stdout, stderr):
             receipt = self.record(argv, started, code, stderr if binary else stdout + stderr, cwd)
+            if process is not None:
+                receipt.update(process_id=process.pid, process_returncode=process.returncode)
             if binary:
                 receipt.update(output_sha256=sha(stdout), output_bytes=len(stdout), binary_output_retained=False)
             if input_bytes is not None:
@@ -1028,10 +1073,11 @@ class Runner:
                 node_environment = {k: v for k, v in (env or {}).items() if k in {"ASPNETCORE_URLS", "DAPR_HTTP_PORT", "DAPR_GRPC_PORT"}}
                 self.logs.append((process, file, list(argv), started, node_environment))
         except (Exception, KeyboardInterrupt) as error:
-            self.record(argv, started, 130 if isinstance(error, KeyboardInterrupt) else 127, str(error).encode(), self.scratch)
+            receipt = self.record(argv, started, 130 if isinstance(error, KeyboardInterrupt) else 127, str(error).encode(), self.scratch)
             if process is None:
                 file.close()
             else:
+                receipt.update(process_id=process.pid, process_returncode=process.returncode)
                 try:
                     self.stop(process)
                 except (Exception, KeyboardInterrupt) as failure:
@@ -1068,6 +1114,7 @@ class Runner:
             file.seek(0)
             receipt = self.record(argv, started, process.returncode if process.returncode is not None else -1, file.read(), self.scratch)
             receipt["node_environment"] = node_environment
+            receipt.update(process_id=process.pid, process_returncode=process.returncode)
             file.close()
         self.logs = remaining
 
@@ -1098,17 +1145,20 @@ class Runner:
 
     def shared(self):
         identities = self.run(["docker", "ps", "-aq", "--no-trunc"]).split()
+        binding = {"discovery_command_id": self.commands[-1]["id"], "inspection_command_id": None, "binary_command_ids": {}}
         resources = {}
         if identities:
             inspection = self.run(["docker", "inspect", "--format", RESOURCE_INSPECT_FORMAT, *identities])
+            binding["inspection_command_id"] = self.commands[-1]["id"]
             for line in inspection.splitlines():
                 row = json.loads(line)
                 if row["invocation"] == self.invocation:
                     continue
                 resources[row["id"]] = {key: row[key] for key in ("image", "running", "started")}
-        for binary in (shutil.which("dapr"), str(pathlib.Path.home() / ".dapr/bin/daprd")):
-            if binary and pathlib.Path(binary).is_file():
-                resources[binary] = sha(pathlib.Path(binary).read_bytes())
+        for binary in shared_binary_paths():
+            resources[binary] = self.run([sys.executable, "-c", FILE_HASH_SCRIPT, binary, "hash-shared-binary"]).strip()
+            binding["binary_command_ids"][binary] = self.commands[-1]["id"]
+        self.last_shared_observation = binding
         return resources
 
     def assertion(self, condition, message):
@@ -1197,8 +1247,10 @@ class Runner:
             errors.append(type(error).__name__)
             remaining = "unknown"
         after = None
+        after_shared_observation = None
         try:
             after = self.shared()
+            after_shared_observation = getattr(self, "last_shared_observation", None)
         except (Exception, KeyboardInterrupt) as error:
             self.discovery_errors.append({"phase": "after", "error": type(error).__name__})
         scratch = self.scratch
@@ -1208,7 +1260,12 @@ class Runner:
         except (OSError, KeyboardInterrupt) as error:
             errors.append(type(error).__name__)
         self.cleanup_errors.extend(e for e in errors if e not in self.cleanup_errors)
-        receipt = {"invocation": self.invocation, "owned_processes": [p.pid for p in self.processes], "owned_containers": self.containers, "owned_processes_stopped": all(p.poll() is not None for p in self.processes) and not errors, "owned_containers_removed": not remaining and not errors, "scratch_removed": not scratch.exists(), "shared_before": self.before, "shared_after": after, "shared_discovery_complete": isinstance(self.before, dict) and isinstance(after, dict) and not self.discovery_errors, "discovery_errors": self.discovery_errors, "errors": self.cleanup_errors + ["shared_" + e["phase"] + "_unavailable" for e in self.discovery_errors], "complete": not remaining and not scratch.exists() and all(p.poll() is not None for p in self.processes) and not errors and isinstance(after, dict)}
+        outcomes = {p.pid: p.poll() for p in self.processes}
+        for command in self.commands:
+            if command.get("process_id") in outcomes:
+                command["process_returncode"] = outcomes[command["process_id"]]
+        write(self.output / "commands.json", self.commands)
+        receipt = {"invocation": self.invocation, "owned_processes": [p.pid for p in self.processes], "owned_containers": self.containers, "owned_processes_stopped": all(p.poll() is not None for p in self.processes) and not errors, "owned_containers_removed": not remaining and not errors, "scratch_removed": not scratch.exists(), "shared_before": self.before, "shared_after": after, "shared_observations": {"before": getattr(self, "before_shared_observation", None), "after": after_shared_observation}, "shared_discovery_complete": isinstance(self.before, dict) and isinstance(after, dict) and not self.discovery_errors, "discovery_errors": self.discovery_errors, "errors": self.cleanup_errors + ["shared_" + e["phase"] + "_unavailable" for e in self.discovery_errors], "complete": not remaining and not scratch.exists() and all(p.poll() is not None for p in self.processes) and not errors and isinstance(after, dict)}
         if hasattr(self, "cleanup_receipt"):
             previous = getattr(self, "cleanup_history", [])
             previous.append(self.cleanup_receipt)
@@ -1460,6 +1517,7 @@ class Runner:
                     else:
                         require(self.commands[-1]["exit_code"] != 0 and re.search(r"(?i)no such (?:object|container)", self.commands[-1]["diagnostic"]), "Scheduler retry inspection failed")
                     cidfile.unlink()
+                    self.containers = [container for container in self.containers if container != identity]
 
     def topology(self):
         password = uuid.uuid4().hex
@@ -1886,6 +1944,10 @@ class Runner:
             for case in cases[case_start:]:
                 case["prerequisite_command_ids"] = host_identity_ids + host_launch_ids
         return cases, "incompatible"
+
+
+def shared_binary_paths():
+    return {str(pathlib.Path(binary)) for binary in (shutil.which("dapr"), str(pathlib.Path.home() / ".dapr/bin/daprd")) if binary and pathlib.Path(binary).is_file()}
 
 
 def preserved():

@@ -1,4 +1,13 @@
 {
+  "applied_review_corrections": {
+    "R01": "Retire only verified removed/absent scheduler retry CIDs; retain ownership/removal receipts and validate recovered packets.",
+    "R02": "Bind complete shared snapshots to before/after Docker discovery and shared-binary hash receipts; reject omissions and changed values.",
+    "R03": "Require complete protected inventories and independently checked workspace hashes; reject omitted or substituted hashes.",
+    "R04": "Bind owned process inventories to executed process IDs and terminal outcomes; reject missing or substituted identities.",
+    "R05": "Report null/wrong-shape malformed evidence as INVALID instead of uncaught TypeError.",
+    "R06": "Clear startup-hook and profiler injection variables at lane isolation; sentinel controls retain no environment secrets.",
+    "R07": "Exercise real wait_http startup exit while a healthy owned node retains later output and complete final lifetime."
+  },
   "observed_checks": [
     {
       "argv": [
@@ -34,11 +43,64 @@
       "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
       "exit_code": 2,
       "output_excerpt": "failure-cleanup: passed/compatible (6 assertions)\nRETAINED NONPASSING: Failed cleanup\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--out",
+        "attempt-19"
+      ],
+      "assertions": 2845,
+      "command_receipts": 2326,
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "exit_code": 1,
+      "finished_utc": "2026-10-06T06:33:55.626946+00:00",
+      "incompatible_dispositions": 7,
+      "output_excerpt": "post-upgrade-restore: passed/compatible (52 assertions)\npre-upgrade-restore: passed/compatible (53 assertions)\nfailure-cleanup: passed/compatible (6 assertions)\n",
+      "scenarios_passed": 17,
+      "started_utc": "2026-10-06T06:22:48.211071+00:00",
+      "top_level_cases": 72
+    },
+    {
+      "argv": [
+        "python3",
+        "-W",
+        "error::ResourceWarning",
+        "-m",
+        "unittest",
+        "test_run_verification.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "exit_code": 0,
+      "output_excerpt": "Ran 135 tests in 40.650s\n\nOK\n",
+      "reported_by": "parent verification",
+      "tests_passed": 135
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--out",
+        "attempt-21"
+      ],
+      "assertions": 2845,
+      "command_receipts": 2333,
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "exit_code": 1,
+      "finished_utc": "2026-10-06T07:24:55.120358+00:00",
+      "incompatible_dispositions": 7,
+      "reported_by": "parent verification",
+      "scenarios_passed": 17,
+      "started_utc": "2026-10-06T07:13:52.335210+00:00",
+      "top_level_cases": 72
     }
   ],
   "owner_acceptance_granted": false,
   "qualified": false,
   "recorded_utc": "2026-10-06T06:06:46.051941+00:00",
+  "resumed_utc": "2026-10-06T06:37:13.557487+00:00",
+  "review_verified_utc": "2026-10-06T07:31:18.858752+00:00",
   "schema": "hexalith.p1r.verification.checks.v1",
   "usable_as_prerequisite": false,
   "validator_receipts": [
@@ -69,6 +131,34 @@
       "finished_utc": "2026-10-06T06:06:47.576365+00:00",
       "output_sha256": "be6a3c7cc8c22804ed7999e7bc140fe3fed95d385f6fda8c16ef54cce3a15983",
       "started_utc": "2026-10-06T06:06:47.508063+00:00"
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--validate",
+        "attempt-19"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "diagnostic": "VALID: complete hash-bound investigation; P1R remains unqualified\n",
+      "exit_code": 0,
+      "finished_utc": "2026-10-06T06:37:15.022709+00:00",
+      "output_sha256": "0f3a5a0f8f5359e86de0bf9de5a9a05dac366e8ae530cac79b245e5a01400d10",
+      "started_utc": "2026-10-06T06:37:13.557532+00:00"
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--validate",
+        "attempt-21"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "diagnostic": "VALID: complete hash-bound investigation; P1R remains unqualified\n",
+      "exit_code": 0,
+      "finished_utc": "2026-10-06T07:31:20.326420+00:00",
+      "output_sha256": "0f3a5a0f8f5359e86de0bf9de5a9a05dac366e8ae530cac79b245e5a01400d10",
+      "started_utc": "2026-10-06T07:31:18.858787+00:00"
     }
   ]
 }

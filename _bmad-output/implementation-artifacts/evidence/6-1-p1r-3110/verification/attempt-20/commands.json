@@ -1,0 +1,2175 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\nbaede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\n8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\ncb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:16.001547+00:00",
+    "id": 1,
+    "output_sha256": "646f6c9c218e39473896dc94cb3fa0c15ef246eb9e6d9a5ecb315ba002b9d9d0",
+    "process_id": 62827,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:15.953732+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"id\":{{json .Id}},\"image\":{{json .Image}},\"running\":{{json .State.Running}},\"started\":{{json .State.StartedAt}},\"invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}",
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523",
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077",
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"running\":true,\"started\":\"2026-10-06T06:07:21.049240867Z\",\"invocation\":null}\n{\"id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"running\":true,\"started\":\"2026-10-06T06:07:21.046062672Z\",\"invocation\":null}\n{\"id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"running\":true,\"started\":\"2026-10-06T06:07:21.050873588Z\",\"invocation\":null}\n{\"id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"running\":true,\"started\":\"2026-10-06T06:07:21.047493128Z\",\"invocation\":null}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:16.048046+00:00",
+    "id": 2,
+    "output_sha256": "33ff07099fdbfe44af4c5e6a41a0bc9106ae53d8e976ec628af97f3e725ba237",
+    "process_id": 62838,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:16.002313+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,pathlib,sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())",
+      "/home/administrator/.dapr/bin/daprd",
+      "hash-shared-binary"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:16.291748+00:00",
+    "id": 3,
+    "output_sha256": "5d804836ddfa05b4aa5849887d3465ce5fdbf5d6253517e3b34b30dafd955152",
+    "process_id": 62851,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:16.049269+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,pathlib,sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())",
+      "/usr/local/bin/dapr",
+      "hash-shared-binary"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:16.399719+00:00",
+    "id": 4,
+    "output_sha256": "2875df2b8cd8cbb78ff6e3d776e7c56e787276febdf3c5426928fb2b524a8dc8",
+    "process_id": 62880,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:16.293292+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "diagnostic": "PASS: 14 public packages match recorded hashes, tagged source metadata, release assets, ZIP payloads, signatures, and manifest contract\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:18.402232+00:00",
+    "id": 5,
+    "output_sha256": "f130a09d4b9c3a777e3ea094f76ee22f1972f6a20b8b4f511a0ed49df2afe88a",
+    "process_id": 62881,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:16.401064+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/Host.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/Host.csproj (in 3.35 sec).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:22.297083+00:00",
+    "id": 6,
+    "output_sha256": "7b23ac6d10bbadb2dda9766316817b0c1303dd2bc9953e3fb884d63f08d1a152",
+    "process_id": 62936,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:18.404593+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/obj/project.assets.json\": \"ba1fb5ed3493e0481c1e8f0855b0476b88a03505c34854858956009303ba7bb4\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/packages.lock.json\": \"36269d99e9532c5affe13212cd1f35a3f69690210ab7a5522cb2ee3515e6424b\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:22.318335+00:00",
+    "id": 7,
+    "output_sha256": "622ab223092a9c4a32c03ced3300929835ef7b6dc5a548aacaf0a890775750fc",
+    "process_id": 62986,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:22.301561+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Host -> /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/bin/Release/net10.0/Host.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.70\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:24.219209+00:00",
+    "id": 8,
+    "output_sha256": "dd4438932f557a1de29e8f398dd7ddb6aaa4ee1eb06ad61c56bfcfc1c8c5e601",
+    "process_id": 62987,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:22.319269+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/host/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\", \"Hexalith.EventStore.Contracts\": \"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\", \"Hexalith.EventStore.DomainService\": \"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\", \"Hexalith.EventStore.Server\": \"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\", \"Hexalith.EventStore.ServiceDefaults\": \"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:24.239423+00:00",
+    "id": 9,
+    "output_sha256": "383f7eba2135f9705b7e22bc7c29fcdabc6e0d1244047a8b9cd7da66f3351c7a",
+    "process_id": 63152,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:24.220204+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/Domain.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/Domain.csproj (in 112 ms).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:24.896103+00:00",
+    "id": 10,
+    "output_sha256": "49290710c0c3be93f406dfac26afd7203d9f7a5839e8192baf30404ae5f2657b",
+    "process_id": 63153,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:24.240432+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/obj/project.assets.json\": \"dfece084c4a1537341a6133b8422fddb856fad292055ab4ad6b122a25b044d8b\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/packages.lock.json\": \"8f5e3cfe3d35950e59aa5098a3fd93899f5f3d4907654bd8d4eb3d6a246cf963\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:24.915380+00:00",
+    "id": 11,
+    "output_sha256": "9d2c50187560df90daf342061fa6ce90be63d5b8259a008f6bc58af052fdfe0d",
+    "process_id": 63181,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:24.898243+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/Domain.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Domain -> /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/bin/Release/net10.0/Domain.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.65\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:26.766686+00:00",
+    "id": 12,
+    "output_sha256": "64a39c4b4224b7dc6ffb15f3696414ce89309438ea0091ba6436ad05c344d1f0",
+    "process_id": 63182,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:24.916304+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/domain/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\", \"Hexalith.EventStore.Contracts\": \"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\", \"Hexalith.EventStore.DomainService\": \"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\", \"Hexalith.EventStore.ServiceDefaults\": \"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:26.784721+00:00",
+    "id": 13,
+    "output_sha256": "c8efb4775e14efe66055161b218d808dbdfab7eaabeacd2ddcdc34f9bb1822d9",
+    "process_id": 63252,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:26.767771+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/Probe.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/Probe.csproj (in 1.32 sec).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:28.650630+00:00",
+    "id": 14,
+    "output_sha256": "bf71ed8731ba683ee34a61a16bf4030c23c12d47789cff40d868491620bb97e9",
+    "process_id": 63256,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:26.785774+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/obj/project.assets.json\": \"7a78fa22ea96b049c02267159d48e80d5ea74132ca25cbeae2ae77ea09bff92a\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/packages.lock.json\": \"3c595a196e2af45ba3313020c7d29943fe2e11581aa79355c09a63a8d0f52e6c\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:28.671542+00:00",
+    "id": 15,
+    "output_sha256": "95731e2afb7c32a6fd01bd95bc85ed6853b94caf6864d788119fdb4632b200cf",
+    "process_id": 63315,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:28.654041+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/Probe.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Probe -> /var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.41\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:30.289720+00:00",
+    "id": 16,
+    "output_sha256": "509aade11ce3a47358b047a83309163c75eab3e774d7d414c98eed2df7a71579",
+    "process_id": 63316,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:28.672598+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\", \"Hexalith.EventStore.Contracts\": \"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\", \"Hexalith.EventStore.DomainService\": \"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\", \"Hexalith.EventStore.Server\": \"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\", \"Hexalith.EventStore.ServiceDefaults\": \"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:30.309347+00:00",
+    "id": 17,
+    "output_sha256": "383f7eba2135f9705b7e22bc7c29fcdabc6e0d1244047a8b9cd7da66f3351c7a",
+    "process_id": 63378,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:30.290834+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/packages/hexalith.eventstore.client/3.110.0/hexalith.eventstore.client.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Client.3.110.0\nContent hash: OSjRL4VNdN7U40CQKxVWeboQV4Go4mnXm5a6zuKsyMOz/1/qmq/g6VRbGyEN1wN9R6nDElv2RHeV754BlQvjjg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:30.585606+00:00",
+    "id": 18,
+    "output_sha256": "a6501eac629446d67da6c75efa1b8da3ca3443d4006e1175856edf0f4bbd7608",
+    "process_id": 63379,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:30.312634+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/packages/hexalith.eventstore.contracts/3.110.0/hexalith.eventstore.contracts.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Contracts.3.110.0\nContent hash: baYsmElIPNyTHly6B18qIldqyV3IQ10znHmYON+AKeuL3xyvacz2Jrn9xFMY8b2C/Ow874JYCkq0o6x/NbcUsQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:30.855122+00:00",
+    "id": 19,
+    "output_sha256": "bf7f207d60e8c4b34180617f0d4b51a47d6814be6f96d346aa7abcad205561b5",
+    "process_id": 63403,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:30.588260+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/packages/hexalith.eventstore.domainservice/3.110.0/hexalith.eventstore.domainservice.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.DomainService.3.110.0\nContent hash: HWvcNBAfLqxjZ2w7aOABVaZv2WXn7W3aox1GHjq5zFQe1UjXW3en/aiPazsa8ccXCUfXE+WqrA+Q1YNABKSmHw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:31.131155+00:00",
+    "id": 20,
+    "output_sha256": "420562227b0bda2d6b156f9e1f8ecfd1cd7bb205f206a124964956fd448d6b3c",
+    "process_id": 63431,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:30.857650+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/packages/hexalith.eventstore.server/3.110.0/hexalith.eventstore.server.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Server.3.110.0\nContent hash: ag4Svmfv94X4DxxTRAiyJPQZM0IXxrH40JaOtTx5RTCfh2ASaKHf9aIwWJGSOL4pWHGqd5w3apvu4or1PYzoxg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:31.396863+00:00",
+    "id": 21,
+    "output_sha256": "3434116cd1acfc022674d649312220c5d3887deed682171c93a4090ef3644397",
+    "process_id": 63465,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:31.137543+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/packages/hexalith.eventstore.servicedefaults/3.110.0/hexalith.eventstore.servicedefaults.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.110.0\nContent hash: oz8knL5wa0XjWO1FcvTASXgpew08t+pEN21lqn7dC6rvIYls9CeQ72KeRgQndEhN4DSGbupWBkGAIhLa9yd7Mg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:31.656666+00:00",
+    "id": 22,
+    "output_sha256": "b8e2de486f3a36e5ba80c214ab502f071d041459a71624faefeb815b0f41de94",
+    "process_id": 63493,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:31.399325+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "identity"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"assemblies\":[{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.110.0.0\",\"sha256\":\"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.110.0.0\",\"sha256\":\"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\"}],\"actorMethods\":[\"CreateManualSnapshotAsync\",\"EraseTrustedEffectEvidenceAsync\",\"FenceTrustedEffectsAsync\",\"GetCurrentSequenceAsync\",\"GetEventsAsync\",\"GetRetainedFloorAsync\",\"GetStreamMetadataAsync\",\"ProcessCommandAsync\",\"ProcessFencedCommandAsync\",\"ProcessTrustedEffectAsync\",\"ReadEventsRangeAsync\",\"ReconcileFencedCommandAsync\"],\"statusFields\":[\"AggregateId\",\"CorrelationId\",\"DrainAttemptCount\",\"EventCount\",\"FailureReason\",\"MessageId\",\"RecoveryReasonCode\",\"RejectionEventType\",\"Retryable\",\"Status\",\"TimeoutDuration\",\"Timestamp\"],\"cursorScopeMethods\":[\"Add\",\"AddProjectionWatermark\",\"Build\",\"Create\",\"Equals\",\"GetHashCode\",\"GetType\",\"ToString\"]}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:31.742561+00:00",
+    "id": 23,
+    "output_sha256": "50872798fe1d4de81ab73eff4c330f6a957109ce3c3d2fd29dc1479b14a67568",
+    "process_id": 63519,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:31.658666+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/Host.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/Host.csproj (in 1.27 sec).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:33.553650+00:00",
+    "id": 24,
+    "output_sha256": "960c5f01ffe3aa98e7da175617a62c8d321b9b5513575d67a6ba153fa52d2359",
+    "process_id": 63527,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:31.745398+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/obj/project.assets.json\": \"1283f992ce272e68adbe333f0b44570bbd5637f31bf52224e2160402c5c1ee79\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/packages.lock.json\": \"b92f04c12c7b98b143fa1836804cbdd14d0f8d76be2d3e83da12c6f26a0ceda5\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:33.574021+00:00",
+    "id": 25,
+    "output_sha256": "04e701ae1e8d04837bf24730df3600cd717e5f3732a6ab0df3a2e67483ee14a5",
+    "process_id": 63574,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:33.556130+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Host -> /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/bin/Release/net10.0/Host.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.61\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:35.384288+00:00",
+    "id": 26,
+    "output_sha256": "fcd4b09c67d57660b56791d4008365f22adf3f6ba1554d822391c6a3cecd3e15",
+    "process_id": 63580,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:33.575178+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/host/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\", \"Hexalith.EventStore.Contracts\": \"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\", \"Hexalith.EventStore.Server\": \"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:35.402724+00:00",
+    "id": 27,
+    "output_sha256": "bcdaa83a4d1cc09416f739b76c1cfebb07f1433b5d5ee254453becb39ce6383e",
+    "process_id": 63689,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:35.385389+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/Domain.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/Domain.csproj (in 1.22 sec).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:37.171381+00:00",
+    "id": 28,
+    "output_sha256": "b7b980cff5ba6855a7ca881ea51787682fce96369852929648a9d8c64a8b3c2d",
+    "process_id": 63690,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:35.403771+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/obj/project.assets.json\": \"bae9ab04b79a16cf1a40d7594e27a791fc6fa411dc246f2616a65dc21111b94b\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/packages.lock.json\": \"2e21d8593249e7116998bcaee819eb09b5a02ff2c0cb558a17373b88399dad8a\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:37.190087+00:00",
+    "id": 29,
+    "output_sha256": "dd6e1cf43953b9974ee17348836f123659fe2c16126f644867931229b75f0d73",
+    "process_id": 63725,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:37.173615+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/Domain.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Domain -> /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/bin/Release/net10.0/Domain.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.65\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:39.048036+00:00",
+    "id": 30,
+    "output_sha256": "f5d88bf96fd4cfd0da3285715c0a1dd3376d1e30df7f276122230744966654b3",
+    "process_id": 63726,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:37.191106+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/domain/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\", \"Hexalith.EventStore.Contracts\": \"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\", \"Hexalith.EventStore.DomainService\": \"c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0\", \"Hexalith.EventStore.ServiceDefaults\": \"3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:39.065441+00:00",
+    "id": 31,
+    "output_sha256": "6391121aeb0de4ebbe40baf5081b9e3a4a72fa90d25f74f2bdc5902cd23a0b54",
+    "process_id": 63816,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:39.049132+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/Probe.csproj",
+      "--configfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/NuGet.Config",
+      "--no-http-cache",
+      "--disable-parallel",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Determining projects to restore...\n  Restored /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/Probe.csproj (in 1.23 sec).\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:40.862693+00:00",
+    "id": 32,
+    "output_sha256": "e6d80b9d721c53b56fcdb4eb154b080a06aee8f38136fef90d72ef41b4462851",
+    "process_id": 63817,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:39.066434+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({str(pathlib.Path(p)):hashlib.sha256(json.dumps(json.loads(pathlib.Path(p).read_text()),sort_keys=True,separators=(',',':')).encode()).hexdigest() for p in sys.argv[1:-1]},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/obj/project.assets.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/packages.lock.json",
+      "hash-restored-graphs"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/obj/project.assets.json\": \"7727413bdd7cd9c7e8b6da22443b11c572cbd345082fe46240d867abbbf18837\", \"/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/packages.lock.json\": \"62dec6946d59f6b7c775c856332eb5bc217e4ddd420c9144fb63ac1531e7294b\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:40.881700+00:00",
+    "id": 33,
+    "output_sha256": "3f1cc1d7755f7b15e1776067685db06961cadee694bb89a1ce576d772b0e933e",
+    "process_id": 63861,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:40.864927+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/Probe.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:UseSharedCompilation=false",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "  Probe -> /var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.44\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:42.542681+00:00",
+    "id": 34,
+    "output_sha256": "360afd684ee95d0cd1e71adf32ae39a2972bdce0f5f146ff6b9ee65587a35c55",
+    "process_id": 63862,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:40.882744+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,sys; print(json.dumps({p.stem:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path(sys.argv[1]).glob('Hexalith.EventStore.*.dll'))},sort_keys=True))",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0",
+      "hash-built-assemblies"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"Hexalith.EventStore.Client\": \"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\", \"Hexalith.EventStore.Contracts\": \"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\", \"Hexalith.EventStore.Server\": \"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:42.562064+00:00",
+    "id": 35,
+    "output_sha256": "bcdaa83a4d1cc09416f739b76c1cfebb07f1433b5d5ee254453becb39ce6383e",
+    "process_id": 63951,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:42.544030+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/packages/hexalith.eventstore.client/3.70.1/hexalith.eventstore.client.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Client.3.70.1\nContent hash: UjVLImHNmOZkgc0VkzeFyWFLnCrqYZ967RH4PF1caD/xgsrMsRwtLtd6+d6JQs8f5eLTJyAvYinnguRqg+zYiw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:42.822998+00:00",
+    "id": 36,
+    "output_sha256": "6a8fff3465085b04cb910a65603ff76d161d765eb2eae46b22ce2b80b29f0f1b",
+    "process_id": 63955,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:42.564473+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/packages/hexalith.eventstore.contracts/3.70.1/hexalith.eventstore.contracts.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Contracts.3.70.1\nContent hash: D46Ujom2BaRA9dliNQEDkddSI+aETQX56bfK6RnHSGOTJnrK5MdUvvg4txZJLc/8OvhMEuRhxwHbS96O+gKo0A==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.072558+00:00",
+    "id": 37,
+    "output_sha256": "f54510014fd87dc8df604b6732f38b03eb6f12dfc440fa30148b56ba5974e5e8",
+    "process_id": 63981,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:42.825207+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/packages/hexalith.eventstore.domainservice/3.70.1/hexalith.eventstore.domainservice.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.DomainService.3.70.1\nContent hash: M0SprdUzSyPnfvFAIMHq2BT7HfxnR7G77DT26JnPxIFhBR3ysov7hkuaCUGVi+i5TfMLieEng+++UjdoaxNIjQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.329254+00:00",
+    "id": 38,
+    "output_sha256": "0dec56d44955a8774932151d4d5007db56957323bb549c74de7123a77d361fbd",
+    "process_id": 64006,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.075067+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/packages/hexalith.eventstore.server/3.70.1/hexalith.eventstore.server.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.Server.3.70.1\nContent hash: dDmVa7LxtzWyEsDYeyqfYaHAu7r0twGmagaCjVM+n9kFFMpAC5v7rWaIOi+CEiQUEkT/6kC5sXgHP0kYIy7tFg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.624643+00:00",
+    "id": 39,
+    "output_sha256": "f4b83419ceb987b3ca30bbd086ac38c343557fd1cad7d676b5fcaa81b9119d1a",
+    "process_id": 64034,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.334557+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/packages/hexalith.eventstore.servicedefaults/3.70.1/hexalith.eventstore.servicedefaults.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.70.1\nContent hash: 8SwIg3ok4Tb+rQnVJziGGZV0OSDRrHEinn5TUXX8zu2KdyWFAmZkdWb9nwjQ+xTvn/G9qznYBKH+O0oMupQGVQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.888942+00:00",
+    "id": 40,
+    "output_sha256": "acfe403672132d17d805ddbe90ee257c27f6be7be5b79204fa07731b03fb76ec",
+    "process_id": 64073,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.626844+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "identity"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"assemblies\":[{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.70.1.0\",\"sha256\":\"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.70.1.0\",\"sha256\":\"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\"}],\"actorMethods\":[\"CreateManualSnapshotAsync\",\"GetCurrentSequenceAsync\",\"GetEventsAsync\",\"GetStreamMetadataAsync\",\"ProcessCommandAsync\",\"ReadEventsRangeAsync\"],\"statusFields\":[\"AggregateId\",\"CorrelationId\",\"EventCount\",\"FailureReason\",\"MessageId\",\"RejectionEventType\",\"Status\",\"TimeoutDuration\",\"Timestamp\"],\"cursorScopeMethods\":[\"Add\",\"Build\",\"Create\",\"Equals\",\"GetHashCode\",\"GetType\",\"ToString\"]}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.978636+00:00",
+    "id": 41,
+    "output_sha256": "3084f610197fe6f5442342e88f93e068ae265bba18dac22cc401174ffaff559a",
+    "process_id": 64099,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.890712+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--name-status",
+      "27279fe6431925a6ea046c3f89af61487185c7de",
+      "2c58ffda41759e895ace4b9625c9bd931a217672",
+      "--",
+      "src"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "diagnostic": "M\tsrc/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj\nA\tsrc/Hexalith.EventStore.Client/Reminders/IReminderDelegationTokenProvider.cs\nA\tsrc/Hexalith.EventStore.Client/Reminders/IReminderIntentSource.cs\nA\tsrc/Hexalith.EventStore.Client/Reminders/IReminderRegistrar.cs\nA\tsrc/Hexalith.EventStore.Client/Reminders/ReminderCommand.cs\nA\tsrc/Hexalith.EventStore.Client/Reminders/ReminderDelegationRequest.cs\nA\tsrc/Hexalith.EventStore.Contracts/Reminders/ReminderConvergenceResult.cs\nA\tsrc/Hexalith.EventStore.Contracts/Reminders/ReminderDisposition.cs\nA\tsrc/Hexalith.EventStore.Contracts/Reminders/ReminderIdentityCodec.cs\nA\tsrc/Hexalith.EventStore.Contracts/Reminders/ReminderIntent.cs\nA\tsrc/Hexalith.EventStore.Contracts/Reminders/ReminderTarget.cs\nA\tsrc/Hexalith.EventStore.DomainService/DaprReminderActorInvoker.cs\nM\tsrc/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs\nM\tsrc/Hexalith.EventStore.DomainService/EventStoreDomainTelemetry.cs\nA\tsrc/Hexalith.EventStore.DomainService/EventStoreReminderEndpointExtensions.cs\nA\tsrc/Hexalith.EventStore.DomainService/EventStoreReminderOptions.cs\nA\tsrc/Hexalith.EventStore.DomainService/EventStoreReminderServiceCollectionExtensions.cs\nM\tsrc/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj\nA\tsrc/Hexalith.EventStore.DomainService/IReminderActor.cs\nA\tsrc/Hexalith.EventStore.DomainService/IReminderActorInvoker.cs\nA\tsrc/Hexalith.EventStore.DomainService/IReminderScheduler.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderActor.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderCallbackTokenFilter.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderCallbackTokenStartupFilter.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderCandidate.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderCoordinator.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderDispositionRecord.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderEntry.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderEntryStatus.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderFailClosedException.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderIntentIndex.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderItemState.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderLog.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderQuarantineRecord.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderReadinessHealthCheck.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderReconciler.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderReconciliationPass.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderRegistrar.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderRuntimeSnapshot.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderRuntimeStatus.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderStateKeys.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderSubmissionOutcome.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderTenantCandidates.cs\nA\tsrc/Hexalith.EventStore.DomainService/ReminderTenantRegistry.cs\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.982965+00:00",
+    "id": 42,
+    "output_sha256": "765fd200c24dc2ca8e98df689a665e136ee4ed7a3a416772cf3074a98b1de4f0",
+    "process_id": 64107,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.980403+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--exit-code",
+      "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "--",
+      "src",
+      "tools/release-packages.json"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "diagnostic": "",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.985911+00:00",
+    "id": 43,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "process_id": 64108,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.984008+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "--no-hardlinks",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.EventStore"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "Cloning into '/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.EventStore'...\ndone.\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:43.995860+00:00",
+    "id": 44,
+    "output_sha256": "6eff8d055c50dbe39da64c8494f214bc94c192ff46eedd3c5508b2a977b47359",
+    "process_id": 64109,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.986692+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "-c",
+      "core.autocrlf=false",
+      "checkout",
+      "--detach",
+      "2c58ffda41759e895ace4b9625c9bd931a217672"
+    ],
+    "cwd": "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.EventStore",
+    "diagnostic": "HEAD is now at 2c58ffda fix: update code structure for improved readability and maintainability\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.559460+00:00",
+    "id": 45,
+    "output_sha256": "6a357c3caf113b900f0a475cfd2fb76f66a07052461358d972565c686eaed30a",
+    "process_id": 64112,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:43.996709+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "--no-hardlinks",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Builds"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "Cloning into '/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Builds'...\ndone.\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.569209+00:00",
+    "id": 46,
+    "output_sha256": "a73a5440dd9c47b085061c93e416f942ce2bfc61801fd7844339bd8eb06d5e89",
+    "process_id": 64120,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.560569+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "-c",
+      "core.autocrlf=false",
+      "checkout",
+      "--detach",
+      "688eec9a4333245cc0ff7772115c769094471863"
+    ],
+    "cwd": "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Builds",
+    "diagnostic": "HEAD is now at 688eec9 fix(pack): replace inherited root readme with the module readme\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.638946+00:00",
+    "id": 47,
+    "output_sha256": "ad9ed2133f7b4339f4e46e7073db93039d57caafcd9db25135329070203f6d29",
+    "process_id": 64123,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.570041+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "--no-hardlinks",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.Commons",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Commons"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "Cloning into '/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Commons'...\ndone.\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.649898+00:00",
+    "id": 48,
+    "output_sha256": "7ac809fd7ca6624fe7a7bf46bb8b526f30d3292f908e66366c55402f0d21210f",
+    "process_id": 64124,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.640101+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "-c",
+      "core.autocrlf=false",
+      "checkout",
+      "--detach",
+      "116d26815eb81e35b3c161e1799e5ee12805fc0a"
+    ],
+    "cwd": "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Commons",
+    "diagnostic": "HEAD is now at 116d268 fix(pack): resolve package assets from the commons root\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.666093+00:00",
+    "id": 49,
+    "output_sha256": "aff3c8294457e4c92cc32fb8098d77b73a3bc91969d82c25ca4da3f2bc9ee107",
+    "process_id": 64127,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.650907+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "ls-tree",
+      "cbcf54fa4d7a8c17bbfc3f9fb555ac0a85c179c0",
+      "references/Hexalith.EventStore"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects",
+    "diagnostic": "160000 commit 2c58ffda41759e895ace4b9625c9bd931a217672\treferences/Hexalith.EventStore\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:44.669325+00:00",
+    "id": 50,
+    "output_sha256": "1fdb3db09404844c0cf9e17d9ce526acc8ebebb959ff37f7fa2369cfacc6258d",
+    "process_id": 64128,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.667359+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,subprocess,sys\nroot=pathlib.Path(sys.argv[1]).resolve(); coordinate=sys.argv[2]\ndef git(*args): return subprocess.check_output(['git',*args],cwd=root)\nassert git('rev-parse','HEAD').decode().strip()==coordinate, 'Source coordinate changed'\ndef relevant(name):\n p=pathlib.PurePosixPath(name)\n return (p.parts[0] in ('src','Props','Targets') or len(p.parts)==1) and (p.suffix.lower() in ('.cs','.csproj','.props','.targets','.json','.config','.resx','.ruleset') or p.name=='.editorconfig') and not any(x in ('bin','obj') for x in p.parts)\nfiles={}\nfor item in git('ls-tree','-rz',coordinate).split(b'\\0'):\n if not item: continue\n metadata,name=item.split(b'\\t',1); name=name.decode(); mode,kind,blob=metadata.decode().split()\n if kind!='blob' or not relevant(name): continue\n path=root/name\n assert path.is_file() and not path.is_symlink(), 'Missing or substituted source input: '+name\n assert git('hash-object','--path',name,str(path)).decode().strip()==blob, 'Dirty source input: '+name\n files[name]={'git_blob':blob,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'committed_sha256':hashlib.sha256(git('show',coordinate+':'+name)).hexdigest()}\nfor base in (root,root/'src',root/'Props',root/'Targets'):\n if not base.exists(): continue\n paths=base.iterdir() if base==root else base.rglob('*')\n for path in paths:\n  name=path.relative_to(root).as_posix()\n  if path.is_file() and relevant(name): assert name in files, 'Untracked build input: '+name\nassert files, 'Empty source closure'\nprint(json.dumps({'coordinate':coordinate,'repository':str(root),'files':files},sort_keys=True))\n",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.EventStore",
+      "2c58ffda41759e895ace4b9625c9bd931a217672",
+      "source-input-closure"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "d940d417a7e40f31f79bf1e343bca\", \"sha256\": \"e8e306959cb4d51d3ea46f4a9ff2bfc42cb3a1500061ce5e2262451500c9b6fd\"}, \"src/Hexalith.EventStore/OpenApi/ApiVersionFallbackEndpoints.cs\": {\"committed_sha256\": \"548d76344b8196fb85d16e8e66af9d1f31e9ad99085736928d9ace2e3c3db394\", \"git_blob\": \"776c13e7ed9d3967f0abc4bd835eadfdfc47ea27\", \"sha256\": \"548d76344b8196fb85d16e8e66af9d1f31e9ad99085736928d9ace2e3c3db394\"}, \"src/Hexalith.EventStore/OpenApi/CommandDocumentationTransformer.cs\": {\"committed_sha256\": \"ba781a5641a74a421ec20f5b7acae42f67f43a75152765ce021b017451dd75a6\", \"git_blob\": \"b79aed20da26b774949fc7610a202fa7e615f045\", \"sha256\": \"ba781a5641a74a421ec20f5b7acae42f67f43a75152765ce021b017451dd75a6\"}, \"src/Hexalith.EventStore/OpenApi/CommandExampleTransformer.cs\": {\"committed_sha256\": \"56e9e497d73b33f3ae3e336c3fb9602c6c55b1c8c3de6fd643641cc82ca31cb1\", \"git_blob\": \"75276e9d499c23162ec5f0a6f240340c61cf095a\", \"sha256\": \"56e9e497d73b33f3ae3e336c3fb9602c6c55b1c8c3de6fd643641cc82ca31cb1\"}, \"src/Hexalith.EventStore/OpenApi/ErrorReferenceEndpoints.cs\": {\"committed_sha256\": \"b8bcd8b7016c9c466a7f86e485c2a10a25b3b5a93a379ec7e76faec1f92340f0\", \"git_blob\": \"e1c58dedde553ae16afa86bced147048a9ea2ad6\", \"sha256\": \"b8bcd8b7016c9c466a7f86e485c2a10a25b3b5a93a379ec7e76faec1f92340f0\"}, \"src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs\": {\"committed_sha256\": \"5517511120f772b734617f5d387e7bc5553245a728e1672dee4d6f7458da5f43\", \"git_blob\": \"7231bb3981d707db8e98f63b00c90d0e7fefa9e3\", \"sha256\": \"5517511120f772b734617f5d387e7bc5553245a728e1672dee4d6f7458da5f43\"}, \"src/Hexalith.EventStore/Pipeline/AuthorizationConstants.cs\": {\"committed_sha256\": \"442918d8594220fcae3bdca0d3e4227fad98637fa74443ac229691df05aea6ef\", \"git_blob\": \"894e9748df913f710149da9c0696ddd8f890bab7\", \"sha256\": \"442918d8594220fcae3bdca0d3e4227fad98637fa74443ac229691df05aea6ef\"}, \"src/Hexalith.EventStore/Pipeline/GatewayAuthorizationContext.cs\": {\"committed_sha256\": \"b4fcf99d926f5a03f4279e454d54d0f0bb4a78ebf18230025a7c975c30bbe064\", \"git_blob\": \"5175fba409215204cc8ccc8c76e8adad68a45958\", \"sha256\": \"b4fcf99d926f5a03f4279e454d54d0f0bb4a78ebf18230025a7c975c30bbe064\"}, \"src/Hexalith.EventStore/Pipeline/LoggingBehavior.cs\": {\"committed_sha256\": \"5986949a47a6f55cbce0fae89a37cf33fe2fd9e7556ee88b2192c4317e45c3be\", \"git_blob\": \"2d7f06bf1aa27589a4107c7e73214e1f24f76bf2\", \"sha256\": \"5986949a47a6f55cbce0fae89a37cf33fe2fd9e7556ee88b2192c4317e45c3be\"}, \"src/Hexalith.EventStore/Pipeline/ValidationBehavior.cs\": {\"committed_sha256\": \"46f15169c6b87398efbdb90bcb5726dc312c2f96ea0b36a2f70a9d48eb18ad07\", \"git_blob\": \"c49ace7f8d8a86515e0323e0c86d467169613ebb\", \"sha256\": \"46f15169c6b87398efbdb90bcb5726dc312c2f96ea0b36a2f70a9d48eb18ad07\"}, \"src/Hexalith.EventStore/Program.cs\": {\"committed_sha256\": \"6fd90015c2b55ebedf31fec6e728e8a8820ad46e7b951fab0c7df224e681cad2\", \"git_blob\": \"1adf9067a85c648ac6b37174fda670d75cd4fb13\", \"sha256\": \"6fd90015c2b55ebedf31fec6e728e8a8820ad46e7b951fab0c7df224e681cad2\"}, \"src/Hexalith.EventStore/Properties/launchSettings.json\": {\"committed_sha256\": \"0fe6ce67df194dbf75e4a5df14c4b45aadbff631c73885d54d9705d26f7b2175\", \"git_blob\": \"a6e2d0c65812cde85135cf0254baa3227596500e\", \"sha256\": \"0fe6ce67df194dbf75e4a5df14c4b45aadbff631c73885d54d9705d26f7b2175\"}, \"src/Hexalith.EventStore/Queries/DaprDomainQueryHandlerRegistry.cs\": {\"committed_sha256\": \"883c0a38fef6c6962135a358e82c165e8fcf0551339335b6a2acec967ff5fa23\", \"git_blob\": \"839ca4d32fdd9bdb94bdb8c0797b3bedcaea5bcc\", \"sha256\": \"883c0a38fef6c6962135a358e82c165e8fcf0551339335b6a2acec967ff5fa23\"}, \"src/Hexalith.EventStore/Queries/DaprDomainQueryInvoker.cs\": {\"committed_sha256\": \"ffff388e4d0499b1eb362059cbbeb7b1d0c6366f1d50ec5150f746c63313a1ff\", \"git_blob\": \"4aa35ae9745eba3830fd38ca33e4e322350d6e19\", \"sha256\": \"ffff388e4d0499b1eb362059cbbeb7b1d0c6366f1d50ec5150f746c63313a1ff\"}, \"src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs\": {\"committed_sha256\": \"69315411f3d66967c83b56f0b9f46f7893e6c85b23c328b9ee80b73020dbea15\", \"git_blob\": \"4f06ac9d5d115c44dc499fbda9d68b119d3785aa\", \"sha256\": \"69315411f3d66967c83b56f0b9f46f7893e6c85b23c328b9ee80b73020dbea15\"}, \"src/Hexalith.EventStore/Queries/IDomainQueryHandlerRegistry.cs\": {\"committed_sha256\": \"2ee4f8dd253ee26380bc8ded01c587c0d4882e13ffa2a207b0d70db6911816ab\", \"git_blob\": \"a68e767f3c2d939550107ed53784597f14826882\", \"sha256\": \"2ee4f8dd253ee26380bc8ded01c587c0d4882e13ffa2a207b0d70db6911816ab\"}, \"src/Hexalith.EventStore/Queries/IDomainQueryInvoker.cs\": {\"committed_sha256\": \"c815a8e57e8bc65597e3f189c920b234c4985fe540aebf2c27575721c54c7a3d\", \"git_blob\": \"c7b975daf06b4d0b4f31c2077852e18556a62c12\", \"sha256\": \"c815a8e57e8bc65597e3f189c920b234c4985fe540aebf2c27575721c54c7a3d\"}, \"src/Hexalith.EventStore/Services/DaprCommandAggregateTypeResolver.cs\": {\"committed_sha256\": \"41f45561e30bca86582d0a0886d34ab4b1bd13b9610d4ab361af86579d4b8bd3\", \"git_blob\": \"c6e86d2827a78d5b1f7c028a3903479729128fb4\", \"sha256\": \"41f45561e30bca86582d0a0886d34ab4b1bd13b9610d4ab361af86579d4b8bd3\"}, \"src/Hexalith.EventStore/Services/DaprSnapshotPolicyRepository.cs\": {\"committed_sha256\": \"a488b22013f67139a93e1f0c90b433921e775edec797933d9555cd9a53e299f5\", \"git_blob\": \"f2f1052052981f4b00c56e2ddad0e4fdf11b9b48\", \"sha256\": \"a488b22013f67139a93e1f0c90b433921e775edec797933d9555cd9a53e299f5\"}, \"src/Hexalith.EventStore/SignalRHub/IProjectionChangedClient.cs\": {\"committed_sha256\": \"bb53d6df1b278237362a98dc27d4fb5d2b8c9cf0613488c33002ffc578c7b020\", \"git_blob\": \"983a33bf54d284737fe2f879b1de971947870528\", \"sha256\": \"bb53d6df1b278237362a98dc27d4fb5d2b8c9cf0613488c33002ffc578c7b020\"}, \"src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs\": {\"committed_sha256\": \"f9208d3c22795ccb78dc465fa4c08e12f72c4bf3eec662d4d255925733816239\", \"git_blob\": \"c5249a3c0be056510b394eb88d381880cb60c967\", \"sha256\": \"f9208d3c22795ccb78dc465fa4c08e12f72c4bf3eec662d4d255925733816239\"}, \"src/Hexalith.EventStore/SignalRHub/SignalROptions.cs\": {\"committed_sha256\": \"3e25f6403381361956d66912fe10ca8bde8e231a9bed5ee8d2a9d03b0b073cf5\", \"git_blob\": \"40b60451f7da13cf82e8646010c8faf49ea4a069\", \"sha256\": \"3e25f6403381361956d66912fe10ca8bde8e231a9bed5ee8d2a9d03b0b073cf5\"}, \"src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs\": {\"committed_sha256\": \"0d66f792fd4db26fd0da9cf0baaca074610ed67c810de3bf92a6cdae5e698848\", \"git_blob\": \"6a6ad2c48b71ab1880337e002706adadba20e684\", \"sha256\": \"0d66f792fd4db26fd0da9cf0baaca074610ed67c810de3bf92a6cdae5e698848\"}, \"src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofEndpoints.cs\": {\"committed_sha256\": \"87f5b62ff9fa21155cee05ac71221ec6542372f958217abea53751e5d0f9e1b4\", \"git_blob\": \"2ff0f399f1c789f828b223ba933199873fec6597\", \"sha256\": \"87f5b62ff9fa21155cee05ac71221ec6542372f958217abea53751e5d0f9e1b4\"}, \"src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs\": {\"committed_sha256\": \"fa7e06d7d18c3aea9592865c5603efa718f48866d7aa0899af9612bd85ebb153\", \"git_blob\": \"cfbbeceff8c39ab1945a8d419c9e2f1a15f57764\", \"sha256\": \"fa7e06d7d18c3aea9592865c5603efa718f48866d7aa0899af9612bd85ebb153\"}, \"src/Hexalith.EventStore/Telemetry/EventStoreActivitySources.cs\": {\"committed_sha256\": \"a119b34eaa1b1cf244a19dd9409c27e836eb29da20b74ea0d0a5c6ec3a7ba036\", \"git_blob\": \"6c2dd13fb17a09ee593ef69c14315a87a79cbb88\", \"sha256\": \"a119b34eaa1b1cf244a19dd9409c27e836eb29da20b74ea0d0a5c6ec3a7ba036\"}, \"src/Hexalith.EventStore/Validation/ExtensionMetadataSanitizer.cs\": {\"committed_sha256\": \"23df4afd020f1e419c90f656f188bd3e9fb3eecf48b84657a9919f29b254b3d4\", \"git_blob\": \"5c6c7fc84650eaac7196c35dea86b081645a6f97\", \"sha256\": \"23df4afd020f1e419c90f656f188bd3e9fb3eecf48b84657a9919f29b254b3d4\"}, \"src/Hexalith.EventStore/Validation/ProjectionChangedNotificationValidator.cs\": {\"committed_sha256\": \"444a45f5d3bbeb1cc06b5c458cdf63328c14fdf1da4c9ae41062d6f4ff4713b4\", \"git_blob\": \"415dca6f6dca4f8a4e22755254056342fa5491ec\", \"sha256\": \"444a45f5d3bbeb1cc06b5c458cdf63328c14fdf1da4c9ae41062d6f4ff4713b4\"}, \"src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs\": {\"committed_sha256\": \"bafbadedf8f0a227318524beb680ccf6b44031b250e670641b510097b1d3a7ef\", \"git_blob\": \"41866ad901d414c1bf037f963110dd2fd89952e6\", \"sha256\": \"bafbadedf8f0a227318524beb680ccf6b44031b250e670641b510097b1d3a7ef\"}, \"src/Hexalith.EventStore/Validation/SubmitCommandValidator.cs\": {\"committed_sha256\": \"1d038d3e9c13f8feb4725648c7968f19daf93e8e793bd3036566ab6f969a754b\", \"git_blob\": \"09fe0e4977b621783da87d39bec5c9fb9ec968c7\", \"sha256\": \"1d038d3e9c13f8feb4725648c7968f19daf93e8e793bd3036566ab6f969a754b\"}, \"src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs\": {\"committed_sha256\": \"ef05e36c8b852ac4299c76c05b46b5b4ad3caee707afc3d7d3c4a6ef1d4fe5e3\", \"git_blob\": \"9e37ab635a34e0c89373acf467bb1b9fa01973e8\", \"sha256\": \"ef05e36c8b852ac4299c76c05b46b5b4ad3caee707afc3d7d3c4a6ef1d4fe5e3\"}, \"src/Hexalith.EventStore/Validation/ValidateCommandRequestValidator.cs\": {\"committed_sha256\": \"2c2f73e08b481448f558c99eba5dd0ecf9746f2f47e7691f1d25efd6b8aa8549\", \"git_blob\": \"1afe2d937e1f979fdd1f7a510b29d06431eeaa24\", \"sha256\": \"2c2f73e08b481448f558c99eba5dd0ecf9746f2f47e7691f1d25efd6b8aa8549\"}, \"src/Hexalith.EventStore/Validation/ValidateQueryRequestValidator.cs\": {\"committed_sha256\": \"ff201da5ae7f19991072e66c696b134358bf710c962372ad325f7daa59622fd5\", \"git_blob\": \"fff03591db2768efc695f9c9a537529e114d0a14\", \"sha256\": \"ff201da5ae7f19991072e66c696b134358bf710c962372ad325f7daa59622fd5\"}, \"src/Hexalith.EventStore/appsettings.Development.json\": {\"committed_sha256\": \"59f955a2076aa6acb1944c1e604c27a5ad06d221a23a8570716b5e1e9bdab119\", \"git_blob\": \"59cadff2330699436d5ab001146c5744769b269a\", \"sha256\": \"59f955a2076aa6acb1944c1e604c27a5ad06d221a23a8570716b5e1e9bdab119\"}, \"src/Hexalith.EventStore/appsettings.json\": {\"committed_sha256\": \"103e849f6c08a236f5516c37dc424a5e702dfa219f4a20c83c68caa78ee0abb8\", \"git_blob\": \"9f5692b678a291014819a6c4e0996d2c6ee52db2\", \"sha256\": \"103e849f6c08a236f5516c37dc424a5e702dfa219f4a20c83c68caa78ee0abb8\"}}, \"repository\": \"/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.EventStore\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:48.620429+00:00",
+    "id": 51,
+    "output_sha256": "cd517cdd584167bad8f73d0b3f965a4611a85edff28ca2f562d028f3f53c04e1",
+    "process_id": 64129,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:44.670176+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "ls-tree",
+      "cbcf54fa4d7a8c17bbfc3f9fb555ac0a85c179c0",
+      "references/Hexalith.Builds"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects",
+    "diagnostic": "160000 commit 688eec9a4333245cc0ff7772115c769094471863\treferences/Hexalith.Builds\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:48.632990+00:00",
+    "id": 52,
+    "output_sha256": "570e6558d95c73a409790858e946b357510fdb7c9e870869a2d2235da71682de",
+    "process_id": 67001,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:48.631103+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,subprocess,sys\nroot=pathlib.Path(sys.argv[1]).resolve(); coordinate=sys.argv[2]\ndef git(*args): return subprocess.check_output(['git',*args],cwd=root)\nassert git('rev-parse','HEAD').decode().strip()==coordinate, 'Source coordinate changed'\ndef relevant(name):\n p=pathlib.PurePosixPath(name)\n return (p.parts[0] in ('src','Props','Targets') or len(p.parts)==1) and (p.suffix.lower() in ('.cs','.csproj','.props','.targets','.json','.config','.resx','.ruleset') or p.name=='.editorconfig') and not any(x in ('bin','obj') for x in p.parts)\nfiles={}\nfor item in git('ls-tree','-rz',coordinate).split(b'\\0'):\n if not item: continue\n metadata,name=item.split(b'\\t',1); name=name.decode(); mode,kind,blob=metadata.decode().split()\n if kind!='blob' or not relevant(name): continue\n path=root/name\n assert path.is_file() and not path.is_symlink(), 'Missing or substituted source input: '+name\n assert git('hash-object','--path',name,str(path)).decode().strip()==blob, 'Dirty source input: '+name\n files[name]={'git_blob':blob,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'committed_sha256':hashlib.sha256(git('show',coordinate+':'+name)).hexdigest()}\nfor base in (root,root/'src',root/'Props',root/'Targets'):\n if not base.exists(): continue\n paths=base.iterdir() if base==root else base.rglob('*')\n for path in paths:\n  name=path.relative_to(root).as_posix()\n  if path.is_file() and relevant(name): assert name in files, 'Untracked build input: '+name\nassert files, 'Empty source closure'\nprint(json.dumps({'coordinate':coordinate,'repository':str(root),'files':files},sort_keys=True))\n",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Builds",
+      "688eec9a4333245cc0ff7772115c769094471863",
+      "source-input-closure"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "5\", \"sha256\": \"0922a30ac62051211b940cf1df255a6e2c1fb53fa9715a69be5ceb0b9b204658\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionRunUiMarker.cs\": {\"committed_sha256\": \"48ff2bfc8fbc5bd9eb9d17492c31cdcb8c58be73ab1feab1e001bf2298ec14b8\", \"git_blob\": \"67e0db9f061b1da6f21f391daf16efd9957ab2b7\", \"sha256\": \"0b57b9784923829fdab5bc29544d251c8b784c7e263e3f1759749a52a37ac12e\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionSigningKey.cs\": {\"committed_sha256\": \"42aee21590650a80665d0263ce9bd3729c8a7384391b5c494b21acf9da175d72\", \"git_blob\": \"a3028f6669a4662bfcc5baeeb445fef719d53bf8\", \"sha256\": \"6ed1e5e8d4f2112594b4c7294d2d2a4f1bc70de4fce07e39ddb686026fe9a366\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionStartResult.cs\": {\"committed_sha256\": \"65811403196dadcb9c8d754088d61fce01c65a785d0cd04bdf1d8a278c6384f8\", \"git_blob\": \"1ecd66d51a3609d579aa262d73fbb1203446a56f\", \"sha256\": \"bc12c0cd63566ad8e1fea8f71f5a88d941c231033aab4045d38a7cb67bcc8e93\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionStartupFailure.cs\": {\"committed_sha256\": \"883e8f8f336106e55f74d2f0fd4e75d79a873c89858cb57c75ece9b333d8738e\", \"git_blob\": \"f00865871d2fb5a0ca849ee9b608ef6f2e0d3efc\", \"sha256\": \"320abbc70e456f02d38cc5da250b28ed3b5ba0c9c29c7a2f32e0015ec2a6d88a\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionTokenFactory.cs\": {\"committed_sha256\": \"d81bacab5dbb5eb811f0f66615b00222528be2e1ca327f636a104983161b0a67\", \"git_blob\": \"ff2ad73d7750fcdf6ba612282a4ee6e72b1378dc\", \"sha256\": \"64b5b63e78e8ecb15d19297af4d4c7a81a6c4f7ffe0c365e5108330376333e0a\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionTokenRequest.cs\": {\"committed_sha256\": \"627c884ea67c485eee68991439289112cd84e73f32bd9d4e3c549c0e249f81ab\", \"git_blob\": \"79097d89cd7e1e606f9af6431f12f18cf307bc5a\", \"sha256\": \"a3202143a48e6cfd91c8f4cd93a3209adfd1ce1adb60a5aca8bd82a19fe7c5c8\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionToolchainPins.cs\": {\"committed_sha256\": \"d7fc34ca54667a140cbba22848bb92f2f3fa2a9c8d70e9947dca2eb477972d70\", \"git_blob\": \"7306bea0c928349fa85bea5f14b74bedd72be0ae\", \"sha256\": \"8fe42c87b29833228567d651070e7aaf834e5b883cb1766f50c930ea7a382abd\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/CompositionWorkspace.cs\": {\"committed_sha256\": \"fd55c472c45f8b0d68c7c9a34b6707f1c41f07ed521fbbd6882a88f3fb847f39\", \"git_blob\": \"9f45fb6a0126d6905fe5f3a09febcfe25225a7aa\", \"sha256\": \"02e506f00269f9e2fde4689647c1e095306aad18ea7c0cc096aa86d73c33ef1d\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleCommandExecutionService.cs\": {\"committed_sha256\": \"3bea5661881a9448331904d93e89698b25ae783abd160d13f98dc59478d6ccc5\", \"git_blob\": \"e436fc430c4f5732ea36a587ec5b10c341788d53\", \"sha256\": \"496ff950e764c78a6ee051714150bf39b4d58c03e60331c1c0455c41a2e2d73d\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleInvocationCommand.cs\": {\"committed_sha256\": \"e0af94a9adc1b0858891b25a2df3226ec701108d6504ed2a83d70c6dacb63f34\", \"git_blob\": \"7f0d4ff985e957120768c536e77d0653d7acd45d\", \"sha256\": \"481f9ea37ba0227577795fef36663a71833a6b1b0ec5a4d7dfd477b446b9ab02\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleInvocationState.cs\": {\"committed_sha256\": \"dd99561d2469a25eda0888c5047c87fea158edb614e50ee15940a4c058608fda\", \"git_blob\": \"89b40501bb9dc5e16f6f6a96e4441bc9b978381f\", \"sha256\": \"4c0163b9fbbf19afb0171f228e0c2e1bad176c9f9a5c15663219d10f04d7169f\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleInvocationStateStore.cs\": {\"committed_sha256\": \"10cee7c6c35db57d8cf22f7a45ed196694d1acaa6be8914fc1ba2b91ef6e893b\", \"git_blob\": \"cff71550950602d3d82a58cef38bf87713ec4e71\", \"sha256\": \"1cf88d430773d7c010c381800d6600a1d0dc7801da8b936a21c73b7d3245faa3\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleRuntimeModule.cs\": {\"committed_sha256\": \"69a5b10049340aebb2161d231feb8921b69256a1a8373ff3aa78610e51bd8232\", \"git_blob\": \"826e1b0e8675e5b5ce9c49786e98684b4b5fc58b\", \"sha256\": \"3d6c3de17cfb21dc801352636a15c1ea83a621b07ed86ba3a656436d8dda9525\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/ModuleRuntimePlan.cs\": {\"committed_sha256\": \"952b014fe49612fd160af4220fdf9fcddd83222b650b53dc7679490f1e985fd7\", \"git_blob\": \"1661f7dc6b5c08263f792a531cee00b99fe1d96f\", \"sha256\": \"31d2b846abac9f47e6a20aa26d96609296380dfb166161a6d87a9b7d9f4dcc6e\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/NativeTestExecutionResult.cs\": {\"committed_sha256\": \"8c5f33e69dece5a4ffb04fc43cc59aea3732d51dfe7f297119d3d507040f6233\", \"git_blob\": \"88e4436ea4898f134e91552a21e3f5805d89fc88\", \"sha256\": \"4d513a2ade9291a9baff3fd77baf08364ae68012984ade1d277fdd1189223304\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/NativeTestExecutor.cs\": {\"committed_sha256\": \"bb148708bbbc38424ea55298a9f4408dd278e30bfd8d6d4f51acccd73b9fb825\", \"git_blob\": \"219e434d96a87b1b4a46954399e8553a6b6d75fd\", \"sha256\": \"f79030d26d09bcc3ae01804a63f38a4e770304e5bc6a70d7c2e57e70a669be47\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/NativeTestHandoff.cs\": {\"committed_sha256\": \"6ca26ea5b1ea7a86e48f66eb0855e1015bc4e80fa90b53cad4e705303a1a9d6f\", \"git_blob\": \"35d44b204517305bab695cba749ac6d69945685b\", \"sha256\": \"fc611e5ea0d8935cdbdd286db407e2ead58093910afeab1d9071b25d0f1ebaf4\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/NativeTestReportRedactor.cs\": {\"committed_sha256\": \"4fabf1e8fe05ecb259f41c60ad77cf79f6ab8f9ad9b2ad7f72ae7f1d0861d92c\", \"git_blob\": \"2d2266c37aa50b65c1344b1a1a1357b0a7640d36\", \"sha256\": \"93483d3bc27bf8fbf9e33a50812e8911b626c5893799e1ab5a7888ee5e45db63\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PackagedHostProject.cs\": {\"committed_sha256\": \"3759c2792ff0f7be2fef5db1020dc53eeef9fd6238381cd2fb6d315bff788bd6\", \"git_blob\": \"849d401ed68409bdc7aff88056c13c50130de0ba\", \"sha256\": \"3edab547223d2cd494dcc83964b0c18d6b995e14a97ca0a720837df4d30adb60\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileClient.cs\": {\"committed_sha256\": \"292ddfecf70098907f7b1b90c346032f413eaa0c8bc0e2de60360521847d9009\", \"git_blob\": \"abe1ace1c50a494f0c9daac60fdb59f5b21d2ee5\", \"sha256\": \"37940152814c1bc58109a9db20446018da0762dcf0f11f177bb4f0a5380a0de8\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileDefinition.cs\": {\"committed_sha256\": \"52a9ce8eebee05224a284dd0b3569154249dfe28eeda0532141ccfae70dfa978\", \"git_blob\": \"f6f245fd9f1e8c07e822bb36feceb5a21b17ffa2\", \"sha256\": \"05c82ee808886cad8c966fdda552398bff29f92b19d5af7cbdbfe6b73039677e\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileEvidence.cs\": {\"committed_sha256\": \"c7f13e6a150f74fe409924de87b458bd3a5feb0f476e5b1ea06a206e0bdf1799\", \"git_blob\": \"af77c920bb6171ab2609b6a1004f92dab612f776\", \"sha256\": \"c8b5c675a1ef442ed2ddb07359feeb44bb42fe5ade608a0dbf254ad50479a2ba\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileExecutor.cs\": {\"committed_sha256\": \"d942dc93745c59eb9c3221a4e86e487c66214962b476f6b326030a10e6e9a3f8\", \"git_blob\": \"931d2785833b24731880c28cea6ed0e9a4eca4d7\", \"sha256\": \"d74be7cf35bb1c91100de0a371f1567e2a5102ff8bc1cd165409d0f17cb1048a\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileLoader.cs\": {\"committed_sha256\": \"e6f4fd77891615f80c5dd4d9ae3dc301dfc298136f660374d0caf77a6946a7d4\", \"git_blob\": \"07885b28d5f98eb58d02f30dc59f03d81b227c2e\", \"sha256\": \"484761beed07d258365a320f337bcca5c004fc6bae0e15266706287944b50df0\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileModule.cs\": {\"committed_sha256\": \"3a5506c53e8b18715996cbaac0e554c15c84fa7f267d823230e40bd7215b1d2f\", \"git_blob\": \"06ed3493269d30ac44c2d0628de591e8895bec38\", \"sha256\": \"bde45bd93965b22fc8770e416c95a6ee7b150006613af066f2aae32b8e18a8c7\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileNativeTests.cs\": {\"committed_sha256\": \"e1394e0d51dc144d8f92ea11c0a7b600d9b43332ec06ac0e1417faa9c9116be8\", \"git_blob\": \"6a23767d6137ece568ea35e151d89c85abe38b91\", \"sha256\": \"1965e0027c612f936098634a0aa64405106147cab01ff559d976668d4c9bf9aa\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/PersistedProfileStore.cs\": {\"committed_sha256\": \"790baa67f15559d29dd44283164355d1fef169b4ec88726dc5573554b3d4ccfd\", \"git_blob\": \"af36452abc7a1fbfeb72d027cfcd3a0824557a4c\", \"sha256\": \"9d720f7077cabd96159a0ce7a14af606df99335282f158fa52de5eeb7abda3ee\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/RuntimePrerequisiteCheck.cs\": {\"committed_sha256\": \"a361a4d6cacdf2a23eaa264606fb1e683b1b9ca60c7fccf4aa0c8c86278ed43c\", \"git_blob\": \"816c69a25447d7d22a336defe200d02dd7fbba92\", \"sha256\": \"5d6584ed87df26b91c3e1515da9855d64aaf698b2ed1188d2af9e77d22fd1fc0\"}, \"src/libraries/Hexalith.Builds.Tooling/Runtime/RuntimePrerequisiteGate.cs\": {\"committed_sha256\": \"212a1489307c21ab144673e29cf947b90e91e9868406ac2127ff265a0299b450\", \"git_blob\": \"ab10a9dfe79fce0b27701c7cd6e896cd75cb5af4\", \"sha256\": \"b8dcfa52b6320700b5410809f2c3e64476c8ae21b9f79c9dfd8da250be29bd71\"}, \"src/libraries/Hexalith.Builds.Tooling/TestReports/NativeTestReport.cs\": {\"committed_sha256\": \"943c245422a4e18c2d2a2952b2c4cbdfc56a76e6ea113d9c1093388075345221\", \"git_blob\": \"aa6e13cdbdd680ed462145ed53777e86be957bde\", \"sha256\": \"13272172a5f02755f4d66755b15d29c922542a8016cb74027dd999d21dc28745\"}, \"src/libraries/Hexalith.Builds.Tooling/TestReports/NativeTestReportLoadResult.cs\": {\"committed_sha256\": \"0933c342c47a9a5816bc46cfd111fd7456ba7438a856b107893b7a02ce65329e\", \"git_blob\": \"06e26691c45921565e8eca321a27a3d4f93b9c7b\", \"sha256\": \"83035405a7defb29fee6bc902daf77aa54694f7bf1a66f9e21bfedc3f32e6380\"}, \"src/libraries/Hexalith.Builds.Tooling/TestReports/NativeTestReportLoader.cs\": {\"committed_sha256\": \"eafcc236fb2c7e99e15104e19359a2b67622ef643888c8341ffabd7b1423237a\", \"git_blob\": \"b71f69fa7d4404f5c3d08440da1008e716888517\", \"sha256\": \"35d9a1b938e0b7770e8615ba137fe65771853dcee1a5d46badcf5f4a833d22b6\"}, \"stylecop.json\": {\"committed_sha256\": \"cdbc72af27bd9b7220f0e9eb45dd078c72872a3222353899c1bd4b2092b4ff3a\", \"git_blob\": \"6ff1e6dca4b89e68c47f8d169894e06d2a903ac7\", \"sha256\": \"cdbc72af27bd9b7220f0e9eb45dd078c72872a3222353899c1bd4b2092b4ff3a\"}}, \"repository\": \"/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Builds\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.086237+00:00",
+    "id": 53,
+    "output_sha256": "275e10adbad694182d277eb9925d388daedd6c43edc5c99792e7df07e3623ef3",
+    "process_id": 67002,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:48.634355+00:00"
+  },
+  {
+    "argv": [
+      "git",
+      "ls-tree",
+      "cbcf54fa4d7a8c17bbfc3f9fb555ac0a85c179c0",
+      "references/Hexalith.Commons"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects",
+    "diagnostic": "160000 commit 116d26815eb81e35b3c161e1799e5ee12805fc0a\treferences/Hexalith.Commons\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.090537+00:00",
+    "id": 54,
+    "output_sha256": "6fb98798cc2e4fdf56168d94461bfeb881f8387d49a77922f0fa64c41368237c",
+    "process_id": 67317,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.088663+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,json,pathlib,subprocess,sys\nroot=pathlib.Path(sys.argv[1]).resolve(); coordinate=sys.argv[2]\ndef git(*args): return subprocess.check_output(['git',*args],cwd=root)\nassert git('rev-parse','HEAD').decode().strip()==coordinate, 'Source coordinate changed'\ndef relevant(name):\n p=pathlib.PurePosixPath(name)\n return (p.parts[0] in ('src','Props','Targets') or len(p.parts)==1) and (p.suffix.lower() in ('.cs','.csproj','.props','.targets','.json','.config','.resx','.ruleset') or p.name=='.editorconfig') and not any(x in ('bin','obj') for x in p.parts)\nfiles={}\nfor item in git('ls-tree','-rz',coordinate).split(b'\\0'):\n if not item: continue\n metadata,name=item.split(b'\\t',1); name=name.decode(); mode,kind,blob=metadata.decode().split()\n if kind!='blob' or not relevant(name): continue\n path=root/name\n assert path.is_file() and not path.is_symlink(), 'Missing or substituted source input: '+name\n assert git('hash-object','--path',name,str(path)).decode().strip()==blob, 'Dirty source input: '+name\n files[name]={'git_blob':blob,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'committed_sha256':hashlib.sha256(git('show',coordinate+':'+name)).hexdigest()}\nfor base in (root,root/'src',root/'Props',root/'Targets'):\n if not base.exists(): continue\n paths=base.iterdir() if base==root else base.rglob('*')\n for path in paths:\n  name=path.relative_to(root).as_posix()\n  if path.is_file() and relevant(name): assert name in files, 'Untracked build input: '+name\nassert files, 'Empty source closure'\nprint(json.dumps({'coordinate':coordinate,'repository':str(root),'files':files},sort_keys=True))\n",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Commons",
+      "116d26815eb81e35b3c161e1799e5ee12805fc0a",
+      "source-input-closure"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "50272ea8a81116bb71ed07557beadfe7ea6c6170389\", \"git_blob\": \"84f644852b11a1a24170092bef9a2b7158a546c2\", \"sha256\": \"c33ca9bd4cc2fa06f87ed50272ea8a81116bb71ed07557beadfe7ea6c6170389\"}, \"src/libraries/Hexalith.Commons.TenantAccess/TenantAccessState.cs\": {\"committed_sha256\": \"5dd919be4c65a633cd49253a8258be292bd9f082caaaa70baf052d41a76f65b4\", \"git_blob\": \"97bf3c85c27c31517c3593d8d4b4a75ad92112eb\", \"sha256\": \"5dd919be4c65a633cd49253a8258be292bd9f082caaaa70baf052d41a76f65b4\"}, \"src/libraries/Hexalith.Commons.UniqueIds/Directory.Build.props\": {\"committed_sha256\": \"0273adbfadbdbbc4447455188bf429a1153cdf27177b12db5b36d7f2e36cf3fa\", \"git_blob\": \"e9163a6874f705816aa1d8520aac1289ce4382b1\", \"sha256\": \"0273adbfadbdbbc4447455188bf429a1153cdf27177b12db5b36d7f2e36cf3fa\"}, \"src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj\": {\"committed_sha256\": \"62c4b47d2806e58cf3fb5d74afd2b8e44d921d3d2d2d48a7cd98a537955d956f\", \"git_blob\": \"5f1d93054b0094872a4653933f3e0e9d856df7dc\", \"sha256\": \"62c4b47d2806e58cf3fb5d74afd2b8e44d921d3d2d2d48a7cd98a537955d956f\"}, \"src/libraries/Hexalith.Commons.UniqueIds/Properties/AssemblyInfo.cs\": {\"committed_sha256\": \"a0ffa9a449c8efa302cab06d65011ed550316fdcb87edcf68131399e92f1b7a0\", \"git_blob\": \"1011127b482ea7a9402d968aa7f3ce0ffa85fb88\", \"sha256\": \"a0ffa9a449c8efa302cab06d65011ed550316fdcb87edcf68131399e92f1b7a0\"}, \"src/libraries/Hexalith.Commons.UniqueIds/UniqueIdHelper.cs\": {\"committed_sha256\": \"1b591eb4c6babff6a38504c4557f97eedfa32737f7ac6dac55bc006c81347291\", \"git_blob\": \"af86c886de162db83de34976aed6fb48b49d48d5\", \"sha256\": \"1b591eb4c6babff6a38504c4557f97eedfa32737f7ac6dac55bc006c81347291\"}, \"src/libraries/Hexalith.Commons/Assemblies/VersionHelper.cs\": {\"committed_sha256\": \"8875348cf681f1d6f36aeb369a4ef85323ba7bb39476f5c8a72cd82da299ba08\", \"git_blob\": \"b01264ea7c0aefe3d5ad0b4bfb4046c7d9410445\", \"sha256\": \"8875348cf681f1d6f36aeb369a4ef85323ba7bb39476f5c8a72cd82da299ba08\"}, \"src/libraries/Hexalith.Commons/Common/ExampleNameAttribute.cs\": {\"committed_sha256\": \"5fcd8b53075e68676256aa30a509419d719c71b2e308e207b7c29d85b1949e14\", \"git_blob\": \"876004ae41f4a5f79a2ae79e5a6c8b114276e459\", \"sha256\": \"5fcd8b53075e68676256aa30a509419d719c71b2e308e207b7c29d85b1949e14\"}, \"src/libraries/Hexalith.Commons/Common/ExampleValueAttribute.cs\": {\"committed_sha256\": \"9a9b039961ed3abb573cd88125f109b1b329e69c4ef98198d02d672076672dde\", \"git_blob\": \"5ac13a4a8229a0199f90ab93147eb6a7488b9e2c\", \"sha256\": \"9a9b039961ed3abb573cd88125f109b1b329e69c4ef98198d02d672076672dde\"}, \"src/libraries/Hexalith.Commons/Dates/DateHelper.cs\": {\"committed_sha256\": \"96074935478141dd08ef57ea8d51530a213a038561449ed92fc025e3cdac622b\", \"git_blob\": \"b7287f45d377424548254cfdeea1ae78fcaea5a0\", \"sha256\": \"96074935478141dd08ef57ea8d51530a213a038561449ed92fc025e3cdac622b\"}, \"src/libraries/Hexalith.Commons/Dates/Month.cs\": {\"committed_sha256\": \"f0845dff7cb7e810fb859ed5cdaf2e1dc7a61e60f2003aefe3baefb186387572\", \"git_blob\": \"a7c22cd68f2da37dc4af9ad4eca24945f310f75e\", \"sha256\": \"f0845dff7cb7e810fb859ed5cdaf2e1dc7a61e60f2003aefe3baefb186387572\"}, \"src/libraries/Hexalith.Commons/Errors/ApplicationError.cs\": {\"committed_sha256\": \"09af5290c0431169f92feb0a136cefd7bb2f95c58e16a6edb3c5984661435f2d\", \"git_blob\": \"6b24bb2bd88654dbec4f4e5f0f1656defa527451\", \"sha256\": \"09af5290c0431169f92feb0a136cefd7bb2f95c58e16a6edb3c5984661435f2d\"}, \"src/libraries/Hexalith.Commons/Errors/ApplicationErrorException.cs\": {\"committed_sha256\": \"b46865000f2d45eda2f7eca88602eef719506eebdae76754480f6a0eb86eb42a\", \"git_blob\": \"48a9a6b953869b99bf4bdcf9ecdab452ece51b8e\", \"sha256\": \"b46865000f2d45eda2f7eca88602eef719506eebdae76754480f6a0eb86eb42a\"}, \"src/libraries/Hexalith.Commons/Errors/ConditionalValue.cs\": {\"committed_sha256\": \"475b567ac937476cc90006d4ea454afc00a3b5e13259d862dd8d2bfa4a921355\", \"git_blob\": \"d7468b0d806d614f3f46a4005eb4aca2a748bd0b\", \"sha256\": \"475b567ac937476cc90006d4ea454afc00a3b5e13259d862dd8d2bfa4a921355\"}, \"src/libraries/Hexalith.Commons/Errors/ErrorCategory.cs\": {\"committed_sha256\": \"4d50a67bdf4031722e4ae9e097247be8b6f93fd8a2be637f446edd908cf33c66\", \"git_blob\": \"7f5c5739bddd0c9d842b6d32e2420bb0377ae95d\", \"sha256\": \"4d50a67bdf4031722e4ae9e097247be8b6f93fd8a2be637f446edd908cf33c66\"}, \"src/libraries/Hexalith.Commons/Errors/ExceptionHelper.cs\": {\"committed_sha256\": \"357bb94b0dfda3b7ceda45955e361847de69f8c1e0ed01448c9df33f82e2b656\", \"git_blob\": \"d3e9e70ded05845f6e98c5037283538c3033c85a\", \"sha256\": \"357bb94b0dfda3b7ceda45955e361847de69f8c1e0ed01448c9df33f82e2b656\"}, \"src/libraries/Hexalith.Commons/Errors/ValueOrError.cs\": {\"committed_sha256\": \"243fd361c67f7435de17bd727df25bb3b20157d69f521136c2b3081c6059e686\", \"git_blob\": \"98eee79495aff675415b47eeed3813550d7c6d21\", \"sha256\": \"243fd361c67f7435de17bd727df25bb3b20157d69f521136c2b3081c6059e686\"}, \"src/libraries/Hexalith.Commons/Errors/ValueOrError{T}.cs\": {\"committed_sha256\": \"56390273576246d8876bcc9472305da9557526cd3398fcd1f901817402527b09\", \"git_blob\": \"b920b05d7a31042afb356a354a4cfbbade0f445c\", \"sha256\": \"56390273576246d8876bcc9472305da9557526cd3398fcd1f901817402527b09\"}, \"src/libraries/Hexalith.Commons/Hexalith.Commons.csproj\": {\"committed_sha256\": \"87e178f9426dccfd98c205f9febaac7e6da60f4874e45c47c23644f32b206c16\", \"git_blob\": \"e902e9d2149304f52bd06fd39b4acda77dc547b2\", \"sha256\": \"87e178f9426dccfd98c205f9febaac7e6da60f4874e45c47c23644f32b206c16\"}, \"src/libraries/Hexalith.Commons/Loggings/LoggerHelper.cs\": {\"committed_sha256\": \"58e04eb9f4b26be92279dd3a70a7c66cec674daa11d529384af20bd93372d993\", \"git_blob\": \"a6bb9aaff9cacabef5f73a0c69784f1623503b31\", \"sha256\": \"58e04eb9f4b26be92279dd3a70a7c66cec674daa11d529384af20bd93372d993\"}, \"src/libraries/Hexalith.Commons/Maths/FibonacciSequence.cs\": {\"committed_sha256\": \"c09215c62b9085bcdb08bd38ab5c901344e31da29820e529dc16ddf38eab7408\", \"git_blob\": \"44b7153a8fb8f0f4f3d8ce83c3070e845c99f2cc\", \"sha256\": \"c09215c62b9085bcdb08bd38ab5c901344e31da29820e529dc16ddf38eab7408\"}, \"src/libraries/Hexalith.Commons/Objects/EquatableHelper.cs\": {\"committed_sha256\": \"ce2d3843c83e8626c38be98917b6544fc62cb8e194b1c7c1060ce20a1bd3184d\", \"git_blob\": \"9e3666731deb0ea3d2dd2f8359a7cf186c98633c\", \"sha256\": \"ce2d3843c83e8626c38be98917b6544fc62cb8e194b1c7c1060ce20a1bd3184d\"}, \"src/libraries/Hexalith.Commons/Objects/ExampleHelper.cs\": {\"committed_sha256\": \"44968d74f213b950337b53a20b4b680875b428a8e10c5402bdb6be86093235df\", \"git_blob\": \"170b96d9b8b9b940f0834c56968a03ae5f311645\", \"sha256\": \"44968d74f213b950337b53a20b4b680875b428a8e10c5402bdb6be86093235df\"}, \"src/libraries/Hexalith.Commons/Objects/IEquatableObject.cs\": {\"committed_sha256\": \"fcbcbb609f9d98a5c4bd9866a5621a9e7fde1c280bc58561147b4ac610f3e085\", \"git_blob\": \"61f0cc45bdd009d8fae544c354e844fde9f87c5f\", \"sha256\": \"fcbcbb609f9d98a5c4bd9866a5621a9e7fde1c280bc58561147b4ac610f3e085\"}, \"src/libraries/Hexalith.Commons/Objects/IIdempotent.cs\": {\"committed_sha256\": \"9441d421733a9d0d322b93bbdd614290a07c4c0005e1efd2234c4c8da9a23813\", \"git_blob\": \"702f119b92e12c9517eca7d0436cca593ebdd546\", \"sha256\": \"9441d421733a9d0d322b93bbdd614290a07c4c0005e1efd2234c4c8da9a23813\"}, \"src/libraries/Hexalith.Commons/Objects/ObjectDescriptionHelper.cs\": {\"committed_sha256\": \"6052d14397335d3f84000072074b19a5a3c5e4ec55fbff1876e03a4ea46303f0\", \"git_blob\": \"063a3ab6043da405537f26809bea89d865dde604\", \"sha256\": \"6052d14397335d3f84000072074b19a5a3c5e4ec55fbff1876e03a4ea46303f0\"}, \"src/libraries/Hexalith.Commons/Paging/PagedResult.cs\": {\"committed_sha256\": \"8b6e1b5dc8650af3a8a97530d302e43a8bf66b625a813299bac2e70134ffaac4\", \"git_blob\": \"78660d4c6151909273ec1ee6976b732f90a14d34\", \"sha256\": \"8b6e1b5dc8650af3a8a97530d302e43a8bf66b625a813299bac2e70134ffaac4\"}, \"src/libraries/Hexalith.Commons/Properties/AssemblyInfo.cs\": {\"committed_sha256\": \"1e566ee884e3633a2487d845fb469faa00f3b49c498cbc8f94f262a02871dc35\", \"git_blob\": \"7dd2d7c1b0da11d914d4fff177766798b31aa2d4\", \"sha256\": \"1e566ee884e3633a2487d845fb469faa00f3b49c498cbc8f94f262a02871dc35\"}, \"src/libraries/Hexalith.Commons/Reflections/IMappableType.cs\": {\"committed_sha256\": \"43e679a858a6db0631509a4f0f78f424eac061cd382ad3546050bdc8831a3e87\", \"git_blob\": \"eb4e88757bf595026b489fc07b69ea419317dba1\", \"sha256\": \"43e679a858a6db0631509a4f0f78f424eac061cd382ad3546050bdc8831a3e87\"}, \"src/libraries/Hexalith.Commons/Reflections/NameTypeMapper{TMappable}.cs\": {\"committed_sha256\": \"a63544f44395ece21a65d196bd193043a87332f0bd04f568193543495f438c6b\", \"git_blob\": \"42143fe885ae3cb31be62cb82e1e35655b89b4aa\", \"sha256\": \"a63544f44395ece21a65d196bd193043a87332f0bd04f568193543495f438c6b\"}, \"src/libraries/Hexalith.Commons/Reflections/ObjectDifferenceHelper.cs\": {\"committed_sha256\": \"399a90a0a308ae07ea6a0bfd81a5ca98c6118264f22904bbf8eb77c57868f4fd\", \"git_blob\": \"e6c13449644e8fc29b914b87abf22da73edb2667\", \"sha256\": \"399a90a0a308ae07ea6a0bfd81a5ca98c6118264f22904bbf8eb77c57868f4fd\"}, \"src/libraries/Hexalith.Commons/Reflections/ReflectionHelper.cs\": {\"committed_sha256\": \"397e192db0bf078a0185254b1860be4a8f299000267caaae97faa0750c8bcaa6\", \"git_blob\": \"76582d857bbe9cdd3797f10433f2b2fc6445fc43\", \"sha256\": \"397e192db0bf078a0185254b1860be4a8f299000267caaae97faa0750c8bcaa6\"}, \"src/libraries/Hexalith.Commons/Reflections/TypeMapper.cs\": {\"committed_sha256\": \"bdc7c1ebe41212f478d141538e3ce78fdaf2cafaff0c090b6804e50a3941a0fb\", \"git_blob\": \"5d2d2eeeb66e3542c1497514d51c6171a4fc81b4\", \"sha256\": \"bdc7c1ebe41212f478d141538e3ce78fdaf2cafaff0c090b6804e50a3941a0fb\"}, \"src/libraries/Hexalith.Commons/Strings/StringHelper.cs\": {\"committed_sha256\": \"408fb376be85d39e736bc5d26350d0cd2040615b5ec692bd4fc2910ba0e59a46\", \"git_blob\": \"073faa20ffcdfe6906ece12d56e2e45682750bb3\", \"sha256\": \"408fb376be85d39e736bc5d26350d0cd2040615b5ec692bd4fc2910ba0e59a46\"}, \"src/libraries/Hexalith.Commons/Tests/TestHelper.cs\": {\"committed_sha256\": \"ac287d93a496fdaee2cfff86b5c2196a3fb2fa69d59c3def59dddeac5afe70c5\", \"git_blob\": \"c1c8018e2b76e2db00b7a880989b19042c3a9be4\", \"sha256\": \"ac287d93a496fdaee2cfff86b5c2196a3fb2fa69d59c3def59dddeac5afe70c5\"}}, \"repository\": \"/var/tmp/hexalith-p1r-6pmqnt9n/source/references/Hexalith.Commons\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.443711+00:00",
+    "id": 55,
+    "output_sha256": "58ef86126536efbd439f0a42ff062aa18bb0152ff1c004c96918714c016e981f",
+    "process_id": 67318,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.091490+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "pascal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":1,\"inputSha256\":\"f25f14d0063765cdc9db3de266306b486381db9f8f522249bd889cac371fe429\",\"outputSha256\":\"2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.569773+00:00",
+    "id": 56,
+    "output_sha256": "d7183effb381a955e0b7696a61850566fcb5222e6e116dd955630a5ee7860a96",
+    "process_id": 67571,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.456157+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "web"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":1,\"inputSha256\":\"848473291db50ff6da09c3801cd80ed3ebf690fc565f786fd0d22afb573687a8\",\"outputSha256\":\"6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.678767+00:00",
+    "id": 57,
+    "output_sha256": "93607025834f616572105e53fc3dd9015d06f45712861cf308156c61ad227877",
+    "process_id": 67579,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.571269+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "pascal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":null,\"inputSha256\":\"9e0dcbd998d1f7ec834c6297ebfc215e4e4210b7b1eabf580867c8eacede2b7d\",\"outputSha256\":\"ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.791820+00:00",
+    "id": 58,
+    "output_sha256": "2e916c687a5ddc24c52b3f5d76c2f7241c836b01337b54313b13a07a7445cfdc",
+    "process_id": 67587,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.680261+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "pascal"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":null,\"inputSha256\":\"5d26d5bc9014670583b1c457e2d8dc2b091a6ff17a749e7b5b16e90252feac95\",\"outputSha256\":\"ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:49.899604+00:00",
+    "id": 59,
+    "output_sha256": "88bcd75cb81e739c9af756f89c739f201c371e027ae138ce60fa69d4804f053e",
+    "process_id": 67595,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.793309+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "web"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":null,\"inputSha256\":\"7f6b019dabcd77f15fb40a2f5eacafa4958ff231e3ff9756e255bb707470258f\",\"outputSha256\":\"0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.016606+00:00",
+    "id": 60,
+    "output_sha256": "17e319055cbb3b049dff547d5a6a14bcb23c721fe96129f77fe3c01b792bbeca",
+    "process_id": 67603,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:49.901140+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "metadata",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/metadata-output.json",
+      "web"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":3,\"currentSequence\":12,\"floor\":null,\"inputSha256\":\"acea7fc927340ccde6d93d07a4a30990d5299d3de3b4e7d0b66b041d6f988896\",\"outputSha256\":\"0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.118934+00:00",
+    "id": 61,
+    "output_sha256": "b90104c29e7ab2c892fbca5c05a49390ca8fe0752349c93b1b0b3745a3258c56",
+    "process_id": 67611,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.018291+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ec51737d616e8e13defd78a5e11889d7f8e0d432a1dae2581953e83f958870d0\",\"outputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.239720+00:00",
+    "id": 62,
+    "output_sha256": "7dfef8f35eb229af604c61daca0ec63faee97be41bf8aaa3f2f0263fb7f9bd44",
+    "process_id": 67619,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.120562+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.358728+00:00",
+    "id": 63,
+    "output_sha256": "b8a69ac444e4aa23de7f70e53f336fd3f06c39addc6096faa98a6928303b8cec",
+    "process_id": 67627,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.241196+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"outputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.467805+00:00",
+    "id": 64,
+    "output_sha256": "284bb191249bc085a53b87a441e94872b8bd26d13eeee981bc7d4c028592767e",
+    "process_id": 67635,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.360167+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"6de1bf3f6464f1c650bcdf2d77ebcb41c9f2bc2a49b8d952364b79d10b018faf\",\"outputSha256\":\"cd9847820e7b4cc36071614a02c409d28ce3f33b2409830981bb5dd4bacdd2ef\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":\"fixture-human\",\"AuthenticatedWorkloadId\":\"fixture-workload\",\"IsDelegated\":true,\"Scopes\":[\"fixture-read\",\"fixture-append\"],\"Audience\":[\"fixture-audience\",\"fixture-secondary\"],\"DelegationId\":\"fixture-delegation\"}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.568605+00:00",
+    "id": 65,
+    "output_sha256": "1e6942899e8249b3055b6477071a112e072359075be3cb27c78fd5b57bf9bc87",
+    "process_id": 67643,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.469507+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"cd9847820e7b4cc36071614a02c409d28ce3f33b2409830981bb5dd4bacdd2ef\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.669765+00:00",
+    "id": 66,
+    "output_sha256": "c8a611b47977fce8fda07a787071a8263a899bdae5810f114df82159f49c25e6",
+    "process_id": 67651,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.570134+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"outputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.775580+00:00",
+    "id": 67,
+    "output_sha256": "284bb191249bc085a53b87a441e94872b8bd26d13eeee981bc7d4c028592767e",
+    "process_id": 67659,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.671278+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "to-xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ec51737d616e8e13defd78a5e11889d7f8e0d432a1dae2581953e83f958870d0\",\"outputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.896015+00:00",
+    "id": 68,
+    "output_sha256": "11cb43c1789eaee687041d0d189846d893734c1fdafecaf0df2cee674aa2c015",
+    "process_id": 67667,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.777396+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:50.994441+00:00",
+    "id": 69,
+    "output_sha256": "a8e43e6927529128d46dbdd6c6261086a8a8eecca0b7a426f1d4ddfa7acd47ae",
+    "process_id": 67675,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.898007+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"outputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.098607+00:00",
+    "id": 70,
+    "output_sha256": "0d547360055cec004c71d81b52c91dc09fa672c2490c68a4a41c699f581fb6ce",
+    "process_id": 67683,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:50.996000+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "to-xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"6de1bf3f6464f1c650bcdf2d77ebcb41c9f2bc2a49b8d952364b79d10b018faf\",\"outputSha256\":\"e89b8bc3bf8e9800ea8f58b478e1d15deeb441ebff731a71730cfc1e6cf19d06\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":\"fixture-human\",\"AuthenticatedWorkloadId\":\"fixture-workload\",\"IsDelegated\":true,\"Scopes\":[\"fixture-read\",\"fixture-append\"],\"Audience\":[\"fixture-audience\",\"fixture-secondary\"],\"DelegationId\":\"fixture-delegation\"}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.202032+00:00",
+    "id": 71,
+    "output_sha256": "11417f6ec9f8a65a58c9701638dfe90c08dec27b20b1b2405294123c11f1be7f",
+    "process_id": 67691,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.100356+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"e89b8bc3bf8e9800ea8f58b478e1d15deeb441ebff731a71730cfc1e6cf19d06\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.321182+00:00",
+    "id": 72,
+    "output_sha256": "4c6c87b711b9a81e7a085893bd14fcbeae25a05f5c454969e9eb52ecd4757e09",
+    "process_id": 67699,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.203675+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"outputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.436345+00:00",
+    "id": 73,
+    "output_sha256": "0d547360055cec004c71d81b52c91dc09fa672c2490c68a4a41c699f581fb6ce",
+    "process_id": 67707,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.322882+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ec51737d616e8e13defd78a5e11889d7f8e0d432a1dae2581953e83f958870d0\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.542018+00:00",
+    "id": 74,
+    "output_sha256": "c4b7266bac22f19bbd354e765b41655d1fb647339854d6efbb3581f575e07661",
+    "process_id": 67718,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.438240+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"outputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.648506+00:00",
+    "id": 75,
+    "output_sha256": "284bb191249bc085a53b87a441e94872b8bd26d13eeee981bc7d4c028592767e",
+    "process_id": 67726,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.543526+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.768750+00:00",
+    "id": 76,
+    "output_sha256": "b8a69ac444e4aa23de7f70e53f336fd3f06c39addc6096faa98a6928303b8cec",
+    "process_id": 67737,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.650173+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"6de1bf3f6464f1c650bcdf2d77ebcb41c9f2bc2a49b8d952364b79d10b018faf\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.886946+00:00",
+    "id": 77,
+    "output_sha256": "4bd099083298eaa0071341b898c57790da444de9771e41593ab1cd41eedd8b1a",
+    "process_id": 67745,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.770558+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"outputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:51.987911+00:00",
+    "id": 78,
+    "output_sha256": "284bb191249bc085a53b87a441e94872b8bd26d13eeee981bc7d4c028592767e",
+    "process_id": 67753,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.888514+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9\",\"outputSha256\":\"a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.113201+00:00",
+    "id": 79,
+    "output_sha256": "b8a69ac444e4aa23de7f70e53f336fd3f06c39addc6096faa98a6928303b8cec",
+    "process_id": 67761,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:51.989633+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "to-xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ec51737d616e8e13defd78a5e11889d7f8e0d432a1dae2581953e83f958870d0\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.225563+00:00",
+    "id": 80,
+    "output_sha256": "032509b608f900f01d32b1d834d699cb69320cd0324c0c2b1532eb3bc301b04e",
+    "process_id": 67769,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.114935+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"outputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.341963+00:00",
+    "id": 81,
+    "output_sha256": "0d547360055cec004c71d81b52c91dc09fa672c2490c68a4a41c699f581fb6ce",
+    "process_id": 67777,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.227131+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.449145+00:00",
+    "id": 82,
+    "output_sha256": "a8e43e6927529128d46dbdd6c6261086a8a8eecca0b7a426f1d4ddfa7acd47ae",
+    "process_id": 67785,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.343696+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "to-xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"6de1bf3f6464f1c650bcdf2d77ebcb41c9f2bc2a49b8d952364b79d10b018faf\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.569371+00:00",
+    "id": 83,
+    "output_sha256": "8f9448742587396bf7bc5318ad0c515273ab4194de0d8b79a005e839f3732c8a",
+    "process_id": 67793,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.450987+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"outputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.687286+00:00",
+    "id": 84,
+    "output_sha256": "0d547360055cec004c71d81b52c91dc09fa672c2490c68a4a41c699f581fb6ce",
+    "process_id": 67814,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.571031+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "query",
+      "xml",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"inputSha256\":\"cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc\",\"outputSha256\":\"ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"fixture-query\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":null,\"IsGlobalAdmin\":false,\"Paging\":null}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.799741+00:00",
+    "id": 85,
+    "output_sha256": "a8e43e6927529128d46dbdd6c6261086a8a8eecca0b7a426f1d4ddfa7acd47ae",
+    "process_id": 67822,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.689194+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"4b1c93376d7e8f49f1e6a26a1194133c6dbf1f6a89271a38377fa22811a431e1\",\"outputSha256\":\"504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":987}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:52.919135+00:00",
+    "id": 86,
+    "output_sha256": "d4d10f9a5bf9829010f0ac6b79293b41c9b8890a0be7530bd1b482b445c9fcdb",
+    "process_id": 67831,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.801739+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260\",\"outputSha256\":\"1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.012902+00:00",
+    "id": 87,
+    "output_sha256": "b44e2188d3fe4c18e8df272ba29e20f2f5fbcb62268974989b273a653b8235c7",
+    "process_id": 67839,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:52.920936+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361\",\"outputSha256\":\"ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":0}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.127405+00:00",
+    "id": 88,
+    "output_sha256": "a034fdbe35ed21aa644b99228c1ade22dc14454a089a38494dc5265fc00cd335",
+    "process_id": 67847,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.014515+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-input.json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"4b1c93376d7e8f49f1e6a26a1194133c6dbf1f6a89271a38377fa22811a431e1\",\"outputSha256\":\"1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.240427+00:00",
+    "id": 89,
+    "output_sha256": "1caa678a65faf61f166cf49b99e85f1bc931dd3ed8f16480fc7b605f9fc07531",
+    "process_id": 67855,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.129281+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-first",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361\",\"outputSha256\":\"ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":0}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.349787+00:00",
+    "id": 90,
+    "output_sha256": "a034fdbe35ed21aa644b99228c1ade22dc14454a089a38494dc5265fc00cd335",
+    "process_id": 67866,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.242172+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "wire",
+      "projection",
+      "json",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-second",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/wire-third"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"assertions\":1,\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"inputSha256\":\"ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4\",\"outputSha256\":\"1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":3,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"}}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.443551+00:00",
+    "id": 91,
+    "output_sha256": "ac9d86a452a1f735394a8428fa9a7c9b5b2a2873b55528a346927f54ad78d2dc",
+    "process_id": 67877,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.351274+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--cidfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/postgresql.cid",
+      "--name",
+      "p1r-3555564be8324edda0ffe0361946eb8e-postgresql",
+      "--label",
+      "hexalith.p1r.invocation=3555564be8324edda0ffe0361946eb8e",
+      "-p",
+      "127.0.0.1::5432",
+      "--env-file",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/postgres.env",
+      "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.725714+00:00",
+    "id": 92,
+    "output_sha256": "3750b2c2e686c6bccc6ac7b959916e39110ed2ebcdac042732ce82730f01addf",
+    "process_id": 67885,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.445319+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce",
+      "5432/tcp"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "127.0.0.1:51107\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:53.753276+00:00",
+    "id": 93,
+    "output_sha256": "a3fc85721f16d3390252a4ee10ca940b8cfcf5c407f806dacf4d8cf60746dde5",
+    "process_id": 67908,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.727660+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--cidfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/placement.cid",
+      "--name",
+      "p1r-3555564be8324edda0ffe0361946eb8e-placement",
+      "--label",
+      "hexalith.p1r.invocation=3555564be8324edda0ffe0361946eb8e",
+      "-p",
+      "127.0.0.1::50005",
+      "daprio/dapr:1.18.2",
+      "./placement",
+      "--port",
+      "50005"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:54.061869+00:00",
+    "id": 94,
+    "output_sha256": "a16489ce0928b71135810e500e30158cb78985ad263e24224c37c66abadcc5c3",
+    "process_id": 67919,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:53.754949+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0",
+      "50005/tcp"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "127.0.0.1:51110\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:54.090628+00:00",
+    "id": 95,
+    "output_sha256": "b56de40c94cfe4d2885ab8514e4fe68e05511e011170c39c6b7ad50a943cfe21",
+    "process_id": 67931,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:54.063650+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--cidfile",
+      "/var/tmp/hexalith-p1r-6pmqnt9n/scheduler.cid",
+      "--name",
+      "p1r-3555564be8324edda0ffe0361946eb8e-scheduler",
+      "--label",
+      "hexalith.p1r.invocation=3555564be8324edda0ffe0361946eb8e",
+      "-p",
+      "127.0.0.1:52173:50006",
+      "daprio/dapr:1.18.2",
+      "./scheduler",
+      "--port",
+      "50006",
+      "--etcd-data-dir",
+      "/tmp/p1r-scheduler",
+      "--etcd-client-listen-address",
+      "0.0.0.0",
+      "--override-broadcast-host-port",
+      "127.0.0.1:52173"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "2dbe907973ad334a48d51767f3f81752c276edb590a155d220676cae17bc94a2\ndocker: Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:52173 -> 127.0.0.1:0: /forwards/expose returned unexpected status: 500\n\nRun 'docker run --help' for more information\n",
+    "exit_code": 125,
+    "finished_utc": "2026-10-06T07:11:54.276702+00:00",
+    "id": 96,
+    "output_sha256": "4968795f76a817c5d1d779e261b7933e08612529d45a4bb6ebaa41071e149eec",
+    "process_id": 67943,
+    "process_returncode": 125,
+    "started_utc": "2026-10-06T07:11:54.092353+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "raise SystemExit(7)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 7,
+    "finished_utc": "2026-10-06T07:11:54.287589+00:00",
+    "id": 97,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "process_id": 67955,
+    "process_returncode": 7,
+    "started_utc": "2026-10-06T07:11:54.278726+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import time; time.sleep(10)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 124,
+    "finished_utc": "2026-10-06T07:11:54.339992+00:00",
+    "id": 98,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "process_id": 67956,
+    "process_returncode": -15,
+    "started_utc": "2026-10-06T07:11:54.289242+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import time; time.sleep(10)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 130,
+    "finished_utc": "2026-10-06T07:11:54.644058+00:00",
+    "id": 99,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "process_id": 67957,
+    "process_returncode": -15,
+    "started_utc": "2026-10-06T07:11:54.343730+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc",
+      "--filter",
+      "label=hexalith.p1r.invocation=3555564be8324edda0ffe0361946eb8e"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0\nc9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:54.689251+00:00",
+    "id": 100,
+    "output_sha256": "8dea09f5486fd51b28d69afb27635e65d8029ddd2f654c24b8878c52d8af8559",
+    "process_id": 67958,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:54.647949+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"id\":{{json .Id}},\"invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}",
+      "2dbe907973ad334a48d51767f3f81752c276edb590a155d220676cae17bc94a2"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nerror: no such object: 2dbe907973ad334a48d51767f3f81752c276edb590a155d220676cae17bc94a2\n",
+    "exit_code": 1,
+    "finished_utc": "2026-10-06T07:11:54.746512+00:00",
+    "id": 101,
+    "output_sha256": "621bb2f6bba6221b651e1e7c7c8d8bcea59fdebb60f065b471e0006de54cdcdb",
+    "process_id": 67969,
+    "process_returncode": 1,
+    "started_utc": "2026-10-06T07:11:54.691051+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"id\":{{json .Id}},\"invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}",
+      "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"id\":\"66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0\",\"invocation\":\"3555564be8324edda0ffe0361946eb8e\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:54.773393+00:00",
+    "id": 102,
+    "output_sha256": "8a7b2a4978d1eaaf20af7b155c4d239acdccedd0e4ea46b4c058515efd644f27",
+    "process_id": 67980,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:54.748474+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "66140e66af2417048fe59acdb4e384583cc48625a6918aa49340292910168df0\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.217061+00:00",
+    "id": 103,
+    "output_sha256": "a16489ce0928b71135810e500e30158cb78985ad263e24224c37c66abadcc5c3",
+    "process_id": 67992,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:54.775075+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"id\":{{json .Id}},\"invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}",
+      "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"id\":\"c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce\",\"invocation\":\"3555564be8324edda0ffe0361946eb8e\"}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.245269+00:00",
+    "id": 104,
+    "output_sha256": "75d38caccf6d100d85051218798fb247dc0c133e4a53e3d0f08ffab3340ae9d9",
+    "process_id": 68003,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.218632+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "c9bd365b0ac258bd91b8d7f688534f43c88b8ca3cedfa8e779c144ad59cecdce\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.715296+00:00",
+    "id": 105,
+    "output_sha256": "3750b2c2e686c6bccc6ac7b959916e39110ed2ebcdac042732ce82730f01addf",
+    "process_id": 68014,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.247070+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc",
+      "--filter",
+      "label=hexalith.p1r.invocation=3555564be8324edda0ffe0361946eb8e"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.743008+00:00",
+    "id": 106,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "process_id": 68030,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.716948+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\nbaede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\n8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\ncb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.792993+00:00",
+    "id": 107,
+    "output_sha256": "646f6c9c218e39473896dc94cb3fa0c15ef246eb9e6d9a5ecb315ba002b9d9d0",
+    "process_id": 68042,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.744511+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"id\":{{json .Id}},\"image\":{{json .Image}},\"running\":{{json .State.Running}},\"started\":{{json .State.StartedAt}},\"invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}",
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523",
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077",
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "{\"id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"running\":true,\"started\":\"2026-10-06T06:07:21.049240867Z\",\"invocation\":null}\n{\"id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"running\":true,\"started\":\"2026-10-06T06:07:21.046062672Z\",\"invocation\":null}\n{\"id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"running\":true,\"started\":\"2026-10-06T06:07:21.050873588Z\",\"invocation\":null}\n{\"id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"running\":true,\"started\":\"2026-10-06T06:07:21.047493128Z\",\"invocation\":null}\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:55.841275+00:00",
+    "id": 108,
+    "output_sha256": "33ff07099fdbfe44af4c5e6a41a0bc9106ae53d8e976ec628af97f3e725ba237",
+    "process_id": 68053,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.794763+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,pathlib,sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())",
+      "/home/administrator/.dapr/bin/daprd",
+      "hash-shared-binary"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:56.081963+00:00",
+    "id": 109,
+    "output_sha256": "5d804836ddfa05b4aa5849887d3465ce5fdbf5d6253517e3b34b30dafd955152",
+    "process_id": 68064,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:55.843248+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import hashlib,pathlib,sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())",
+      "/usr/local/bin/dapr",
+      "hash-shared-binary"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5\n",
+    "exit_code": 0,
+    "finished_utc": "2026-10-06T07:11:56.191649+00:00",
+    "id": 110,
+    "output_sha256": "2875df2b8cd8cbb78ff6e3d776e7c56e787276febdf3c5426928fb2b524a8dc8",
+    "process_id": 68065,
+    "process_returncode": 0,
+    "started_utc": "2026-10-06T07:11:56.083686+00:00"
+  }
+]
