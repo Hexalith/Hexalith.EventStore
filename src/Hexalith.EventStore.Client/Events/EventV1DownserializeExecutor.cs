@@ -19,6 +19,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
         ArgumentNullException.ThrowIfNull(validateAlias);
         ArgumentNullException.ThrowIfNull(validateRoundTrip);
         cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         EventRegistryRow descriptor = registry.GetDownserializer(canonicalType, writeAlias);
         binding.RequireDescriptor(descriptor);
         (string type, int sourceVersion, string format) = registry.ResolveAlias(writeAlias);
@@ -32,6 +33,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
         {
             try
             {
+                registry.CapabilityLoss.RequireNoObservedLoss();
                 result = await binding.Downserializer.DownserializeAsync(lease, writer, scratch, cancellationToken).ConfigureAwait(false);
             }
             finally
@@ -44,6 +46,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
 
         scratch.RequireValidInvocation();
         cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         if (result is null || !string.Equals(result.Domain, registry.Domain, StringComparison.Ordinal)
             || !string.Equals(result.EventContractType, type, StringComparison.Ordinal)
             || !string.Equals(result.EventTypeName, writeAlias, StringComparison.Ordinal)
@@ -69,7 +72,11 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    registry.CapabilityLoss.RequireNoObservedLoss();
                     validateAlias(registry.Domain, type, writeAlias, sourceVersion, format, aliasLease, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    registry.CapabilityLoss.RequireNoObservedLoss();
                 }
                 finally
                 {
@@ -83,7 +90,11 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    registry.CapabilityLoss.RequireNoObservedLoss();
                     validateRoundTrip(currentLease, legacyLease, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    registry.CapabilityLoss.RequireNoObservedLoss();
                 }
                 finally
                 {
@@ -96,6 +107,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
 
             scratch.RequireValidInvocation();
             cancellationToken.ThrowIfCancellationRequested();
+            registry.CapabilityLoss.RequireNoObservedLoss();
             return output;
         }
         catch
@@ -109,6 +121,8 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
     {
         byte[] before = payload.ComputeSha256();
         using var lease = new InvocationPayloadLease(payload, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         try
         {
             validateVersion(registry.Domain, type, version, format, lease, cancellationToken);
@@ -120,6 +134,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
     }
 
     private static void RequireUnchanged(ImmutablePayload payload, byte[] expected)

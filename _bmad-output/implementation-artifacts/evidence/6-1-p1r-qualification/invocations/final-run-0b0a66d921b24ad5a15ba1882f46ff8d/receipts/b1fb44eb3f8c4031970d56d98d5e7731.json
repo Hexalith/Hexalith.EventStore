@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 1721088,
+          "pid": 1721088,
+          "session": 1721088,
+          "start_ticks": 2512135
+        },
+        {
+          "pgid": 1721089,
+          "pid": 1721089,
+          "session": 1721089,
+          "start_ticks": 2512136
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "descendants",
+  "cwd": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/invocations/final-run-0b0a66d921b24ad5a15ba1882f46ff8d",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-06T12:43:10.703109+00:00",
+  "id": "b1fb44eb3f8c4031970d56d98d5e7731",
+  "invocation": "a8c1528f3dcb43039294355fa78c8d92",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/b1fb44eb3f8c4031970d56d98d5e7731.txt",
+    "sha256": "d58c2d524be81a0c9ff07ace5b6a814a7c43117f3fc41d7873071deece1d2028"
+  },
+  "owned_processes": [
+    {
+      "pgid": 1721088,
+      "pid": 1721088,
+      "session": 1721088,
+      "start_ticks": 2512135
+    },
+    {
+      "pgid": 1721089,
+      "pid": 1721089,
+      "session": 1721089,
+      "start_ticks": 2512136
+    }
+  ],
+  "root_process": {
+    "pgid": 1721088,
+    "pid": 1721088,
+    "session": 1721088,
+    "start_ticks": 2512135
+  },
+  "started_utc": "2026-10-06T12:43:10.207620+00:00",
+  "timed_out": true
+}

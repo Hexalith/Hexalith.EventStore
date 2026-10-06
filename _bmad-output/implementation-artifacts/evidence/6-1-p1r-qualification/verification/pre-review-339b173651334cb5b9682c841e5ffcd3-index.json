@@ -1,0 +1,23 @@
+{
+  "scope": "pre-review preparation only",
+  "qualified": false,
+  "p1r_usable": false,
+  "receipts": [
+    {
+      "path": "verification/pre-review-339b173651334cb5b9682c841e5ffcd3-prepare.json",
+      "sha256": "b4585568aa4658cf1cd422dae7a776e06fd3a01d9312bf6dd3cc396951e038ef"
+    },
+    {
+      "path": "verification/pre-review-339b173651334cb5b9682c841e5ffcd3-run.json",
+      "sha256": "d1ec68fd300c6eccf8e600d1dcc9a9741413ebffa40a2467dd084f41b2e0c5c7"
+    },
+    {
+      "path": "verification/pre-review-339b173651334cb5b9682c841e5ffcd3-validate-prepare.json",
+      "sha256": "ebf4276defa4f478d8da40fd369ae988b0601f4eb73292bee12371bd8303c981"
+    },
+    {
+      "path": "verification/pre-review-339b173651334cb5b9682c841e5ffcd3-validate-run.json",
+      "sha256": "942b8e30eed7b432572b3c4d4848bf03e91dbe07021fb5a05370cebecfa8d429"
+    }
+  ]
+}

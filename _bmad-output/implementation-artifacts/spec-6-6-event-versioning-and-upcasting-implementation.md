@@ -140,6 +140,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
+- 2026-10-06 — Recorded [page admission and observed capability loss](evidence/story-6-6/verification-2026-10-06-page-preflight-and-capability-loss.md): complete logical-page preparation before catalog callbacks, private readable ownership, source-mutation refusal and retained page/range metadata charges, plus shared sticky loss checks around local callback and result boundaries. Production deployment belongs to the root-declared Hexalith.Platform composition owner; its checked-in Redis components are Development inputs. Exact domain serializer declarations/options/bounds/aliases, authoritative catalogs and the ratified production profile remain required. Frozen intent, baseline, in-progress status and all M1–M8 dispositions are unchanged.
+
 - 2026-10-06 — Recorded [local trusted-code artifact qualification](evidence/story-6-6/verification-2026-10-06-trusted-code-artifacts.md): exact-file and supplied-graph refusal controls, manifest registration guards and accurate assurance limits. Consistent partial supplied graphs and replaceable paths remain unqualified for readiness; complete authoritative catalogs, immutable execution binding, observations and production evidence remain open. Frozen intent, baseline and all M1–M8 dispositions are unchanged.
 
 - 2026-10-06 — Owner selected reviewed trusted application code with “do recommended”. The [loader amendment](story-6-6-trusted-code-amendment.md) replaces the conflicting universal before-effect loader assurance, preserves the failed probe and historical approval inputs, and requires immutable artifact/pin admission and detection with subsequent capability loss. No activation gate or M1–M8 disposition changes.
@@ -261,3 +263,25 @@ supplied graph and a successful hash of a replaceable path confer no readiness.
 Complete authoritative catalogs, immutable artifact execution binding, loader
 observations and production qualification remain required; no registrations or
 activation fences change.
+
+### Page admission and observed capability loss — 2026-10-06
+
+The [scoped local verification](evidence/story-6-6/verification-2026-10-06-page-preflight-and-capability-loss.md)
+records whole-page preparation before domain catalog callbacks, private readable
+ownership and retained metadata charges through page/range disposal, and sticky
+observed-loss fencing shared by default manifest candidates in the admitted Client
+load context. Qualified runtime observers and immutable execution binding remain
+unimplemented; these local controls grant no readiness or universal before-effect
+assurance.
+
+The next M2 router fallback replacement requires actual per-domain payload types,
+exact legacy aliases/formats, immutable serializer options, measured payload and
+internal scratch/token bounds, and compatible once-only serializer declarations.
+The existing optional bounded profile has no application registrations in the
+inspected source; bounds and serializer behavior cannot be inferred safely. The
+root-declared Hexalith.Platform owns production composition. Its architecture
+assigns the EventStore-ratified template and Platform environment/provider
+inventory, but its checked-in Redis components are explicitly local Development
+assets and shared runtime/profile qualification remains owned work. No production
+profile or authoritative event-evolution catalog was supplied by those inputs.
+All M1–M8 tasks and activation gates remain open.

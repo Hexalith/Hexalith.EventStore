@@ -1,0 +1,98 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 1263379,
+          "pid": 1263379,
+          "session": 1263379,
+          "start_ticks": 2283442
+        },
+        {
+          "pgid": 1263381,
+          "pid": 1263381,
+          "session": 1263381,
+          "start_ticks": 2283444
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "repeated-cleanup",
+  "cwd": "/tmp/p1r-initial-run-20261006",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-06T12:05:03.808020+00:00",
+  "id": "93a456cfd0de443c93d078d5efe0d58b",
+  "invocation": "684ea057e58d45fd8a15e72a712b837f",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/93a456cfd0de443c93d078d5efe0d58b.txt",
+    "sha256": "51c54b427bfe3871e6a2f690a0ba55aa6b92df536b6e9029c228a9537b174428"
+  },
+  "owned_processes": [
+    {
+      "pgid": 1263379,
+      "pid": 1263379,
+      "session": 1263379,
+      "start_ticks": 2283442
+    },
+    {
+      "pgid": 1263381,
+      "pid": 1263381,
+      "session": 1263381,
+      "start_ticks": 2283444
+    }
+  ],
+  "started_utc": "2026-10-06T12:05:03.361701+00:00",
+  "timed_out": true
+}

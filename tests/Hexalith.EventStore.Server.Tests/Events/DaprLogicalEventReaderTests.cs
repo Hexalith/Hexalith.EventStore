@@ -49,7 +49,7 @@ public sealed class DaprLogicalEventReaderTests
         page.StartSequence.ShouldBe(1);
         page.ActorHead.ShouldBe(2);
         page.Events.Select(static view => view.SequenceNumber).ShouldBe([1L, 2L]);
-        _ = await stateManager.Received(2).TryGetStateAsync<AggregateMetadata>(
+        _ = await stateManager.Received(3).TryGetStateAsync<AggregateMetadata>(
             Identity.MetadataKey, Arg.Any<CancellationToken>()).ConfigureAwait(true);
     }
 
@@ -260,7 +260,8 @@ public sealed class DaprLogicalEventReaderTests
             CancellationToken.None, 2, 1, budget).ConfigureAwait(true);
 
         page.RetainedFloor.ShouldBe(1);
-        budget.LiveBytes.ShouldBe(4);
+        budget.LiveBytes.ShouldBeGreaterThan(4);
+        budget.LiveBytes.ShouldBeLessThan(4 + 2 * 512 * 1024);
         page.Dispose();
         budget.LiveBytes.ShouldBe(0);
         Should.Throw<ObjectDisposedException>(() => page.Events[0].Resolved.Payload.CopyTo(0, new byte[2]));
@@ -289,7 +290,8 @@ public sealed class DaprLogicalEventReaderTests
 
         using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 1,
             CancellationToken.None, sharedBudget: budget);
-        budget.LiveBytes.ShouldBe(original.Length);
+        budget.LiveBytes.ShouldBeGreaterThan(original.Length);
+        budget.LiveBytes.ShouldBeLessThan(original.Length + 512 * 1024);
         page.Events[0].Resolved.Payload.Length.ShouldBe(original.Length);
         page.Dispose();
         budget.LiveBytes.ShouldBe(0);
@@ -320,7 +322,8 @@ public sealed class DaprLogicalEventReaderTests
 
         using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 1,
             CancellationToken.None, sharedBudget: budget);
-        budget.LiveBytes.ShouldBe(original.Length);
+        budget.LiveBytes.ShouldBeGreaterThan(original.Length);
+        budget.LiveBytes.ShouldBeLessThan(original.Length + 512 * 1024);
         providerOutput.All(static value => value == 0).ShouldBeTrue();
         original[0].ShouldBe((byte)17);
         page.Dispose();
@@ -484,7 +487,7 @@ public sealed class DaprLogicalEventReaderTests
             reader.ReadPageAsync(Identity, "r", 1, 2, CancellationToken.None, sharedBudget: budget)).ConfigureAwait(true);
 
         error.Message.ShouldContain("ReadableLimit");
-        upcaster.Calls.ShouldBe(1);
+        upcaster.Calls.ShouldBe(0);
         budget.LiveBytes.ShouldBe(0);
     }
 
@@ -560,6 +563,233 @@ public sealed class DaprLogicalEventReaderTests
         changedMetadata.Message.ShouldContain("LogicalDigestMismatch");
     }
 
+    /// <summary>Checks every later-source refusal precedes the first schema validator or upcaster callback.</summary>
+    [Theory]
+    [InlineData("missing", "Missing")]
+    [InlineData("address", "AddressMismatch")]
+    [InlineData("alias", "UnknownEventContract")]
+    [InlineData("format", "UnknownEventContract")]
+    [InlineData("digest", "LogicalDigestMismatch")]
+    [InlineData("head", "SourceHeadChanged")]
+    [InlineData("floor", "SourceHeadChanged")]
+    [InlineData("etag", "SourceHeadChanged")]
+    public async Task EntireSourcePageIsAdmittedBeforeFirstCatalogCallback(string failure, string reason)
+    {
+        using EventDomainRegistry registry = CreateRegistry(upcasting: true);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        var upcaster = new ShrinkingLogicalEventUpcaster();
+        int validators = 0;
+        var executor = new EventUpcastChainExecutor(registry,
+            new Dictionary<(string, int), RegisteredEventUpcaster>
+            {
+                [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
+            }, (_, _, _, _, _, _) => validators++);
+        var reader = new DaprLogicalEventReader(stateManager, new NoOpEventPayloadProtectionService(),
+            new EventLogicalViewResolver(registry, executor));
+        var initial = new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "etag");
+        AggregateMetadata subsequent = failure switch
+        {
+            "head" => initial with { CurrentSequence = 3 },
+            "floor" => initial with { RetainedFloor = 2 },
+            "etag" => initial with { ETag = "changed" },
+            _ => initial,
+        };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, initial), new ConditionalValue<AggregateMetadata>(true, subsequent));
+        EventEnvelope first = CreateEvent();
+        EventEnvelope second = first with { SequenceNumber = 2, Payload = [1, 2] };
+        second = failure switch
+        {
+            "address" => second with { SequenceNumber = 3 },
+            "alias" => second with { EventTypeName = "Unlisted.Event" },
+            "format" => second with { SerializationFormat = "unregistered" },
+            "digest" => second with { ApplicationPayloadDigest = new string('0', 64) },
+            _ => second,
+        };
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, first));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(failure != "missing", second));
+        var budget = new EventBufferBudget();
+
+        Exception error = await Should.ThrowAsync<Exception>(() => reader.ReadPageAsync(
+            Identity, "r", 1, 2, CancellationToken.None, sharedBudget: budget));
+
+        error.Message.ShouldContain(reason);
+        validators.ShouldBe(0);
+        upcaster.Calls.ShouldBe(0);
+        budget.LiveBytes.ShouldBe(0);
+        first.Payload.ShouldBe([1, 2]);
+        second.Payload.ShouldBe([1, 2]);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Checks later unreadability clears prepared/provider owners before any schema validation.</summary>
+    [Fact]
+    public async Task LaterUnreadableSourceReleasesWholePreparedPageBeforeCatalogCode()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "etag")));
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}{sequence}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent() with { SequenceNumber = sequence }));
+        }
+        byte[] providerOutput = [1, 2];
+        int providerCalls = 0;
+        _ = protection.TryUnprotectEventPayloadAsync(Identity, Arg.Any<string>(), Arg.Any<byte[]>(), "json",
+            Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>()).Returns(_ => ++providerCalls == 1
+                ? PayloadUnprotectionOutcome.Readable(providerOutput, "json", EventStorePayloadProtectionMetadata.Unprotected())
+                : PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable));
+        int validators = 0;
+        var executor = new EventUpcastChainExecutor(registry, new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            (_, _, _, _, _, _) => validators++);
+        var reader = new DaprLogicalEventReader(stateManager, protection, new EventLogicalViewResolver(registry, executor));
+        var budget = new EventBufferBudget();
+
+        await Should.ThrowAsync<ProtectedDataUnreadableException>(() => reader.ReadPageAsync(
+            Identity, "r", 1, 2, CancellationToken.None, sharedBudget: budget));
+
+        validators.ShouldBe(0);
+        providerCalls.ShouldBe(2);
+        providerOutput.ShouldBe([0, 0]);
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    /// <summary>Checks the final head, floor, and ETag readback refuses after catalog callbacks and clears all owners.</summary>
+    [Theory]
+    [InlineData("head")]
+    [InlineData("floor")]
+    [InlineData("etag")]
+    public async Task FinalMetadataChangeAfterCatalogCallbacksRefusesWholePage(string change)
+    {
+        using EventDomainRegistry registry = CreateRegistry(upcasting: true);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        var initial = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag");
+        AggregateMetadata final = change switch
+        {
+            "head" => initial with { CurrentSequence = 2 },
+            "floor" => initial with { RetainedFloor = 2 },
+            _ => initial with { ETag = "changed" },
+        };
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, initial),
+                new ConditionalValue<AggregateMetadata>(true, initial),
+                new ConditionalValue<AggregateMetadata>(true, final));
+        EventEnvelope stored = CreateEvent();
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+        var upcaster = new ShrinkingLogicalEventUpcaster();
+        int validators = 0;
+        var executor = new EventUpcastChainExecutor(registry,
+            new Dictionary<(string, int), RegisteredEventUpcaster>
+            {
+                [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
+            }, (_, _, _, _, _, _) => validators++);
+        var reader = new DaprLogicalEventReader(stateManager, new NoOpEventPayloadProtectionService(),
+            new EventLogicalViewResolver(registry, executor));
+        var budget = new EventBufferBudget();
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => reader.ReadPageAsync(
+            Identity, "r", 1, 1, CancellationToken.None, sharedBudget: budget));
+
+        error.Message.ShouldContain("SourceHeadChanged");
+        validators.ShouldBe(2);
+        upcaster.Calls.ShouldBe(1);
+        stored.Payload.ShouldBe([1, 2]);
+        budget.LiveBytes.ShouldBe(0);
+        _ = await stateManager.Received(3).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
+            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Checks a later catalog callback cannot silently alter an earlier stored source array.</summary>
+    [Fact]
+    public async Task LaterCallbackChangingEarlierStoredSourceRefusesWholePage()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope first = CreateEvent();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "etag")));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, first));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent() with { SequenceNumber = 2 }));
+        int calls = 0;
+        var executor = new EventUpcastChainExecutor(registry, new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            (_, _, _, _, _, _) =>
+            {
+                if (++calls == 2) { first.Payload[0] = 9; }
+            });
+        var reader = new DaprLogicalEventReader(stateManager, new NoOpEventPayloadProtectionService(),
+            new EventLogicalViewResolver(registry, executor));
+        var budget = new EventBufferBudget();
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => reader.ReadPageAsync(
+            Identity, "r", 1, 2, CancellationToken.None, sharedBudget: budget));
+
+        error.Message.ShouldContain("AddressMismatch");
+        calls.ShouldBe(2);
+        budget.LiveBytes.ShouldBe(0);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Checks maximum-count tiny pages retain measured metadata and source ownership within one budget.</summary>
+    [Fact]
+    public async Task MaximumCountPageFitsMeasuredMetadataAndClearsAllOwners()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(256, DateTimeOffset.UnixEpoch, "etag")));
+        for (int sequence = 1; sequence <= 256; sequence++)
+        {
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}{sequence}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, CreateEvent() with { SequenceNumber = sequence }));
+        }
+        var reader = CreateReader(registry, stateManager, new NoOpEventPayloadProtectionService());
+        var budget = new EventBufferBudget();
+
+        using DaprLogicalEventPage page = await reader.ReadPageAsync(Identity, "r", 1, 256,
+            CancellationToken.None, sharedBudget: budget);
+
+        page.Events.Count.ShouldBe(256);
+        page.Events.Select(static value => value.SequenceNumber).ShouldBe(Enumerable.Range(1, 256).Select(static value => (long)value));
+        budget.LiveBytes.ShouldBeGreaterThan(512);
+        budget.LiveBytes.ShouldBeLessThan(1024 * 1024);
+        page.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    /// <summary>Checks an observation during count-zero logical readback prevents an empty success from escaping.</summary>
+    [Fact]
+    public async Task EmptyPageRefusesObservedLossAtFinalReadbackBoundary()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        int reads = 0;
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (++reads == 2) { registry.CapabilityLoss.ObserveViolation(); }
+                return new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(0, DateTimeOffset.UnixEpoch, "etag"));
+            });
+        var reader = CreateReader(registry, stateManager, new NoOpEventPayloadProtectionService());
+        var budget = new EventBufferBudget();
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => reader.ReadPageAsync(
+            Identity, "r", 1, 1, CancellationToken.None, sharedBudget: budget));
+
+        error.Message.ShouldContain("CapabilityMismatch");
+        reads.ShouldBe(2);
+        budget.LiveBytes.ShouldBe(0);
+        _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
+    }
+
     private static DaprLogicalEventReader CreateReader(EventDomainRegistry registry,
         IActorStateManager stateManager, IEventPayloadProtectionService protection)
     {
@@ -614,7 +844,8 @@ public sealed class DaprLogicalEventReaderTests
             edge.WriteByte(11); edge.WriteHash(new byte[32]);
             edge.WriteByte(12); edge.WriteHash(new byte[32]);
             return new EventDomainRegistry("d", [Convert.FromHexString(fixture["AliasRow"]), descriptor,
-                firstVersion, secondVersion, edge.CopyEncodedBytes(), Convert.FromHexString(fixture["SharedRow"])]);
+                firstVersion, secondVersion, edge.CopyEncodedBytes(), Convert.FromHexString(fixture["SharedRow"])],
+                capabilityLoss: new EventEvolutionCapabilityLoss());
         }
 
         return new EventDomainRegistry("d", [
@@ -622,6 +853,6 @@ public sealed class DaprLogicalEventReaderTests
             Convert.FromHexString(fixture["DescriptorRow"]),
             Convert.FromHexString(fixture["VersionRow"]),
             Convert.FromHexString(fixture["SharedRow"]),
-        ]);
+        ], capabilityLoss: new EventEvolutionCapabilityLoss());
     }
 }

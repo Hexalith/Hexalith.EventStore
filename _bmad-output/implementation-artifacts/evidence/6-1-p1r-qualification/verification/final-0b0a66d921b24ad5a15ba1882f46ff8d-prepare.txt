@@ -1,0 +1,1 @@
+{"errors": [], "out": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/invocations/final-prepare-0b0a66d921b24ad5a15ba1882f46ff8d", "p1r_usable": false, "preparation_execution": "passed", "qualified": false}

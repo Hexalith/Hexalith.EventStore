@@ -47,6 +47,16 @@ internal sealed class DaprLogicalEventReader
         CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
         long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget)
     {
+        using DaprLogicalEventPreparation prepared = await PrepareCoreAsync(identity, sequenceNumber,
+            cancellationToken, expectedAggregateType, budget, maximumStoredBytes, maximumReadableBytes,
+            requireUnversioned, arrayBudget).ConfigureAwait(false);
+        return await ResolvePreparedAsync(prepared, budget, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<DaprLogicalEventPreparation> PrepareCoreAsync(AggregateIdentity identity, long sequenceNumber,
+        CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
+        long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget)
+    {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sequenceNumber);
         cancellationToken.ThrowIfCancellationRequested();
@@ -96,18 +106,20 @@ internal sealed class DaprLogicalEventReader
         _resolver.RequireSourceRoute(source.Domain, source.EventTypeName, source.MetadataVersion,
             source.EventContractType, source.PayloadVersion, source.AggregateType);
 
-        // Snapshot mutable extension metadata before calling protection or domain code.
-        // Its source and private dictionary capacities have a separate bounded admission.
-        using EventBufferReservation metadataReservation = budget.Reserve(512 * 1024);
-        source = SnapshotMetadata(source);
-
-        byte[] storedHash = SHA256.HashData(source.Payload);
+        EventBufferReservation? metadataReservation = null;
+        byte[]? storedHash = null;
         byte[]? protectedCopy = null;
         byte[]? readablePayload = null;
         EventBufferReservation? protectedReservation = null;
         EventBufferReservation? readableReservation = null;
         try
         {
+            // Reserve before enumeration, then retain only the conservative measured metadata
+            // capacity with its source view. A 256-event page does not retain 256 maximum leases.
+            metadataReservation = budget.Reserve(512 * 1024);
+            source = SnapshotMetadata(source, out int metadataBytes);
+            metadataReservation.ShrinkTo(metadataBytes);
+            storedHash = SHA256.HashData(source.Payload);
             EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadataCarrier.Read(source.Extensions);
             if (metadata.State == PayloadProtectionState.ProviderOpaque)
             {
@@ -174,18 +186,42 @@ internal sealed class DaprLogicalEventReader
                 || ReferenceEquals(outcome.PayloadBytes, source.Payload) ? 0 : outcome.PayloadBytes.Length);
 
             EventLogicalDigest.RequireMatching(source, outcome.SerializationFormat, outcome.PayloadBytes);
+            _resolver.RequireReadableSource(source.Domain, source.EventTypeName, source.MetadataVersion,
+                source.EventContractType, source.PayloadVersion, outcome.SerializationFormat,
+                source.AggregateType, cancellationToken);
 
-            ResolvedLogicalEvent resolved = await _resolver.ResolveAsync(identity.Domain,
-                source.EventTypeName, source.MetadataVersion, source.EventContractType, source.PayloadVersion,
-                outcome.SerializationFormat, outcome.PayloadBytes, cancellationToken,
-                budget, source.AggregateType).ConfigureAwait(false);
-            if (!CryptographicOperations.FixedTimeEquals(storedHash, SHA256.HashData(source.Payload)))
+            EventBufferReservation copyReservation = budget.Reserve(outcome.PayloadBytes.Length);
+            byte[]? readableCopy = null;
+            ImmutablePayload? ownedReadable = null;
+            try
             {
-                resolved.Dispose();
-                throw new InvalidOperationException("AddressMismatch: actor event bytes changed during logical resolution.");
+                readableCopy = outcome.PayloadBytes.ToArray();
+                ownedReadable = new ImmutablePayload(readableCopy, readableCopy.Length, cancellationToken, copyReservation);
+                readableCopy = null;
+                var prepared = new DaprLogicalEventPreparation(source, outcome.SerializationFormat,
+                    ownedReadable, storedHash, metadataReservation);
+                ownedReadable = null;
+                storedHash = null;
+                metadataReservation = null;
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    prepared.RequireStoredUnchanged();
+                    return prepared;
+                }
+                catch
+                {
+                    prepared.Dispose();
+                    throw;
+                }
             }
-
-            return new DaprLogicalEventView(source, resolved, outcome.PayloadBytes.Length);
+            catch
+            {
+                ownedReadable?.Dispose();
+                if (readableCopy is not null) { CryptographicOperations.ZeroMemory(readableCopy); }
+                copyReservation.Dispose();
+                throw;
+            }
         }
         finally
         {
@@ -200,14 +236,42 @@ internal sealed class DaprLogicalEventReader
                 CryptographicOperations.ZeroMemory(protectedCopy);
             }
 
-            CryptographicOperations.ZeroMemory(storedHash);
+            if (storedHash is not null) { CryptographicOperations.ZeroMemory(storedHash); }
+            metadataReservation?.Dispose();
             readableReservation?.Dispose();
             protectedReservation?.Dispose();
         }
     }
 
+    private async Task<DaprLogicalEventView> ResolvePreparedAsync(DaprLogicalEventPreparation prepared,
+        EventBufferBudget budget, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        prepared.RequireStoredUnchanged();
+        EventEnvelope source = prepared.Source;
+        ResolvedLogicalEvent resolved = await _resolver.ResolveOwnedAsync(source.Domain,
+            source.EventTypeName, source.MetadataVersion, source.EventContractType, source.PayloadVersion,
+            prepared.ReadableFormat, prepared.TakeReadablePayload(), budget, cancellationToken,
+            source.AggregateType).ConfigureAwait(false);
+        EventBufferReservation? metadataReservation = null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            prepared.RequireStoredUnchanged();
+            _resolver.RequireNoObservedLoss(cancellationToken);
+            metadataReservation = prepared.TakeMetadataReservation();
+            return new DaprLogicalEventView(source, resolved, prepared.ReadablePayloadLength, metadataReservation);
+        }
+        catch
+        {
+            metadataReservation?.Dispose();
+            resolved.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Reads a bounded contiguous logical page pinned to one actor metadata head.</summary>
-    /// <remarks>The two metadata reads are Dapr logical observations, not provider attestations.</remarks>
+    /// <remarks>Metadata observations and private digests are Dapr logical checks, not provider attestations.</remarks>
     internal async Task<DaprLogicalEventPage> ReadPageAsync(AggregateIdentity identity, string aggregateType,
         long startSequence, int maxCount, CancellationToken cancellationToken,
         long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null,
@@ -222,6 +286,7 @@ internal sealed class DaprLogicalEventReader
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        _resolver.RequireNoObservedLoss(cancellationToken);
         ConditionalValue<AggregateMetadata> before = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
         long head = before.HasValue ? before.Value.CurrentSequence : 0;
         long floor = before.HasValue ? before.Value.RetainedFloor : 1;
@@ -239,6 +304,7 @@ internal sealed class DaprLogicalEventReader
 
         int count = startSequence > head ? 0 : (int)Math.Min(maxCount, head - startSequence + 1);
         var views = new DaprLogicalEventView[count];
+        var prepared = new DaprLogicalEventPreparation[count];
         long storedBytes = 0;
         long readableBytes = 0;
         EventBufferBudget budget = sharedBudget ?? new EventBufferBudget();
@@ -247,33 +313,50 @@ internal sealed class DaprLogicalEventReader
             for (int index = 0; index < count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                DaprLogicalEventView view = await ReadCoreAsync(identity, startSequence + index,
+                DaprLogicalEventPreparation input = await PrepareCoreAsync(identity, startSequence + index,
                     cancellationToken, aggregateType, budget,
                     128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes,
                     requireUnversioned, arrayBudget).ConfigureAwait(false);
-                views[index] = view;
-                storedBytes = checked(storedBytes + view.StoredPayloadLength);
+                prepared[index] = input;
+                storedBytes = checked(storedBytes + input.Source.Payload.Length);
                 if (storedBytes > 128L * 1024 * 1024)
                 {
                     throw new InvalidOperationException("RawEnvelopeLimit: a logical event page exceeds 128 MiB of stored payload bytes.");
                 }
 
-                readableBytes = checked(readableBytes + view.ReadablePayloadLength);
+                readableBytes = checked(readableBytes + input.ReadablePayloadLength);
                 if (readableBytes > _maximumReadablePageBytes)
                 {
                     throw new InvalidOperationException("ReadableLimit: a logical event page exceeds 64 MiB.");
                 }
             }
 
-            ConditionalValue<AggregateMetadata> after = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (after.HasValue != before.HasValue
-                || (after.HasValue && (after.Value.CurrentSequence != head
-                    || after.Value.RetainedFloor != floor
-                    || !string.Equals(after.Value.ETag, before.Value.ETag, StringComparison.Ordinal))))
+            await RequireStableMetadataAsync(identity, before, cancellationToken).ConfigureAwait(false);
+            // Every source is now present, readable, route-admitted and within the complete
+            // page limits. No schema validator or upcaster has been invoked yet.
+            foreach (DaprLogicalEventPreparation input in prepared)
             {
-                throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during the logical page read.");
+                input.RequireStoredUnchanged();
             }
+
+            for (int index = 0; index < count; index++)
+            {
+                views[index] = await ResolvePreparedAsync(prepared[index], budget, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (count > 0)
+            {
+                await RequireStableMetadataAsync(identity, before, cancellationToken).ConfigureAwait(false);
+            }
+            // A later callback can close over an earlier actor array. Check the entire
+            // source set again before exposing any stored evidence or effective page.
+            foreach (DaprLogicalEventPreparation input in prepared)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                input.RequireStoredUnchanged();
+            }
+
+            _resolver.RequireNoObservedLoss(cancellationToken);
 
             return new DaprLogicalEventPage(startSequence, head, views, floor);
         }
@@ -286,9 +369,27 @@ internal sealed class DaprLogicalEventReader
 
             throw;
         }
+        finally
+        {
+            foreach (DaprLogicalEventPreparation? input in prepared) { input?.Dispose(); }
+        }
     }
 
-    private static EventEnvelope SnapshotMetadata(EventEnvelope source)
+    private async Task RequireStableMetadataAsync(AggregateIdentity identity,
+        ConditionalValue<AggregateMetadata> before, CancellationToken cancellationToken)
+    {
+        ConditionalValue<AggregateMetadata> after = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (after.HasValue != before.HasValue
+            || (after.HasValue && (after.Value.CurrentSequence != before.Value.CurrentSequence
+                || after.Value.RetainedFloor != before.Value.RetainedFloor
+                || !string.Equals(after.Value.ETag, before.Value.ETag, StringComparison.Ordinal))))
+        {
+            throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during the logical page read.");
+        }
+    }
+
+    private static EventEnvelope SnapshotMetadata(EventEnvelope source, out int metadataBytes)
     {
         long encodedBytes = 0;
         foreach (string value in new[] { source.MessageId, source.AggregateId, source.AggregateType,
@@ -313,6 +414,7 @@ internal sealed class DaprLogicalEventReader
         }
 
         RequireMetadataCapacity(encodedBytes);
+        metadataBytes = checked((int)encodedBytes);
         return source with { Extensions = extensions is null ? null : new ReadOnlyDictionary<string, string>(extensions) };
     }
 

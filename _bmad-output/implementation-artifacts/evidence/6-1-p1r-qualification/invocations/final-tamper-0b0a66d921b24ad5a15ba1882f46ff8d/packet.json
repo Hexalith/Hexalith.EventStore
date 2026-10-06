@@ -1,0 +1,284 @@
+{
+  "additions": [
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "reminder-recovery",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "logical-event-evolution",
+      "reason": "separately owned qualification evidence unavailable"
+    }
+  ],
+  "capable_published_rollback": null,
+  "errors": [],
+  "families": [
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-read",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-write",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "invalid-evidence",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "query-wire",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "projection-wire",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "mixed-api",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "checkout",
+      "reason": "separately owned qualification evidence unavailable"
+    }
+  ],
+  "finished_utc": "2026-10-06T12:43:01.001799+00:00",
+  "invocation": "8cd744e4a7e54a53ba6e86d397c6ba33",
+  "mode": "prepare",
+  "p1r_usable": false,
+  "pending_gates": [
+    "published-candidate",
+    "capable-published-rollback",
+    "package-provenance",
+    "cross-version-runtime",
+    "fresh-database-restore",
+    "container-cleanup",
+    "published-assertion-acceptance",
+    "eventstore-owner",
+    "builds-owner",
+    "solution-owner",
+    "test-owner",
+    "same-baseline-conformance"
+  ],
+  "preparation": {
+    "assertions": {
+      "attempted": 3,
+      "failed": 0,
+      "passed": 3
+    },
+    "checks": [
+      {
+        "id": "canonical-seventeen-scenarios",
+        "passed": true
+      },
+      {
+        "id": "seven-families",
+        "passed": true
+      },
+      {
+        "id": "selected-additions",
+        "passed": true
+      }
+    ],
+    "execution": "passed"
+  },
+  "process_controls": [
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "startup-failure",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "success",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "timeout",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "cancellation",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "descendants",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "repeated-cleanup",
+      "reason": "separately owned qualification evidence unavailable"
+    }
+  ],
+  "process_scope": "local-python-subprocesses-only",
+  "published_candidate": null,
+  "qualified": true,
+  "recovery": "mutation-freeze-and-forward-recovery",
+  "scenarios": [
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "provenance",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "legacy-metadata",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-read",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-write",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "full-replay",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "snapshot-tail",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "retained-covered",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "retained-uncovered",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "missing-event",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "invalid-evidence",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "query-wire",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "projection-wire",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "mixed-api",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "checkout",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "post-upgrade-restore",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "pre-upgrade-restore",
+      "reason": "separately owned qualification evidence unavailable"
+    },
+    {
+      "assertions": null,
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "failure-cleanup",
+      "reason": "separately owned qualification evidence unavailable"
+    }
+  ],
+  "schema": "hexalith.p1r.preparation.v1",
+  "source_binding": "source-binding.json",
+  "source_binding_sha256": "b3e62bd94cb1c16aba802c9625776aaae47860a2cfb7bbccd93450ced5245971",
+  "started_utc": "2026-10-06T12:42:58.591610+00:00"
+}

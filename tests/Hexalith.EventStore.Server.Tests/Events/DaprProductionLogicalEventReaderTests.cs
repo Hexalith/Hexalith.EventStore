@@ -53,6 +53,37 @@ public sealed class DaprProductionLogicalEventReaderTests
         stateManager.ReceivedCalls().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies range admission observes shared loss while preserving the original pre-cancellation token.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RangeRefusesSharedLossBeforeActorRead(bool cancel)
+    {
+        using EventDomainRegistry registry = CreateRegistry(capabilityLoss: new EventEvolutionCapabilityLoss());
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var budget = new EventBufferBudget();
+        using var cancellation = new CancellationTokenSource();
+        if (cancel) { cancellation.Cancel(); }
+        registry.CapabilityLoss.ObserveViolation();
+
+        if (cancel)
+        {
+            OperationCanceledException error = await Should.ThrowAsync<OperationCanceledException>(() => reader.ReadRangeAsync(
+                Identity, "r", 1, 1, cancellation.Token, 1, 1, true, arrayBudget: null, budget)).ConfigureAwait(true);
+            error.CancellationToken.ShouldBe(cancellation.Token);
+        }
+        else
+        {
+            InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() => reader.ReadRangeAsync(
+                Identity, "r", 1, 1, cancellation.Token, 1, 1, true, arrayBudget: null, budget)).ConfigureAwait(true);
+            error.Message.ShouldContain("CapabilityMismatch");
+        }
+
+        stateManager.ReceivedCalls().ShouldBeEmpty();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
     /// <summary>Verifies zero-hop V1 reads retain the original actor payload and message identity.</summary>
     [Fact]
     public async Task ZeroHopV1ReplayKeepsStoredBytesAndMessageId()
@@ -346,7 +377,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         range.StoredEvents.Count.ShouldBe(258);
         range.StoredEvents.Select(e => e.SequenceNumber).ShouldBe(Enumerable.Range(1, 258).Select(i => (long)i));
         range.DomainEvents.ShouldBeEmpty();
-        _ = await stateManager.Received(4).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
+        _ = await stateManager.Received(6).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
             Arg.Any<CancellationToken>()).ConfigureAwait(true);
 
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
@@ -589,6 +620,57 @@ public sealed class DaprProductionLogicalEventReaderTests
         range.Dispose();
         domainPayload.ShouldBe([0, 0]);
         stored.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies page disposal leaves source metadata charged until the actual range owner disposes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RangeRetainsSourceMetadataChargeAfterPageDisposal(bool includeDomainView)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        EventEnvelope stored = CreateEvent() with
+        {
+            Extensions = new Dictionary<string, string> { ["retained"] = "private-metadata" },
+        };
+        Store(stateManager, stored, head: 258, count: 258);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var budget = new EventBufferBudget();
+
+        using DaprProductionLogicalReplay range = await reader.ReadRangeAsync(
+            Identity, "r", 1, 258, CancellationToken.None, 258, 1, includeDomainView,
+            arrayBudget: null, budget).ConfigureAwait(true);
+
+        range.StoredEvents.Count.ShouldBe(258);
+        range.StoredEvents[0].Extensions.ShouldNotBeSameAs(stored.Extensions);
+        range.StoredEvents[0].Extensions!["retained"].ShouldBe("private-metadata");
+        int domainBytes = range.DomainEvents.Sum(envelope => envelope.Payload.Length);
+        budget.LiveBytes.ShouldBeGreaterThan(domainBytes);
+        budget.LiveBytes.ShouldBeLessThan(1024 * 1024);
+        range.Dispose();
+        budget.LiveBytes.ShouldBe(0);
+        stored.Payload.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Verifies a later-page refusal releases metadata already transferred from a disposed earlier page.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LaterPageRefusalReleasesTransferredMetadataAndDomainCharges(bool includeDomainView)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, EventEnvelope stored) = StoreCurrentV1(head: 258, count: 257);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var budget = new EventBufferBudget();
+
+        _ = await Should.ThrowAsync<MissingEventException>(() => reader.ReadRangeAsync(
+            Identity, "r", 1, 258, CancellationToken.None, 258, 1, includeDomainView,
+            arrayBudget: null, budget)).ConfigureAwait(true);
+
+        budget.LiveBytes.ShouldBe(0);
+        stored.Payload.ShouldBe([1, 2]);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     /// <summary>Verifies distinct provider plaintext is cleared after cancellation or digest refusal.</summary>
@@ -1050,7 +1132,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         return new DaprAggregateStateReconstructor(dapr, factory, resolver, NullLogger<DaprAggregateStateReconstructor>.Instance);
     }
 
-    private static EventDomainRegistry CreateRegistry(bool upcasting = false)
+    private static EventDomainRegistry CreateRegistry(bool upcasting = false, EventEvolutionCapabilityLoss? capabilityLoss = null)
     {
         DirectoryInfo? root = new(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Hexalith.EventStore.slnx")))
@@ -1068,10 +1150,10 @@ public sealed class DaprProductionLogicalEventReaderTests
                 Convert.FromHexString(fixture["DescriptorRow"]),
                 Convert.FromHexString(fixture["VersionRow"]),
                 Convert.FromHexString(fixture["SharedRow"]),
-            ]);
+            ], capabilityLoss ?? EventEvolutionCapabilityLoss.Process);
         }
 
-        return new EventDomainRegistry("d", CreateUpcastingRows(fixture));
+        return new EventDomainRegistry("d", CreateUpcastingRows(fixture), capabilityLoss ?? EventEvolutionCapabilityLoss.Process);
     }
 
     /// <summary>Builds the fixture domain's caller pin whose retained V1 events require an upcast hop.</summary>

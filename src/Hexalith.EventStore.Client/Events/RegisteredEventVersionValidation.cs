@@ -34,6 +34,7 @@ internal sealed class RegisteredEventVersionValidation
     {
         ArgumentNullException.ThrowIfNull(payload);
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
         if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal)
             || !string.Equals(format, descriptor.GetTextField(7), StringComparison.Ordinal))
@@ -41,16 +42,24 @@ internal sealed class RegisteredEventVersionValidation
             throw new InvalidOperationException("CapabilityMismatch: validation scope or format disagrees with the registered V descriptor.");
         }
         _schemaBinding.RequireFields(descriptor, 1);
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         _identityBinding.RequireFields(descriptor, 8);
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         using (var schemaLease = new InvocationPayloadLease(payload, cancellationToken))
         {
             _schema(domain, canonicalType, version, format, schemaLease, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
         }
         using (var identityLease = new InvocationPayloadLease(payload, cancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
             _identity(domain, canonicalType, version, format, identityLease, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
         }
     }
 }

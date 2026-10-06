@@ -1,0 +1,75 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import time; print('p1r-control-ready', flush=True); print('p1r-control-success', flush=True)"
+  ],
+  "assertions": {
+    "attempted": 6,
+    "failed": 0,
+    "passed": 6
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "success",
+  "cwd": "/tmp/p1r-initial-run-20261006",
+  "execution": "passed",
+  "exit_code": 0,
+  "finished_utc": "2026-10-06T12:04:57.891828+00:00",
+  "id": "e0c88d6d37714149ba5ace96ef18c220",
+  "invocation": "684ea057e58d45fd8a15e72a712b837f",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/e0c88d6d37714149ba5ace96ef18c220.txt",
+    "sha256": "02035cc75378a23346ac68519f65690d489da94966ca431629ac00ca1ad68ed3"
+  },
+  "owned_processes": [
+    {
+      "pgid": 1261297,
+      "pid": 1261297,
+      "session": 1261297,
+      "start_ticks": 2282890
+    }
+  ],
+  "started_utc": "2026-10-06T12:04:57.837194+00:00",
+  "timed_out": false
+}

@@ -4,7 +4,9 @@ using Hexalith.EventStore.Contracts.Events;
 namespace Hexalith.EventStore.Client.Tests.Events;
 
 /// <summary>Exercises exact alias output and retains only the supplied invocation facades.</summary>
-internal sealed class LeaseRecordingV1Downserializer(string behavior = "success") : IV1Downserializer
+/// <param name="behavior">The output contract control.</param>
+/// <param name="afterWrite">The test-owned observation invoked after output writing.</param>
+internal sealed class LeaseRecordingV1Downserializer(string behavior = "success", Action? afterWrite = null) : IV1Downserializer
 {
     /// <summary>Gets the retained input handle.</summary>
     internal IReadOnlyPayload? Input { get; private set; }
@@ -24,6 +26,7 @@ internal sealed class LeaseRecordingV1Downserializer(string behavior = "success"
             output.Write(bytes);
             bytes.Fill(0xff);
         }, cancellationToken);
+        afterWrite?.Invoke();
         if (behavior != "missing-complete")
         {
             output.Complete();

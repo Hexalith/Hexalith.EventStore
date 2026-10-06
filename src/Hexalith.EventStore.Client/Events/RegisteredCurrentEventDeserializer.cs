@@ -39,6 +39,7 @@ internal sealed class RegisteredCurrentEventDeserializer
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(effectivePayload);
         cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         EventRegistryRow current = registry.Rows.Single(row => row.Tag == 0x44
             && string.Equals(row.GetTextKey(1), canonicalType, StringComparison.Ordinal));
         if (!string.Equals(current.GetTextField(3), _currentType.AssemblyQualifiedName, StringComparison.Ordinal)
@@ -48,9 +49,12 @@ internal sealed class RegisteredCurrentEventDeserializer
         }
 
         _serializer.RequireFields(registry.GetVersion(canonicalType, current.GetIntField(2)), 4);
+        cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         using var lease = new InvocationPayloadLease(effectivePayload, cancellationToken);
         object value = _deserialize(lease, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
         if (value is null || value.GetType() != _currentType)
         {
             throw new InvalidOperationException("UpcasterContractViolation: serializer returned a different current CLR type.");

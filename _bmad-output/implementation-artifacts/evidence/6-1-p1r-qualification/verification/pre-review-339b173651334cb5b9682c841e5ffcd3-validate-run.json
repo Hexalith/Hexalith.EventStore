@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "tools/p1r-qualification.py",
+    "validate",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/invocations/pre-review-run-339b173651334cb5b9682c841e5ffcd3"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T12:15:54.722410+00:00",
+  "finished_utc": "2026-10-06T12:15:56.133059+00:00",
+  "exit_code": 0,
+  "output": "verification/pre-review-339b173651334cb5b9682c841e5ffcd3-validate-run.txt",
+  "output_sha256": "e69ce547fb7678ef84ca51d5d965b8dae9120ef5f22e68848b20842095f40085"
+}

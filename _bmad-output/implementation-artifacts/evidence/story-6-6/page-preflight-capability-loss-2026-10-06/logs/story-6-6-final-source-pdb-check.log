@@ -1,0 +1,153 @@
+{
+  "result": "passed",
+  "matched_source_files": 21,
+  "checks": [
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/EventDomainRegistry.cs",
+      "sha256": "8a7dc9ab8b518dc2a88f027c85c551cf5bcb8c35e1f953bbf152dd9a4f7a9e9d",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/EventLogicalViewResolver.cs",
+      "sha256": "c9ea5b3b23cac7c31bdfdddcf9f37c1020fa27be9c9ff00e31376cf4596825b1",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs",
+      "sha256": "266a04dc684e9faef5b3e0c64720314a4d0237c05efdf6169147fe43b5eb2975",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/EventV1DownserializeExecutor.cs",
+      "sha256": "66ddd2160a3b75fe868a33b889871b17d8e645c6dd0159aebeaf8a662ab36c9e",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs",
+      "sha256": "ef1360bdd982ec1eafd69e7a81381a6ee55b4d3c9ccedd58bdfc9ddcd9ef658c",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs",
+      "sha256": "b5cc67c20c472de5acdbcf59b8ef72b149167d924bb2c428a3b466af9ecc94e8",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs",
+      "sha256": "4c983bab8fd518e9aa785a02a91c5c35f1d17d5d6b36d7cb8a23cf0bafb4a8aa",
+      "assembly": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "pdb": "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs",
+      "sha256": "5640d0b67d5ed010b406660cf47e08bb434bc73550eade21ba75f0e3462a40ad",
+      "assembly": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "pdb": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventView.cs",
+      "sha256": "ce4c246307e0c370649e90aeaddee9121ad5c446c70445a2201cf09eb259e692",
+      "assembly": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "pdb": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Server/Events/DaprProductionLogicalEventReader.cs",
+      "sha256": "544f8728c2d7133b1587715d1059e933035287fbd480ecfcb9fb87ab2b66d694",
+      "assembly": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "pdb": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Server/Events/DaprProductionLogicalReplay.cs",
+      "sha256": "3b5d601330a1080fe19e3a9c5241e75e5a58e85386b7c371a2a2f98644e9866a",
+      "assembly": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "pdb": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "src/Hexalith.EventStore.Server/Events/DaprLogicalEventPreparation.cs",
+      "sha256": "af085b30deb9635d43644af76d48c8ca8dd2ebc3c3cb27c3f4385b75f81c7698",
+      "assembly": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "pdb": "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/EventLocalImplementationBindingTests.cs",
+      "sha256": "35365d7e26ee212518086c88c96d105231364e93be1ff3c9c53fa609573ca70d",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/EventLogicalViewResolverTests.cs",
+      "sha256": "49dc003c4ec48ed492a4a75fb54afbab493b7ba7f92da65b34ec3e0f501c2a6d",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/EventUpcastChainExecutorTests.cs",
+      "sha256": "800cf7ecdbff604525fe1387ca66866a01227b3e6d0a08b2dde95ed0a8a940ba",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/EventV1DownserializeExecutorTests.cs",
+      "sha256": "4c6a95bab4b660e80b2e93093f93b6ac95eda73450ae3ed7f2158282ee319f23",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/LeaseRecordingV1Downserializer.cs",
+      "sha256": "8d915a8689c00651042437b9ab112afcf06f59b3f1483621c94bc80b174dc4b0",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionCapabilityLossTests.cs",
+      "sha256": "200d8f9fef88940e9286aba4012b07f278d7261ed7cb33a5e16c568e09f9bd0f",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Client.Tests/Events/SuspendedEventUpcaster.cs",
+      "sha256": "b7177d663032ceb49c899eb17e774fd89b2a6f413dbe69bdef1c9ac11b3802c7",
+      "assembly": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalEventReaderTests.cs",
+      "sha256": "cf716728590632bc09119d8e6d322d95e7e1142bbdfefa28b38c19f9a7fec0cc",
+      "assembly": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.pdb",
+      "result": "matched compiled source"
+    },
+    {
+      "source": "tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs",
+      "sha256": "56952e4283041ba3761f83b9505190e4a8ed6b3fae3d656b3b5c2d8258585878",
+      "assembly": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "pdb": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.pdb",
+      "result": "matched compiled source"
+    }
+  ]
+}

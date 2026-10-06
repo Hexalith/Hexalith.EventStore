@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/eventstore/tools/p1r-qualification.py",
+    "validate",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/invocations/final-tamper-0b0a66d921b24ad5a15ba1882f46ff8d"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T12:43:17.306497+00:00",
+  "finished_utc": "2026-10-06T12:43:17.353275+00:00",
+  "exit_code": 2,
+  "expected_exit_code": 2,
+  "output": {
+    "path": "final-0b0a66d921b24ad5a15ba1882f46ff8d-validate-tamper.txt",
+    "sha256": "96c2ceb9d7fdb17054817e01fa7a3c40019c185fd1d90167239e39c67201d857"
+  }
+}

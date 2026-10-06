@@ -117,6 +117,99 @@ public sealed class EventLocalImplementationBindingTests
         calls.ShouldBeEmpty();
     }
 
+    /// <summary>Checks loss from options or validators prevents every subsequent catalog callback.</summary>
+    [Theory]
+    [InlineData("before")]
+    [InlineData("schema-options")]
+    [InlineData("identity-options")]
+    [InlineData("schema")]
+    [InlineData("identity")]
+    public void ObservedLossDuringBoundValidationStopsFollowingCallbacks(string stage)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var calls = new List<string>();
+        var retained = new List<IReadOnlyPayload>();
+        void Observe(string callback)
+        {
+            calls.Add(callback);
+            if (stage == callback) { registry.CapabilityLoss.ObserveViolation(); }
+        }
+        var validation = new RegisteredEventVersionValidation(registry,
+            "test-schema", (_, _, _, _, payload, _) => { retained.Add(payload); Observe("schema"); }, "{}\n"u8.ToArray(), [],
+            "test-identity", (_, _, _, _, payload, _) => { retained.Add(payload); Observe("identity"); }, "{}\n"u8.ToArray(), [],
+            () => { Observe("schema-options"); return "{}\n"u8.ToArray(); },
+            () => { Observe("identity-options"); return "{}\n"u8.ToArray(); });
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload payload = writer.TakeCompletedPayload();
+        if (stage == "before") { registry.CapabilityLoss.ObserveViolation(); }
+
+        InvalidOperationException failure = Should.Throw<InvalidOperationException>(() =>
+            validation.Validate("d", "evt", 1, "json", payload, CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        string[] expected = ["schema-options", "identity-options", "schema", "identity"];
+        calls.ShouldBe(stage == "before" ? [] : expected.Take(Array.IndexOf(expected, stage) + 1));
+        foreach (IReadOnlyPayload facade in retained)
+        {
+            Should.Throw<ObjectDisposedException>(() => facade.CopyTo(0, new byte[2]));
+        }
+        byte[] original = new byte[2]; payload.CopyTo(0, original); original.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Checks observed loss during options or deserialization prevents a returned domain object.</summary>
+    [Theory]
+    [InlineData("before")]
+    [InlineData("options")]
+    [InlineData("deserialize")]
+    public void ObservedLossDuringDeserializerAdmissionOrCallbackRefusesReturnedObject(string stage)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var calls = new List<string>();
+        IReadOnlyPayload? retained = null;
+        void Observe(string callback)
+        {
+            calls.Add(callback);
+            if (stage == callback) { registry.CapabilityLoss.ObserveViolation(); }
+        }
+        var deserializer = new RegisteredCurrentEventDeserializer(typeof(AllowlistedCurrentEventTestValue), "test-serializer",
+            (payload, _) => { retained = payload; Observe("deserialize"); return new AllowlistedCurrentEventTestValue(); },
+            "{}\n"u8.ToArray(), [], () => { Observe("options"); return "{}\n"u8.ToArray(); });
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload payload = writer.TakeCompletedPayload();
+        if (stage == "before") { registry.CapabilityLoss.ObserveViolation(); }
+
+        InvalidOperationException failure = Should.Throw<InvalidOperationException>(() =>
+            deserializer.Deserialize(registry, "evt", payload, CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        string[] expected = ["options", "deserialize"];
+        calls.ShouldBe(stage == "before" ? [] : expected.Take(Array.IndexOf(expected, stage) + 1));
+        if (retained is not null) { Should.Throw<ObjectDisposedException>(() => retained.CopyTo(0, new byte[2])); }
+    }
+
+    /// <summary>Checks original cancellation from options is observed before the serializer callback.</summary>
+    [Fact]
+    public void CancellationDuringRuntimeOptionsPreventsDeserializerAndKeepsOriginalToken()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        using var cancellation = new CancellationTokenSource();
+        bool called = false;
+        var deserializer = new RegisteredCurrentEventDeserializer(typeof(AllowlistedCurrentEventTestValue), "test-serializer",
+            (_, _) => { called = true; return new AllowlistedCurrentEventTestValue(); }, "{}\n"u8.ToArray(), [],
+            () => { cancellation.Cancel(); return "{}\n"u8.ToArray(); });
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload payload = writer.TakeCompletedPayload();
+
+        OperationCanceledException failure = Should.Throw<OperationCanceledException>(() =>
+            deserializer.Deserialize(registry, "evt", payload, cancellation.Token));
+
+        failure.CancellationToken.ShouldBe(cancellation.Token);
+        called.ShouldBeFalse();
+    }
+
     private static EventDomainRegistry CreateRegistry()
     {
         Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(
@@ -124,7 +217,7 @@ public sealed class EventLocalImplementationBindingTests
         ReadOnlyMemory<byte>[] rows = [Convert.FromHexString(fixture["AliasRow"]),
             ReplaceRow(fixture["DescriptorRow"], "UIUHUHIBUHHH", 0x44),
             ReplaceRow(fixture["VersionRow"], "UHHUHHUUHH", 0x56), Convert.FromHexString(fixture["SharedRow"])];
-        return new EventDomainRegistry("d", rows);
+        return new EventDomainRegistry("d", rows, capabilityLoss: new EventEvolutionCapabilityLoss());
     }
 
     private static byte[] ReplaceRow(string hex, string fields, byte tag)

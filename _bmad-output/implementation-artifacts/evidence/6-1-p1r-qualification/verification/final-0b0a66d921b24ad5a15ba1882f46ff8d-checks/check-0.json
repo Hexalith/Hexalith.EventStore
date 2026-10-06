@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T12:41:07.642528+00:00",
+  "finished_utc": "2026-10-06T12:41:30.182006+00:00",
+  "exit_code": 0,
+  "output": {
+    "path": "check-0.txt",
+    "sha256": "809c2f25047bc101bfeb615b76899eba494918f3352b3de0c5088bf9a983046f"
+  }
+}

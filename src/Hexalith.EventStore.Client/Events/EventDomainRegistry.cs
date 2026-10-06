@@ -14,7 +14,16 @@ internal sealed class EventDomainRegistry : IDisposable
 
     /// <summary>Admits one bounded domain inventory and verifies its chain and alias topology.</summary>
     internal EventDomainRegistry(string domain, IReadOnlyList<ReadOnlyMemory<byte>> encodedRows, long referencedManifestBytes = 0)
+        : this(domain, encodedRows, EventEvolutionCapabilityLoss.Process, referencedManifestBytes)
     {
+    }
+
+    /// <summary>Admits a bounded inventory with an explicitly shared host or isolated qualification loss scope.</summary>
+    internal EventDomainRegistry(string domain, IReadOnlyList<ReadOnlyMemory<byte>> encodedRows,
+        EventEvolutionCapabilityLoss capabilityLoss, long referencedManifestBytes = 0)
+    {
+        ArgumentNullException.ThrowIfNull(capabilityLoss);
+        CapabilityLoss = capabilityLoss;
         Domain = domain;
         _rows = EventRegistryFingerprintCodec.DecodeRows(domain, encodedRows, referencedManifestBytes);
         try
@@ -46,6 +55,9 @@ internal sealed class EventDomainRegistry : IDisposable
 
     /// <summary>Gets the exact manifest fingerprint, which is not an attestation.</summary>
     internal string Fingerprint { get; }
+
+    /// <summary>Gets the shared observed-loss control; this value supplies no admission or readiness authority.</summary>
+    internal EventEvolutionCapabilityLoss CapabilityLoss { get; }
 
     /// <summary>Enumerates exclusively owned immutable rows for the local semantic codec.</summary>
     internal IEnumerable<EventRegistryRow> Rows => _rows;

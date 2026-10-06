@@ -20,6 +20,7 @@ internal sealed class DaprProductionLogicalEventReader
     private readonly IActorStateManager _stateManager;
     private readonly DaprLogicalEventReader _pages;
     private readonly string _pinnedFingerprint;
+    private readonly EventEvolutionCapabilityLoss _capabilityLoss;
 
     /// <summary>Binds the page reader to the caller's registry, chain, and pin.</summary>
     internal DaprProductionLogicalEventReader(
@@ -46,6 +47,7 @@ internal sealed class DaprProductionLogicalEventReader
 
         _stateManager = stateManager;
         _pinnedFingerprint = pinnedFingerprint;
+        _capabilityLoss = registry.CapabilityLoss;
         _pages = new DaprLogicalEventReader(stateManager, protection, new EventLogicalViewResolver(registry, executor));
     }
 
@@ -120,7 +122,7 @@ internal sealed class DaprProductionLogicalEventReader
     }
 
     /// <summary>Reads a contiguous range as checked pages with an optional owned domain view.</summary>
-    internal async Task<DaprProductionLogicalReplay> ReadRangeAsync(
+    internal Task<DaprProductionLogicalReplay> ReadRangeAsync(
         AggregateIdentity identity,
         string aggregateType,
         long startSequence,
@@ -130,14 +132,30 @@ internal sealed class DaprProductionLogicalEventReader
         long? expectedRetainedFloor = null,
         bool includeDomainView = true,
         LegacyEventArrayBudget? arrayBudget = null)
+        => ReadRangeAsync(identity, aggregateType, startSequence, count, cancellationToken,
+            expectedActorHead, expectedRetainedFloor, includeDomainView, arrayBudget, new EventBufferBudget());
+
+    /// <summary>Reads a contiguous range while retaining its metadata and domain copies in the supplied live-buffer budget.</summary>
+    internal async Task<DaprProductionLogicalReplay> ReadRangeAsync(
+        AggregateIdentity identity,
+        string aggregateType,
+        long startSequence,
+        int count,
+        CancellationToken cancellationToken,
+        long expectedActorHead,
+        long? expectedRetainedFloor,
+        bool includeDomainView,
+        LegacyEventArrayBudget? arrayBudget,
+        EventBufferBudget bufferBudget)
     {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(bufferBudget);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(startSequence);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         cancellationToken.ThrowIfCancellationRequested();
+        _capabilityLoss.RequireNoObservedLoss();
         arrayBudget ??= new LegacyEventArrayBudget(count);
-        var bufferBudget = new EventBufferBudget();
         var stored = new List<EventEnvelope>(count);
         var domain = new List<EventEnvelope>(includeDomainView ? count : 0);
         var reservations = new List<EventBufferReservation>();
@@ -172,9 +190,25 @@ internal sealed class DaprProductionLogicalEventReader
 
                     foreach (DaprLogicalEventView view in page.Events)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        _capabilityLoss.RequireNoObservedLoss();
                         if (view.SequenceNumber != startSequence + stored.Count)
                         {
                             throw new InvalidOperationException("AddressMismatch: logical page sequence is not a complete prefix.");
+                        }
+
+                        EventBufferReservation? metadataReservation = view.TakeMetadataReservation();
+                        if (metadataReservation is not null)
+                        {
+                            try
+                            {
+                                reservations.Add(metadataReservation);
+                            }
+                            catch
+                            {
+                                metadataReservation.Dispose();
+                                throw;
+                            }
                         }
 
                         stored.Add(view.Source);
@@ -188,6 +222,8 @@ internal sealed class DaprProductionLogicalEventReader
                             arrayBudget.AddDomainPayload(view.Resolved.Payload.Length);
                             EventBufferReservation reservation = bufferBudget.Reserve(view.Resolved.Payload.Length);
                             reservations.Add(reservation);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            _capabilityLoss.RequireNoObservedLoss();
                             domain.Add(CreateDomainEvent(view));
                         }
                     }
@@ -200,6 +236,8 @@ internal sealed class DaprProductionLogicalEventReader
                 offset += size;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            _capabilityLoss.RequireNoObservedLoss();
             return new DaprProductionLogicalReplay(expectedActorHead, pinnedFloor ?? 1, stored, domain, evolved, reservations);
         }
         catch

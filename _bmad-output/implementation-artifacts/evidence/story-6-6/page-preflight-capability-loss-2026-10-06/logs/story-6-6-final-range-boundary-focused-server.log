@@ -1,0 +1,182 @@
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeRefusesSharedLossBeforeActorRead(cancel: True) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(64,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeRefusesSharedLossBeforeActorRead(Boolean cancel)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.AddressedReconstructionCountLimitRejectsBeforeActorRead [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(553,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.AddressedReconstructionCountLimitRejectsBeforeActorRead()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RejectedLogicalReadFailsTheCommandBeforeInvoke [FAIL]
+      NSubstitute.Exceptions.ReceivedCallsException : Expected to receive a call matching:
+      	TryGetStateAsync<EventEnvelope>("tenant:d:aggregate:events:1", any CancellationToken)
+      Actually received no matching calls.
+      
+      Stack Trace:
+           at NSubstitute.Core.ReceivedCallsExceptionThrower.Throw(ICallSpecification callSpecification, IEnumerable`1 matchingCalls, IEnumerable`1 nonMatchingCalls, Quantity requiredQuantity)
+           at NSubstitute.Routing.Handlers.CheckReceivedCallsHandler.Handle(ICall call)
+           at NSubstitute.Routing.Route.Handle(ICall call)
+           at NSubstitute.Core.CallRouter.Route(ICall call)
+           at NSubstitute.Proxies.CastleDynamicProxy.CastleForwardingInterceptor.Intercept(IInvocation invocation)
+           at Castle.DynamicProxy.AbstractInvocation.Proceed()
+           at NSubstitute.Proxies.CastleDynamicProxy.ProxyIdInterceptor.Intercept(IInvocation invocation)
+           at Castle.DynamicProxy.AbstractInvocation.Proceed()
+           at Castle.Proxies.ObjectProxy.TryGetStateAsync[T](String stateName, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(931,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RejectedLogicalReadFailsTheCommandBeforeInvoke()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.MultiPageRangeKeepsContiguousSequencesAndPinsRetainedFloor [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(371,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.MultiPageRangeKeepsContiguousSequencesAndPinsRetainedFloor()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.FromCallerPinOnHopRegistryFailsClosedWithoutPartialReplayOrStateSave [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        src/Hexalith.EventStore.Server/Events/DaprProductionLogicalEventReader.cs(70,0): at Hexalith.EventStore.Server.Events.DaprProductionLogicalEventReader.FromCallerPin(IActorStateManager stateManager, IEventPayloadProtectionService protection, EventEvolutionManifestCandidate candidate)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(843,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.FromCallerPinOnHopRegistryFailsClosedWithoutPartialReplayOrStateSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CancellationDuringActorReadPublishesNoPartialResult [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(241,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CancellationDuringActorReadPublishesNoPartialResult()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.LaterPageRefusalReleasesTransferredMetadataAndDomainCharges(includeDomainView: False) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(664,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.LaterPageRefusalReleasesTransferredMetadataAndDomainCharges(Boolean includeDomainView)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.LaterPageRefusalReleasesTransferredMetadataAndDomainCharges(includeDomainView: True) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(664,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.LaterPageRefusalReleasesTransferredMetadataAndDomainCharges(Boolean includeDomainView)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.ProductionReplayWithSnapshotBehindHeadReturnsOnlyTheTail [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(862,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.ProductionReplayWithSnapshotBehindHeadReturnsOnlyTheTail()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.HistoricalV1WithoutDigestStaysReadable [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(112,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.HistoricalV1WithoutDigestStaysReadable()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DistinctProviderPlaintextIsClearedOnCancellationOrDigestRefusal(cancel: True) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(694,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DistinctProviderPlaintextIsClearedOnCancellationOrDigestRefusal(Boolean cancel)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DistinctProviderPlaintextIsClearedOnCancellationOrDigestRefusal(cancel: False) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(694,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DistinctProviderPlaintextIsClearedOnCancellationOrDigestRefusal(Boolean cancel)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CanonicalV1CommandStateMatchesTypedRehydrationWithPlaintextPayloads [FAIL]
+      Shouldly.ShouldAssertException : await actor.ProcessCommandAsync(command).ConfigureAwait(true);
+                  outcome.Accepted
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(740,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CanonicalV1CommandStateMatchesTypedRehydrationWithPlaintextPayloads()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.AddressedCancellationPreservesTheCallerTokenAndNeverInvokesDomainReplay [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(481,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.AddressedCancellationPreservesTheCallerTokenAndNeverInvokesDomainReplay()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeBudgetRejectsBeforeReadingLaterPages(includeDomainView: True) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(500,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeBudgetRejectsBeforeReadingLaterPages(Boolean includeDomainView)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeBudgetRejectsBeforeReadingLaterPages(includeDomainView: False) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(500,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.RangeBudgetRejectsBeforeReadingLaterPages(Boolean includeDomainView)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.WriterCapabilityMismatchDoesNotReceiveTheLogicalReadRejectionCode [FAIL]
+      Shouldly.ShouldAssertException : result.FailureReason
+          should contain (case insensitive comparison)
+      "protected-data-diagnostic-redacted"
+          but was actually
+      "Protected data diagnostic details were redacted. ReasonCode=logical-event-read-rejected; Stage=Proce..."
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(962,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.WriterCapabilityMismatchDoesNotReceiveTheLogicalReadRejectionCode()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.BrokenChainFailsWithoutPartialReplay [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(197,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.BrokenChainFailsWithoutPartialReplay()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DigestMismatchFailsClosedBeforeDomainResolution [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: event evolution capability was lost after a trusted-code policy violation.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs(25,0): at Hexalith.EventStore.Client.Events.EventEvolutionCapabilityLoss.RequireNoObservedLoss()
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(28,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor..ctor(EventDomainRegistry registry, IReadOnlyDictionary`2 upcasters, EventVersionValidator validateVersion)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(988,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.CreateReader(EventDomainRegistry registry, IActorStateManager stateManager, String pin, ShrinkingLogicalEventUpcaster upcaster, IEventPayloadProtectionService protection)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs(138,0): at Hexalith.EventStore.Server.Tests.Events.DaprProductionLogicalEventReaderTests.DigestMismatchFailsClosedBeforeDomainResolution()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '0a706b86ac5cc42dc97ec01b151c2bb76133d4de4ce5a51f7bb74e775e2fdb68')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 85, Errors: 0, Failed: 19, Skipped: 0, Not Run: 0, Time: 2.131s

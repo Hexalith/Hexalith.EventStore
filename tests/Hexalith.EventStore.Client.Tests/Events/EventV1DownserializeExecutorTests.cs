@@ -86,6 +86,67 @@ public sealed class EventV1DownserializeExecutorTests
         payload.Dispose(); budget.LiveBytes.ShouldBe(0);
     }
 
+    /// <summary>Checks loss from every conversion callback refuses further calls and clears private output.</summary>
+    [Theory]
+    [InlineData("before")]
+    [InlineData("version")]
+    [InlineData("conversion")]
+    [InlineData("alias")]
+    [InlineData("semantics")]
+    public async Task ObservedLossAtEachCallbackBoundaryRefusesConversionAndReleasesOwners(string stage)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var calls = new List<string>();
+        void Observe(string callback)
+        {
+            calls.Add(callback);
+            if (stage == callback) { registry.CapabilityLoss.ObserveViolation(); }
+        }
+        var downserializer = new LeaseRecordingV1Downserializer(afterWrite: () => Observe("conversion"));
+        var executor = new EventV1DownserializeExecutor(registry,
+            (_, _, _, _, _, _) => Observe("version"),
+            (_, _, _, _, _, _, _) => Observe("alias"),
+            (_, _, _) => Observe("semantics"));
+        var binding = new RegisteredV1Downserializer("test-downserializer", downserializer, new byte[32]);
+        var budget = new EventBufferBudget();
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload source = writer.TakeCompletedPayload();
+        if (stage == "before") { registry.CapabilityLoss.ObserveViolation(); }
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await executor.DownserializeAsync("evt", "Legacy.Event", source, binding, 2, budget, CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        budget.LiveBytes.ShouldBe(0);
+        string[] expected = ["version", "conversion", "alias", "semantics"];
+        calls.ShouldBe(stage == "before" ? [] : expected.Take(Array.IndexOf(expected, stage) + 1));
+        byte[] original = new byte[2]; source.CopyTo(0, original); original.ShouldBe([1, 2]);
+    }
+
+    /// <summary>Checks cancellation during alias validation prevents semantic validation and clears output.</summary>
+    [Fact]
+    public async Task AliasCancellationPreventsFollowingSemanticCallbackAndPreservesOriginalToken()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        using var cancellation = new CancellationTokenSource();
+        bool semanticsCalled = false;
+        var executor = new EventV1DownserializeExecutor(registry, static (_, _, _, _, _, _) => { },
+            (_, _, _, _, _, _, _) => cancellation.Cancel(), (_, _, _) => semanticsCalled = true);
+        var binding = new RegisteredV1Downserializer("test-downserializer", new LeaseRecordingV1Downserializer(), new byte[32]);
+        var budget = new EventBufferBudget();
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload source = writer.TakeCompletedPayload();
+
+        OperationCanceledException failure = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await executor.DownserializeAsync("evt", "Legacy.Event", source, binding, 2, budget, cancellation.Token));
+
+        failure.CancellationToken.ShouldBe(cancellation.Token);
+        semanticsCalled.ShouldBeFalse();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
     private static EventDomainRegistry CreateRegistry()
     {
         using EventDomainRegistry baseRegistry = EventUpcastChainExecutorTests.CreateRegistry();
@@ -114,6 +175,6 @@ public sealed class EventV1DownserializeExecutorTests
         writer.WriteByte(14); writer.WriteHash(new byte[32]);
         writer.WriteByte(15); writer.WriteHash(new byte[32]);
         rows.Add(writer.CopyEncodedBytes());
-        return new EventDomainRegistry("d", rows);
+        return new EventDomainRegistry("d", rows, capabilityLoss: new EventEvolutionCapabilityLoss());
     }
 }

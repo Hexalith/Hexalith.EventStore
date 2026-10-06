@@ -25,6 +25,7 @@ internal sealed class EventUpcastChainExecutor
         ArgumentNullException.ThrowIfNull(upcasters);
         ArgumentNullException.ThrowIfNull(validateVersion);
         _registry = registry;
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         _upcasters = upcasters.ToFrozenDictionary();
         _validateVersion = validateVersion;
         foreach (((string type, int source), RegisteredEventUpcaster binding) in _upcasters)
@@ -58,6 +59,7 @@ internal sealed class EventUpcastChainExecutor
             for (int version = sourceVersion; version < current; version++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                _registry.CapabilityLoss.RequireNoObservedLoss();
                 if (!CryptographicOperations.FixedTimeEquals(sealedDigest, owned.ComputeSha256()))
                 {
                     throw new InvalidOperationException("UpcasterContractViolation: sealed input changed before the next hop.");
@@ -72,6 +74,7 @@ internal sealed class EventUpcastChainExecutor
                 {
                     try
                     {
+                        _registry.CapabilityLoss.RequireNoObservedLoss();
                         result = await binding.Upcaster.UpcastAsync(lease, writer, scratch, cancellationToken).ConfigureAwait(false);
                     }
                     finally
@@ -87,6 +90,7 @@ internal sealed class EventUpcastChainExecutor
 
                 scratch.RequireValidInvocation();
                 cancellationToken.ThrowIfCancellationRequested();
+                _registry.CapabilityLoss.RequireNoObservedLoss();
                 if (result is null || !string.Equals(result.Domain, _registry.Domain, StringComparison.Ordinal)
                     || !string.Equals(result.EventContractType, canonicalType, StringComparison.Ordinal)
                     || result.PayloadVersion != version + 1
@@ -122,6 +126,7 @@ internal sealed class EventUpcastChainExecutor
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
             if (!CryptographicOperations.FixedTimeEquals(sealedDigest, owned.ComputeSha256()))
             {
                 throw new InvalidOperationException("UpcasterContractViolation: sealed output changed before use.");
@@ -136,9 +141,11 @@ internal sealed class EventUpcastChainExecutor
         }
     }
 
-    private int RequireChain(string canonicalType, int sourceVersion, CancellationToken cancellationToken)
+    /// <summary>Checks the entire bounded callable chain without invoking validators or upcasters.</summary>
+    internal int RequireChain(string canonicalType, int sourceVersion, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         int current = _registry.GetCurrentVersion(canonicalType);
         _ = _registry.GetVersion(canonicalType, sourceVersion);
         if (sourceVersion > current || current - sourceVersion > 16)
@@ -164,6 +171,7 @@ internal sealed class EventUpcastChainExecutor
         byte[] before = payload.ComputeSha256();
         using var lease = new InvocationPayloadLease(payload, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         try
         {
             _validateVersion(_registry.Domain, canonicalType, version,
@@ -179,5 +187,6 @@ internal sealed class EventUpcastChainExecutor
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
     }
 }

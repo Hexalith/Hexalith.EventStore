@@ -155,7 +155,110 @@ public sealed class EventUpcastChainExecutorTests
         budget.LiveBytes.ShouldBe(0);
     }
 
-    private static EventUpcastChainExecutor CreateExecutor(EventDomainRegistry registry, LeaseRecordingEventUpcaster upcaster,
+    /// <summary>Checks an earlier observation prevents allocation and every domain callback.</summary>
+    [Fact]
+    public async Task ObservedLossBeforeInvocationRefusesWithoutAllocatingOrCallingDomainCode()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var upcaster = new LeaseRecordingEventUpcaster();
+        var budget = new EventBufferBudget();
+        bool validated = false;
+        var executor = CreateExecutor(registry, upcaster, (_, _, _, _, _, _) => validated = true);
+        using var sourceWriter = new BoundedPayloadWriter(2, CancellationToken.None);
+        sourceWriter.Write([1, 2]); sourceWriter.Complete();
+        using ImmutablePayload source = sourceWriter.TakeCompletedPayload();
+        registry.CapabilityLoss.ObserveViolation();
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await executor.UpcastAsync("evt", 1, source, budget, CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        validated.ShouldBeFalse();
+        upcaster.Input.ShouldBeNull();
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    /// <summary>Checks observed loss from each callback refuses output and clears all private owners.</summary>
+    [Theory]
+    [InlineData("source-validation")]
+    [InlineData("hop")]
+    [InlineData("output-validation")]
+    public async Task ObservedLossDuringCallbackRefusesResultAndReleasesPrivateOwners(string stage)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var upcaster = new LeaseRecordingEventUpcaster(afterWrite: () =>
+        {
+            if (stage == "hop") { registry.CapabilityLoss.ObserveViolation(); }
+        });
+        var budget = new EventBufferBudget();
+        var executor = CreateExecutor(registry, upcaster, (_, _, version, _, _, _) =>
+        {
+            if (stage == "source-validation" && version == 1 || stage == "output-validation" && version == 2)
+            {
+                registry.CapabilityLoss.ObserveViolation();
+            }
+        });
+        using var sourceWriter = new BoundedPayloadWriter(2, CancellationToken.None);
+        sourceWriter.Write([1, 2]); sourceWriter.Complete();
+        using ImmutablePayload source = sourceWriter.TakeCompletedPayload();
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await executor.UpcastAsync("evt", 1, source, budget, CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        budget.LiveBytes.ShouldBe(0);
+        byte[] original = new byte[2]; source.CopyTo(0, original); original.ShouldBe([1, 2]);
+        if (stage == "source-validation") { upcaster.Input.ShouldBeNull(); }
+        else { Should.Throw<ObjectDisposedException>(() => upcaster.Input!.CopyTo(0, new byte[2])); }
+    }
+
+    /// <summary>Checks a concurrent observation during an awaited callback prevents an uncommitted success.</summary>
+    [Fact]
+    public async Task ConcurrentObservationDuringAwaitRefusesResumedSuccess()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        var upcaster = new SuspendedEventUpcaster();
+        var executor = CreateExecutor(registry, upcaster, static (_, _, _, _, _, _) => { });
+        var budget = new EventBufferBudget();
+        using var sourceWriter = new BoundedPayloadWriter(2, CancellationToken.None);
+        sourceWriter.Write([1, 2]); sourceWriter.Complete();
+        using ImmutablePayload source = sourceWriter.TakeCompletedPayload();
+        Task<ImmutablePayload> pending = executor.UpcastAsync("evt", 1, source, budget, CancellationToken.None).AsTask();
+        try
+        {
+            await upcaster.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            registry.CapabilityLoss.ObserveViolation();
+        }
+        finally { upcaster.Resume.TrySetResult(); }
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(async () => await pending);
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        budget.LiveBytes.ShouldBe(0);
+        Should.Throw<ObjectDisposedException>(() => upcaster.Input!.CopyTo(0, new byte[2]));
+    }
+
+    /// <summary>Checks one shared observation refuses zero-hop execution and new executor admission.</summary>
+    [Fact]
+    public async Task LossInSharedScopeRefusesExistingAndNewExecutorsAcrossRegistries()
+    {
+        var loss = new EventEvolutionCapabilityLoss();
+        using EventDomainRegistry first = CreateRegistry(loss);
+        using EventDomainRegistry second = CreateRegistry(loss);
+        var upcaster = new LeaseRecordingEventUpcaster();
+        var executor = CreateExecutor(second, upcaster, static (_, _, _, _, _, _) => { });
+        using var sourceWriter = new BoundedPayloadWriter(2, CancellationToken.None);
+        sourceWriter.Write([1, 2]); sourceWriter.Complete();
+        using ImmutablePayload source = sourceWriter.TakeCompletedPayload();
+        first.CapabilityLoss.ObserveViolation();
+
+        await Should.ThrowAsync<InvalidOperationException>(async () => await executor.UpcastAsync(
+            "evt", 2, source, new EventBufferBudget(), CancellationToken.None));
+        Should.Throw<InvalidOperationException>(() => CreateExecutor(second, upcaster, static (_, _, _, _, _, _) => { }));
+        upcaster.Input.ShouldBeNull();
+    }
+
+    private static EventUpcastChainExecutor CreateExecutor(EventDomainRegistry registry, IEventUpcaster upcaster,
         EventVersionValidator validator)
         => new(registry, new Dictionary<(string, int), RegisteredEventUpcaster>
         {
@@ -163,7 +266,7 @@ public sealed class EventUpcastChainExecutorTests
         }, validator);
 
     /// <summary>Creates test-local two-version rows with the actual executing callable assembly digest.</summary>
-    internal static EventDomainRegistry CreateRegistry()
+    internal static EventDomainRegistry CreateRegistry(EventEvolutionCapabilityLoss? capabilityLoss = null)
     {
         Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Events", "Fixtures", "EventRegistryV17.json")))!;
@@ -197,6 +300,7 @@ public sealed class EventUpcastChainExecutorTests
         edge.WriteByte(11); edge.WriteHash(new byte[32]);
         edge.WriteByte(12); edge.WriteHash(new byte[32]);
         return new EventDomainRegistry("d", [Convert.FromHexString(fixture["AliasRow"]), descriptor,
-            versionOne, versionTwo, edge.CopyEncodedBytes(), Convert.FromHexString(fixture["SharedRow"])]);
+            versionOne, versionTwo, edge.CopyEncodedBytes(), Convert.FromHexString(fixture["SharedRow"])],
+            capabilityLoss: capabilityLoss ?? new EventEvolutionCapabilityLoss());
     }
 }

@@ -80,6 +80,84 @@ public sealed class EventLogicalViewResolverTests
         error.Message.ShouldContain("CapabilityMismatch");
     }
 
+    /// <summary>Checks a prepared zero-hop source transfers without a second allocation and refuses on observed loss.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OwnedResolutionTransfersOneChargeAndClearsOnLoss(bool lost)
+    {
+        using EventDomainRegistry registry = EventUpcastChainExecutorTests.CreateRegistry();
+        var executor = new EventUpcastChainExecutor(registry, new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            static (_, _, _, _, _, _) => { });
+        var resolver = new EventLogicalViewResolver(registry, executor);
+        var budget = new EventBufferBudget(2);
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None, budget);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload source = writer.TakeCompletedPayload();
+        if (lost) { registry.CapabilityLoss.ObserveViolation(); }
+
+        if (lost)
+        {
+            InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(async () =>
+                await resolver.ResolveOwnedAsync("d", "evt", 2, "evt", 2, "json", source, budget, CancellationToken.None));
+            failure.Message.ShouldContain("CapabilityMismatch");
+        }
+        else
+        {
+            using ResolvedLogicalEvent resolved = await resolver.ResolveOwnedAsync(
+                "d", "evt", 2, "evt", 2, "json", source, budget, CancellationToken.None);
+            budget.LiveBytes.ShouldBe(2);
+            byte[] bytes = new byte[2]; resolved.Payload.CopyTo(0, bytes); bytes.ShouldBe([1, 2]);
+            resolved.Dispose();
+        }
+
+        budget.LiveBytes.ShouldBe(0);
+        Should.Throw<ObjectDisposedException>(() => source.CopyTo(0, new byte[2]));
+    }
+
+    /// <summary>Checks original cancellation consumes and clears prepared ownership before any validator.</summary>
+    [Fact]
+    public async Task OwnedResolutionCancellationKeepsOriginalTokenAndReleasesOwner()
+    {
+        using EventDomainRegistry registry = EventUpcastChainExecutorTests.CreateRegistry();
+        bool validated = false;
+        var executor = new EventUpcastChainExecutor(registry, new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            (_, _, _, _, _, _) => validated = true);
+        var resolver = new EventLogicalViewResolver(registry, executor);
+        var budget = new EventBufferBudget(2);
+        using var writer = new BoundedPayloadWriter(2, CancellationToken.None, budget);
+        writer.Write([1, 2]); writer.Complete();
+        using ImmutablePayload source = writer.TakeCompletedPayload();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        registry.CapabilityLoss.ObserveViolation();
+
+        OperationCanceledException failure = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await resolver.ResolveOwnedAsync("d", "evt", 2, "evt", 2, "json", source, budget, cancellation.Token));
+
+        failure.CancellationToken.ShouldBe(cancellation.Token);
+        validated.ShouldBeFalse();
+        budget.LiveBytes.ShouldBe(0);
+        Should.Throw<ObjectDisposedException>(() => source.CopyTo(0, new byte[2]));
+    }
+
+    /// <summary>Checks source-only chain admission invokes no validators or upcasters.</summary>
+    [Fact]
+    public void ReadableAdmissionChecksAllCallableBindingsBeforeCallbacks()
+    {
+        using EventDomainRegistry registry = EventUpcastChainExecutorTests.CreateRegistry();
+        bool validated = false;
+        var executor = new EventUpcastChainExecutor(registry, new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            (_, _, _, _, _, _) => validated = true);
+        var resolver = new EventLogicalViewResolver(registry, executor);
+
+        InvalidOperationException failure = Should.Throw<InvalidOperationException>(() => resolver.RequireReadableSource(
+            "d", "Legacy.Event", 1, null, null, "json", "r", CancellationToken.None));
+
+        failure.Message.ShouldContain("CapabilityMismatch");
+        validated.ShouldBeFalse();
+    }
+
     /// <summary>Checks retained effective owners remain charged and a refused successor releases its attempted private copy.</summary>
     [Fact]
     public async Task SharedBudgetIncludesEarlierEffectiveOwnersAndReleasesFailedCopy()

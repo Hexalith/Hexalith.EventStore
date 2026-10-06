@@ -1,0 +1,43 @@
+{
+  "qualification_scope": "preparation-and-local-process-controls",
+  "qualified": false,
+  "p1r_usable": false,
+  "commands": [
+    {
+      "command": "prepare",
+      "receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-prepare.json",
+      "sha256": "ae95f0ea31f3b10a51b7e112dcc3db63d332af0f7ea1e8bd3f8c0d68ee98ebda",
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "command": "run",
+      "receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-run.json",
+      "sha256": "bbf93bc5ef3924673e9d90e91eb7e24fb5b6d7ac6a46902e25642c15a2696a1f",
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "command": "validate-prepare",
+      "receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-validate-prepare.json",
+      "sha256": "5eabcab5dc9f7bc5ee6ab07dcf31110f4c3140131d6dbfca02e34c73253d645a",
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "command": "validate-run",
+      "receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-validate-run.json",
+      "sha256": "844d6a7bde79e640b96c7eb71cce216def66078deda2dd8bb0dd32d34cac870b",
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "command": "validate-tamper",
+      "receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-validate-tamper.json",
+      "sha256": "9976526bfcefadafb77aa6a5209382996339340a06477b172f53c6a3247d5fcf",
+      "exit_code": 2,
+      "expected_exit_code": 2
+    }
+  ],
+  "focused_suite_receipt": "verification/final-0b0a66d921b24ad5a15ba1882f46ff8d-checks/check-0.json"
+}

@@ -6,9 +6,17 @@ namespace Hexalith.EventStore.Server.Events;
 internal sealed class DaprLogicalEventView : IDisposable
 {
     private readonly ResolvedLogicalEvent _resolved;
+    private EventBufferReservation? _metadataReservation;
 
     /// <summary>Captures immutable source metadata and takes ownership of the resolved payload.</summary>
     internal DaprLogicalEventView(EventEnvelope source, ResolvedLogicalEvent resolved, int readablePayloadLength)
+        : this(source, resolved, readablePayloadLength, metadataReservation: null)
+    {
+    }
+
+    /// <summary>Takes ownership of the resolved payload and its retained metadata reservation.</summary>
+    internal DaprLogicalEventView(EventEnvelope source, ResolvedLogicalEvent resolved, int readablePayloadLength,
+        EventBufferReservation? metadataReservation)
     {
         Source = source;
         MessageId = source.MessageId;
@@ -18,6 +26,7 @@ internal sealed class DaprLogicalEventView : IDisposable
         StoredPayloadLength = source.Payload.Length;
         ReadablePayloadLength = readablePayloadLength;
         _resolved = resolved;
+        _metadataReservation = metadataReservation;
     }
 
     /// <summary>Gets the addressed stored envelope. Its payload bytes stay the actor value.</summary>
@@ -44,6 +53,14 @@ internal sealed class DaprLogicalEventView : IDisposable
     /// <summary>Gets the privately owned current event view.</summary>
     internal ResolvedLogicalEvent Resolved => _resolved;
 
+    /// <summary>Transfers the retained source metadata charge to a longer-lived range owner exactly once.</summary>
+    internal EventBufferReservation? TakeMetadataReservation()
+        => Interlocked.Exchange(ref _metadataReservation, null);
+
     /// <inheritdoc/>
-    public void Dispose() => _resolved.Dispose();
+    public void Dispose()
+    {
+        _resolved.Dispose();
+        Interlocked.Exchange(ref _metadataReservation, null)?.Dispose();
+    }
 }

@@ -1,0 +1,27 @@
+name: P1R Qualification Preparation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  preparation-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+
+      - name: Verify bounded P1R preparation and process controls
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_qualification.py'

@@ -1,0 +1,23 @@
+[
+  "src/Hexalith.EventStore.Client/Events/EventDomainRegistry.cs",
+  "src/Hexalith.EventStore.Client/Events/EventLogicalViewResolver.cs",
+  "src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs",
+  "src/Hexalith.EventStore.Client/Events/EventV1DownserializeExecutor.cs",
+  "src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs",
+  "src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs",
+  "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs",
+  "src/Hexalith.EventStore.Server/Events/DaprLogicalEventView.cs",
+  "src/Hexalith.EventStore.Server/Events/DaprProductionLogicalEventReader.cs",
+  "src/Hexalith.EventStore.Server/Events/DaprProductionLogicalReplay.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/EventLocalImplementationBindingTests.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/EventLogicalViewResolverTests.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/EventUpcastChainExecutorTests.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/EventV1DownserializeExecutorTests.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/LeaseRecordingV1Downserializer.cs",
+  "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalEventReaderTests.cs",
+  "tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs",
+  "src/Hexalith.EventStore.Client/Events/EventEvolutionCapabilityLoss.cs",
+  "src/Hexalith.EventStore.Server/Events/DaprLogicalEventPreparation.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionCapabilityLossTests.cs",
+  "tests/Hexalith.EventStore.Client.Tests/Events/SuspendedEventUpcaster.cs"
+]

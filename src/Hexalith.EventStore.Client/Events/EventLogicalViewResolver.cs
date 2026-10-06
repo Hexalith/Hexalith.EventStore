@@ -27,36 +27,9 @@ internal sealed class EventLogicalViewResolver
         EventBufferBudget? sharedBudget = null, string? aggregateType = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("UnknownEventContract: event domain is not the registered domain.");
-        }
-
-        string canonicalType;
-        int sourceVersion;
-        string sourceFormat;
-        if (metadataVersion == 1 && eventContractType is null && payloadVersion is null)
-        {
-            (canonicalType, sourceVersion, sourceFormat) = _registry.ResolveAlias(eventTypeName);
-        }
-        else if (metadataVersion == 2 && eventContractType is not null && payloadVersion is >= 1 and <= 1024
-            && string.Equals(eventTypeName, eventContractType, StringComparison.Ordinal))
-        {
-            canonicalType = eventContractType;
-            sourceVersion = payloadVersion.Value;
-            sourceFormat = _registry.GetVersion(canonicalType, sourceVersion).GetTextField(7);
-        }
-        else
-        {
-            throw new InvalidOperationException("UnknownEventContract: incomplete or unsupported event metadata.");
-        }
-
-        RequireAggregateRoute(canonicalType, aggregateType);
-
-        if (!string.Equals(serializationFormat, sourceFormat, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("UnknownEventContract: source format disagrees with its registered version.");
-        }
+        _registry.CapabilityLoss.RequireNoObservedLoss();
+        _ = ResolveSource(domain, eventTypeName, metadataVersion, eventContractType, payloadVersion,
+            serializationFormat, aggregateType);
         if (originalApplicationPayload.Length > 64 * 1024 * 1024)
         {
             throw new InvalidOperationException("ReadableLimit: logical source payload exceeds 64 MiB.");
@@ -74,8 +47,9 @@ internal sealed class EventLogicalViewResolver
             var source = new ImmutablePayload(sourceBytes, sourceBytes.Length, cancellationToken, reservation);
             sourceOwnsReservation = true;
             sourceBytes = null;
-            ImmutablePayload effective = await _executor.UpcastOwnedAsync(
-                canonicalType, sourceVersion, source, budget, cancellationToken).ConfigureAwait(false);
+            ResolvedLogicalEvent resolved = await ResolveOwnedAsync(domain, eventTypeName, metadataVersion,
+                eventContractType, payloadVersion, serializationFormat, source, budget,
+                cancellationToken, aggregateType).ConfigureAwait(false);
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -92,14 +66,13 @@ internal sealed class EventLogicalViewResolver
                     CryptographicOperations.ZeroMemory(after);
                 }
 
-                return new ResolvedLogicalEvent(canonicalType, sourceVersion,
-                    _registry.GetCurrentVersion(canonicalType),
-                    _registry.GetVersion(canonicalType, _registry.GetCurrentVersion(canonicalType)).GetTextField(7),
-                    effective);
+                cancellationToken.ThrowIfCancellationRequested();
+                _registry.CapabilityLoss.RequireNoObservedLoss();
+                return resolved;
             }
             catch
             {
-                effective.Dispose();
+                resolved.Dispose();
                 throw;
             }
         }
@@ -126,10 +99,108 @@ internal sealed class EventLogicalViewResolver
         }
     }
 
+    /// <summary>Consumes a prepared charged readable owner without making a second page-sized copy.</summary>
+    /// <remarks>Ownership transfers at entry, including cancellation and admission refusal.</remarks>
+    internal async ValueTask<ResolvedLogicalEvent> ResolveOwnedAsync(string domain, string eventTypeName,
+        int metadataVersion, string? eventContractType, int? payloadVersion, string serializationFormat,
+        ImmutablePayload readablePayload, EventBufferBudget budget, CancellationToken cancellationToken,
+        string? aggregateType = null)
+    {
+        ArgumentNullException.ThrowIfNull(readablePayload);
+        try
+        {
+            ArgumentNullException.ThrowIfNull(budget);
+            cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
+            (string canonicalType, int sourceVersion) = ResolveSource(domain, eventTypeName, metadataVersion,
+                eventContractType, payloadVersion, serializationFormat, aggregateType);
+            if (readablePayload.Length > 64 * 1024 * 1024)
+            {
+                throw new InvalidOperationException("ReadableLimit: logical source payload exceeds 64 MiB.");
+            }
+
+            ImmutablePayload effective = await _executor.UpcastOwnedAsync(canonicalType, sourceVersion,
+                readablePayload, budget, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _registry.CapabilityLoss.RequireNoObservedLoss();
+                int currentVersion = _registry.GetCurrentVersion(canonicalType);
+                return new ResolvedLogicalEvent(canonicalType, sourceVersion, currentVersion,
+                    _registry.GetVersion(canonicalType, currentVersion).GetTextField(7), effective);
+            }
+            catch
+            {
+                effective.Dispose();
+                throw;
+            }
+        }
+        catch
+        {
+            readablePayload.Dispose();
+            throw;
+        }
+    }
+
+    private (string Type, int Version) ResolveSource(string domain, string eventTypeName, int metadataVersion,
+        string? eventContractType, int? payloadVersion, string serializationFormat, string? aggregateType)
+    {
+        if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("UnknownEventContract: event domain is not the registered domain.");
+        }
+
+        string canonicalType;
+        int sourceVersion;
+        string sourceFormat;
+        if (metadataVersion == 1 && eventContractType is null && payloadVersion is null)
+        {
+            (canonicalType, sourceVersion, sourceFormat) = _registry.ResolveAlias(eventTypeName);
+        }
+        else if (metadataVersion == 2 && eventContractType is not null && payloadVersion is >= 1 and <= 1024
+            && string.Equals(eventTypeName, eventContractType, StringComparison.Ordinal))
+        {
+            canonicalType = eventContractType;
+            sourceVersion = payloadVersion.Value;
+            sourceFormat = _registry.GetVersion(canonicalType, sourceVersion).GetTextField(7);
+        }
+        else
+        {
+            throw new InvalidOperationException("UnknownEventContract: incomplete or unsupported event metadata.");
+        }
+
+        RequireAggregateRoute(canonicalType, aggregateType);
+        if (!string.Equals(serializationFormat, sourceFormat, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("UnknownEventContract: source format disagrees with its registered version.");
+        }
+
+        return (canonicalType, sourceVersion);
+    }
+
+    /// <summary>Checks readable identity, format and complete callable admission without executing catalog code.</summary>
+    internal void RequireReadableSource(string domain, string eventTypeName, int metadataVersion,
+        string? eventContractType, int? payloadVersion, string serializationFormat,
+        string aggregateType, CancellationToken cancellationToken)
+    {
+        RequireNoObservedLoss(cancellationToken);
+        (string canonicalType, int sourceVersion) = ResolveSource(domain, eventTypeName, metadataVersion,
+            eventContractType, payloadVersion, serializationFormat, aggregateType);
+        _ = _executor.RequireChain(canonicalType, sourceVersion, cancellationToken);
+    }
+
+    /// <summary>Checks original cancellation and the catalog's shared loss control at outer owner boundaries.</summary>
+    internal void RequireNoObservedLoss(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
+    }
+
     /// <summary>Refuses an addressed route that disagrees with the immutable domain manifest.</summary>
     internal void RequireSourceRoute(string domain, string eventTypeName, int metadataVersion,
         string? eventContractType, int? payloadVersion, string aggregateType)
     {
+        _registry.CapabilityLoss.RequireNoObservedLoss();
         if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("UnknownEventContract: event domain is not the registered domain.");

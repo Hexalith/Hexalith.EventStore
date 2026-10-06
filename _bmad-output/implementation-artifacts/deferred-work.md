@@ -5501,3 +5501,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
   summary: Test the BoundedV1DomainResultProducer private-copy scratch admission boundary independently of encoded-size limits.
   evidence: Verification-gap review read the producer suite and extension router/endpoint tests. Forty-two versus forty-three one-MiB serialized events isolates the 128-MiB scratch boundary; existing 100-event refusal already exceeds encoded size. Producer/test hashes match pre-build user work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation.md`
+  summary: Add a single-page behavioral regression for metadata changing only after catalog callbacks in the concurrent Story 6.6 logical event reader.
+  evidence: Verification review showed existing head/ETag fixtures refuse before callbacks, while the two-page production fixture can refuse at the next page; replacing the final validation with an unchecked read leaves those assertions satisfied. Verify SourceHeadChanged, callbacks, unchanged stored bytes and zero remaining budget for equal first/second and changed third observations. Runtime edits are excluded by the approved preparation/process-control intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation.md`
+  summary: Add an HTTP composition regression exercising the real retained-history controller, source reader and client for the concurrent runtime work.
+  evidence: Verification review found only direct source-reader tests and a client response handler that supplies its own expected route/response; changing the controller route leaves that verification passing. Exercise MVC routing and assert head, retained events and excluded positions using the actual client. The controller is from the external commit and runtime edits are excluded by this approved slice.
