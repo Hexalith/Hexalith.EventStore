@@ -5477,3 +5477,27 @@ status: open
   summary: Move the publication-recovery DrainProofEvent test helper into its own C# file.
   evidence: BH-R11b: the nested helper exists in the earlier unchanged EventDrainRecoveryTests change. The shared baseline requires one C# type per file; the correction belongs to that publication-recovery work, which this replay intent excludes.
   status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Validate snapshot-aware direct hydration tail continuity and advertised head before domain callbacks.
+  evidence: Pre-existing rehydrator accepts sequences [1,3] and a single event with CurrentSequence=20; reviewer probe /tmp/p1r-blind-probe-n5ou1_06 reproduces both. Captured baseline has the same absent admission; production actors use EventStreamReader.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Bind direct command hydration envelope tenant/domain/aggregate identity to the command before domain callbacks.
+  evidence: Pre-existing ProcessAsync admits another tenant and aggregate; reviewer probe /tmp/p1r-blind-probe-n5ou1_06 reproduces this. Neither baseline processor passes command identity to the rehydrator; production actor reads by command identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Reject null entries consistently in enumerable command hydration.
+  evidence: Pre-existing enumerable rehydrator skips null and applies valid surrounding entries; reviewer probe /tmp/p1r-blind-probe-n5ou1_06 reproduces [valid,null,valid]. Baseline branch also skips null.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Reject negative direct replay targets with the existing typed scalar refusal.
+  evidence: LegacyReplayInput is unchanged from the captured baseline and UpToSequence=-1 produces Succeeded with initial state; reviewer probe /tmp/p1r-blind-probe-n5ou1_06 reproduces this.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Preserve cancellation when an aggregate termination getter cancels the request and throws.
+  evidence: EventStoreAggregate is unchanged from the pre-build inventory; /tmp/p1r-edge-probe-3zjmiual reproduces InvalidOperationException after token cancellation at IsTerminated.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
+  summary: Test the BoundedV1DomainResultProducer private-copy scratch admission boundary independently of encoded-size limits.
+  evidence: Verification-gap review read the producer suite and extension router/endpoint tests. Forty-two versus forty-three one-MiB serialized events isolates the 128-MiB scratch boundary; existing 100-event refusal already exceeds encoded size. Producer/test hashes match pre-build user work.

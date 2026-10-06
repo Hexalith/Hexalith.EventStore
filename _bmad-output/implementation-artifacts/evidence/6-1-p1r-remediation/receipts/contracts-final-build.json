@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:32:49.972974+00:00",
+  "finished_utc": "2026-10-06T09:32:55.856042+00:00",
+  "elapsed_seconds": 5.883,
+  "exit_code": 0,
+  "output_sha256": "18314f0d207e50725b4ef260588b5af162ec69bfc57a916bad50070c095d2d2b"
+}

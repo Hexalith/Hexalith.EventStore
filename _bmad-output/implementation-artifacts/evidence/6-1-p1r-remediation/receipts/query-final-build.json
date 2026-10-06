@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:34:55.272277+00:00",
+  "finished_utc": "2026-10-06T09:35:01.298707+00:00",
+  "elapsed_seconds": 6.026,
+  "exit_code": 0,
+  "output_sha256": "b7179b7428c9c1e473a3cbf85e8a8a3f5839b3bf093be96b4f0ca789ad0abe5e"
+}

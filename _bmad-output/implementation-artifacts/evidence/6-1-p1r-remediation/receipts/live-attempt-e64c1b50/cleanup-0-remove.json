@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "docker",
+    "rm",
+    "-f",
+    "ce0843a0917bc89ca001345bb507bedf759a5033cfdcf67c5da7c54d11af506c"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:18:29.353282+00:00",
+  "finished_utc": "2026-10-06T10:18:29.821997+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "output_sha256": "e2c7ad26370fa52e40edcf96058b214864341560aa7c2c6835c38a69ae4a184d"
+}

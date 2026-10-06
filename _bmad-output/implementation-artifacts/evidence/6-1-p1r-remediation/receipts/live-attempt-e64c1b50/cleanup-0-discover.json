@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "docker",
+    "ps",
+    "-aq",
+    "--no-trunc",
+    "--filter",
+    "name=^/p1r-remediation-e64c1b5084ca4de09c63a83874a5e4e3-scheduler$"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:18:29.285033+00:00",
+  "finished_utc": "2026-10-06T10:18:29.323362+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "output_sha256": "e2c7ad26370fa52e40edcf96058b214864341560aa7c2c6835c38a69ae4a184d"
+}

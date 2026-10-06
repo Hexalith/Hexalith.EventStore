@@ -134,6 +134,47 @@ public class EventPersisterTests {
             Arg.Any<string>(), Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(14)]
+    public async Task PersistEventsAsync_InvalidRetainedFloorRefusesBeforeEffects(long floor)
+    {
+        IActorStateManager state = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var allocator = new FakeGlobalPositionAllocator();
+        var metadata = new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", floor);
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+        var writer = new EventPersister(state, Substitute.For<ILogger<EventPersister>>(), protection, allocator);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => writer.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1"));
+
+        allocator.CallCount.ShouldBe(0);
+        protection.ReceivedCalls().ShouldBeEmpty();
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(13)]
+    public async Task PersistEventsAsync_PreservesValidRetainedFloorWhenAppendingThirteen(long floor)
+    {
+        (EventPersister writer, IActorStateManager state, _) = CreatePersisterWithAllocator();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", floor)));
+
+        EventPersistResult result = await writer.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1");
+
+        result.PersistedEnvelopes.ShouldHaveSingleItem().SequenceNumber.ShouldBe(13);
+        await state.Received(1).SetStateAsync(TestIdentity.MetadataKey,
+            Arg.Is<AggregateMetadata>(m => m.CurrentSequence == 13 && m.RetainedFloor == floor),
+            Arg.Any<CancellationToken>());
+    }
+
     // === 6.1: New aggregate -- first event gets sequence 1, metadata created with CurrentSequence=1 ===
 
     [Fact]

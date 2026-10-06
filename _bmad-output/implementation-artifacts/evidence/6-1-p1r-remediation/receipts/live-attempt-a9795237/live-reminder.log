@@ -1,0 +1,85 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:34343
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:06e4f240bc364782b30610f5b22e46d6. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:06e4f240bc364782b30610f5b22e46d6. New ETag prefix: d2FybXVw
+warn: Hexalith.EventStore.DomainService.ReminderCallbackTokenFilter[200209]
+      Reminder actor call denied at the app channel: ReasonCode=token-missing
+warn: Hexalith.EventStore.DomainService.ReminderCallbackTokenFilter[200209]
+      Reminder actor call denied at the app channel: ReasonCode=token-invalid
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, Stage=Processing, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, Domain=counter, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CommandType=IncrementCounter, DurationMs=14.5508
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: null for ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, EventCount=1, NewSequence=1, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, Stage=EventsStored, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, Domain=counter, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CommandType=IncrementCounter, DurationMs=65.4981
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, Stage=EventsPublished, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, Domain=counter, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CommandType=IncrementCounter, DurationMs=66.5727
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:reminder-3f17d6ed2f5f4c3194d051a7d30e360c, Stage=Completed, CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, Domain=counter, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CommandType=IncrementCounter, DurationMs=77.871
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, CausationId=wrk-V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TenantId=tenant-a, Domain=counter, AggregateId=reminder-3f17d6ed2f5f4c3194d051a7d30e360c, CommandType=IncrementCounter, Status=Completed, DurationMs=78.3037, Stage=CommandCompleted
+info: Hexalith.EventStore.DomainService.ReminderCoordinator[200202]
+      Reminder submitted: ActorId=wra-NVE3MN5PN9CBM9WRD2CC8C72PKWWWVXZNQM7EYB2A9XJTWJ5N7KG, ReminderName=date-wrs-516GH4A3A1WBEZK5A4DWRHPAP0JHRBRSMWKWDD8G35CY0BPZ0E80, EffectId=V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TargetDisposition=Success, Replayed=False
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:34343
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:90042dc710954c82a39b5c16425aa07e. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:90042dc710954c82a39b5c16425aa07e. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.DomainService.ReminderCoordinator[200202]
+      Reminder submitted: ActorId=wra-NVE3MN5PN9CBM9WRD2CC8C72PKWWWVXZNQM7EYB2A9XJTWJ5N7KG, ReminderName=date-wrs-516GH4A3A1WBEZK5A4DWRHPAP0JHRBRSMWKWDD8G35CY0BPZ0E80, EffectId=V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TargetDisposition=Success, Replayed=True
+info: Hexalith.EventStore.DomainService.ReminderCoordinator[200202]
+      Reminder submitted: ActorId=wra-NVE3MN5PN9CBM9WRD2CC8C72PKWWWVXZNQM7EYB2A9XJTWJ5N7KG, ReminderName=date-wrs-KWY6ZSZB8EHAARB2EZ8VBAHW47F9VRTNDC8JXSE1ZZD0R8R2FZJG, EffectId=V461XH983TGVGHG7FKN6TWRC744CZANB8WBVHE694GVZZ8SMAECG, TargetDisposition=Success, Replayed=True
+info: Hexalith.EventStore.DomainService.ReminderReconciler[200210]
+      Reminder reconciliation pass completed: Tenants=1, Candidates=1, Armed=1, Submitted=0, Cancelled=0, Unresolved=0, Quarantined=0, Incomplete=0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = 'c929bbbfdb9fb5c64afc6af44b98c3d339daa5307c96509b5cfdc4895a2fb300')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 7.339s

@@ -1,0 +1,11 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Actors.AggregateActorInfrastructureFailureTests.ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory(format: "protected+json", explicitMetadata: False) [OUTPUT] P1R domain entries=3; bookkeeping entries=1
+    Hexalith.EventStore.Server.Tests.Actors.AggregateActorInfrastructureFailureTests.ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory(format: "protected+json", explicitMetadata: True) [OUTPUT] P1R domain entries=3; bookkeeping entries=1
+    Hexalith.EventStore.Server.Tests.Actors.AggregateActorInfrastructureFailureTests.ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory(format: "json+pdenc-v2", explicitMetadata: False) [OUTPUT] P1R domain entries=3; bookkeeping entries=1
+    Hexalith.EventStore.Server.Tests.Actors.AggregateActorInfrastructureFailureTests.ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory(format: "json+pdenc-v2", explicitMetadata: True) [OUTPUT] P1R domain entries=3; bookkeeping entries=1
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 4, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.255s

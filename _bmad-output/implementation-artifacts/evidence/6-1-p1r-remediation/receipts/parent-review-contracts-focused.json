@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "-parallelMode",
+    "none",
+    "-class",
+    "*ProjectionAdapterContractTests",
+    "-class",
+    "*P1RWireRegressionTests",
+    "-class",
+    "*CommandStatusRecordTests",
+    "-class",
+    "*ProjectionContractTests"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:17:49.575720+00:00",
+  "finished_utc": "2026-10-06T10:17:50.053613+00:00",
+  "elapsed_seconds": 0.478,
+  "exit_code": 0,
+  "output_sha256": "3899508a7beacedd458957336f4699401bb66c75a70de6dbd8be75f9e6eccb51"
+}

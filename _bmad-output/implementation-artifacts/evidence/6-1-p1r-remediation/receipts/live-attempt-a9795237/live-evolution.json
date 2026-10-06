@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-parallelMode",
+    "none",
+    "-showLiveOutput",
+    "-class",
+    "*DaprEventEvolutionLogicalReadbackLiveSidecarTests"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:35:26.081591+00:00",
+  "finished_utc": "2026-10-06T09:35:36.435688+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "output_sha256": "2b630c53cc72122e339d912f19a31be9bb6b4d964f7ede6c20c7e4d04c2cd1c3"
+}

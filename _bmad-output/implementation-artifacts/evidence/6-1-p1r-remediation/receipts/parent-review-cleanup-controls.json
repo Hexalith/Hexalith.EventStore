@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/test_run_source_live_lanes.py",
+    "-v"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:17:00.161515+00:00",
+  "finished_utc": "2026-10-06T10:17:00.238643+00:00",
+  "elapsed_seconds": 0.077,
+  "exit_code": 0,
+  "output_sha256": "5d2945b4d2773c1b78bd3f0a641d72a133c377f6fb38a5b9e2cb65012e7a5880"
+}

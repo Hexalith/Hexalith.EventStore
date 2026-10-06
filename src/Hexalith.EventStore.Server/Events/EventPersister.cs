@@ -92,6 +92,12 @@ public partial class EventPersister(
             throw new InvalidOperationException("Invalid aggregate metadata: CurrentSequence cannot be negative.");
         }
 
+        long retainedFloor = metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1;
+        if (retainedFloor < 1 || (retainedFloor > currentSequence && retainedFloor - currentSequence > 1))
+        {
+            throw new InvalidOperationException("SourceHeadChanged: actor metadata has an invalid retained floor.");
+        }
+
         long newSequence = checked(currentSequence + domainResult.Events.Count);
 
         string causationId = command.CausationId ?? command.CorrelationId;
@@ -202,7 +208,7 @@ public partial class EventPersister(
             cancellationToken.ThrowIfCancellationRequested();
             await stateManager
                 .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
-                    newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1), cancellationToken)
+                    newSequence, timestamp, null, retainedFloor), cancellationToken)
                 .ConfigureAwait(false);
 
             Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);

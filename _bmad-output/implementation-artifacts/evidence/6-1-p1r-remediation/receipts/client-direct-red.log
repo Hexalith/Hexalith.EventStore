@@ -1,0 +1,37 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(invalid: "type", category: UnknownEventType) [FAIL]
+      Shouldly.ShouldAssertException : result.LastAppliedSequenceNumber
+          should be
+      0L
+          but was
+      1L
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs(105,0): at Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(String invalid, AggregateReconstructionErrorCategory category)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(invalid: "payload", category: DeserializationFailed) [FAIL]
+      Shouldly.ShouldAssertException : result.LastAppliedSequenceNumber
+          should be
+      0L
+          but was
+      1L
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs(105,0): at Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(String invalid, AggregateReconstructionErrorCategory category)
+           at InvokeStub_EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(invalid: "format", category: UnsupportedVersion) [FAIL]
+      Shouldly.ShouldAssertException : result.LastAppliedSequenceNumber
+          should be
+      0L
+          but was
+      1L
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs(105,0): at Hexalith.EventStore.Client.Tests.Aggregates.EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(String invalid, AggregateReconstructionErrorCategory category)
+           at InvokeStub_EventStoreAggregateTests.Replay_LateInvalidEvidenceRefusesWholeBatch(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'c2d1978986f2db4f732725dfeabdc21d7b30f8896fecf92cb7bcdcf9b2d4cbd9')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 4, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 0.166s

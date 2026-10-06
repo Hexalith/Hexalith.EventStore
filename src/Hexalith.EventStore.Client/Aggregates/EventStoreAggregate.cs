@@ -1,6 +1,7 @@
 
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Configuration;
@@ -19,9 +20,9 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
-public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay
+public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay
     where TState : class, new() {
-    private static readonly ConcurrentDictionary<Type, AggregateMetadata> _metadataCache = new();
+    private static readonly ConcurrentDictionary<Type, AggregateCommandDispatchMetadata> _metadataCache = new();
 
     /// <summary>
     /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
@@ -61,30 +62,46 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         => AggregateReplayer.Replay<TState>(request);
 
     /// <inheritdoc/>
-    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
+    /// <remarks>Synchronous Apply observes cancellation before and after each call.</remarks>
+    public Task<AggregateReconstructionResult> ReplayAsync(AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(AggregateReplayer.Replay<TState>(request, cancellationToken));
+
+    /// <inheritdoc/>
+    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
+        => ProcessAsync(command, currentState, CancellationToken.None);
+
+    /// <inheritdoc/>
+    /// <remarks>Legacy Handle calls observe cancellation at their boundaries; an already-running Handle cannot be interrupted.</remarks>
+    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        AggregateMetadata metadata = GetOrBuildMetadata();
-        TState? state = RehydrateState(currentState, metadata);
+        AggregateCommandDispatchMetadata metadata = GetOrBuildMetadata();
+        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken);
 
-        if (state is ITerminatable { IsTerminated: true }) {
+        bool terminated = state is ITerminatable { IsTerminated: true };
+        cancellationToken.ThrowIfCancellationRequested();
+        if (terminated) {
             return DomainResult.Rejection(new IRejectionEvent[] {
                 new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId),
             });
         }
 
-        return await DispatchCommandAsync(command, state, metadata).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        DomainResult result = await DispatchCommandAsync(command, state, metadata, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 
-    private AggregateMetadata GetOrBuildMetadata() =>
+    private AggregateCommandDispatchMetadata GetOrBuildMetadata() =>
         _metadataCache.GetOrAdd(GetType(), static aggregateType => {
-            Dictionary<string, HandleMethodInfo> handleMethods = DiscoverHandleMethods(aggregateType);
+            Dictionary<string, AggregateCommandHandleMethod> handleMethods = DiscoverHandleMethods(aggregateType);
             ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
-            return new AggregateMetadata(handleMethods, applyMethods);
+            return new AggregateCommandDispatchMetadata(handleMethods, applyMethods);
         });
 
-    private static Dictionary<string, HandleMethodInfo> DiscoverHandleMethods(Type aggregateType) {
-        var methods = new Dictionary<string, HandleMethodInfo>(StringComparer.Ordinal);
+    private static Dictionary<string, AggregateCommandHandleMethod> DiscoverHandleMethods(Type aggregateType) {
+        var methods = new Dictionary<string, AggregateCommandHandleMethod>(StringComparer.Ordinal);
 
         foreach (MethodInfo method in aggregateType.GetMethods(
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
@@ -128,7 +145,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
                     + "Declare exactly one Handle overload per command type.");
             }
 
-            var handleInfo = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic, hasEnvelope);
+            var handleInfo = new AggregateCommandHandleMethod(method, commandType, isAsync, method.IsStatic, hasEnvelope);
             methods[commandTypeName] = handleInfo;
 
             // Also register the kebab-case ICommandContract.CommandType discriminator (e.g. "increment-counter")
@@ -137,7 +154,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             // (e.g. "IncrementCounter"). Both must dispatch to the same Handle overload; legacy lookup is unchanged.
             if (TryGetContractCommandType(commandType, out string? contractCommandType)
                 && !string.Equals(contractCommandType, commandTypeName, StringComparison.Ordinal)) {
-                if (methods.TryGetValue(contractCommandType!, out HandleMethodInfo? existing)
+                if (methods.TryGetValue(contractCommandType!, out AggregateCommandHandleMethod? existing)
                     && !ReferenceEquals(existing, handleInfo)) {
                     throw new InvalidOperationException(
                         $"Command contract type '{contractCommandType}' declared by '{commandTypeName}' collides with another "
@@ -177,37 +194,54 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         return true;
     }
 
-    private static TState? RehydrateState(object? currentState, AggregateMetadata metadata) =>
-        DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods);
-
-    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
+    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateCommandDispatchMetadata metadata,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
         // The HandleMethods dictionary is keyed by short type name (e.g., "IncrementCounter"),
         // but command.CommandType may be assembly-qualified (e.g., "Namespace.IncrementCounter, Assembly").
         // Extract the short name for lookup.
         string lookupKey = ExtractShortTypeName(command.CommandType);
-        if (!metadata.HandleMethods.TryGetValue(lookupKey, out HandleMethodInfo? handleInfo)) {
+        if (!metadata.HandleMethods.TryGetValue(lookupKey, out AggregateCommandHandleMethod? handleInfo)) {
             throw new InvalidOperationException(
                 $"No Handle method found for command type '{command.CommandType}' on aggregate '{GetType().Name}'.");
         }
 
-        object commandPayload = command.Payload.Length == 0
-            ? throw new InvalidOperationException(
-                $"Command '{command.CommandType}' has an empty payload. Expected valid JSON for {handleInfo.CommandType.Name}.")
-            : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType, EventStorePayloadSerialization.Options)
-              ?? throw new InvalidOperationException(
-                  $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
+        object commandPayload;
+        try {
+            commandPayload = command.Payload.Length == 0
+                ? throw new InvalidOperationException(
+                    $"Command '{command.CommandType}' has an empty payload. Expected valid JSON for {handleInfo.CommandType.Name}.")
+                : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType, EventStorePayloadSerialization.Options)
+                  ?? throw new InvalidOperationException(
+                      $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
+        }
+        catch (Exception) when (cancellationToken.IsCancellationRequested) {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
 
         object?[] args = handleInfo.HasEnvelope
             ? [commandPayload, state, command]
             : [commandPayload, state];
-        object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
-        return result switch {
+        cancellationToken.ThrowIfCancellationRequested();
+        object? result;
+        try {
+            result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
+        }
+        catch (TargetInvocationException error) when (error.InnerException is OperationCanceledException) {
+            ExceptionDispatchInfo.Capture(error.InnerException).Throw();
+            throw;
+        }
+
+        DomainResult completedResult = result switch {
             Task<DomainResult> asyncResult => await asyncResult.ConfigureAwait(false),
             Task asyncResult when handleInfo.IsAsync => await GetAsyncDomainResultAsync(asyncResult).ConfigureAwait(false),
             DomainResult syncResult => syncResult,
             _ => throw new InvalidOperationException(
                 $"Handle method for '{command.CommandType}' returned unexpected type '{result?.GetType().Name ?? "null"}'."),
         };
+        cancellationToken.ThrowIfCancellationRequested();
+        return completedResult;
     }
 
     private static async Task<DomainResult> GetAsyncDomainResultAsync(Task asyncResult) {
@@ -231,14 +265,4 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         return dotIndex >= 0 ? fullName[(dotIndex + 1)..] : fullName;
     }
 
-    private sealed record AggregateMetadata(
-        Dictionary<string, HandleMethodInfo> HandleMethods,
-        ApplyMethodTable ApplyMethods);
-
-    private sealed record HandleMethodInfo(
-        MethodInfo Method,
-        Type CommandType,
-        bool IsAsync,
-        bool IsStatic,
-        bool HasEnvelope);
 }

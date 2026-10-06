@@ -1,0 +1,242 @@
+{
+  "resources": [
+    {
+      "name": "eventstore-admin-chjpugsw",
+      "displayName": "eventstore-admin",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.Admin.Server.Host.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "eventstore-admin-dapr-cli-bxvtekaa",
+      "displayName": "eventstore-admin-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-mysbngah",
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "eventstore-admin-ui-wycwuyqy",
+      "displayName": "eventstore-admin-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.Admin.UI.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "eventstore-dapr-cli-axzzfuyf",
+      "displayName": "eventstore-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "eventstore-jhjsfpck",
+      "displayName": "eventstore",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-admin-password",
+      "displayName": "local-auth-admin-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-admin-password",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "displayName": "local-auth-admin-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-admin-user-id",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-admin-username",
+      "displayName": "local-auth-admin-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-admin-username",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-sample-password",
+      "displayName": "local-auth-sample-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-sample-password",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "displayName": "local-auth-sample-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-sample-user-id",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-sample-username",
+      "displayName": "local-auth-sample-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-sample-username",
+      "healthReports": {}
+    },
+    {
+      "name": "local-auth-signing-key",
+      "displayName": "local-auth-signing-key",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:local-auth-signing-key",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-api-dapr-cli-rahbfudh",
+      "displayName": "sample-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-api-jtasqucc",
+      "displayName": "sample-api",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.Sample.Api.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-ckgygcnp",
+      "displayName": "sample-blazor-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-blazor-ui-pxjgegsn",
+      "displayName": "sample-blazor-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.Sample.BlazorUI.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-dapr-cli-vahpvnsm",
+      "displayName": "sample-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "sample-mcwktpgt",
+      "displayName": "sample",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.EventStore.Sample.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "security-eventstore-client-password",
+      "displayName": "security-eventstore-client-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:security-eventstore-client-password",
+      "healthReports": {}
+    },
+    {
+      "name": "security-eventstore-client-username",
+      "displayName": "security-eventstore-client-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Parameters:security-eventstore-client-username",
+      "healthReports": {}
+    },
+    {
+      "name": "security-mhewrath",
+      "displayName": "security",
+      "resourceType": "Container",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "quay.io/keycloak/keycloak:26.6",
+      "healthReports": {
+        "security_management_/health/ready_200_check": {
+          "status": "Healthy"
+        }
+      }
+    },
+    {
+      "name": "tenants-api-dapr-cli-tambuwcz",
+      "displayName": "tenants-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "tenants-api-pzffange",
+      "displayName": "tenants-api",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.Tenants.Api.csproj",
+      "healthReports": {}
+    },
+    {
+      "name": "tenants-dapr-cli-aeksazrn",
+      "displayName": "tenants-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "dapr",
+      "healthReports": {}
+    },
+    {
+      "name": "tenants-gmveeejd",
+      "displayName": "tenants",
+      "resourceType": "Project",
+      "state": "Running",
+      "waitingFor": null,
+      "source": "Hexalith.Tenants.csproj",
+      "healthReports": {}
+    }
+  ]
+}

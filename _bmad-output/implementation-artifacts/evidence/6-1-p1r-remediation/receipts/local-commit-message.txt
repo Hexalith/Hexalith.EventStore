@@ -1,0 +1,5 @@
+fix: remediate P1R runtime compatibility
+
+Validate retained floors and complete replay inputs before domain effects.
+Preserve query authority and projection wire fields, with persisted source evidence.
+Include required replay and cancellation prerequisites; package qualification remains pending.

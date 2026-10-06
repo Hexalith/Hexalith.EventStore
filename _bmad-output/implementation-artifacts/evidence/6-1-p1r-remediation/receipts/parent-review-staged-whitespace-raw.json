@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--cached",
+    "--check"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:32:52.227439+00:00",
+  "finished_utc": "2026-10-06T10:32:52.248252+00:00",
+  "elapsed_seconds": 0.021,
+  "exit_code": 2,
+  "output_sha256": "dc3a86ebd5a5ed8f818ca488ca85384aa95fee3821ae67642cbd197b1ce4a90c"
+}

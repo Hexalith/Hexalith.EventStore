@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-parallelMode",
+    "none",
+    "-showLiveOutput",
+    "-method",
+    "*ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:38:20.565374+00:00",
+  "finished_utc": "2026-10-06T09:38:21.155231+00:00",
+  "elapsed_seconds": 0.59,
+  "exit_code": 0,
+  "output_sha256": "c4c79f07ac71cfdc85b9ef5531e69b3681421d6d126f31c1794b88fe779ec904"
+}

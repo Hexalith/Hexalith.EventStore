@@ -28,4 +28,13 @@ public enum AggregateReconstructionErrorCategory {
 
     /// <summary>Any failure that does not match a more specific category.</summary>
     Unexpected = 7,
+
+    /// <summary>A required capability, evidence or protection prerequisite is unavailable.</summary>
+    Hold = 8,
+
+    /// <summary>An admitted count, payload or allocation limit was exceeded.</summary>
+    Limit = 9,
+
+    /// <summary>Immutable evidence or an admitted replay scalar disagrees.</summary>
+    Conflict = 10,
 }

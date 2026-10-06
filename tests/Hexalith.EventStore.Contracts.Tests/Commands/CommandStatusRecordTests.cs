@@ -152,8 +152,11 @@ public class CommandStatusRecordTests {
         record.DrainAttemptCount.ShouldBeNull();
     }
 
-    [Fact]
-    public void RoundTrip_WithRecoveryFields_PreservesTheTriStateAndReasonCode() {
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RoundTrip_WithRecoveryFields_PreservesTheTriStateAndReasonCode(bool? retryable) {
         var original = new CommandStatusRecord(
             CommandStatus.PublishFailed,
             DateTimeOffset.UtcNow,
@@ -164,7 +167,7 @@ public class CommandStatusRecordTests {
             null,
             "01MESSAGE00000000000000000001",
             "01CORRELATION0000000000000001",
-            Retryable: false,
+            Retryable: retryable,
             RecoveryReasonCode: "drain_attempts_exhausted",
             DrainAttemptCount: 8);
 
@@ -172,7 +175,7 @@ public class CommandStatusRecordTests {
             JsonSerializer.Serialize(original));
 
         _ = roundTripped.ShouldNotBeNull();
-        roundTripped.Retryable.ShouldBe(false);
+        roundTripped.Retryable.ShouldBe(retryable);
         roundTripped.RecoveryReasonCode.ShouldBe("drain_attempts_exhausted");
         roundTripped.DrainAttemptCount.ShouldBe(8);
     }

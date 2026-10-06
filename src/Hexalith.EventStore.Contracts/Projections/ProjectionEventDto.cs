@@ -1,5 +1,6 @@
 
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Projections;
@@ -10,6 +11,7 @@ namespace Hexalith.EventStore.Contracts.Projections;
 /// Extensions, AggregateId/Type/TenantId/Domain)
 /// to maintain the security boundary.
 /// </summary>
+[DataContract]
 public record ProjectionEventDto {
     private long _globalPosition;
 
@@ -60,75 +62,95 @@ public record ProjectionEventDto {
     }
 
     /// <summary>Gets the fully qualified event type name for deserialization.</summary>
+    [DataMember]
     public string EventTypeName { get; init; }
 
     /// <summary>Gets the serialized event data.</summary>
+    [DataMember]
     public byte[] Payload { get; init; }
 
     /// <summary>Gets the serialization format, such as <c>json</c>.</summary>
+    [DataMember]
     public string SerializationFormat { get; init; }
 
     /// <summary>Gets the one-based aggregate event sequence number.</summary>
+    [DataMember]
     public long SequenceNumber { get; init; }
 
     /// <summary>Gets when the event was persisted.</summary>
+    [DataMember]
     public DateTimeOffset Timestamp { get; init; }
 
     /// <summary>Gets the correlation identifier used for tracing.</summary>
+    [DataMember]
     public string CorrelationId { get; init; }
 
     /// <summary>Gets the unique persisted event message identifier, when available.</summary>
+    [DataMember]
     public string? MessageId { get; init; }
 
     /// <summary>Gets the actor user identifier that produced the event, when available.</summary>
+    [DataMember]
     public string? UserId { get; init; }
 
     /// <summary>Gets the stored metadata version when explicitly carried by the sender.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public int? MetadataVersion { get; init; }
 
     /// <summary>Gets the canonical event contract identity when carried by a versioned source.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? StoredEventContractType { get; init; }
 
     /// <summary>Gets the payload schema version when carried by a versioned source.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public int? StoredPayloadVersion { get; init; }
 
     /// <summary>Gets the stored payload format provenance; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? StoredSerializationFormat { get; init; }
 
     /// <summary>Gets the untrusted effective event identity hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? EffectiveEventContractType { get; init; }
 
     /// <summary>Gets the untrusted effective payload version hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public int? EffectivePayloadVersion { get; init; }
 
     /// <summary>Gets the untrusted effective payload format hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? EffectiveSerializationFormat { get; init; }
 
     /// <summary>Gets a transport copy of the untrusted effective payload hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public byte[]? EffectivePayload { get; init; }
 
     /// <summary>Gets the original stored discriminator provenance; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? StoredEventTypeName { get; init; }
 
     /// <summary>Gets a transport copy of the stored digest hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public byte[]? StoredDigest { get; init; }
 
     /// <summary>Gets the untrusted registry fingerprint hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public string? RegistryFingerprint { get; init; }
 
     /// <summary>Gets the untrusted adaptation hint; transport binding conveys no verification authority.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember]
     public bool? IsAdapted { get; init; }
 
     /// <summary>
@@ -140,6 +162,7 @@ public record ProjectionEventDto {
     /// watermark only as part of the same successful durable read-model write. The value does not
     /// assert contiguous consumption of every global position.
     /// </remarks>
+    [DataMember]
     public long GlobalPosition {
         get => _globalPosition;
         init => _globalPosition = value >= 0

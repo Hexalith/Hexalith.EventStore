@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -28,6 +29,61 @@ public class AggregateActorInfrastructureFailureTests
 {
     private const string AttemptTriggerKey = "projection-trigger:failed-attempt";
     private const string PendingCountKey = "pending_command_count";
+
+    /// <summary>Protection refusal preserves all committed domain evidence while allowing status bookkeeping.</summary>
+    [Theory]
+    [InlineData("protected+json", false)]
+    [InlineData("protected+json", true)]
+    [InlineData("json+pdenc-v2", false)]
+    [InlineData("json+pdenc-v2", true)]
+    public async Task ProtectedMarkerMismatchNeverInvokesDomainAndPreservesCommittedInventory(string format, bool explicitMetadata)
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "p1r-marker-refusal");
+        AggregateIdentity identity = command.AggregateIdentity;
+        EventEnvelope stored = CreateEvent(identity, 1, "p1r-stored") with
+        {
+            SerializationFormat = format,
+            Payload = "{}"u8.ToArray(),
+            Extensions = explicitMetadata ? EventStorePayloadProtectionMetadataCarrier.Write(
+                (IDictionary<string, string>?)null, EventStorePayloadProtectionMetadata.Unprotected()) : null,
+        };
+        var metadata = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "original");
+        var snapshot = new SnapshotRecord(0, new { count = 0 }, DateTimeOffset.UnixEpoch,
+            identity.Domain, identity.AggregateId, identity.TenantId);
+        var inventory = new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = metadata,
+            [$"{identity.EventStreamKeyPrefix}1"] = stored,
+            [identity.SnapshotKey] = snapshot,
+        };
+        await stateManager.SeedCommittedStateAsync(inventory);
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        context.Invoker.ReceivedCalls().ShouldBeEmpty();
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        foreach ((string key, object expected) in inventory)
+        {
+            durable[key].ShouldBeSameAs(expected);
+        }
+        durable.Keys.Where(key => key.StartsWith(identity.EventStreamKeyPrefix, StringComparison.Ordinal))
+            .ShouldBe([$"{identity.EventStreamKeyPrefix}1"]);
+        foreach (IReadOnlyDictionary<string, object> view in stateManager.CommittedSnapshots)
+        {
+            foreach ((string key, object expected) in inventory)
+            {
+                view[key].ShouldBeSameAs(expected);
+            }
+        }
+        // Infrastructure status/pending/dead-letter bookkeeping is counted separately from the domain inventory.
+        stateManager.Trace.Count(operation => inventory.Keys.Any(key => operation == $"SetState:{key}"))
+            .ShouldBe(0);
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"P1R domain entries={inventory.Count}; bookkeeping entries={durable.Keys.Count(key => !inventory.ContainsKey(key))}");
+    }
 
     [Fact]
     public async Task DomainFailureClearsConcreteAttemptStateBeforeRejectionCleanupAndSavesOnlyPermittedState()

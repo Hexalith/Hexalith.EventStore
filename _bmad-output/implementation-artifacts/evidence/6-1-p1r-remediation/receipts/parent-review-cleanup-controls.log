@@ -1,0 +1,13 @@
+test_changed_ownership_label_is_preserved_and_never_removed (__main__.OwnedCleanupTests.test_changed_ownership_label_is_preserved_and_never_removed) ... ok
+test_each_final_inventory_error_preserves_a_nonpassing_summary (__main__.OwnedCleanupTests.test_each_final_inventory_error_preserves_a_nonpassing_summary) ... ok
+test_exact_name_discovery_failure_does_not_abort_later_owned_resources (__main__.OwnedCleanupTests.test_exact_name_discovery_failure_does_not_abort_later_owned_resources) ... ok
+test_inspect_and_remove_failures_keep_attempting_and_retain_raw_receipts (__main__.OwnedCleanupTests.test_inspect_and_remove_failures_keep_attempting_and_retain_raw_receipts) ... ok
+test_inspect_launch_failure_keeps_its_receipt_and_continues_cleanup (__main__.OwnedCleanupTests.test_inspect_launch_failure_keeps_its_receipt_and_continues_cleanup) ... ok
+test_process_discovery_error_still_attempts_every_owned_container (__main__.OwnedCleanupTests.test_process_discovery_error_still_attempts_every_owned_container) ... ok
+test_process_stop_failure_does_not_abort_other_groups_or_containers (__main__.OwnedCleanupTests.test_process_stop_failure_does_not_abort_other_groups_or_containers) ... ok
+test_success_requires_complete_inventory_and_preserves_exact_labels (__main__.OwnedCleanupTests.test_success_requires_complete_inventory_and_preserves_exact_labels) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.018s
+
+OK

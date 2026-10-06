@@ -1,0 +1,95 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:36765
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:75da760a3b7c4082a365f8812790beb4. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:75da760a3b7c4082a365f8812790beb4. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, Stage=Processing, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, Domain=counter, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, CommandType=IncrementCounter, DurationMs=18.7175
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: null for ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, EventCount=1, NewSequence=1, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, Stage=EventsStored, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, Domain=counter, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, CommandType=IncrementCounter, DurationMs=62.7087
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, Stage=EventsPublished, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, Domain=counter, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, CommandType=IncrementCounter, DurationMs=63.7658
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae, Stage=Completed, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, Domain=counter, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, CommandType=IncrementCounter, DurationMs=75.5459
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, CausationId=01M4892WHNKD9A25EDTFAAGKV0, TenantId=tenant-a, Domain=counter, AggregateId=evolution-23bee05a890c4c2296eec478d6001bae, CommandType=IncrementCounter, Status=Completed, DurationMs=75.9688, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:40751
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Duplicate command detected: MessageId=01M4892WHNKD9A25EDTFAAGKV0, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae. Returning cached result.
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:36765
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:18e50709faaa4dc0a51d241b5b5977ff. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:18e50709faaa4dc0a51d241b5b5977ff. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Duplicate command detected: MessageId=01M4892WHNKD9A25EDTFAAGKV0, CorrelationId=01M4892WHNKD9A25EDTFAAGKV0, ActorId=tenant-a:counter:evolution-23bee05a890c4c2296eec478d6001bae. Returning cached result.
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = 'c929bbbfdb9fb5c64afc6af44b98c3d339daa5307c96509b5cfdc4895a2fb300')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 10.153s

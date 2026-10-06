@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -49,6 +51,119 @@ public class PayloadProtectionHookTests {
         CausationId: null,
         UserId: "user-1",
         Extensions: null);
+
+    /// <summary>Compatibility entry points must use the same fail-closed unprotection decision.</summary>
+    [Fact]
+    public async Task NoOpProvider_LegacyUnprotectCannotBypassProtectedMarkerRefusal()
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        ProtectedDataUnreadableException error = await Should.ThrowAsync<ProtectedDataUnreadableException>(() =>
+            provider.UnprotectEventPayloadAsync(TestIdentity, "event", "{}"u8.ToArray(), "protected+json"));
+        error.Reason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+    }
+
+    /// <summary>Both in-memory and transported protected snapshots require a capable unprotection service.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NoOpProvider_ProtectedSnapshotMarkerWithoutMetadataIsUnreadable(bool serialized)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        var snapshot = new ProtectedSnapshotPayloadV2("json+pdenc-v2", "counter", "fixture-envelope");
+        object state = serialized ? System.Text.Json.JsonSerializer.SerializeToElement(snapshot) : snapshot;
+        SnapshotUnprotectionOutcome outcome = await provider.TryUnprotectSnapshotAsync(TestIdentity, state, null);
+        outcome.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        outcome.State.ShouldBeNull();
+        _ = await Should.ThrowAsync<ProtectedDataUnreadableException>(() =>
+            provider.UnprotectSnapshotStateAsync(TestIdentity, state));
+    }
+
+    /// <summary>Every case-insensitive marker entry is examined in JSON and dictionary snapshots.</summary>
+    [Theory]
+    [InlineData("json-aliases")]
+    [InlineData("json-duplicates")]
+    [InlineData("dictionary-object")]
+    [InlineData("dictionary-string")]
+    [InlineData("readonly-json")]
+    public async Task NoOpProvider_SnapshotCarrierProtectedMarkerIsUnreadable(string carrier)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        object state = SnapshotCarrier(carrier, protectedFormat: true);
+
+        SnapshotUnprotectionOutcome outcome = await provider.TryUnprotectSnapshotAsync(TestIdentity, state, null);
+
+        outcome.IsReadable.ShouldBeFalse();
+        outcome.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        outcome.State.ShouldBeNull();
+        _ = await Should.ThrowAsync<ProtectedDataUnreadableException>(() => provider.UnprotectSnapshotStateAsync(TestIdentity, state));
+    }
+
+    /// <summary>Unprotected carriers retain their original state without serializing arbitrary objects.</summary>
+    [Theory]
+    [InlineData("json-aliases")]
+    [InlineData("json-duplicates")]
+    [InlineData("dictionary-object")]
+    [InlineData("dictionary-string")]
+    [InlineData("readonly-json")]
+    [InlineData("unserializable")]
+    public async Task NoOpProvider_UnprotectedSnapshotCarrierRemainsCompatible(string carrier)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        object state = SnapshotCarrier(carrier, protectedFormat: false);
+
+        SnapshotUnprotectionOutcome outcome = await provider.TryUnprotectSnapshotAsync(
+            TestIdentity, state, EventStorePayloadProtectionMetadata.Unprotected());
+
+        outcome.IsReadable.ShouldBeTrue();
+        outcome.State.ShouldBeSameAs(state);
+        (await provider.UnprotectSnapshotStateAsync(TestIdentity, state)).ShouldBeSameAs(state);
+    }
+
+    private static object SnapshotCarrier(string carrier, bool protectedFormat) {
+        string format = protectedFormat ? "json+pdenc-v2" : "json";
+        return carrier switch {
+            "json-aliases" => JsonSerializer.Deserialize<JsonElement>("{\"format\":\"json\",\"FoRmAt\":\"" + format + "\"}"),
+            "json-duplicates" => JsonSerializer.Deserialize<JsonElement>("{\"format\":\"json\",\"format\":\"" + format + "\"}"),
+            "dictionary-object" => new Dictionary<string, object> { ["format"] = "json", ["Format"] = format },
+            "dictionary-string" => new Dictionary<string, string> { ["format"] = "json", ["FORMAT"] = format },
+            "readonly-json" => new ReadOnlyDictionary<string, JsonElement>(new Dictionary<string, JsonElement> {
+                ["format"] = JsonSerializer.SerializeToElement("json"), ["Format"] = JsonSerializer.SerializeToElement(format),
+            }),
+            _ => (Action)(() => throw new InvalidOperationException("Arbitrary state must not be serialized or invoked.")),
+        };
+    }
+
+    [Theory]
+    [InlineData("protected+json", false)]
+    [InlineData("protected+json", true)]
+    [InlineData("json+pdenc-v2", false)]
+    [InlineData("json+pdenc-v2", true)]
+    public async Task NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(string format, bool explicitMetadata)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        PayloadUnprotectionOutcome result = await provider.TryUnprotectEventPayloadAsync(
+            TestIdentity, "event", "{}"u8.ToArray(), format,
+            explicitMetadata ? EventStorePayloadProtectionMetadata.Unprotected() : null);
+
+        result.IsReadable.ShouldBeFalse();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        result.PayloadBytes.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(PayloadProtectionState.ProviderOpaque, 1, UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation)]
+    [InlineData(PayloadProtectionState.Unprotected, 987, UnreadableProtectedDataReason.UnknownMetadataVersion)]
+    public async Task NoOpProvider_UnsupportedMetadataIsUnreadable(
+        PayloadProtectionState state, int version, UnreadableProtectedDataReason reason)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+        PayloadUnprotectionOutcome result = await provider.TryUnprotectEventPayloadAsync(
+            TestIdentity, "event", "{}"u8.ToArray(), "json",
+            new EventStorePayloadProtectionMetadata(state, version, null, null, null, null));
+
+        result.IsReadable.ShouldBeFalse();
+        result.UnreadableReason.ShouldBe(reason);
+    }
 
     [Fact]
     public async Task EventPersister_NoOpProvider_StampsUnprotectedMetadataIntoExtensions() {

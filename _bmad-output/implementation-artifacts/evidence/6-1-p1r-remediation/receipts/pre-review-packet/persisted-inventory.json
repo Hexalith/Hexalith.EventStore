@@ -1,0 +1,31 @@
+{
+  "AggregateActorTypeName": "AggregateActorTestsc7741f75bb8f4a08a3105581200596a2",
+  "AppId": "eventstore-live-1495532ba0124ad4af1cfd2ce094283f",
+  "fixtureId": "p1r-fabbc82010e14435a0b534d003a8a3e9",
+  "floor": 5,
+  "head": 13,
+  "latestHash": "2063f26d1048cf9d3c5aaee0ed57467ce699dfaa39d5079b920a3d249f72139f",
+  "packageQualification": "unverified",
+  "priorHashes": {
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:10": "828539f5530878b363df050ba09391defddbaaf40621750ab4660c3ace01592e",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:11": "3a416c633e5b5043a24514e24b14739223dd0f0660ca9b3ed52506c4da2e57b3",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:12": "55582163fe6fb3af74907e099afcc832ea601f62250c3ef86df68cfab1a44c83",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:5": "1429ae5e18c60a0e7b80d4c9a7ead7d887b500e6b4784e793d3522a521712f84",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:6": "cd99aa970075bede0e01539dfbe0885534b3e0657a68e999f4c05f94f3f44c94",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:7": "755753eb896b7d49ed3736d2c69c9f971de3bd1e08011ccadf440d2a0b308875",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:8": "a5d2bda78e7dfe7520dc5b4e795a3a242f389bd659c33a58ac3c8aab53619a58",
+    "tenant-a:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:9": "7d4e48b3bf4f35e7a8bc43012ad2ba6df25cffbb64daa7cf6ff8879a6c3c7d64"
+  },
+  "reconstructedAfterRestart": 13,
+  "reconstructedBeforeAppend": 12,
+  "restoreKind": "logical-disposable-actor-inventory",
+  "secondTenantHashes": {
+    "tenant-b:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:1": "4bfc09958f188f5ff4506fa3b3e2582589b38e15dda615ee002fc5afe140d0da",
+    "tenant-b:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:2": "4b8a4f71120a1e71235d05d24761d75dd320ecfdc52c31c654467e2872ccb308",
+    "tenant-b:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:events:3": "47eb370d128e9eb66a79a8dc4d3ea53f49036c681f9c025488c6ab1798c7308b",
+    "tenant-b:counter:p1r-fabbc82010e14435a0b534d003a8a3e9:metadata": "d7fde66a041c7b7d0b693f9bec47eb399f74105e649425a9ccfbe1b6802e4334"
+  },
+  "snapshot": 9,
+  "snapshotHash": "cd5fb4193b9a65d0919a1ca2b3fc802832acf67520b8dfcd45e61fc6100821c9",
+  "source_receipt": "receipts/live-attempt-b00046d8/live-persistence.json"
+}

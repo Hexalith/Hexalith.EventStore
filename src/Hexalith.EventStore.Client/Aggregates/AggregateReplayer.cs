@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Handlers;
@@ -23,10 +24,26 @@ public static class AggregateReplayer {
     /// <param name="request">The reconstruction request.</param>
     /// <returns>The reconstruction result.</returns>
     public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request)
+        where TState : class, new()
+        => Replay<TState>(request, CancellationToken.None);
+
+    /// <summary>Replays legacy events with cancellation checks around each synchronous domain call.</summary>
+    /// <typeparam name="TState">The aggregate state type owning the Apply convention.</typeparam>
+    /// <param name="request">The reconstruction request.</param>
+    /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <returns>The complete reconstruction result, or a typed non-cancellation failure.</returns>
+    /// <remarks>Synchronous Apply and serialization cannot be interrupted; cancellation is observed at their boundaries.</remarks>
+    public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request, CancellationToken cancellationToken)
         where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
         if (request.PagedContext is not null) {
             throw new InvalidOperationException("ReplayRestartRequired: stored-alias replay cannot consume a paged context.");
+        }
+
+        using LegacyReplayInput input = LegacyReplayInput.Capture(request, cancellationToken);
+        if (input.Refusal is not null) {
+            return input.Refusal;
         }
 
         ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
@@ -38,12 +55,10 @@ public static class AggregateReplayer {
         // Sort by stream sequence/version order only (story Replay Semantics).
         // Filter to the inclusive UpToSequence target before sorting so duplicate detection
         // does not flag events outside the target window.
-        ReplayEventEnvelope[] eligible = request.Events
-            .Where(e => e.SequenceNumber <= request.UpToSequence)
-            .OrderBy(e => e.SequenceNumber)
-            .ToArray();
+        IReadOnlyList<ReplayEventEnvelope> eligible = input.Events;
+        cancellationToken.ThrowIfCancellationRequested();
 
-        if (eligible.Length > 0 && eligible[0].SequenceNumber != 1) {
+        if (eligible.Count > 0 && eligible[0].SequenceNumber != 1) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.Unexpected,
                 "Missing stream sequence 1 detected during replay; reconstruction cannot skip events.",
@@ -70,7 +85,8 @@ public static class AggregateReplayer {
         // Duplicate / conflicting sequence guard: any two events sharing the same sequence
         // number cannot be unambiguously ordered, so reconstruction must fail explicitly
         // rather than pick one arbitrarily.
-        for (int i = 1; i < eligible.Length; i++) {
+        for (int i = 1; i < eligible.Count; i++) {
+            cancellationToken.ThrowIfCancellationRequested();
             if (eligible[i].SequenceNumber == eligible[i - 1].SequenceNumber) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.Unexpected,
@@ -95,17 +111,10 @@ public static class AggregateReplayer {
             }
         }
 
-        var state = new TState();
         long lastApplied = 0;
-        // Retain detached canonical bytes before domain code can mutate a working object.
-        // A failing Apply must never turn that damaged object into last-good evidence.
-        if (!TrySerializeState(state, out string? lastGoodStateJson)) {
-            return AggregateReconstructionResult.Failed(
-                AggregateReconstructionErrorCategory.Unexpected,
-                "Aggregate initial state could not be serialized during replay.");
-        }
-
+        var prepared = new List<(ReplayEventEnvelope Envelope, MethodInfo Method, object Payload)>(eligible.Count);
         foreach (ReplayEventEnvelope evt in eligible) {
+            cancellationToken.ThrowIfCancellationRequested();
             if (evt.MetadataVersion != 1) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnsupportedVersion,
@@ -205,6 +214,7 @@ public static class AggregateReplayer {
                 deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, EventStorePayloadSerialization.Options);
             }
             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
+                cancellationToken.ThrowIfCancellationRequested();
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.DeserializationFailed,
                     string.Format(
@@ -218,6 +228,7 @@ public static class AggregateReplayer {
                     lastAppliedSequenceNumber: lastApplied);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             if (deserialized is null) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.DeserializationFailed,
@@ -232,10 +243,32 @@ public static class AggregateReplayer {
                     lastAppliedSequenceNumber: lastApplied);
             }
 
+            prepared.Add((evt, applyMethod, deserialized));
+        }
+
+        var state = new TState();
+        cancellationToken.ThrowIfCancellationRequested();
+        // Retain detached canonical bytes before domain code can mutate a working object.
+        // A failing Apply must never turn that damaged object into last-good evidence.
+        if (!TrySerializeState(state, out string? lastGoodStateJson)) {
+            cancellationToken.ThrowIfCancellationRequested();
+            return AggregateReconstructionResult.Failed(
+                AggregateReconstructionErrorCategory.Unexpected,
+                "Aggregate initial state could not be serialized during replay.");
+        }
+
+        foreach ((ReplayEventEnvelope evt, MethodInfo applyMethod, object deserialized) in prepared) {
+            Type eventClrType = applyMethod.GetParameters()[0].ParameterType;
             try {
+                cancellationToken.ThrowIfCancellationRequested();
                 _ = applyMethod.Invoke(state, [deserialized]);
             }
+            catch (TargetInvocationException error) when (error.InnerException is OperationCanceledException) {
+                ExceptionDispatchInfo.Capture(error.InnerException).Throw();
+                throw;
+            }
             catch (TargetInvocationException) {
+                cancellationToken.ThrowIfCancellationRequested();
                 return AggregateReconstructionResult.Partial(
                     stateJson: lastGoodStateJson,
                     lastAppliedSequenceNumber: lastApplied,
@@ -250,7 +283,9 @@ public static class AggregateReplayer {
                     timeline: includeTimeline ? timeline : null);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             if (!TrySerializeState(state, out string? successorStateJson)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.Unexpected,
                     "Aggregate state could not be serialized after Apply during replay.",
@@ -259,6 +294,7 @@ public static class AggregateReplayer {
                     lastAppliedSequenceNumber: lastApplied);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             lastApplied = evt.SequenceNumber;
             lastGoodStateJson = successorStateJson;
 
@@ -268,6 +304,7 @@ public static class AggregateReplayer {
                     StateJson: lastGoodStateJson));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return AggregateReconstructionResult.Succeeded(
             stateJson: lastGoodStateJson,
             lastAppliedSequenceNumber: lastApplied,

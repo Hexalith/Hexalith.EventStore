@@ -1,0 +1,1012 @@
+diff --git a/src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs b/src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs
+index aa2eba96..348a522d 100644
+--- a/src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs
++++ b/src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs
+@@ -1,5 +1,6 @@
+ using System.Globalization;
+ using System.Reflection;
++using System.Runtime.ExceptionServices;
+ using System.Text.Json;
+ 
+ using Hexalith.EventStore.Client.Handlers;
+@@ -23,12 +24,28 @@ public static class AggregateReplayer {
+     /// <param name="request">The reconstruction request.</param>
+     /// <returns>The reconstruction result.</returns>
+     public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request)
++        where TState : class, new()
++        => Replay<TState>(request, CancellationToken.None);
++
++    /// <summary>Replays legacy events with cancellation checks around each synchronous domain call.</summary>
++    /// <typeparam name="TState">The aggregate state type owning the Apply convention.</typeparam>
++    /// <param name="request">The reconstruction request.</param>
++    /// <param name="cancellationToken">The originating request cancellation token.</param>
++    /// <returns>The complete reconstruction result, or a typed non-cancellation failure.</returns>
++    /// <remarks>Synchronous Apply and serialization cannot be interrupted; cancellation is observed at their boundaries.</remarks>
++    public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request, CancellationToken cancellationToken)
+         where TState : class, new() {
+         ArgumentNullException.ThrowIfNull(request);
++        cancellationToken.ThrowIfCancellationRequested();
+         if (request.PagedContext is not null) {
+             throw new InvalidOperationException("ReplayRestartRequired: stored-alias replay cannot consume a paged context.");
+         }
+ 
++        using LegacyReplayInput input = LegacyReplayInput.Capture(request, cancellationToken);
++        if (input.Refusal is not null) {
++            return input.Refusal;
++        }
++
+         ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
+         bool includeTimeline = request.IncludeTimeline;
+         List<AggregateReconstructionTimelineEntry>? timeline = includeTimeline
+@@ -38,12 +55,10 @@ public static class AggregateReplayer {
+         // Sort by stream sequence/version order only (story Replay Semantics).
+         // Filter to the inclusive UpToSequence target before sorting so duplicate detection
+         // does not flag events outside the target window.
+-        ReplayEventEnvelope[] eligible = request.Events
+-            .Where(e => e.SequenceNumber <= request.UpToSequence)
+-            .OrderBy(e => e.SequenceNumber)
+-            .ToArray();
++        IReadOnlyList<ReplayEventEnvelope> eligible = input.Events;
++        cancellationToken.ThrowIfCancellationRequested();
+ 
+-        if (eligible.Length > 0 && eligible[0].SequenceNumber != 1) {
++        if (eligible.Count > 0 && eligible[0].SequenceNumber != 1) {
+             return AggregateReconstructionResult.Failed(
+                 AggregateReconstructionErrorCategory.Unexpected,
+                 "Missing stream sequence 1 detected during replay; reconstruction cannot skip events.",
+@@ -70,7 +85,8 @@ public static class AggregateReplayer {
+         // Duplicate / conflicting sequence guard: any two events sharing the same sequence
+         // number cannot be unambiguously ordered, so reconstruction must fail explicitly
+         // rather than pick one arbitrarily.
+-        for (int i = 1; i < eligible.Length; i++) {
++        for (int i = 1; i < eligible.Count; i++) {
++            cancellationToken.ThrowIfCancellationRequested();
+             if (eligible[i].SequenceNumber == eligible[i - 1].SequenceNumber) {
+                 return AggregateReconstructionResult.Failed(
+                     AggregateReconstructionErrorCategory.Unexpected,
+@@ -96,16 +112,19 @@ public static class AggregateReplayer {
+         }
+ 
+         var state = new TState();
++        cancellationToken.ThrowIfCancellationRequested();
+         long lastApplied = 0;
+         // Retain detached canonical bytes before domain code can mutate a working object.
+         // A failing Apply must never turn that damaged object into last-good evidence.
+         if (!TrySerializeState(state, out string? lastGoodStateJson)) {
++            cancellationToken.ThrowIfCancellationRequested();
+             return AggregateReconstructionResult.Failed(
+                 AggregateReconstructionErrorCategory.Unexpected,
+                 "Aggregate initial state could not be serialized during replay.");
+         }
+ 
+         foreach (ReplayEventEnvelope evt in eligible) {
++            cancellationToken.ThrowIfCancellationRequested();
+             if (evt.MetadataVersion != 1) {
+                 return AggregateReconstructionResult.Failed(
+                     AggregateReconstructionErrorCategory.UnsupportedVersion,
+@@ -205,6 +224,7 @@ public static class AggregateReplayer {
+                 deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, EventStorePayloadSerialization.Options);
+             }
+             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
++                cancellationToken.ThrowIfCancellationRequested();
+                 return AggregateReconstructionResult.Failed(
+                     AggregateReconstructionErrorCategory.DeserializationFailed,
+                     string.Format(
+@@ -218,6 +238,7 @@ public static class AggregateReplayer {
+                     lastAppliedSequenceNumber: lastApplied);
+             }
+ 
++            cancellationToken.ThrowIfCancellationRequested();
+             if (deserialized is null) {
+                 return AggregateReconstructionResult.Failed(
+                     AggregateReconstructionErrorCategory.DeserializationFailed,
+@@ -233,9 +254,15 @@ public static class AggregateReplayer {
+             }
+ 
+             try {
++                cancellationToken.ThrowIfCancellationRequested();
+                 _ = applyMethod.Invoke(state, [deserialized]);
+             }
++            catch (TargetInvocationException error) when (error.InnerException is OperationCanceledException) {
++                ExceptionDispatchInfo.Capture(error.InnerException).Throw();
++                throw;
++            }
+             catch (TargetInvocationException) {
++                cancellationToken.ThrowIfCancellationRequested();
+                 return AggregateReconstructionResult.Partial(
+                     stateJson: lastGoodStateJson,
+                     lastAppliedSequenceNumber: lastApplied,
+@@ -250,7 +277,9 @@ public static class AggregateReplayer {
+                     timeline: includeTimeline ? timeline : null);
+             }
+ 
++            cancellationToken.ThrowIfCancellationRequested();
+             if (!TrySerializeState(state, out string? successorStateJson)) {
++                cancellationToken.ThrowIfCancellationRequested();
+                 return AggregateReconstructionResult.Failed(
+                     AggregateReconstructionErrorCategory.Unexpected,
+                     "Aggregate state could not be serialized after Apply during replay.",
+@@ -259,6 +288,7 @@ public static class AggregateReplayer {
+                     lastAppliedSequenceNumber: lastApplied);
+             }
+ 
++            cancellationToken.ThrowIfCancellationRequested();
+             lastApplied = evt.SequenceNumber;
+             lastGoodStateJson = successorStateJson;
+ 
+@@ -268,6 +298,7 @@ public static class AggregateReplayer {
+                     StateJson: lastGoodStateJson));
+         }
+ 
++        cancellationToken.ThrowIfCancellationRequested();
+         return AggregateReconstructionResult.Succeeded(
+             stateJson: lastGoodStateJson,
+             lastAppliedSequenceNumber: lastApplied,
+diff --git a/src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs b/src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs
+index a27f3d01..43ac0732 100644
+--- a/src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs
++++ b/src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs
+@@ -1,6 +1,7 @@
+ 
+ using System.Collections.Concurrent;
+ using System.Reflection;
++using System.Runtime.ExceptionServices;
+ using System.Text.Json;
+ 
+ using Hexalith.EventStore.Client.Configuration;
+@@ -19,9 +20,9 @@ namespace Hexalith.EventStore.Client.Aggregates;
+ /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
+ /// </summary>
+ /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
+-public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay
++public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay
+     where TState : class, new() {
+-    private static readonly ConcurrentDictionary<Type, AggregateMetadata> _metadataCache = new();
++    private static readonly ConcurrentDictionary<Type, AggregateCommandDispatchMetadata> _metadataCache = new();
+ 
+     /// <summary>
+     /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
+@@ -61,30 +62,46 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
+         => AggregateReplayer.Replay<TState>(request);
+ 
+     /// <inheritdoc/>
+-    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
++    /// <remarks>Synchronous Apply observes cancellation before and after each call.</remarks>
++    public Task<AggregateReconstructionResult> ReplayAsync(AggregateReconstructionRequest request, CancellationToken cancellationToken)
++        => Task.FromResult(AggregateReplayer.Replay<TState>(request, cancellationToken));
++
++    /// <inheritdoc/>
++    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
++        => ProcessAsync(command, currentState, CancellationToken.None);
++
++    /// <inheritdoc/>
++    /// <remarks>Legacy Handle calls observe cancellation at their boundaries; an already-running Handle cannot be interrupted.</remarks>
++    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken) {
+         ArgumentNullException.ThrowIfNull(command);
++        cancellationToken.ThrowIfCancellationRequested();
+ 
+-        AggregateMetadata metadata = GetOrBuildMetadata();
+-        TState? state = RehydrateState(currentState, metadata);
++        AggregateCommandDispatchMetadata metadata = GetOrBuildMetadata();
++        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken);
+ 
+-        if (state is ITerminatable { IsTerminated: true }) {
++        bool terminated = state is ITerminatable { IsTerminated: true };
++        cancellationToken.ThrowIfCancellationRequested();
++        if (terminated) {
+             return DomainResult.Rejection(new IRejectionEvent[] {
+                 new AggregateTerminated(AggregateType: GetType().Name, AggregateId: command.AggregateId),
+             });
+         }
+ 
+-        return await DispatchCommandAsync(command, state, metadata).ConfigureAwait(false);
++        cancellationToken.ThrowIfCancellationRequested();
++        DomainResult result = await DispatchCommandAsync(command, state, metadata, cancellationToken).ConfigureAwait(false);
++        cancellationToken.ThrowIfCancellationRequested();
++        return result;
+     }
+ 
+-    private AggregateMetadata GetOrBuildMetadata() =>
++    private AggregateCommandDispatchMetadata GetOrBuildMetadata() =>
+         _metadataCache.GetOrAdd(GetType(), static aggregateType => {
+-            Dictionary<string, HandleMethodInfo> handleMethods = DiscoverHandleMethods(aggregateType);
++            Dictionary<string, AggregateCommandHandleMethod> handleMethods = DiscoverHandleMethods(aggregateType);
+             ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
+-            return new AggregateMetadata(handleMethods, applyMethods);
++            return new AggregateCommandDispatchMetadata(handleMethods, applyMethods);
+         });
+ 
+-    private static Dictionary<string, HandleMethodInfo> DiscoverHandleMethods(Type aggregateType) {
+-        var methods = new Dictionary<string, HandleMethodInfo>(StringComparer.Ordinal);
++    private static Dictionary<string, AggregateCommandHandleMethod> DiscoverHandleMethods(Type aggregateType) {
++        var methods = new Dictionary<string, AggregateCommandHandleMethod>(StringComparer.Ordinal);
+ 
+         foreach (MethodInfo method in aggregateType.GetMethods(
+             BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
+@@ -128,7 +145,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
+                     + "Declare exactly one Handle overload per command type.");
+             }
+ 
+-            var handleInfo = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic, hasEnvelope);
++            var handleInfo = new AggregateCommandHandleMethod(method, commandType, isAsync, method.IsStatic, hasEnvelope);
+             methods[commandTypeName] = handleInfo;
+ 
+             // Also register the kebab-case ICommandContract.CommandType discriminator (e.g. "increment-counter")
+@@ -137,7 +154,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
+             // (e.g. "IncrementCounter"). Both must dispatch to the same Handle overload; legacy lookup is unchanged.
+             if (TryGetContractCommandType(commandType, out string? contractCommandType)
+                 && !string.Equals(contractCommandType, commandTypeName, StringComparison.Ordinal)) {
+-                if (methods.TryGetValue(contractCommandType!, out HandleMethodInfo? existing)
++                if (methods.TryGetValue(contractCommandType!, out AggregateCommandHandleMethod? existing)
+                     && !ReferenceEquals(existing, handleInfo)) {
+                     throw new InvalidOperationException(
+                         $"Command contract type '{contractCommandType}' declared by '{commandTypeName}' collides with another "
+@@ -177,37 +194,54 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
+         return true;
+     }
+ 
+-    private static TState? RehydrateState(object? currentState, AggregateMetadata metadata) =>
+-        DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods);
+-
+-    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateMetadata metadata) {
++    private async Task<DomainResult> DispatchCommandAsync(CommandEnvelope command, TState? state, AggregateCommandDispatchMetadata metadata,
++        CancellationToken cancellationToken) {
++        cancellationToken.ThrowIfCancellationRequested();
+         // The HandleMethods dictionary is keyed by short type name (e.g., "IncrementCounter"),
+         // but command.CommandType may be assembly-qualified (e.g., "Namespace.IncrementCounter, Assembly").
+         // Extract the short name for lookup.
+         string lookupKey = ExtractShortTypeName(command.CommandType);
+-        if (!metadata.HandleMethods.TryGetValue(lookupKey, out HandleMethodInfo? handleInfo)) {
++        if (!metadata.HandleMethods.TryGetValue(lookupKey, out AggregateCommandHandleMethod? handleInfo)) {
+             throw new InvalidOperationException(
+                 $"No Handle method found for command type '{command.CommandType}' on aggregate '{GetType().Name}'.");
+         }
+ 
+-        object commandPayload = command.Payload.Length == 0
+-            ? throw new InvalidOperationException(
+-                $"Command '{command.CommandType}' has an empty payload. Expected valid JSON for {handleInfo.CommandType.Name}.")
+-            : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType, EventStorePayloadSerialization.Options)
+-              ?? throw new InvalidOperationException(
+-                  $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
++        object commandPayload;
++        try {
++            commandPayload = command.Payload.Length == 0
++                ? throw new InvalidOperationException(
++                    $"Command '{command.CommandType}' has an empty payload. Expected valid JSON for {handleInfo.CommandType.Name}.")
++                : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType, EventStorePayloadSerialization.Options)
++                  ?? throw new InvalidOperationException(
++                      $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
++        }
++        catch (Exception) when (cancellationToken.IsCancellationRequested) {
++            cancellationToken.ThrowIfCancellationRequested();
++            throw;
++        }
+ 
+         object?[] args = handleInfo.HasEnvelope
+             ? [commandPayload, state, command]
+             : [commandPayload, state];
+-        object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
+-        return result switch {
++        cancellationToken.ThrowIfCancellationRequested();
++        object? result;
++        try {
++            result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
++        }
++        catch (TargetInvocationException error) when (error.InnerException is OperationCanceledException) {
++            ExceptionDispatchInfo.Capture(error.InnerException).Throw();
++            throw;
++        }
++
++        DomainResult completedResult = result switch {
+             Task<DomainResult> asyncResult => await asyncResult.ConfigureAwait(false),
+             Task asyncResult when handleInfo.IsAsync => await GetAsyncDomainResultAsync(asyncResult).ConfigureAwait(false),
+             DomainResult syncResult => syncResult,
+             _ => throw new InvalidOperationException(
+                 $"Handle method for '{command.CommandType}' returned unexpected type '{result?.GetType().Name ?? "null"}'."),
+         };
++        cancellationToken.ThrowIfCancellationRequested();
++        return completedResult;
+     }
+ 
+     private static async Task<DomainResult> GetAsyncDomainResultAsync(Task asyncResult) {
+@@ -231,14 +265,4 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
+         return dotIndex >= 0 ? fullName[(dotIndex + 1)..] : fullName;
+     }
+ 
+-    private sealed record AggregateMetadata(
+-        Dictionary<string, HandleMethodInfo> HandleMethods,
+-        ApplyMethodTable ApplyMethods);
+-
+-    private sealed record HandleMethodInfo(
+-        MethodInfo Method,
+-        Type CommandType,
+-        bool IsAsync,
+-        bool IsStatic,
+-        bool HasEnvelope);
+ }
+diff --git a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs
+index 354c2493..98dc7a67 100644
+--- a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs
++++ b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs
+@@ -8,21 +8,31 @@ namespace Hexalith.EventStore.Client.Handlers;
+ /// <summary>
+ /// Abstract base class for domain processors that provides typed state casting.
+ /// Safely converts the untyped <c>object?</c> state to <typeparamref name="TState"/>
+-/// and delegates to the typed <see cref="HandleAsync"/> method.
++/// and delegates to the typed <see cref="HandleAsync(CommandEnvelope, TState)"/> method.
+ /// When state arrives as a <see cref="JsonElement"/> (e.g., from JSON deserialization
+ /// of <c>object?</c> via DAPR service invocation), it is automatically deserialized
+ /// to <typeparamref name="TState"/>.
+ /// </summary>
+ /// <typeparam name="TState">The aggregate state type. Must be a reference type.</typeparam>
+-public abstract class DomainProcessorBase<TState> : IDomainProcessor
++public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDomainProcessor
+     where TState : class, new() {
+     /// <inheritdoc/>
+-    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
++    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
++        => ProcessAsync(command, currentState, CancellationToken.None);
++
++    /// <inheritdoc/>
++    /// <remarks>The compatibility HandleAsync overload observes cancellation at its boundaries.</remarks>
++    public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken) {
+         ArgumentNullException.ThrowIfNull(command);
++        cancellationToken.ThrowIfCancellationRequested();
+         TState? typedState = DomainProcessorStateRehydrator.RehydrateState<TState>(
+             currentState,
+-            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)));
+-        return HandleAsync(command, typedState);
++            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)),
++            cancellationToken);
++        cancellationToken.ThrowIfCancellationRequested();
++        DomainResult result = await HandleAsync(command, typedState, cancellationToken).ConfigureAwait(false);
++        cancellationToken.ThrowIfCancellationRequested();
++        return result;
+     }
+ 
+     /// <summary>
+@@ -32,4 +42,15 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor
+     /// <param name="currentState">The current typed aggregate state, or null for new aggregates.</param>
+     /// <returns>A <see cref="DomainResult"/> containing the resulting domain events.</returns>
+     protected abstract Task<DomainResult> HandleAsync(CommandEnvelope command, TState? currentState);
++
++    /// <summary>Processes the command with the originating request cancellation token.</summary>
++    /// <param name="command">The command envelope to process.</param>
++    /// <param name="currentState">The rehydrated aggregate state, or null for a new aggregate.</param>
++    /// <param name="cancellationToken">The originating request cancellation token.</param>
++    /// <returns>The complete domain result.</returns>
++    /// <remarks>Override this overload to pass cancellation into asynchronous domain work.</remarks>
++    protected virtual Task<DomainResult> HandleAsync(CommandEnvelope command, TState? currentState, CancellationToken cancellationToken) {
++        cancellationToken.ThrowIfCancellationRequested();
++        return HandleAsync(command, currentState);
++    }
+ }
+diff --git a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
+index 37d2ddf2..c3ecc3fc 100644
+--- a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
++++ b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
+@@ -1,5 +1,6 @@
+ using System.Globalization;
+ using System.Reflection;
++using System.Runtime.ExceptionServices;
+ using System.Text.Json;
+ 
+ using Hexalith.EventStore.Client.Aggregates;
+@@ -19,21 +20,32 @@ internal static class DomainProcessorStateRehydrator {
+     internal static ApplyMethodTable DiscoverApplyMethods(Type stateType)
+         => ApplyMethodResolver.GetOrBuildTable(stateType);
+ 
+-    internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods)
+-        where TState : class, new() =>
+-        currentState switch {
+-            null => null,
+-            TState typed => typed,
+-            DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods),
+-            JsonElement je when IsDomainServiceCurrentState(je) =>
+-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods),
+-            JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je),
+-            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods),
+-            JsonElement je when je.ValueKind == JsonValueKind.Null => null,
+-            System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods),
+-            _ => throw new InvalidOperationException(
+-                $"Expected state type '{typeof(TState).Name}' but received '{currentState.GetType().Name}'."),
+-        };
++    internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken = default)
++        where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
++        TState? rehydratedState;
++        try {
++            rehydratedState = currentState switch {
++                null => null,
++                TState typed => typed,
++                DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods, cancellationToken),
++                JsonElement je when IsDomainServiceCurrentState(je) =>
++                    RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods, cancellationToken),
++                JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
++                JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken),
++                JsonElement je when je.ValueKind == JsonValueKind.Null => null,
++                System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken),
++                _ => throw new InvalidOperationException(
++                    $"Expected state type '{typeof(TState).Name}' but received '{currentState.GetType().Name}'."),
++            };
++        }
++        catch (Exception) when (cancellationToken.IsCancellationRequested) {
++            cancellationToken.ThrowIfCancellationRequested();
++            throw;
++        }
++        cancellationToken.ThrowIfCancellationRequested();
++        return rehydratedState;
++    }
+ 
+     private static DomainServiceCurrentState DeserializeDomainServiceCurrentState(JsonElement json) =>
+         json.Deserialize<DomainServiceCurrentState>(EventStorePayloadSerialization.Options)
+@@ -46,35 +58,39 @@ internal static class DomainProcessorStateRehydrator {
+ 
+     private static TState? RehydrateFromDomainServiceCurrentState<TState>(
+         DomainServiceCurrentState currentState,
+-        ApplyMethodTable applyMethods)
++        ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         TState? state = currentState.SnapshotState switch {
+             null when currentState.Events.Count == 0 => null,
+             null => new TState(),
+             TState typed => typed,
+-            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods),
++            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods, cancellationToken),
+             JsonElement je when IsDomainServiceCurrentState(je) =>
+-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods),
+-            JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je),
+-            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods),
++                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods, cancellationToken),
++            JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
++            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken),
+             JsonElement je when je.ValueKind == JsonValueKind.Null && currentState.Events.Count == 0 => null,
+             JsonElement je when je.ValueKind == JsonValueKind.Null => new TState(),
+-            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods),
+-            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods),
++            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken),
++            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods, cancellationToken),
+         };
+ 
+         if (state is null) {
+             return null;
+         }
+ 
+-        ApplyContractEventEnvelopes(state, currentState.Events, applyMethods);
++        ApplyContractEventEnvelopes(state, currentState.Events, applyMethods, cancellationToken);
+         return state;
+     }
+ 
+     private static TState? RehydrateFromArbitrarySnapshot<TState>(
+         object? snapshotState,
+-        ApplyMethodTable applyMethods)
++        ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         if (snapshotState is null) {
+             return null;
+         }
+@@ -82,17 +98,18 @@ internal static class DomainProcessorStateRehydrator {
+         JsonElement json = JsonSerializer.SerializeToElement(snapshotState, snapshotState.GetType(), EventStorePayloadSerialization.Options);
+         return json.ValueKind switch {
+             JsonValueKind.Object when IsDomainServiceCurrentState(json) =>
+-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json), applyMethods),
+-            JsonValueKind.Object => RehydrateFromJsonObject<TState>(json),
+-            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods),
++                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json), applyMethods, cancellationToken),
++            JsonValueKind.Object => RehydrateFromJsonObject<TState>(json, cancellationToken),
++            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods, cancellationToken),
+             JsonValueKind.Null => null,
+             _ => throw new InvalidOperationException(
+                 $"Expected state type '{typeof(TState).Name}' but received '{snapshotState.GetType().Name}'."),
+         };
+     }
+ 
+-    private static TState RehydrateFromJsonObject<TState>(JsonElement jsonObject)
++    private static TState RehydrateFromJsonObject<TState>(JsonElement jsonObject, CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         var state = new TState();
+ 
+         var jsonProperties = jsonObject
+@@ -100,6 +117,7 @@ internal static class DomainProcessorStateRehydrator {
+             .ToDictionary(static p => p.Name, static p => p.Value, StringComparer.OrdinalIgnoreCase);
+ 
+         foreach (PropertyInfo property in typeof(TState).GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
++            cancellationToken.ThrowIfCancellationRequested();
+             if (property.GetIndexParameters().Length != 0) {
+                 continue;
+             }
+@@ -114,16 +132,19 @@ internal static class DomainProcessorStateRehydrator {
+             }
+ 
+             object? value = valueElement.Deserialize(property.PropertyType, EventStorePayloadSerialization.Options);
+-            _ = setter.Invoke(state, [value]);
++            InvokeWithCancellation(setter, state, value, cancellationToken);
+         }
+ 
+         return state;
+     }
+ 
+-    private static TState ReplayEventsFromJsonArray<TState>(JsonElement jsonArray, ApplyMethodTable applyMethods)
++    private static TState ReplayEventsFromJsonArray<TState>(JsonElement jsonArray, ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         var state = new TState();
+         foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
++            cancellationToken.ThrowIfCancellationRequested();
+             if (eventElement.ValueKind != JsonValueKind.Object) {
+                 throw new InvalidOperationException(
+                     string.Format(
+@@ -151,23 +172,26 @@ internal static class DomainProcessorStateRehydrator {
+                         typeof(TState).Name));
+             }
+ 
+-            ApplyJsonEventByName(state, eventTypeName, eventElement, applyMethods);
++            ApplyJsonEventByName(state, eventTypeName, eventElement, applyMethods, cancellationToken);
+         }
+ 
+         return state;
+     }
+ 
+-    private static TState ReplayEventsFromEnumerable<TState>(System.Collections.IEnumerable events, ApplyMethodTable applyMethods)
++    private static TState ReplayEventsFromEnumerable<TState>(System.Collections.IEnumerable events, ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         var state = new TState();
+         foreach (object? evt in events) {
++            cancellationToken.ThrowIfCancellationRequested();
+             if (evt is null) {
+                 continue;
+             }
+ 
+             switch (evt) {
+                 case EventEnvelope envelope:
+-                    ApplyContractEventEnvelope(state, envelope, applyMethods);
++                    ApplyContractEventEnvelope(state, envelope, applyMethods, cancellationToken);
+                     continue;
+                 case JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Object:
+                     if (!jsonElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
+@@ -179,13 +203,13 @@ internal static class DomainProcessorStateRehydrator {
+                                 typeof(TState).Name));
+                     }
+ 
+-                    ApplyJsonEventByName(state, eventTypeElement.GetString()!, jsonElement, applyMethods);
++                    ApplyJsonEventByName(state, eventTypeElement.GetString()!, jsonElement, applyMethods, cancellationToken);
+                     continue;
+             }
+ 
+             MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, evt.GetType());
+             if (applyMethod is not null) {
+-                _ = applyMethod.Invoke(state, [evt]);
++                InvokeWithCancellation(applyMethod, state, evt, cancellationToken);
+                 continue;
+             }
+ 
+@@ -200,18 +224,23 @@ internal static class DomainProcessorStateRehydrator {
+     private static void ApplyContractEventEnvelopes<TState>(
+         TState state,
+         IReadOnlyList<EventEnvelope> events,
+-        ApplyMethodTable applyMethods)
++        ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         foreach (EventEnvelope envelope in events) {
+-            ApplyContractEventEnvelope(state, envelope, applyMethods);
++            cancellationToken.ThrowIfCancellationRequested();
++            ApplyContractEventEnvelope(state, envelope, applyMethods, cancellationToken);
+         }
+     }
+ 
+     private static void ApplyContractEventEnvelope<TState>(
+         TState state,
+         EventEnvelope envelope,
+-        ApplyMethodTable applyMethods)
++        ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(
+             applyMethods,
+             envelope.Metadata.EventTypeName,
+@@ -234,7 +263,7 @@ internal static class DomainProcessorStateRehydrator {
+                         envelope.Metadata.EventTypeName,
+                         eventType.Name));
+ 
+-            _ = applyMethod.Invoke(state, [deserializedEvent]);
++            InvokeWithCancellation(applyMethod, state, deserializedEvent, cancellationToken);
+         }
+         catch (JsonException ex) {
+             throw new InvalidOperationException(
+@@ -252,8 +281,10 @@ internal static class DomainProcessorStateRehydrator {
+         TState state,
+         string eventTypeName,
+         JsonElement eventElement,
+-        ApplyMethodTable applyMethods)
++        ApplyMethodTable applyMethods,
++        CancellationToken cancellationToken)
+         where TState : class, new() {
++        cancellationToken.ThrowIfCancellationRequested();
+         MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, eventTypeName) ?? throw new MissingApplyMethodException(
+                 stateType: typeof(TState),
+                 eventTypeName: eventTypeName);
+@@ -281,7 +312,7 @@ internal static class DomainProcessorStateRehydrator {
+                             eventType.Name));
+                 }
+ 
+-                _ = applyMethod.Invoke(state, [deserializedEvent]);
++                InvokeWithCancellation(applyMethod, state, deserializedEvent, cancellationToken);
+             }
+             else {
+                 object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, EventStorePayloadSerialization.Options)
+@@ -292,7 +323,7 @@ internal static class DomainProcessorStateRehydrator {
+                             typeof(TState).Name,
+                             eventTypeName,
+                             eventType.Name));
+-                _ = applyMethod.Invoke(state, [deserializedEvent]);
++                InvokeWithCancellation(applyMethod, state, deserializedEvent, cancellationToken);
+             }
+         }
+         catch (JsonException ex) {
+@@ -306,4 +337,17 @@ internal static class DomainProcessorStateRehydrator {
+                 ex);
+         }
+     }
++
++    private static void InvokeWithCancellation(MethodInfo method, object state, object? argument, CancellationToken cancellationToken) {
++        cancellationToken.ThrowIfCancellationRequested();
++        try {
++            _ = method.Invoke(state, [argument]);
++        }
++        catch (TargetInvocationException error) when (error.InnerException is OperationCanceledException) {
++            ExceptionDispatchInfo.Capture(error.InnerException).Throw();
++            throw;
++        }
++
++        cancellationToken.ThrowIfCancellationRequested();
++    }
+ }
+diff --git a/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs b/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs
+index f9b7b034..7f60bbd5 100644
+--- a/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs
++++ b/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs
+@@ -28,4 +28,13 @@ public enum AggregateReconstructionErrorCategory {
+ 
+     /// <summary>Any failure that does not match a more specific category.</summary>
+     Unexpected = 7,
++
++    /// <summary>A required capability, evidence or protection prerequisite is unavailable.</summary>
++    Hold = 8,
++
++    /// <summary>An admitted count, payload or allocation limit was exceeded.</summary>
++    Limit = 9,
++
++    /// <summary>Immutable evidence or an admitted replay scalar disagrees.</summary>
++    Conflict = 10,
+ }
+diff --git a/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs b/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs
+index 000e236e..e726f4da 100644
+--- a/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs
++++ b/src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs
+@@ -30,6 +30,10 @@ public sealed record AggregateReconstructionResult(
+     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+     public PagedProgress? PagedProgress { get; init; }
+ 
++    /// <summary>Gets the exact support-safe typed outcome for an evolution hold, limit or conflict.</summary>
++    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
++    public string? ReasonCode { get; init; }
++
+     /// <summary>Convenience factory for the success path.</summary>
+     public static AggregateReconstructionResult Succeeded(
+         string stateJson,
+diff --git a/src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs b/src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs
+index 5f274b3b..ee18a998 100644
+--- a/src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs
++++ b/src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs
+@@ -55,22 +55,30 @@ internal sealed class BoundedV1DomainResultProducer
+     {
+         ArgumentNullException.ThrowIfNull(result);
+         cancellationToken.ThrowIfCancellationRequested();
+-        int count = result.Events.Count;
+-        if (count > 1000)
++        IReadOnlyList<IEventPayload> source = result.Events;
++        int count = source.Count;
++        if (count is < 0 or > 1000)
+         {
+             throw new InvalidOperationException("ResultLimit: a V1 domain result exceeds 1,000 events.");
+         }
+ 
+         // This bounded reference snapshot runs before any serializer callback.
+         IEventPayload[] payloads = new IEventPayload[count];
++        for (int index = 0; index < count; index++)
++        {
++            cancellationToken.ThrowIfCancellationRequested();
++            payloads[index] = source[index] ?? throw new InvalidOperationException("CapabilityMismatch: null event payload.");
++        }
++
+         byte[]?[] serializedSources = new byte[]?[count];
++        byte[]?[] privateSources = new byte[]?[count];
+         BoundedV1EventSerialization[] declarations = new BoundedV1EventSerialization[count];
+         long encoded = 128;
+         long declaredPayloads = 0;
+         long serializedSourceBytes = 0;
+         long largestPayload = 0;
+-        bool isRejection = count > 0 && result.Events[0] is IRejectionEvent;
+-        string? resultPayload = result.IsSuccess || result.IsNoOp ? result.ResultPayload : null;
++        bool isRejection = count > 0 && payloads[0] is IRejectionEvent;
++        string? resultPayload = !isRejection ? result.ResultPayload : null;
+         if (resultPayload is not null)
+         {
+             encoded = checked(encoded + 6L * StrictUtf8.GetByteCount(resultPayload) + 2);
+@@ -79,7 +87,7 @@ internal sealed class BoundedV1DomainResultProducer
+         for (int i = 0; i < count; i++)
+         {
+             cancellationToken.ThrowIfCancellationRequested();
+-            IEventPayload payload = result.Events[i] ?? throw new InvalidOperationException("CapabilityMismatch: null event payload.");
++            IEventPayload payload = payloads[i];
+             if (!_serializers.TryGetValue(payload.GetType(), out BoundedV1EventSerialization? serializer))
+             {
+                 throw new InvalidOperationException("CapabilityMismatch: no explicitly bounded V1 serializer is declared for this payload.");
+@@ -121,7 +129,7 @@ internal sealed class BoundedV1DomainResultProducer
+             encoded = checked(encoded + metadata + 4 * ((maximum + 2) / 3));
+         }
+ 
+-        long scratch = checked(serializedSourceBytes + declaredPayloads + largestPayload + 128 * 1024L + count * 256L + (resultPayload?.Length ?? 0) * 2L);
++        long scratch = checked(2 * serializedSourceBytes + declaredPayloads + largestPayload + 128 * 1024L + count * 256L + (resultPayload?.Length ?? 0) * 2L);
+         if (encoded > MaximumResultBytes || scratch > MaximumScratchBytes)
+         {
+             throw new InvalidOperationException("ResultLimit: complete declared V1 result or live workspace exceeds its admitted capacity.");
+@@ -130,12 +138,20 @@ internal sealed class BoundedV1DomainResultProducer
+         var events = new List<DomainServiceWireEvent>(count);
+         try
+         {
++            // Every already-serialized source is private before the first serializer callback.
++            // A callback can mutate its own objects, but cannot substitute later admitted bytes.
++            for (int index = 0; index < count; index++)
++            {
++                cancellationToken.ThrowIfCancellationRequested();
++                privateSources[index] = serializedSources[index]?.ToArray();
++            }
++
+             for (int i = 0; i < count; i++)
+             {
+                 cancellationToken.ThrowIfCancellationRequested();
+                 BoundedV1EventSerialization serializer = declarations[i];
+                 using var sink = new BoundedV1PayloadStream(serializer.MaximumPayloadBytes, cancellationToken);
+-                if (serializedSources[i] is byte[] serialized)
++                if (privateSources[i] is byte[] serialized)
+                 {
+                     sink.Write(serialized);
+                 }
+@@ -155,5 +171,12 @@ internal sealed class BoundedV1DomainResultProducer
+             foreach (DomainServiceWireEvent item in events) { CryptographicOperations.ZeroMemory(item.Payload); }
+             throw;
+         }
++        finally
++        {
++            foreach (byte[]? sourceBytes in privateSources)
++            {
++                if (sourceBytes is not null) { CryptographicOperations.ZeroMemory(sourceBytes); }
++            }
++        }
+     }
+ }
+diff --git a/src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs b/src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs
+index bb9135b6..cd106bb6 100644
+--- a/src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs
++++ b/src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs
+@@ -1832,6 +1832,16 @@ public class AdminStreamQueryController(
+     /// admin-ui-aggregate-state-replay-correctness.
+     /// </summary>
+     private IActionResult? MapReplayFailureToProblem(AggregateReconstructionResult replay) {
++        if (replay.ErrorCategory is AggregateReconstructionErrorCategory.Hold
++            or AggregateReconstructionErrorCategory.Limit or AggregateReconstructionErrorCategory.Conflict
++            && (replay.Status != AggregateReconstructionStatus.Failed
++                || replay.StateJson is not null || replay.Timeline is not null || replay.PagedProgress is not null
++                || !IsSupportedReplayReason(replay.ErrorCategory, replay.ReasonCode))) {
++            return MapReplayFailureToProblem(AggregateReconstructionResult.Failed(
++                AggregateReconstructionErrorCategory.Unexpected,
++                "Replay returned an unsupported typed outcome."));
++        }
++
+         if (replay.Status == AggregateReconstructionStatus.Succeeded) {
+             return null;
+         }
+@@ -1843,6 +1853,9 @@ public class AdminStreamQueryController(
+             AggregateReconstructionErrorCategory.ApplyHandlerMissing => (StatusCodes.Status422UnprocessableEntity, "apply-handler-missing", "Apply handler missing"),
+             AggregateReconstructionErrorCategory.ApplyFailed => (StatusCodes.Status409Conflict, "apply-failed", "Replay partially applied"),
+             AggregateReconstructionErrorCategory.UnsupportedVersion => (StatusCodes.Status422UnprocessableEntity, "unsupported-version", "Unsupported event version"),
++            AggregateReconstructionErrorCategory.Hold => (StatusCodes.Status503ServiceUnavailable, "replay-hold", "Replay prerequisite unavailable"),
++            AggregateReconstructionErrorCategory.Limit => (StatusCodes.Status422UnprocessableEntity, "replay-limit", "Replay limit exceeded"),
++            AggregateReconstructionErrorCategory.Conflict => (StatusCodes.Status409Conflict, "replay-conflict", "Replay evidence conflict"),
+             _ => (StatusCodes.Status500InternalServerError, "unexpected", "Unexpected replay failure"),
+         };
+ 
+@@ -1859,6 +1872,14 @@ public class AdminStreamQueryController(
+             pd.Extensions["errorCategory"] = replay.ErrorCategory.ToString();
+             pd.Extensions["message"] = safeMessage;
+             pd.Extensions["lastAppliedSequenceNumber"] = replay.LastAppliedSequenceNumber;
++            if (replay.ErrorCategory is AggregateReconstructionErrorCategory.Hold
++                or AggregateReconstructionErrorCategory.Limit or AggregateReconstructionErrorCategory.Conflict) {
++                pd.Extensions["reasonCode"] = replay.ReasonCode;
++            }
++        }
++
++        if (replay.ErrorCategory == AggregateReconstructionErrorCategory.Hold) {
++            Response.Headers.RetryAfter = "30";
+         }
+ 
+         logger.LogWarning(
+@@ -1871,6 +1892,20 @@ public class AdminStreamQueryController(
+         return problem;
+     }
+ 
++    private static bool IsSupportedReplayReason(AggregateReconstructionErrorCategory category, string? reason)
++        => category switch {
++            AggregateReconstructionErrorCategory.Hold => reason is "RawSourceUnavailable" or "ActorCommitEvidenceHold"
++                or "HandlerCapabilityMismatch" or "UpcasterContractViolation" or "RollbackReaderCapabilityHold"
++                or "ReplayTranscriptCapabilityHold" or "TimelineEvidenceHold" or "TimelineProtectionHold"
++                or "ContinuationCapacityHold" or "CapabilityMismatch",
++            AggregateReconstructionErrorCategory.Limit => reason is "RawEnvelopeLimit" or "ReadableLimit" or "ProofLimit"
++                or "ScratchLimit" or "LegacyArrayLimit" or "TimelineLimit" or "CheckpointStateLimit"
++                or "FinalResponseLimit" or "NamedIndexLimit" or "ReadModelQueryLimit" or "MetadataLimit"
++                or "StateLimit" or "PayloadLimit" or "ResultLimit",
++            AggregateReconstructionErrorCategory.Conflict => reason is "ReplayScalarInvalid" or "ReplayRestartRequired",
++            _ => false,
++        };
++
+     private async Task<AdminReadabilityResult> TryMakeAdminEventReadableAsync(
+         AggregateIdentity identity,
+         ServerEventEnvelope envelope,
+diff --git a/tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs b/tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs
+index a651e107..edc65d55 100644
+--- a/tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs
++++ b/tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs
+@@ -8,6 +8,43 @@ namespace Hexalith.EventStore.DomainService.Tests;
+ /// <summary>Checks once-only bounded V1 production and complete response admission before output.</summary>
+ public sealed class BoundedV1DomainResultProducerTests
+ {
++    /// <summary>Checks enriched payload callbacks cannot replace an event reference after whole-result capture.</summary>
++    [Fact]
++    public async Task ResultGetterCannotSubstituteLaterEventBeforeAdmission()
++    {
++        int calls = 0;
++        var producer = Producer(16, (_, sink, _) => { calls++; sink.Write([1]); return Task.CompletedTask; });
++        IEventPayload[] source = [new BoundedProducerTestEvent(), new BoundedProducerTestEvent()];
++        var result = new MutatingBoundedProducerResult(source, () => source[1] = new BoundedProducerUnknownTestEvent());
++        DomainServiceWireResult produced = await producer.ProduceAsync(result, CancellationToken.None);
++        calls.ShouldBe(2);
++        produced.Events.Count.ShouldBe(2);
++        produced.Events[1].Payload.ShouldBe([1]);
++        source[1].ShouldBeOfType<BoundedProducerUnknownTestEvent>();
++    }
++
++    /// <summary>Checks an earlier serializer cannot mutate a later already-serialized source's private bytes.</summary>
++    [Fact]
++    public async Task SerializerCannotMutateLaterAdmittedSerializedBytes()
++    {
++        byte[] original = [1, 2];
++        var producer = new BoundedV1DomainResultProducer([
++            new(typeof(BoundedProducerTestEvent), "normal", "json", 16, (_, sink, _) =>
++            {
++                original[0] = 9;
++                sink.Write([3]);
++                return Task.CompletedTask;
++            }),
++            new(typeof(BoundedProducerSerializedTestEvent), "legacy-exact-alias", "json", 16,
++                (_, _, _) => throw new InvalidOperationException("Serialized input must not be serialized again.")),
++        ]);
++        DomainServiceWireResult produced = await producer.ProduceAsync(
++            DomainResult.Success([new BoundedProducerTestEvent(), new BoundedProducerSerializedTestEvent(original)]), CancellationToken.None);
++        produced.Events[0].Payload.ShouldBe([3]);
++        produced.Events[1].Payload.ShouldBe([1, 2]);
++        original.ShouldBe([9, 2]);
++    }
++
+     [Fact]
+     public async Task PreflightRejectsCompleteDeclaredResultBeforeCallingSerializer()
+     {
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs b/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs
+index c734f3db..c37964ee 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs
+@@ -367,6 +367,93 @@ public class AdminStreamQueryControllerReplayDelegationTests {
+     // Guard 3: ProblemDetails matrix
+     // ---------------------------------------------------------------
+ 
++    /// <summary>Checks approved evolution outcomes map safely with no partial state or timeline.</summary>
++    [Theory]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", 503, "replay-hold")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", 422, "replay-limit")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", 409, "replay-conflict")]
++    public async Task GetAggregateStateAsync_EvolutionOutcomeMapsStatusAndExactSafeReason(
++        AggregateReconstructionErrorCategory category, string reason, int status, string slug) {
++        IAggregateActor actor = Substitute.For<IAggregateActor>();
++        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
++        IAggregateStateReconstructor reconstructor = BuildReconstructor(
++            AggregateReconstructionResult.Failed(category, "private payload and stack text") with { ReasonCode = reason });
++        AdminStreamQueryController controller = CreateController(actor, reconstructor);
++        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
++
++        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
++        response.StatusCode.ShouldBe(status);
++        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
++        problem.Type.ShouldBe($"urn:hexalith:eventstore:replay:{slug}");
++        problem.Extensions["reasonCode"].ShouldBe(reason);
++        problem.Detail.ShouldNotContain("private payload");
++        problem.Extensions.ContainsKey("stateJson").ShouldBeFalse();
++        problem.Extensions.ContainsKey("timeline").ShouldBeFalse();
++        controller.Response.Headers.RetryAfter.ToString().ShouldBe(category == AggregateReconstructionErrorCategory.Hold ? "30" : string.Empty);
++    }
++
++    /// <summary>Checks contradictory evolution results never disclose state, timeline or private progress.</summary>
++    [Theory]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "success")]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "partial")]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "state")]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "timeline")]
++    [InlineData(AggregateReconstructionErrorCategory.Hold, "TimelineEvidenceHold", "progress")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "success")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "partial")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "state")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "timeline")]
++    [InlineData(AggregateReconstructionErrorCategory.Limit, "LegacyArrayLimit", "progress")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "success")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "partial")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "state")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "timeline")]
++    [InlineData(AggregateReconstructionErrorCategory.Conflict, "ReplayScalarInvalid", "progress")]
++    public async Task GetAggregateStateAsync_ContradictoryEvolutionOutcomeFailsSafely(
++        AggregateReconstructionErrorCategory category, string reason, string shape) {
++        AggregateReconstructionResult replay = AggregateReconstructionResult.Failed(category, "private-secret") with { ReasonCode = reason };
++        replay = shape switch {
++            "success" => replay with { Status = AggregateReconstructionStatus.Succeeded, StateJson = "{\"private-secret\":true}" },
++            "partial" => replay with { Status = AggregateReconstructionStatus.Partial },
++            "state" => replay with { StateJson = "{\"private-secret\":true}" },
++            "timeline" => replay with { Timeline = [new(1, "event", "{\"private-secret\":true}")] },
++            "progress" => replay with { PagedProgress = new("private-secret"u8.ToArray(), new byte[32], new byte[32], 1, 1, 1, false) },
++            _ => throw new ArgumentException("Unknown malformed replay shape.", nameof(shape)),
++        };
++        IAggregateActor actor = Substitute.For<IAggregateActor>();
++        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
++        AdminStreamQueryController controller = CreateController(actor, BuildReconstructor(replay));
++        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
++
++        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
++        response.StatusCode.ShouldBe(500);
++        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
++        problem.Extensions["errorCategory"].ShouldBe("Unexpected");
++        problem.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
++        System.Text.Json.JsonSerializer.Serialize(problem).ShouldNotContain("private-secret");
++        controller.Response.Headers.RetryAfter.ToString().ShouldBeEmpty();
++    }
++
++    /// <summary>Checks missing, unsafe and wrong-category typed reasons cannot be disclosed or treated as an approved outcome.</summary>
++    [Theory]
++    [InlineData(null)]
++    [InlineData("private-secret-value")]
++    [InlineData("LegacyArrayLimit")]
++    public async Task GetAggregateStateAsync_UnknownTypedReasonFailsSafely(string? reason) {
++        IAggregateActor actor = Substitute.For<IAggregateActor>();
++        actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
++        AdminStreamQueryController controller = CreateController(actor, BuildReconstructor(
++            AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Hold, "secret") with { ReasonCode = reason }));
++        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
++
++        ObjectResult response = (await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None)).ShouldBeOfType<ObjectResult>();
++        response.StatusCode.ShouldBe(500);
++        ProblemDetails problem = response.Value.ShouldBeOfType<ProblemDetails>();
++        problem.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
++        problem.Detail.ShouldNotContain("secret");
++        controller.Response.Headers.RetryAfter.ToString().ShouldBeEmpty();
++    }
++
+     [Theory]
+     [InlineData(AggregateReconstructionErrorCategory.UnknownAggregateType, StatusCodes.Status404NotFound, "unknown-aggregate-type")]
+     [InlineData(AggregateReconstructionErrorCategory.UnknownEventType, StatusCodes.Status422UnprocessableEntity, "unknown-event-type")]

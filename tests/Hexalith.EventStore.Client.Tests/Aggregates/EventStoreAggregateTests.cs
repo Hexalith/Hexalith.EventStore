@@ -8,6 +8,7 @@ using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Replay;
 
 using Shouldly;
 
@@ -24,6 +25,203 @@ public class EventStoreAggregateTests : IDisposable {
         NamingConventionEngine.ClearCache();
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>Late invalid evidence cannot run an earlier Apply or any command Handle.</summary>
+    [Theory]
+    [InlineData("type", "typed")]
+    [InlineData("payload", "typed")]
+    [InlineData("version", "typed")]
+    [InlineData("format", "typed")]
+    [InlineData("type", "enumerable")]
+    [InlineData("payload", "enumerable")]
+    [InlineData("version", "enumerable")]
+    [InlineData("format", "enumerable")]
+    [InlineData("type", "json")]
+    [InlineData("payload", "json")]
+    [InlineData("version", "json")]
+    [InlineData("format", "json")]
+    [InlineData("type", "nested")]
+    [InlineData("payload", "nested")]
+    [InlineData("version", "nested")]
+    [InlineData("format", "nested")]
+    public async Task ProcessAsync_LateInvalidReplayEvidenceRefusesWholeBatch(string invalid, string shape)
+    {
+        using var scope = new CancellationTestScope();
+        var aggregate = new CancellationFixtureAggregate();
+        EventEnvelope valid = new(new EventMetadata("p1r-event-1", "agg-1", "counter", "tenant-1", "counter",
+            1, 1, DateTimeOffset.UnixEpoch, "corr", "cause", "user", "v1",
+            nameof(CancellationReplayEvent), 1, "json"), "{}"u8.ToArray(), null);
+        EventEnvelope bad = new(new EventMetadata("p1r-event-2", "agg-1", "counter", "tenant-1", "counter",
+            2, 2, DateTimeOffset.UnixEpoch, "corr", "cause", "user", "v1",
+            invalid == "type" ? "UnknownHistoricalEvent" : nameof(CancellationReplayEvent),
+            invalid == "version" ? 987 : 1, invalid == "format" ? "protected+json" : "json"),
+            invalid == "payload" ? "{"u8.ToArray() : valid.Payload, null);
+        object currentState = shape switch
+        {
+            "typed" => new DomainServiceCurrentState(null, [valid, bad], 0, 2),
+            "nested" => new DomainServiceCurrentState(new DomainServiceCurrentState(null, [valid], 0, 1), [bad], 1, 2),
+            "enumerable" => new object[] { valid, bad },
+            _ => JsonSerializer.SerializeToElement(new[] { valid, bad }.Select(e => new
+            {
+                eventTypeName = e.Metadata.EventTypeName,
+                metadataVersion = e.Metadata.MetadataVersion,
+                serializationFormat = e.Metadata.SerializationFormat,
+                payload = e.Payload,
+            })),
+        };
+        var command = new CommandEnvelope("p1r-command", "tenant-1", "counter", "agg-1",
+            nameof(CancellationReplayEvent), "{}"u8.ToArray(), "corr", null, "user", null);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => aggregate.ProcessAsync(command, currentState));
+
+        scope.Applied.ShouldBe(0);
+        scope.Handled.ShouldBe(0);
+    }
+
+    /// <summary>Direct supported legacy replay also rejects a late invalid event before any Apply.</summary>
+    [Theory]
+    [InlineData("type", AggregateReconstructionErrorCategory.UnknownEventType)]
+    [InlineData("payload", AggregateReconstructionErrorCategory.DeserializationFailed)]
+    [InlineData("version", AggregateReconstructionErrorCategory.UnsupportedVersion)]
+    [InlineData("format", AggregateReconstructionErrorCategory.UnsupportedVersion)]
+    public void Replay_LateInvalidEvidenceRefusesWholeBatch(string invalid, AggregateReconstructionErrorCategory category)
+    {
+        using var scope = new CancellationTestScope();
+        var first = new ReplayEventEnvelope(1, nameof(CancellationReplayEvent), "{}"u8.ToArray(), "json", 1, "event-1", "corr", null);
+        ReplayEventEnvelope bad = first with
+        {
+            SequenceNumber = 2,
+            EventTypeName = invalid == "type" ? "UnknownHistoricalEvent" : first.EventTypeName,
+            Payload = invalid == "payload" ? "{"u8.ToArray() : first.Payload,
+            MetadataVersion = invalid == "version" ? 987 : 1,
+            SerializationFormat = invalid == "format" ? "protected+json" : "json",
+        };
+        var request = new AggregateReconstructionRequest("tenant", "fixture", "CancellationFixture", "aggregate", 2, [first, bad], false, null);
+
+        AggregateReconstructionResult result = AggregateReplayer.Replay<CancellationReplayState>(request);
+
+        result.ErrorCategory.ShouldBe(category);
+        result.FailedSequenceNumber.ShouldBe(2);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        scope.Applied.ShouldBe(0);
+        scope.Handled.ShouldBe(0);
+    }
+
+    /// <summary>Contradictory V1 provenance is refused across typed and enumerable inputs before converters.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ProcessAsync_LateV1ProvenanceRefusesBeforeConverters(bool enumerable, bool payloadVersion)
+    {
+        using var scope = new CancellationTestScope();
+        EventEnvelope first = P1RHydrationEvent(1);
+        EventMetadata metadata = P1RHydrationEvent(2).Metadata with
+        {
+            EventContractType = payloadVersion ? null : "counter.incremented",
+            PayloadVersion = payloadVersion ? 1 : null,
+        };
+        EventEnvelope[] events = [first, new EventEnvelope(metadata, "{}"u8.ToArray(), null)];
+        object currentState = enumerable ? events : new DomainServiceCurrentState(null, events, 0, 2);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() =>
+            new CancellationFixtureAggregate().ProcessAsync(P1RHydrationCommand(), currentState));
+
+        scope.ConverterReads.ShouldBe(0);
+        scope.Applied.ShouldBe(0);
+        scope.Handled.ShouldBe(0);
+    }
+
+    /// <summary>Case aliases cannot hide unsupported metadata or contradict another spelling.</summary>
+    [Theory]
+    [InlineData("\"MetadataVersion\":987")]
+    [InlineData("\"SerializationFormat\":\"protected+json\"")]
+    [InlineData("\"metadataVersion\":1,\"MetadataVersion\":987")]
+    [InlineData("\"MetadataVersion\":987,\"metadataVersion\":1")]
+    [InlineData("\"serializationFormat\":\"json\",\"SerializationFormat\":\"protected+json\"")]
+    [InlineData("\"SerializationFormat\":\"protected+json\",\"serializationFormat\":\"json\"")]
+    [InlineData("\"EventContractType\":\"counter.incremented\"")]
+    [InlineData("\"PayloadVersion\":1")]
+    public async Task ProcessAsync_LateJsonMetadataAliasesRefuseBeforeConverters(string metadata)
+    {
+        using var scope = new CancellationTestScope();
+        JsonElement events = JsonSerializer.Deserialize<JsonElement>(
+            "[{\"eventTypeName\":\"CancellationReplayEvent\",\"payload\":{}}," +
+            "{\"eventTypeName\":\"CancellationReplayEvent\",\"payload\":{}," + metadata + "}]");
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() =>
+            new CancellationFixtureAggregate().ProcessAsync(P1RHydrationCommand(), events));
+
+        scope.ConverterReads.ShouldBe(0);
+        scope.Applied.ShouldBe(0);
+        scope.Handled.ShouldBe(0);
+    }
+
+    /// <summary>Ordinary PascalCase metadata and equal duplicate aliases remain compatible.</summary>
+    [Fact]
+    public async Task ProcessAsync_CompatibleJsonMetadataAliasesRetainLegacyReplay()
+    {
+        using var scope = new CancellationTestScope();
+        JsonElement events = JsonSerializer.Deserialize<JsonElement>(
+            "[{\"eventTypeName\":\"CancellationReplayEvent\",\"payload\":{}," +
+            "\"MetadataVersion\":1,\"metadataVersion\":1,\"SerializationFormat\":\"json\",\"serializationFormat\":\"json\"}]");
+
+        DomainResult result = await new CancellationFixtureAggregate().ProcessAsync(P1RHydrationCommand(), events);
+
+        result.IsNoOp.ShouldBeTrue();
+        scope.Applied.ShouldBe(1);
+        scope.Handled.ShouldBe(1);
+    }
+
+    /// <summary>Earlier converters cannot substitute an unknown event in the captured batch.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessAsync_ConverterCannotReplaceCapturedUnknownEvent(bool enumerable)
+    {
+        using var scope = new CancellationTestScope();
+        EventEnvelope[] events = [P1RHydrationEvent(1), P1RHydrationEvent(2, "UnknownHistoricalEvent")];
+        scope.OnConverterRead = () => events[1] = P1RHydrationEvent(2);
+        object currentState = enumerable ? events : new DomainServiceCurrentState(null, events, 0, 2);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() =>
+            new CancellationFixtureAggregate().ProcessAsync(P1RHydrationCommand(), currentState));
+
+        events[1].Metadata.EventTypeName.ShouldBe(nameof(CancellationReplayEvent));
+        scope.ConverterReads.ShouldBe(1);
+        scope.Applied.ShouldBe(0);
+        scope.Handled.ShouldBe(0);
+    }
+
+    /// <summary>Earlier converters cannot corrupt the bytes privately captured for a later envelope.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessAsync_ConverterCannotCorruptCapturedLaterPayload(bool enumerable)
+    {
+        using var scope = new CancellationTestScope();
+        EventEnvelope[] events = [P1RHydrationEvent(1), P1RHydrationEvent(2)];
+        byte[] callerPayload = events[1].Payload;
+        scope.OnConverterRead = () => callerPayload[0] = (byte)'!';
+        object currentState = enumerable ? events : new DomainServiceCurrentState(null, events, 0, 2);
+
+        DomainResult result = await new CancellationFixtureAggregate().ProcessAsync(P1RHydrationCommand(), currentState);
+
+        result.IsNoOp.ShouldBeTrue();
+        callerPayload[0].ShouldBe((byte)'!');
+        scope.Applied.ShouldBe(2);
+        scope.Handled.ShouldBe(1);
+    }
+
+    private static EventEnvelope P1RHydrationEvent(long sequence, string? type = null)
+        => new(new EventMetadata("p1r-event-" + sequence, "agg-1", "counter", "tenant-1", "counter",
+            sequence, sequence, DateTimeOffset.UnixEpoch, "corr", "cause", "user", "v1",
+            type ?? nameof(CancellationReplayEvent), 1, "json"), "{}"u8.ToArray(), null);
+
+    private static CommandEnvelope P1RHydrationCommand()
+        => new("p1r-command", "tenant-1", "counter", "agg-1", nameof(CancellationReplayEvent),
+            "{}"u8.ToArray(), "corr", null, "user", null);
 
     // --- Test Event Types ---
     private sealed class ItemAdded : IEventPayload {

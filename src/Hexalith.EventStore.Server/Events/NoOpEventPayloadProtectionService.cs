@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -36,27 +38,27 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         string eventTypeName,
         byte[] payloadBytes,
         string serializationFormat,
-        CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
-        ArgumentNullException.ThrowIfNull(payloadBytes);
-        ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
-
-        return Task.FromResult(new PayloadProtectionResult(
-            payloadBytes,
-            serializationFormat,
-            EventStorePayloadProtectionMetadata.Unprotected()));
-    }
+        CancellationToken cancellationToken = default)
+        => UnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, null, cancellationToken);
 
     /// <inheritdoc/>
-    public Task<PayloadProtectionResult> UnprotectEventPayloadAsync(
+    public async Task<PayloadProtectionResult> UnprotectEventPayloadAsync(
         AggregateIdentity identity,
         string eventTypeName,
         byte[] payloadBytes,
         string serializationFormat,
         EventStorePayloadProtectionMetadata? metadata,
         CancellationToken cancellationToken = default)
-        => UnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, cancellationToken);
+    {
+        PayloadUnprotectionOutcome outcome = await TryUnprotectEventPayloadAsync(
+            identity, eventTypeName, payloadBytes, serializationFormat, metadata, cancellationToken).ConfigureAwait(false);
+        if (outcome.UnreadableReason is { } reason)
+        {
+            throw new ProtectedDataUnreadableException(reason);
+        }
+
+        return new PayloadProtectionResult(outcome.PayloadBytes!, outcome.SerializationFormat!, outcome.Metadata);
+    }
 
     /// <inheritdoc/>
     public Task<PayloadUnprotectionOutcome> TryUnprotectEventPayloadAsync(
@@ -73,8 +75,14 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         cancellationToken.ThrowIfCancellationRequested();
 
         EventStorePayloadProtectionMetadata effectiveMetadata = metadata ?? EventStorePayloadProtectionMetadata.Unprotected();
-        return Task.FromResult(effectiveMetadata.State == PayloadProtectionState.Protected
-            ? PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.MissingKey, effectiveMetadata)
+        UnreadableProtectedDataReason? failure = MetadataFailure(effectiveMetadata);
+        if (failure is null && HasProtectedMarker(serializationFormat))
+        {
+            failure = UnreadableProtectedDataReason.BytesMetadataMismatch;
+        }
+
+        return Task.FromResult(failure is { } reason
+            ? PayloadUnprotectionOutcome.Unreadable(reason, effectiveMetadata)
             : PayloadUnprotectionOutcome.Readable(payloadBytes, serializationFormat, effectiveMetadata));
     }
 
@@ -93,12 +101,8 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
     public Task<object> UnprotectSnapshotStateAsync(
         AggregateIdentity identity,
         object state,
-        CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentNullException.ThrowIfNull(state);
-
-        return Task.FromResult(state);
-    }
+        CancellationToken cancellationToken = default)
+        => UnprotectSnapshotAsync(identity, state, null, cancellationToken);
 
     /// <inheritdoc/>
     public Task<SnapshotProtectionResult> ProtectSnapshotAsync(
@@ -112,15 +116,20 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
     }
 
     /// <inheritdoc/>
-    public Task<object> UnprotectSnapshotAsync(
+    public async Task<object> UnprotectSnapshotAsync(
         AggregateIdentity identity,
         object state,
         EventStorePayloadProtectionMetadata? metadata,
-        CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentNullException.ThrowIfNull(state);
+        CancellationToken cancellationToken = default)
+    {
+        SnapshotUnprotectionOutcome outcome = await TryUnprotectSnapshotAsync(
+            identity, state, metadata, cancellationToken).ConfigureAwait(false);
+        if (outcome.UnreadableReason is { } reason)
+        {
+            throw new ProtectedDataUnreadableException(reason);
+        }
 
-        return Task.FromResult(state);
+        return outcome.State!;
     }
 
     /// <inheritdoc/>
@@ -134,8 +143,69 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         cancellationToken.ThrowIfCancellationRequested();
 
         EventStorePayloadProtectionMetadata effectiveMetadata = metadata ?? EventStorePayloadProtectionMetadata.Unprotected();
-        return Task.FromResult(effectiveMetadata.State == PayloadProtectionState.Protected
-            ? SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.MissingKey, effectiveMetadata)
+        UnreadableProtectedDataReason? failure = MetadataFailure(effectiveMetadata);
+        if (failure is null && IsProtectedSnapshot(state))
+        {
+            failure = UnreadableProtectedDataReason.BytesMetadataMismatch;
+        }
+        return Task.FromResult(failure is { } reason
+            ? SnapshotUnprotectionOutcome.Unreadable(reason, effectiveMetadata)
             : SnapshotUnprotectionOutcome.Readable(state, effectiveMetadata));
+    }
+
+    private static bool IsProtectedSnapshot(object state) {
+        switch (state) {
+            case ProtectedSnapshotPayloadV2:
+                return true;
+            case JsonElement { ValueKind: JsonValueKind.Object } json:
+                return json.EnumerateObject().Any(property =>
+                    string.Equals(property.Name, "format", StringComparison.OrdinalIgnoreCase)
+                    && IsProtectedFormatValue(property.Value));
+            case System.Collections.IDictionary dictionary:
+                foreach (System.Collections.DictionaryEntry entry in dictionary) {
+                    if (entry.Key is string key && string.Equals(key, "format", StringComparison.OrdinalIgnoreCase)
+                        && IsProtectedFormatValue(entry.Value)) { return true; }
+                }
+                return false;
+            case IReadOnlyDictionary<string, object?> dictionary:
+                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                    && IsProtectedFormatValue(entry.Value));
+            case IReadOnlyDictionary<string, string> dictionary:
+                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                    && IsProtectedFormatValue(entry.Value));
+            case IReadOnlyDictionary<string, JsonElement> dictionary:
+                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                    && IsProtectedFormatValue(entry.Value));
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsProtectedFormatValue(object? value)
+        => value is string format ? HasProtectedMarker(format)
+            : value is JsonElement { ValueKind: JsonValueKind.String } json && HasProtectedMarker(json.GetString()!);
+
+    private static bool HasProtectedMarker(string serializationFormat)
+        => serializationFormat.StartsWith("protected+", StringComparison.OrdinalIgnoreCase)
+            || serializationFormat.Contains("+pdenc-", StringComparison.OrdinalIgnoreCase);
+
+    private static UnreadableProtectedDataReason? MetadataFailure(EventStorePayloadProtectionMetadata metadata)
+    {
+        if (metadata.MetadataVersion > EventStorePayloadProtectionMetadata.CurrentMetadataVersion)
+        {
+            return UnreadableProtectedDataReason.UnknownMetadataVersion;
+        }
+
+        if (!Enum.IsDefined(metadata.State) || !EventStorePayloadProtectionMetadataCarrier.TryValidate(metadata, out _))
+        {
+            return UnreadableProtectedDataReason.MalformedMetadata;
+        }
+
+        return metadata.State switch
+        {
+            PayloadProtectionState.Protected => UnreadableProtectedDataReason.MissingKey,
+            PayloadProtectionState.ProviderOpaque => UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(metadata),
+            _ => null,
+        };
     }
 }

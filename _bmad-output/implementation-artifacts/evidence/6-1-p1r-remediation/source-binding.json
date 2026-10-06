@@ -1,0 +1,326 @@
+{
+  "base_revision": "d24a03569ed0c8e4d773e24e630a2eab2ec9f074",
+  "build_output_binding_note": "Per-project copied build outputs at collection time; physically loaded assembly identities are independently emitted in the selected live persistence log. No published package identity is inferred.",
+  "build_output_sha256": {
+    "Hexalith.EventStore.Client.Tests": {
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "282a429418fc63e9e38173c21658cc9c985e52fd468e1940fdc11a0a98576d11",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "710b38b0ad289f208cfc602f92470d353f501c2d4d118b56f1c716949b604f7f",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll": "30cbf398219bcfd09ddda11919eb515e653203f2676c70c52fe2dd69785bbbbc",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "5bd028bce01172fc2d2812e163f9901e7a0bcc0ac9cf5171468091de50fc54cf",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "51eb30eb48e3e257513cf178da8f38e8cc71aa14c3f8f4681d357d4df8e502aa",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "26f2cf515d771b38d8be35facf36d875b64364a6d23c2022ecabddca1d295578",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "ec97d51f7e2db64eb23c0342d6ca4aba8e42948a27f7943c78379644ad0a4a19",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "7f0291b49a2998e28d56982d49887dbd93e7e7709428986d95aa6a8183bb5b9f",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3320e5c20e019feb9c885ec8ead127c2e922c3172a846813eefa33b08e9f6ec2",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll": "729733bf5d76a0a4528aaebe619a25df14afcbd411a58f4ff2f456cb30fdee0a",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll": "be13acbb84d7d575b6bd57ee7f3bf00d0202ac6a87223f8423b37023c6da2dbf"
+    },
+    "Hexalith.EventStore.Contracts.Tests": {
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "282a429418fc63e9e38173c21658cc9c985e52fd468e1940fdc11a0a98576d11",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "5bd028bce01172fc2d2812e163f9901e7a0bcc0ac9cf5171468091de50fc54cf",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll": "f3caec3ad03d673fbad090bbc25e6c427fabdc2dbb9b8164c67323487cd50d53",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "51eb30eb48e3e257513cf178da8f38e8cc71aa14c3f8f4681d357d4df8e502aa",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "26f2cf515d771b38d8be35facf36d875b64364a6d23c2022ecabddca1d295578",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "7f0291b49a2998e28d56982d49887dbd93e7e7709428986d95aa6a8183bb5b9f",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3320e5c20e019feb9c885ec8ead127c2e922c3172a846813eefa33b08e9f6ec2",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll": "729733bf5d76a0a4528aaebe619a25df14afcbd411a58f4ff2f456cb30fdee0a"
+    },
+    "Hexalith.EventStore.QueryRouting.Tests": {
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "282a429418fc63e9e38173c21658cc9c985e52fd468e1940fdc11a0a98576d11",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "710b38b0ad289f208cfc602f92470d353f501c2d4d118b56f1c716949b604f7f",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "d603893e763b2f4bd82f5d1ba46424223b1b3903b6644d00b5905ce15ba7bd4b",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "51eb30eb48e3e257513cf178da8f38e8cc71aa14c3f8f4681d357d4df8e502aa",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "26f2cf515d771b38d8be35facf36d875b64364a6d23c2022ecabddca1d295578",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "45d65268ad50551f7f231ccc9b38e1df795f459388db0ca1786edc245e65cc3f",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll": "c422e43801936b8b8cdb6d45ba21ad9361a909a31702a67dc0f9adae3b49c271",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "050c872133f6461b6d3242c39b392c003aaa636c83ece251f1dd59fef451fdbe",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3320e5c20e019feb9c885ec8ead127c2e922c3172a846813eefa33b08e9f6ec2",
+      "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll": "be13acbb84d7d575b6bd57ee7f3bf00d0202ac6a87223f8423b37023c6da2dbf"
+    },
+    "Hexalith.EventStore.Server.LiveSidecar.Tests": {
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "4de0bee9c1187e91690bae7703d26aa75c435cb54d3a3c745784172a9996f434",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "f745054078f3eeb718bdeaa8f96368925858cddb41f952381014b3197cf3416e",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "d603893e763b2f4bd82f5d1ba46424223b1b3903b6644d00b5905ce15ba7bd4b",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "55a6122224590d055251c57e212c9f0e7b82538b5bd3569c6ede9d7877b02453",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "26f2cf515d771b38d8be35facf36d875b64364a6d23c2022ecabddca1d295578",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "9c4326e653ac6f0d9a29439b2683452162a9dc07b4e1eda17599ae1825648ed8",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll": "8e1f931af2b6bc4395fd7bb1c66b37eb312278ed49f3187c8a4dae7ad5854ed1",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll": "9aa5b92d9271613d5a87eee5e3c1264c83164d30b74bc70729ddfdca8930ec1d",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll": "092cbf7fa98dffdade3b75dd9c8465e549c91a424368449fa650e1d54143d4c6",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "2a63a2ce28618fb6332d5226a9654fe0613cc56bb53a3bb0504691802f3107d8",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3320e5c20e019feb9c885ec8ead127c2e922c3172a846813eefa33b08e9f6ec2",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.dll": "d40ee11d461b475ab7ac87313620797d61ee7f57fc71928a7073c7ea76a312fc",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll": "9ba46c28769f2e601676849b97efdae1d15fa5c4d4f7a21d4ad8e3fdf8e1b526",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll": "6457f7e2b7df6e122f9b9d9a7ebf7a17b0e57aacfb5dd8087e086eee8d69ba33",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll": "2a5baf4bb63f47b6690a83fcdb7b89a008d2d823adb6353204dcb13649def262"
+    },
+    "Hexalith.EventStore.Server.Tests": {
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "4de0bee9c1187e91690bae7703d26aa75c435cb54d3a3c745784172a9996f434",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "f745054078f3eeb718bdeaa8f96368925858cddb41f952381014b3197cf3416e",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "5bd028bce01172fc2d2812e163f9901e7a0bcc0ac9cf5171468091de50fc54cf",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "55a6122224590d055251c57e212c9f0e7b82538b5bd3569c6ede9d7877b02453",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "26f2cf515d771b38d8be35facf36d875b64364a6d23c2022ecabddca1d295578",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "9d1ed325db7bc0ae13216fbeae0febdde210f8a59ae0b6cc951f4e40fbe74cb9",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll": "8e1f931af2b6bc4395fd7bb1c66b37eb312278ed49f3187c8a4dae7ad5854ed1",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll": "9aa5b92d9271613d5a87eee5e3c1264c83164d30b74bc70729ddfdca8930ec1d",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll": "ec2a489a7f2b01a75aad84f6b6c729b6849a371df2506fc66d27a2bd63a63032",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "44b3dfa9eab4f5c1b00222746cdc31b74086768f44b1db87de0c1d9f5ef297ad",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3320e5c20e019feb9c885ec8ead127c2e922c3172a846813eefa33b08e9f6ec2",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll": "9ba46c28769f2e601676849b97efdae1d15fa5c4d4f7a21d4ad8e3fdf8e1b526",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll": "6457f7e2b7df6e122f9b9d9a7ebf7a17b0e57aacfb5dd8087e086eee8d69ba33",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll": "2a5baf4bb63f47b6690a83fcdb7b89a008d2d823adb6353204dcb13649def262"
+    }
+  },
+  "builds_gitlink": "160000 commit ba4ca78c3868a4757cb92d912a54c8a237871b54\treferences/Hexalith.Builds",
+  "builds_revision": "ba4ca78c3868a4757cb92d912a54c8a237871b54",
+  "capable_published_rollback": null,
+  "collected_utc": "2026-10-06T10:39:19.865157+00:00",
+  "configuration": "Debug/project-references",
+  "configuration_sha256": {
+    ".editorconfig": "d0188d02b2600d6311f50144b669176b869fb311d4dcfa98eddc2431fe1b3435",
+    ".gitattributes": "bc623ae4b5c59039e8aa1e01e89aef6fc42d100d6807213d7708cd1bc4679e0f",
+    "Directory.Build.props": "66b2d5f9b4b60ef17fff045881badc565fcca6e4dfb51919aee760feebb6f477",
+    "Directory.Build.targets": "c20dc10cd6c9ff0e76e5145a21be2fc64feddc1128aca1db97e1390b1c424fa8",
+    "Directory.Packages.props": "4fe25096ceefd11e8ffffe1ab6a1854e18ac36c853a6805fa72285433b03b638",
+    "global.json": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "117cf518081fba76ba6f83ef75dc2cc72dc0ad02b9771f26171cac3a615e06a3",
+    "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed"
+  },
+  "frozen_spec_sha256": "bd17c6af14bfe811e07c009487e460d0f18a470c2e8ca8ae8d3c156df52f1d99",
+  "historical_sealed_paths_modified": [],
+  "merged_preexisting_files": [
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs",
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayEventConverter.cs",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationTestScope.cs"
+  ],
+  "owner_decisions": "pending exact candidate/rollback publication, EventStore/Builds/Solution/Test conformance and release decisions",
+  "p1r_usable": false,
+  "persisted_inventory_sha256": "6c9a87856bb94bbe855841b579e8c50301e2d88e5a1372037024a34ba8fe93ab",
+  "physically_loaded_assemblies": [
+    {
+      "full_name": "Hexalith.EventStore.Server, Version=3.113.0.0, Culture=neutral, PublicKeyToken=null",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "2a63a2ce28618fb6332d5226a9654fe0613cc56bb53a3bb0504691802f3107d8"
+    },
+    {
+      "full_name": "Hexalith.EventStore.Contracts, Version=3.113.0.0, Culture=neutral, PublicKeyToken=null",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "55a6122224590d055251c57e212c9f0e7b82538b5bd3569c6ede9d7877b02453"
+    },
+    {
+      "full_name": "Hexalith.EventStore.Server.LiveSidecar.Tests, Version=3.113.0.0, Culture=neutral, PublicKeyToken=null",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "sha256": "092cbf7fa98dffdade3b75dd9c8465e549c91a424368449fa650e1d54143d4c6"
+    },
+    {
+      "full_name": "Hexalith.EventStore.Client, Version=3.113.0.0, Culture=neutral, PublicKeyToken=null",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "d603893e763b2f4bd82f5d1ba46424223b1b3903b6644d00b5905ce15ba7bd4b"
+    }
+  ],
+  "preexisting_diff_sha256": "f00dfd7c1d5f61e945cfef529c7c13f271724a3270e912f441b8b71c43c1bb6d",
+  "preexisting_files": {
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandDispatchMetadata.cs": {
+      "after": "a337270839d33f7c7e45707f5d3166a1558414f23ee5ac49f948601d4cc3d866",
+      "before": "a337270839d33f7c7e45707f5d3166a1558414f23ee5ac49f948601d4cc3d866",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandHandleMethod.cs": {
+      "after": "321780254543b3c8ded72384188679e51b666f6f9feb6d1f5ac30fcaca1c05fe",
+      "before": "321780254543b3c8ded72384188679e51b666f6f9feb6d1f5ac30fcaca1c05fe",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs": {
+      "after": "3d9a26ff2aaf19129244756d77e97156163cdd1f6c49252be1f15368fbebd02b",
+      "before": "467b78d086fcfaf4f1654ac9e5a9ca3cd91b9b7f38485b9c44a881b68b189b41",
+      "changed": true
+    },
+    "src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs": {
+      "after": "4fe4d6ca85d223dd4d4d587f76ed0b9b5720e5b5333b7eb57a4acfcada66d77a",
+      "before": "4fe4d6ca85d223dd4d4d587f76ed0b9b5720e5b5333b7eb57a4acfcada66d77a",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Client/Aggregates/LegacyReplayInput.cs": {
+      "after": "866ad4c21c2ccfa506dbeb432007f8ab1566cf1702c02334d2c1da52a1cf12f6",
+      "before": "866ad4c21c2ccfa506dbeb432007f8ab1566cf1702c02334d2c1da52a1cf12f6",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs": {
+      "after": "719d5e5d28a8bfeaf00b8542c3f8294824f358935efc40d8812b3e2e3b6eefc5",
+      "before": "719d5e5d28a8bfeaf00b8542c3f8294824f358935efc40d8812b3e2e3b6eefc5",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs": {
+      "after": "a137b5dd17a6267b1d373b15d5c6f5dcb646ddb099263808d53250bc55e60703",
+      "before": "24af512bbc6506bcb432e664e8d95338934d43d1b60eb9743d219d41ecff0cd9",
+      "changed": true
+    },
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs": {
+      "after": "66e227246689a632723557fc18819280d4428f4a2d7299b030a0efc1a07522c0",
+      "before": "66e227246689a632723557fc18819280d4428f4a2d7299b030a0efc1a07522c0",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs": {
+      "after": "30705e3cc2c6240ba07b68d9e7ecef64b6dbca6452004a5720ffb20f9db3608e",
+      "before": "30705e3cc2c6240ba07b68d9e7ecef64b6dbca6452004a5720ffb20f9db3608e",
+      "changed": false
+    },
+    "src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs": {
+      "after": "8f114dbaefdfa325138359594d25d7acbcf47af33c0ea22bfe4cb4f6aeca7a02",
+      "before": "8f114dbaefdfa325138359594d25d7acbcf47af33c0ea22bfe4cb4f6aeca7a02",
+      "changed": false
+    },
+    "src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs": {
+      "after": "78568efaa069ecd818862b0c9fa5b1de7c33918bc15fc25a2e3b2eb360a92c4d",
+      "before": "78568efaa069ecd818862b0c9fa5b1de7c33918bc15fc25a2e3b2eb360a92c4d",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/BuiltInCancellationTests.cs": {
+      "after": "12fa41e9825db8389b229ad835ca1a2cb6a43646c68dc9b31e6f605eafb85a4f",
+      "before": "12fa41e9825db8389b229ad835ca1a2cb6a43646c68dc9b31e6f605eafb85a4f",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationAsyncFixtureAggregate.cs": {
+      "after": "d9a43a401bd9f78c69411ced64eeebb55cef6236cc9196673d76ff81cfa4c4ab",
+      "before": "d9a43a401bd9f78c69411ced64eeebb55cef6236cc9196673d76ff81cfa4c4ab",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationFixtureAggregate.cs": {
+      "after": "6d8098f08a07dc044e852362741d13b119a9bbd58eecf6059dd6c33478852b8b",
+      "before": "6d8098f08a07dc044e852362741d13b119a9bbd58eecf6059dd6c33478852b8b",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationFixtureProcessor.cs": {
+      "after": "e797f9fd66fa363e8150914a67f74214925b2dbea1b696f9b786bdd689d460a9",
+      "before": "e797f9fd66fa363e8150914a67f74214925b2dbea1b696f9b786bdd689d460a9",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayEvent.cs": {
+      "after": "6b15fb775df564c53d654677039f65a328df9b22b73d444f82653a90f96b1f2e",
+      "before": "6b15fb775df564c53d654677039f65a328df9b22b73d444f82653a90f96b1f2e",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayEventConverter.cs": {
+      "after": "2c34db9193c1c165c7df50ff290b82d4a2d00ec59480249dd9d253fcfd76583e",
+      "before": "57b7fe6b9a2b398bca9a9fffde4809913349f345ebf4dae63941ae8297ad5ef3",
+      "changed": true
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayState.cs": {
+      "after": "dff1f5d3becbbcefcd7e3f11b6ccbfe524e83d2862ce43fac38dfef3e147ae6a",
+      "before": "dff1f5d3becbbcefcd7e3f11b6ccbfe524e83d2862ce43fac38dfef3e147ae6a",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationTestScope.cs": {
+      "after": "303eb4c67f528268fbe4b3fa5996c93bd7f8a97bd2935d3a751e78d1a650c202",
+      "before": "4a0259a87be3126b50bd1793323dc428f3b1e60d539f01ca8d0b67f16604b2f7",
+      "changed": true
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayInputTests.cs": {
+      "after": "5deefea994e4c662c4b306c49e304e9b02ee73a8b52941a89fd8940e50eef392",
+      "before": "5deefea994e4c662c4b306c49e304e9b02ee73a8b52941a89fd8940e50eef392",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationEvent.cs": {
+      "after": "f587dd005a7c09744fece5da4e23a011701998553207319846ea7f6471fdb1d6",
+      "before": "f587dd005a7c09744fece5da4e23a011701998553207319846ea7f6471fdb1d6",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationScope.cs": {
+      "after": "a2039e791cf838a31c51a412d9b9a2825b70fc1511e4ee4d0e9fdf06f2388642",
+      "before": "a2039e791cf838a31c51a412d9b9a2825b70fc1511e4ee4d0e9fdf06f2388642",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationState.cs": {
+      "after": "1eada57d37fa9955ff65fc0b25bc960921cba9bab2501856578ac07bc7367c0e",
+      "before": "1eada57d37fa9955ff65fc0b25bc960921cba9bab2501856578ac07bc7367c0e",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/ReplayInputProbeCollection.cs": {
+      "after": "aa1b3172c57a0a0b63fbab8b64667139156e85eafdf15c7bf68c716d5109462b",
+      "before": "aa1b3172c57a0a0b63fbab8b64667139156e85eafdf15c7bf68c716d5109462b",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Contracts.Tests/Replay/ReplayEvolutionOutcomeTests.cs": {
+      "after": "0885cd4ba92d5d8bf9ff7cf389fe412d246b57c678acfa48cc3aeb8a2c217cf5",
+      "before": "0885cd4ba92d5d8bf9ff7cf389fe412d246b57c678acfa48cc3aeb8a2c217cf5",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs": {
+      "after": "60dcc4511d27f6bbd6606089da79cc93b6fde44dd9a268f94c3cc2c97b828ecf",
+      "before": "60dcc4511d27f6bbd6606089da79cc93b6fde44dd9a268f94c3cc2c97b828ecf",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.DomainService.Tests/MutatingBoundedProducerResult.cs": {
+      "after": "6126c95dda4071e567b6a3d1af1e816c8930e761be78d6672945ca0d5300f27d",
+      "before": "6126c95dda4071e567b6a3d1af1e816c8930e761be78d6672945ca0d5300f27d",
+      "changed": false
+    },
+    "tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs": {
+      "after": "2cd4565a076a9e45b8235e79b81b90767eeb4b020dcef07566c0c4ba5cf33664",
+      "before": "2cd4565a076a9e45b8235e79b81b90767eeb4b020dcef07566c0c4ba5cf33664",
+      "changed": false
+    }
+  },
+  "published_candidate": null,
+  "qualified": false,
+  "repair_source_context": "a7404a1d9edf3bf7d125851001c0699ff664abf0",
+  "runtime_spec_sha256": "c498016e5f0ebb2b4d9db92a1aaefffaac148d6c941e072ddbd262b0d672fb85",
+  "runtime_spec_snapshot": "runtime-spec-at-capture.md",
+  "schema": "p1r-source-binding/v1",
+  "sdk": "10.0.401",
+  "selected_live_attempt": "receipts/live-attempt-e64c1b50",
+  "source_assertion_note": "xUnit test counts are measured; runtime assertion totals are not instrumented.",
+  "source_assertion_total": null,
+  "source_binding_note": "The source diff/hash inventory includes preexisting user changes. Unit build outputs are bound per project; latest selected live hashes match current files and cover final replay/inventory assertions.",
+  "source_diff_sha256": "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa",
+  "source_file_sha256": {
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandDispatchMetadata.cs": "a337270839d33f7c7e45707f5d3166a1558414f23ee5ac49f948601d4cc3d866",
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateCommandHandleMethod.cs": "321780254543b3c8ded72384188679e51b666f6f9feb6d1f5ac30fcaca1c05fe",
+    "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs": "3d9a26ff2aaf19129244756d77e97156163cdd1f6c49252be1f15368fbebd02b",
+    "src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs": "4fe4d6ca85d223dd4d4d587f76ed0b9b5720e5b5333b7eb57a4acfcada66d77a",
+    "src/Hexalith.EventStore.Client/Aggregates/LegacyReplayInput.cs": "866ad4c21c2ccfa506dbeb432007f8ab1566cf1702c02334d2c1da52a1cf12f6",
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs": "719d5e5d28a8bfeaf00b8542c3f8294824f358935efc40d8812b3e2e3b6eefc5",
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs": "a137b5dd17a6267b1d373b15d5c6f5dcb646ddb099263808d53250bc55e60703",
+    "src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs": "2101f7a9718317272bd70a9b9b46654e9cb7bed3bfec76404576e426c75ff2b1",
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionErrorCategory.cs": "66e227246689a632723557fc18819280d4428f4a2d7299b030a0efc1a07522c0",
+    "src/Hexalith.EventStore.Contracts/Replay/AggregateReconstructionResult.cs": "30705e3cc2c6240ba07b68d9e7ecef64b6dbca6452004a5720ffb20f9db3608e",
+    "src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs": "8f114dbaefdfa325138359594d25d7acbcf47af33c0ea22bfe4cb4f6aeca7a02",
+    "src/Hexalith.EventStore.Server/Events/EventPersister.cs": "ca314ca87ebf0ff34ba1d8e4819f871eb9d3a9213a289c64a984a839ce359ccf",
+    "src/Hexalith.EventStore.Server/Events/NoOpEventPayloadProtectionService.cs": "116de10176146400aa44524f844c8a224dc632f66be0e152cc862c680bee1637",
+    "src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs": "78568efaa069ecd818862b0c9fa5b1de7c33918bc15fc25a2e3b2eb360a92c4d",
+    "src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs": "91cb4526545b0a1fc61641ecef804a4e5a19e360ed179f65a2dc2b453a8db329",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/AggregateReplayerTests.cs": "6a2126fac9e67fdbf2c5976e551e021293f833e13dfb8a39267fac1fe76fe47f",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/BuiltInCancellationTests.cs": "12fa41e9825db8389b229ad835ca1a2cb6a43646c68dc9b31e6f605eafb85a4f",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationAsyncFixtureAggregate.cs": "d9a43a401bd9f78c69411ced64eeebb55cef6236cc9196673d76ff81cfa4c4ab",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationFixtureAggregate.cs": "6d8098f08a07dc044e852362741d13b119a9bbd58eecf6059dd6c33478852b8b",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationFixtureProcessor.cs": "e797f9fd66fa363e8150914a67f74214925b2dbea1b696f9b786bdd689d460a9",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayEvent.cs": "6b15fb775df564c53d654677039f65a328df9b22b73d444f82653a90f96b1f2e",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayEventConverter.cs": "2c34db9193c1c165c7df50ff290b82d4a2d00ec59480249dd9d253fcfd76583e",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationReplayState.cs": "dff1f5d3becbbcefcd7e3f11b6ccbfe524e83d2862ce43fac38dfef3e147ae6a",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/CancellationTestScope.cs": "303eb4c67f528268fbe4b3fa5996c93bd7f8a97bd2935d3a751e78d1a650c202",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs": "ed7d80bff5413215cce21c16b0e65fb58c024d20af56a86879a95ceae97fa05e",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayInputTests.cs": "5deefea994e4c662c4b306c49e304e9b02ee73a8b52941a89fd8940e50eef392",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationEvent.cs": "f587dd005a7c09744fece5da4e23a011701998553207319846ea7f6471fdb1d6",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationScope.cs": "a2039e791cf838a31c51a412d9b9a2825b70fc1511e4ee4d0e9fdf06f2388642",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/LegacyReplayMutationState.cs": "1eada57d37fa9955ff65fc0b25bc960921cba9bab2501856578ac07bc7367c0e",
+    "tests/Hexalith.EventStore.Client.Tests/Aggregates/ReplayInputProbeCollection.cs": "aa1b3172c57a0a0b63fbab8b64667139156e85eafdf15c7bf68c716d5109462b",
+    "tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusRecordTests.cs": "07e69a1386aa4400d8ab8298ba9b3aaaa84c88e55faff69817006c2e7c926da8",
+    "tests/Hexalith.EventStore.Contracts.Tests/Queries/P1RWireRegressionTests.cs": "8890195d8e9e7ea56accced3564467a76e060cef50e52d7b42b12d53009a9903",
+    "tests/Hexalith.EventStore.Contracts.Tests/Replay/ReplayEvolutionOutcomeTests.cs": "0885cd4ba92d5d8bf9ff7cf389fe412d246b57c678acfa48cc3aeb8a2c217cf5",
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerTests.cs": "60dcc4511d27f6bbd6606089da79cc93b6fde44dd9a268f94c3cc2c97b828ecf",
+    "tests/Hexalith.EventStore.DomainService.Tests/MutatingBoundedProducerResult.cs": "6126c95dda4071e567b6a3d1af1e816c8930e761be78d6672945ca0d5300f27d",
+    "tests/Hexalith.EventStore.QueryRouting.Tests/HandlerAwareQueryRouterTests.cs": "7d237eb444196facb8a454f7f4bfd0c5af7f69833dbde8a2d0213a0bcddf526f",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/P1RCountProbeProcessor.cs": "98956ed3e82939050fb5c783517127b88671b7e0d0e894495a80e451852cb943",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/P1RRemediationPersistenceTests.cs": "e2387d67bfdd33ebbf6deb9f4987b8f1c7fa5521f70f9d894cbad7c06d5eb5a8",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs": "4096120f731ee7d7ac25627482c1bd7a71817872c59b1f3d6df3a1b2cf077746",
+    "tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerReplayDelegationTests.cs": "2cd4565a076a9e45b8235e79b81b90767eeb4b020dcef07566c0c4ba5cf33664",
+    "tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs": "64003d06daa1b25da5c2a5caa131191f4a8853f5e2e11e4493fc2f865348bc44",
+    "tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs": "7a0a1c8e15ab31c1e68c52b275aa0af0ae41e81273d8c1693e836064cfba70fe",
+    "tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs": "63b62aade6d6c13ce4a0d93f9e0fcd292e6693f3f2b967a8522a58a0f7f3b851"
+  },
+  "untracked_source_files": [
+    "tests/Hexalith.EventStore.Contracts.Tests/Replay/ReplayEvolutionOutcomeTests.cs",
+    "tests/Hexalith.EventStore.DomainService.Tests/MutatingBoundedProducerResult.cs"
+  ]
+}

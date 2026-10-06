@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Debug/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll",
+    "-parallelMode",
+    "none"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:35:48.392780+00:00",
+  "finished_utc": "2026-10-06T09:35:48.864059+00:00",
+  "elapsed_seconds": 0.471,
+  "exit_code": 0,
+  "output_sha256": "469a783ee45d5d4442086e5f0674ec81d2caed820da1363894907942751e048d"
+}

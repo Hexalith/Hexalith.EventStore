@@ -1,0 +1,151 @@
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.EventPersisterTests.PersistEventsAsync_InvalidRetainedFloorRefusesBeforeEffects(floor: 0) [FAIL]
+      Shouldly.ShouldAssertException : Task `writer.PersistEventsAsync( TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1")`
+          should throw
+      System.InvalidOperationException
+          but threw
+      System.NullReferenceException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs(150,0): at Hexalith.EventStore.Server.Tests.Events.EventPersisterTests.PersistEventsAsync_InvalidRetainedFloorRefusesBeforeEffects(Int64 floor)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.EventPersisterTests.PersistEventsAsync_InvalidRetainedFloorRefusesBeforeEffects(floor: 14) [FAIL]
+      Shouldly.ShouldAssertException : Task `writer.PersistEventsAsync( TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1")`
+          should throw
+      System.InvalidOperationException
+          but threw
+      System.NullReferenceException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs(150,0): at Hexalith.EventStore.Server.Tests.Events.EventPersisterTests.PersistEventsAsync_InvalidRetainedFloorRefusesBeforeEffects(Int64 floor)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_UnsupportedMetadataIsUnreadable(state: ProviderOpaque, version: 1, reason: ProviderOpaqueUnsupportedOperation) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(81,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_UnsupportedMetadataIsUnreadable(PayloadProtectionState state, Int32 version, UnreadableProtectedDataReason reason)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_UnsupportedMetadataIsUnreadable(state: Unprotected, version: 987, reason: UnknownMetadataVersion) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(81,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_UnsupportedMetadataIsUnreadable(PayloadProtectionState state, Int32 version, UnreadableProtectedDataReason reason)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(format: "protected+json", explicitMetadata: False) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(65,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(String format, Boolean explicitMetadata)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(format: "protected+json", explicitMetadata: True) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(65,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(String format, Boolean explicitMetadata)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(format: "json+pdenc-v2", explicitMetadata: False) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(65,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(String format, Boolean explicitMetadata)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(format: "json+pdenc-v2", explicitMetadata: True) [FAIL]
+      Shouldly.ShouldAssertException : result.IsReadable
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs(65,0): at Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests.NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable(String format, Boolean explicitMetadata)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 8, Errors: 0, Failed: 8, Skipped: 0, Not Run: 0, Time: 0.263s

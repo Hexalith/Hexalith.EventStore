@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{\"Id\":{{json .Id}},\"Name\":{{json .Name}},\"Image\":{{json .Image}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}}}",
+    "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523",
+    "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077",
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:17:57.319117+00:00",
+  "finished_utc": "2026-10-06T10:17:57.371882+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "output_sha256": "f9af94a372742a09ea9d123bfcc69c5015603765b8b843bfe0c30f78b92d05d8"
+}

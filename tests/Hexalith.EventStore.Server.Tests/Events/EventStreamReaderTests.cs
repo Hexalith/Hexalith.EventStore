@@ -70,6 +70,55 @@ public class EventStreamReaderTests {
     private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int count)
         => ConfigureEvents(stateManager, identity, 1, count);
 
+    /// <summary>Malformed floor evidence is rejected before an event can be read or any state staged.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(14)]
+    public async Task RehydrateAsync_InvalidRetainedFloorRefusesBeforeEventReads(long floor)
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", floor)));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
+
+    /// <summary>A covering snapshot permits the valid retained tail without discarding its floor.</summary>
+    [Fact]
+    public async Task RehydrateAsync_RetainedFloorFiveHeadTwelveSnapshotNineReadsOnlyTail()
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", 5)));
+        ConfigureEvents(state, TestIdentity, 10, 12);
+
+        RehydrationResult result = (await reader.RehydrateAsync(TestIdentity, CreateTestSnapshot(9)))!;
+
+        result.CurrentSequence.ShouldBe(12);
+        result.LastSnapshotSequence.ShouldBe(9);
+        result.Events.Select(e => e.SequenceNumber).ShouldBe([10, 11, 12]);
+        _ = state.DidNotReceive().SetStateAsync(Arg.Any<string>(), Arg.Any<AggregateMetadata>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An unknown envelope version cannot be handed to domain replay.</summary>
+    [Fact]
+    public async Task RehydrateAsync_MetadataVersion987RefusesCompleteResult()
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        ConfigureMetadata(state, TestIdentity, 2);
+        ConfigureEvents(state, TestIdentity, 1);
+        _ = state.TryGetStateAsync<EventEnvelope>($"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(2) with { MetadataVersion = 987 }));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+
+        _ = state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
     // === Existing tests updated for RehydrationResult return type ===
 
     [Fact]

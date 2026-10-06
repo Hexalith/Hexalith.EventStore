@@ -60,7 +60,7 @@ public sealed class HandlerAwareQueryRouter(
             query.IsDelegated,
             query.Scopes,
             query.Audience,
-            query.DelegationId);
+            query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof };
 
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
 

@@ -274,7 +274,7 @@ public class AggregateReplayerTests {
         result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnknownEventType);
         result.FailedSequenceNumber.ShouldBe(2);
         result.FailedEventType.ShouldBe("TotallyUnregisteredEvent");
-        result.LastAppliedSequenceNumber.ShouldBe(1);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
     }
 
     [Fact]

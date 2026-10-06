@@ -30,6 +30,10 @@ public sealed record AggregateReconstructionResult(
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public PagedProgress? PagedProgress { get; init; }
 
+    /// <summary>Gets the exact support-safe typed outcome for an evolution hold, limit or conflict.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ReasonCode { get; init; }
+
     /// <summary>Convenience factory for the success path.</summary>
     public static AggregateReconstructionResult Succeeded(
         string stateJson,

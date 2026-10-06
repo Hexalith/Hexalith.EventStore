@@ -1,0 +1,2 @@
+[91merror: Filter expression '*Identity*Admission*' is not valid: wildcards may only be at the beginning and/or end of a filter expression (Parameter 'query')
+[0m

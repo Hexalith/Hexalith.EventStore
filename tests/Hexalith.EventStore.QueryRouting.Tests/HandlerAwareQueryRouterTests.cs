@@ -140,7 +140,8 @@ public sealed class HandlerAwareQueryRouterTests {
             Arg.Is<QueryEnvelope>(e =>
                 e.Paging != null &&
                 e.Paging.PageSize == 25 &&
-                e.Paging.Cursor == "opaque-cursor"),
+                e.Paging.Cursor == "opaque-cursor" &&
+                e.IdentityAdmissionProof == null),
             Arg.Any<CancellationToken>());
     }
 
@@ -173,7 +174,7 @@ public sealed class HandlerAwareQueryRouterTests {
             IsDelegated: true,
             Scopes: ["widgets.read"],
             Audience: ["eventstore-api"],
-            DelegationId: "delegate-service");
+            DelegationId: "delegate-service") { IdentityAdmissionProof = "signed-admission-proof" };
 
         _ = await router.RouteQueryAsync(query);
 
@@ -184,7 +185,8 @@ public sealed class HandlerAwareQueryRouterTests {
                 e.IsDelegated &&
                 e.Scopes != null && e.Scopes.SequenceEqual(new[] { "widgets.read" }) &&
                 e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" }) &&
-                e.DelegationId == "delegate-service"),
+                e.DelegationId == "delegate-service" &&
+                e.IdentityAdmissionProof == "signed-admission-proof"),
             Arg.Any<CancellationToken>());
     }
 
@@ -200,7 +202,7 @@ public sealed class HandlerAwareQueryRouterTests {
             NotFound: false,
             ProjectionType: "counter",
             Metadata: metadata);
-        SubmitQuery query = Query("counter", "get-counter");
+        SubmitQuery query = Query("counter", "get-counter") with { IdentityAdmissionProof = "signed-fallback-proof" };
         _ = inner.RouteQueryAsync(query, Arg.Any<CancellationToken>()).Returns(expected);
         IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
 

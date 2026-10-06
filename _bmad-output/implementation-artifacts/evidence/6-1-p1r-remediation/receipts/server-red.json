@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-method",
+    "*InvalidRetainedFloorRefusesBeforeEffects",
+    "-method",
+    "*NoOpProvider_ProtectedMarkerWithoutProtectedMetadataIsUnreadable",
+    "-method",
+    "*NoOpProvider_UnsupportedMetadataIsUnreadable",
+    "-parallel",
+    "none"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T09:15:08.489458+00:00",
+  "finished_utc": "2026-10-06T09:15:09.095514+00:00",
+  "elapsed_seconds": 0.606,
+  "exit_code": 1,
+  "output_sha256": "6179f3f39b2fc7f861423b2e9dd6e8bb41fe4222ff0654ffe109fbecebe3644c"
+}

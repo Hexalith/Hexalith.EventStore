@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "sha256sum",
+    "--check",
+    "SHA256SUMS"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+  "started_utc": "2026-10-06T09:36:58.361317+00:00",
+  "finished_utc": "2026-10-06T09:36:58.374565+00:00",
+  "exit_code": 0,
+  "output_sha256": "7a543ef9cdd5816b0fb5901a5588bea9c4f2b3608238a3d333b8dea131b70591"
+}

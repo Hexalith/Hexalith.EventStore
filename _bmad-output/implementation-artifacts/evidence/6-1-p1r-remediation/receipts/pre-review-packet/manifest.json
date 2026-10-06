@@ -1,0 +1,604 @@
+{
+  "assertion_count": null,
+  "assertion_note": "Runtime test counts measured; exact assertion totals uninstrumented. No package qualification claimed.",
+  "command_results": [
+    {
+      "exit_code": 0,
+      "receipt": "receipts/aspire-final-discovery.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/client-build-fixed.json"
+    },
+    {
+      "exit_code": 1,
+      "receipt": "receipts/client-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/client-complete-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1039,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-complete-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1039
+    },
+    {
+      "errors": 0,
+      "executed_passed": 27,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-cursor.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 27
+    },
+    {
+      "errors": 0,
+      "executed_passed": 20,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-direct-fixed.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 20
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/client-direct-red-build-fixed.json"
+    },
+    {
+      "exit_code": 1,
+      "receipt": "receipts/client-direct-red-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 1,
+      "failed": 3,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-direct-red.json",
+      "skipped": 0,
+      "source_test_outcome": "failed",
+      "total": 4
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/client-final-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1035,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-final-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1035
+    },
+    {
+      "errors": 0,
+      "executed_passed": 122,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-focused.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 122
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/client-source-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1035,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-source-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1035
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1031,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/client-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1031
+    },
+    {
+      "errors": 0,
+      "executed_passed": 135,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/contracts-authority.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 135
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/contracts-build-fixed.json"
+    },
+    {
+      "exit_code": 1,
+      "receipt": "receipts/contracts-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/contracts-final-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 2250,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/contracts-final-suite.json",
+      "skipped": 2,
+      "source_test_outcome": "executed-passed-with-nonpassing-skips",
+      "total": 2252
+    },
+    {
+      "errors": 0,
+      "executed_passed": 2246,
+      "exit_code": 1,
+      "failed": 1,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/contracts-suite.json",
+      "skipped": 2,
+      "source_test_outcome": "failed",
+      "total": 2249
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/contracts-wire-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 25,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/contracts-wire.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 25
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/diff-whitespace-check.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 1,
+      "failed": 2,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/failed-live-attempt-1/live-persistence.json",
+      "skipped": 0,
+      "source_test_outcome": "failed",
+      "total": 3
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-0fb7d540/live-evolution.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-0fb7d540/live-persistence.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 3
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-0fb7d540/live-reminder.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-15f2ffba/live-evolution.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-15f2ffba/live-persistence.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 3
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-15f2ffba/live-reminder.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-a9795237/live-evolution.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-a9795237/live-persistence.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 3
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-a9795237/live-reminder.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-b00046d8/live-evolution.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-b00046d8/live-persistence.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 3
+    },
+    {
+      "errors": 0,
+      "executed_passed": 1,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/live-attempt-b00046d8/live-reminder.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 1
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-build-fixed.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-complete-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-final-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-inventory-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/live-wire-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/query-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/query-final-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 19,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/query-final-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 19
+    },
+    {
+      "errors": 0,
+      "executed_passed": 19,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/query-suite.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 19
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/sealed-index-check.json"
+    },
+    {
+      "exit_code": 1,
+      "receipt": "receipts/sealed-selected-check.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-build-fixed.json"
+    },
+    {
+      "exit_code": 1,
+      "receipt": "receipts/server-build.json"
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-complete-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3733,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-complete-suite.json",
+      "skipped": 25,
+      "source_test_outcome": "executed-passed-with-nonpassing-skips",
+      "total": 3758
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-consistency-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 4,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-domain-inventory.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 4
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-final-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3733,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-final-suite.json",
+      "skipped": 25,
+      "source_test_outcome": "executed-passed-with-nonpassing-skips",
+      "total": 3758
+    },
+    {
+      "errors": 0,
+      "executed_passed": 191,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-focused.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 191
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-red-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 0,
+      "exit_code": 1,
+      "failed": 8,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-red.json",
+      "skipped": 0,
+      "source_test_outcome": "failed",
+      "total": 8
+    },
+    {
+      "exit_code": 0,
+      "receipt": "receipts/server-runtime-build.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 366,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-runtime-focused-fixed.json",
+      "skipped": 0,
+      "source_test_outcome": "passed",
+      "total": 366
+    },
+    {
+      "exit_code": 3,
+      "receipt": "receipts/server-runtime-focused.json"
+    },
+    {
+      "errors": 0,
+      "executed_passed": 3733,
+      "exit_code": 0,
+      "failed": 0,
+      "not_run": 0,
+      "qualification_passing": false,
+      "receipt": "receipts/server-suite.json",
+      "skipped": 25,
+      "source_test_outcome": "executed-passed-with-nonpassing-skips",
+      "total": 3758
+    }
+  ],
+  "independent_additions": [
+    "Reminder recovery",
+    "logical event evolution"
+  ],
+  "live_owned_containers_remaining": [],
+  "live_owned_processes_remaining": [],
+  "live_required_tests": 5,
+  "live_shared_preserved": true,
+  "nonpassing_boundaries": [
+    "25 existing skipped DW1 Server tests",
+    "2 Contracts package tests skipped: no EVENTSTORE_PACKAGE_CONTRACT_DIR",
+    "27 historical selected packet artifacts absent",
+    "Published candidate and capable rollback authority/archives/signatures/graphs unavailable",
+    "Exact source assertion totals not instrumented",
+    "Cross-version published matrix, fresh database backup/restore and failure cleanup drills not qualified",
+    "Exact owner conformance and release decisions pending"
+  ],
+  "p1r_usable": false,
+  "preserved_failed_receipts": [
+    "receipts/failed-live-attempt-1",
+    "receipts/contracts-suite.json",
+    "receipts/server-red.json",
+    "receipts/client-direct-red.json"
+  ],
+  "qualified": false,
+  "schema": "p1r-source-remediation/v1",
+  "selected_live_attempt": "receipts/live-attempt-b00046d8",
+  "source_binding_sha256": "200f90f7275b6fede7ff4c90a4e58ff0723a0549c45e7589a595992611b22c24",
+  "source_families": {
+    "checkout": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "invalid-evidence": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "metadata-read": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "metadata-write": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "mixed-api": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "projection-wire": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    },
+    "query-wire": {
+      "historical_binary_disposition": "incompatible and unchanged",
+      "published_candidate_rollback_qualification": "unavailable",
+      "source_result": "passed"
+    }
+  },
+  "source_only": true
+}

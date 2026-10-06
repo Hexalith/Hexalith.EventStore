@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{{json .Config.Labels}}",
+    "d6931465025bda6659643d6561e184f8cddbe454e4a5d13eb04026cbe1e457b9"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T10:18:30.318423+00:00",
+  "finished_utc": "2026-10-06T10:18:30.346968+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "output_sha256": "66a671c224ed0a85d1fed2f5b7b5a13492c0c65006d414f0e6bd3cc02789694d"
+}

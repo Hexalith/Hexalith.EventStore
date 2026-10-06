@@ -1,0 +1,25 @@
+  Determining projects to restore...
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj (in 265 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 253 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 253 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj (in 253 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 253 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 265 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 266 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 266 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj (in 266 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 266 ms).
+  Restored /tmp/p1r-commit-snapshot-eywqzeo0/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 311 ms).
+  Hexalith.Commons.UniqueIds -> /tmp/p1r-commit-snapshot-eywqzeo0/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll
+  Successfully created package '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.nupkg'.
+  Successfully created package '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.snupkg'.
+CSC : error CS0006: Metadata file '/tmp/p1r-commit-snapshot-eywqzeo0/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/obj/Debug/net10.0/ref/Hexalith.Commons.UniqueIds.dll' could not be found [/tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj]
+  Hexalith.EventStore.ServiceDefaults -> /tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+
+Build FAILED.
+
+CSC : error CS0006: Metadata file '/tmp/p1r-commit-snapshot-eywqzeo0/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/obj/Debug/net10.0/ref/Hexalith.Commons.UniqueIds.dll' could not be found [/tmp/p1r-commit-snapshot-eywqzeo0/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:03.71

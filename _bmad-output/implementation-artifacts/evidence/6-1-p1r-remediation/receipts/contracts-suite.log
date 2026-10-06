@@ -1,0 +1,27 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Contracts.Tests
+  Discovered:  Hexalith.EventStore.Contracts.Tests
+  Starting:    Hexalith.EventStore.Contracts.Tests
+    Hexalith.EventStore.Contracts.Tests.Packaging.PackagedReminderApiTests.PackagedReminderApiRunsWithoutWorksTypes [SKIP]
+      EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+    Hexalith.EventStore.Contracts.Tests.Packaging.TrustedEffectPackageContractTests.NamedPackagesExposeTrustedEffectContracts [SKIP]
+      EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+    Hexalith.EventStore.Contracts.Tests.Queries.P1RWireRegressionTests.ProjectionPosition987SurvivesSupportedRoundTrip(dataContract: True) [FAIL]
+      System.Runtime.Serialization.InvalidDataContractException : Type 'Hexalith.EventStore.Contracts.Projections.ProjectionEventDto' cannot be serialized. Consider marking it with the DataContractAttribute attribute, and marking all of its members you want serialized with the DataMemberAttribute attribute. Alternatively, you can ensure that the type is public and has a parameterless constructor - all public members of the type will then be serialized, and no attributes will be required.
+      Stack Trace:
+           at System.Runtime.Serialization.DataContracts.DataContract.DataContractCriticalHelper.ThrowInvalidDataContractException(String message, Type type)
+           at System.Runtime.Serialization.DataContracts.DataContract.DataContractCriticalHelper.CreateDataContract(Type type)
+           at System.Runtime.Serialization.DataContracts.DataContract.DataContractCriticalHelper.CreateDataContract(Int32 id, RuntimeTypeHandle typeHandle, Type type)
+           at System.Runtime.Serialization.DataContracts.DataContract.DataContractCriticalHelper.GetDataContractSkipValidation(Int32 id, RuntimeTypeHandle typeHandle, Type type)
+           at System.Runtime.Serialization.DataContracts.DataContract.GetDataContract(RuntimeTypeHandle typeHandle)
+           at System.Runtime.Serialization.DataContractSerializer.get_RootContract()
+           at System.Runtime.Serialization.DataContractSerializer.InternalWriteObject(XmlWriterDelegator writer, Object graph, DataContractResolver dataContractResolver)
+           at System.Runtime.Serialization.XmlObjectSerializer.WriteObjectHandleExceptions(XmlWriterDelegator writer, Object graph, DataContractResolver dataContractResolver)
+           at System.Runtime.Serialization.XmlObjectSerializer.WriteObject(Stream stream, Object graph)
+        tests/Hexalith.EventStore.Contracts.Tests/Queries/P1RWireRegressionTests.cs(61,0): at Hexalith.EventStore.Contracts.Tests.Queries.P1RWireRegressionTests.RoundTrip[T](T source, Boolean dataContract)
+        tests/Hexalith.EventStore.Contracts.Tests/Queries/P1RWireRegressionTests.cs(45,0): at Hexalith.EventStore.Contracts.Tests.Queries.P1RWireRegressionTests.ProjectionPosition987SurvivesSupportedRoundTrip(Boolean dataContract)
+           at InvokeStub_P1RWireRegressionTests.ProjectionPosition987SurvivesSupportedRoundTrip(Object, Span`1)
+           at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Contracts.Tests (ID = '210a75085c14d8922473bba20b1f4a231bbeaf4d411db8e89e1460450b309244')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Contracts.Tests  Total: 2249, Errors: 0, Failed: 1, Skipped: 2, Not Run: 0, Time: 422.327s
