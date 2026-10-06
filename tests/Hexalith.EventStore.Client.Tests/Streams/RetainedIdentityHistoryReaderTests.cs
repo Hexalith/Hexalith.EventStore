@@ -109,6 +109,84 @@ public sealed class RetainedIdentityHistoryReaderTests
             RetainedIdentityHistoryReadRequest.AttributionPurpose)).IsAuthoritative.ShouldBeTrue();
     }
 
+    /// <summary>Stops every noncooperative HTTP stage while its operation remains incomplete.</summary>
+    /// <param name="stage">Send, acquisition, ValueTask read, or Task read.</param>
+    /// <param name="expireDeadline">Whether the unchanged thirty-second SDK timer expires.</param>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(3, true)]
+    public async Task NoncooperativeTransportStopsBeforeCompletionAndDisposesLateMaterial(int stage, bool expireDeadline)
+    {
+        TimeSpan watchdog = TimeSpan.FromSeconds(2);
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var body = new RetainedHistorySuspendedStream(stage == 3);
+        using var content = new RetainedHistorySuspendedContent(stage == 1, body);
+        using var handler = new RetainedHistorySuspendedHandler(stage == 0, content);
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        using var cancellation = new CancellationTokenSource();
+        Task<RetainedIdentityHistoryReadResult> reading = new RetainedIdentityHistoryReader(client, clock)
+            .ReadAsync(_identity, RetainedIdentityHistoryReadRequest.AttributionPurpose, cancellation.Token);
+        Task started = stage switch
+        {
+            0 => handler.Started.Task,
+            1 => content.Started.Task,
+            _ => body.Started.Task,
+        };
+        Task pending = stage switch
+        {
+            0 => handler.Pending,
+            1 => content.Pending,
+            _ => body.Pending,
+        };
+
+        try
+        {
+            await started.WaitAsync(watchdog);
+            pending.IsCompleted.ShouldBeFalse();
+            reading.IsCompleted.ShouldBeFalse();
+            clock.LastDueTime.ShouldBe(TimeSpan.FromSeconds(30));
+            if (expireDeadline)
+            {
+                clock.Advance(TimeSpan.FromSeconds(29));
+                reading.IsCompleted.ShouldBeFalse();
+                clock.Advance(TimeSpan.FromSeconds(1));
+                RetainedIdentityHistoryReadResult result = await reading.WaitAsync(watchdog);
+                result.Stream.ShouldBeNull();
+                result.IsAuthoritative.ShouldBeFalse();
+                result.FailureReason.ShouldBe("history-time-bound-exceeded");
+            }
+            else
+            {
+                cancellation.Cancel();
+                await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(watchdog));
+            }
+
+            pending.IsCompleted.ShouldBeFalse();
+            content.Disposed.Task.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            // End the fixture operation only after the bounded read has stopped or its watchdog failed.
+            handler.Complete();
+            content.Complete();
+            body.Complete();
+        }
+
+        await content.Disposed.Task.WaitAsync(watchdog);
+        content.AcquisitionCount.ShouldBe(stage == 0 ? 0 : 1);
+        body.ReadCount.ShouldBe(stage < 2 ? 0 : 1);
+        if (stage > 0)
+        {
+            await body.Disposed.Task.WaitAsync(watchdog);
+        }
+    }
+
     private static RetainedIdentityHistoryStream Stream()
         => new(_identity, RetainedIdentityHistoryReadRequest.AttributionPurpose, 2, _now,
             [new StreamReadEvent(2, "History", "{}"u8.ToArray(), "json", 1, "", null, null,

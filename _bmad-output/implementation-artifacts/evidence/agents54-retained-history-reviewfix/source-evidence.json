@@ -1,0 +1,301 @@
+{
+  "repository": "/home/administrator/projects/hexalith/eventstore",
+  "branch": "main",
+  "source_observations": {
+    "spec_original_baseline": "d24a03569ed0c8e4d773e24e630a2eab2ec9f074",
+    "spec_previous_observed_head": "785d58fc99ce4c2751c0546ca6368e993c654ed9",
+    "task_initial_observed_head": "a6fc951e2c01c1c816aed1d03c851c0639f12cdd",
+    "task_final_observed_head": "12aa5d3a0b7b6b760e339cd9319e49123d4222a7",
+    "interpretation": "Exact worktree bytes below are local source evidence. External HEAD changes were observed; this task issued no Git mutation. No accepted target or live readiness is established."
+  },
+  "source_inventory": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Streams/IRetainedIdentityHistoryReader.cs",
+      "sha256": "37cd670d5a2ffb1efcdb47bac5b1acf4b8982650c2045e73b0fa69396bc5be6a",
+      "bytes": 551,
+      "before_sha256": "37cd670d5a2ffb1efcdb47bac5b1acf4b8982650c2045e73b0fa69396bc5be6a",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Streams/RetainedIdentityHistoryReader.cs",
+      "sha256": "f5435575a42a9f698841663f1ef616014bf9dd4ae1f72195614e82791f635d5c",
+      "bytes": 6386,
+      "before_sha256": "44fb15604ba423f9d8a0b01995ee97159d98476e18ea1166c8cf28cebabd2566",
+      "change": "changed"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryLimits.cs",
+      "sha256": "275c2900c828f7b68fe03c86a4bb683418e81f5061f01e8cbabb86282bb8316a",
+      "bytes": 825,
+      "before_sha256": "275c2900c828f7b68fe03c86a4bb683418e81f5061f01e8cbabb86282bb8316a",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryReadRequest.cs",
+      "sha256": "32db1a5ec8ba5a1750f1b383804ec56b8c3a19050fb501a358a4b6a882eb363f",
+      "bytes": 612,
+      "before_sha256": "32db1a5ec8ba5a1750f1b383804ec56b8c3a19050fb501a358a4b6a882eb363f",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryReadResult.cs",
+      "sha256": "5f7957c33b0cc9e9a2a4d55c2643737c73114d96f7c16fac3f3c5f8ab028c516",
+      "bytes": 596,
+      "before_sha256": "5f7957c33b0cc9e9a2a4d55c2643737c73114d96f7c16fac3f3c5f8ab028c516",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryStream.cs",
+      "sha256": "e7ef927feb922641c296f7701e03d9dbb99a3726521444933db678f750e5d3c9",
+      "bytes": 1377,
+      "before_sha256": "e7ef927feb922641c296f7701e03d9dbb99a3726521444933db678f750e5d3c9",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryValidator.cs",
+      "sha256": "e12c03a8eb4d6518467ccb65c3109bb5cc81220dfd9e0c62fc0f0fcff8639def",
+      "bytes": 3162,
+      "before_sha256": "e12c03a8eb4d6518467ccb65c3109bb5cc81220dfd9e0c62fc0f0fcff8639def",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Security/IRetainedIdentityHistoryAdmission.cs",
+      "sha256": "2bc832f7a5ae49a60d04ae41d9a305c03a4785b6f42ce43527ebd6ffe5e4c3a6",
+      "bytes": 586,
+      "before_sha256": "2bc832f7a5ae49a60d04ae41d9a305c03a4785b6f42ce43527ebd6ffe5e4c3a6",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Security/RetainedIdentityHistoryGrant.cs",
+      "sha256": "4ac9b5438783cf0c9b23dbf8b1ac7c68a932eff1f1c239002f613c1aaca02819",
+      "bytes": 977,
+      "before_sha256": "4ac9b5438783cf0c9b23dbf8b1ac7c68a932eff1f1c239002f613c1aaca02819",
+      "change": "unchanged"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Security/RetainedIdentityHistorySourceReader.cs",
+      "sha256": "175a5047161b497adfffa5012f185c7e841aa936ef7af561d6bd4219ce9e957a",
+      "bytes": 12134,
+      "before_sha256": "bfb39e3714054d09225d58ff19f4641e0a0c353bc1bf17b863bea14e88b4bb3d",
+      "change": "changed"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Controllers/RetainedIdentityHistoryController.cs",
+      "sha256": "2893f81c608fe6c0b347c1f0fd3c86c0ee7de63e5919d06fae05d493b072e101",
+      "bytes": 1314,
+      "before_sha256": "2893f81c608fe6c0b347c1f0fd3c86c0ee7de63e5919d06fae05d493b072e101",
+      "change": "unchanged"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistoryResponseHandler.cs",
+      "sha256": "87ca1f116a853d581e42eafded118d932816e70ce1637d43e3a879e7066d5b36",
+      "bytes": 953,
+      "before_sha256": "87ca1f116a853d581e42eafded118d932816e70ce1637d43e3a879e7066d5b36",
+      "change": "unchanged"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedContent.cs",
+      "sha256": "c0ec81158cb2e4f0e3ec25045a479d944a905bcaaa7fd0db5c3e09a59d8b33b1",
+      "bytes": 2348,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedHandler.cs",
+      "sha256": "b44b7d7f37f1b4a51c9c781c23d6274a8c6f377949f3b52e73d872abdfef73dd",
+      "bytes": 1548,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedStream.cs",
+      "sha256": "7fcbe5608005d20a320695e8952e89f01b0a6b24d6f86b954dcb6efd2d8d420c",
+      "bytes": 3166,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistoryTimeProvider.cs",
+      "sha256": "0ba6651106225d71937ef3c38f6e12c0574ed7baddc2672e6eec7fad7cc9d2a1",
+      "bytes": 1312,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistoryTimer.cs",
+      "sha256": "d747c297d982efb8e97d88ac8737dfb06cf8ae17439397254e5042883ac8c79d",
+      "bytes": 1755,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedIdentityHistoryReaderTests.cs",
+      "sha256": "de9b34bc332d7a192bc8c9358db1d0daa19772e488431569207cca6c6e9ee9c4",
+      "bytes": 10099,
+      "before_sha256": "d71c327f3e77c94f71e39bb65371f67d5d0dbd253c76e66b5198e0584d1401b1",
+      "change": "changed"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Streams/RetainedIdentityHistoryValidatorTests.cs",
+      "sha256": "a5221e74f498abbb3b4db666a4089b9a239c63c5d326650f965fdd067a9e2031",
+      "bytes": 4466,
+      "before_sha256": "a5221e74f498abbb3b4db666a4089b9a239c63c5d326650f965fdd067a9e2031",
+      "change": "unchanged"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/HistoryCustodyProbeEvent.cs",
+      "sha256": "2c8323840e59e36d868edbd5955f693473baf7e884e916225ba2c62f352587c6",
+      "bytes": 375,
+      "before_sha256": "2c8323840e59e36d868edbd5955f693473baf7e884e916225ba2c62f352587c6",
+      "change": "unchanged"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/RetainedHistoryTimeProvider.cs",
+      "sha256": "6e435f3781661341f6a1f59ef75cfa4ded40651e8084c2843aff1542507b2852",
+      "bytes": 1313,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/RetainedHistoryTimer.cs",
+      "sha256": "cdfaca4c37e26d213d1e10e29d716b8692319621109b6d6f1881bb086785454c",
+      "bytes": 1756,
+      "before_sha256": null,
+      "change": "new_owned_helper"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/RetainedIdentityHistorySourceReaderTests.cs",
+      "sha256": "e202a3899b3b5fa425b7814174809b87f2bd93b449f134504b8b36cf951a3d94",
+      "bytes": 21840,
+      "before_sha256": "8781fc40774fd3c104ed3bd54c425068b3444c6cc0425cb4a12f8b038293e5b4",
+      "change": "changed"
+    }
+  ],
+  "executed_commands": [
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 --artifacts-path /tmp/hexalith-agents54-history-artifacts -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 > /tmp/hexalith-agents54-history-client-reviewfix-build.log 2>&1",
+      "exit_code": 0,
+      "warnings": 0,
+      "errors": 0,
+      "log": "/tmp/hexalith-agents54-history-client-reviewfix-build.log"
+    },
+    {
+      "command": "dotnet /tmp/hexalith-agents54-history-artifacts/bin/Hexalith.EventStore.Client.Tests/debug/Hexalith.EventStore.Client.Tests.dll -class Hexalith.EventStore.Client.Tests.Streams.RetainedIdentityHistoryReaderTests -xml /tmp/hexalith-agents54-history-client-reviewfix-results.xml > /tmp/hexalith-agents54-history-client-reviewfix-tests.log 2>&1",
+      "exit_code": 0,
+      "log": "/tmp/hexalith-agents54-history-client-reviewfix-tests.log",
+      "xml": "/tmp/hexalith-agents54-history-client-reviewfix-results.xml"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -m:1 --artifacts-path /tmp/hexalith-agents54-history-artifacts -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 > /tmp/hexalith-agents54-history-server-reviewfix-build.log 2>&1",
+      "exit_code": 0,
+      "warnings": 0,
+      "errors": 0,
+      "log": "/tmp/hexalith-agents54-history-server-reviewfix-build.log"
+    },
+    {
+      "command": "dotnet /tmp/hexalith-agents54-history-artifacts/bin/Hexalith.EventStore.Server.Tests/debug/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.RetainedIdentityHistorySourceReaderTests -result-xml /tmp/hexalith-agents54-history-server-reviewfix-results.xml > /tmp/hexalith-agents54-history-server-reviewfix-tests.log 2>&1",
+      "exit_code": 0,
+      "log": "/tmp/hexalith-agents54-history-server-reviewfix-tests.log",
+      "xml": "/tmp/hexalith-agents54-history-server-reviewfix-results.xml"
+    }
+  ],
+  "test_results": [
+    {
+      "lane": "client",
+      "reused": false,
+      "xml": "/tmp/hexalith-agents54-history-client-reviewfix-results.xml",
+      "sha256": "9248d746200de5d2c0e6511301d1990b2ae3ae29f57cdbb22d7e74b8c5df83d2",
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "errors": 0,
+      "seconds": "0.365"
+    },
+    {
+      "lane": "server",
+      "reused": false,
+      "xml": "/tmp/hexalith-agents54-history-server-reviewfix-results.xml",
+      "sha256": "96425f094a06125cd69e8215617aa39d8ef6ef5cbe13f52a044aa97437d4f496",
+      "total": 27,
+      "passed": 27,
+      "failed": 0,
+      "errors": 0,
+      "seconds": "0.337"
+    },
+    {
+      "lane": "contracts",
+      "reused": true,
+      "xml": "/tmp/hexalith-agents54-history-contracts-final-results.xml",
+      "sha256": "bf63de189181bf384de999744d2fd86bcc2123c37a203172731ca77978a65b99",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "errors": 0,
+      "seconds": "0.109"
+    }
+  ],
+  "total_passing_tests": 54,
+  "artifact_inventory": [
+    {
+      "path": "/tmp/hexalith-agents54-history-client-reviewfix-build.log",
+      "sha256": "461e9efe0a5c502e994261d0088bc50bdc4fd097a21f14b03d557d605901a864",
+      "bytes": 1662
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-client-reviewfix-results.xml",
+      "sha256": "9248d746200de5d2c0e6511301d1990b2ae3ae29f57cdbb22d7e74b8c5df83d2",
+      "bytes": 11931
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-client-reviewfix-tests.log",
+      "sha256": "e8a28e9ae238d74f704c1fa4c15a067e0049ba3dbf9eb41067b5e2b3705a9c31",
+      "bytes": 586
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-contracts-final-build.log",
+      "sha256": "d6b0f26e2d139f88b9bc41915e5fa406c4f8fd756e05780675a16acb8ba548fd",
+      "bytes": 1230
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-contracts-final-results.xml",
+      "sha256": "bf63de189181bf384de999744d2fd86bcc2123c37a203172731ca77978a65b99",
+      "bytes": 8243
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-reviewfix-before-source.json",
+      "sha256": "6ca9d53f725921be775336f02297bcbf513b1062c3a5e81a360a85cff7275000",
+      "bytes": 1722147
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-reviewfix-before-status.txt",
+      "sha256": "ccc6677c9115da4ae927f2ce75de3ea7cde5f0bf2109a09bca006dcab688398b",
+      "bytes": 2253
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-server-reviewfix-build.log",
+      "sha256": "68ff283b0f1e72f7d8ef70f279ce40a2e92d93e20ad70c1fe95b32410dd69b82",
+      "bytes": 1974
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-server-reviewfix-results.xml",
+      "sha256": "96425f094a06125cd69e8215617aa39d8ef6ef5cbe13f52a044aa97437d4f496",
+      "bytes": 20216
+    },
+    {
+      "path": "/tmp/hexalith-agents54-history-server-reviewfix-tests.log",
+      "sha256": "a086c43d1e8710c47f73f5597b9f7d231ccf10ed5e51bf849ddb908c9ffe1e48",
+      "bytes": 475
+    }
+  ],
+  "preservation": {
+    "unrelated_preexisting_tracked_file_content_changes_observed": [],
+    "interpretation": "Tracked bytes compared with the initial snapshot; staging/commits/pushes by other actors are outside this task. No unrelated file was edited by this implementation."
+  },
+  "scope": {
+    "production_provider_installed": false,
+    "production_policy_approved": false,
+    "live_calls_executed": false,
+    "owner_accepted": false,
+    "cleanup_or_restore_acceptance_established": false
+  }
+}

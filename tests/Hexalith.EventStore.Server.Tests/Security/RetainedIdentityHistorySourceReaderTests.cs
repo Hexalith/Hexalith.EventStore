@@ -236,6 +236,119 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         _actors.DidNotReceive().CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>());
     }
 
+    /// <summary>Bounds every admission and custody await without relying on provider cancellation.</summary>
+    /// <param name="stage">The initial/final admission, unprotect, or initial/final lifecycle read.</param>
+    /// <param name="expireDeadline">Whether the actual thirty-second SDK timer expires.</param>
+    [Theory]
+    [InlineData("initial-admission", false)]
+    [InlineData("final-admission", false)]
+    [InlineData("unprotect", false)]
+    [InlineData("initial-custody", false)]
+    [InlineData("final-custody", false)]
+    [InlineData("initial-admission", true)]
+    [InlineData("final-admission", true)]
+    [InlineData("unprotect", true)]
+    [InlineData("initial-custody", true)]
+    [InlineData("final-custody", true)]
+    public async Task NoncooperativeProviderStopsBeforeCompletionAndNeverResumesSourceWork(string stage, bool expireDeadline)
+    {
+        TimeSpan watchdog = TimeSpan.FromSeconds(2);
+        Arrange();
+        ArrangeCompleteSource();
+        var clock = new RetainedHistoryTimeProvider(_now);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var admission = new TaskCompletionSource<RetainedIdentityHistoryGrant?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unprotect = new TaskCompletionSource<PayloadProtectionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var custody = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var readable = new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence())), "json");
+        int admissionCount = 0;
+        int custodyCount = 0;
+        _admission.AdmitAsync(_principal, Arg.Any<RetainedIdentityHistoryReadRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                admissionCount++;
+                if ((stage == "initial-admission" && admissionCount == 1) || (stage == "final-admission" && admissionCount == 2))
+                {
+                    started.TrySetResult();
+                    return admission.Task;
+                }
+
+                return Task.FromResult<RetainedIdentityHistoryGrant?>(Grant());
+            });
+        _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (stage == "unprotect")
+                {
+                    started.TrySetResult();
+                    return unprotect.Task;
+                }
+
+                return Task.FromResult(readable);
+            });
+        _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                custodyCount++;
+                if ((stage == "initial-custody" && custodyCount == 1) || (stage == "final-custody" && custodyCount == 2))
+                {
+                    started.TrySetResult();
+                    return custody.Task;
+                }
+
+                return Task.FromResult(true);
+            });
+        Task pending = stage switch
+        {
+            "initial-admission" or "final-admission" => admission.Task,
+            "unprotect" => unprotect.Task,
+            _ => custody.Task,
+        };
+        using var cancellation = new CancellationTokenSource();
+        var reader = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, clock);
+        Task<RetainedIdentityHistoryReadResult> reading = reader.ReadAsync(_principal, Request(), cancellation.Token);
+        await started.Task.WaitAsync(watchdog);
+        int sourceCalls = _actor.ReceivedCalls().Count();
+        int providerCalls = _custody.ReceivedCalls().Count() + _admission.ReceivedCalls().Count();
+        try
+        {
+            pending.IsCompleted.ShouldBeFalse();
+            reading.IsCompleted.ShouldBeFalse();
+            clock.LastDueTime.ShouldBe(TimeSpan.FromSeconds(30));
+            if (expireDeadline)
+            {
+                clock.Advance(TimeSpan.FromSeconds(29));
+                reading.IsCompleted.ShouldBeFalse();
+                clock.Advance(TimeSpan.FromSeconds(1));
+                RetainedIdentityHistoryReadResult result = await reading.WaitAsync(watchdog);
+                result.Stream.ShouldBeNull();
+                result.IsAuthoritative.ShouldBeFalse();
+                result.FailureReason.ShouldBe("history-time-bound-exceeded");
+            }
+            else
+            {
+                cancellation.Cancel();
+                await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(watchdog));
+            }
+
+            pending.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            admission.TrySetResult(Grant());
+            unprotect.TrySetResult(readable);
+            custody.TrySetResult(true);
+        }
+
+        await pending.WaitAsync(watchdog);
+        _actor.ReceivedCalls().Count().ShouldBe(sourceCalls);
+        (_custody.ReceivedCalls().Count() + _admission.ReceivedCalls().Count()).ShouldBe(providerCalls);
+        if (stage == "initial-admission")
+        {
+            _actors.DidNotReceive().CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>());
+        }
+    }
+
     private void ArrangeCompleteSource()
         => _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
 

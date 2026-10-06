@@ -102,7 +102,7 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
         {
             return new(null, "history-unavailable");
         }
-            finally
+        finally
         {
             if (pendingOperation is not null)
             {
