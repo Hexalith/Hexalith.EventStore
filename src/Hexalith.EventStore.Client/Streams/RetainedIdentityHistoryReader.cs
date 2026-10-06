@@ -25,18 +25,26 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
             return new(null, "history-purpose-denied");
         }
 
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), _clock);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        HttpRequestMessage? message = null;
+        HttpResponseMessage? response = null;
+        Stream? body = null;
+        Task? pendingOperation = null;
         try
         {
             deadline.Token.ThrowIfCancellationRequested();
             var request = new RetainedIdentityHistoryReadRequest(identity, purpose);
-            using var message = new HttpRequestMessage(HttpMethod.Post, "api/v1/identity-history/read")
+            message = new HttpRequestMessage(HttpMethod.Post, "api/v1/identity-history/read")
             {
                 Content = JsonContent.Create(request),
             };
-            using HttpResponseMessage response = await httpClient.SendAsync(message,
-                HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
+            Task<HttpResponseMessage> sending = httpClient.SendAsync(message,
+                HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+            pendingOperation = sending;
+            response = await sending.WaitAsync(deadline.Token).ConfigureAwait(false);
+            pendingOperation = null;
+            deadline.Token.ThrowIfCancellationRequested();
             if (!response.IsSuccessStatusCode)
             {
                 return new(null, "history-unavailable");
@@ -47,12 +55,21 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
                 return new(null, "history-response-bound-exceeded");
             }
 
-            using Stream body = await response.Content.ReadAsStreamAsync(deadline.Token).ConfigureAwait(false);
+            Task<Stream> acquiring = response.Content.ReadAsStreamAsync(deadline.Token);
+            pendingOperation = acquiring;
+            body = await acquiring.WaitAsync(deadline.Token).ConfigureAwait(false);
+            pendingOperation = null;
+            deadline.Token.ThrowIfCancellationRequested();
             using var buffer = new MemoryStream();
             var chunk = new byte[8192];
             while (true)
             {
-                int count = await body.ReadAsync(chunk.AsMemory(), deadline.Token).ConfigureAwait(false);
+                deadline.Token.ThrowIfCancellationRequested();
+                Task<int> reading = body.ReadAsync(chunk.AsMemory(), deadline.Token).AsTask();
+                pendingOperation = reading;
+                int count = await reading.WaitAsync(deadline.Token).ConfigureAwait(false);
+                pendingOperation = null;
+                deadline.Token.ThrowIfCancellationRequested();
                 if (count == 0)
                 {
                     break;
@@ -84,6 +101,48 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
         catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or ArgumentException or IOException)
         {
             return new(null, "history-unavailable");
+        }
+            finally
+        {
+            if (pendingOperation is not null)
+            {
+                // A noncooperative operation still owns its request/response/buffer. Observe its
+                // eventual completion only to dispose transport material; never resume this read.
+                _ = DisposeAfterCompletionAsync(pendingOperation, message, response, body);
+            }
+            else
+            {
+                body?.Dispose();
+                response?.Dispose();
+                message?.Dispose();
+            }
+        }
+    }
+
+    private static async Task DisposeAfterCompletionAsync(Task operation, HttpRequestMessage? message,
+        HttpResponseMessage? response, Stream? body)
+    {
+        try
+        {
+            await operation.ConfigureAwait(false);
+            if (operation is Task<HttpResponseMessage> sending)
+            {
+                response = sending.Result;
+            }
+            else if (operation is Task<Stream> acquiring)
+            {
+                body = acquiring.Result;
+            }
+        }
+        catch (Exception)
+        {
+            // Observe late transport faults without releasing history or exposing their content.
+        }
+        finally
+        {
+            body?.Dispose();
+            response?.Dispose();
+            message?.Dispose();
         }
     }
 }
