@@ -1059,13 +1059,17 @@ class Runner:
         except ProcessLookupError:
             pass
 
-    def flush_logs(self):
+    def flush_logs(self, processes=None):
+        remaining = []
         for process, file, argv, started, node_environment in self.logs:
+            if processes is not None and process not in processes:
+                remaining.append((process, file, argv, started, node_environment))
+                continue
             file.seek(0)
             receipt = self.record(argv, started, process.returncode if process.returncode is not None else -1, file.read(), self.scratch)
             receipt["node_environment"] = node_environment
             file.close()
-        self.logs.clear()
+        self.logs = remaining
 
     def container(self, role, image, arguments=(), port=None, host_port=None, env_file=None, entrypoint=None):
         name = f"p1r-{self.invocation}-{role}"
@@ -1417,13 +1421,45 @@ class Runner:
 
     @staticmethod
     def ports(count):
+        with Runner.reserved_ports(count) as connections:
+            return [connection.getsockname()[1] for connection in connections]
+
+    @staticmethod
+    @contextlib.contextmanager
+    def reserved_ports(count):
         with contextlib.ExitStack() as sockets:
-            ports = []
+            connections = []
             for _ in range(count):
                 connection = sockets.enter_context(socket.socket())
                 connection.bind(("127.0.0.1", 0))
-                ports.append(connection.getsockname()[1])
-            return ports
+                connections.append(connection)
+            yield connections
+
+    def port_collision(self, command_start):
+        return any(re.search(r"(?i)address already in use|port is already allocated|EADDRINUSE", c.get("diagnostic", "")) for c in self.commands[command_start:])
+
+    def start_scheduler(self):
+        for attempt in range(3):
+            command_start = len(self.commands)
+            try:
+                with self.reserved_ports(1) as connections:
+                    scheduler_port = connections[0].getsockname()[1]
+                    connections[0].close()
+                    return self.container("scheduler", RUNTIME, ["./scheduler", "--port", "50006", "--etcd-data-dir", "/tmp/p1r-scheduler", "--etcd-client-listen-address", "0.0.0.0", "--override-broadcast-host-port", f"127.0.0.1:{scheduler_port}"], port=50006, host_port=scheduler_port)
+            except Exception:
+                if not self.port_collision(command_start) or attempt == 2:
+                    raise
+                cidfile = self.scratch / "scheduler.cid"
+                if cidfile.exists():
+                    identity = cidfile.read_text().strip()
+                    inspection = self.run(["docker", "inspect", "--format", OWNERSHIP_INSPECT_FORMAT, identity], check=False)
+                    if inspection.strip().startswith("{"):
+                        observed = json.loads(inspection)
+                        require(observed["id"] == identity and observed["invocation"] == self.invocation, "Scheduler retry ownership mismatch")
+                        self.run(["docker", "rm", "-f", identity])
+                    else:
+                        require(self.commands[-1]["exit_code"] != 0 and re.search(r"(?i)no such (?:object|container)", self.commands[-1]["diagnostic"]), "Scheduler retry inspection failed")
+                    cidfile.unlink()
 
     def topology(self):
         password = uuid.uuid4().hex
@@ -1433,8 +1469,7 @@ class Runner:
         self.pg, self.pgport = self.container("postgresql", POSTGRES, port=5432, env_file=envfile)
         self.password = password
         self.placement, self.placement_port = self.container("placement", RUNTIME, ["./placement", "--port", "50005"], port=50005)
-        scheduler_port = self.port()
-        self.scheduler, self.scheduler_port = self.container("scheduler", RUNTIME, ["./scheduler", "--port", "50006", "--etcd-data-dir", "/tmp/p1r-scheduler", "--etcd-client-listen-address", "0.0.0.0", "--override-broadcast-host-port", f"127.0.0.1:{scheduler_port}"], port=50006, host_port=scheduler_port)
+        self.scheduler, self.scheduler_port = self.start_scheduler()
         self.redis, self.redis_port = self.container("pubsub", "redis:7.4", port=6379)
         # Extract only from the owned, versioned control-plane container.
         self.daprd = self.scratch / "daprd"
@@ -1483,20 +1518,7 @@ class Runner:
         config.write_text(f'apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: "{self.scratch / "discovery.sqlite"}"\n')
         self.active = []
         for kind, appid in (("domain", "counter"), ("host", "eventstore")):
-            app, http, grpc, internal, metrics, profile = self.ports(6)
-            environment = dict(self.env, ASPNETCORE_ENVIRONMENT="Development", ASPNETCORE_URLS=f"http://127.0.0.1:{app}", DAPR_HTTP_PORT=str(http), DAPR_GRPC_PORT=str(grpc), NAMESPACE="p1r-" + self.invocation,
-                P1R_KEYS_PATH=str(self.scratch / "cursor-keys"), EventStore__Actors__AggregateActorTypeName="AggregateActor", EventStore__Snapshots__DefaultInterval=str(interval), EventStore__DomainServices__Registrations__counter__AppId="counter")
-            registration = "EventStore__DomainServices__Registrations__*|counter|v1__"
-            environment.update({registration + k: v for k, v in {"AppId": "counter", "MethodName": "process", "TenantId": "*", "Domain": "counter", "Version": "v1"}.items()})
-            assembly = self.scratch / lane / kind / "bin" / ("Debug" if lane == "current" else "Release") / "net10.0" / ("Host.dll" if kind == "host" else "Domain.dll")
-            application = self.start(["dotnet", assembly], environment)
-            self.active.append(application)
-            sidecar = self.start([self.daprd, "--app-id", appid, "--app-port", str(app), "--app-channel-address", "127.0.0.1", "--dapr-http-port", str(http), "--dapr-grpc-port", str(grpc), "--dapr-internal-grpc-port", str(internal), "--metrics-port", str(metrics), "--profile-port", str(profile), "--resources-path", resources, "--config", config, "--placement-host-address", f"127.0.0.1:{self.placement_port}", "--scheduler-host-address", f"127.0.0.1:{self.scheduler_port}", "--log-level", "warn"], environment)
-            self.active.append(sidecar)
-            readiness = self.wait_http(f"http://127.0.0.1:{app}/ready", application)
-            if kind == "domain":
-                write(self.output / "artifacts" / (lane + "-domain-loaded.json"), readiness["assemblies"])
-            self.wait_http(f"http://127.0.0.1:{http}/v1.0/healthz/outbound", sidecar)
+            app, http = self.start_node(lane, kind, appid, resources, config, interval)
             if kind == "host":
                 self.host_port, self.sidecar_port = app, http
             else:
@@ -1505,6 +1527,50 @@ class Runner:
         self.assertion((self.scratch / "discovery.sqlite").is_file(), "Private discovery not observed")
         identity = self.http("GET", f"http://127.0.0.1:{self.host_port}/identity")
         write(self.output / "artifacts" / (lane + "-host-loaded.json"), identity)
+
+    def start_node(self, lane, kind, appid, resources, config, interval):
+        for attempt in range(3):
+            command_start = len(self.commands)
+            owned = []
+            try:
+                with self.reserved_ports(6) as connections:
+                    app, http, grpc, internal, metrics, profile = [connection.getsockname()[1] for connection in connections]
+                    environment = dict(self.env, ASPNETCORE_ENVIRONMENT="Development", ASPNETCORE_URLS=f"http://127.0.0.1:{app}", DAPR_HTTP_PORT=str(http), DAPR_GRPC_PORT=str(grpc), NAMESPACE="p1r-" + self.invocation,
+                        P1R_KEYS_PATH=str(self.scratch / "cursor-keys"), EventStore__Actors__AggregateActorTypeName="AggregateActor", EventStore__Snapshots__DefaultInterval=str(interval), EventStore__DomainServices__Registrations__counter__AppId="counter")
+                    registration = "EventStore__DomainServices__Registrations__*|counter|v1__"
+                    environment.update({registration + k: v for k, v in {"AppId": "counter", "MethodName": "process", "TenantId": "*", "Domain": "counter", "Version": "v1"}.items()})
+                    assembly = self.scratch / lane / kind / "bin" / ("Debug" if lane == "current" else "Release") / "net10.0" / ("Host.dll" if kind == "host" else "Domain.dll")
+                    connections[0].close()
+                    application = self.start(["dotnet", assembly], environment)
+                    owned.append(application)
+                    self.active.append(application)
+                    readiness = self.wait_http(f"http://127.0.0.1:{app}/ready", application)
+                    for connection in connections[1:]:
+                        connection.close()
+                    sidecar = self.start([self.daprd, "--app-id", appid, "--app-port", str(app), "--app-channel-address", "127.0.0.1", "--dapr-http-port", str(http), "--dapr-grpc-port", str(grpc), "--dapr-internal-grpc-port", str(internal), "--metrics-port", str(metrics), "--profile-port", str(profile), "--resources-path", resources, "--config", config, "--placement-host-address", f"127.0.0.1:{self.placement_port}", "--scheduler-host-address", f"127.0.0.1:{self.scheduler_port}", "--log-level", "warn"], environment)
+                    owned.append(sidecar)
+                    self.active.append(sidecar)
+                    self.wait_http(f"http://127.0.0.1:{http}/v1.0/healthz/outbound", sidecar)
+                    if kind == "domain":
+                        write(self.output / "artifacts" / (lane + "-domain-loaded.json"), readiness["assemblies"])
+                    return app, http
+            except Exception:
+                errors = []
+                for process in reversed(owned):
+                    try:
+                        self.stop(process)
+                    except (Exception, KeyboardInterrupt) as error:
+                        self.record(["os.killpg", str(process.pid), "SIGTERM/SIGKILL"], utc(), 1, (type(error).__name__ + ": " + self.redact(str(error))).encode(), self.scratch)
+                        errors.append(error)
+                self.flush_logs([process for process in owned if process.poll() is not None])
+                self.active = [process for process in self.active if process not in owned or process.poll() is None]
+                if errors:
+                    self.node_stop_errors.extend(type(error).__name__ for error in errors)
+                    if any(isinstance(error, KeyboardInterrupt) for error in errors):
+                        raise KeyboardInterrupt("Owned node retry cleanup interrupted")
+                    raise errors[0]
+                if not self.port_collision(command_start) or attempt == 2:
+                    raise
 
     def stop_nodes(self):
         errors = []
@@ -1529,7 +1595,7 @@ class Runner:
         deadline = time.monotonic() + 45
         while time.monotonic() < deadline:
             if process.poll() is not None:
-                self.flush_logs()
+                self.flush_logs([process])
                 raise RuntimeError("Owned application exited during startup")
             try:
                 result = self.http("GET", url, timeout=2)

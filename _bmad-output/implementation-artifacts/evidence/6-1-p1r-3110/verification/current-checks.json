@@ -1,0 +1,74 @@
+{
+  "observed_checks": [
+    {
+      "argv": [
+        "python3",
+        "-W",
+        "error::ResourceWarning",
+        "-m",
+        "unittest",
+        "test_run_verification.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "exit_code": 0,
+      "output_excerpt": "Ran 125 tests in 39.257s\n\nOK\n",
+      "tests_passed": 125
+    },
+    {
+      "argv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verify_public_packages.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output_excerpt": "PASS: 14 public packages match recorded hashes, tagged source metadata, release assets, ZIP payloads, signatures, and manifest contract\n",
+      "packages_passed": 14
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--out",
+        "attempt-18"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "exit_code": 2,
+      "output_excerpt": "failure-cleanup: passed/compatible (6 assertions)\nRETAINED NONPASSING: Failed cleanup\n"
+    }
+  ],
+  "owner_acceptance_granted": false,
+  "qualified": false,
+  "recorded_utc": "2026-10-06T06:06:46.051941+00:00",
+  "schema": "hexalith.p1r.verification.checks.v1",
+  "usable_as_prerequisite": false,
+  "validator_receipts": [
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--validate",
+        "attempt-17"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "diagnostic": "INVALID: Post-upgrade restore lacks a retained-floor stream\n",
+      "exit_code": 2,
+      "finished_utc": "2026-10-06T06:06:47.508005+00:00",
+      "output_sha256": "c12a47ed66acb41f054ffb0e4163f37511f700208f35182b52ac570ada7bf156",
+      "started_utc": "2026-10-06T06:06:46.051979+00:00"
+    },
+    {
+      "argv": [
+        "python3",
+        "run_verification.py",
+        "--validate",
+        "attempt-18"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+      "diagnostic": "INVALID: Failed cleanup\n",
+      "exit_code": 2,
+      "finished_utc": "2026-10-06T06:06:47.576365+00:00",
+      "output_sha256": "be6a3c7cc8c22804ed7999e7bc140fe3fed95d385f6fda8c16ef54cce3a15983",
+      "started_utc": "2026-10-06T06:06:47.508063+00:00"
+    }
+  ]
+}

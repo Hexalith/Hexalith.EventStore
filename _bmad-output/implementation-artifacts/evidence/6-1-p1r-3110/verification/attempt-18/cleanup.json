@@ -1,0 +1,32 @@
+{
+  "complete": false,
+  "discovery_errors": [
+    {
+      "error": "ValueError",
+      "phase": "before"
+    },
+    {
+      "error": "ValueError",
+      "phase": "after"
+    }
+  ],
+  "errors": [
+    "shared_before_unavailable",
+    "shared_after_unavailable"
+  ],
+  "invocation": "b05c08abe5934cf5944cafb8524ba743",
+  "owned_containers": [],
+  "owned_containers_removed": true,
+  "owned_processes": [
+    54255,
+    54258,
+    54259,
+    54288,
+    54289
+  ],
+  "owned_processes_stopped": true,
+  "scratch_removed": true,
+  "shared_after": null,
+  "shared_before": null,
+  "shared_discovery_complete": false
+}

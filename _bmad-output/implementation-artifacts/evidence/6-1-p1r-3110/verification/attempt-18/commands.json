@@ -1,0 +1,74 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nThe command 'docker' could not be found in this WSL 2 distro.\nWe recommend to activate the WSL integration in Docker Desktop settings.\n\nFor details about using Docker Desktop with WSL 2, visit:\n\nhttps://docs.docker.com/go/wsl2/\n\n",
+    "exit_code": 1,
+    "finished_utc": "2026-10-06T06:05:09.689145+00:00",
+    "id": 1,
+    "output_sha256": "663ca6c96d74b96ae6cdccb23c6be8294ad56f20da13a8da31b6551d66968f0b",
+    "started_utc": "2026-10-06T06:05:09.620717+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "raise SystemExit(7)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 7,
+    "finished_utc": "2026-10-06T06:05:09.698468+00:00",
+    "id": 2,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-06T06:05:09.689842+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import time; time.sleep(10)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 124,
+    "finished_utc": "2026-10-06T06:05:09.749813+00:00",
+    "id": 3,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-06T06:05:09.699258+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-c",
+      "import time; time.sleep(10)"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "",
+    "exit_code": 130,
+    "finished_utc": "2026-10-06T06:05:10.052635+00:00",
+    "id": 4,
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-06T06:05:09.752281+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--no-trunc"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification",
+    "diagnostic": "\nThe command 'docker' could not be found in this WSL 2 distro.\nWe recommend to activate the WSL integration in Docker Desktop settings.\n\nFor details about using Docker Desktop with WSL 2, visit:\n\nhttps://docs.docker.com/go/wsl2/\n\n",
+    "exit_code": 1,
+    "finished_utc": "2026-10-06T06:05:10.125947+00:00",
+    "id": 5,
+    "output_sha256": "663ca6c96d74b96ae6cdccb23c6be8294ad56f20da13a8da31b6551d66968f0b",
+    "started_utc": "2026-10-06T06:05:10.057299+00:00"
+  }
+]

@@ -1,0 +1,314 @@
+{
+  "exit_code": 1,
+  "qualified": false,
+  "scenarios": [
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "provenance",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "legacy-metadata",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-read",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "metadata-write",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "full-replay",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "snapshot-tail",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "retained-covered",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "retained-uncovered",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "missing-event",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "invalid-evidence",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "query-wire",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "projection-wire",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "mixed-api",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "checkout",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "post-upgrade-restore",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 0,
+      "cases": [
+        {
+          "assertions": 0,
+          "id": "blocked",
+          "reason": "ValueError: Command 1 exited 1"
+        }
+      ],
+      "command_ids": [
+        5
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "pre-upgrade-restore",
+      "reason": "ValueError: Command 1 exited 1"
+    },
+    {
+      "assertions": 6,
+      "cases": [
+        {
+          "assertions": 2,
+          "command_ids": [
+            2
+          ],
+          "id": "startup-failure"
+        },
+        {
+          "assertions": 2,
+          "command_ids": [
+            3
+          ],
+          "id": "timeout"
+        },
+        {
+          "assertions": 2,
+          "command_ids": [
+            4
+          ],
+          "id": "cancellation"
+        }
+      ],
+      "command_ids": [
+        2,
+        3,
+        4
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "failure-cleanup",
+      "reason": null,
+      "setup_assertions": 0
+    }
+  ]
+}

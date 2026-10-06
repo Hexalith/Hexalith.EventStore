@@ -1331,6 +1331,179 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(len(set(self.runner.ports(6))),6)
         self.assertFalse(occupied)
 
+    def test_port_reservations_remain_owned_until_launch_handoff(self):
+        with self.runner.reserved_ports(6) as connections:
+            ports = [connection.getsockname()[1] for connection in connections]
+            self.assertEqual(len(set(ports)), 6)
+            for port in ports:
+                with verifier.socket.socket() as competitor:
+                    with self.assertRaises(OSError): competitor.bind(("127.0.0.1", port))
+        for port in ports:
+            with verifier.socket.socket() as competitor:
+                competitor.bind(("127.0.0.1", port))
+
+    def node_setup(self):
+        self.runner.active = []
+        self.runner.daprd = self.runner.scratch / "daprd"
+        self.runner.placement_port = 12345
+        self.runner.scheduler_port = 12346
+
+    def test_node_handoff_keeps_sidecar_ports_reserved_until_application_ready(self):
+        self.node_setup()
+        reservations = []
+        original = self.runner.reserved_ports
+        @contextlib.contextmanager
+        def reserve(count):
+            with original(count) as connections:
+                reservations.extend(connections)
+                yield connections
+        application, sidecar = mock.Mock(), mock.Mock()
+        def launch(argv, env):
+            if argv[0] == "dotnet":
+                self.assertEqual(reservations[0].fileno(), -1)
+                self.assertTrue(all(connection.fileno() >= 0 for connection in reservations[1:]))
+                return application
+            self.assertTrue(all(connection.fileno() == -1 for connection in reservations))
+            return sidecar
+        def readiness(url, process):
+            if process is application:
+                self.assertTrue(all(connection.fileno() >= 0 for connection in reservations[1:]))
+            return {"assemblies": []}
+        with mock.patch.object(self.runner, "reserved_ports", side_effect=reserve), mock.patch.object(self.runner, "start", side_effect=launch), mock.patch.object(self.runner, "wait_http", side_effect=readiness):
+            self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+        self.assertTrue(all(connection.fileno() == -1 for connection in reservations))
+        self.assertEqual(self.runner.active, [application, sidecar])
+
+    def test_node_collision_retries_fresh_ports_and_keeps_other_owned_processes(self):
+        self.node_setup()
+        original = self.runner.start
+        healthy = original([sys.executable, "-c", "import time;time.sleep(30)"])
+        self.runner.active.append(healthy)
+        launches = []
+        def launch(argv, env):
+            launches.append(env["ASPNETCORE_URLS"])
+            script = "print('address already in use',flush=True);raise SystemExit(7)" if len(launches) == 1 else "import time;time.sleep(30)"
+            process = original([sys.executable, "-c", script], env)
+            if len(launches) == 1: process.wait(timeout=5)
+            return process
+        def readiness(url, process):
+            if process.poll() is not None:
+                raise RuntimeError("Owned application exited during startup")
+            return {"assemblies": []}
+        with mock.patch.object(self.runner, "start", side_effect=launch), mock.patch.object(self.runner, "wait_http", side_effect=readiness):
+            self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+        self.assertEqual(len(launches), 3)
+        self.assertNotEqual(launches[0], launches[1])
+        self.assertIsNone(healthy.poll())
+        self.assertEqual(len(self.runner.active), 3)
+        self.assertTrue(any(c["exit_code"] == 7 and "address already in use" in c["diagnostic"] for c in self.runner.commands))
+        self.assertTrue(any(process is healthy for process, *_ in self.runner.logs))
+
+    def test_node_collision_retries_are_bounded_and_other_failures_stop(self):
+        for diagnostic, attempts in (("address already in use", 3), ("invalid configuration", 1)):
+            with self.subTest(diagnostic=diagnostic):
+                self.node_setup()
+                original = self.runner.start
+                def launch(argv, env):
+                    process = original([sys.executable, "-c", "print(" + repr(diagnostic) + ",flush=True);raise SystemExit(7)"], env)
+                    process.wait(timeout=5)
+                    return process
+                with mock.patch.object(self.runner, "start", side_effect=launch) as started, mock.patch.object(self.runner, "wait_http", side_effect=RuntimeError("Owned application exited during startup")):
+                    with self.assertRaises(RuntimeError):
+                        self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+                self.assertEqual(started.call_count, attempts)
+                self.assertFalse(self.runner.active)
+
+    def test_sidecar_collision_stops_its_application_before_retry(self):
+        self.node_setup()
+        original = self.runner.start
+        launched = []
+        competitor = verifier.socket.socket()
+        def launch(argv, env):
+            if argv[0] != "dotnet" and len(launched) == 1:
+                port = int(argv[argv.index("--metrics-port") + 1])
+                competitor.bind(("127.0.0.1", port))
+                script = "import socket;socket.socket().bind(('127.0.0.1'," + str(port) + "))"
+            else:
+                if len(launched) == 2: self.assertIsNotNone(launched[0].poll())
+                script = "import time;time.sleep(30)"
+            process = original([sys.executable, "-c", script], env)
+            launched.append(process)
+            if len(launched) == 2: process.wait(timeout=5)
+            return process
+        def readiness(url, process):
+            if process.poll() is not None:
+                raise RuntimeError("Owned sidecar exited during startup")
+            return {"assemblies": []}
+        try:
+            with mock.patch.object(self.runner, "start", side_effect=launch), mock.patch.object(self.runner, "wait_http", side_effect=readiness):
+                self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+            self.assertEqual(len(launched), 4)
+            self.assertEqual(self.runner.active, launched[2:])
+            self.assertTrue(any("Address already in use" in c["diagnostic"] and c["exit_code"] != 0 for c in self.runner.commands))
+            self.assertGreaterEqual(competitor.fileno(), 0)
+        finally:
+            competitor.close()
+
+    def test_retry_cleanup_failure_keeps_process_and_attempt_receipt(self):
+        self.node_setup()
+        original = self.runner.start
+        def launch(argv, env):
+            return original([sys.executable, "-c", "import time;time.sleep(30)"], env)
+        with mock.patch.object(self.runner, "start", side_effect=launch) as started, mock.patch.object(self.runner, "wait_http", side_effect=RuntimeError("startup failed")), mock.patch.object(self.runner, "stop", side_effect=RuntimeError("termination failed")):
+            with self.assertRaisesRegex(RuntimeError, "termination failed"):
+                self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+        self.assertEqual(started.call_count, 1)
+        self.assertEqual(self.runner.commands[-1]["argv"][0], "os.killpg")
+        self.assertEqual(self.runner.commands[-1]["exit_code"], 1)
+        self.assertEqual(len(self.runner.active), 1)
+        self.assertTrue(any(process is self.runner.active[0] for process, *_ in self.runner.logs))
+
+    def test_retry_cleanup_cancellation_stops_startup_retries(self):
+        self.node_setup()
+        original = self.runner.start
+        def launch(argv, env):
+            return original([sys.executable, "-c", "import time;time.sleep(30)"], env)
+        with mock.patch.object(self.runner, "start", side_effect=launch) as started, mock.patch.object(self.runner, "wait_http", side_effect=RuntimeError("startup failed")), mock.patch.object(self.runner, "stop", side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt):
+                self.runner.start_node("3.110.0", "domain", "counter", self.runner.scratch, self.runner.scratch / "config", 10)
+        self.assertEqual(started.call_count, 1)
+        self.assertEqual(self.runner.node_stop_errors, ["KeyboardInterrupt"])
+        self.assertEqual(self.runner.commands[-1]["exit_code"], 1)
+
+    def test_scheduler_collision_retries_only_owned_container_and_retains_failure(self):
+        identity = "a" * 64
+        cidfile = self.runner.scratch / "scheduler.cid"
+        def launch(role, image, arguments, **kwargs):
+            if not self.runner.commands:
+                cidfile.write_text(identity)
+                self.runner.containers.append(identity)
+                self.runner.record(["docker", "run", "fixture"], verifier.utc(), 125, b"port is already allocated", self.runner.scratch)
+                raise ValueError("Command exited 125")
+            self.assertFalse(cidfile.exists())
+            return "b" * 64, kwargs["host_port"]
+        def command(argv, **kwargs):
+            self.assertIn(identity, argv)
+            if argv[1] == "inspect":
+                return json.dumps({"id": identity, "invocation": self.runner.invocation})
+            return identity
+        with mock.patch.object(self.runner, "container", side_effect=launch) as started, mock.patch.object(self.runner, "run", side_effect=command) as executed:
+            self.assertEqual(self.runner.start_scheduler()[0], "b" * 64)
+        self.assertEqual(started.call_count, 2)
+        self.assertEqual(executed.call_args_list[-1].args[0], ["docker", "rm", "-f", identity])
+        self.assertEqual(self.runner.commands[0]["exit_code"], 125)
+
+    def test_scheduler_collision_cannot_remove_an_unrelated_container(self):
+        identity = "a" * 64
+        def launch(*args, **kwargs):
+            (self.runner.scratch / "scheduler.cid").write_text(identity)
+            self.runner.record(["docker", "run", "fixture"], verifier.utc(), 125, b"port is already allocated", self.runner.scratch)
+            raise ValueError("Command exited 125")
+        with mock.patch.object(self.runner, "container", side_effect=launch), mock.patch.object(self.runner, "run", return_value=json.dumps({"id": identity, "invocation": "unrelated"})) as executed:
+            with self.assertRaisesRegex(ValueError, "Scheduler retry ownership mismatch"):
+                self.runner.start_scheduler()
+        self.assertEqual(executed.call_count, 1)
+
     def test_http_error_body_failure_keeps_attempted_request(self):
         for failure,code in ((TimeoutError("body timed out"),124),(KeyboardInterrupt(),130)):
             body=io.BytesIO()
