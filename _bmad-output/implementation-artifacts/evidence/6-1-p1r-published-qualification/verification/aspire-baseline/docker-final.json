@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "docker",
+    "ps",
+    "--format",
+    "{{.ID}} {{.Image}} {{.Names}} {{.Status}}"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T19:06:12.212Z",
+  "finished_utc": "2026-10-06T19:06:12.276Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "timeout_secs": 180.0,
+  "env_overrides": {},
+  "output_sha256": "ce35e41de26e05baad58c84af52709cf30857f49f9476b7c323d52e61f1207c9",
+  "output_composition": "stdout bytes followed immediately by stderr bytes",
+  "stdout_bytes": 227,
+  "stderr_bytes": 0,
+  "stdout_sha256": "ce35e41de26e05baad58c84af52709cf30857f49f9476b7c323d52e61f1207c9",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_path": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/aspire-baseline/docker-final.log"
+}

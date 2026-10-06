@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "aspire",
+    "start",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--format",
+    "Json",
+    "--non-interactive",
+    "--nologo"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T19:05:24.043Z",
+  "finished_utc": "2026-10-06T19:05:31.846Z",
+  "exit_code": 2,
+  "timed_out": false,
+  "timeout_secs": 560.0,
+  "env_overrides": {},
+  "output_sha256": "2c0b1a1f0c1b9c35f979aa646934807e46121f33bda28c0f0c49504d17304981",
+  "output_composition": "stdout bytes followed immediately by stderr bytes",
+  "stdout_bytes": 0,
+  "stderr_bytes": 4705,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "2c0b1a1f0c1b9c35f979aa646934807e46121f33bda28c0f0c49504d17304981",
+  "log_path": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/aspire-baseline/aspire-start.log"
+}

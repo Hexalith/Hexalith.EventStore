@@ -1,0 +1,22 @@
+253980f9eb63cc5a7d96be7c8676197e78f39d67
+ 3f194e17174994d308ec84af9ee2b5aa68674d0d references/Hexalith.AI.Tools (heads/main)
+ ba4ca78c3868a4757cb92d912a54c8a237871b54 references/Hexalith.Builds (v4.29.1-22-gba4ca78)
+ 116d26815eb81e35b3c161e1799e5ee12805fc0a references/Hexalith.Commons (v2.30.1-15-g116d268)
+ c561b3210f15206a90c39c82c58f2e5b1005cd60 references/Hexalith.FrontComposer (v4.6.0-5-gc561b321)
+ e159f82b7528797fc245045625ff387d65294ba9 references/Hexalith.McpCli (heads/main)
+ 0a63ff9d6d5075ac298dcb7266ddb7e82085880e references/Hexalith.Memories (v2.28.1-15-g0a63ff9d)
+ fd5db04d48423bc30f5a5e141a9019fede5d736f references/Hexalith.Platform (heads/main)
+ 98de6e013840ece9f0fa7c68ab7dcdf2bba3b375 references/Hexalith.PolymorphicSerializations (v1.19.4)
+ 5a519cd73018067d9b444dd777034dc91f9bd4b2 references/Hexalith.Tenants (v5.7.0-164-g5a519cd7)
+ M .github/workflows/p1r-qualification.yml
+ M tools/p1r_qualification.py
+?? tools/p1r-published-qualification.py
+?? tools/p1r_published_qualification.py
+?? tools/p1r_qualification_runtime.py
+?? tools/tests/test_p1r_published_qualification.py
+2510624d9f0c31464582d6877e11e83b012f88c99ea909068c55e23d8c2c7211  tools/p1r_qualification.py
+456d552c04a56f0345bd70f2ddfe0692e021ae36b0d975b8b3eb57ca5bf7b6d7  tools/p1r_published_qualification.py
+8e93dd970be865bc2d9c30eb9ab2539595c73cff14d78c31dd74c1b410291f31  tools/p1r-published-qualification.py
+166637f96dadbdbf1e0c645bfba215ab791bb9b8bb2c7539c1741697d8ecea47  tools/p1r_qualification_runtime.py
+f059cbf8a0736b0a199ac052961f03c841db655395e79c65cfa0189d99adcf06  tools/tests/test_p1r_published_qualification.py
+3b248e5d266d9c2d4db91632da872dfbd305c90c6206ac4b2457a78b55f560b4  .github/workflows/p1r-qualification.yml

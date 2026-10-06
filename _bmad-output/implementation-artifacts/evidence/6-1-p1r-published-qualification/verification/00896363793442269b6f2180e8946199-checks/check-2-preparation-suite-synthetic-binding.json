@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-published-qualification/verification/run_preparation_suite.py",
+    "tools"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:32:53.673342+00:00",
+  "output": {
+    "path": "check-2-preparation-suite-synthetic-binding.txt",
+    "sha256": "5e47fdd2f34151daf06e937a46d89ef38683ed7501e7adca8074a1d97cde38f6"
+  },
+  "started_utc": "2026-10-06T19:32:48.378983+00:00"
+}

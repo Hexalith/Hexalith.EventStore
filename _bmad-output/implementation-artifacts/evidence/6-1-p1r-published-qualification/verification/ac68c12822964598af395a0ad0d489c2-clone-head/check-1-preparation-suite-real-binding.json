@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py"
+  ],
+  "cwd": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/clone-head",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:42:26.457146+00:00",
+  "output": {
+    "path": "check-1-preparation-suite-real-binding.txt",
+    "sha256": "b905ac24b19e52b4e3f4be097bc7346bcecb090e80a1d88fdc8f9eaa45758502"
+  },
+  "started_utc": "2026-10-06T19:42:07.112785+00:00"
+}

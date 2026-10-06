@@ -1,0 +1,32 @@
+E..F....
+======================================================================
+ERROR: setUpClass (test_p1r_qualification.PacketTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_qualification.py", line 28, in setUpClass
+    cls.baseline_binding = p.source_binding()
+                           ~~~~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 208, in source_binding
+    main = repository_binding(root)
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 162, in repository_binding
+    data = regular(root / relative(name))
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 100, in regular
+    require(path.is_file() and not path.is_symlink(), "missing or substituted input")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: missing or substituted input
+
+======================================================================
+FAIL: testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_qualification.py", line 396, in testExternalSigintPreservesReceiptAndCleansActualDescendants
+    self.assertTrue(interrupted)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.956s
+
+FAILED (failures=1, errors=1)

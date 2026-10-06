@@ -1,0 +1,4 @@
+9d57dbed126b daprio/dapr:1.18.4 dapr_placement Up 13 hours
+baede0aec916 daprio/dapr:1.18.4 dapr_scheduler Up 13 hours
+8d0788f8322f redis:6 dapr_redis Up 13 hours
+cb7c12622c18 openzipkin/zipkin dapr_zipkin Up 13 hours (healthy)

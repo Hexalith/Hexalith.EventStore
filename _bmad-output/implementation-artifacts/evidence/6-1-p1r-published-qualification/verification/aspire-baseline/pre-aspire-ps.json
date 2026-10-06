@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "aspire",
+    "ps",
+    "--non-interactive",
+    "--format",
+    "Json",
+    "--nologo"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T19:05:18.258Z",
+  "finished_utc": "2026-10-06T19:05:18.573Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "timeout_secs": 120.0,
+  "env_overrides": {},
+  "output_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "output_composition": "stdout bytes followed immediately by stderr bytes",
+  "stdout_bytes": 3,
+  "stderr_bytes": 0,
+  "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_path": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/aspire-baseline/pre-aspire-ps.log"
+}

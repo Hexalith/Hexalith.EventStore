@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_qualification.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:32:46.088909+00:00",
+  "output": {
+    "path": "check-0-focused-suite.txt",
+    "sha256": "b5662608bda5552a7d944ca3001cbe0688020e147564d43ec37cb5b3f48f0bec"
+  },
+  "started_utc": "2026-10-06T19:32:39.789243+00:00"
+}

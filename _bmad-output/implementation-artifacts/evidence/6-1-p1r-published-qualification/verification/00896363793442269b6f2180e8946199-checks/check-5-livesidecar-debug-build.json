@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:36:08.712585+00:00",
+  "output": {
+    "path": "check-5-livesidecar-debug-build.txt",
+    "sha256": "8affbfcd7c2beafd66c85f83185408dd1e55e4cfc6d85d1e0cd275e79648b96e"
+  },
+  "started_utc": "2026-10-06T19:36:01.803830+00:00"
+}

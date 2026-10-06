@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 1,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:32:48.358953+00:00",
+  "output": {
+    "path": "check-1-preparation-suite-live-binding.txt",
+    "sha256": "41f7477681ee2aaa62b404af735af8a1a182a3cd34f05729a768f439dc2f014d"
+  },
+  "started_utc": "2026-10-06T19:32:46.109654+00:00"
+}

@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "git",
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-06T19:05:18.707Z",
+  "finished_utc": "2026-10-06T19:05:18.822Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "timeout_secs": 120.0,
+  "env_overrides": {},
+  "output_sha256": "27d8af95ce7e0b97d1e18fed680cd49ca5846389099771d98e4d7974031163ca",
+  "output_composition": "stdout bytes followed immediately by stderr bytes",
+  "stdout_bytes": 3871,
+  "stderr_bytes": 0,
+  "stdout_sha256": "27d8af95ce7e0b97d1e18fed680cd49ca5846389099771d98e4d7974031163ca",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_path": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/aspire-baseline/pre-git-status.log"
+}

@@ -1,0 +1,49 @@
+[2mStarting Aspire AppHost in the background...[0m
+[38;5;9m❌[0m [1;38;5;9mFailed to start the AppHost.[0m
+[38;5;12mℹ️[0m Recent AppHost startup output:
+NativeCertificateToolRunner: The certificate is not trusted by OpenSSL.  Ensure that the SSL_CERT_DIR environment variable is set correctly.
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Hexalith.EventStore.TestSubscriber -> 
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll
+  Hexalith.EventStore.ServiceDefaults -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.Contracts -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Sample.Contracts -> 
+/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.SignalR -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Admin.Server -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.RestApi.Generators -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.RestApi.Generators/bin/Debug/netstandard2.0/Hexalith.EventStore.RestApi.Generators.dll
+  Hexalith.EventStore.Admin.Server.Host -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+  Hexalith.EventStore.Sample.BlazorUI -> 
+/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/bin/Debug/net10.0/Hexalith.EventStore.Sample.BlazorUI.dll
+  Hexalith.EventStore.DomainService -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Sample.Api -> 
+/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/bin/Debug/net10.0/Hexalith.EventStore.Sample.Api.dll
+  Hexalith.EventStore.Sample -> 
+/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll
+  Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Admin.UI -> 
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs(71,35): error CS0246: The type or namespace 
+name 'ProjectionNotificationProvenanceVerifier' could not be found (are you missing a using directive or an assembly reference?) 
+[/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj]
+Build FAILED.
+/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs(71,35): error CS0246: The type or namespace 
+name 'ProjectionNotificationProvenanceVerifier' could not be found (are you missing a using directive or an assembly reference?) 
+[/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj]
+    0 Warning(s)
+    1 Error(s)
+Time Elapsed 00:00:06.54
+[38;5;9m❌[0m [1;38;5;9mAppHost failed to build.[0m
+[38;5;15m📄[0m See logs at ]8;id=913763230;file:///home/administrator/.aspire/logs/cli_20261006T190524_432c0a7a.log\/home/administrator/.aspire/logs/cli_20261006T190524_432c0a7a.log]8;;\
+[38;5;12m🔍[0m See AppHost logs at ]8;id=86240877;file:///home/administrator/.aspire/logs/cli_20261006T190524094_detach-child_57b2fff55f314af5814601a1449a0824.log\/home/administrator/.aspire/logs/cli_20261006T190524094_detach-child_57b2fff55f314af5814601a1449a0824.log]8;;\

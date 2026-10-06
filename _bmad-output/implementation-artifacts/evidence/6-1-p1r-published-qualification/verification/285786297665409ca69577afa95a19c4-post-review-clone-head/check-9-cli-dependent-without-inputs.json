@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-qualification.py",
+    "prepare",
+    "--out",
+    "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/rec-285786297665409ca69577afa95a19c4-dependent",
+    "--candidate-evidence",
+    "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/nonexistent-evidence"
+  ],
+  "cwd": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/clone-head",
+  "exit_code": 2,
+  "expected_exit_code": 2,
+  "finished_utc": "2026-10-06T23:18:48.319794+00:00",
+  "output": {
+    "path": "check-9-cli-dependent-without-inputs.txt",
+    "sha256": "6cfc9fe3be230f6fa16b43a8ff72b54a8544bd527081be88d17575e1cbad6468"
+  },
+  "started_utc": "2026-10-06T23:18:48.283105+00:00"
+}

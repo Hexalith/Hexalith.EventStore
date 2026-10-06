@@ -25,3 +25,8 @@ jobs:
 
       - name: Verify bounded P1R preparation and process controls
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_qualification.py'
+
+      # Synthetic fixtures and local process controls only: these contract checks keep tooling-only
+      # scope and can never satisfy a published-package or operational qualification lane.
+      - name: Verify P1R published qualification harness contracts
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_published_qualification.py'

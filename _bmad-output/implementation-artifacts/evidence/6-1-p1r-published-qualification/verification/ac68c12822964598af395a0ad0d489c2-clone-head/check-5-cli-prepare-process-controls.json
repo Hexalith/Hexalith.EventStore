@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-qualification.py",
+    "prepare",
+    "--out",
+    "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/rec-ac68c12822964598af395a0ad0d489c2-run",
+    "--process-controls"
+  ],
+  "cwd": "/tmp/claude-1000/-home-administrator-projects-hexalith-eventstore/4c32227a-cc01-4be1-af05-6d2c0297b171/scratchpad/clone-head",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:42:49.228531+00:00",
+  "output": {
+    "path": "check-5-cli-prepare-process-controls.txt",
+    "sha256": "8d047e329283246d008c5c22ebb62c2a64a0c3197c62fe2705ff22199a64a53f"
+  },
+  "started_utc": "2026-10-06T19:42:37.522087+00:00"
+}

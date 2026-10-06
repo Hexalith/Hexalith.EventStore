@@ -1,0 +1,199 @@
+{
+  "aspire_baseline": [
+    {
+      "argv": [
+        "aspire",
+        "ps",
+        "--non-interactive",
+        "--format",
+        "Json",
+        "--nologo"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/aspire-final-discovery.json",
+      "sha256": "5ae79fbb4b29502f26abbdb5b9da0cff25b4583d6e44a98169df81b182e51d82"
+    },
+    {
+      "argv": [
+        "aspire",
+        "start",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--format",
+        "Json",
+        "--non-interactive",
+        "--nologo"
+      ],
+      "exit_code": 2,
+      "receipt": "verification/aspire-baseline/aspire-start.json",
+      "sha256": "23300b14fc13fb757feb7505efdf739ad84a4aab5c7f77f3e8927bdb7e928880"
+    },
+    {
+      "argv": [
+        "aspire",
+        "stop",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive",
+        "--nologo"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/aspire-stop.json",
+      "sha256": "921cfedf94c0bcf49dc5e4e9b90fd514d958199befc37c2448ecf2fae156c528"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "--format",
+        "{{.ID}} {{.Image}} {{.Names}} {{.Status}}"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/docker-final.json",
+      "sha256": "f4e73ad968d684d1add83e58f28a8da227db7837ee86a4cd425198224fd571bd"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/post-git-status.json",
+      "sha256": "a3e09970e13cc8f493871d50be2df3b9740bc8e9d6c2a831b851ec9d65571762"
+    },
+    {
+      "argv": [
+        "aspire",
+        "ps",
+        "--non-interactive",
+        "--format",
+        "Json",
+        "--nologo"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/pre-aspire-ps.json",
+      "sha256": "beaa8ce733792118a313df6d4af8d9c7c95a6fe06e999dd8f078cdeb365f990a"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "--format",
+        "{{.ID}} {{.Image}} {{.Names}} {{.Status}}"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/pre-docker-ps.json",
+      "sha256": "1954817cce1f8d5c001816bf6f4064586713b7df6cedf6f688e1f1aa64d63c97"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all"
+      ],
+      "exit_code": 0,
+      "receipt": "verification/aspire-baseline/pre-git-status.json",
+      "sha256": "78e2355ed9f347fa6611758e0550f0364cbc0f12aa04b7fbeb1e805a17dcacf1"
+    }
+  ],
+  "capable_published_rollback": null,
+  "commands": [
+    {
+      "check": "focused-harness-suite",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "note": "41 tests; synthetic fixtures and real local process controls; tooling scope only",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-0-focused-suite.json",
+      "sha256": "84dca03d128024eb99cbfffef3506b7eb49c2afbda5fcb09be06b46014e31721"
+    },
+    {
+      "check": "preparation-suite-live-binding",
+      "exit_code": 1,
+      "expected_exit_code": 0,
+      "note": "BLOCKED: concurrent unstaged deletion makes the live source binding refuse (setUpClass) and the SIGINT CLI test cannot start controls",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-1-preparation-suite-live-binding.json",
+      "sha256": "cd24fde7b7e45d1f863352e99bfdf5ba5e3f9b4c85c2d3987453232198ee4ff0"
+    },
+    {
+      "check": "preparation-suite-synthetic-binding",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "note": "29 tests; proves the extracted receipt validators keep behaviour",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-2-preparation-suite-synthetic-binding.json",
+      "sha256": "577eaecb847375b1c1eb3e4c072136769de6d5ebba7d4157b45fb6e7cee9f12b"
+    },
+    {
+      "check": "actionlint",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "note": "p1r-qualification.yml",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-3-actionlint.json",
+      "sha256": "9a7582e069afc2ac92bda56439257b8ff64e8d6f3040d4efc07b16edcbdf5a87"
+    },
+    {
+      "check": "mutation-checks",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "note": "unmutated control passes; 27/27 guard-weakening mutations killed",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-4-mutation-checks.json",
+      "sha256": "768886191353f2b63068bfebb9c952970611c0c8ebd891296cefd6bcd714288c"
+    },
+    {
+      "check": "livesidecar-debug-build",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "note": "source-only restore/append/restart reference; Debug + project references; 0 warnings / 0 errors on the concurrent tree",
+      "receipt": "verification/00896363793442269b6f2180e8946199-checks/check-5-livesidecar-debug-build.json",
+      "sha256": "2c74311e9b1b79e8745ef72b19b173696a066b8e937feec7c07c16e056a6a3b4"
+    },
+    {
+      "check": "cli-prepare",
+      "exit_code": 2,
+      "expected_exit_code": 0,
+      "note": "BLOCKED: refused (missing or substituted input) by the live source binding; packet retained",
+      "receipt": "verification/00896363793442269b6f2180e8946199-prepare.json",
+      "sha256": "0a40d52b4d3e3a063bd0aad48328bc38fe8f5793963777b3453c4a1f8d72edeb"
+    },
+    {
+      "check": "cli-prepare-process-controls",
+      "exit_code": 2,
+      "expected_exit_code": 0,
+      "note": "BLOCKED: refused before controls for the same source-binding reason; packet retained",
+      "receipt": "verification/00896363793442269b6f2180e8946199-run.json",
+      "sha256": "adbbc386254aa25b28be5f5e6f0a3d2540cc1f89a4df754ad2272c7c50358769"
+    },
+    {
+      "check": "cli-validate-prepare",
+      "exit_code": 2,
+      "expected_exit_code": 0,
+      "note": "refused or incomplete invocation",
+      "receipt": "verification/00896363793442269b6f2180e8946199-validate-prepare.json",
+      "sha256": "7326b563f009d07845445d0812d564d993e719635cfefaa8d237be20ad256c83"
+    },
+    {
+      "check": "cli-validate-run",
+      "exit_code": 2,
+      "expected_exit_code": 0,
+      "note": "refused or incomplete invocation",
+      "receipt": "verification/00896363793442269b6f2180e8946199-validate-run.json",
+      "sha256": "c8f652c5c6970f9e54a62a2fcbff985b47a23dfda3fdc2e2782b280308196c80"
+    }
+  ],
+  "invocation": "00896363793442269b6f2180e8946199",
+  "operational_profile": null,
+  "owner_decisions": null,
+  "owner_inputs": null,
+  "p1r_usable": false,
+  "packets": [
+    "invocations/00896363793442269b6f2180e8946199-prepare/packet.json",
+    "invocations/00896363793442269b6f2180e8946199-run/packet.json"
+  ],
+  "published_candidate": null,
+  "qualification_scope": "harness-contracts-synthetic-fixtures-and-local-process-controls",
+  "qualified": false,
+  "recovery": "mutation-freeze-and-forward-recovery",
+  "technically_qualified": false
+}

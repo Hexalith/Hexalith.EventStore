@@ -1,0 +1,45 @@
+ M _bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md
+ M _bmad-output/implementation-artifacts/sprint-status.yaml
+ M src/Hexalith.EventStore.Contracts/Projections/ProjectionChangedNotification.cs
+ M src/Hexalith.EventStore.DomainService/EventStoreDomainEventsEndpointExtensions.cs
+ M src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs
+ M src/Hexalith.EventStore.DomainService/EventStoreReminderEndpointExtensions.cs
+ M src/Hexalith.EventStore.Server/Configuration/ProjectionChangeNotifierOptions.cs
+ M src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+ M src/Hexalith.EventStore.Server/Projections/DaprProjectionChangeNotifier.cs
+ D src/Hexalith.EventStore/Authentication/DaprInternalAuthenticationHandler.cs
+ M src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs
+?? _bmad-output/implementation-artifacts/spec-6-1-p1r-published-qualification.md
+?? src/Hexalith.EventStore.DomainService/DomainServiceAdministratorAssertions.cs
+?? src/Hexalith.EventStore.DomainService/DomainServiceAdministratorClaim.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointInventory.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceEndpointSource.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServicePolicies.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceRoute.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceRoutes.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityExtensions.cs
+?? src/Hexalith.EventStore.DomainService/EventStoreDomainServiceSecurityStartupValidator.cs
+?? src/Hexalith.EventStore.DomainService/IDomainServiceAdministratorVerifier.cs
+?? src/Hexalith.EventStore.Server/DomainServices/DomainServiceWorkloadAssertionHandler.cs
+?? src/Hexalith.EventStore.Server/DomainServices/DomainServiceWorkloadAssertionHttpClientBuilderFilter.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/ConfigureWorkloadJwtBearerOptions.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelToken.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprAppChannelTokenStatus.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationHandler.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/DaprSidecarChannelAuthenticationOptions.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadOperations.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/IWorkloadAssertionIssuer.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluation.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionEvaluator.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionRequest.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionValidator.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationException.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationReasons.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationTelemetry.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadJwtBearerEvents.cs
+?? src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadSchemeRegistration.cs

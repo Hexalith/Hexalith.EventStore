@@ -603,6 +603,91 @@ def validate_sentinel_observation(value, original):
     require(identity(value) == original and value["running"] is True, "shared sentinel changed or suspended")
 
 
+def validate_control_receipt(directory, row, invocation, python, previous_finish, invocation_end, receipts):
+    """Validate one executed process-control row and its receipt; return the receipt finish time."""
+    require(row.get("compatibility") == "unverified", "process evidence claims runtime compatibility")
+    require(set(row) == {"id", "execution", "compatibility", "assertions", "receipt"}, "process result members differ")
+    validate_counter(row.get("assertions"))
+    name = row.get("receipt")
+    relative(name)
+    require(name not in receipts, "duplicate invocation receipt")
+    receipts.add(name)
+    receipt = read_json(directory / name)
+    require(set(receipt) == {"id", "invocation", "control", "argv", "cwd", "started_utc", "finished_utc", "exit_code",
+                             "launch_error", "timed_out", "cancelled", "root_process", "owned_processes", "cleanup", "output", "checks",
+                             "assertions", "execution"}, "receipt members differ")
+    require(bool(re.fullmatch(r"[0-9a-f]{32}", receipt["id"])), "invalid receipt identity")
+    receipt_start, receipt_end = validate_times(receipt)
+    require(previous_finish <= receipt_start <= receipt_end <= invocation_end, "receipt interval outside invocation or control order")
+    require(receipt.get("invocation") == invocation and receipt.get("control") == row["id"], "receipt invocation mismatch")
+    require(name == "receipts/" + receipt["id"] + ".json" and receipt["argv"] == control_command(row["id"], python),
+            "receipt command binding differs")
+    require(receipt["cwd"] == str(directory), "receipt working directory differs")
+    validate_counter(receipt["assertions"], receipt["checks"])
+    expected_checks = ["expected-process-outcome", "output-retained", "exact-session-ownership"]
+    if row["id"] in ("descendants", "repeated-cleanup"):
+        expected_checks.append("detached-descendant-observed")
+    expected_checks.extend(("cleanup-1-complete", "cleanup-2-complete", "shared-sentinel-preserved"))
+    require([c["id"] for c in receipt["checks"]] == expected_checks, "executed assertions omitted or invented")
+    require(row["assertions"] == receipt["assertions"] and row["execution"] == receipt["execution"], "receipt result differs")
+    require(receipt["finished_utc"] is not None and receipt["execution"] == "passed" and receipt["assertions"]["failed"] == 0,
+            "process control failed or incomplete")
+    require(type(receipt["timed_out"]) is bool and type(receipt["cancelled"]) is bool, "invalid process outcome")
+    owned = receipt["owned_processes"]
+    validate_identity_list(owned)
+    for process in owned:
+        current = process_state(process["pid"])
+        require(not same_process(process, current), "owned process still remains")
+    require(isinstance(receipt["cleanup"], list) and len(receipt["cleanup"]) == 2, "owned cleanup incomplete")
+    for cleanup in receipt["cleanup"]:
+        members(cleanup, ("before", "remaining", "errors"), "cleanup ownership observation differs")
+        validate_identity_list(cleanup["before"])
+        validate_identity_list(cleanup["remaining"])
+        require(all(value in owned for value in cleanup["before"] + cleanup["remaining"]), "cleanup ownership observation differs")
+        require(isinstance(cleanup["errors"], list) and not cleanup["errors"] and cleanup["remaining"] == [], "owned cleanup incomplete")
+    members(receipt["output"], ("path", "sha256"), "output receipt binding differs")
+    require(receipt["output"]["path"] == "receipts/" + receipt["id"] + ".txt", "output receipt binding differs")
+    require(digest(regular(directory / relative(receipt["output"]["path"]))) == receipt["output"]["sha256"], "receipt output hash mismatch")
+    if row["id"] == "startup-failure":
+        members(receipt["launch_error"], ("type", "errno"), "startup failure observation differs")
+        require(receipt["launch_error"] == {"type": "FileNotFoundError", "errno": errno.ENOENT}
+                and type(receipt["launch_error"]["errno"]) is int
+                and not owned and receipt["root_process"] is None and receipt["exit_code"] is None
+                and not receipt["timed_out"] and not receipt["cancelled"]
+                and all(not cleanup["before"] for cleanup in receipt["cleanup"]),
+                "startup failure observation differs")
+    else:
+        validate_identity(receipt["root_process"])
+        root_process = receipt["root_process"]
+        require(root_process in owned and root_process["pid"] == root_process["pgid"] == root_process["session"], "launched root ownership missing")
+        require(receipt["launch_error"] is None and type(receipt["exit_code"]) is int, "invalid launched exit status or launch error")
+        if row["id"] == "success":
+            require(receipt["exit_code"] == 0 and not receipt["cancelled"] and not receipt["timed_out"], "success observation differs")
+        else:
+            require(receipt["exit_code"] in (-signal.SIGTERM, -signal.SIGKILL), "cleanup exit status differs")
+            require(receipt["cancelled"] == (row["id"] == "cancellation") and receipt["timed_out"] == (row["id"] != "cancellation"),
+                    "timeout or cancellation observation differs")
+            require(receipt["cleanup"][0]["before"] == owned, "first cleanup ownership observation missing")
+    if row["id"] in ("descendants", "repeated-cleanup"):
+        require(len(receipt["owned_processes"]) >= 2, "descendant observation missing")
+    return receipt_end
+
+
+def validate_sentinel(sentinel):
+    """Validate the shared sentinel's unchanged observations and its explicit release."""
+    members(sentinel, ("identity", "before", "after_controls", "after_release", "released"), "invalid sentinel receipt")
+    validate_identity(sentinel["identity"])
+    validate_sentinel_observation(sentinel["before"], sentinel["identity"])
+    validate_sentinel_observation(sentinel["after_controls"], sentinel["identity"])
+    after_release = sentinel["after_release"]
+    if after_release is not None:
+        members(after_release, ("pid", "start_ticks", "pgid", "session", "running"), "invalid sentinel release observation")
+        validate_identity(identity(after_release))
+        require(type(after_release["running"]) is bool, "invalid sentinel release observation")
+    require(sentinel["released"] is True and not same_process(sentinel["identity"], after_release)
+            and not same_process(sentinel["identity"], process_state(sentinel["identity"]["pid"])), "shared sentinel changed or unreleased")
+
+
 def validate_packet(directory):
     directory = Path(directory).absolute()
     require(directory.is_dir() and directory == directory.resolve(), "packet directory unavailable or substituted")
@@ -654,85 +739,10 @@ def validate_packet(directory):
         if packet["mode"] == "prepare":
             require(row == unavailable(row["id"]), "unexecuted process control claims evidence")
             continue
-        require(row.get("compatibility") == "unverified", "process evidence claims runtime compatibility")
-        require(set(row) == {"id", "execution", "compatibility", "assertions", "receipt"}, "process result members differ")
-        validate_counter(row.get("assertions"))
-        name = row.get("receipt")
-        relative(name)
-        require(name not in receipts, "duplicate invocation receipt")
-        receipts.add(name)
-        receipt = read_json(directory / name)
-        require(set(receipt) == {"id", "invocation", "control", "argv", "cwd", "started_utc", "finished_utc", "exit_code",
-                                 "launch_error", "timed_out", "cancelled", "root_process", "owned_processes", "cleanup", "output", "checks",
-                                 "assertions", "execution"}, "receipt members differ")
-        require(bool(re.fullmatch(r"[0-9a-f]{32}", receipt["id"])), "invalid receipt identity")
-        receipt_start, receipt_end = validate_times(receipt)
-        require(previous_finish <= receipt_start <= receipt_end <= invocation_end, "receipt interval outside invocation or control order")
-        previous_finish = receipt_end
-        require(receipt.get("invocation") == packet["invocation"] and receipt.get("control") == row["id"], "receipt invocation mismatch")
-        require(name == "receipts/" + receipt["id"] + ".json" and receipt["argv"] == control_command(row["id"], binding["python"]["path"]),
-                "receipt command binding differs")
-        require(receipt["cwd"] == str(directory), "receipt working directory differs")
-        validate_counter(receipt["assertions"], receipt["checks"])
-        expected_checks = ["expected-process-outcome", "output-retained", "exact-session-ownership"]
-        if row["id"] in ("descendants", "repeated-cleanup"):
-            expected_checks.append("detached-descendant-observed")
-        expected_checks.extend(("cleanup-1-complete", "cleanup-2-complete", "shared-sentinel-preserved"))
-        require([c["id"] for c in receipt["checks"]] == expected_checks, "executed assertions omitted or invented")
-        require(row["assertions"] == receipt["assertions"] and row["execution"] == receipt["execution"], "receipt result differs")
-        require(receipt["finished_utc"] is not None and receipt["execution"] == "passed" and receipt["assertions"]["failed"] == 0,
-                "process control failed or incomplete")
-        require(type(receipt["timed_out"]) is bool and type(receipt["cancelled"]) is bool, "invalid process outcome")
-        owned = receipt["owned_processes"]
-        validate_identity_list(owned)
-        for process in owned:
-            current = process_state(process["pid"])
-            require(not same_process(process, current), "owned process still remains")
-        require(isinstance(receipt["cleanup"], list) and len(receipt["cleanup"]) == 2, "owned cleanup incomplete")
-        for cleanup in receipt["cleanup"]:
-            members(cleanup, ("before", "remaining", "errors"), "cleanup ownership observation differs")
-            validate_identity_list(cleanup["before"])
-            validate_identity_list(cleanup["remaining"])
-            require(all(value in owned for value in cleanup["before"] + cleanup["remaining"]), "cleanup ownership observation differs")
-            require(isinstance(cleanup["errors"], list) and not cleanup["errors"] and cleanup["remaining"] == [], "owned cleanup incomplete")
-        members(receipt["output"], ("path", "sha256"), "output receipt binding differs")
-        require(receipt["output"]["path"] == "receipts/" + receipt["id"] + ".txt", "output receipt binding differs")
-        require(digest(regular(directory / relative(receipt["output"]["path"]))) == receipt["output"]["sha256"], "receipt output hash mismatch")
-        if row["id"] == "startup-failure":
-            members(receipt["launch_error"], ("type", "errno"), "startup failure observation differs")
-            require(receipt["launch_error"] == {"type": "FileNotFoundError", "errno": errno.ENOENT}
-                    and type(receipt["launch_error"]["errno"]) is int
-                    and not owned and receipt["root_process"] is None and receipt["exit_code"] is None
-                    and not receipt["timed_out"] and not receipt["cancelled"]
-                    and all(not cleanup["before"] for cleanup in receipt["cleanup"]),
-                    "startup failure observation differs")
-        else:
-            validate_identity(receipt["root_process"])
-            root_process = receipt["root_process"]
-            require(root_process in owned and root_process["pid"] == root_process["pgid"] == root_process["session"], "launched root ownership missing")
-            require(receipt["launch_error"] is None and type(receipt["exit_code"]) is int, "invalid launched exit status or launch error")
-            if row["id"] == "success":
-                require(receipt["exit_code"] == 0 and not receipt["cancelled"] and not receipt["timed_out"], "success observation differs")
-            else:
-                require(receipt["exit_code"] in (-signal.SIGTERM, -signal.SIGKILL), "cleanup exit status differs")
-                require(receipt["cancelled"] == (row["id"] == "cancellation") and receipt["timed_out"] == (row["id"] != "cancellation"),
-                        "timeout or cancellation observation differs")
-                require(receipt["cleanup"][0]["before"] == owned, "first cleanup ownership observation missing")
-        if row["id"] in ("descendants", "repeated-cleanup"):
-            require(len(receipt["owned_processes"]) >= 2, "descendant observation missing")
+        previous_finish = validate_control_receipt(directory, row, packet["invocation"], binding["python"]["path"],
+                                                   previous_finish, invocation_end, receipts)
     if packet["mode"] == "run":
-        sentinel = packet["sentinel"]
-        members(sentinel, ("identity", "before", "after_controls", "after_release", "released"), "invalid sentinel receipt")
-        validate_identity(sentinel["identity"])
-        validate_sentinel_observation(sentinel["before"], sentinel["identity"])
-        validate_sentinel_observation(sentinel["after_controls"], sentinel["identity"])
-        after_release = sentinel["after_release"]
-        if after_release is not None:
-            members(after_release, ("pid", "start_ticks", "pgid", "session", "running"), "invalid sentinel release observation")
-            validate_identity(identity(after_release))
-            require(type(after_release["running"]) is bool, "invalid sentinel release observation")
-        require(sentinel["released"] is True and not same_process(sentinel["identity"], after_release)
-                and not same_process(sentinel["identity"], process_state(sentinel["identity"]["pid"])), "shared sentinel changed or unreleased")
+        validate_sentinel(packet["sentinel"])
     allowed = {"packet.json", "source-binding.json"} | receipts
     if packet["mode"] == "run":
         allowed.update(read_json(directory / name)["output"]["path"] for name in receipts)

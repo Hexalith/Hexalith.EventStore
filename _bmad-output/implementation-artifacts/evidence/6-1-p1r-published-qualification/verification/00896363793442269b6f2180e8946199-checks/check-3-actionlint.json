@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "actionlint",
+    ".github/workflows/p1r-qualification.yml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:32:54.057026+00:00",
+  "output": {
+    "path": "check-3-actionlint.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_utc": "2026-10-06T19:32:53.693763+00:00"
+}

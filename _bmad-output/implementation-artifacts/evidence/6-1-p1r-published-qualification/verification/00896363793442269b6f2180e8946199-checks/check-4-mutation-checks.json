@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-published-qualification/verification/run_mutation_checks.py",
+    "tools"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 0,
+  "expected_exit_code": 0,
+  "finished_utc": "2026-10-06T19:35:56.572302+00:00",
+  "output": {
+    "path": "check-4-mutation-checks.txt",
+    "sha256": "96c04d2c9232e92c12e77b1cf2e1fed9c0867a9b8286db7db471ee0e0359ddc6"
+  },
+  "started_utc": "2026-10-06T19:32:58.317039+00:00"
+}
