@@ -113,6 +113,12 @@ development_status:
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   2-13-dapr-notification-distribution-qualification: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): corrective successors for
+  # G-TENANT/G-STATUS-ID (2.14/2.15) and primary owners for NFR5/NFR13 (2.16/2.17).
+  2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: backlog
+  2-15-messageid-only-command-status-identity: backlog
+  2-16-bounded-signalr-detail-metadata: backlog
+  2-17-generated-code-and-generator-build-quality: backlog
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -162,6 +168,11 @@ development_status:
   # it excludes non-Hexalith, .NET and Aspire upgrades, which epics.md:2849 requires.
   3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
   3-17-dapr-boundary-inventory-and-enforcement: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-COMPAT, FR36-C3 publication
+  # authority, and FR36-C4/C5 consumer-removal authority owners.
+  3-18-public-surface-compatibility-baseline-and-release-gate: backlog
+  3-19-publication-authority-record-and-canonical-production-profile: backlog
+  3-20-consumer-removal-authority-manifest-and-validator: backlog
   epic-3-retrospective: done
 
   epic-4: in-progress
@@ -204,11 +215,18 @@ development_status:
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
   4-15-oq8-platform-closure-and-handoff: done
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-APPEND owner (envelope first,
+  # owner decision) and G-OQ8 governing-design authority owner. Story 4.15 is not reopened.
+  4-16-append-write-once-conformance-through-enforced-envelope: backlog
+  4-17-oq8-governing-design-authority-import: backlog
   epic-4-retrospective: optional
 
   epic-5: in-progress
   5-1-infrastructure-failure-cache-clear: done
-  5-2-admin-endpoint-authorization-and-tenant-filters: done
+  # Corrected 2026-10-07 (correct-course OR15). Commit 57fa0909 flipped this row
+  # 'backlog' -> 'done' in an IdempotencyChecker change whose subject never mentions
+  # a status change, while spec-5-2 records status 'in-review' at review loop 2.
+  5-2-admin-endpoint-authorization-and-tenant-filters: review
   # Corrected 2026-09-08 (correct-course OR2). Commit c83cc4c3 flipped this row
   # 'backlog' -> 'done' in a test-only change whose subject and body never mention
   # a status change, and whose story spec forbids it from touching this file.
@@ -221,6 +239,8 @@ development_status:
   5-8-runtime-topology-drift-tests: backlog
   5-9-deployment-and-operator-documentation-alignment: backlog
   5-10-reserved-system-tenant-provisioning-guard: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-AUTH-HOSTS owner.
+  5-11-shared-versioned-jwt-contract-and-all-host-conformance: backlog
   epic-5-retrospective: optional
 
   epic-6: in-progress
@@ -237,6 +257,8 @@ development_status:
   6-5c-publication-subscription-and-rollout-spec: done
   6-5d-hold-lifecycle-resume-and-legacy-admission-spec: done
   6-6-event-versioning-and-upcasting-implementation: in-progress
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): NFR18/G-NFR18 owner.
+  6-7-aot-and-trimming-posture-reference: backlog
   epic-6-retrospective: optional
 
   epic-7: backlog
@@ -262,6 +284,8 @@ development_status:
   7-18-rest-generator-hardening-backlog: done
   7-19-admin-typed-client-and-evidence-state-integration: backlog
   7-20-admin-accessibility-localization-and-responsive-conformance: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): NFR17-C5 owner.
+  7-21-crypto-shred-boundary-documentation-and-evidence: backlog
   epic-7-retrospective: optional
 
   epic-8: in-progress
@@ -287,6 +311,12 @@ development_status:
   # Story 9.2 closes on sealed CI plus a time-separated owner attestation (single-maintainer-attested).
   9-1-corrective-work-authorization-record-and-validator: backlog
   9-2-phase-4-high-risk-gate-matrix-and-assurance-control: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-BASELINE validator with the OR8
+  # drift and OR15 lifecycle guards, G-CLAUSE, and G-MVP-COVERAGE. Each live gate result
+  # is truthfully FAIL today; only fixture suites block merges (Epic 9 truthful-FAIL CI rule).
+  9-3-planning-baseline-manifest-and-drift-guard: backlog
+  9-4-stable-clause-ledger-and-all-clauses-validator: backlog
+  9-5-phase-4-mvp-coverage-manifest-and-validator: backlog
   epic-9-retrospective: optional
 action_items:
   - epic: D

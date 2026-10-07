@@ -1,0 +1,13 @@
+{
+  "6_5c_status": "done",
+  "accepted_release_record_exists": false,
+  "authored_whitespace": "passed",
+  "captured_inputs_unchanged": 14,
+  "evidence_links": "passed",
+  "parent_baseline": "preserved",
+  "parent_frozen_intent": "unchanged",
+  "parent_status": "in-progress",
+  "parent_tasks_open": 8,
+  "result": "passed",
+  "scratch_ledger_entry": "resolved; original summary/evidence preserved"
+}

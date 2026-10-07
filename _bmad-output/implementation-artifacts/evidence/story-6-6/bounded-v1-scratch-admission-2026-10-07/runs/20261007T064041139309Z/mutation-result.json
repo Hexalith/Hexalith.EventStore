@@ -1,0 +1,27 @@
+{
+  "control_cases": {
+    "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(serializedCount: 42, admitted: True)": "Pass",
+    "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(serializedCount: 43, admitted: False)": "Pass"
+  },
+  "mutant_cases": {
+    "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(serializedCount: 42, admitted: True)": "Pass",
+    "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(serializedCount: 43, admitted: False)": "Fail"
+  },
+  "mutant_producer_sha256": "b61a675151c79351153d1326f7b5b6714c3af0d81c67fdfdd6fbc9eb633cc7da",
+  "mutation": "remove only complete-result scratch refusal; retain encoded-size guard",
+  "owning_failure": "Shouldly.ShouldAssertException : Task `) => producer.ProduceAsync(input, CancellationToken.None`\n    should throw\nSystem.InvalidOperationException\n    but did not",
+  "production_source_edited": false,
+  "result": "passed",
+  "scope": "isolated local scratch-guard control; no readiness or parent completion",
+  "source_sha256": {
+    "src/Hexalith.EventStore.DomainService/BoundedV1DomainResultProducer.cs": "8f114dbaefdfa325138359594d25d7acbcf47af33c0ea22bfe4cb4f6aeca7a02",
+    "src/Hexalith.EventStore.DomainService/BoundedV1EventSerialization.cs": "072aed9ea34c304d93157c20686fe58361f3559cf3d4eaf60af2fa894b93d1ae",
+    "src/Hexalith.EventStore.DomainService/BoundedV1PayloadStream.cs": "245c55b0385da85d2656095c8bb4b47e5488f44bf6627014b6f95f3a22883d0b",
+    "src/Hexalith.EventStore.DomainService/BoundedV1WireResultAdmission.cs": "47ce02925b485b506856ef31e9c7287cf12f8018c8ede31d58b4cf086985f06e",
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedProducerSerializedTestEvent.cs": "ee7d4bc8a8b372cef3e8a56747d1232e54c1e1b8538386592399cf0ebd984dcc",
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedProducerTestEvent.cs": "294a8b59ecc5480eb6b4dd9e4186873f317905789bdff5022498381cad23699b",
+    "tests/Hexalith.EventStore.DomainService.Tests/BoundedV1DomainResultProducerScratchTests.cs": "ceffe8eac9f8d81c5d6d5973be0aa26a550a5ad70036d6b74d2afdfa634e1fdf"
+  },
+  "temporary_project_removed": true,
+  "verifier_sha256": "5aac59267310ada83c5f178bb7b511ff6e204196399be4b82ca4e1727c6875c3"
+}

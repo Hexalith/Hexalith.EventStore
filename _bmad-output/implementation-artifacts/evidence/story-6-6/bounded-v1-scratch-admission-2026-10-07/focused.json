@@ -1,0 +1,12 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "-noLogo",
+    "-class",
+    "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests",
+    "-xml",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/bounded-v1-scratch-admission-2026-10-07/focused.xml"
+  ],
+  "exit_code": 0
+}

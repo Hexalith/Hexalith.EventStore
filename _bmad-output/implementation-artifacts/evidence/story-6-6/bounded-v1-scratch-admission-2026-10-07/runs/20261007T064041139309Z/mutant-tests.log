@@ -1,0 +1,31 @@
+  Discovering: ScratchAdmissionControl
+  Discovered:  ScratchAdmissionControl
+  Starting:    ScratchAdmissionControl
+    Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(serializedCount: 43, admitted: False) [FAIL]
+      Shouldly.ShouldAssertException : Task `) => producer.ProduceAsync(input, CancellationToken.None`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        /tmp/eventstore-v1-scratch-qtbto3ck/BoundedV1DomainResultProducerScratchTests.cs(66,0): at Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerScratchTests.SerializedSourceScratchBoundaryPrecedesFirstSerializer(Int32 serializedCount, Boolean admitted)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    ScratchAdmissionControl (ID = 'ec0062e9c04d9b461cf55be9b02de4b37337d6d59219a0ba0f04a3c50977422b')
+=== TEST EXECUTION SUMMARY ===
+   ScratchAdmissionControl  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.322s

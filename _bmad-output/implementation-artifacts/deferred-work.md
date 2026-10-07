@@ -5501,6 +5501,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation-runtime.md`
   summary: Test the BoundedV1DomainResultProducer private-copy scratch admission boundary independently of encoded-size limits.
   evidence: Verification-gap review read the producer suite and extension router/endpoint tests. Forty-two versus forty-three one-MiB serialized events isolates the 128-MiB scratch boundary; existing 100-event refusal already exceeds encoded size. Producer/test hashes match pre-build user work.
+  status: resolved (2026-10-07): Story 6.6's dedicated scratch-admission theory passes 42 one-MiB serialized events and refuses 43 before a sentinel serializer callback, while the real wire admission accepts both maximum-size images. Original source bytes and detached successful output are checked. An isolated removal of only the scratch guard preserves the 42-event pass and kills the 43-event refusal assertion; the full Debug/source DomainService suite passes 494 tests. Evidence: evidence/story-6-6/verification-2026-10-07-bounded-v1-scratch-admission.md. This resolves local guard coverage only; application declarations, M1–M8 acceptance and readiness remain open.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation.md`
   summary: Add a single-page behavioral regression for metadata changing only after catalog callbacks in the concurrent Story 6.6 logical event reader.
@@ -5509,6 +5510,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation.md`
   summary: Add an HTTP composition regression exercising the real retained-history controller, source reader and client for the concurrent runtime work.
   evidence: Verification review found only direct source-reader tests and a client response handler that supplies its own expected route/response; changing the controller route leaves that verification passing. Exercise MVC routing and assert head, retained events and excluded positions using the actual client. The controller is from the external commit and runtime edits are excluded by this approved slice.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bounded-v1-producer-scratch-admission.md`
+  summary: Extend M8 bounded V1 scratch verification with exact-capacity and finer accounting controls.
+  evidence: BH-1: the passing 42/refused 43 one-MiB cases kill complete scratch-guard removal but neither lies exactly at 128 MiB, so changing the comparison from > to >= or omitting small per-event charges can survive. Derive independent exact/adjacent-capacity controls and targeted accounting mutations before claiming exhaustive M8 allocation qualification. The local guard-removal prerequisite is complete; production source remains unchanged.
+  status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
   summary: Protect the EventStore gateway's own Dapr subscription and actor routes with the sidecar app-channel policy, as the domain-service SDK now does.

@@ -1,0 +1,6 @@
+  Discovering: ScratchAdmissionControl
+  Discovered:  ScratchAdmissionControl
+  Starting:    ScratchAdmissionControl
+  Finished:    ScratchAdmissionControl (ID = 'ec0062e9c04d9b461cf55be9b02de4b37337d6d59219a0ba0f04a3c50977422b')
+=== TEST EXECUTION SUMMARY ===
+   ScratchAdmissionControl  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.220s

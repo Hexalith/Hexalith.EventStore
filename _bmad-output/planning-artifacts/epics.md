@@ -313,7 +313,7 @@ FR32: Epic 5 - AppHost runtime topology, DAPR ACLs, components, key prefixes, te
 FR33: Epic 6 - Long-lived streams gain bounded snapshot/projection cost, sequence guards, schema evolution, identity validation, and cancellation seams.
 FR34: Epic 7 - Operators gain explicit delivery semantics, recovery, audited administration, honest UI states, OpenBao secrets, health, and integration evidence.
 FR35: Epic 7 - Deferred GDPR erasure, Admin OIDC, aggregate test kit, and generator-hardening capabilities remain explicitly tracked.
-FR36: Epics 1 and 3 - Epic 1 closes source/package projection-query parity; Epic 3 closes exact-lineage deployed-runtime parity without treating rejected `v3.94.1` as authorization.
+FR36: Epics 1 and 3 - Epic 1 closes source/package projection-query parity; Epic 3 closes exact-lineage deployed-runtime parity without treating rejected `v3.94.1` as authorization. Stories 3.19 and 3.20 own the FR36-C3 to FR36-C5 release, promotion, and consumer-removal authority slices.
 FR37: Epic 8 - Domains can opt into the shared payload-protection engine only after specification, implementation, production-backend, compatibility, release, rollback, and G5 evidence.
 
 ## Epic List
@@ -329,15 +329,15 @@ Domain authors can build complete EventStore-backed services without recreating 
 Developers can expose typed external REST APIs and build interactive clients through supported gateway contracts while preserving metadata, scoping, and projection truth.
 **Primary users:** External API host developers, interactive UI developers, and domain integrators
 **FRs covered:** FR11-FR16
-**Story set:** 2.1–2.13; backlog 2.13 supports FR16/NFR5/NFR12/NFR15/NFR16 and PRD §8.4 without replacing 2.8 contract ownership or closing existing NFR5 readiness debt.
+**Story set:** 2.1–2.17; backlog 2.13 supports FR16/NFR5/NFR12/NFR15/NFR16 and PRD §8.4 without replacing 2.8 contract ownership; NFR5 primary ownership is Story 2.16. Backlog 2.14 and 2.15 are the corrective successors for G-TENANT (FR12-C2 and the FR15 platform-operation and tenant-boundary slice) and G-STATUS-ID (FR12-C3, FR12-C4); 2.16 and 2.17 are the primary owners of NFR5 and NFR13 (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR2, NFR5, NFR12-NFR16; UX-DR42, with shared consumer-flow acceptance coverage for UX-DR20, UX-DR25-UX-DR27, UX-DR30, UX-DR38, and UX-DR40
 **Implementation notes:** Build on the completed gateway and metadata seams from Epic 1, but deliver dedicated external API hosts and client-only interactive hosts as a complete, independently usable integration pattern. Preserve route-bound query provenance, gateway-authoritative absolute-or-absent command-status locations, and handler-owned replacement of outbound DAPR control-plane headers.
 
 ### Epic 3: Maintainers Can Release Reproducible, Verifiable Artifacts
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
 **Primary users:** Release maintainers, platform maintainers, deployment operators, and consuming-module owners
-**FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity
-**Story set:** 3.1–3.17; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement.
+**FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity (FR36-C2) and the FR36-C3 to FR36-C5 publication and consumer-removal authority slices
+**Story set:** 3.1–3.20; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
 **Implementation notes:** Repository and release reliability delivers value independently of later runtime work. `v3.94.1` remains immutable rejected evidence; only the separately authorized corrective release plus independent Story 3.15 verification may establish positive deployed-runtime parity. Planning, implementation, approval of this epic, and story completion never authorize an external publication; each external release mutation requires its separately bound durable authority record.
 
@@ -345,6 +345,7 @@ Maintainers can build, test, package, publish, and verify EventStore independent
 Operators can rely on stable event identity, durable idempotency admission, deterministic replay, crash recovery, and evidence-driven append behavior under concurrency and failure.
 **Primary users:** Platform operators, domain authors, and reliability engineers
 **FRs covered:** FR23, FR24, FR27, FR29-FR31
+**Story set:** 4.1–4.17; backlog 4.16 owns G-APPEND through an enforced operating envelope (owner decision: envelope first) and 4.17 owns G-OQ8 governing-design authority (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR6-NFR7, NFR16
 **Implementation notes:** Apply the approved OQ8 authority and its strict internal sequence. Global-position sharding and append fencing remain specification/evidence-first; no later story may retroactively make an earlier unsafe outcome executable.
 
@@ -352,6 +353,7 @@ Operators can rely on stable event identity, durable idempotency admission, dete
 Tenants and administrators receive consistent fail-closed authentication, authorization, tenant isolation, internal endpoint protection, and runtime topology enforcement.
 **Primary users:** Tenant administrators, security engineers, and platform operators
 **FRs covered:** FR26, FR28, FR32
+**Story set:** 5.1–5.11; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR1-NFR4, NFR16-NFR17
 **Implementation notes:** Land Phase 0 safe fixes before any dependent surface regardless of epic numbering. Treat application authorization, AppHost topology, DAPR YAML, scopes, ACLs, and denial evidence as one aligned security posture.
 
@@ -359,6 +361,7 @@ Tenants and administrators receive consistent fail-closed authentication, author
 Platform users can operate growing event streams with bounded snapshot/projection cost, sequence-safe updates, schema evolution, identity validation, and cancellation-aware APIs.
 **Primary users:** Domain authors, EventStore maintainers, and operators of long-lived streams
 **FRs covered:** FR33
+**Story set:** 6.1–6.7, including 6.5a–6.5d; Story 6.3 owns G-NFR8, and backlog 6.7 owns NFR18 and G-NFR18 (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR8, NFR12, NFR18
 **Implementation notes:** Keep folded snapshots, projection cost/sequence behavior, and event versioning/upcasting behind their named approved specifications. Each implementation slice must preserve prior correctness and compatibility guarantees.
 
@@ -366,6 +369,7 @@ Platform users can operate growing event streams with bounded snapshot/projectio
 Operators can inspect delivery and projection evidence, recover poison events, use an accessible consolidated Admin UI, retrieve production secrets safely, and distinguish implemented, unavailable, accepted, and confirmed operations.
 **Primary users:** Administrators, platform operators, support engineers, and incident responders
 **FRs covered:** FR34, FR35
+**Story set:** 7.1–7.21; backlog 7.21 owns NFR17-C5 crypto-shred boundaries (`sprint-change-proposal-2026-10-07.md`).
 **Cross-cutting coverage:** NFR1-NFR2, NFR4-NFR6, NFR14-NFR17; primary implementation ownership for UX-DR1-UX-DR41
 **Implementation notes:** Retain one cohesive operator outcome, but decompose it into small journey-focused stories for delivery, recovery, Admin UI, OpenBao, deployment, integration evidence, and backlog visibility. Each story owns one operator journey or one bounded infrastructure/evidence contract that fits a single development-agent context. Never recreate an oversized multi-concern story or render deferred work as functional.
 
@@ -379,15 +383,16 @@ Domain modules can opt into an EventStore-owned, provider-neutral payload-protec
 ### Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Approved At A Declared Assurance Level
 Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved at the Assurance Control level the owner-role registry requires, with that level labelled on every result.
 **Primary users:** Product owner, Test Architect, gate evaluators, release and deployment owners
-**FRs covered:** none (governance). **Refinements owned:** OR10, OR13, OR28; gate G-HIGH-RISK; the corrective-work authorization input to G-BASELINE
+**FRs covered:** none (governance). **Refinements owned:** OR7, OR8, OR10, OR13, OR27, OR28; gates G-HIGH-RISK, G-CLAUSE, and G-MVP-COVERAGE; the G-BASELINE validator with the OR15 lifecycle guard; and the corrective-work authorization input to G-BASELINE
+**Story set:** 9.1–9.5
 **Cross-cutting coverage:** supporting NFR7, NFR12, NFR16 as listed by G-HIGH-RISK; closes none of them
-**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; While the registry names one human, Story 9.2 closes on sealed CI plus a time-separated owner attestation and is labelled `single-maintainer-attested` (Assurance Control, `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`). Neither story grants readiness, release, deployment, or migration authority.
+**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; While the registry names one human, Story 9.2 closes on sealed CI plus a time-separated owner attestation and is labelled `single-maintainer-attested` (Assurance Control, `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`). Stories 9.3–9.5 were added by `sprint-change-proposal-2026-10-07.md`. No Epic 9 story grants readiness, release, deployment, or migration authority. **Truthful-FAIL CI rule (2026-10-07):** A gate validator's fixture suite runs as a blocking check. Its live gate evaluation runs on every push to `main` and publishes a retrievable PASS/FAIL result without blocking merges, so a truthful FAIL never blocks unrelated work. Gate validators use a new workflow file or the Story 9.1 workflow, and never edit `.github/workflows/ci.yml` or `docs/ci.md` unless a Story 4.15 reseal is planned.
 
 **Sequencing rule:** Epic numbers organize product outcomes; they do not grant blanket execution authority. Architecture decisions, safety prerequisites, exact evidence gates, and backward-only story dependencies govern implementation order. Relevant Epic 5 Phase 0 protections must precede exposed or administrative surfaces even when those surfaces have lower epic numbers.
 
 **Historical continuity rule:** Before creating stories, compare the Git `HEAD` version of the former `epics.md` and the dated story-ID migrations as historical identity and omission-detection references, never as bulk-restoration sources. Account for all 107 historical stories as retained, corrected, superseded, or intentionally replaced; no story silently disappears. Preserve valid story IDs, supersession records, named evidence gates, and the explicit 3.13-3.15, 4.9-4.15, 7.14/7.19/7.20, and 8.1-8.11 sequences, but never carry forward a completion, approval, or authorization claim contradicted by current authority. The five confirmed input documents remain requirements authority; every conflict is recorded and surfaced for review rather than silently resolved from historical text.
 
-**FR36 completion rule:** FR36 is complete only when Epic 1 source/package parity and Epic 3 positive deployed-runtime parity are both complete under their distinct evidence and approval gates. Neither half, and no rejected release candidate, closes the whole requirement.
+**FR36 completion rule:** FR36 is partitioned into five stable clauses with four primary owners: source/package parity FR36-C1 (Story 1.20), deployed-runtime parity FR36-C2 (Story 3.15), release-availability and production-promotion authority FR36-C3 (Story 3.19), and the consumer-removal manifest and per-consumer receipts FR36-C4 and FR36-C5 (Story 3.20). FR36 is complete only when all five clauses close under their distinct evidence and approval gates. No single slice, and no rejected release candidate, closes the whole requirement (amended by `sprint-change-proposal-2026-10-07.md`).
 
 **MVP boundary rule:** No Phase 4 MVP epic, story, readiness gate, or completion claim may depend on Epic 8. Epic 8 remains a separately gated post-MVP commitment.
 
@@ -399,9 +404,9 @@ Gate evaluators can prove which failed gate a corrective change is authorized to
 
 **Primary-ownership rule:** Every FR, NFR, and UX-DR has exactly one primary story owner. Where a requirement is genuinely multi-part it may be partitioned into explicitly named, disjoint slices, each with exactly one primary owner and a stated completion rule saying that no slice closes the whole requirement; an unqualified primary claim on a requirement another story also claims unqualified is forbidden. Supporting stories identify themselves as supporting coverage and cannot independently close the requirement; duplicated cross-cutting evidence never creates ambiguous completion authority.
 
-**FR12 completion rule:** FR12 is partitioned into two disjoint slices with distinct primary owners: the generator discovery, controller-emission, gateway-delegation, and query-metadata-header slice (Story 2.2) and the accepted-command `Location` slice (Story 2.9). FR12 is complete only when both slices close under their own evidence. Neither slice closes the whole requirement, and no story outside this pair may claim primary FR12 ownership.
+**FR12 completion rule:** FR12 is partitioned into four stable clauses with three primary owners: discovery, controller emission, gateway delegation, query-metadata headers, diagnostics, `304`, and safe Problem Details (FR12-C1, Story 2.2); compiled tenant canonicalization with every NFR2 rejection before downstream work (FR12-C2, Story 2.14); and `MessageId`-only status `Location` selection that a `CorrelationId` can never drive (FR12-C3 and FR12-C4, Story 2.15). Story 2.9 is retained as supporting history for the absolute-or-absent `Location` delivery; its `MessageId ?? CorrelationId` fallback is superseded by Story 2.15. FR12 is complete only when every clause closes under its own evidence. No slice closes the whole requirement, and no story outside these owners may claim primary FR12 ownership (amended by `sprint-change-proposal-2026-10-07.md`).
 
-**FR15 completion rule:** FR15 is partitioned into five disjoint slices with distinct primary owners: Tenants contract metadata and routes (Story 2.4), the dedicated external Tenants API host (Story 2.5), Tenants UI client-library alignment and UX evidence (Story 2.6), Tenants query-provenance consumption (Story 2.11), and Tenants runtime identity and package-mode validation (Story 2.12). FR15 is complete only when all five slices close under their own evidence. No single slice closes the whole requirement.
+**FR15 completion rule:** FR15 is partitioned into six disjoint slices with distinct primary owners: Tenants contract metadata and routes (Story 2.4), the dedicated external Tenants API host (Story 2.5), Tenants UI client-library alignment and UX evidence (Story 2.6), Tenants query-provenance consumption (Story 2.11), Tenants runtime identity and package-mode validation (Story 2.12), and the platform-operation and tenant-boundary slice, which applies the AD-27 canonical tenant contract (Story 2.14, `sprint-change-proposal-2026-10-07.md`). FR15 is complete only when all six slices close under their own evidence. No single slice closes the whole requirement.
 
 **Dependency rule:** Every story declares explicit backward-only prerequisites, including cross-epic safety prerequisites where required. Epic numbers are organizational labels and must not be interpreted as the dependency graph.
 
@@ -2039,6 +2044,125 @@ So that infrastructure choice does not leak into application delivery contracts.
 **Then** the packet records the proven Dapr replacement or separately accepted exact-scope exception, exact identities/commands/results and limits, and synchronizes 3.17’s disposition
 **And** skipped/unknown cases remain unproven rather than qualification or conformance claims.
 
+### Story 2.14: Canonical Tenant Boundary In Generated Controllers And The Tenants Host
+
+As a security owner,
+I want every generated controller and the Tenants API host to canonicalize and validate tenants through one shared contract before routing,
+So that mixed-case, missing, conflicting, or reserved tenants can never cross a tenant boundary.
+
+**Requirements coverage:** Primary FR12-C2, OR20, NFR2's corrected tenant-boundary contract, and FR15's platform-operation and tenant-boundary slice; gate G-TENANT. Supporting: Stories 2.2, 2.4, 2.5, and 2.12, whose `done` labels remain non-authorizing for the corrected contract.
+
+**Architecture constraints:** AD-27 (`Contracts` owns the canonicalizer and grammar), AD-10, and AD-28.
+
+**Dependencies:** Story 2.12; a Story 9.1 authorization record for gate G-TENANT. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection and the distinct platform-operation scope.
+
+**Acceptance Criteria:**
+
+**Given** a generated controller or a Tenants route receiving a request tenant and `eventstore:tenant` grants
+**When** the boundary evaluates them
+**Then** both are normalized to lowercase and checked against the AD-27 grammar through the shared `Contracts` canonicalizer
+**And** missing, duplicate, conflicting-after-normalization, grammar-invalid, unauthorized, and reserved `system` inputs are rejected before routing or state access, with zero downstream work observed.
+
+**Given** a platform-wide operation
+**When** it executes
+**Then** it uses a distinct, authenticated, cataloged platform-operation scope
+**And** no path synthesizes or forwards `system` as a request tenant.
+
+**Given** compiled generated-controller tests and Tenants runtime tests
+**When** they run in the CI lane this story binds
+**Then** mixed-case positives and every fail-closed negative above pass in both
+**And** approval uses the G-HIGH-RISK Assurance Control at its computed level.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR20.
+
+### Story 2.15: MessageId-Only Command-Status Identity
+
+As an API consumer,
+I want command status to be selected only by a `MessageId` valid under my endpoint's declared contract version,
+So that a correlation identifier can never address a status resource.
+
+**Requirements coverage:** Primary FR12-C3, FR12-C4, and OR21; gate G-STATUS-ID. Supporting: Story 2.9, which remains `done` for the absolute-or-absent `Location` behavior while its `MessageId ?? CorrelationId` fallback is superseded.
+
+**Architecture constraints:** AD-17 and AD-32 (correlation is never status identity).
+
+**Dependencies:** A Story 9.1 authorization record for gate G-STATUS-ID.
+
+**Acceptance Criteria:**
+
+**Given** a versioned contract manifest
+**When** it is validated
+**Then** it assigns MessageId grammar v1 or v2 to every affected endpoint and generated contract
+**And** no caller can select or override the grammar version.
+
+**Given** an accepted command
+**When** the status `Location` is computed
+**Then** only a `MessageId` valid for the endpoint's version selects an absolute gateway-authoritative status URI
+**And** every `MessageId ?? CorrelationId` fallback is removed from the generator, its tests, and its documentation.
+
+**Given** compiled and runtime tests for both grammars
+**When** they run in the CI lane this story binds
+**Then** undeclared, ambiguous, or caller-selected versions; missing, blank, invalid-for-version, or non-canonical v2 `MessageId` values; and a `CorrelationId` that differs from or appears without `MessageId` each omit `Location` or reject safely
+**And** explicit v1 compatibility is preserved, the manifest records an NFR12 compatibility classification for every changed public surface, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR21.
+
+### Story 2.16: Bounded SignalR Detail Metadata
+
+As an operator,
+I want projection-change detail metadata bounded and never logged above Debug,
+So that notification payloads stay small and support-safe.
+
+**Requirements coverage:** Primary NFR5 and OR25, limited to the existing SignalR detail-metadata contract. Supporting: Story 2.8 (transport contract) and Story 2.13 (Dapr notification distribution).
+
+**Architecture constraints:** None new.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+
+**Acceptance Criteria:**
+
+**Given** `ProjectionChangeNotifierOptions` defaults
+**When** detail metadata at exactly 16 entries and 2048 total UTF-8 bytes, and at one entry or one byte beyond, is sent
+**Then** deliveries at the limit succeed and deliveries beyond it are bounded exactly as the existing contract specifies
+**And** keys are treated as opaque, with no allow-listed key set.
+
+**Given** captured framework logs above Debug level
+**When** notifications carrying metadata are sent
+**Then** no metadata value appears in them
+**And** metadata values may appear only at Debug level or below.
+
+**Given** the validation command this story binds
+**When** it runs
+**Then** it executes the tests above
+**And** NFR5 is not extended to DAPR, generated APIs, or other response types.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR5 primary owner required by OR25.
+
+### Story 2.17: Generated-Code And Source-Generator Build Quality
+
+As a domain author,
+I want generated controllers and the source-generator packages to build cleanly under the repository's quality rules,
+So that consuming the generator never introduces warnings, nullability gaps, or identifier-parsing defects.
+
+**Requirements coverage:** Primary NFR13 and OR26. Supporting: Stories 2.2, 2.4, and 2.9.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+
+**Acceptance Criteria:**
+
+**Given** a representative compiled consumer of the REST source generator
+**When** it builds with warnings as errors
+**Then** the generated output and the generator packages build with zero warnings
+**And** they conform to EventStore code style, nullable annotations, ULID identifier rules (no `Guid.TryParse` on message, correlation, aggregate, or causation identifiers), and `ConfigureAwait(false)`.
+
+**Given** the validation command this story binds
+**When** it runs in CI
+**Then** a seeded violation of each rule fails it
+**And** byte-stable or deterministic generator output is out of scope.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR13 primary owner required by OR26.
+
 ## Epic 3: Maintainers Can Release Reproducible, Verifiable Artifacts
 
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
@@ -2997,6 +3121,104 @@ So that new work cannot silently introduce provider coupling.
 **Then** guide/register, evaluated denominator, exact commands/results, representative negatives and unresolved owned 2.13/8.6 work agree
 **And** dynamic/native/reflection/external-package/configuration/egress analysis limits are explicit; static checks cannot establish full network enforcement or whole-runtime conformance while unresolved rows remain.
 
+### Story 3.18: Public-Surface Compatibility Baseline And Release Gate
+
+As a release owner,
+I want every public EventStore surface inventoried and baselined, with the SemVer policy enforced in the release lane,
+So that no release can break consumers silently.
+
+**Requirements coverage:** Primary OR22, gate G-COMPAT, and NFR12's expanded public-surface inventory slice. Supporting: Story 2.15 compatibility classifications and Story 3.17.
+
+**Architecture constraints:** AD-11.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-COMPAT.
+
+**Acceptance Criteria:**
+
+**Given** the manifest-governed release package set
+**When** the inventory is generated
+**Then** a manifest lists every public surface of each package, with source/binary API and wire baselines
+**And** an omitted package or surface fails.
+
+**Given** a change to a public surface
+**When** the release-lane command bound by this story runs
+**Then** SemVer, deprecation, and removal policy checks pass or fail against the baselines
+**And** an incompatible change passes only with an approved SemVer-major proposal, which does not waive inventory, migration, or evidence.
+
+**Given** representative consumers that reference packages only
+**When** they build and run against the candidate
+**Then** they pass
+**And** approval uses the G-HIGH-RISK Assurance Control at its computed level.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-COMPAT owner required by OR22.
+
+### Story 3.19: Publication Authority Record And Canonical Production Profile
+
+As a release owner,
+I want release availability and production promotion recorded as authenticated, predecessor-bound records over one canonical production profile,
+So that no evidence result is ever relabelled as release or promotion authority.
+
+**Requirements coverage:** Primary FR36-C3, OR29, and gate G-PUBLICATION-AUTH.
+
+**Architecture constraints:** AD-26 (once ratified) and AD-11.
+
+**Dependencies:** Owner ratification of AD-26 or an approved replacement; Story 5.7 for the production component contents; Story 3.15 (`done` for FR36-C2); Story 9.2 for the Assurance Control; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH.
+
+**Acceptance Criteria:**
+
+**Given** `deploy/dapr/production-profile.yaml` authored as the single production-profile inventory slot
+**When** the validator bound by this story runs
+**Then** it computes the canonical-byte SHA-256 of that file and requires it as the complete production-profile inventory
+**And** it rejects absent, under-declared, unknown, or self-only profiles.
+
+**Given** the Publication Authority Record schema
+**When** a record is validated
+**Then** it requires one valid predecessor-bound state chain with issuance, expiry, revocation, and invalidation
+**And** existing candidate-publication evidence cannot be recorded as `release-available` or `production-promoted`.
+
+**Given** the build steps are complete
+**When** the release owner and then the deployment owner issue their records for the unchanged Story 3.15 subject
+**Then** the `release-available` entry is release-owner-authenticated and the `production-promoted` entry is deployment-owner-authenticated, binding the canonical profile digest and an immutable deployment identity
+**And** the story is `done` only after both records validate under the Assurance Control; until then the validator reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C3 owner required by OR29.
+
+### Story 3.20: Consumer-Removal Authority Manifest And Validator
+
+As a consuming-module owner,
+I want every consumer and every removal proposal registered and authorized against the promoted runtime,
+So that no consumer removes local projection or query infrastructure without valid authority.
+
+**Requirements coverage:** Primary FR36-C4, FR36-C5, OR24, and gate G-CONSUMER.
+
+**Architecture constraints:** AD-22 and AD-26.
+
+**Dependencies:** Story 3.19; a Story 9.1 authorization record for gate G-CONSUMER.
+
+**Acceptance Criteria:**
+
+**Given** `_bmad-output/implementation-artifacts/evidence/consumer-removal-manifest.json`
+**When** `python3 tools/validate-consumer-removal-authority.py _bmad-output/implementation-artifacts/evidence/consumer-removal-manifest.json` runs
+**Then** the manifest enumerates every root-declared or Phase-4-referenced consumer, whether or not removal is proposed
+**And** each entry binds repository and commit, the canonical production-profile digest, mode matrix, removal-subject digest, role-registry identity, consumer-owner receipt, decision, issuance, validity, and invalidation.
+
+**Given** a new consumer or removal proposal
+**When** code changes are proposed
+**Then** the consumer or proposal is registered first
+**And** missing, unknown, under-declared, or self-only profile entries fail.
+
+**Given** a consumer with no proposed removal
+**When** `N/A` is recorded
+**Then** the bound consumer diff proves no removal and both the consumer owner and the validator attest it
+**And** a proposal can never be `N/A`.
+
+**Given** Parties, which has an applicable removal proposal
+**When** the manifest is first validated
+**Then** Parties fails until its consumer owner issues a valid `consumer-removal-authorized` receipt
+**And** no consumer removes local infrastructure without one; the validator otherwise reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C4 and FR36-C5 owner required by OR24.
+
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
 Operators can rely on stable event identity, durable idempotency admission, deterministic replay, crash recovery, and evidence-driven append behavior under concurrency and failure.
@@ -3803,6 +4025,68 @@ So that downstream consumers receive an exact, non-overstated durable-admission 
 **Then** the spec, packet, sprint tracking, and epic plan must agree on the same truthful status before `done`
 **And** any unresolved contradiction or later drift keeps Story 4.15 in review without invalidating preserved historical evidence or closing unrelated Epic 4 backlog work.
 
+### Story 4.16: Append Write-Once Conformance Through An Enforced Operating Envelope
+
+As an operator,
+I want the supported production profile to make a second writer to an event key mechanically impossible,
+So that committed events can never be silently overwritten.
+
+**Requirements coverage:** Primary OR4, NFR7 class (c), and SM11; gate G-APPEND. Story 4.5's capture and DW-326 are input evidence only.
+
+**Architecture constraints:** AD-5, AD-26 (once ratified), and the Story 3.17 Dapr boundary qualification.
+
+**Dependencies:** Story 3.17; owner ratification of AD-26; a Story 9.1 authorization record for gate G-APPEND. **Path decision (owner, 2026-10-07):** envelope first. If the envelope cannot be mechanically enforced on the AD-26 profile, the story stops and requests a fencing scope change through correct-course; it does not implement fencing on its own authority.
+
+**Acceptance Criteria:**
+
+**Given** the AD-26 production profile
+**When** the operating envelope is defined
+**Then** it names every mechanism that excludes a second writer to an event key, including component scoping and ACLs, the actor-only write path, and placement-failover behavior
+**And** each mechanism is enforced by configuration or code that a test can falsify.
+
+**Given** the `same-key-overwrite-raw-durable-write-lost` scenario from Story 4.5
+**When** it is replayed against the enforced envelope through the production path
+**Then** the second write cannot occur or is rejected, and no committed event is lost
+**And** removing any one envelope mechanism makes the test fail.
+
+**Given** the evidence
+**When** G-APPEND is evaluated
+**Then** the result binds provider, topology, writer inventory, test, and envelope identities
+**And** risk acceptance or deferral cannot substitute for this proof, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-APPEND owner required by OR4.
+
+### Story 4.17: OQ8 Governing-Design Authority Import
+
+As an architecture owner,
+I want the OQ8 governing design reproducible inside EventStore's evidence boundary,
+So that OQ8 authority no longer depends on bytes that EventStore cannot verify.
+
+**Requirements coverage:** Primary OR11 and gate G-OQ8. Supporting FR27, NFR7, and NFR16. Story 4.15 is not reopened.
+
+**Architecture constraints:** PRD §1.1 governing design identity.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-OQ8. Sealed OQ8 v3 inputs are not edited outside a planned Story 4.15 reseal.
+
+**Acceptance Criteria:**
+
+**Given** the design `docs/exit-criteria/oq8-idempotency-design.md` in `github.com/Hexalith/Hexalith.Folders` at commit `a9cfea91c8a987ef7a836c216e633a92321fc3c2` with SHA-256 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`
+**When** it is imported
+**Then** EventStore retains one permitted form: an immutable copy with a recorded owner permission, a complete approved normative projection, or a signed or content-addressed Folders attestation
+**And** the retained bytes re-verify to that SHA-256 from inside the repository.
+
+**Given** the imported authority
+**When** the identity is propagated
+**Then** the PRD, architecture, epics, the OQ8 evidence packet, the validator, and CI bind the full repository, path, commit, and SHA-256
+**And** a mismatch or absence fails G-OQ8.
+
+**Given** the sealed OQ8 v3 inputs, including `v3.py`, `.github/workflows/ci.yml`, and `docs/ci.md`
+**When** this story changes validators or CI
+**Then** it does so in a new validator version or a new workflow file
+**And** it does not edit sealed inputs unless a Story 4.15 reseal is planned, and the Story 4.15 v4 source-only packet still passes default validation.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-OQ8 owner required by OR11.
+
 <!-- Epic 4 story set confirmed complete for planning. -->
 
 ## Epic 5: Tenants and Administrators Are Protected by Fail-Closed Boundaries
@@ -3871,7 +4155,7 @@ So that anonymous, cross-tenant, over-privileged, or resource-exhausting request
 
 **Dependencies:** Story 5.1 establishes the preceding Phase 0 staged-state safety gate. This story does not depend on later authentication-host, internal-boundary, or topology changes and must preserve the existing Admin client contracts.
 
-**Current reconciliation:** Story 5.2 remains backlog. The current Admin Server broadly declares role policies and tenant filters, and backup import already declares a 10 MiB request limit, but the retained unit is not complete: recent-command counts are not visibly clamped at the controller boundary, the default 1 MiB cap is not declared across the named JSON-body surfaces, and completion-grade negative/boundary evidence for the entire endpoint matrix has not been established.
+**Current reconciliation (2026-10-07):** Story 5.2 is in review, neither backlog nor done (reconciled by `sprint-change-proposal-2026-10-07.md`, OR15). `spec-5-2` records status `in-review` at review loop 2. All seven execution tasks are checked, and the 2026-09-06 review pass returned 30 findings, 4 of them high, which the spec re-derived. The review that would close the story has not run. `sprint-status.yaml` recorded this row `done` from commit `57fa0909` until it was corrected to `review` on 2026-10-07; that commit is an unrelated IdempotencyChecker change whose subject never mentions a status change. The gaps this paragraph formerly listed (recent-command clamp, 1 MiB JSON cap, negative and boundary evidence for the endpoint matrix) are now spec tasks, but no accepted review covers them yet. **No NFR1 or NFR2 coverage may be claimed from this story until its review closes.**
 
 **Acceptance Criteria:**
 
@@ -3925,7 +4209,7 @@ So that development-only credentials or insecure token validation cannot leak in
 
 **Dependencies:** Story 5.2 establishes the Admin endpoint matrix this host-level posture protects. This story is the authentication prerequisite for Story 5.5's internal/domain-service boundary.
 
-**Current reconciliation:** Story 5.3 is in progress, neither backlog nor done (reconciled 2026-09-08, correct-course OR2). `spec-5-3` records status `in-progress` at review loop 3 with fourteen of twenty implementation items complete, six open, and no `## Auto Run Result` marker. The secret-stripping half has landed: committed Development configuration no longer carries fixed signing-key or administrator credential values, the AppHost provisions a per-run credential set, and the repository-level tracked-content guard exists. The production-authentication half has not closed. Six items remain open, including the local credential/test seam and quickstart flow, realm-lifecycle hardening, the UI authority/grant contract, the Aspire run/publish model proof, the repository scanner grammar, and reusable fixture/smoke redaction with evidence supersession. Real-pipeline evidence has not proved the protected-endpoint/probe contract under Production configuration. `sprint-status.yaml` recorded this row `done` from commit c83cc4c3 - a test-only change whose subject and body never mention a status change, and which this story's own Boundaries forbid it from making - until the row was corrected to `in-progress` on 2026-09-08. **No NFR3 or NFR4 coverage may be claimed from this story until it closes.**
+**Current reconciliation (2026-10-07):** Story 5.3 is done for the hosts its spec binds. `spec-5-3` is `done` at review loop 8, and the owner set the tracker to `done` on 2026-09-10. This was reconciled by `sprint-change-proposal-2026-10-07.md` (OR15); the paragraph formerly described the loop-3 partial state from 2026-09-08. Commit `293c69c4` pins the authentication-contract regressions. Completion is bounded: it does not establish NFR3 conformance for Tenants, generated hosts, or future JWT-binding hosts. That all-host contract is owned by Story 5.11 under G-AUTH-HOSTS (OR23).
 
 **Planning directive:** Treat this complete Story 5.3 definition and its acceptance criteria unchanged as the authoritative input for a fresh planning pass. Materialize a frozen implementation spec from this input before development is dispatched; this directive changes or waives no requirement.
 
@@ -3981,7 +4265,7 @@ So that routine support workflows do not encourage accidental destructive action
 
 **Dependencies:** Stories 5.2 and 5.3 establish the authorization and host-authentication posture this surface must preserve. No later topology story may be used to waive these local safeguards.
 
-**Current reconciliation:** Story 5.4 remains backlog. OpenAPI is configurable but currently defaults enabled when the setting is absent; destructive CLI commands such as projection reset, snapshot-policy deletion, and non-dry-run restore execute without a confirmation flag; Admin correlation middleware still accepts/generates GUIDs; and `docs/brownfield/development-guide.md` still claims `Server.Tests` does not build despite current CI guidance saying it is an unfiltered release-gate project.
+**Current reconciliation (2026-10-07):** Story 5.4 is done. `spec-5-4` is `done`, and all 139 task and review items were checked after the 2026-09-22 chunked reviews. The tracker has been `done` since commit `fcd716c9`. This was reconciled by `sprint-change-proposal-2026-10-07.md` (OR15); the paragraph formerly said "remains backlog" and listed gaps from before implementation. The spec still sets `followup_review_recommended: true`. That recommendation is advisory, and no follow-up review has run.
 
 **Acceptance Criteria:**
 
@@ -4348,6 +4632,37 @@ So that managed tenants cannot collide with platform-owned scope.
 **Then** the reserved name fails closed across the complete available provisioning inventory while platform-owned `system` behavior remains intact
 **And** all affected Admin, EventStore, Tenants consumer/source-mode where applicable, UI, integration, and Release gates pass with exact results.
 
+### Story 5.11: Shared Versioned JWT Contract And All-Host Conformance
+
+As a security owner,
+I want every externally reachable or JWT-binding host to consume one versioned JWT contract,
+So that no host validates tokens with a weaker, hand-rolled subset.
+
+**Requirements coverage:** Primary OR23, gate G-AUTH-HOSTS, and NFR3's all-host conformance slice. Supporting: Story 5.3, which remains `done` for its bound hosts.
+
+**Architecture constraints:** AD-10 and AD-28.
+
+**Dependencies:** Story 5.3; a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants changes land in the Tenants repository under its owner.
+
+**Acceptance Criteria:**
+
+**Given** one versioned JWT contract with a fingerprint
+**When** EventStore, Admin, Sample, Tenants, and generated-host fixtures start
+**Then** each consumes that contract and reports its fingerprint
+**And** Tenants no longer uses a hand-rolled validation subset.
+
+**Given** the host inventory
+**When** the conformance test runs
+**Then** it enumerates every externally reachable or JWT-binding host, including hosts added later
+**And** any host that does not consume the contract fails the test.
+
+**Given** each conforming host
+**When** negative tests run
+**Then** Production, break-glass, algorithm, issuer, audience, signature, lifetime, role, and tenant violations are rejected
+**And** the story binds the exact release evidence, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-AUTH-HOSTS owner required by OR23.
+
 <!-- Epic 5 story set confirmed complete for planning. -->
 
 ## Epic 6: Bounded Cost And Event Evolution
@@ -4372,7 +4687,7 @@ So that snapshot cost becomes bounded without silently changing recovery, compat
 
 **Classification:** Architecture/readiness gate. Completion authorizes Story 6.2 to start but does not count as runtime implementation progress.
 
-**Current reconciliation:** Story 6.1 remains backlog and `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` is absent. Current automatic snapshots can persist `DomainServiceCurrentState`, which contains prior snapshot state plus replayed events, while manual snapshot creation reconstructs folded state through `/replay-state`; no approved contract yet selects and bounds one behavior.
+**Current reconciliation (2026-10-07):** Story 6.1 is in progress, neither backlog nor done (reconciled by `sprint-change-proposal-2026-10-07.md`, OR5 and OR15; the paragraph formerly said the artifact was absent). `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` exists, but the 2026-10-04 code review reopened the story by owner decision D1, because the 2026-09-08 approval did not bind the final normative bytes. The §3 inventory must be re-baselined at current HEAD, and the owner must re-attest a new digest. Until review patch P-D1 lands, that artifact's frontmatter still reads `status: approved-authorized` and `story_6_2_authorized: true`. **The reopen supersedes those values, and they grant no Story 6.2 authority.** `spec-6-1` and the tracker both record `in-progress`.
 
 **Acceptance Criteria:**
 
@@ -4435,7 +4750,7 @@ So that snapshot storage and rehydration cost do not grow with accumulated event
 
 **Dependencies:** Story 6.1 must be complete with a valid approval that explicitly authorizes this implementation. Current snapshot protection/readability, manual overwrite, actor fencing, and event replay contracts remain prerequisites rather than replaceable behavior.
 
-**Current reconciliation:** Story 6.2 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` is absent. Existing snapshot infrastructure, atomic staging, protection hooks, and manual reconstruction are reusable foundations, but the automatic path still snapshots a history-bearing current-state object and has no approved numeric overhead bound.
+**Current reconciliation (2026-10-07):** Story 6.2 remains backlog and unauthorized: `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` exists, but Story 6.1 was reopened on 2026-10-04, and its frontmatter authorization is superseded until the owner re-attests a new digest. Existing snapshot infrastructure, atomic staging, protection hooks, and manual reconstruction are reusable foundations, but the automatic path still snapshots a history-bearing current-state object and has no approved numeric overhead bound.
 
 **Acceptance Criteria:**
 
@@ -4779,6 +5094,32 @@ So that old and new event history can be processed safely without CLR-name coupl
 **When** new-event persistence, mixed legacy/current replay, every upcast-chain topology, registry startup failure, metadata substitution, protected readability, all consumer-path equivalence, cancellation at every boundary, rolling upgrade/rollback, public API compatibility, and Admin evidence tests run through production serializers, actors, dispatchers, handlers, Dapr state/actor APIs, pub/sub, and live sidecars
 **Then** persisted application payload bytes remain immutable, reconstructed aggregate/projection/end state equals the canonical current-version baseline, failures produce zero forbidden downstream mutation, and exact token/registry/upcast evidence satisfies the amended matrices
 **And** focused unit/contract/integration tests, full affected-project regressions, warnings-as-errors Release build, package/API compatibility checks, and live-sidecar lanes pass with no unexpected skips, warnings, errors, or leaked processes; folded-snapshot, projection-cost, and optional protection-engine redesign remain outside this story.
+
+### Story 6.7: AOT And Trimming Posture Reference
+
+As a platform maintainer,
+I want the AOT and trimming posture documented and tied to the build,
+So that no package claims AOT or trimming compatibility while reflection conventions remain load-bearing.
+
+**Requirements coverage:** Primary NFR18, OR6, and gate G-NFR18. Supporting: Stories 6.5 and 6.6.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-NFR18.
+
+**Acceptance Criteria:**
+
+**Given** `docs/reference/aot-and-trimming-posture.md`
+**When** it is reviewed
+**Then** it states that AOT and trimming are not targets while reflection conventions remain load-bearing, and inventories those conventions
+**And** its content digest and review are recorded.
+
+**Given** the release package set
+**When** the build guard bound by this story runs
+**Then** it fails if any release package declares `IsAotCompatible` or `IsTrimmable` as true while the posture says AOT and trimming are not targets
+**And** a seeded violation proves the guard fails.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR18 owner required by OR6.
 
 <!-- Epic 6 story set confirmed complete for planning. -->
 
@@ -6106,6 +6447,32 @@ So that operational evidence remains understandable without a parallel UI implem
 **Then** the single canonical dashboard remains understandable and operable with authoritative state semantics under every supported condition, and retained evidence identifies exact revision/browser/tool/viewport/locale
 **And** Admin.UI Release build, component/governance/browser suites, resource completeness scans, and CSS/token scans pass with no unexpected skips, untranslated or concatenated copy, hard-coded design palette, accessibility violation, parallel UI, or invented performance gate.
 
+### Story 7.21: Crypto-Shred Boundary Documentation And Evidence
+
+As a security owner,
+I want the MVP's crypto-shred boundary documented and guarded,
+So that no MVP surface claims crypto-shred guarantees that only post-MVP payload protection could provide.
+
+**Requirements coverage:** Primary NFR17-C5. Supporting: Epic 8, which cannot substitute for this MVP ownership.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** A Story 9.1 authorization record for gate G-NFR-OWNERSHIP.
+
+**Acceptance Criteria:**
+
+**Given** the boundary document at the path this story binds
+**When** it is reviewed
+**Then** it states what the existing Contracts and Admin crypto-shredding seams cover, and that the Epic 8 engine, physical erasure, and production key custody are not covered
+**And** its content digest and review are recorded.
+
+**Given** MVP documentation and public surfaces
+**When** the guard bound by this story runs
+**Then** it fails on any claim of crypto-shred beyond the documented boundary
+**And** a seeded overclaim proves the guard fails.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR17-C5 owner.
+
 <!-- Epic 7 story set confirmed complete for planning. -->
 
 ## Epic 8: Domains Can Opt Into Portable Payload Protection - Post-MVP
@@ -6944,7 +7311,7 @@ So that Parties migration can proceed only against a proven shared capability.
 
 ## Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Approved At A Declared Assurance Level
 
-Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved at the Assurance Control level the owner-role registry requires, with that level labelled on every result. Added by `sprint-change-proposal-2026-09-26.md`; both stories start in `backlog`.
+Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved at the Assurance Control level the owner-role registry requires, with that level labelled on every result. Stories 9.1–9.2 were added by `sprint-change-proposal-2026-09-26.md`; Stories 9.3–9.5 by `sprint-change-proposal-2026-10-07.md`; all start in `backlog`.
 
 ### Story 9.1: Corrective-Work Authorization Record And Validator
 
@@ -7022,3 +7389,116 @@ So that no high-risk result overstates the assurance behind it.
 **When** the Assurance Control evaluation completes
 **Then** that evaluation is follow-on work that reopens Story 3.15 only if it rejects the evidence
 **And** any new receipt set follows the G-RUNTIME-PARITY re-mint rule.
+
+### Story 9.3: Planning Baseline Manifest And Drift Guard
+
+As a Product owner,
+I want one content-bound manifest of the planning baseline and guards that compare requirements, ownership, statuses, and lifecycle values across it,
+So that the PRD, architecture, UX, epics, tracker, and story records cannot silently diverge again and a hash-only refresh can never pass as reconciliation.
+
+**Requirements coverage:** Primary OR8, the G-BASELINE validator, and the OR15 guarded lifecycle comparison; supporting OR5 and OR14.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-BASELINE. Minting an approved manifest also requires OR14 completion (architecture reviewer closure and AD-26 ratification, resolved detailed-UX assumptions and final statuses, renewed epics); building the validator and guards does not wait for it.
+
+**Acceptance Criteria:**
+
+**Given** the manifest at `_bmad-output/implementation-artifacts/evidence/phase-4-planning-baseline.json`
+**When** the validator command bound by this story runs
+**Then** it binds the SHA-256 of `prd.md`, `architecture.md`, the detailed DESIGN and EXPERIENCE documents, `ux.md`, `epics.md`, `sprint-status.yaml`, every story record it names, the relevant evidence digests, and the Story 9.1 authorization registry
+**And** it rejects any digest mismatch, `draft` status, open `[ASSUMPTION]`, active or unreconciled corrective-work authorization, and any approval that predates the bytes it binds.
+
+**Given** the PRD and `epics.md`
+**When** the drift guard runs
+**Then** it compares PRD FR/NFR text with the epics Requirements Inventory, and PRD §7.1 and §11 primary ownership with each story's declared coverage
+**And** every divergence fails with the requirement or clause ID and both texts.
+
+**Given** every story key in `sprint-status.yaml`
+**When** the lifecycle comparison runs
+**Then** the tracker value, the story spec or wrapper frontmatter, and the `epics.md` current-reconciliation statement agree, or a dated reconciliation record explains the difference
+**And** a tracker `done` without a spec `done` fails, with Stories 4.5, 5.2, 5.3, 5.4, and 6.1 as checked fixtures.
+
+**Given** the current baseline
+**When** the validator first runs on `main`
+**Then** it reports FAIL and lists every cause it finds
+**And** the story closes on that truthful result; it never refreshes, mints, or approves a digest to make the gate pass.
+
+**Given** the validator's rejection paths and CI
+**When** its tests and workflow run
+**Then** each rejection is proven by a checked-in negative fixture observed failing, alongside a positive control, and no guard is green by construction
+**And** the workflow follows the Epic 9 truthful-FAIL CI rule.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`.
+
+### Story 9.4: Stable Clause Ledger And All-Clauses Validator
+
+As a Product owner,
+I want PRD §7.1's stable clauses mirrored in `epics.md` with one primary slice and an evidence identity each, checked by an all-clauses-required validator,
+So that no parent requirement closes on a status label or on a partial set of clauses.
+
+**Requirements coverage:** Primary OR7 and gate G-CLAUSE; supporting SM2.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-CLAUSE. The clause owners assigned by `sprint-change-proposal-2026-10-07.md` (FR12-C2 to 2.14; FR12-C3 and FR12-C4 to 2.15; FR36-C3 to 3.19; FR36-C4 and FR36-C5 to 3.20; NFR17-C5 to 7.21) are present in `epics.md`.
+
+**Acceptance Criteria:**
+
+**Given** PRD §7.1
+**When** the story completes
+**Then** `epics.md` contains a Stable Clause Ledger listing every clause ID with exactly one primary slice and an evidence-identity field that reads `pending` until passing evidence exists
+**And** the FR12, FR15, and FR36 completion rules name the same slices as the ledger.
+
+**Given** the validator command bound by this story
+**When** it runs
+**Then** it rejects missing, duplicate, unknown, or unassigned clauses, any divergence between the ledger and PRD §7.1, and any parent requirement recorded as closed while one of its clauses lacks passing content-bound evidence
+**And** it rejects closure that rests on a story status alone.
+
+**Given** the current baseline
+**When** the validator first runs on `main`
+**Then** it reports FAIL and lists every clause without passing evidence
+**And** the story closes on that truthful result.
+
+**Given** the validator's rejection paths and CI
+**When** its tests and workflow run
+**Then** each rejection is proven by a negative fixture observed failing beside a positive control
+**And** the workflow follows the Epic 9 truthful-FAIL CI rule.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`.
+
+### Story 9.5: Phase 4 MVP Coverage Manifest And Validator
+
+As a Product owner,
+I want one manifest that enumerates every Phase 4 MVP requirement, clause, and metric denominator with its owner, lifecycle, evidence, and blocking gate,
+So that MVP completion and readiness are computed rather than asserted.
+
+**Requirements coverage:** Primary OR27 and gate G-MVP-COVERAGE; supporting OR17, SM9, SM10, and SM12.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-MVP-COVERAGE; Story 9.4 for the clause inventory; Story 9.2 for approval at the Assurance Control level.
+
+**Acceptance Criteria:**
+
+**Given** `_bmad-output/implementation-artifacts/evidence/phase-4-mvp-coverage.json`
+**When** `python3 tools/validate-phase-4-mvp-coverage.py _bmad-output/implementation-artifacts/evidence/phase-4-mvp-coverage.json` runs
+**Then** the manifest enumerates FR1-FR36, NFR1-NFR18, every stable §7.1 clause, and the `interactive_ui_hosts`, `nfr1_surfaces`, and `high_tier_evidence_cases` inventories
+**And** each entry binds its primary owner, lifecycle state, exact evidence digest, validator command and result, approval, and the mandatory gate that blocks it when not passed.
+
+**Given** the validator
+**When** it evaluates the manifest
+**Then** it rejects omissions, duplicate ownership, `done` unsupported by passing evidence, stale identities, unapproved or failed evidence, incomplete metric inventories, and `N/A` for any MVP ID
+**And** it rejects any FR37 or NFR19 entry counted toward the MVP.
+
+**Given** the current baseline
+**When** the validator first runs on `main`
+**Then** it reports FAIL with every open requirement, clause, and gate
+**And** the story closes on that truthful result.
+
+**Given** a manifest digest offered for approval
+**When** the approval is recorded
+**Then** it uses the Story 9.2 Assurance Control and carries the computed label, `single-maintainer-attested` while the registry names one human
+**And** each rejection path is proven by a negative fixture beside a positive control, and the workflow follows the Epic 9 truthful-FAIL CI rule.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`.
