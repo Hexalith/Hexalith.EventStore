@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Hexalith.EventStore.IntegrationTests.Helpers;
@@ -9,10 +8,17 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// </summary>
 internal static class DaprInvocationReadinessProbe {
     /// <summary>
-    /// The side-effect-free sample capability invoked through EventStore's Dapr sidecar.
+    /// The sample's anonymous liveness probe invoked through EventStore's Dapr sidecar.
     /// </summary>
+    /// <remarks>
+    /// Story 5.5: every operational sample route requires EventStore's workload assertion, which this probe cannot
+    /// mint. The probe therefore targets <c>/alive</c>, one of the three explicitly anonymous probes, through the
+    /// same Dapr service-invocation path (name resolution, placement, and the sample sidecar's app channel) that
+    /// domain-service invocation depends on. The sample ACL admits only POST from <c>eventstore</c>, and the health
+    /// endpoint answers every verb.
+    /// </remarks>
     internal const string SampleInvocationPath
-        = "/v1.0/invoke/sample/method/admin/operational-index-metadata";
+        = "/v1.0/invoke/sample/method/alive";
 
     private const string _directInvokeErrorCode = "ERR_DIRECT_INVOKE";
     private const int _maxDiagnosticBodyLength = 512;
@@ -130,9 +136,9 @@ internal static class DaprInvocationReadinessProbe {
 
         await WaitAsync(
                 expectedReady,
-                probeAsync: probeCancellationToken => eventStoreDaprClient.PostAsJsonAsync(
+                probeAsync: probeCancellationToken => eventStoreDaprClient.PostAsync(
                         SampleInvocationPath,
-                        new { Domains = Array.Empty<string>() },
+                        content: null,
                         probeCancellationToken),
                 timeout,
                 retryDelay: _probeRetryDelay,

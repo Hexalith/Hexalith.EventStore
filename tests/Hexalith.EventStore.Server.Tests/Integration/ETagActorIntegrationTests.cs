@@ -16,9 +16,12 @@ using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -40,10 +43,13 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     private readonly ETagTestFactory _factory;
     private readonly HttpClient _client;
 
+    private const string ChannelToken = "story-5-5-etag-channel-token";
+
     public ETagActorIntegrationTests(ETagTestFactory factory) {
         _factory = factory;
         _factory.ResetActors();
         _client = _factory.CreateClient();
+        _client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);
     }
 
     public void Dispose() {
@@ -60,7 +66,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -76,7 +82,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -102,7 +108,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification).ConfigureAwait(true);
+            "/projections/changed", Signed(notification)).ConfigureAwait(true);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -131,7 +137,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification).ConfigureAwait(true);
+            "/projections/changed", Signed(notification)).ConfigureAwait(true);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -162,7 +168,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification).ConfigureAwait(true);
+            "/projections/changed", Signed(notification)).ConfigureAwait(true);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -189,7 +195,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification).ConfigureAwait(true);
+            "/projections/changed", Signed(notification)).ConfigureAwait(true);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -210,7 +216,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert — CM-1: non-200 triggers DAPR retry
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
@@ -232,7 +238,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification).ConfigureAwait(true);
+            "/projections/changed", Signed(notification)).ConfigureAwait(true);
 
         // Assert — CM-1: non-200 triggers DAPR retry and no SignalR broadcast is attempted
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
@@ -251,7 +257,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -266,7 +272,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Act
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -431,7 +437,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         // Act — send cross-process notification which regenerates the ETag
         var notification = new ProjectionChangedNotification("test-projection", "acme");
         HttpResponseMessage response = await _client.PostAsJsonAsync(
-            "/projections/changed", notification);
+            "/projections/changed", Signed(notification));
 
         // Assert — ETag was regenerated, old ETag is now stale
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -487,6 +493,234 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     }
 
     /// <summary>
+    /// Story 5.5: a callback without the app-channel token, or whose signed publisher provenance is absent, forged,
+    /// stale, unauthorized, unbound, partially bound, or bound to another tenant/topic, performs no actor call,
+    /// freshness change, or broadcast. An unbound provenance (an authority's client-credentials token) is a replayable
+    /// forgery for any tenant, so it is denied like any other.
+    /// </summary>
+    /// <param name="scenario">The denial scenario.</param>
+    /// <param name="expectedStatus">The expected bounded status.</param>
+    [Theory]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    [InlineData("absent-provenance", HttpStatusCode.Forbidden)]
+    [InlineData("missing-channel-token", HttpStatusCode.Unauthorized)]
+    [InlineData("wrong-channel-token", HttpStatusCode.Unauthorized)]
+    [InlineData("duplicate-channel-token", HttpStatusCode.Unauthorized)]
+    [InlineData("forged-signature", HttpStatusCode.Forbidden)]
+    [InlineData("expired", HttpStatusCode.Forbidden)]
+    [InlineData("unauthorized-publisher", HttpStatusCode.Forbidden)]
+    [InlineData("wrong-operation", HttpStatusCode.Forbidden)]
+    [InlineData("wrong-audience", HttpStatusCode.Forbidden)]
+    [InlineData("topic-mismatch", HttpStatusCode.Forbidden)]
+    [InlineData("tenant-mismatch", HttpStatusCode.Forbidden)]
+    [InlineData("projection-mismatch", HttpStatusCode.Forbidden)]
+    [InlineData("unbound-provenance", HttpStatusCode.Forbidden)]
+    [InlineData("missing-tenant-binding", HttpStatusCode.Forbidden)]
+    [InlineData("missing-projection-binding", HttpStatusCode.Forbidden)]
+    [InlineData("missing-topic-binding", HttpStatusCode.Forbidden)]
+    public async Task CrossProcessPath_UnprovenCallback_LeavesFreshnessUnchanged(string scenario, HttpStatusCode expectedStatus) {
+        // Arrange
+        string initialETag = await _factory.FakeETagActor.RegenerateAsync();
+        int baseline = _factory.FakeETagActor.RegenerateCount;
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order-123",
+            Metadata: new Dictionary<string, string>(StringComparer.Ordinal) { ["freshness"] = "changed" });
+        Dictionary<string, string> bindings = Bindings("order-list", "acme");
+        string? provenance = scenario switch {
+            "absent-provenance" => null,
+            "forged-signature" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify], bindings: bindings,
+                signingKey: Convert.ToBase64String(new byte[48])),
+            "expired" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify], bindings: bindings,
+                issuedAt: DateTime.UtcNow.AddMinutes(-10)),
+            "unauthorized-publisher" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, "intruder", [EventStoreWorkloadOperations.ProjectionNotify], bindings: bindings),
+            "wrong-operation" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.TrustedEffect], bindings: bindings),
+            "wrong-audience" => WorkloadAssertionTestTokens.Create(
+                "sample", Publisher, [EventStoreWorkloadOperations.ProjectionNotify], bindings: bindings),
+            "topic-mismatch" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify],
+                bindings: new Dictionary<string, string>(bindings, StringComparer.Ordinal) {
+                    [EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType] = "globex.order-list.projection-changed",
+                }),
+            "tenant-mismatch" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify], bindings: Bindings("order-list", "globex")),
+            "projection-mismatch" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify], bindings: Bindings("invoice-list", "acme")),
+            "unbound-provenance" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify]),
+            "missing-tenant-binding" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify],
+                bindings: Without(bindings, EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)),
+            "missing-projection-binding" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify],
+                bindings: Without(bindings, EventStoreWorkloadAuthenticationDefaults.ProjectionTypeBindingClaimType)),
+            "missing-topic-binding" => WorkloadAssertionTestTokens.Create(
+                ProvenanceAudience, Publisher, [EventStoreWorkloadOperations.ProjectionNotify],
+                bindings: Without(bindings, EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType)),
+            _ => ValidProvenance("order-list", "acme"),
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/projections/changed") {
+            Content = JsonContent.Create(notification with { Provenance = provenance }),
+        };
+        switch (scenario) {
+            case "missing-channel-token":
+                using (HttpClient bare = _factory.CreateClient()) {
+                    HttpResponseMessage bareResponse = await bare.SendAsync(request).ConfigureAwait(true);
+                    bareResponse.StatusCode.ShouldBe(expectedStatus, scenario);
+                }
+
+                await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                return;
+            case "wrong-channel-token":
+                using (HttpClient wrong = _factory.CreateClient()) {
+                    wrong.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, "wrong-channel-token");
+                    HttpResponseMessage wrongResponse = await wrong.SendAsync(request).ConfigureAwait(true);
+                    wrongResponse.StatusCode.ShouldBe(expectedStatus, scenario);
+                }
+
+                await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                return;
+            case "duplicate-channel-token":
+                using (HttpClient duplicate = _factory.CreateClient()) {
+                    request.Headers.Add(DaprAppChannelToken.HeaderName, [ChannelToken, ChannelToken]);
+                    HttpResponseMessage duplicateResponse = await duplicate.SendAsync(request).ConfigureAwait(true);
+                    duplicateResponse.StatusCode.ShouldBe(expectedStatus, scenario);
+                }
+
+                await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+                return;
+        }
+
+        // Act
+        HttpResponseMessage response = await _client.SendAsync(request).ConfigureAwait(true);
+
+        // Assert
+        response.StatusCode.ShouldBe(expectedStatus, scenario);
+        string body = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
+        body.ShouldNotContain("acme", Case.Sensitive, scenario);
+        if (provenance is not null) {
+            body.ShouldNotContain(provenance, Case.Sensitive, scenario);
+        }
+
+        await AssertFreshnessUnchangedAsync(initialETag, baseline).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Story 5.5 (P-10): a real publisher → receiver round trip for both notifier overloads. The real
+    /// <see cref="DaprProjectionChangeNotifier"/> signs provenance with the host's own trusted issuer, the exact
+    /// published notification is delivered to <c>/projections/changed</c>, and only then do ETag regeneration and the
+    /// bounded broadcast run. Replaying the same provenance for another tenant changes nothing.
+    /// </summary>
+    /// <param name="detail">Whether the detail overload publishes the notification.</param>
+    [Theory]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CrossProcessPath_RealPublisherProvenance_RoundTripsThroughTheReceiver(bool detail) {
+        // Arrange — a pub/sub publisher whose provenance comes from the host's own trusted issuer.
+        IWorkloadAssertionIssuer issuer = _factory.Services.GetRequiredService<IWorkloadAssertionIssuer>();
+        issuer.CanBindResources.ShouldBeTrue();
+        Dapr.Client.DaprClient daprClient = Substitute.For<Dapr.Client.DaprClient>();
+        string? publishedTopic = null;
+        ProjectionChangedNotification? published = null;
+        _ = daprClient.PublishEventAsync(
+                Arg.Any<string>(),
+                Arg.Do<string>(topic => publishedTopic = topic),
+                Arg.Do<ProjectionChangedNotification>(notification => published = notification),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var publisher = new Server.Projections.DaprProjectionChangeNotifier(
+            daprClient,
+            Substitute.For<IActorProxyFactory>(),
+            Substitute.For<IProjectionChangedBroadcaster>(),
+            Options.Create(new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.PubSub }),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Server.Projections.DaprProjectionChangeNotifier>.Instance,
+            issuer);
+        if (detail) {
+            await publisher.NotifyProjectionChangedAsync(
+                new ProjectionChangedDetail(
+                    "order-list",
+                    "acme",
+                    "order-123",
+                    new Dictionary<string, string>(StringComparer.Ordinal) { ["freshness"] = "changed" }),
+                TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+        else {
+            await publisher.NotifyProjectionChangedAsync("order-list", "acme", "order-123", TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+
+        published.ShouldNotBeNull();
+        published.Provenance.ShouldNotBeNullOrWhiteSpace();
+        publishedTopic.ShouldBe("acme.order-list.projection-changed");
+        string initialETag = await _factory.FakeETagActor.RegenerateAsync().ConfigureAwait(true);
+        int baseline = _factory.FakeETagActor.RegenerateCount;
+
+        // Act — deliver exactly what the publisher put on the topic, then replay its provenance for another tenant.
+        HttpResponseMessage delivered = await _client.PostAsJsonAsync("/projections/changed", published).ConfigureAwait(true);
+        int afterDelivery = _factory.FakeETagActor.RegenerateCount;
+        HttpResponseMessage replayed = await _client.PostAsJsonAsync(
+            "/projections/changed",
+            published with { TenantId = "globex" }).ConfigureAwait(true);
+
+        // Assert
+        delivered.StatusCode.ShouldBe(HttpStatusCode.OK);
+        afterDelivery.ShouldBe(baseline + 1);
+        (await _factory.FakeETagActor.GetCurrentETagAsync().ConfigureAwait(true)).ShouldNotBe(initialETag);
+        if (detail) {
+            await _factory.Broadcaster.Received(1).BroadcastChangedAsync(
+                Arg.Is<ProjectionChangedDetail>(d => d.ProjectionType == "order-list" && d.TenantId == "acme" && d.GroupScope == "order-123"),
+                Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        }
+        else {
+            await _factory.Broadcaster.Received(1).BroadcastChangedAsync("order-list", "acme", Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        }
+
+        replayed.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(afterDelivery);
+    }
+
+    private const string Publisher = "eventstore";
+
+    private const string ProvenanceAudience = "eventstore";
+
+    private async Task AssertFreshnessUnchangedAsync(string initialETag, int baseline) {
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(baseline);
+        (await _factory.FakeETagActor.GetCurrentETagAsync().ConfigureAwait(true)).ShouldBe(initialETag);
+        _factory.MockProxyFactory.ReceivedCalls().ShouldBeEmpty();
+        _factory.Broadcaster.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    private static ProjectionChangedNotification Signed(ProjectionChangedNotification notification)
+        => notification with { Provenance = ValidProvenance(notification.ProjectionType, notification.TenantId) };
+
+    private static string ValidProvenance(string projectionType, string tenantId)
+        => WorkloadAssertionTestTokens.Create(
+            ProvenanceAudience,
+            Publisher,
+            [EventStoreWorkloadOperations.ProjectionNotify],
+            bindings: string.IsNullOrEmpty(projectionType) || string.IsNullOrEmpty(tenantId) ? null : Bindings(projectionType, tenantId));
+
+    private static Dictionary<string, string> Bindings(string projectionType, string tenantId)
+        => new(StringComparer.Ordinal) {
+            [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = tenantId,
+            [EventStoreWorkloadAuthenticationDefaults.ProjectionTypeBindingClaimType] = projectionType,
+            [EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType] = $"{tenantId}.{projectionType}.projection-changed",
+        };
+
+    private static Dictionary<string, string> Without(Dictionary<string, string> bindings, string claimType) {
+        var remaining = new Dictionary<string, string>(bindings, StringComparer.Ordinal);
+        _ = remaining.Remove(claimType);
+        return remaining;
+    }
+
+    /// <summary>
     /// WebApplicationFactory for ETag actor integration tests.
     /// </summary>
     public class ETagTestFactory : WebApplicationFactory<EventStoreProgram> {
@@ -497,11 +731,16 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
         public void ResetActors() {
             FakeETagActor.Reset();
             Broadcaster.ClearReceivedCalls();
+            MockProxyFactory.ClearReceivedCalls();
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
             _ = builder.UseEnvironment("Development");
+            _ = builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?> {
+                    [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
+                }));
 
             _ = builder.ConfigureTestServices(services => {
                 WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService(services);

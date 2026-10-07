@@ -5,25 +5,36 @@ using Dapr;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.Controllers;
 
 /// <summary>
 /// Cross-process notification receiver for DAPR pub/sub.
-/// External domain services publish <see cref="ProjectionChangedNotification"/>
-/// to topic "{tenantId}.{projectionType}.projection-changed". DAPR delivers here.
+/// Publishers send <see cref="ProjectionChangedNotification"/> to topic
+/// "{tenantId}.{projectionType}.projection-changed". DAPR delivers here.
 /// </summary>
+/// <remarks>
+/// The callback is never anonymous (FR28): delivery must present this host's Dapr application-channel token, and
+/// the notification must carry signed publisher provenance that names an allowed publisher, grants the
+/// projection-notify operation, and matches the notification's tenant, projection type, and topic. A forged,
+/// stale, unbound, or mismatched callback performs no actor call, freshness change, or SignalR broadcast.
+/// </remarks>
 [ApiController]
+[Authorize(Policy = EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy)]
 [Route("projections")]
 public partial class ProjectionNotificationController(
     IActorProxyFactory actorProxyFactory,
     IProjectionChangedBroadcaster broadcaster,
+    ProjectionNotificationProvenanceVerifier provenanceVerifier,
     ILogger<ProjectionNotificationController> logger) : ControllerBase {
     private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
@@ -36,7 +47,10 @@ public partial class ProjectionNotificationController(
     [Topic(ProjectionChangeNotifierOptions.DefaultPubSubName, "*.*.projection-changed")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> OnProjectionChanged(
         [FromBody] ProjectionChangedNotification notification,
         CancellationToken cancellationToken) {
@@ -46,6 +60,15 @@ public partial class ProjectionNotificationController(
             string.IsNullOrWhiteSpace(notification.TenantId)) {
             Log.InvalidNotification(logger);
             return BadRequest();
+        }
+
+        string? provenanceDenial = await provenanceVerifier.VerifyAsync(notification, cancellationToken).ConfigureAwait(false);
+        if (provenanceDenial is not null) {
+            int statusCode = provenanceDenial == WorkloadAuthenticationReasons.VerifierUnavailable
+                ? StatusCodes.Status503ServiceUnavailable
+                : StatusCodes.Status403Forbidden;
+            WorkloadAuthenticationTelemetry.RecordDenial(logger, HttpContext, ProvenanceScheme, provenanceDenial, statusCode);
+            return StatusCode(statusCode);
         }
 
         string actorId = $"{notification.ProjectionType}:{notification.TenantId}";
@@ -89,6 +112,8 @@ public partial class ProjectionNotificationController(
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
+
+    private const string ProvenanceScheme = "ProjectionNotificationProvenance";
 
     private static bool HasDetail(ProjectionChangedNotification notification)
         => !string.IsNullOrWhiteSpace(notification.GroupScope)

@@ -8,9 +8,12 @@ namespace Hexalith.EventStore.QueryRouting.Tests;
 internal sealed class QueryRequestCaptureHandler : HttpMessageHandler {
     public string? Authorization { get; private set; }
 
+    public Uri? RequestUri { get; private set; }
+
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken) {
+        RequestUri = request.RequestUri;
         Authorization = request.Headers.TryGetValues("Authorization", out IEnumerable<string>? values)
             ? values.Single()
             : null;

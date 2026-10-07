@@ -30,7 +30,7 @@ public record QueryEnvelope {
     /// <param name="correlationId">The correlation identifier propagated from the gateway request.</param>
     /// <param name="userId">The authenticated user identifier, normally the <c>sub</c> claim.</param>
     /// <param name="entityId">Optional entity identifier for entity-scoped routing.</param>
-    /// <param name="isGlobalAdmin">Trusted server-populated flag indicating the authenticated user has global administrator privileges.</param>
+    /// <param name="isGlobalAdmin">Gateway-derived administrator hint. It is untrusted on the wire: every receiving boundary re-verifies current authority before honoring it.</param>
     public QueryEnvelope(
         string tenantId,
         string domain,
@@ -65,7 +65,7 @@ public record QueryEnvelope {
     /// <param name="correlationId">The correlation identifier propagated from the gateway request.</param>
     /// <param name="userId">The authenticated user identifier, normally the <c>sub</c> claim.</param>
     /// <param name="entityId">Optional entity identifier for entity-scoped routing.</param>
-    /// <param name="isGlobalAdmin">Trusted server-populated flag indicating the authenticated user has global administrator privileges.</param>
+    /// <param name="isGlobalAdmin">Gateway-derived administrator hint. It is untrusted on the wire: every receiving boundary re-verifies current authority before honoring it.</param>
     /// <param name="paging">Optional public paging policy supplied by the gateway.</param>
     public QueryEnvelope(
         string tenantId,
@@ -147,7 +147,7 @@ public record QueryEnvelope {
     /// <param name="correlationId">The correlation identifier propagated from the gateway request.</param>
     /// <param name="userId">The authenticated user identifier, normally the <c>sub</c> claim.</param>
     /// <param name="entityId">Optional entity identifier for entity-scoped routing.</param>
-    /// <param name="isGlobalAdmin">Trusted server-populated flag indicating the authenticated user has global administrator privileges.</param>
+    /// <param name="isGlobalAdmin">Gateway-derived administrator hint. It is untrusted on the wire: every receiving boundary re-verifies current authority before honoring it.</param>
     /// <param name="paging">Optional public paging policy supplied by the gateway.</param>
     /// <param name="originalActorId">Optional original end-user actor identifier, distinct from the authenticated workload. Defaults to <see langword="null"/> for legacy single-principal callers.</param>
     /// <param name="authenticatedWorkloadId">Optional authenticated calling workload identifier. Defaults to <see langword="null"/> for legacy single-principal callers.</param>
@@ -253,8 +253,13 @@ public record QueryEnvelope {
     public string? EntityId { get; init; }
 
     /// <summary>
-    /// Gets a trusted server-populated value indicating the authenticated user has global administrator privileges.
+    /// Gets the gateway-derived hint that the authenticated user claimed global administrator privileges.
     /// </summary>
+    /// <remarks>
+    /// The value is untrusted wire data (FR28): it never grants access on its own. The domain-service SDK clears it
+    /// at the <c>/query</c> boundary unless the domain's registered administrator verifier confirms the user's
+    /// current authority, and domain handlers re-evaluate authority from their own current state.
+    /// </remarks>
     [DataMember]
     public bool IsGlobalAdmin { get; init; }
 

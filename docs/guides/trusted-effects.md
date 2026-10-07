@@ -10,19 +10,25 @@ must be `wrk-<EffectId>`.
 
 The public SDK names are `TrustedEffectSubmission`, `TrustedEffectContext`,
 `TrustedEffectResult`, and `ITrustedEffectSubmitter`. The HTTP submitter sends to
-`POST /api/v1/trusted-effects`. The gateway derives the workload from its Dapr
-internal authentication principal; a bearer principal carrying a
-`dapr_caller_app_id` claim does not satisfy this endpoint's authentication
-scheme. Production must also restrict direct gateway access and attest the
-caller app through Dapr mTLS and deny-by-default ACLs, because the current
-internal authentication handler reads the `dapr-caller-app-id` header. Outside
-Development, internal authentication also requires the `dapr-api-token` header
-to match the gateway's `APP_API_TOKEN` secret; in Development a configured token
-is compared too. The receiving Dapr sidecar must be configured with the same app
-token; a caller-ID header alone is rejected. Outside Development, missing token
-configuration fails readiness while `Authentication:DaprInternal:AllowedCallers`
-is non-empty. This is an application-channel check, not deployment proof of mTLS
-or ACLs. The gateway validates the short-lived asymmetric delegation against
+`POST /api/v1/trusted-effects`. The gateway derives the workload from its
+`DaprInternal` principal, which requires a valid `dapr-api-token` app-channel
+header and one short-lived workload assertion in `X-Hexalith-Workload-Assertion`
+that names a caller in `Authentication:DaprInternal:AllowedCallers` and grants
+`eventstore:trusted-effect`. A `dapr-caller-app-id` header alone, or a bearer
+principal carrying a `dapr_caller_app_id` claim, is rejected. The workload
+principal carries no tenant or administrator authority. A domain service
+obtains that assertion for itself: configure its submitter client with
+`AddEventStoreTrustedEffectWorkloadAssertion()` (see
+[Typed reminder reconciliation](typed-reminders.md#host-composition)), so every
+submission carries an assertion whose caller is the domain service, whose
+audience is `eventstore`, and whose only operation is
+`eventstore:trusted-effect`. Without it the gateway answers `401` and admits
+nothing. See
+[Internal Workload Assertions](security-model.md#internal-workload-assertions).
+Outside Development, missing `APP_API_TOKEN` configuration fails readiness while
+`Authentication:DaprInternal:AllowedCallers` is non-empty. Dapr mTLS,
+deny-by-default ACLs, and restricted direct gateway access remain required as
+defense in depth. The gateway validates the short-lived asymmetric delegation against
 the configured OIDC authority. An expired, badly signed, or wrong-audience
 delegation is returned as `403 Forbidden`, not a server error. The delegation
 must bind the complete identity tuple, command type, server-derived canonical

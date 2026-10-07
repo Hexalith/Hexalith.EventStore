@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -43,12 +44,24 @@ public class DaprProjectionChangeNotifierSignalRTests {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
         ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
-        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(new ProjectionChangeNotifierOptions());
-        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
+        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.PubSub });
+
+        // Story 5.5: the pub/sub path publishes only with signed provenance, so the issuer must answer for the test to
+        // reach publication instead of returning early.
+        IWorkloadAssertionIssuer issuer = Substitute.For<IWorkloadAssertionIssuer>();
+        _ = issuer.IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>("signed-provenance"));
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger, issuer);
 
         await sut.NotifyProjectionChangedAsync("order-list", "acme");
 
+        await daprClient.Received(1).PublishEventAsync(
+            options.Value.PubSubName,
+            "acme.order-list.projection-changed",
+            Arg.Is<Hexalith.EventStore.Contracts.Projections.ProjectionChangedNotification>(notification => notification.Provenance == "signed-provenance"),
+            Arg.Any<CancellationToken>());
         await broadcaster.DidNotReceiveWithAnyArgs().BroadcastChangedAsync(default!, default!, default);
+        actorProxyFactory.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Fact]

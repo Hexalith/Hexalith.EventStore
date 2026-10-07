@@ -15,6 +15,9 @@ IResourceBuilder<ParameterResource>? localAdminPassword = null;
 IResourceBuilder<ParameterResource>? localSampleUserId = null;
 IResourceBuilder<ParameterResource>? localSampleUsername = null;
 IResourceBuilder<ParameterResource>? localSamplePassword = null;
+IResourceBuilder<ParameterResource>? localWorkloadClientSecret = null;
+IResourceBuilder<ParameterResource>? externalWorkloadClientId = null;
+IResourceBuilder<ParameterResource>? externalWorkloadClientSecret = null;
 IResourceBuilder<ParameterResource>? externalSampleClientId = null;
 IResourceBuilder<ParameterResource>? externalSampleUsername = null;
 IResourceBuilder<ParameterResource>? externalSamplePassword = null;
@@ -54,6 +57,13 @@ if (builder.ExecutionContext.IsRunMode) {
         "local-auth-sample-password",
         () => localCredentials.TenantAPassword,
         secret: true);
+
+    // Story 5.5: per-run secret of the local Keycloak `eventstore` workload client. EventStore exchanges it for
+    // short-lived workload assertions that prove its identity to domain services.
+    localWorkloadClientSecret = builder.AddParameter(
+        "local-auth-workload-client-secret",
+        () => localCredentials.WorkloadClientSecret,
+        secret: true);
 }
 else if (builder.ExecutionContext.IsPublishMode) {
     externalSampleGrantType = RequireExternalGrantType(
@@ -68,6 +78,10 @@ else if (builder.ExecutionContext.IsPublishMode) {
     externalAdminScope = RequireExternalText(
         builder.Configuration["Authentication:JwtBearer:AdminUi:Scope"],
         "Authentication:JwtBearer:AdminUi:Scope");
+    // Story 5.5: the external authority's client registration for EventStore's workload identity. Its tokens must
+    // carry azp=eventstore, the receiving audiences, and the granted eventstore:operation claims.
+    externalWorkloadClientId = builder.AddParameter("external-eventstore-workload-client-id");
+    externalWorkloadClientSecret = builder.AddParameter("external-eventstore-workload-client-secret", secret: true);
     externalSampleClientId = builder.AddParameter("external-sample-auth-client-id");
     externalAdminClientId = builder.AddParameter("external-admin-auth-client-id");
     if (externalSampleGrantType == "password") {
@@ -112,13 +126,13 @@ string resiliencyConfigPath = ResolveDaprConfigPath("resiliency.yaml");
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
-IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore")
-    // Trust internal DAPR service-invocation from domain services — the sidecar enforces ACL
-    // and tags the request with `dapr-caller-app-id`, which the DaprInternal auth scheme
-    // validates against this allow-list. The `tenants` service needs this so the bootstrap
-    // hosted service can submit `BootstrapGlobalAdmin` to `/api/v1/commands` without carrying
-    // a user JWT — domain services are behind the EventStore auth boundary by design.
-    .WithEnvironment("Authentication__DaprInternal__AllowedCallers__0", "tenants");
+// Story 5.5 (FR28): no internal caller is allow-listed by app id. A plaintext `dapr-caller-app-id` never
+// authenticates; an internal caller needs the app-channel token plus a short-lived workload assertion, and the
+// Tenants bootstrap submits `BootstrapGlobalAdmin` with the delegated administrator's own token. No domain module
+// in this topology submits trusted effects; one that does is allow-listed with
+// `eventStore.WithEventStoreTrustedEffectSubmitter(appId)` and, in authority mode, receives its own client through
+// `WithEventStoreWorkloadClientCredentials` (see docs/guides/typed-reminders.md).
+IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore");
 IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("eventstore-admin");
 IResourceBuilder<ProjectResource> adminUI = builder.AddProject<Projects.Hexalith_EventStore_Admin_UI>("eventstore-admin-ui");
 HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
@@ -202,6 +216,14 @@ if (tenants is not null && tenantsApi is not null) {
         daprSchedulerHostAddress: daprSchedulerHostAddress);
     if (localAdminUserId is not null) {
         _ = configuredTenants.WithEnvironment("Tenants__BootstrapGlobalAdminUserId", localAdminUserId);
+    }
+
+    // Story 5.5: the domain service authenticates EventStore's workload assertions with the shared JWT contract.
+    // In this symmetric Development mode the same per-run key lets the Tenants bootstrap sign a short-lived
+    // delegated credential for Tenants:BootstrapGlobalAdminUserId (no app-id grant exists); the Keycloak mode below
+    // gives it the administrator's own credentials instead.
+    if (security is null) {
+        ConfigureLocalSymmetricValidation(configuredTenants, localSigningKey!);
     }
 
     // The external-facing Tenants REST API host reaches EventStore through DAPR service
@@ -308,9 +330,26 @@ if (security is not null || builder.ExecutionContext.IsPublishMode) {
     _ = adminServer.WithEventStoreJwtAuthentication(security, jwtAuthentication);
     _ = sampleApi.WithEventStoreJwtAuthentication(security, jwtAuthentication);
 
+    // Story 5.5: the sample domain service validates EventStore workload assertions with the shared contract;
+    // EventStore obtains them from the authority's `eventstore` workload client, one token per (audience,
+    // operation) through the client's optional audience and operation scopes. EventStore fails startup in
+    // authority mode without this client.
+    _ = sample.WithEventStoreJwtAuthentication(security, jwtAuthentication);
+    _ = security is not null
+        ? eventStore.WithEventStoreWorkloadClientCredentials("eventstore", localWorkloadClientSecret!)
+        : eventStore.WithEventStoreWorkloadClientCredentials(externalWorkloadClientId!, externalWorkloadClientSecret!);
+
     if (security is not null && tenants is not null && tenantsApi is not null) {
         _ = tenants.WithJwtBearerSecurity(security);
         _ = tenantsApi.WithEventStoreAuthenticationValidation(security);
+
+        // Story 5.5: the global-administrator bootstrap is a delegated-human flow. The Tenants bootstrap obtains
+        // the configured administrator's own token instead of relying on an app-id allow-list.
+        _ = tenants
+            .WithEnvironment("EventStore__Authentication__Authority", security.RealmUrl)
+            .WithEnvironment("EventStore__Authentication__ClientId", HexalithEventStoreSecurityOptions.DefaultEventStoreClientId)
+            .WithEnvironment("EventStore__Authentication__Username", localAdminUsername!)
+            .WithEnvironment("EventStore__Authentication__Password", localAdminPassword!);
     }
 
     if (security is not null) {
@@ -366,6 +405,7 @@ else {
     ConfigureLocalSymmetricValidation(eventStore, localSigningKey!);
     ConfigureLocalSymmetricValidation(adminServer, localSigningKey!);
     ConfigureLocalSymmetricValidation(sampleApi, localSigningKey!);
+    ConfigureLocalSymmetricValidation(sample, localSigningKey!);
     ConfigureLocalTokenIssuer(adminUI, localSigningKey!, localAdminUserId!);
     ConfigureLocalTokenIssuer(blazorUi, localSigningKey!, localSampleUserId!);
     _ = sampleApi.WithLocalAuthenticationTokenCommand(localSigningKey!, localSampleUserId!);
@@ -374,6 +414,17 @@ else {
 _ = adminUI.WithEnvironment(
     "EventStore__AdminServer__SwaggerUrl",
     ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
+
+// Story 5.5 (AD-28): every Dapr application endpoint that authenticates internal callers receives a per-run
+// app-channel token, shared only with its own sidecar. Publish targets supply APP_API_TOKEN from their own
+// secret store (Stories 5.6-5.8 own deployment topology parity).
+if (builder.ExecutionContext.IsRunMode) {
+    _ = eventStore.WithGeneratedEventStoreAppChannelToken();
+    _ = sample.WithGeneratedEventStoreAppChannelToken();
+    if (tenants is not null) {
+        _ = tenants.WithGeneratedEventStoreAppChannelToken();
+    }
+}
 
 // Publisher environments (only activate during `aspire publish`).
 ConfigurePublishEnvironment(builder);

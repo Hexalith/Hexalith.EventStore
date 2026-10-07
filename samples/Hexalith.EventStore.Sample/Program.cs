@@ -21,13 +21,15 @@ WebApplication app = builder.Build();
 if (malformedProjectionResponse) {
     int malformedProjectionResponseHitCount = 0;
 
+    // An override of an SDK route must carry the SDK's own policy; the startup route inventory refuses a weaker one.
     _ = app.MapPost("/project", () => {
         _ = Interlocked.Increment(ref malformedProjectionResponseHitCount);
 
         // Intentionally malformed JSON payload used for Tier 3 fail-open validation.
         return Results.Content("{\"projectionType\":", "application/json");
-    });
+    }).RequireAuthorization(EventStoreDomainServicePolicies.Project);
 
+    // Not anonymous: the domain-service fallback policy requires an EventStore workload assertion.
     _ = app.MapGet("/faults/project-hit-count", () => Results.Ok(new {
         Count = Volatile.Read(ref malformedProjectionResponseHitCount),
     }));

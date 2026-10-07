@@ -39,6 +39,58 @@ public sealed class ProductionAuthorityAuthenticationTests
     private const string ProtectedRoute = "/api/v1/commands/status/test-message";
 
     /// <summary>
+    /// Story 5.5 (P-5): in authority mode EventStore cannot prove itself to any domain service without its workload
+    /// client, so the real host refuses to start instead of starting healthy and having every invocation denied. The
+    /// failure names the missing settings and never a configured value.
+    /// </summary>
+    /// <param name="missing">Which client setting is absent.</param>
+    [Theory]
+    [InlineData("client-id")]
+    [InlineData("client-secret")]
+    [InlineData("both")]
+    public void EventStoreHost_InAuthorityModeWithoutWorkloadClient_FailsStartup(string missing)
+    {
+        string appChannelToken = Guid.NewGuid().ToString("N");
+        string clientSecret = Guid.NewGuid().ToString("N");
+        var settings = new Dictionary<string, string?>
+        {
+            ["Authentication:JwtBearer:Authority"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:Issuer"] = AuthorityIssuer,
+            ["Authentication:JwtBearer:Audience"] = Audience,
+            ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+            ["Authentication:JwtBearer:SigningKey"] = null,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+            ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
+            ["Authentication:WorkloadIssuer:ClientSecret"] = clientSecret,
+            [Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.ConfigurationKey] = appChannelToken,
+        };
+        if (missing is "client-id" or "both")
+        {
+            _ = settings.Remove("Authentication:WorkloadIssuer:ClientId");
+        }
+
+        if (missing is "client-secret" or "both")
+        {
+            _ = settings.Remove("Authentication:WorkloadIssuer:ClientSecret");
+        }
+
+        using WebApplicationFactory<EventStoreProgram> factory = new WebApplicationFactory<EventStoreProgram>()
+            .WithWebHostBuilder(builder =>
+            {
+                _ = builder.UseEnvironment(Environments.Production);
+                _ = builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
+                builder.ConfigureTestServices(WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService);
+            });
+
+        Exception failure = Should.Throw<Exception>(() => factory.CreateClient());
+
+        string message = failure.ToString();
+        message.ShouldContain("Authentication:WorkloadIssuer:ClientId");
+        message.ShouldNotContain(clientSecret);
+        message.ShouldNotContain(appChannelToken);
+    }
+
+    /// <summary>
     /// Proves that the real EventStore host accepts an additional configured audience and rejects
     /// every invalid authority-mode token dimension before protected controller work.
     /// </summary>
@@ -66,6 +118,8 @@ public sealed class ProductionAuthorityAuthenticationTests
                         ["Authentication:JwtBearer:SigningKey"] = null,
                         ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
                         ["Authentication:DaprInternal:AllowedCallers:0"] = "reactor",
+                        ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
+                        ["Authentication:WorkloadIssuer:ClientSecret"] = Guid.NewGuid().ToString("N"),
                         [Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.ConfigurationKey] = appChannelToken,
                     }));
                 builder.ConfigureTestServices(WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService);
@@ -105,6 +159,7 @@ public sealed class ProductionAuthorityAuthenticationTests
             spoofedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         }
 
+        // FR28: the app-channel token plus a plaintext caller header is no longer an internal identity.
         using (var tokenedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
         {
             tokenedInternalRequest.Headers.Add("dapr-caller-app-id", "reactor");
@@ -113,7 +168,37 @@ public sealed class ProductionAuthorityAuthenticationTests
             using HttpResponseMessage tokenedResponse = await client.SendAsync(
                 tokenedInternalRequest,
                 TestContext.Current.CancellationToken);
-            tokenedResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            tokenedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        // A short-lived RS256 workload assertion from the authority, issued for this host and naming the
+        // allow-listed caller and operation, authenticates the channel-verified request; model validation then runs.
+        using (var assertedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
+        {
+            assertedInternalRequest.Headers.Add("dapr-caller-app-id", "reactor");
+            assertedInternalRequest.Headers.Add(Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.HeaderName, appChannelToken);
+            assertedInternalRequest.Headers.Add(
+                Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName,
+                CreateWorkloadAssertion(signingKey, "reactor", "eventstore:trusted-effect"));
+            assertedInternalRequest.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using HttpResponseMessage assertedResponse = await client.SendAsync(
+                assertedInternalRequest,
+                TestContext.Current.CancellationToken);
+            assertedResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        }
+
+        // The same assertion signed by an untrusted key never authenticates.
+        using (var forgedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
+        {
+            forgedInternalRequest.Headers.Add(Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.HeaderName, appChannelToken);
+            forgedInternalRequest.Headers.Add(
+                Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName,
+                CreateWorkloadAssertion(wrongSigningKey, "reactor", "eventstore:trusted-effect"));
+            forgedInternalRequest.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using HttpResponseMessage forgedResponse = await client.SendAsync(
+                forgedInternalRequest,
+                TestContext.Current.CancellationToken);
+            forgedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         }
 
         string symmetricKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
@@ -149,9 +234,25 @@ public sealed class ProductionAuthorityAuthenticationTests
     {
         var configuration = new OpenIdConnectConfiguration { Issuer = AuthorityIssuer };
         configuration.SigningKeys.Add(signingKey);
-        services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
-            .Get(JwtBearerDefaults.AuthenticationScheme)
-            .ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+        IOptionsMonitor<JwtBearerOptions> monitor = services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        monitor.Get(JwtBearerDefaults.AuthenticationScheme).ConfigurationManager =
+            new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+        monitor.Get(Hexalith.EventStore.Authentication.DaprInternalAuthenticationOptions.SchemeName).ConfigurationManager =
+            new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+    }
+
+    private static string CreateWorkloadAssertion(SecurityKey signingKey, string caller, string operation)
+    {
+        DateTime now = DateTime.UtcNow;
+        var token = new JwtSecurityToken(
+            AuthorityIssuer,
+            "eventstore",
+            [new Claim("azp", caller), new Claim("eventstore:operation", operation)],
+            now.AddSeconds(-5),
+            now.AddMinutes(4),
+            new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256));
+        token.Payload["iat"] = new DateTimeOffset(now.AddSeconds(-5)).ToUnixTimeSeconds();
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     private static HttpRequestMessage CreateRequest(string token)

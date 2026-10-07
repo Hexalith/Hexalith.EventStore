@@ -9,6 +9,187 @@
   "editUsernameAllowed": false,
   "bruteForceProtected": false,
   "accessTokenLifespan": 3600,
+  "attributes": {
+    "CreateDefaultClientScopes": "true"
+  },
+  "clientScopes": [
+    {
+      "name": "eventstore-audience.sample",
+      "description": "Story 5.5: grants the 'sample' domain-service audience to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "sample",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-audience.tenants",
+      "description": "Story 5.5: grants the 'tenants' domain-service audience to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "tenants",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-operation.domain-service.process",
+      "description": "Story 5.5: grants the 'domain-service:process' operation to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-operation",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "eventstore:operation",
+            "claim.value": "domain-service:process",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-operation.domain-service.replay-state",
+      "description": "Story 5.5: grants the 'domain-service:replay-state' operation to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-operation",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "eventstore:operation",
+            "claim.value": "domain-service:replay-state",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-operation.domain-service.query",
+      "description": "Story 5.5: grants the 'domain-service:query' operation to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-operation",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "eventstore:operation",
+            "claim.value": "domain-service:query",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-operation.domain-service.project",
+      "description": "Story 5.5: grants the 'domain-service:project' operation to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-operation",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "eventstore:operation",
+            "claim.value": "domain-service:project",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "eventstore-operation.domain-service.metadata",
+      "description": "Story 5.5: grants the 'domain-service:metadata' operation to one EventStore workload token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "workload-operation",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "eventstore:operation",
+            "claim.value": "domain-service:metadata",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
   "clients": [
     {
       "clientId": "hexalith-eventstore",
@@ -184,6 +365,33 @@
             "userinfo.token.claim": "true"
           }
         }
+      ]
+    },
+    {
+      "clientId": "eventstore",
+      "name": "Hexalith EventStore workload",
+      "description": "Service-account workload client: short-lived assertions proving EventStore to domain services (Story 5.5). Grants no audience or operation by default; each token is requested for one audience scope and one operation scope.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "__HEXALITH_WORKLOAD_CLIENT_SECRET__",
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [],
+      "optionalClientScopes": [
+        "eventstore-audience.sample",
+        "eventstore-audience.tenants",
+        "eventstore-operation.domain-service.process",
+        "eventstore-operation.domain-service.replay-state",
+        "eventstore-operation.domain-service.query",
+        "eventstore-operation.domain-service.project",
+        "eventstore-operation.domain-service.metadata"
       ]
     }
   ],

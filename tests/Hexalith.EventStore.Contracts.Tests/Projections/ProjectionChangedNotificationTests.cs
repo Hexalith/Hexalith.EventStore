@@ -126,4 +126,24 @@ public class ProjectionChangedNotificationTests {
 
         n2.ShouldNotBe(n1);
     }
+
+    /// <summary>
+    /// Story 5.5 (P-14): the signed publisher provenance is a credential, so the record's printed form redacts it while
+    /// keeping the routing members readable.
+    /// </summary>
+    [Fact]
+    public void ToString_RedactsTheProvenanceCredential() {
+        string provenance = "provenance-" + Guid.NewGuid().ToString("N");
+        var notification = new ProjectionChangedNotification("order-list", "acme", GroupScope: "order-123") {
+            Provenance = provenance,
+        };
+
+        string printed = notification.ToString();
+
+        printed.ShouldNotContain(provenance);
+        printed.ShouldContain("Provenance = [REDACTED]");
+        printed.ShouldContain("ProjectionType = order-list");
+        printed.ShouldContain("TenantId = acme");
+        (notification with { Provenance = null }).ToString().ShouldContain("Provenance = <none>");
+    }
 }

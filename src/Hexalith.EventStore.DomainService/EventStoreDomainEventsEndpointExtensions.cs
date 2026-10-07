@@ -9,7 +9,9 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>
-/// Maps the DAPR pub/sub subscription endpoint a service uses to consume a domain's published events.
+/// Maps the DAPR pub/sub subscription endpoint a service uses to consume a domain's published events. The route
+/// requires the Dapr application-channel token (<see cref="EventStoreDomainServicePolicies.SidecarChannel"/>); it is
+/// never anonymous.
 /// </summary>
 /// <remarks>
 /// This is the platform generalization of the per-domain subscription endpoints domain modules previously
@@ -39,7 +41,10 @@ public static class EventStoreDomainEventsEndpointExtensions {
                     .ProcessAsync(envelope, cancellationToken)
                     .ConfigureAwait(false);
                 return MapProcessingResult(result);
-            }).WithTopic(options.PubSubName, options.TopicName);
+            })
+            .WithTopic(options.PubSubName, options.TopicName)
+            // Pub/sub delivery is sidecar-originated: it must present the Dapr app-channel token.
+            .RequireEventStoreSidecarChannel();
 
         return endpoints;
     }

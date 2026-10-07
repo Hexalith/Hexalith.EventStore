@@ -129,7 +129,7 @@ public class DaprInvocationReadinessProbeTests {
                 try {
                     while (true) {
                         HttpListenerContext context = await stub.GetContextAsync().ConfigureAwait(false);
-                        requestedPaths.Add(context.Request.Url!.AbsolutePath);
+                        requestedPaths.Add(context.Request.HttpMethod + " " + context.Request.Url!.AbsolutePath);
                         byte[] payload;
                         if (unavailableResponsesRemaining > 0) {
                             unavailableResponsesRemaining--;
@@ -163,9 +163,12 @@ public class DaprInvocationReadinessProbeTests {
         stub.Stop();
         await stubLoop.ConfigureAwait(true);
 
+        // Story 5.5: the probe targets the sample's anonymous /alive probe, because every operational sample route
+        // requires an EventStore workload assertion. It posts, as the sample ACL admits only POST from eventstore.
         requestedPaths.Count.ShouldBe(3);
         requestedPaths.ShouldAllBe(path
-            => path == "/v1.0/invoke/sample/method/admin/operational-index-metadata");
+            => path == "POST /v1.0/invoke/sample/method/alive");
+        DaprInvocationReadinessProbe.SampleInvocationPath.ShouldBe("/v1.0/invoke/sample/method/alive");
     }
 
     private static int GetFreeTcpPort() {

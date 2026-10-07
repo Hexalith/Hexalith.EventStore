@@ -487,9 +487,35 @@ Configuration section: `Authentication:DaprInternal`
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `AllowedCallers` | string[] | `[]` | Exact, case-sensitive Dapr app IDs admitted by the `DaprInternal` scheme from the `dapr-caller-app-id` header. Empty admits no internal caller |
+| `AllowedCallers` | string[] | `[]` | Exact, case-sensitive workload identities admitted by the `DaprInternal` scheme from the signed `azp` claim of the `X-Hexalith-Workload-Assertion` JWT. The `dapr-caller-app-id` header is only cross-checked and never authenticates. Empty admits no internal caller |
+| `Audience` | string | `"eventstore"` | Audience the workload assertion must target |
+| `MaximumLifetimeSeconds` | int | `300` | Longest accepted `iat`-to-`exp` assertion lifetime |
 
-Outside `Development`, an allow-listed caller also needs a `dapr-api-token` header that matches `APP_API_TOKEN` (see [Environment Variables](#dapr)). This is a breaking upgrade step for existing Staging and Production deployments. The trusted-effect endpoint `POST /api/v1/trusted-effects` accepts only this scheme; its delegation and authority rules are described in [Trusted effect submission](trusted-effects.md).
+An internal caller also needs a valid `dapr-api-token` header that matches `APP_API_TOKEN` (see [Environment Variables](#dapr)), and its assertion must grant the requested operation. The assertion is validated with the `Authentication:JwtBearer` issuer, keys, and algorithms. This is a breaking upgrade step for existing Staging and Production deployments. The trusted-effect endpoint `POST /api/v1/trusted-effects` accepts only this scheme with the `eventstore:trusted-effect` operation; its delegation and authority rules are described in [Trusted effect submission](trusted-effects.md). See [Internal Workload Assertions](security-model.md#internal-workload-assertions).
+
+Domain services bind the same settings from `Authentication:Workload`. There, `Audience` defaults to `EventStore:DomainService:AppId` and `AllowedCallers` defaults to `["eventstore"]`.
+
+### Outbound workload assertions
+
+Configuration section: `Authentication:WorkloadIssuer` (EventStore gateway, and any domain service that submits trusted effects)
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `Workload` | string | `"eventstore"` on EventStore; `EventStore:DomainService:AppId` on a domain service | Workload identity (`azp`) placed in symmetric-mode assertions |
+| `ClientId` | string | (none) | Confidential, service-account-only OIDC client used with the client-credentials grant in authority mode. Its `azp` must be the workload identity the receivers allow-list. Required on EventStore in authority mode: EventStore fails startup without it |
+| `ClientSecret` | string | (none) | Client secret. Supply it from a secret store or environment variable; never commit it. Required with `ClientId` |
+| `TokenEndpoint` | string | (discovered) | Explicit token endpoint; otherwise discovered from `Authentication:JwtBearer:Authority`. Must be HTTPS outside `Development`. A discovered endpoint is reused only after it passes the same check |
+| `AudienceScopePrefix` | string | `"eventstore-audience."` | Prefix of the scope that grants one receiving audience; the audience follows it |
+| `OperationScopePrefix` | string | `"eventstore-operation."` | Prefix of the scope that grants one operation; the operation follows it with each `:` replaced by `.` |
+| `LifetimeSeconds` | int | `120` | Lifetime of locally signed symmetric-mode assertions, capped at 300 |
+
+In authority mode, every (audience, operation) pair is its own token, requested with `scope=<AudienceScopePrefix><audience> <OperationScopePrefix><operation>` and cached per pair until shortly before it expires. A token whose `aud` is not exactly the requested audience, or whose `eventstore:operation` is not exactly the requested operation, is discarded (event `5511`, reasons `token-audience-mismatch` or `token-operation-mismatch`); the call then leaves without an assertion and its receiver denies it. The authority must therefore grant no audience or operation by default; see [External identity provider constraints](security-model.md#external-identity-provider-constraints).
+
+When no assertion can be obtained, EventStore logs event `5541` and the domain service denies the unasserted call; for a projection-changed notification it logs event `5551` and skips the publication.
+
+Projection-changed publications carry the assertion as signed provenance bound to the notification's tenant, projection type, and topic. On the receiving gateway, `EventStore:ProjectionChanges:AllowedPublishers` lists the accepted publisher workloads (default `["eventstore"]`), and `EventStore:ProjectionChanges:ProvenanceAudience` (default `"eventstore"`) is the audience the publisher requests. A provenance without all three bindings is denied.
+
+`EventStore:ProjectionChanges:Transport` defaults to `Direct`: EventStore calls the ETag actor in-process and broadcasts through SignalR, so no provenance is needed. `PubSub` is accepted only when the provenance issuer can bind each notification, which means the symmetric signing key in `Development` or an explicit non-Production break-glass environment. An OIDC authority's client-credentials tokens cannot carry those bindings, so EventStore fails startup when `PubSub` is configured in authority mode.
 
 ### Published UI token acquisition
 
@@ -651,7 +677,7 @@ Environment variables configure infrastructure connections and operational behav
 | `DAPR_HTTP_PORT` | (auto) | Override the DAPR sidecar HTTP port. Normally auto-assigned by DAPR |
 | `DAPR_TRUST_DOMAIN` | `"hexalith.io"` | SPIFFE trust domain for mTLS between services |
 | `DAPR_NAMESPACE` | `"hexalith"` | Kubernetes namespace used in DAPR access control policies |
-| `APP_API_TOKEN` | (empty) | EventStore app-channel secret compared with the inbound `dapr-api-token` header. **Breaking upgrade step:** required outside `Development` whenever `Authentication:DaprInternal:AllowedCallers` is non-empty. Otherwise allow-listed internal callers receive `401` and `dapr-app-channel-token` readiness is Unhealthy. It is also required outside `Development` on every domain service that registers [typed reminders](typed-reminders.md): without it, every reminder actor call receives `401` and `eventstore-reminders-unresolved` readiness is Unhealthy. The receiving sidecar must hold the same token: `dapr.io/app-token-secret` on Kubernetes, or `APP_API_TOKEN` on self-hosted `daprd`. In `Development`, a configured value is also compared |
+| `APP_API_TOKEN` | (empty) | App-channel secret compared with the inbound `dapr-api-token` header. It proves only the sidecar channel; internal callers also need a workload assertion (see [Internal Dapr callers](#internal-dapr-callers)). **Breaking upgrade step:** on EventStore, required outside `Development` whenever `Authentication:DaprInternal:AllowedCallers` is non-empty. Otherwise internal callers receive `401` and `dapr-app-channel-token` readiness is Unhealthy. It is also required outside `Development` on every domain service: without it the domain service fails startup. Domain services that register [typed reminders](typed-reminders.md) also report `eventstore-reminders-unresolved` readiness as Unhealthy without it. The receiving sidecar must hold the same token: `dapr.io/app-token-secret` on Kubernetes, or `APP_API_TOKEN` on self-hosted `daprd`. In `Development`, a configured value is also compared |
 
 ### Infrastructure
 

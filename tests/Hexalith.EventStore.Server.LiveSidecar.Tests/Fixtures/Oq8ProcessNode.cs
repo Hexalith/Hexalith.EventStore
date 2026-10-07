@@ -38,6 +38,12 @@ internal sealed class Oq8ProcessNode
     /// <summary>Gets or sets the application assembly path.</summary>
     public string ApplicationAssembly { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the per-node Dapr application-channel token (<c>APP_API_TOKEN</c>) shared only by this node's
+    /// application and its own sidecar (Story 5.5).
+    /// </summary>
+    public string AppChannelToken { get; set; } = string.Empty;
+
     /// <summary>Gets or sets the boundary-counter file.</summary>
     public string CounterFile { get; set; } = string.Empty;
 

@@ -79,6 +79,33 @@ public sealed class TrustedEffectsControllerTests
             request.Submission, Arg.Any<TrustedEffectContext>(), "gateway-proof", Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// The legacy plaintext caller claim alone is not an attested workload: only the claim rebuilt from a verified
+    /// workload assertion is honored.
+    /// </summary>
+    [Fact]
+    public async Task LegacyCallerClaimAloneIsNotAnAttestedWorkload()
+    {
+        ITrustedEffectAdmissionPolicy admission = Substitute.For<ITrustedEffectAdmissionPolicy>();
+        ITrustedEffectGatewayProof proof = Substitute.For<ITrustedEffectGatewayProof>();
+        ITrustedEffectRouter router = Substitute.For<ITrustedEffectRouter>();
+        var controller = new TrustedEffectsController(admission, proof, router)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("dapr_caller_app_id", "reactor")], "DaprInternal")),
+                },
+            },
+        };
+
+        IActionResult result = await controller.SubmitAsync(Request(), CancellationToken.None);
+
+        _ = result.ShouldBeOfType<ForbidResult>();
+        _ = await admission.DidNotReceiveWithAnyArgs().AdmitAsync(default!, default!, default);
+    }
+
     /// <summary>A request without an attested caller workload is refused before admission.</summary>
     [Fact]
     public async Task MissingAttestedWorkloadForbidsBeforeAdmission()
@@ -140,7 +167,9 @@ public sealed class TrustedEffectsControllerTests
         ITrustedEffectRouter router,
         string? workload)
     {
-        Claim[] claims = workload is null ? [] : [new Claim("dapr_caller_app_id", workload)];
+        Claim[] claims = workload is null
+            ? []
+            : [new Claim(Hexalith.EventStore.ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, workload)];
         return new TrustedEffectsController(admission, proof, router)
         {
             ControllerContext = new ControllerContext

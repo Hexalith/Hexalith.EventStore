@@ -39,6 +39,7 @@ internal sealed class KeycloakRealmTemplate : IDisposable
             ["users.3.credentials.0.value"] = "__HEXALITH_READ_ONLY_PASSWORD__",
             ["users.4.id"] = "__HEXALITH_NO_TENANT_USER_ID__",
             ["users.4.credentials.0.value"] = "__HEXALITH_NO_TENANT_PASSWORD__",
+            ["clients.2.secret"] = "__HEXALITH_WORKLOAD_CLIENT_SECRET__",
         };
     private static readonly UnixFileMode SecureFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private readonly Action<string>? _beforeDelete;
@@ -106,6 +107,7 @@ internal sealed class KeycloakRealmTemplate : IDisposable
             ["__HEXALITH_READ_ONLY_PASSWORD__"] = credentials.ReadOnlyPassword,
             ["__HEXALITH_NO_TENANT_USER_ID__"] = credentials.NoTenantUserId,
             ["__HEXALITH_NO_TENANT_PASSWORD__"] = credentials.NoTenantPassword,
+            ["__HEXALITH_WORKLOAD_CLIENT_SECRET__"] = credentials.WorkloadClientSecret,
         };
         MatchCollection placeholderMatches = PlaceholderPattern.Matches(template);
         if (PlaceholderPattern.Replace(template, string.Empty).Contains("__HEXALITH_", StringComparison.Ordinal))

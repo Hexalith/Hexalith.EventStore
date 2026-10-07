@@ -19,10 +19,12 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Services;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Validation;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
@@ -67,46 +69,46 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddOptions<DaprInternalAuthenticationOptions>(DaprInternalAuthenticationOptions.SchemeName)
             .BindConfiguration("Authentication:DaprInternal");
         _ = services.AddSingleton<DaprAppChannelTokenValidator>();
+        _ = services.AddSingleton<ProjectionNotificationProvenanceVerifier>();
 
         const string HexalithPolicyScheme = "Hexalith";
 
-        // Composite policy scheme: forward to DaprInternal only when the dapr-caller-app-id
-        // header is present AND the caller is explicitly allow-listed. All other requests
-        // (including DAPR-invoked calls from services that forward a user JWT, like admin
-        // server) fall through to JwtBearer so the user's token is validated normally.
+        // Composite policy scheme (FR28): a request presenting a workload assertion is authenticated only by the
+        // DaprInternal workload scheme — the Dapr app-channel token plus a short-lived assertion from the trusted
+        // JWT issuer naming an allow-listed caller and its granted operations. Every other request uses the user
+        // JwtBearer scheme. The plaintext dapr-caller-app-id header never selects a scheme or mints claims, and
+        // the DaprInternal principal carries no tenant, permission, or global-administrator claim.
         _ = services
             .AddAuthentication(options => {
                 options.DefaultScheme = HexalithPolicyScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
             .AddPolicyScheme(HexalithPolicyScheme, HexalithPolicyScheme, policyOptions =>
-                policyOptions.ForwardDefaultSelector = context => {
-                    string? caller = context.Request.Headers[DaprInternalAuthenticationOptions.CallerHeaderName].FirstOrDefault();
-                    if (string.IsNullOrWhiteSpace(caller)) {
-                        return JwtBearerDefaults.AuthenticationScheme;
-                    }
-
-                    IOptionsMonitor<DaprInternalAuthenticationOptions> monitor =
-                        context.RequestServices.GetRequiredService<IOptionsMonitor<DaprInternalAuthenticationOptions>>();
-                    DaprInternalAuthenticationOptions internalOptions = monitor.Get(DaprInternalAuthenticationOptions.SchemeName);
-                    bool isAllowListed = internalOptions.AllowedCallers.Any(c =>
-                        string.Equals(c, caller, StringComparison.Ordinal));
-
-                    bool hasValidAppChannelToken = context.RequestServices
-                        .GetRequiredService<DaprAppChannelTokenValidator>()
-                        .IsValid(context.Request);
-
-                    return isAllowListed && hasValidAppChannelToken
+                policyOptions.ForwardDefaultSelector = context =>
+                    context.Request.Headers.ContainsKey(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName)
                         ? DaprInternalAuthenticationOptions.SchemeName
-                        : JwtBearerDefaults.AuthenticationScheme;
-                })
+                        : JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer()
-            .AddScheme<DaprInternalAuthenticationOptions, DaprInternalAuthenticationHandler>(
+            .AddEventStoreWorkloadScheme(
                 DaprInternalAuthenticationOptions.SchemeName,
-                displayName: null,
-                configureOptions: null);
+                "Authentication:DaprInternal",
+                static (options, _) => {
+                    if (string.IsNullOrWhiteSpace(options.Audience)) {
+                        options.Audience = DaprInternalAuthenticationOptions.DefaultAudience;
+                    }
+                })
+            .AddEventStoreSidecarChannelScheme();
+        _ = services.AddEventStoreWorkloadPolicies(
+            DaprInternalAuthenticationOptions.SchemeName,
+            [EventStoreWorkloadOperations.TrustedEffect]);
 
         _ = services.AddAuthorization();
+
+        // FR28: a plain [Authorize] endpoint serves authenticated human callers only. The default policy authenticates
+        // the JwtBearer scheme alone, so a workload principal, even a valid one, never satisfies it; an internal
+        // operation names its own workload policy (for example DaprInternalAuthenticationOptions.TrustedEffectPolicy).
+        _ = services.Configure<AuthorizationOptions>(static options =>
+            options.DefaultPolicy = CreateHumanDefaultPolicy());
 
         // Authorization options (Story 17-1) — claims-based default, actor-based when configured
         _ = services.AddOptions<EventStoreAuthorizationOptions>()
@@ -495,4 +497,13 @@ public static class EventStoreServiceCollectionExtensions {
                 .Split('.', StringSplitOptions.RemoveEmptyEntries)
                 .Select(JsonNamingPolicy.CamelCase.ConvertName));
     }
+
+    /// <summary>
+    /// Creates the gateway default authorization policy: an authenticated principal from the JwtBearer scheme only.
+    /// </summary>
+    /// <returns>The default policy.</returns>
+    public static AuthorizationPolicy CreateHumanDefaultPolicy()
+        => new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
 }

@@ -119,7 +119,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         EventStoreActivationContext activation = app.Services.GetRequiredService<EventStoreActivationContext>();
         activation.Activations.ShouldContain(a => a.DomainName == "widget");
 
-        AssertRouteSupports(app, "/", HttpMethods.Get);
+        GetMappedRoutes(app).ShouldNotContain("/", "the anonymous status root is removed (AD-16)");
         AssertRouteSupports(app, "/health", HttpMethods.Get);
         AssertRouteSupports(app, "/alive", HttpMethods.Get);
         AssertRouteSupports(app, "/ready", HttpMethods.Get);
@@ -937,7 +937,6 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         string[] routes = GetMappedRoutes(app);
 
         routes.ShouldBe([
-            "/",
             "/admin/operational-index-metadata",
             "/process",
             "/project",
@@ -951,6 +950,187 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/project/v2/reconcile",
             "/query",
             "/replay-state"]);
+    }
+
+    /// <summary>
+    /// Story 5.5 route inventory: on a consuming domain-service host every non-probe endpoint requires credentials,
+    /// each canonical operational route carries exactly its catalog policy, sidecar-originated routes require the
+    /// app-channel policy, and only <c>/health</c>, <c>/alive</c>, and <c>/ready</c> are anonymous.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_EveryNonProbeEndpointRequiresCredentials() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddEventStoreDomainEvents(
+            typeof(EventStoreDomainServiceExtensionsTests).Assembly,
+            options => options.SubscriptionRoute = "/widget/events");
+        WebApplication app = builder.Build();
+
+        _ = app.UseEventStoreDomainService();
+
+        RouteEndpoint[] endpoints = GetRouteEndpoints(app);
+        endpoints
+            .Where(static endpoint => endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>() is not null)
+            .Select(static endpoint => endpoint.RoutePattern.RawText)
+            .OrderBy(static route => route, StringComparer.Ordinal)
+            .ShouldBe(["/alive", "/health", "/ready"]);
+        foreach (EventStoreDomainServiceRoute catalogRoute in EventStoreDomainServiceRoutes.Operational) {
+            RouteEndpoint endpoint = endpoints.Single(candidate => string.Equals(candidate.RoutePattern.RawText, catalogRoute.Route, StringComparison.Ordinal));
+            endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                .Select(static data => data.Policy)
+                .ShouldBe([catalogRoute.Policy], catalogRoute.Route);
+        }
+
+        foreach (string sidecarRoute in new[] { "/widget/events", "dapr/subscribe" }) {
+            RouteEndpoint endpoint = endpoints.Single(candidate => string.Equals(candidate.RoutePattern.RawText, sidecarRoute, StringComparison.Ordinal));
+            endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                .Select(static data => data.Policy)
+                .ShouldBe([EventStoreDomainServicePolicies.SidecarChannel], sidecarRoute);
+        }
+
+        EventStoreDomainServiceEndpointInventory.Validate(endpoints, fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme)).ShouldBeEmpty();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = app.Services
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions>>()
+            .Value.FallbackPolicy.ShouldNotBeNull();
+        fallback.AuthenticationSchemes.ShouldBe([ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme]);
+    }
+
+    /// <summary>The published policy names are exactly the catalog's operation policies.</summary>
+    [Fact]
+    public void DomainServicePolicyNames_MatchTheWorkloadOperationPolicies() {
+        foreach (EventStoreDomainServiceRoute route in EventStoreDomainServiceRoutes.Operational) {
+            route.Policy.ShouldBe(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.OperationPolicy(
+                ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme,
+                route.Operation));
+        }
+
+        EventStoreDomainServicePolicies.AnyWorkload.ShouldBe(
+            ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.AnyWorkloadPolicy(
+                ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme));
+    }
+
+    /// <summary>
+    /// Story 5.5 route override: a host override of an SDK route that drops or weakens the policy, or any extra
+    /// anonymous endpoint, is an inventory violation; an override carrying the exact policy is compliant.
+    /// </summary>
+    [Fact]
+    public void EndpointInventory_RejectsWeakOverridesAndExtraAnonymousEndpoints() {
+        WebApplication weak = BuildWithOverride(app => app.MapPost("/project", () => "weak"));
+        WebApplication anonymousExtra = BuildWithOverride(app => app.MapGet("/debug", () => "open").AllowAnonymous());
+        WebApplication wrongPolicy = BuildWithOverride(app => app.MapPost("/project/v2", () => "wrong")
+            .RequireAuthorization(EventStoreDomainServicePolicies.Query));
+        WebApplication secured = BuildWithOverride(app => app.MapPost("/project", () => "secured")
+            .RequireAuthorization(EventStoreDomainServicePolicies.Project));
+
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(weak), fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme))
+            .ShouldHaveSingleItem().ShouldContain("/project");
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(anonymousExtra), fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme))
+            .ShouldHaveSingleItem().ShouldContain("/debug");
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(wrongPolicy), fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme))
+            .ShouldHaveSingleItem().ShouldContain("/project/v2");
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(secured), fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme))
+            .ShouldBeEmpty();
+
+        static WebApplication BuildWithOverride(Action<WebApplication> mapOverride) {
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            _ = builder.AddEventStoreDomainService();
+            WebApplication app = builder.Build();
+            mapOverride(app);
+            _ = app.UseEventStoreDomainService();
+            return app;
+        }
+    }
+
+    /// <summary>Without a fallback policy every endpoint lacking authorization metadata is a violation.</summary>
+    [Fact]
+    public void EndpointInventory_WithoutFallbackPolicy_RequiresExplicitMetadata() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        _ = app.MapGet("/unprotected", () => "x");
+        _ = app.UseEventStoreDomainService();
+
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallbackPolicy: null)
+            .ShouldHaveSingleItem().ShouldContain("/unprotected");
+    }
+
+    /// <summary>
+    /// Story 5.5 (P-7): a fallback policy counts only when it denies anonymous callers; one that admits them protects
+    /// nothing, so endpoints without metadata are still violations.
+    /// </summary>
+    [Fact]
+    public void EndpointInventory_CountsOnlyAFallbackThatDeniesAnonymous() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        _ = app.MapGet("/unprotected", () => "x");
+        _ = app.UseEventStoreDomainService();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy admitsAnonymous = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .RequireAssertion(static _ => true)
+            .Build();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy deniesAnonymous = ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions
+            .CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme);
+
+        EventStoreDomainServiceEndpointInventory.DeniesAnonymous(admitsAnonymous).ShouldBeFalse();
+        EventStoreDomainServiceEndpointInventory.DeniesAnonymous(null).ShouldBeFalse();
+        EventStoreDomainServiceEndpointInventory.DeniesAnonymous(deniesAnonymous).ShouldBeTrue();
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), admitsAnonymous)
+            .ShouldHaveSingleItem().ShouldContain("/unprotected");
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), deniesAnonymous).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Story 5.5 (P-3): a host that maps subscription discovery, a pub/sub subscription, or the Dapr actor routes
+    /// itself must attach the sidecar-channel policy; falling through to the any-workload fallback would deny every
+    /// sidecar delivery silently, so the inventory reports it.
+    /// </summary>
+    /// <param name="premapped">What the host maps before the SDK.</param>
+    /// <param name="expectedRoute">A route the violation names, or <see langword="null"/> when compliant.</param>
+    [Theory]
+    [InlineData("subscribe", "/dapr/subscribe")]
+    [InlineData("subscription", "/widget/premapped-events")]
+    [InlineData("actors", "/actors/")]
+    [InlineData("secured", null)]
+    public void EndpointInventory_RequiresTheSidecarChannelPolicyOnSidecarRoutes(string premapped, string? expectedRoute) {
+        ArgumentNullException.ThrowIfNull(premapped);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        builder.Services.AddActors(configure: null);
+        WebApplication app = builder.Build();
+        switch (premapped) {
+            case "subscribe":
+                _ = app.MapSubscribeHandler();
+                break;
+            case "subscription":
+                _ = app.MapPost("/widget/premapped-events", () => Results.Ok()).WithTopic("pubsub", "widget.events");
+                break;
+            case "actors":
+                _ = app.MapActorsHandlers();
+                break;
+            default:
+                _ = app.MapSubscribeHandler().RequireEventStoreSidecarChannel();
+                _ = app.MapPost("/widget/premapped-events", () => Results.Ok())
+                    .WithTopic("pubsub", "widget.events")
+                    .RequireEventStoreSidecarChannel();
+                _ = app.MapActorsHandlers().RequireEventStoreSidecarChannel();
+                break;
+        }
+
+        _ = app.UseEventStoreDomainService();
+
+        IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(
+            GetRouteEndpoints(app),
+            ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(
+                ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme));
+        if (expectedRoute is null) {
+            violations.ShouldBeEmpty();
+            return;
+        }
+
+        violations.ShouldNotBeEmpty();
+        violations.ShouldAllBe(static violation => violation.Contains(EventStoreDomainServicePolicies.SidecarChannel, StringComparison.Ordinal)
+            || violation.Contains("anonymous", StringComparison.Ordinal));
+        violations.ShouldContain(violation => violation.Contains(expectedRoute, StringComparison.Ordinal));
     }
 
     [Fact]

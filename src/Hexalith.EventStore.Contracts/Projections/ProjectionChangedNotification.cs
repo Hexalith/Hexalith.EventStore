@@ -20,6 +20,32 @@ public record ProjectionChangedNotification(
     string? GroupScope = null,
     IReadOnlyDictionary<string, string>? Metadata = null) {
     /// <summary>
+    /// Gets the signed publisher provenance: a short-lived workload assertion from the trusted JWT issuer that
+    /// names the publishing workload and grants the projection-notify operation. When the issuer can bind
+    /// resource claims, the assertion is also bound to this notification's tenant, projection type, and topic.
+    /// The receiver performs no ETag regeneration or broadcast unless the provenance validates and matches.
+    /// </summary>
+    /// <remarks>The value is an opaque credential: it is never logged, echoed, or displayed.</remarks>
+    public string? Provenance { get; init; }
+
+    /// <summary>
+    /// Prints the notification members with the provenance credential redacted.
+    /// </summary>
+    /// <param name="builder">The builder receiving the members.</param>
+    /// <returns><see langword="true"/> because members were printed.</returns>
+    protected virtual bool PrintMembers(System.Text.StringBuilder builder) {
+        ArgumentNullException.ThrowIfNull(builder);
+        _ = builder
+            .Append("ProjectionType = ").Append(ProjectionType)
+            .Append(", TenantId = ").Append(TenantId)
+            .Append(", EntityId = ").Append(EntityId)
+            .Append(", GroupScope = ").Append(GroupScope)
+            .Append(", MetadataCount = ").Append(Metadata?.Count ?? 0)
+            .Append(", Provenance = ").Append(Provenance is null ? "<none>" : "[REDACTED]");
+        return true;
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ProjectionChangedNotification"/> record
     /// using the legacy signal-only constructor shape.
     /// </summary>

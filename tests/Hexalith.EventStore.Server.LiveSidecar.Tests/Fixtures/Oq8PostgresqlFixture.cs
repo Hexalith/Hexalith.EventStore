@@ -784,6 +784,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             node.DaprProfilePort = ports[offset + 5];
             node.CounterFile = Path.Combine(_runtimeDirectory, $"{node.Name}-boundary-count.txt");
             File.WriteAllText(node.CounterFile, "0");
+
+            // Story 5.5: each application and its own sidecar share a per-node app-channel token.
+            node.AppChannelToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+            RegisterSensitive(node.AppChannelToken);
         }
     }
 
@@ -851,15 +855,34 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         startInfo.Environment[Oq8BoundaryCounterStartupFilter.CounterFileEnvironmentVariable] = node.CounterFile;
         startInfo.Environment["Logging__LogLevel__Default"] = "Warning";
         startInfo.Environment["Logging__LogLevel__Microsoft_AspNetCore"] = "Warning";
+        startInfo.Environment["APP_API_TOKEN"] = node.AppChannelToken;
         if (node.IsEventStore)
         {
             ConfigureEventStoreEnvironment(startInfo.Environment);
+        }
+        else
+        {
+            ConfigureDomainServiceEnvironment(startInfo.Environment, node);
         }
 
         node.Application = StartCapturedProcess(
             startInfo,
             node.ApplicationOutput,
             node.ApplicationError);
+    }
+
+    /// <summary>
+    /// Story 5.5: the sample domain service validates EventStore's workload assertions with the same symmetric JWT
+    /// contract the EventStore nodes sign them with, for its own audience (its Dapr application id).
+    /// </summary>
+    private static void ConfigureDomainServiceEnvironment(IDictionary<string, string?> environment, Oq8ProcessNode node)
+    {
+        environment["Authentication__JwtBearer__Issuer"] = AuthenticationIssuer;
+        environment["Authentication__JwtBearer__Audience"] = AuthenticationAudience;
+        environment["Authentication__JwtBearer__SigningKey"] = AuthenticationSigningKey;
+        environment["Authentication__JwtBearer__RequireHttpsMetadata"] = "false";
+        environment["Authentication__JwtBearer__AllowInsecureSymmetricKey"] = "true";
+        environment["EventStore__DomainService__AppId"] = node.AppId;
     }
 
     private void ConfigureEventStoreEnvironment(IDictionary<string, string?> environment)
@@ -919,6 +942,9 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         }
 
         startInfo.Environment["POSTGRES_CONNECTION_STRING"] = _postgresConnectionString;
+
+        // The sidecar presents this node's app-channel token on every call it makes to its own application.
+        startInfo.Environment["APP_API_TOKEN"] = node.AppChannelToken;
         if (_overrides.Namespace is not null)
         {
             startInfo.Environment["NAMESPACE"] = _overrides.Namespace;

@@ -17,7 +17,8 @@ internal sealed record LocalAuthenticationCredentials(
     string ReadOnlyUserId,
     string ReadOnlyPassword,
     string NoTenantUserId,
-    string NoTenantPassword)
+    string NoTenantPassword,
+    string WorkloadClientSecret)
 {
     private static readonly AsyncLocal<LocalAuthenticationTestInvocation?> ActiveTestInvocation = new();
 
@@ -112,7 +113,8 @@ internal sealed record LocalAuthenticationCredentials(
             Guid.NewGuid().ToString("D"),
             GenerateSecret(24),
             Guid.NewGuid().ToString("D"),
-            GenerateSecret(24));
+            GenerateSecret(24),
+            GenerateSecret(32));
 
     private static string GenerateSecret(int byteCount)
         => Convert.ToBase64String(RandomNumberGenerator.GetBytes(byteCount))

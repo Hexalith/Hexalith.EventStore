@@ -245,9 +245,11 @@ builder.Services.AddEventStoreReminders<MyReminderIntentSource>(options =>
 });
 builder.Services.AddSingleton<IReminderDelegationTokenProvider, PlatformDelegationProvider>();
 // The base address is this app's own Dapr sidecar; the invocation handler targets the gateway app ID.
+// The submission proves this domain service's own workload identity; the Dapr handler stays innermost (AD-18).
 builder.Services.AddHttpClient<ITrustedEffectSubmitter, HttpTrustedEffectSubmitter>(
         client => client.BaseAddress = new Uri(
             $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}"))
+    .AddEventStoreTrustedEffectWorkloadAssertion()
     .AddEventStoreDaprServiceInvocation("eventstore", builder.Configuration["DAPR_API_TOKEN"]);
 var app = builder.Build();
 app.UseEventStoreDomainService();
@@ -256,11 +258,43 @@ app.Run();
 
 `UseEventStoreDomainService` maps the Dapr actor routes only when reminders are
 registered. It skips them when the host already mapped the actor handlers. A
-host that maps the actor handlers itself must call `MapActorsHandlers` before
+host that maps the actor handlers itself must call
+`MapActorsHandlers().RequireEventStoreSidecarChannel()` before
 `UseEventStoreDomainService`; mapping them afterwards maps the actor routes a
-second time and makes them ambiguous. The app-channel filter is installed by
+second time and makes them ambiguous, and mapping them without the
+sidecar-channel policy fails startup. The app-channel filter is installed by
 the registration itself, so it also guards a host that maps the actor handlers
 on its own.
+
+### Trusted-effect submission credentials
+
+Every due reminder is submitted to `POST /api/v1/trusted-effects`, an internal
+call that EventStore admits only from an authenticated workload (Story 5.5).
+`AddEventStoreTrustedEffectWorkloadAssertion()` attaches this domain service's
+own short-lived assertion: caller (`azp`) = the domain service, audience
+`eventstore`, operation `eventstore:trusted-effect`. Without it every
+submission receives `401`, nothing is admitted, and the reminder stays
+retained. Provision three things for each submitting domain service:
+
+1. **Allow-list it on EventStore.** Add its workload identity to
+   `Authentication:DaprInternal:AllowedCallers`. In an Aspire AppHost, call
+   `eventStore.WithEventStoreTrustedEffectSubmitter("<app-id>")`.
+2. **Give it a credential from the trusted issuer.** In symmetric
+   `Development` mode it signs with the shared `Authentication:JwtBearer`
+   key it already uses, and its identity is
+   `Authentication:WorkloadIssuer:Workload` (default
+   `EventStore:DomainService:AppId`). In authority mode it needs its own
+   confidential, service-account-only client whose `azp` is its app ID, set
+   as `Authentication:WorkloadIssuer:ClientId` and `ClientSecret` (in an
+   AppHost, `WithEventStoreWorkloadClientCredentials`). That client may
+   request only the optional `eventstore-audience.eventstore` and
+   `eventstore-operation.eventstore.trusted-effect` scopes.
+3. **Keep the token short-lived.** The token lifetime must not exceed
+   EventStore's `Authentication:DaprInternal:MaximumLifetimeSeconds`
+   (default 300 seconds).
+
+The local AppHost topology has no trusted-effect submitter, so it allow-lists
+no internal caller.
 
 | Key under `EventStore:Reminders` | Default | Meaning |
 | --- | --- | --- |

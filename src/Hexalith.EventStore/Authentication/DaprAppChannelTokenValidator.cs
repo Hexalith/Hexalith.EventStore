@@ -1,5 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -8,17 +7,18 @@ using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Authentication;
 
-/// <summary>Confirms that an internal HTTP call came through the configured Dapr app channel.</summary>
+/// <summary>Confirms that an internal HTTP call came through the configured Dapr app channel (AD-28).</summary>
+/// <remarks>The token authenticates the sidecar channel only; it never identifies the calling workload.</remarks>
 public sealed class DaprAppChannelTokenValidator(
     IHostEnvironment environment,
     IConfiguration configuration,
     IOptionsMonitor<DaprInternalAuthenticationOptions>? internalOptions = null)
 {
     /// <summary>Gets the configuration key for the application-channel token.</summary>
-    public const string ConfigurationKey = "APP_API_TOKEN";
+    public const string ConfigurationKey = DaprAppChannelToken.ConfigurationKey;
 
     /// <summary>Gets the Dapr application-channel token header name.</summary>
-    public const string HeaderName = "dapr-api-token";
+    public const string HeaderName = DaprAppChannelToken.HeaderName;
 
     /// <summary>
     /// Gets whether the host is ready for internal callers: Development, no allow-listed internal
@@ -30,35 +30,11 @@ public sealed class DaprAppChannelTokenValidator(
         || !string.IsNullOrWhiteSpace(configuration[ConfigurationKey]);
 
     /// <summary>
-    /// Validates the app-channel token. A configured token is always compared; only Development
-    /// without a configured token admits the call without one.
+    /// Validates the app-channel token with the shared constant-time verifier. A configured token is always
+    /// compared; only Development without a configured token admits the call without one.
     /// </summary>
+    /// <param name="request">The inbound request.</param>
+    /// <returns><see langword="true"/> when the channel is admitted.</returns>
     public bool IsValid(HttpRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        string? expectedToken = configuration[ConfigurationKey];
-        if (string.IsNullOrWhiteSpace(expectedToken))
-        {
-            return environment.IsDevelopment();
-        }
-
-        Microsoft.Extensions.Primitives.StringValues header = request.Headers[HeaderName];
-        if (header.Count != 1 || string.IsNullOrEmpty(header[0]))
-        {
-            return false;
-        }
-
-        byte[] expected = Encoding.UTF8.GetBytes(expectedToken);
-        byte[] actual = Encoding.UTF8.GetBytes(header[0]!);
-        try
-        {
-            return expected.Length == actual.Length
-                && CryptographicOperations.FixedTimeEquals(expected, actual);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(expected);
-            CryptographicOperations.ZeroMemory(actual);
-        }
-    }
+        => DaprAppChannelToken.IsAdmitted(DaprAppChannelToken.Verify(request, configuration, environment));
 }

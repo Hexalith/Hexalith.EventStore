@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ namespace Hexalith.EventStore.Controllers;
 
 /// <summary>Authenticated ingress for target-receipted effects.</summary>
 [ApiController]
-[Authorize(AuthenticationSchemes = DaprInternalAuthenticationOptions.SchemeName)]
+[Authorize(Policy = DaprInternalAuthenticationOptions.TrustedEffectPolicy)]
 [Route("api/v1/trusted-effects")]
 public sealed class TrustedEffectsController(
     ITrustedEffectAdmissionPolicy admissionPolicy,
@@ -30,7 +31,8 @@ public sealed class TrustedEffectsController(
             return BadRequest();
         }
 
-        string? workload = User.FindFirst("dapr_caller_app_id")?.Value;
+        // The workload is the caller named by the verified assertion, never a plaintext header.
+        string? workload = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
         if (string.IsNullOrWhiteSpace(workload))
         {
             return Forbid();

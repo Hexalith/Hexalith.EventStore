@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Dapr.Client;
@@ -7,7 +6,6 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Queries;
 using Hexalith.EventStore.Server.DomainServices;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -17,10 +15,12 @@ using Shouldly;
 namespace Hexalith.EventStore.QueryRouting.Tests;
 
 public sealed class DaprDomainQueryInvokerTests {
-    private const string InboundHeader = "Bearer " + "exact-token-value";
-
+    /// <summary>
+    /// FR28: the caller's human bearer never reaches a domain service. The platform outbound handler supplies
+    /// EventStore's own workload assertion instead.
+    /// </summary>
     [Fact]
-    public async Task InvokeAsync_ForwardsExactInboundBearerCredential() {
+    public async Task InvokeAsync_DoesNotForwardInboundBearerCredential() {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         _ = resolver
@@ -30,77 +30,16 @@ public sealed class DaprDomainQueryInvokerTests {
         using var httpClient = new HttpClient(capture);
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
-        var context = new DefaultHttpContext();
-        context.Request.Headers.Authorization = InboundHeader;
         var invoker = new DaprDomainQueryInvoker(
             daprClient,
             httpClientFactory,
             resolver,
-            new HttpContextAccessor { HttpContext = context },
             NullLogger<DaprDomainQueryInvoker>.Instance);
 
         _ = await invoker.InvokeAsync(Query(), TestContext.Current.CancellationToken);
 
-        capture.Authorization.ShouldBe(InboundHeader);
-    }
-
-    [Fact]
-    public void ForwardBearerCredential_MissingContextOrHeader_DoesNotAddAuthorization() {
-        using var noContextRequest = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        DaprDomainQueryInvoker.ForwardBearerCredential(null, noContextRequest);
-        noContextRequest.Headers.Authorization.ShouldBeNull();
-
-        using var noHeaderRequest = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        DaprDomainQueryInvoker.ForwardBearerCredential(new DefaultHttpContext(), noHeaderRequest);
-        noHeaderRequest.Headers.Authorization.ShouldBeNull();
-    }
-
-    [Fact]
-    public void ForwardBearerCredential_ExistingOutboundAuthorization_IsPreserved() {
-        var context = new DefaultHttpContext();
-        context.Request.Headers.Authorization = InboundHeader;
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        const string ExistingToken = "existing" + "-token";
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ExistingToken);
-
-        DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
-
-        request.Headers.Authorization!.ToString().ShouldBe("Bearer " + ExistingToken);
-    }
-
-    [Fact]
-    public void ForwardBearerCredential_ExistingUnparsedOutboundAuthorization_IsPreserved() {
-        var context = new DefaultHttpContext();
-        context.Request.Headers.Authorization = InboundHeader;
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        _ = request.Headers.TryAddWithoutValidation("Authorization", "custom-value");
-
-        DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
-
-        request.Headers.GetValues("Authorization").ShouldBe(["custom-value"]);
-    }
-
-    [Fact]
-    public void ForwardBearerCredential_NonBearerCredential_IsIgnored() {
-        var context = new DefaultHttpContext();
-        context.Request.Headers.Authorization = "Basic dXNlcjpwYXNz";
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-
-        DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
-
-        request.Headers.Authorization.ShouldBeNull();
-    }
-
-    [Fact]
-    public void ForwardBearerCredential_MultipleAuthorizationValues_AreIgnored() {
-        var context = new DefaultHttpContext();
-        context.Request.Headers.Authorization = new Microsoft.Extensions.Primitives.StringValues(
-            new[] { InboundHeader, "Bearer " + "second-token" });
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-
-        DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
-
-        request.Headers.Authorization.ShouldBeNull();
+        capture.Authorization.ShouldBeNull();
+        capture.RequestUri!.AbsolutePath.ShouldEndWith("/invoke/projects-app/method/query");
     }
 
     private static QueryEnvelope Query()

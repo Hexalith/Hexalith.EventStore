@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -352,14 +354,32 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
         }
     }
 
-    private void MapProcessEndpoint(WebApplication app) {
+    /// <summary>
+    /// Maps the harness <c>/process</c> endpoint. Like the SDK route, it treats wire administrator flags as untrusted:
+    /// <see cref="DomainServiceAdministratorAssertions.RebuildAsync(IServiceProvider, DomainServiceRequest, CancellationToken)"/>
+    /// removes <c>actor:globalAdmin</c> unless every registered <see cref="IDomainServiceAdministratorVerifier"/> confirms
+    /// the acting user, and an unavailable verifier yields the SDK's bounded 503 before any domain work.
+    /// </summary>
+    /// <param name="app">The endpoint route builder of the test command host.</param>
+    internal void MapProcessEndpoint(IEndpointRouteBuilder app) {
         _ = app.MapPost("/process", async (
             DomainServiceRequest request,
+            HttpContext httpContext,
             IServiceProvider serviceProvider,
             ILogger<DaprDomainServiceTestFixtureBase> logger) => {
+                DomainServiceRequest verified;
                 try {
-                    DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false);
-                    return Microsoft.AspNetCore.Http.Results.Ok(result);
+                    verified = await DomainServiceAdministratorAssertions
+                        .RebuildAsync(serviceProvider, request, httpContext.RequestAborted)
+                        .ConfigureAwait(false);
+                }
+                catch (DomainServiceAdministratorVerificationException) {
+                    return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
+                }
+
+                try {
+                    DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified).ConfigureAwait(false);
+                    return (IResult)Microsoft.AspNetCore.Http.Results.Ok(result);
                 }
                 catch (Exception ex) {
                     LastProcessException = ex;

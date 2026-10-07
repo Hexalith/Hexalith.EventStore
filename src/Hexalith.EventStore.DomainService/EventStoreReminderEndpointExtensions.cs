@@ -27,7 +27,9 @@ public static class EventStoreReminderEndpointExtensions
 
         if (!IsReminderCallbackRouteMapped(endpoints))
         {
-            _ = endpoints.MapActorsHandlers();
+            // Actor runtime calls are sidecar-originated. The framework marks its actor health route anonymous;
+            // the sidecar-channel requirement removes that exception so only the three platform probes stay anonymous.
+            _ = endpoints.MapActorsHandlers().RequireEventStoreSidecarChannel();
         }
 
         return endpoints;

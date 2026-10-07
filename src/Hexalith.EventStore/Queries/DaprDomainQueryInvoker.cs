@@ -10,11 +10,15 @@ namespace Hexalith.EventStore.Queries;
 /// app id) and invokes its <c>/query</c> endpoint via DAPR service invocation — the query-side counterpart
 /// of <c>DaprDomainServiceInvoker</c>. No custom retry; DAPR resiliency owns transient failures.
 /// </summary>
+/// <remarks>
+/// The caller's human bearer is never forwarded to a domain service (FR28). The platform outbound handler attaches
+/// EventStore's own short-lived workload assertion for the <c>query</c> operation; the acting user travels only as
+/// <see cref="QueryEnvelope.UserId"/>, and any administrator flag is re-verified by the domain-service boundary.
+/// </remarks>
 public sealed class DaprDomainQueryInvoker(
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
-    IHttpContextAccessor httpContextAccessor,
     ILogger<DaprDomainQueryInvoker> logger) : IDomainQueryInvoker {
     /// <summary>The domain-service method name for handler-based queries (the SDK's <c>/query</c> endpoint).</summary>
     public const string QueryMethodName = "query";
@@ -37,7 +41,6 @@ public sealed class DaprDomainQueryInvoker(
                 registration.AppId,
                 QueryMethodName,
                 query);
-            ForwardBearerCredential(httpContextAccessor.HttpContext, httpRequest);
             HttpClient httpClient = httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             _ = httpResponse.EnsureSuccessStatusCode();
@@ -60,25 +63,5 @@ public sealed class DaprDomainQueryInvoker(
                 query.CorrelationId);
             return QueryResult.Failure($"Domain query invocation failed for domain '{query.Domain}': {ex.InnerException?.Message ?? ex.Message}");
         }
-    }
-
-    internal static void ForwardBearerCredential(HttpContext? httpContext, HttpRequestMessage outboundRequest) {
-        ArgumentNullException.ThrowIfNull(outboundRequest);
-
-        if (outboundRequest.Headers.Contains("Authorization")
-            || httpContext is null
-            || !httpContext.Request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues values)
-            || values.Count != 1) {
-            return;
-        }
-
-        string rawAuthorization = values[0] ?? string.Empty;
-        if (!System.Net.Http.Headers.AuthenticationHeaderValue.TryParse(rawAuthorization, out System.Net.Http.Headers.AuthenticationHeaderValue? credential)
-            || !string.Equals(credential.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)
-            || string.IsNullOrWhiteSpace(credential.Parameter)) {
-            return;
-        }
-
-        _ = outboundRequest.Headers.TryAddWithoutValidation("Authorization", rawAuthorization);
     }
 }

@@ -110,7 +110,9 @@ public sealed class AspireSecurityResourceNamingTests
             // whose value is a `ReferenceExpression` over the realm URL. `WithJwtBearerSecurity`
             // supplies two such variables (authority and issuer) and
             // `WithEventStoreAuthenticationValidation` supplies the same two; local UI credentials
-            // add a token-endpoint expression over that realm URL -- hence 3 and 4. Adding or removing
+            // add a token-endpoint expression over that realm URL -- hence 3 and 4. Story 5.5 adds the
+            // sample domain service (it validates EventStore workload assertions: 3) and the Tenants
+            // delegated-administrator bootstrap authority (one more realm-URL variable: 4). Adding or removing
             // a realm-URL-valued variable legitimately changes these numbers; update them deliberately
             // rather than assuming identity drift.
             Dictionary<string, int> expectedReferenceCounts = new(StringComparer.Ordinal)
@@ -118,9 +120,10 @@ public sealed class AspireSecurityResourceNamingTests
                 ["eventstore"] = 3,
                 ["eventstore-admin"] = 3,
                 ["eventstore-admin-ui"] = 4,
+                ["sample"] = 3,
                 ["sample-api"] = 3,
                 ["sample-blazor-ui"] = 4,
-                ["tenants"] = 3,
+                ["tenants"] = 4,
                 ["tenants-api"] = 3,
             };
 

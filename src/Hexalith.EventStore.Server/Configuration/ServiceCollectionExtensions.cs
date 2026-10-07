@@ -10,6 +10,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,11 @@ namespace Hexalith.EventStore.Server.Configuration;
 /// DI registration extension methods for the EventStore Server components.
 /// </summary>
 public static class EventStoreServerServiceCollectionExtensions {
+    /// <summary>
+    /// Gets EventStore's workload identity (its Dapr application id), written as the caller of its workload assertions.
+    /// </summary>
+    public const string EventStoreWorkloadIdentity = "eventstore";
+
     /// <summary>
     /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
     /// </summary>
@@ -68,6 +74,20 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IAggregateStateReconstructor, DaprAggregateStateReconstructor>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceHttpClientBuilderFilter>());
+
+        // FR28: every domain-service invocation proves EventStore's workload identity with a short-lived
+        // assertion from the trusted JWT issuer; the platform handler owns the header (AD-18).
+        _ = services.AddEventStoreWorkloadAssertionIssuer(configuration, static options => {
+            if (string.IsNullOrWhiteSpace(options.Workload)) {
+                options.Workload = EventStoreWorkloadIdentity;
+            }
+        });
+
+        // EventStore must prove itself on every domain-service call: in authority mode a missing client registration
+        // fails startup instead of starting healthy and having every invocation denied at runtime.
+        _ = services.RequireEventStoreWorkloadIssuerClientCredentials();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceWorkloadAssertionHttpClientBuilderFilter>());
         _ = services.AddHttpClient();
         _ = services.AddHttpClient(
             DaprDomainServiceInvoker.HttpClientName,

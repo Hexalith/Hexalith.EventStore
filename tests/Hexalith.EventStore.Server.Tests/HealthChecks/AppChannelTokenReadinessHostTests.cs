@@ -45,6 +45,8 @@ public sealed class AppChannelTokenReadinessHostTests
             ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
             ["Authentication:JwtBearer:SigningKey"] = null,
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+            ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
+            ["Authentication:WorkloadIssuer:ClientSecret"] = Guid.NewGuid().ToString("N"),
             [DaprAppChannelTokenValidator.ConfigurationKey] = null,
         };
         if (allowListed)

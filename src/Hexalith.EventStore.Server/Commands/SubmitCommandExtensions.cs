@@ -16,6 +16,13 @@ public static class SubmitCommandExtensions {
     /// <summary>
     /// Converts a <see cref="SubmitCommand"/> to a <see cref="CommandEnvelope"/> for actor processing.
     /// </summary>
+    /// <remarks>
+    /// Any caller-supplied <c>actor:globalAdmin</c> extension is removed. The key is re-added only from
+    /// <see cref="SubmitCommand.IsGlobalAdmin"/>, which the gateway derives from the currently authenticated human
+    /// principal; internal workload principals never carry administrator claims. Downstream the value is an
+    /// untrusted hint: the domain-service boundary removes it unless the domain verifies the acting user's current
+    /// authority (FR28).
+    /// </remarks>
     /// <param name="command">The submit command to convert.</param>
     /// <returns>A command envelope with all fields mapped.</returns>
     public static CommandEnvelope ToCommandEnvelope(this SubmitCommand command) {

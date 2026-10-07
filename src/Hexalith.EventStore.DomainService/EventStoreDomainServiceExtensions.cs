@@ -197,7 +197,8 @@ public static class EventStoreDomainServiceExtensions {
             }
 
             if (!IsDaprSubscribeMapped(app)) {
-                _ = app.MapSubscribeHandler();
+                // Subscription discovery is a sidecar-originated call: it carries the app-channel token only.
+                _ = app.MapSubscribeHandler().RequireEventStoreSidecarChannel();
             }
         }
 
@@ -205,9 +206,10 @@ public static class EventStoreDomainServiceExtensions {
     }
 
     /// <summary>
-    /// Maps the canonical HTTP endpoints the EventStore gateway invokes on a domain service:
+    /// Maps the canonical HTTP endpoints the EventStore gateway invokes on a domain service. Every route requires
+    /// the Dapr application-channel token plus an EventStore workload assertion granting the route's operation
+    /// (see <see cref="EventStoreDomainServiceRoutes"/>); none is anonymous:
     /// <list type="bullet">
-    /// <item><description><c>GET /</c> — a plain status root.</description></item>
     /// <item><description><c>POST /process</c> — routes a command to the keyed domain processor.</description></item>
     /// <item><description><c>POST /replay-state</c> — reconstructs aggregate state through the Apply convention.</description></item>
     /// <item><description><c>POST /query</c> — dispatches a query to the matching <see cref="IDomainQueryHandler"/>.</description></item>
@@ -229,6 +231,7 @@ public static class EventStoreDomainServiceExtensions {
         ArgumentNullException.ThrowIfNull(app);
 
         ValidateDomainQueryHandlerRoutes(app.Services);
+        app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
         bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
         if (mapProjectionEndpoint) {
@@ -237,26 +240,51 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateNamedDomainProjectionHandlerRoutes(app.Services);
 
-        _ = app.MapGet("/", () => "Hexalith EventStore domain service");
-
+        // The former anonymous status root is not mapped: only /health, /alive, and /ready are anonymous (AD-16).
         _ = app.MapPost(
             "/process",
-            async (DomainServiceRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
-                DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false);
-                return DomainServiceRequestRouter.HasBoundedV1Producer(serviceProvider, request.Command.Domain)
+            async (DomainServiceRequest request, HttpContext httpContext, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
+                // Wire administrator flags are untrusted: rebuild them from the domain's current authorization. An
+                // unavailable verifier is a bounded 503 before any domain work, never a raw server error.
+                DomainServiceRequest verified;
+                try {
+                    verified = await DomainServiceAdministratorAssertions
+                        .RebuildAsync(serviceProvider, request, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (DomainServiceAdministratorVerificationException) {
+                    return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
+                }
+
+                DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                return DomainServiceRequestRouter.HasBoundedV1Producer(serviceProvider, verified.Command.Domain)
                     ? (IResult)new BoundedV1WireResultResponse(result)
                     : Results.Ok(result);
-            });
+            })
+            .RequireEventStoreDomainServicePolicy("/process");
 
         _ = app.MapPost(
             "/replay-state",
             async (AggregateReconstructionRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken)
-                => Results.Ok(await DomainServiceRequestRouter.ReplayAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false)));
+                => Results.Ok(await DomainServiceRequestRouter.ReplayAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/replay-state");
 
         _ = app.MapPost(
             "/query",
-            async (QueryEnvelope query, IServiceProvider serviceProvider, CancellationToken cancellationToken)
-                => Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, query, cancellationToken).ConfigureAwait(false)));
+            async (QueryEnvelope query, HttpContext httpContext, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
+                QueryEnvelope verified;
+                try {
+                    verified = await DomainServiceAdministratorAssertions
+                        .RebuildAsync(serviceProvider, query, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (DomainServiceAdministratorVerificationException) {
+                    return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
+                }
+
+                return (IResult)Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false));
+            })
+            .RequireEventStoreDomainServicePolicy("/query");
 
         // /project — the stateless full-replay projection endpoint (Model a). Dispatches to the matching
         // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
@@ -270,7 +298,8 @@ public static class EventStoreDomainServiceExtensions {
                     ProjectionResponse? response = DomainProjectionDispatcher.Project(serviceProvider, request);
                     cancellationToken.ThrowIfCancellationRequested();
                     return response is null ? Results.NotFound() : Results.Ok(response);
-                });
+                })
+                .RequireEventStoreDomainServicePolicy("/project");
         }
 
         if (mapNamedProjectionEndpoint) {
@@ -295,7 +324,8 @@ public static class EventStoreDomainServiceExtensions {
                     catch (ProjectionDispatchValidationException exception) {
                         return Results.BadRequest(exception.ReasonCode);
                     }
-                });
+                })
+                .RequireEventStoreDomainServicePolicy("/project/v2");
 
             _ = app.MapPost(
                 "/project/v2/reconcile",
@@ -318,7 +348,8 @@ public static class EventStoreDomainServiceExtensions {
                     catch (ProjectionDispatchValidationException exception) {
                         return Results.BadRequest(exception.ReasonCode);
                     }
-                });
+                })
+                .RequireEventStoreDomainServicePolicy("/project/v2/reconcile");
         }
 
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/v1", DomainProjectionRebuildBatchAction.Execute);
@@ -361,7 +392,8 @@ public static class EventStoreDomainServiceExtensions {
 
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
                 return Results.Ok(response);
-            });
+            })
+            .RequireEventStoreDomainServicePolicy("/admin/operational-index-metadata");
 
         return app;
     }
@@ -404,7 +436,8 @@ public static class EventStoreDomainServiceExtensions {
                 catch (ProjectionDispatchValidationException exception) {
                     return Results.BadRequest(exception.ReasonCode);
                 }
-            });
+            })
+            .RequireEventStoreDomainServicePolicy(route);
     }
 
     private static void MapSharedProjectionRebuildEndpoint(WebApplication app) {
@@ -434,7 +467,8 @@ public static class EventStoreDomainServiceExtensions {
                 catch (ProjectionDispatchValidationException exception) {
                     return Results.BadRequest(exception.ReasonCode);
                 }
-            });
+            })
+            .RequireEventStoreDomainServicePolicy(route);
     }
 
     private static WebApplicationBuilder AddEventStoreDomainServiceCore(
@@ -449,6 +483,11 @@ public static class EventStoreDomainServiceExtensions {
 
         // Observability, health checks, service discovery, and HTTP resilience.
         _ = builder.AddServiceDefaults();
+
+        // Internal trust boundary (FR28): app-channel token + trusted-issuer workload assertion on every
+        // operational route, sidecar-channel token on sidecar-originated deliveries, and an authenticated
+        // fallback for every other endpoint. Only /health, /alive, and /ready stay anonymous.
+        _ = builder.Services.AddEventStoreDomainServiceSecurity();
 
         // Domain services use DAPR-backed SDK facilities such as persisted read models. Keep this canonical
         // registration idempotent so a host-supplied client remains authoritative.

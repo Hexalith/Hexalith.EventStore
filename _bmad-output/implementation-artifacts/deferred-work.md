@@ -5509,3 +5509,27 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-remediation.md`
   summary: Add an HTTP composition regression exercising the real retained-history controller, source reader and client for the concurrent runtime work.
   evidence: Verification review found only direct source-reader tests and a client response handler that supplies its own expected route/response; changing the controller route leaves that verification passing. Exercise MVC routing and assert head, retained events and excluded positions using the actual client. The controller is from the external commit and runtime edits are excluded by this approved slice.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Protect the EventStore gateway's own Dapr subscription and actor routes with the sidecar app-channel policy, as the domain-service SDK now does.
+  evidence: Story 5.5 review D-1 (BH-6, R2-BH-1), high. `src/Hexalith.EventStore/Program.cs:47-48` maps `MapSubscribeHandler()` and `MapActorsHandlers()` with no authorization and the gateway has no fallback policy, so anything reaching the app port can call AggregateActor, ETagActor or projection actor methods. This predates Story 5.5 and is not in its diff. The gateway is not a domain-service host, so it is outside the story's route-inventory scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Stop peer Dapr service invocation from reaching sidecar-channel-only routes (pub/sub subscriptions, /dapr/subscribe, actor routes) with nothing but the receiver's own app-channel token.
+  evidence: Story 5.5 review D-2 (BH-7, EC-1, R2-BH-2), medium. The receiving sidecar adds `dapr-api-token` to every inbound call, including `/v1.0/invoke/<app>/method/<subscription-route>` from any app the Dapr ACL admits, so forged domain-event deliveries pass `RequireEventStoreSidecarChannel()`. These routes were fully anonymous before Story 5.5. Possible fixes: require publisher provenance for domain-event deliveries, or deny sidecar-channel requests carrying `dapr-caller-app-id` once Dapr's header behavior for pub/sub and actor deliveries is verified.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Run the Tenants source-mode authorization tests (TenantsGlobalAdministratorVerifierTests, TenantQueryHandlerGlobalAdminClaimTests) in a blocking CI lane against the source-built EventStore SDK.
+  evidence: Story 5.5 review D-3 (VG-8), medium. EventStore CI runs no Tenants tests apart from `TenantsApiLaunchSettingsTests`, and Tenants CI builds in package mode, which needs an EventStore DomainService release first. The fix edits `.github/workflows/ci.yml`, an OQ8 worktree-hashed gate input, so it needs coordinated gate handling.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Confirm that admin authority read from the global-administrators read model cannot bring back the 'No visible tenants' failure through an empty or lagging projection.
+  evidence: Story 5.5 review D-4 (EC-19), maybe-false; medium if true. Story 5.5 removed the wire-claim authorization path in Tenants query handlers and the domain-service boundary, so global-administrator authority now comes only from the eventually consistent read model. To settle it, run Tier-3 and confirm the projection is populated right after `BootstrapGlobalAdmin` and that a freshly bootstrapped administrator lists tenants.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Make the Tenants global-administrator bootstrap credential work with non-Keycloak OIDC authorities and enforce HTTPS before sending the administrator password.
+  evidence: Story 5.5 review D-5 (R2-BH-9, R2-EC-15), medium. `TenantBootstrapCredentialProvider` keeps the earlier bootstrap's hard-coded Keycloak path `{authority}/protocol/openid-connect/token`, the ROPC password grant, and no HTTPS check, all moved from `TryAcquireAccessTokenAsync`. Authorities such as Entra, Okta or Auth0 return 404 there, or have ROPC disabled, so the documented production bootstrap is never sent. Discover the endpoint from `/.well-known/openid-configuration` and require HTTPS outside Development, or define an operator bootstrap path.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
+  summary: Add a test that a configured EventStore:ProjectionChanges:AllowedPublishers list is honored: the configured publisher accepted, the default eventstore rejected.
+  evidence: Story 5.5 review D-6 (R2-VG-3), low. No test sets `AllowedPublishers`; the `unauthorized-publisher` scenario covers only the default `["eventstore"]`, so a regression that ignores the configured list goes unnoticed. Today only EventStore publishes, and only in symmetric non-production pub/sub mode, so there is no in-repo consumer of the configured path yet.

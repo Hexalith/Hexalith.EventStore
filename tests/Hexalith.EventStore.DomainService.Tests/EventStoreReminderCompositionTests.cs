@@ -138,6 +138,38 @@ public sealed class EventStoreReminderCompositionTests
         CountReminderRoutes(withoutReminders).ShouldBe(0);
     }
 
+    /// <summary>
+    /// Story 5.5: the SDK-mapped actor routes require the app-channel policy and the framework's anonymous actor
+    /// health route loses its anonymous metadata, so only the three platform probes stay anonymous.
+    /// </summary>
+    [Fact]
+    public void ReminderActorRoutesRequireTheAppChannelAndAreNeverAnonymous()
+    {
+        WebApplication app = BuildApp(registerReminders: true);
+
+        _ = app.UseEventStoreDomainService();
+
+        RouteEndpoint[] actorEndpoints = [.. ((IEndpointRouteBuilder)app).DataSources
+            .SelectMany(static source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(static endpoint => endpoint.RoutePattern.RawText is { } route
+                && (route.StartsWith("actors/", StringComparison.Ordinal)
+                    || route.StartsWith("/actors/", StringComparison.Ordinal)
+                    || route is "dapr/config" or "/healthz" or "healthz"))];
+        actorEndpoints.ShouldNotBeEmpty();
+        foreach (RouteEndpoint endpoint in actorEndpoints)
+        {
+            endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().ShouldBeNull(endpoint.RoutePattern.RawText);
+            endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                .Select(static data => data.Policy)
+                .ShouldContain(EventStoreDomainServicePolicies.SidecarChannel, endpoint.RoutePattern.RawText);
+        }
+
+        EventStoreDomainServiceEndpointInventory.Validate(
+            ((IEndpointRouteBuilder)app).DataSources.SelectMany(static source => source.Endpoints),
+            fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme)).ShouldBeEmpty();
+    }
+
     /// <summary>A host that already mapped the Dapr actor handlers stays authoritative and is not duplicated.</summary>
     [Fact]
     public void PreMappedActorHandlersAreNotDuplicated()

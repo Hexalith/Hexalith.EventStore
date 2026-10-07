@@ -11,6 +11,7 @@ using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,7 +20,9 @@ namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>
 /// In-process DAPR implementation of <see cref="IProjectionChangeNotifier"/>.
-/// Calls <see cref="IETagActor.RegenerateAsync"/> directly via actor proxy (no pub/sub hop).
+/// The direct transport calls <see cref="IETagActor.RegenerateAsync"/> via actor proxy (no pub/sub hop). The
+/// pub/sub transport publishes a notification carrying signed publisher provenance bound to its tenant and topic;
+/// without provenance nothing is published, because the receiver would deny it (FR28).
 /// Used by <c>EventStoreProjection</c> auto-notify within the EventStore server process.
 /// </summary>
 public partial class DaprProjectionChangeNotifier(
@@ -27,7 +30,8 @@ public partial class DaprProjectionChangeNotifier(
     IActorProxyFactory actorProxyFactory,
     IProjectionChangedBroadcaster broadcaster,
     IOptions<ProjectionChangeNotifierOptions> options,
-    ILogger<DaprProjectionChangeNotifier> logger) : IProjectionChangeNotifier {
+    ILogger<DaprProjectionChangeNotifier> logger,
+    IWorkloadAssertionIssuer? provenanceIssuer = null) : IProjectionChangeNotifier {
     private const int MaxGroupScopeLength = 64;
 
     private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
@@ -48,7 +52,12 @@ public partial class DaprProjectionChangeNotifier(
         Log.NotificationReceived(logger, projectionType, tenantId, entityId, transport.ToString());
 
         if (transport == ProjectionChangeTransport.PubSub) {
-            var notification = new ProjectionChangedNotification(projectionType, tenantId, entityId);
+            string? provenance = await IssueProvenanceAsync(projectionType, tenantId, topic, cancellationToken).ConfigureAwait(false);
+            if (provenance is null) {
+                return;
+            }
+
+            var notification = new ProjectionChangedNotification(projectionType, tenantId, entityId) { Provenance = provenance };
             await daprClient.PublishEventAsync(
                 options.Value.PubSubName,
                 topic,
@@ -126,12 +135,19 @@ public partial class DaprProjectionChangeNotifier(
             currentOptions.Transport.ToString());
 
         if (currentOptions.Transport == ProjectionChangeTransport.PubSub) {
+            string? provenance = await IssueProvenanceAsync(detail.ProjectionType, detail.TenantId, topic, cancellationToken).ConfigureAwait(false);
+            if (provenance is null) {
+                return;
+            }
+
             var notification = new ProjectionChangedNotification(
                 detail.ProjectionType,
                 detail.TenantId,
                 EntityId: null,
                 GroupScope: groupScope,
-                Metadata: normalizedDetail.Metadata);
+                Metadata: normalizedDetail.Metadata) {
+                Provenance = provenance,
+            };
 
             await daprClient.PublishEventAsync(
                 currentOptions.PubSubName,
@@ -157,6 +173,30 @@ public partial class DaprProjectionChangeNotifier(
         catch (Exception ex) {
             Log.DetailBroadcastFailed(logger, detail.ProjectionType, detail.TenantId, groupScope, ex.GetType().Name);
         }
+    }
+
+    private async Task<string?> IssueProvenanceAsync(
+        string projectionType,
+        string tenantId,
+        string topic,
+        CancellationToken cancellationToken) {
+        string? provenance = provenanceIssuer is null
+            ? null
+            : await provenanceIssuer.IssueAsync(
+                new WorkloadAssertionRequest(
+                    options.Value.ProvenanceAudience,
+                    EventStoreWorkloadOperations.ProjectionNotify,
+                    new Dictionary<string, string>(StringComparer.Ordinal) {
+                        [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = tenantId,
+                        [EventStoreWorkloadAuthenticationDefaults.ProjectionTypeBindingClaimType] = projectionType,
+                        [EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType] = topic,
+                    }),
+                cancellationToken).ConfigureAwait(false);
+        if (provenance is null) {
+            Log.ProvenanceUnavailable(logger, projectionType, tenantId);
+        }
+
+        return provenance;
     }
 
     private static (IReadOnlyDictionary<string, string> Bounded, bool Clipped, int OriginalCount) BoundMetadata(
@@ -223,5 +263,11 @@ public partial class DaprProjectionChangeNotifier(
             Level = LogLevel.Warning,
             Message = "Projection detail metadata clipped to configured bounds before publish. ProjectionType: {ProjectionType}, TenantId: {TenantId}, GroupScope: {GroupScope}, OriginalCount: {OriginalCount}, BoundedCount: {BoundedCount}")]
         public static partial void DetailMetadataClipped(ILogger logger, string projectionType, string tenantId, string? groupScope, int originalCount, int boundedCount);
+
+        [LoggerMessage(
+            EventId = 5551,
+            Level = LogLevel.Warning,
+            Message = "Projection change notification not published: signed publisher provenance could not be issued. ProjectionType: {ProjectionType}, TenantId: {TenantId}")]
+        public static partial void ProvenanceUnavailable(ILogger logger, string projectionType, string tenantId);
     }
 }
