@@ -5539,3 +5539,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-5-internal-and-domain-service-trust-boundary.md`
   summary: Add a test that a configured EventStore:ProjectionChanges:AllowedPublishers list is honored: the configured publisher accepted, the default eventstore rejected.
   evidence: Story 5.5 review D-6 (R2-VG-3), low. No test sets `AllowedPublishers`; the `unauthorized-publisher` scenario covers only the default `["eventstore"]`, so a regression that ignores the configured list goes unnoticed. Today only EventStore publishes, and only in symmetric non-production pub/sub mode, so there is no in-repo consumer of the configured path yet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-secret-scan-evidence-exemption.md`
+  summary: Classify unified-diff evidence in SecretsProtectionTests by each hunk's target path, so captured source diffs need no per-file scan exemptions.
+  evidence: IsRecognizedSourceExpression applies C# runtime-expression rules by file extension, so a captured C# CancellationToken construction is a literal inside a .diff but passes in its live .cs file. GetEffectiveSourcePath already remaps Markdown fences. ExplicitEvidenceArtifactPathPattern now carries three evidence exemptions, and the 6-1-p1r-remediation capture exemption could be removed after this fix.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p1r-secret-scan-evidence-exemption.md`
+  summary: Add a `text eol=lf` rule for the hash-bound 6-1-p1r-remediation (and 6-1-p1r-qualification) evidence packets.
+  evidence: `git ls-files --eol` reports `attr/text=auto` for evidence/6-1-p1r-remediation/source-candidate.diff, unlike the story-1-21, 3-13, 3-14, 3-15 and 4-15 packets. A core.autocrlf checkout would fail the packet's `sha256sum --check SHA256SUMS`; the scan binding normalizes CRLF only to tolerate this. `.gitattributes` is a sealed gate input, so the change needs its own gate-hash handling.
+

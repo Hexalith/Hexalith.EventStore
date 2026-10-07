@@ -17,6 +17,10 @@ public sealed partial class SecretsProtectionTests
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
     private const string RetiredEvidenceManifest =
         "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json";
+    private const string SealedP1RRemediationSourceCapture =
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/source-candidate.diff";
+    private const string SealedP1RRemediationSourceCaptureSha256 =
+        "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa";
 
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
@@ -557,6 +561,70 @@ public sealed partial class SecretsProtectionTests
         IsExplicitGeneratedPath("tools/.artifacts/credential-generator.cs").ShouldBeFalse();
     }
 
+    /// <summary>
+    /// Verifies the sealed 6.1-P1R remediation exemption covers only its source capture, whose captured C# lines are
+    /// classified as literals outside a <c>.cs</c> path. Every other tracked remediation or qualification packet file
+    /// stays eligible for scanning, and near-miss paths are not exempt.
+    /// </summary>
+    [Fact]
+    public void SealedP1RRemediationExemption_IsLimitedToTheSourceCapture()
+    {
+        string[] packetFiles = GetTrackedFiles()
+            .Where(static path => path.StartsWith(
+                    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/",
+                    StringComparison.Ordinal)
+                || path.StartsWith(
+                    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/",
+                    StringComparison.Ordinal))
+            .ToArray();
+
+        packetFiles.ShouldContain(SealedP1RRemediationSourceCapture);
+        packetFiles.Where(IsExplicitGeneratedPath).ShouldBe([SealedP1RRemediationSourceCapture]);
+
+        string[] nearMisses =
+        [
+            SealedP1RRemediationSourceCapture + ".orig",
+            "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation-2/source-candidate.diff",
+            "tools/source-candidate.diff",
+        ];
+        foreach (string path in nearMisses)
+        {
+            IsExplicitGeneratedPath(path).ShouldBeFalse(path);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the exemption is bound to the packet seal inside the scan path: the pinned hash is the packet's
+    /// SHA256SUMS entry, the tracked capture matches it, a CRLF checkout keeps the same content, and altered content
+    /// fails the scan instead of being skipped.
+    /// </summary>
+    [Fact]
+    public void SealedP1RRemediationSourceCapture_ExemptionRequiresItsSealedContent()
+    {
+        string seal = File.ReadAllLines(Path.Combine(
+                RepoRoot,
+                "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/SHA256SUMS"))
+            .Single(static line => line.EndsWith("  source-candidate.diff", StringComparison.Ordinal));
+        seal.ShouldBe(SealedP1RRemediationSourceCaptureSha256 + "  source-candidate.diff");
+
+        byte[] sealedBytes = File.ReadAllBytes(Path.Combine(RepoRoot, SealedP1RRemediationSourceCapture));
+        ReadTrackedText(SealedP1RRemediationSourceCapture).ShouldBeNull();
+        VerifySealedP1RRemediationSourceCapture(
+            [.. sealedBytes.SelectMany(static value => value == (byte)'\n' ? new[] { (byte)'\r', value } : [value])]);
+
+        Should.Throw<ShouldAssertException>(
+            () => VerifySealedP1RRemediationSourceCapture([.. sealedBytes, (byte)'\n']));
+    }
+
+    /// <summary>
+    /// Verifies the exemption hides only the known extension-classification false positive. A scanner change or a new
+    /// real finding alters this result and requires revisiting the exemption.
+    /// </summary>
+    [Fact]
+    public void SealedP1RRemediationSourceCapture_HidesOnlyTheKnownFalsePositive()
+        => FindViolations(SealedP1RRemediationSourceCapture)
+            .ShouldBe([SealedP1RRemediationSourceCapture + ":2590"]);
+
     private static IEnumerable<string> FindViolations(string relativePath)
     {
         string content = File.ReadAllText(Path.Combine(RepoRoot, relativePath));
@@ -847,6 +915,11 @@ public sealed partial class SecretsProtectionTests
     {
         if (IsRetiredEvidenceCapture(path) || IsExplicitGeneratedPath(path))
         {
+            if (string.Equals(path, SealedP1RRemediationSourceCapture, StringComparison.Ordinal))
+            {
+                VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
+            }
+
             return null;
         }
 
@@ -935,6 +1008,18 @@ public sealed partial class SecretsProtectionTests
         }
 
         return false;
+    }
+
+    private static void VerifySealedP1RRemediationSourceCapture(byte[] bytes)
+    {
+        // The sealed capture is LF-only and its packet has no eol rule, so only CRLF pairs are normalized.
+        byte[] lineFeedOnly = bytes
+            .Where((value, index) => value != (byte)'\r' || index + 1 >= bytes.Length || bytes[index + 1] != (byte)'\n')
+            .ToArray();
+        Convert.ToHexString(SHA256.HashData(lineFeedOnly)).ToLowerInvariant().ShouldBe(
+            SealedP1RRemediationSourceCaptureSha256,
+            "The sealed 6-1-p1r-remediation source capture changed, so its scan exemption no longer applies. Restore "
+            + "the sealed content; never re-pin this hash without rescanning the changed capture.");
     }
 
     private static bool IsGovernedRetirementPath(string path)
@@ -2557,6 +2642,6 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"^(?:src|tests)/[^/]+/\.artifacts/ui-test-obj/(?:project\.assets\.json|[^/]+\.csproj\.nuget\.(?:dgspec\.json|g\.props|g\.targets))$", RegexOptions.CultureInvariant)]
     private static partial Regex ExplicitUiTestArtifactPathPattern();
 
-    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/(?:evidence/(?:.+\.ctrf\.json|6-1-p1r-3110/verification/.+)|6-5d-simplification/previous-candidate\.md)$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/(?:evidence/(?:.+\.ctrf\.json|6-1-p1r-3110/verification/.+|6-1-p1r-remediation/source-candidate\.diff)|6-5d-simplification/previous-candidate\.md)$", RegexOptions.CultureInvariant)]
     private static partial Regex ExplicitEvidenceArtifactPathPattern();
 }
