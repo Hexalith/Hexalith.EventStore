@@ -92,6 +92,24 @@ boundary. The conservative live-array ceiling remains explicit.
 
 ## Implementation Notes
 
+### Current-amendment obligation audit — 2026-10-07
+
+The [current obligation audit](6-6-obligation-audit.json) re-evaluates O-01
+through O-20 under the Dapr-only and trusted-code amendments. It binds the
+historical approved normative bytes and each historical obligation row separately
+from both current amendments, identifies six rows with withdrawn provider
+requirements, and records their current Dapr capability/logical evidence boundary.
+Every obligation remains open; this audit supplies traceability and gate accounting,
+not implementation qualification, closure, production authority or activation.
+
+The existing CI `scripts/verify-event-evolution.py --mutations` gate now checks
+these inputs and dispositions. Missing/changed inputs, incomplete/duplicate rows,
+unsupported provider assurance, premature closure and claimed activation refuse.
+The [local verification](evidence/story-6-6/verification-2026-10-07-obligation-audit.md)
+records timeout-bounded mutations, actual temporary-tree missing/changed-input
+and malformed-schema controls, and an unrelated-file/Git-metadata positive control.
+No runtime registrations, consumer routes, parent tasks or activation fences change.
+
 ### Local JSON replay admission — 2026-10-07
 
 The [JSON replay admission verification](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md)
@@ -246,6 +264,12 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-07 — Added the [current-amendment obligation audit](6-6-obligation-audit.json)
+  and its [scoped verification](evidence/story-6-6/verification-2026-10-07-obligation-audit.md).
+  The existing CI gate binds historical approval separately from both current
+  amendments and refuses unqualified closure/activation. All O-rows, M1–M8 task
+  dispositions and parent status remain open/in progress.
 
 - 2026-10-07 — Added [local JSON replay admission](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md), including reviewed compatibility fixes, emitted metadata boundaries, bounded decoding, pre-parse token capacity, deterministic cleanup and an independently killed readable-guard mutation. Final source suites, Release build and local package consumers pass; all parent tasks and production/authority gates remain open.
 

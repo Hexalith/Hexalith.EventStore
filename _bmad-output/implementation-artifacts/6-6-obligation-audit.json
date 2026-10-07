@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "storyKey": "6-6-event-versioning-and-upcasting-implementation",
+  "scope": "Current-amendment traceability and open-gate accounting only. This audit grants no implementation qualification, closure or activation authority.",
+  "historicalApproval": {
+    "path": "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
+    "normativeSha256": "bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050",
+    "authority": "historical-design-only"
+  },
+  "currentAmendments": [
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md",
+      "sha256": "2c1dc2e80d032a7f1622ab6f00057e9c0298ec2a1114df23e74a1ce28f5feaef"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+      "sha256": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+    }
+  ],
+  "activationAuthority": false,
+  "productionQualification": "not-established",
+  "unavailableProofOperations": "fenced",
+  "obligations": [
+    {
+      "id": "O-01",
+      "historicalRowSha256": "99af3f38a2f6bfc7e26f812c5f2de6ea2b2a5e528d4b877b355ee48240eb35ef",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Preserve A10 V05\u2013V08 derivation of `batch-member-root:` plus ScopeOpHash and the hashed `aggregate-operation-result:` key. Never substitute K02/K07 marker keys or reuse their hashes as key evidence. These key derivations remain compatible requirements; separately qualify any new control owner and atomic participant set through Dapr actor/state APIs.",
+      "requiredEvidence": [
+        "Independent V05\u2013V08 key preimages and known answers for both exact derived keys",
+        "Negative controls for K02/K07 marker-key or hash substitution",
+        "Exact qualified Dapr owner/component capability and logical persisted end-state"
+      ]
+    },
+    {
+      "id": "O-02",
+      "historicalRowSha256": "b5f5bf8191e0e0cf9541ed7298f8ca9e94a2a5243b509fcea439625764b63824",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Re-cite the shipped independent 30-second bounded actor recovery attempt and at-least-24-hour command continuation retention. Verify fresh addressed logical readback and no replay of already committed commands.",
+      "requiredEvidence": [
+        "Current source locations and immutable runtime/profile identity",
+        "Lost acknowledgment, cancellation, no-op and restart persisted end-state"
+      ]
+    },
+    {
+      "id": "O-03",
+      "historicalRowSha256": "d76e965eb518d099178bdc9cd0cf3707ec9c990a15994b67af4f2a357cdc5d41",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Port compatible A/B/C/D models and independent constructors into blocking CI with D6 precharges and D4 status precedence. Replace withdrawn provider assurances and include authoritative immutable catalog/artifact and serving-peer admission under both current amendments.",
+      "requiredEvidence": [
+        "Pinned model/input/verifier identities and independent known answers",
+        "Blocking CI execution including FW1",
+        "Complete reviewed catalog, immutable execution and serving-peer qualification"
+      ]
+    },
+    {
+      "id": "O-04",
+      "historicalRowSha256": "4ff7389ba505ff0e0975418f53833bf4fb15ace908a7e6803fa85fd3c9b90b06",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Run the single-removal guard kill sweep over the current port. Every surviving guard needs a killing vector or a documented removal; historical child sweeps do not qualify production paths.",
+      "requiredEvidence": [
+        "Per-guard mutant and independent killing vector",
+        "Timeout-bounded current-source results"
+      ]
+    },
+    {
+      "id": "O-05",
+      "historicalRowSha256": "196a052ebc5dcfc254802dbe5c36b30880bd53ded48afa16d39a97174b5204e4",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Run every mutation in its own process with a per-mutation timeout and reject looping or unexpectedly passing mutants. Apply this to every ported current-amendment model and production guard.",
+      "requiredEvidence": [
+        "Exact commands, mutant identities, timeout bounds and results",
+        "Controls that kill the intended guard independently"
+      ]
+    },
+    {
+      "id": "O-06",
+      "historicalRowSha256": "143d0d2422a20b63a41a04acc0e14b5ed109fb7a98573b9d16fa61460c8d69fb",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Bind actual reviewed source/model/verifier inputs and both controlling amendments. Missing or changed reviewed inputs refuse; historical approval is identified as historical and gives no current activation authority.",
+      "requiredEvidence": [
+        "Exact focused input/block hashes and verifier identities",
+        "Missing/changed input refusal controls"
+      ]
+    },
+    {
+      "id": "O-07",
+      "historicalRowSha256": "a299bcdbef9765bc96b99a1bcfbea8e4fae304be400a20fb03e24520d8ef7b51",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Prove focused pins refuse missing or incorrect reviewed inputs while unrelated owner changes and root submodule advancement remain allowed. Do not turn a historical whole-tree inventory into an ancestry or gitlink freeze.",
+      "requiredEvidence": [
+        "Missing-input and wrong-pin negative controls",
+        "Unrelated file and submodule-advancement positive controls"
+      ]
+    },
+    {
+      "id": "O-08",
+      "historicalRowSha256": "5a757c3278c7ff4f4a702a8a5ce40b10e4f85b513811dedb211c69eadc18f166",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Model exact Binary CloudEvent core headers alongside the six routing headers and Content-Type in carrier size admission. Verify the actual Dapr/broker representation separately.",
+      "requiredEvidence": [
+        "Independent Binary carrier known answers and limit boundaries",
+        "Exact live carrier observations through the selected Dapr/broker profile"
+      ]
+    },
+    {
+      "id": "O-09",
+      "historicalRowSha256": "ca5ef9828b589c73d78a4f230d77ee7e10b15a446998e161f30824119ac7073e",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Recompute canonical destinationId at every destination-bearing record including plan admission. Reject display names and non-derived oversized destinations before reservations or sends.",
+      "requiredEvidence": [
+        "Independent plan-time destination derivation vector",
+        "Every destination-bearing production path refusal and unchanged logical state"
+      ]
+    },
+    {
+      "id": "O-10",
+      "historicalRowSha256": "2e69a793ea0731dc545f6a7cb5464abf725b65ddbec1df208a8bd1208de7d3f6",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Replace the withdrawn provider whole-batch transaction and SQL queue with one qualified Dapr control owner for the complete required atomic participant set. Preserve original reservation accounts and amounts across overhead changes; mismatched attach must refuse unchanged. Commit all counters and charges plus eight-envelope fair queue grant/refund/parking/erasure atomically in one supported Dapr actor save or state transaction. No paired queues or cross-counter move. If that complete participant set cannot fit the demonstrated Dapr boundary, keep the dependent control unavailable; use durable intent and reconciliation across separate boundaries.",
+      "requiredEvidence": [
+        "Exact actor-save or Dapr state ETag/transaction capability probe",
+        "Concurrent owner, attach mismatch, lost acknowledgment and restart logical readback",
+        "Grant/refund/parking/erasure accounting with unchanged values on refusal"
+      ]
+    },
+    {
+      "id": "O-11",
+      "historicalRowSha256": "acfc733cd4799d42a9a5d0183a93cc20bc1d80a01e2dfa13fb0c462d8a3ae7fc",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Limit bookkeeping to exact reviewed input/file/block hashes, verifier identities, historical approval and both current amendments. Preserve historical captures without requiring whole-repository ancestry or unchanged unrelated paths.",
+      "requiredEvidence": [
+        "Focused historical and current amendment binding",
+        "Unrelated-change positive controls and preserved historical evidence"
+      ]
+    },
+    {
+      "id": "O-12",
+      "historicalRowSha256": "56a48132bd8aa5b85d676bdeeaa9c09188b57cb7b3a509df45c2d67ea88c398d",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Qualify no-future-acceptance evidence under the actual broker including partially accepted member sets. Dapr logical state readback alone cannot establish future broker acceptance or transport membership.",
+      "requiredEvidence": [
+        "Exact broker/carrier/profile identities",
+        "Partial acceptance, disable/reject phases and crash/retry persisted observations"
+      ]
+    },
+    {
+      "id": "O-13",
+      "historicalRowSha256": "051a61102e9f0a03116ffb8065cfa697044958c750906e6bf522f27567f10e82",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Prove effect and receipt atomicity only when both fit the same qualified Dapr actor save or state transaction. Multi-route handoff uses explicit fences and logical readback; separate stores or external effects require their own idempotency and reconciliation contract.",
+      "requiredEvidence": [
+        "Exact supported atomic participant set and component capability",
+        "Lost acknowledgment, concurrent routes and complete effect/receipt logical end-state",
+        "Separate effect boundary idempotency contract or unavailable outcome"
+      ]
+    },
+    {
+      "id": "O-14",
+      "historicalRowSha256": "528430b45221ed4cc228f9ea705032324db6f3b194ac6dcbc4f354dde85e67d0",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Qualify raw ingress and logical capture admission before private materialization through actual Dapr and broker intermediaries. Physical raw-envelope custody and historical-generation evidence are unavailable through ordinary logical readback; dependent operations stay fenced.",
+      "requiredEvidence": [
+        "Actual ingress/capture allocation and retention instrumentation",
+        "Logical byte preservation, oversize/conflict/unretainable failure end-state",
+        "Unavailable-proof refusal with no acknowledgement or forbidden effect"
+      ]
+    },
+    {
+      "id": "O-15",
+      "historicalRowSha256": "9d3690fdf773107db62ed4f3e178ac2afd8f4a6bd013e3e0f7a187594d9221ad",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Prove original timestamp offset preservation end to end in exact Binary and Structured carriers. Preserve original application bytes and MessageIds across publication retry and redrive.",
+      "requiredEvidence": [
+        "Independent carrier byte/offset known answers",
+        "Actual sidecar/broker carrier observations and retry end-state"
+      ]
+    },
+    {
+      "id": "O-16",
+      "historicalRowSha256": "9c547b547b878d6f7814ec7ef07ece864887be38cc5c41e848036553f27cbfc9",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Qualify two-level quota accounting through the selected Dapr owners across replicas, restarts and deployment revisions. Do not infer cross-actor or actor-to-state atomicity from a shared backend.",
+      "requiredEvidence": [
+        "Exact Dapr owner/component topology and bounded values",
+        "Replica/owner takeover, restart, refund and generation logical readbacks"
+      ]
+    },
+    {
+      "id": "O-17",
+      "historicalRowSha256": "766944e31eb133dba2d3b1dd682451f1d3c432e919c029ee14283843963feb5d",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Re-evaluate every C6 activation gate under Dapr actor/state capabilities and the trusted-code admission policy. Qualify the approved production component and a second supported component or conforming harness; unavailable provider-proof gates cannot be silently treated as passed.",
+      "requiredEvidence": [
+        "Separately ratified exact AD-26 production profile",
+        "All consumer, immutable catalog/artifact/serving-peer and compatibility gates",
+        "Applicable two-component/harness crash, retry, rolling-upgrade and rollback matrices"
+      ]
+    },
+    {
+      "id": "O-18",
+      "historicalRowSha256": "62f6b4294f231ddfac8f34bf5225187d2bb949908517323d41233863e522d6c1",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Replace shared-PostgreSQL/SERIALIZABLE and historical provider-generation claims with two-host Dapr owner/fence/generation capability and fresh addressed logical readback. Preserve reserve-before-owner, Operations epoch transfer, capture lifetime, scoped cursor and signed replay admission requirements within demonstrated boundaries.",
+      "requiredEvidence": [
+        "Two-host exact Dapr actor/state API capability and logical end-state",
+        "Concurrent takeover, lost acknowledgment, restart and conflicting-row refusal",
+        "Separate capture object lifecycle and replay authority evidence; unavailable operations fenced"
+      ]
+    },
+    {
+      "id": "O-19",
+      "historicalRowSha256": "c3576ec0b4a70e7fc31b5fb1d960495c0196097de09ae2b2fd15e112d4c833be",
+      "status": "open",
+      "disposition": "retained-compatible-requirements",
+      "evidenceBoundary": "compatible-contract-and-separate-qualification",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Keep the existing release lane and current-main compatibility hold. Require API/wire, already-compiled and isolated package-only consumers plus inactive-path evidence for compatible preparation. Approved incompatible package sets need the existing SemVer-major gate.",
+      "requiredEvidence": [
+        "Current-source API/wire/package inventories and consumer results",
+        "Complete affected regressions and exact release classification",
+        "Existing lane/version policy without override or publication authority"
+      ]
+    },
+    {
+      "id": "O-20",
+      "historicalRowSha256": "799c0e8bcc337ffdc0dfa7c035a976e14842dc76ecb3fd0c09e8d22700ef2333",
+      "status": "open",
+      "disposition": "replaced-provider-requirements",
+      "evidenceBoundary": "dapr-logical-and-qualified-capabilities",
+      "owner": "Story 6.6 implementation and verification owner",
+      "blockingGate": "preactivation-and-applicable-ad26-qualification",
+      "currentRequirement": "Preserve exact production resume/redrive authorization, original event identities and accepted exclusions while replacing provider attestation with qualified Dapr logical readback. Re-arm only the original committed batch; unavailable physical/historical capture stays disabled. Preserve permanent/window fences, reclamation and once-only refunds across lost acknowledgments.",
+      "requiredEvidence": [
+        "Separately authorized signed production operator scope and audit",
+        "Exact Dapr logical event/result/outbox and hold lifetime end-state",
+        "Producer-disable/broker-reject, repeated resume and unchanged-byte failure matrices"
+      ]
+    }
+  ]
+}
