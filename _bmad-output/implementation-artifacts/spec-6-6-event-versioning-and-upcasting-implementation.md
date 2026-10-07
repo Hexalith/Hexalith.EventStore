@@ -68,6 +68,25 @@ context:
 
 ## Implementation Notes
 
+### Local command-state envelope ownership — 2026-10-07
+
+The [local command-state admission verification](evidence/story-6-6/verification-2026-10-07-command-state-envelope-admission.md)
+records a bounded disposable owner for built-in legacy contract-envelope replay,
+shared nested count/payload/metadata/container charges, bounded empty-wrapper
+recursion and deterministic private payload clearing. An early converter mutation
+control proves the successor payload is detached before deserialization. Final
+focused tests passed 22/22, full Client tests 1,205/1,205, full DomainService tests
+495/495, and the required package-mode Release build had zero warnings/errors.
+
+Raw JSON/base64 materialization and arbitrary typed graphs remain unqualified
+compatibility adapters. A retained public-processor diagnostic reproduces the
+unresolved caller-owned typed snapshot/tail alias: a later mutating Apply throws
+and leaves the source snapshot changed. This owner therefore supplies neither
+complete command-state admission nor last-good typed snapshot isolation.
+Authoritative private state/serializer, catalog and production qualifications
+remain required. Frozen intent, baseline, in-progress status, M1–M8 dispositions
+and activation fences are unchanged.
+
 ### Dormant managed artifact admission and observations — 2026-10-07
 
 The [local managed-loader verification](evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md)

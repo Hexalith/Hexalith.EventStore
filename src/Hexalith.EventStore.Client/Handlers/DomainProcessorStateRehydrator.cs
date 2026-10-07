@@ -24,8 +24,9 @@ internal static class DomainProcessorStateRehydrator {
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         TState? rehydratedState;
+        using var input = new LegacyCommandReplayInput(cancellationToken);
         try {
-            currentState = CaptureReplayInput<TState>(currentState, cancellationToken);
+            currentState = CaptureReplayInput<TState>(currentState, cancellationToken, input);
             rehydratedState = currentState switch {
                 null => null,
                 TState typed => typed,
@@ -48,24 +49,26 @@ internal static class DomainProcessorStateRehydrator {
         return rehydratedState;
     }
 
-    private static object? CaptureReplayInput<TState>(object? input, CancellationToken cancellationToken)
+    private static object? CaptureReplayInput<TState>(object? input, CancellationToken cancellationToken, LegacyCommandReplayInput owner, int depth = 0)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         switch (input) {
             case TState:
                 return input;
             case DomainServiceCurrentState current:
-                var events = CaptureEvents(current.Events, cancellationToken).Cast<EventEnvelope>().ToArray();
+                owner.AdmitSnapshotWrapper(depth);
+                var events = CaptureEvents(current.Events, cancellationToken, owner).Cast<EventEnvelope>().ToArray();
                 return current with {
                     Events = events,
-                    SnapshotState = CaptureReplayInput<TState>(current.SnapshotState, cancellationToken),
+                    SnapshotState = CaptureReplayInput<TState>(current.SnapshotState, cancellationToken, owner, depth + 1),
                 };
             case JsonElement json when IsDomainServiceCurrentState(json):
+                owner.AdmitSnapshotWrapper(depth);
                 // Check aliases before transport deserialization can select one of duplicate metadata members.
                 foreach (JsonElement envelope in json.GetProperty("events").EnumerateArray()) {
                     ValidateJsonReplayMetadata(GetReplayProperty(envelope, "metadata") ?? envelope);
                 }
-                return CaptureReplayInput<TState>(DeserializeDomainServiceCurrentState(json), cancellationToken);
+                return CaptureReplayInput<TState>(DeserializeDomainServiceCurrentState(json), cancellationToken, owner, depth);
             case JsonElement { ValueKind: JsonValueKind.Array } json:
                 JsonElement captured = json.Clone();
                 foreach (JsonElement item in captured.EnumerateArray()) {
@@ -74,20 +77,14 @@ internal static class DomainProcessorStateRehydrator {
                 }
                 return captured;
             case System.Collections.IEnumerable sequence when input is not string:
-                return CaptureEvents(sequence, cancellationToken);
+                return CaptureEvents(sequence, cancellationToken, owner);
             default:
                 return input;
         }
     }
 
-    private static List<object?> CaptureEvents(System.Collections.IEnumerable events, CancellationToken cancellationToken) {
-        var captured = new List<object?>();
-        foreach (object? item in events) {
-            cancellationToken.ThrowIfCancellationRequested();
-            captured.Add(item is EventEnvelope envelope
-                ? new EventEnvelope(envelope.Metadata, envelope.Payload.ToArray(), envelope.Extensions)
-                : item is JsonElement json ? json.Clone() : item);
-        }
+    private static List<object?> CaptureEvents(System.Collections.IEnumerable events, CancellationToken cancellationToken, LegacyCommandReplayInput owner) {
+        List<object?> captured = owner.CaptureEvents(events);
 
         // No payload converters run until every caller-owned reference and byte array is detached.
         foreach (object? item in captured) {

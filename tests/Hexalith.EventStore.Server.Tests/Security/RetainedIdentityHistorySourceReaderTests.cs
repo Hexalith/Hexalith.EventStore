@@ -445,6 +445,62 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         JsonSerializer.Serialize(result).ShouldNotContain("provider-evidence");
     }
 
+    /// <summary>Restoring exact sealed bytes never restores absent, stale or unavailable independent lifecycle authority.</summary>
+    [Theory]
+    [InlineData("unavailable")]
+    [InlineData("missing-receipt")]
+    [InlineData("changed-receipt")]
+    [InlineData("changed-revision")]
+    [InlineData("source-expiry")]
+    [InlineData("restore")]
+    [InlineData("copies")]
+    public async Task RestoredSealedSource_RequiresCurrentExactLifecycleEvidence(string fault)
+    {
+        RetainedIdentityHistorySourceReader reader = Arrange();
+        EventEnvelope[] stored = [Stored(1, "Profile", "sealed-profile"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")];
+        byte[] backup = JsonSerializer.SerializeToUtf8Bytes(stored);
+        _actor.ReadEventsRangeAsync(0, 2, 100).Returns(stored);
+        (await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken)).IsAuthoritative.ShouldBeTrue();
+        _custody.ClearReceivedCalls();
+
+        // This is a serialized source-copy exercise, with synthetic independent lifecycle.
+        // No production key, backup or destruction receipt is claimed.
+        EventEnvelope[] restored = JsonSerializer.Deserialize<EventEnvelope[]>(backup)!;
+        _actor.ReadEventsRangeAsync(0, 2, 100).Returns(restored);
+        IdentityHistoryCustodyEvidence original = Evidence();
+        IdentityHistoryCustodyEvidence copied = fault switch
+        {
+            "changed-receipt" => original with { EvidenceId = "restored-unrecognized-receipt" },
+            "changed-revision" => original with { LifecycleRevision = original.LifecycleRevision + 1 },
+            "source-expiry" => original with { SourceExpiryEnforced = false },
+            "restore" => original with { RestoreSafe = false },
+            "copies" => original with { DerivedCopiesCovered = false },
+            _ => original,
+        };
+        _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(copied)), "json"));
+        _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
+            .Returns(call => fault == "unavailable" ? throw new IOException("synthetic lifecycle outage")
+                : fault != "missing-receipt" && call.Arg<AggregateIdentity>() == _identity
+                    && call.Arg<IdentityHistoryCustodyEvidence>() == original);
+        var restarted = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, _clock);
+
+        RetainedIdentityHistoryReadResult result = await restarted.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken);
+
+        result.Stream.ShouldBeNull();
+        result.FailureReason.ShouldBe(fault == "unavailable" ? "history-unavailable" : "history-custody-unavailable-or-expired");
+        JsonSerializer.Serialize(result).ShouldNotContain("restored-unrecognized-receipt");
+        JsonSerializer.SerializeToUtf8Bytes(restored).ShouldBe(backup);
+        if (fault is "source-expiry" or "restore" or "copies")
+        {
+            await _custody.DidNotReceiveWithAnyArgs().CanReadAsync(default!, default!, default);
+        }
+        else
+        {
+            await _custody.Received(1).CanReadAsync(_identity, copied, Arg.Any<CancellationToken>());
+        }
+    }
+
     private void ArrangeCompleteSource()
         => _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
 

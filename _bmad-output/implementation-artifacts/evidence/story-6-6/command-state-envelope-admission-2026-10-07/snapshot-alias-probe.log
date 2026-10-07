@@ -1,0 +1,4 @@
+$ dotnet run --project _bmad-output/implementation-artifacts/evidence/story-6-6/command-state-envelope-admission-2026-10-07/snapshot-probe/SnapshotAliasProbe.csproj --configuration Debug
+{"threw":true,"snapshotTotalAfterFailure":3,"Handled":false}
+
+exit_code=0

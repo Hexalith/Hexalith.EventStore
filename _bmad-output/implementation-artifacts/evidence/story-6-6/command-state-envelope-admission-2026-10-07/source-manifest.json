@@ -1,0 +1,38 @@
+{
+  "recorded_utc": "2026-10-07T11:16:42.479854+00:00",
+  "start_head": "4b1377a755636ec1eb0844de5901f0c73626ca59",
+  "head_at_record": "4b1377a755636ec1eb0844de5901f0c73626ca59",
+  "scope": "Local contract-envelope command replay admission only; no activation, complete M4 or last-good typed snapshot qualification",
+  "owned_sources": {
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs": "c8870eae771021f34257c29032a3d3df22a721223a0262ebdfe0dc4d21c3873c",
+    "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs": "a62028d904d10d10a90624c87b4b92b8fe56940223ae091768dbc97861c60d39",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/CommandReplayDeserializationEvent.cs": "cd810d3e35071bf3a65db78f780fa08ed94e4ff4c4a1428242b66a43207723b6",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/CommandReplayDeserializationEventConverter.cs": "a02abc1769a05ed4d5357e90c65935d27a3004de802ae115c963ab1dfc892f3e",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/CommandReplayDeserializationState.cs": "bf96db8e3730df970e96270c7666a3e96c429250c4880b3a995cb60db10d8fc9",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/CommandReplayProbeCollection.cs": "e7cf9d86daa7c1c842aada3c682a4805ff180d52acb028d5059d2a2119d763ff",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/CommandReplayUnknownCountSequence.cs": "68e9f9c33e96eba9a05fa1181d4f75ee15856f9ed911d8f209dfe3dffb150892",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayInputTests.cs": "57396c9914707dd1e948c2711464309dc4eadcf44be7f95040ae1ccdca9d4c97"
+  },
+  "tested_debug_artifacts": {
+    "src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "ae0430fb39a7c2ed6a73210d1545cf7c027820eef92ea418cf9018dc38efcd3b",
+    "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll": "ec64154717143de6a43c83c314a554f04810b913d8f4034fd85b3e91baadd273",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll": "7e9b3353572594f395d562bc2ae3eccdb93a367f6598678362b3b4427c974302"
+  },
+  "excluded_concurrent_external_changes": [
+    "tests/Hexalith.EventStore.Server.Tests/Security/RetainedIdentityHistorySourceReaderTests.cs",
+    "_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/reviews/review-update-2026-10-07b-gate-closure.md"
+  ],
+  "logs": {
+    "client-build.log": "c15692229a8b8ac6fe6963274679adae22b912df2ec762fd987ef2cbff3a76e6",
+    "client-focused.log": "5c64b6d550987656131dac7568522790a1e088cb4e3a0965324db3699368a35f",
+    "client-regression.log": "0878fc3999b081a89154e147fb04ffb33e4156abfb15c575478b7c24b00f9be0",
+    "dapr-only-preflight.log": "75d1f7b87836f2683f73c1796f855ee83c6314b347a8533ee6bd4f311f0bd0e0",
+    "deferred-work.log": "ce55596e74479d198d96dd6223a2f4eb19975b2156601917da9a4edd0e154eb6",
+    "domainservice-build.log": "c499113a5b5b3e852bfc24cd9b1fbbda5536977d4dceb64a7fba9b8c2466f1fc",
+    "domainservice-regression.log": "0552206f3f9da37a29661b337d31884ee54d4d7f3c740cfc3d3ca8c1ee988ccc",
+    "historical-preflight.log": "f17cfb809ca65005ced5254e450c96042dc0e79d5989ab5dae7bbc36cfb41619",
+    "release-build.log": "b4b99d026f44286fb49452edc6cac5dfbea81566dc31b1d11063b09bda344d96",
+    "snapshot-alias-probe-initial-build.log": "7f327c0c8c316e8d212241c0aeb2dab9b594ab6fd51a3ed1401f0446c15b6e4a",
+    "snapshot-alias-probe.log": "27433d1a480202b489ecfa34d3640edf8658e436ede489b48966591dee5ddec4"
+  }
+}
