@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><PackageReference Include="Hexalith.EventStore.Client" /><PackageReference Include="Hexalith.EventStore.Contracts" /><PackageReference Include="Hexalith.EventStore.DomainService" /><PackageReference Include="Hexalith.EventStore.Server" /><PackageReference Include="Hexalith.EventStore.ServiceDefaults" /></ItemGroup></Project>

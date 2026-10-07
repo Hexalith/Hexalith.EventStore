@@ -1,0 +1,51 @@
+{
+  "argv": [
+    [
+      "docker",
+      "ps",
+      "-q"
+    ],
+    [
+      "docker",
+      "inspect",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ]
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T09:45:17.780651+00:00",
+  "finished_utc": "2026-10-07T09:45:17.921036+00:00",
+  "exit_code": 0,
+  "containers": [
+    {
+      "id": "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523",
+      "name": "/dapr_placement",
+      "image_id": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "started_at": "2026-10-07T04:41:06.397649945Z",
+      "running": true
+    },
+    {
+      "id": "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077",
+      "name": "/dapr_scheduler",
+      "image_id": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "started_at": "2026-10-07T04:41:06.40484467Z",
+      "running": true
+    },
+    {
+      "id": "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+      "name": "/dapr_redis",
+      "image_id": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "started_at": "2026-10-07T04:41:06.431759203Z",
+      "running": true
+    },
+    {
+      "id": "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488",
+      "name": "/dapr_zipkin",
+      "image_id": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "started_at": "2026-10-07T04:41:06.421753641Z",
+      "running": true
+    }
+  ]
+}

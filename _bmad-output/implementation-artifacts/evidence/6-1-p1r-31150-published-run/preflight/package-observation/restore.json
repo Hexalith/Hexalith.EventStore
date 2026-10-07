@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "dotnet",
+    "restore",
+    "/tmp/p1r-31150-restore-planning-s6svg_uh/Identity.csproj",
+    "--configfile",
+    "/tmp/p1r-31150-restore-planning-s6svg_uh/NuGet.Config",
+    "--packages",
+    "/tmp/p1r-31150-restore-planning-s6svg_uh/packages",
+    "-p:Configuration=Release",
+    "-p:UseHexalithProjectReferences=false",
+    "-p:UseNuGetDeps=true",
+    "-m:1"
+  ],
+  "cwd": "/tmp/p1r-31150-restore-planning-s6svg_uh",
+  "started_utc": "2026-10-07T09:42:28.536397+00:00",
+  "finished_utc": "2026-10-07T09:42:31.807223+00:00",
+  "exit_code": 0,
+  "output_sha256": "2576b0eda82f8799259a00d7e96d3027f6bd1753362d98cc26da753be50d2c32",
+  "environment": {
+    "CI": "true",
+    "NUGET_PACKAGES": "/tmp/p1r-31150-restore-planning-s6svg_uh/packages",
+    "MSBUILDDISABLENODEREUSE": "1"
+  }
+}

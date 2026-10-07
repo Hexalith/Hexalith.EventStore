@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "aspire",
+    "start",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--isolated",
+    "--format",
+    "Json",
+    "--non-interactive"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T09:40:06.370206+00:00",
+  "finished_utc": "2026-10-07T09:40:19.817833+00:00",
+  "exit_code": 2,
+  "timed_out": false,
+  "timeout_seconds": 120,
+  "output_sha256": "fc0cfd6896cd10b4f5bce9f23d725881e03d92c5f0e47fc6884d8ebb2998aa02"
+}

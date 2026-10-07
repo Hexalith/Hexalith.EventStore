@@ -1,0 +1,103 @@
+Starting Aspire AppHost in the background...
+❌ Failed to start the AppHost.
+ℹ️ Recent AppHost startup output:
+NativeCertificateToolRunner: The certificate is not trusted by OpenSSL.  Ensure that the SSL_CERT_DIR environment variable is set correctly.
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj (in 
+401 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.
+csproj (in 348 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj
+(in 401 ms).
+  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj (in 
+416 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (in 
+401 ms).
+  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj (in 
+403 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj (in 
+401 ms).
+  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj 
+(in 347 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.cs
+proj (in 402 ms).
+  Restored 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.cs
+proj (in 401 ms).
+  10 of 20 projects are up-to-date for restore.
+  Hexalith.EventStore.ServiceDefaults -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.Serv
+iceDefaults.dll
+  Hexalith.EventStore.TestSubscriber -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.Tes
+tSubscriber.dll
+  Hexalith.EventStore.Contracts -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.
+dll
+  Hexalith.EventStore.Sample.Contracts -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/bin/Debug/net10.0/Hexalith.EventStore
+.Sample.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.A
+dmin.Abstractions.dll
+  Hexalith.EventStore.Client -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.DomainService -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.Domain
+Service.dll
+  Hexalith.EventStore.Server -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Sample -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/bin/Debug/net10.0/Hexalith.EventStore.Sample.dl
+l
+  Hexalith.EventStore.SignalR -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.RestApi.Generators -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.RestApi.Generators/bin/Debug/netstandard2.0/Hexalith.Event
+Store.RestApi.Generators.dll
+  Hexalith.EventStore.Admin.Server -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.S
+erver.dll
+  Hexalith.EventStore.Gateway -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Hexalith.EventStore.Admin.Server.Host -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Ad
+min.Server.Host.dll
+  Hexalith.EventStore.Sample.Api -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Api/bin/Debug/net10.0/Hexalith.EventStore.Sampl
+e.Api.dll
+  Hexalith.EventStore.Admin.UI -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dl
+l
+  Hexalith.EventStore.Sample.BlazorUI -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.BlazorUI/bin/Debug/net10.0/Hexalith.EventStore.
+Sample.BlazorUI.dll
+  Hexalith.EventStore.Aspire -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/bin/Debug/net10.0/Hexalith.EventStore.Aspire.dll
+  Hexalith.EventStore.AppHost -> 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/bin/Debug/net10.0/Hexalith.EventStore.AppHost.dll
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+Time Elapsed 00:00:10.67
+Unhandled exception. System.InvalidOperationException: Plain local Aspire run requires both Hexalith.Tenants host projects before any resources can start. 
+Initialize the root Tenants submodule with 'git submodule update --init references/Hexalith.Tenants'. Missing project(s): 
+'/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj', 
+'/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj'
+   at Hexalith.EventStore.AppHost.TenantsProjectPaths.Validate() in 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs:line 56
+   at Hexalith.EventStore.AppHost.TenantsProjectPaths.Resolve() in 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs:line 36
+   at Program.<Main>$(String[] args) in 
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Program.cs:line 203
+   at Program.<Main>(String[] args)
+❌ AppHost process exited with code 134.
+📄 See logs at /home/administrator/.aspire/logs/cli_20261007T094006_11aa47f8.log
+🔍 See AppHost logs at /home/administrator/.aspire/logs/cli_20261007T094006978_detach-child_a8045b0487bf401abb54124f35beeba0.log

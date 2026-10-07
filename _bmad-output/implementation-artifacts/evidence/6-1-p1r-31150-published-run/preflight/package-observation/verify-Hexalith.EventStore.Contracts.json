@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "nuget",
+    "verify",
+    "--all",
+    "/tmp/p1r-31150-restore-planning-s6svg_uh/packages/hexalith.eventstore.contracts/3.115.0/hexalith.eventstore.contracts.3.115.0.nupkg",
+    "--verbosity",
+    "minimal"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T09:44:13.680826+00:00",
+  "finished_utc": "2026-10-07T09:44:14.091374+00:00",
+  "exit_code": 0,
+  "output_sha256": "16dd661532cc88b41c73bdc649105b9c00d3dbeaf9323ec4c4a1b1bb64523446",
+  "repository_signature": true
+}

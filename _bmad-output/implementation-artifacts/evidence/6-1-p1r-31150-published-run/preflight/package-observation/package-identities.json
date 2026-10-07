@@ -1,0 +1,32 @@
+[
+  {
+    "id": "Hexalith.EventStore.Client",
+    "archive_sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55",
+    "content_hash": "6oSVMtK90Wiig9ukZrCM/MGxGMNpFqowuXVUpN8pha0Wgb6JJsdR8h1iiCkXVWLGgYL3I0wUd1bFzoS+RQZhsg==",
+    "source": "https://api.nuget.org/v3/index.json"
+  },
+  {
+    "id": "Hexalith.EventStore.Contracts",
+    "archive_sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f",
+    "content_hash": "abhaYH3cngCNWll16UiL59s9Edxef1iYkPmjn9oUzQR/jgoRUhLhhz6EGyKrzGoGdDk5k+6zBKVPyFPLRO32uA==",
+    "source": "https://api.nuget.org/v3/index.json"
+  },
+  {
+    "id": "Hexalith.EventStore.DomainService",
+    "archive_sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9",
+    "content_hash": "fFVCm+45FbrCfVzhimRUuJ7hzKKBMUdVWiGZbeU/Ov8csJUQi1J/y/idp6aFgQ9lgmPQ0p88NIai2573ReJdOA==",
+    "source": "https://api.nuget.org/v3/index.json"
+  },
+  {
+    "id": "Hexalith.EventStore.Server",
+    "archive_sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469",
+    "content_hash": "oq9vNRMMYOjh+2oS4zeU2XgU3+1rEbPkdJEGl596ybA2S8kHb83gJUxPfRwOtMI1z8MPhh3Vo2onApTGK0bGuA==",
+    "source": "https://api.nuget.org/v3/index.json"
+  },
+  {
+    "id": "Hexalith.EventStore.ServiceDefaults",
+    "archive_sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841",
+    "content_hash": "rlPzDS8kaa6u5AFRd8WSZBDqbPj1VjunYTW76kSQlZSFJeRRENGPR1jMpIm81njb+FeCVbjET/AWfFH/f8fgpQ==",
+    "source": "https://api.nuget.org/v3/index.json"
+  }
+]
