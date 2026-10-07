@@ -3,8 +3,8 @@ name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators, inheriting FrontComposer and Blazor Fluent UI V5.
 status: draft
 created: 2026-07-05
-updated: 2026-09-09
-reviewed_repository_revision: 0994c37814c37dac7667a209dbd0659125aac49e
+updated: 2026-10-07
+reviewed_repository_revision: c60503c13069fde13f329f2166ff39c90c3661c4
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -12,9 +12,6 @@ sources:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md
   - https://fluentui-blazor-v5.azurewebsites.net/
-colors: {}
-typography: {}
-rounded: {}
 spacing:
   density-unit: 4px
   compact-gap: 8px
@@ -86,26 +83,26 @@ components:
     implementation: 'FcStatusBadge with bounded FluentText explanation'
 ---
 
-## Contract Scope
-
-The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
-
-The reviewed repository revision is `0994c37814c37dac7667a209dbd0659125aac49e`. `EXPERIENCE.md` records the input-snapshot digests and authority order. `status: draft` means this source-safety update remains open for assumption review and finalization. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
-
-Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
-
 ## Brand & Style
 
 Hexalith.EventStore Admin is an operations surface, not a marketing product or a local design system. It inherits the FrontComposer shell and Blazor Fluent UI V5 and keeps the established visual direction: compact host navigation, a neutral work canvas, dense evidence tables, restrained status surfaces, and system typography.
 
 The design must communicate operational state honestly. Accepted, evidence-pending, projection-confirmed, stale, unavailable, deferred, denied, and failed are distinct states. Visual polish must never soften those distinctions or imply that a backlog capability is implemented.
 
+### Contract scope
+
+The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
+
+The reviewed repository revision is `c60503c13069fde13f329f2166ff39c90c3661c4`. `EXPERIENCE.md` records the 2026-10-07 input-snapshot digests and authority order. `status: draft` keeps this update open for finalization. Document finality does not authorize implementation, release, deployment, migration, or a readiness verdict.
+
+Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
+
 ## Colors
 
-All colors inherit from FrontComposer and Blazor Fluent UI V5. The empty `colors` map is deliberate: EventStore defines no brand or status palette and does not restate inherited theme values as local tokens.
+All colors inherit from FrontComposer and Blazor Fluent UI V5. EventStore defines no brand or status palette, so the optional frontmatter color group is omitted rather than restating inherited theme values.
 
 - Use Fluent component appearances and current Fluent 2 roles for accent, neutral surfaces, foregrounds, borders, and focus. `FcStatusBadge` receives a FrontComposer `BadgeSlot`; do not invent a nonexistent `BadgeColor.Neutral` value.
-- Projection lifecycle colors follow the shipped Tenants contract: `Current` → `Success`; `Stale` and `Unavailable` → `Severe`; `Rebuilding` → `Informative`; `Degraded` → `Warning`; `LocalOnly` and `Unknown` → `Important`. Text and icon remain the authoritative cues.
+- Projection lifecycle colors follow the shipped Tenants contract: `Current` → `Success`; `Stale` and `Unavailable` → `Severe`; `Rebuilding` → `Informative`; `Degraded` → `Warning`; `LocalOnly` and `Unknown` → `Important`. Localized state labels and icons remain the authoritative cues; contract state IDs remain stable.
 - Do not hard-code colors captured from reference screenshots.
 - Do not use gradients, decorative color bands, custom status palettes, legacy Fluent v4/FAST tokens, or redefined theme primitives.
 - Text contrast meets WCAG 2.2 AA. Focus indicators, control boundaries, selected states, and lifecycle graphics meet the 3:1 non-text contrast floor against adjacent colors.
@@ -114,7 +111,7 @@ All colors inherit from FrontComposer and Blazor Fluent UI V5. The empty `colors
 
 ## Typography
 
-Typography inherits FrontComposer and Fluent UI V5. The empty `typography` map is deliberate: EventStore does not reproduce the Fluent ramp in local CSS.
+Typography inherits FrontComposer and Fluent UI V5. The optional frontmatter typography group is omitted because EventStore adds no type-ramp override.
 
 - `FcPageHeader` renders page and selected-tab titles. Use direct work-surface nouns for those titles, and expose exactly one focusable heading.
 - `FluentText` roles own body, label, status, and metadata hierarchy. Segoe UI and system fallbacks come from the inherited system.
@@ -137,7 +134,7 @@ Depth inherits from Fluent components. Use shell layers, dividers, dialogs, draw
 
 ## Shapes
 
-Shapes inherit from Fluent components. Do not duplicate component radii in local CSS. Full rounding is reserved for inherited badges or circular icon controls; it is not a substitute for tabs, buttons, or panels.
+Shapes inherit from Fluent components; the optional frontmatter radius group is omitted. Do not duplicate component radii in local CSS. Full rounding is reserved for inherited badges or circular icon controls; it is not a substitute for tabs, buttons, or panels.
 
 ## Components
 
@@ -153,12 +150,12 @@ Frontmatter owns implementation bindings; this table owns visual role and unique
 | **Stat summary** | Repeated compact metrics with visible evidence state and observation time. |
 | **Filter bar** | One compact control group directly above its evidence grid. |
 | **Evidence grid** | Dense rows, strong header hierarchy, labelled overflow, and one action location. Projection fan-out shows each route's checkpoint and `advanced`, `not advanced`, `retry`, or `failure` outcome; an aggregate success treatment is forbidden while any route is not proven advanced. |
-| **Status badge** | Inherited semantic slot with readable canonical state text. |
+| **Status badge** | Inherited semantic slot with a localized label for the canonical state. |
 | **Issue banner** | Consequence-led intent; never borrows a lifecycle badge color. |
-| **Operation dialog** | Visually separates frozen scope, bounded human/service attribution or delegation, reason, issuer/expiry, applicable request/correlation/message identities, effect, risk, reversibility, expected evidence, and `prepare`/`effect`/`commit`/`recovery` phase. Secret, token, claim, raw idempotency, digest, and fence material remains absent. |
+| **Operation dialog** | Visually separates frozen scope, bounded human/service attribution or delegation, reason, issuer/expiry, applicable request/correlation/message identities, effect, risk, reversibility, expected evidence, and `prepare`/`effect`/`commit`/`recovery` phase. Create Tenant uses this dialog's existing form layout with persistent inline tenant-ID validation. Secret, token, claim, raw idempotency, catalog-digest, and fence material remains absent. |
 | **Detail panel** | A labelled evidence aside that keeps source context visible where space permits. |
 | **Multi-section panel** | Titled sibling sections; primary evidence expanded by default. |
-| **Command lifecycle tracker** | Text-first ordered states, never decorative progress. |
+| **Command lifecycle tracker** | Text-first ordered states with source and observation time. A status-request timeout displays unknown evidence rather than an inferred terminal command state. |
 | **Projection freshness indicator** | Provenance, lifecycle, observation, and freshness; Tenants-consistent text/icon/color mapping. |
 | **Projection connection status** | A bounded connection/reconciliation message bar; discarded or over-limit notification metadata leads to bounded refetch or unavailable treatment, never rendered metadata or lifecycle evidence. |
 | **Loading skeleton** | Matches the eventual summary/grid layout; no reduced-motion shimmer. |

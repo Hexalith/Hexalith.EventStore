@@ -107,7 +107,7 @@ FR37: EventStore must provide an optional shared payload-protection engine packa
 
 ### NonFunctional Requirements
 
-NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes.
+NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exceptions are the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16), and, on interactive UI hosts only, an enumerated set of static framework assets and authentication-protocol callback endpoints that carry no tenant, operational, or user data, each explicitly pinned `AllowAnonymous`, support-safe, and enumerated by endpoint-metadata tests (AD-16); the fail-closed default is never weakened to reach either exception.
 
 NFR2: Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. Tenant provisioning must reject the reserved `system` tenant name.
 
@@ -7581,14 +7581,32 @@ So that no high-risk result overstates the assurance behind it.
 **Then** it is `single-maintainer-attested` for the first and `independent` for the second, with fixtures proving the switch
 **And** a downstream record (`READY`, `release-available`, `production-promoted`, consumer removal) carries the lowest assurance level of its inputs.
 
-**Given** the matrix and validator
+**Given** the matrix, validator, and CI fixture suite
 **When** CI runs
-**Then** the validator runs in a blocking, required check whose result is retrieved from the CI platform for the exact head SHA and workflow-file digest, never read from an author-supplied file
-**And** the matrix inputs are content-hashed so that edits fail the check.
+**Then** a required fixture job blocks merges and proves every rejection path with an observed failing negative fixture beside a positive control
+**And** a separate, non-required live-evaluation job runs on every push to `main` and publishes a retrievable, content-bound PASS or FAIL without blocking merges; its result is evidence only and never a seal
+**And** the matrix inputs are content-hashed so that edits invalidate the result, and the jobs use a new workflow file or the Story 9.1 workflow under the Epic 9 truthful-FAIL CI rule.
 
-**Given** a high-risk gate or a story recorded against a high-risk NFR
-**When** a transition to PASS or `done` is attempted
-**Then** the guarded transition requires the passing validator result and approval at the required assurance level (OR13).
+**Given** a high-risk gate result to PASS, a story recorded against a high-risk NFR to `done`, readiness, `release-available`, `production-promoted`, or consumer removal is attempted
+**When** its dedicated transition workflow, owned by this story beside the matrix validator, runs for that one guarded transition
+**Then** the transition is effective only when its validator retrieves a passing result from the CI platform for a required run of that workflow on the exact head SHA and workflow-file digest, under the platform's authenticated CI identity, bound to that transition and its subject and evidence identities
+**And** it requires approval at the registry-computed Assurance Control level (OR10, OR13); a missing or failing seal blocks only that transition and never `main`
+**And** required means enforcement by the guarded transition's validator, never a branch-protection or ruleset check on `main` that a bypass push can skip.
+
+**Given** an owner attestation or ratification, including an AD-26 record, is consumed by a guarded transition
+**When** that transition's sealed run validates the record
+**Then** the record binds its required assurance level, subject digest, and authenticated attestation evidence, and the consuming run checks the required level and 24-hour separation window and computes and labels the achieved level
+**And** the seal attaches to the transition rather than the owner record; the record never seals itself, and every downstream record carries the lowest assurance level of its inputs.
+
+**Given** a guarded transition consumes a predecessor validator result, such as `evidence-validated`
+**When** its sealed run checks that predecessor
+**Then** it retrieves the validator from the pinned commit bound by the predecessor record and re-runs it inside the consuming transition's sealed run
+**And** a validator-identity mismatch or failing re-validation voids the predecessor and blocks the consuming transition.
+
+**Given** the transition seal and predecessor rejection paths
+**When** their fixtures run
+**Then** a missing or failing seal, a non-required live result offered as a seal, an author-supplied result file, an unauthenticated CI identity, a wrong transition, stale head SHA, changed workflow-file digest, changed subject or evidence identity, and mismatched or failing predecessor validation are each proven rejected by an observed failing negative fixture beside a positive control
+**And** a truthful live FAIL leaves merges unblocked while the attempted guarded transition remains blocked; no guard is green by construction.
 
 **Given** G-RUNTIME-PARITY is evaluated under this control
 **When** the Assurance Control evaluation completes

@@ -1,10 +1,10 @@
 # Hexalith.EventStore UX Index
 
-Status: final
-Updated: 2026-09-09
+Status: draft
+Updated: 2026-10-07
 
 This folder is the canonical UX source for Hexalith.EventStore. It is updated
-against repository revision `23a722a1ffe29099a9d87df266552be4e3addd82`
+against repository revision `c60503c13069fde13f329f2166ff39c90c3661c4`
 plus current input-snapshot digests; source authority is in `EXPERIENCE.md`. The archived top-level UX handoff is retained only for audit
 history at:
 
@@ -27,18 +27,19 @@ authorizes implementation or readiness; the current PRD remains `blocked` /
 
 ## Reconciliation And Validation
 
-Lens reviews in this folder are regenerated in place; superseded bodies are recoverable from Git history.
+The current update is recorded in [Current-source reconciliation](reconcile-current-sources-2026-10-07.md). It preserves the inherited visual direction and approved mock set while aligning the detailed contracts with current source authority. Upstream `/types` route-manifest repair, the NFR1 architecture conflict, OR14 acceptance, and Story 9.3 digest renewal remain open; detailed document finality does not close them.
 
-- [Latest-source reconciliation](reconcile-latest-sources-2026-09-09.md) — 2026-09-09
+Prior lens reviews are historical evidence; superseded bodies are recoverable from Git history.
+
+- [Latest-source reconciliation](reconcile-latest-sources-2026-09-09.md) — historical 2026-09-09 update
+- [Source-safety reconciliation](reconcile-source-safety-update-2026-09-09.md) — historical draft assumptions superseded by the current reconciliation
 - [Validation report](validation-report.md) — regenerated 2026-09-09; grades the 2026-08-01 `status: final` spines
 - [Validation report (HTML)](validation-report.html) — regenerated 2026-09-09
 - [Architecture-readiness review](review-architecture-readiness.md) — regenerated 2026-09-09; carries forward the code-verified findings of the 2026-09-08 lens
 - [Accessibility and support-safety review](review-accessibility-support-safety.md) — regenerated 2026-09-09
 - [Rubric review](review-rubric.md) — regenerated 2026-09-09
 
-These reports describe the pre-update spines. The user skipped a fresh optional
-multi-lens validation when finalizing this update, so they are retained as
-historical review evidence rather than a verdict on the final spines.
+These reports describe earlier spines. Fresh optional multi-lens validation has not run for the 2026-10-07 update; the reports remain historical review evidence rather than a verdict on the current pair.
 
 ## Visual References
 

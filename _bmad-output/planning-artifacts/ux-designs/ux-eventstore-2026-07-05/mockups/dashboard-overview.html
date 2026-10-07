@@ -116,10 +116,10 @@
         SignalR disconnected. Polling remains available; notifications are freshness nudges only.
       </section>
       <section class="stats" aria-label="Operational summary">
-        <article class="stat"><span class="meta">Active streams</span><strong>41</strong><span class="badge" data-state="Current">Current</span><div class="meta">ProjectionBacked · observed 09:42 UTC</div></article>
-        <article class="stat"><span class="meta">Commands in flight</span><strong>7</strong><span class="badge" data-state="EvidencePending">Evidence pending</span><div class="meta">Refresh status; do not resubmit</div></article>
-        <article class="stat"><span class="meta">Dead letters</span><strong>3</strong><span class="badge" data-state="Failure">Action required</span><div class="meta">Authorized scope only</div></article>
-        <article class="stat"><span class="meta">Projection lag</span><strong>12 s</strong><span class="badge" data-state="Stale">Stale</span><div class="meta">Dependent mutations disabled</div></article>
+        <article class="stat"><span class="meta">Active streams</span><strong>41</strong><span class="badge" data-state="Current">Current</span><div class="meta">Stream evidence · ProjectionBacked · observed 09:42:10 UTC</div></article>
+        <article class="stat"><span class="meta">Commands in flight</span><strong>7</strong><span class="badge" data-state="EvidencePending">Evidence pending</span><div class="meta">Command status · observed 09:42:10 UTC<br>Refresh status; do not resubmit</div></article>
+        <article class="stat"><span class="meta">Dead letters</span><strong>3</strong><span class="badge" data-state="Failure">Action required</span><div class="meta">Dead-letter evidence · observed 09:42:10 UTC<br>Authorized scope only</div></article>
+        <article class="stat"><span class="meta">Projection lag</span><strong>12 s</strong><span class="badge" data-state="Stale">Stale</span><div class="meta">Projection status · observed 09:41:58 UTC<br>Dependent mutations disabled</div></article>
       </section>
       <section class="grid-region" aria-label="Recent operational evidence" tabindex="0">
         <div class="filters" aria-label="Evidence filters">
@@ -132,7 +132,7 @@
           <thead><tr><th scope="col">State</th><th scope="col">Domain</th><th scope="col">Aggregate</th><th scope="col">Evidence</th><th scope="col">Observed</th></tr></thead>
           <tbody>
             <tr><td><span class="badge" data-state="Current">Current</span></td><td>orders</td><td class="mono">01K4…7P2</td><td>Projection confirmed</td><td>09:42:10 UTC</td></tr>
-            <tr><td><span class="badge" data-state="EvidencePending">Evidence pending</span></td><td>tenants</td><td class="mono">system</td><td>Command accepted; read evidence pending</td><td>09:41:58 UTC</td></tr>
+            <tr><td><span class="badge" data-state="EvidencePending">Evidence pending</span></td><td>tenants</td><td class="mono">01K4…4N1</td><td>Command accepted; read evidence pending</td><td>09:41:58 UTC</td></tr>
             <tr><td><span class="badge" data-state="Failure">Dead letter</span></td><td>billing</td><td class="mono">01K4…6M8</td><td>Publication retry exhausted</td><td>09:37:22 UTC</td></tr>
           </tbody>
         </table>
