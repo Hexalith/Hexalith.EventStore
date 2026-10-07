@@ -30,7 +30,7 @@ internal sealed class EventUpcastChainExecutor
         _validateVersion = validateVersion;
         foreach (((string type, int source), RegisteredEventUpcaster binding) in _upcasters)
         {
-            binding.RequireDescriptor(registry.GetEdge(type, source));
+            binding.RequireDescriptor(registry.GetEdge(type, source), registry.CapabilityLoss);
         }
     }
 
@@ -156,7 +156,7 @@ internal sealed class EventUpcastChainExecutor
         // Validate every callable before allocating or invoking an earlier hop.
         for (int version = sourceVersion; version < current; version++)
         {
-            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version));
+            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version), _registry.CapabilityLoss);
         }
 
         return current;

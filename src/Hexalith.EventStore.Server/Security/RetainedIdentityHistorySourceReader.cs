@@ -79,6 +79,12 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                         return new(null, "history-source-gap-or-scope-mismatch");
                     }
 
+                    if (item.MetadataVersion != 1 || item.EventContractType is not null || item.PayloadVersion is not null
+                        || item.SerializationFormat is not ("json" or "json+pdenc-v1" or "json+identity-history-v1"))
+                    {
+                        return new(null, "history-source-metadata-unsupported");
+                    }
+
                     cursor++;
                     bytes += item.Payload.Length;
                     if (bytes > RetainedIdentityHistoryLimits.MaxPayloadBytes)
@@ -104,7 +110,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                     }
 
                     PayloadProtectionResult readable = await custody.UnprotectEventAsync(request.Identity, item.EventTypeName,
-                        item.Payload, item.SerializationFormat, readToken).WaitAsync(readToken).ConfigureAwait(false);
+                        item.Payload.ToArray(), item.SerializationFormat, readToken).WaitAsync(readToken).ConfigureAwait(false);
                     readToken.ThrowIfCancellationRequested();
                     readableBytes += readable.PayloadBytes.Length;
                     if (readable.Metadata.State != PayloadProtectionState.Unprotected

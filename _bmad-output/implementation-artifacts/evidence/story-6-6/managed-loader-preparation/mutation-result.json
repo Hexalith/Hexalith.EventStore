@@ -1,0 +1,45 @@
+{
+  "mutations": [
+    {
+      "build_timeout_seconds": 180,
+      "failed_controls": 2,
+      "mutation": "assembly-load-subscription",
+      "result": "killed",
+      "test_timeout_seconds": 60
+    },
+    {
+      "build_timeout_seconds": 180,
+      "failed_controls": 1,
+      "mutation": "private-image-pin",
+      "result": "killed",
+      "test_timeout_seconds": 60
+    },
+    {
+      "build_timeout_seconds": 180,
+      "failed_controls": 1,
+      "mutation": "loaded-object-origin",
+      "result": "killed",
+      "test_timeout_seconds": 60
+    },
+    {
+      "build_timeout_seconds": 180,
+      "failed_controls": 2,
+      "mutation": "original-dependency-declaration",
+      "result": "killed",
+      "test_timeout_seconds": 60
+    },
+    {
+      "build_timeout_seconds": 180,
+      "failed_controls": 1,
+      "mutation": "private-image-preload-recheck",
+      "result": "killed",
+      "test_timeout_seconds": 60
+    }
+  ],
+  "result": "passed",
+  "scope": "isolated local managed-loader preparation; no readiness or activation authority",
+  "source_sha256": {
+    "src/Hexalith.EventStore.Client/Events/EventEvolutionManagedLoadObserver.cs": "4f7c4083096bf472f1a70a0a1af7bccb256c064e63ed184a8601058ef48f6541",
+    "src/Hexalith.EventStore.Client/Events/EventManagedArtifact.cs": "5e5d5fe798b1098f8ce0a2d804eac893964254aa3960f66986e83783a6e37a26"
+  }
+}

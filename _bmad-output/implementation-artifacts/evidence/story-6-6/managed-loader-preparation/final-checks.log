@@ -1,0 +1,25 @@
+$ git rev-parse HEAD
+Exit: 0
+4e4ee8587ee1f6e73f704cd548734e963b2af3e9
+
+
+$ git diff --check -- src/Hexalith.EventStore.Client/Events/EventManagedLoadContext.cs src/Hexalith.EventStore.Client/Events/EventEvolutionManagedLoadObserver.cs src/Hexalith.EventStore.Client/Events/EventManagedArtifact.cs src/Hexalith.EventStore.Client/Events/EventManagedArtifactExecutionBinding.cs src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs src/Hexalith.EventStore.Client/Events/RegisteredEventUpcaster.cs src/Hexalith.EventStore.Client/Events/RegisteredV1Downserializer.cs src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs src/Hexalith.EventStore.Client/Events/EventV1DownserializeExecutor.cs tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs tests/Hexalith.EventStore.Client.Tests/Events/EventManagedArtifactTests.cs tests/Hexalith.EventStore.Client.Tests/Events/EventPrivateImageRegistryCallbackTests.cs tests/Hexalith.EventStore.Client.Tests/Events/PrivateImageEventCallbacks.cs _bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md _bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md _bmad-output/implementation-artifacts/evidence/story-6-6/managed-loader-preparation
+Exit: 0
+
+Passed: LF and whitespace checks for all owned tracked/untracked source and evidence files.
+
+Passed: frozen intent matches observed HEAD; canonical baseline, in-progress status and all eight open M1–M8 tasks preserved.
+
+Passed: all three required context input paths remain available.
+
+Passed: retained mutation source hashes match final owned source; all five controls killed.
+
+Passed: repeatable mutation-runner syntax compilation without repository cache artifacts.
+
+Authority inventory: production-profile and routing-catalog slots absent; no readiness inferred.
+
+$ rg -n AddEventStoreEventEvolutionManifestCandidate src samples
+src/Hexalith.EventStore.Client/Registration/EventEvolutionServiceCollectionExtensions.cs:27:    public static IServiceCollection AddEventStoreEventEvolutionManifestCandidate(
+
+
+Result: declaration-only candidate method; no application manifest-candidate registration claimed.

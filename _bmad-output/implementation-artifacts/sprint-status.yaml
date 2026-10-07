@@ -173,6 +173,9 @@ development_status:
   3-18-public-surface-compatibility-baseline-and-release-gate: backlog
   3-19-publication-authority-record-and-canonical-production-profile: backlog
   3-20-consumer-removal-authority-manifest-and-validator: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): runtime pin and
+  # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.
+  3-21-production-dapr-runtime-pin-and-durable-broker-qualification: backlog
   epic-3-retrospective: done
 
   epic-4: in-progress
@@ -241,6 +244,12 @@ development_status:
   5-10-reserved-system-tenant-provisioning-guard: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-AUTH-HOSTS owner.
   5-11-shared-versioned-jwt-contract-and-all-host-conformance: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): AD-33 catalog
+  # schema/codec/envelope (before 2.14 and 2.15) and activation; AD-16 fallback and Dapr
+  # framework-route protection on every HTTP host.
+  5-12-route-and-idempotency-catalog-schema-codec-and-envelope: backlog
+  5-13-route-catalog-activation-and-topology-binding: backlog
+  5-14-authenticated-fallback-and-dapr-framework-route-protection: backlog
   epic-5-retrospective: optional
 
   epic-6: in-progress
@@ -286,6 +295,9 @@ development_status:
   7-20-admin-accessibility-localization-and-responsive-conformance: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): NFR17-C5 owner.
   7-21-crypto-shred-boundary-documentation-and-evidence: backlog
+  # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): AD-26 restore
+  # posture including scheduler state; a Story 3.19 issue-step prerequisite.
+  7-22-production-restore-posture-including-scheduler-state: backlog
   epic-7-retrospective: optional
 
   epic-8: in-progress

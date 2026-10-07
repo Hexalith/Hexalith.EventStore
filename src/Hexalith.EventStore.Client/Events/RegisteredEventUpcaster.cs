@@ -8,9 +8,11 @@ internal sealed class RegisteredEventUpcaster
 {
     private readonly byte[] _assemblyHash;
     private readonly byte[] _optionsHash;
+    private readonly EventManagedArtifactExecutionBinding? _executionBinding;
 
     /// <summary>Hashes the actual directly executing assembly and copies the admitted 32-byte options digest.</summary>
-    internal RegisteredEventUpcaster(string implementationId, IEventUpcaster upcaster, byte[] optionsHash)
+    internal RegisteredEventUpcaster(string implementationId, IEventUpcaster upcaster, byte[] optionsHash,
+        EventManagedArtifactExecutionBinding? executionBinding = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(implementationId);
         ArgumentNullException.ThrowIfNull(upcaster);
@@ -23,6 +25,14 @@ internal sealed class RegisteredEventUpcaster
         ImplementationId = implementationId;
         Upcaster = upcaster;
         _optionsHash = optionsHash.ToArray();
+        _executionBinding = executionBinding;
+        if (executionBinding is not null)
+        {
+            executionBinding.RequireBoundAssembly(upcaster.GetType().GetInterfaceMap(typeof(IEventUpcaster)).TargetMethods.Single().Module.Assembly);
+            _assemblyHash = executionBinding.CopyHashForAssembly(upcaster.GetType().Assembly);
+            return;
+        }
+
         string location = upcaster.GetType().Assembly.Location;
         if (string.IsNullOrEmpty(location))
         {
@@ -40,8 +50,10 @@ internal sealed class RegisteredEventUpcaster
     internal IEventUpcaster Upcaster { get; }
 
     /// <summary>Checks the callable's direct assembly and options against the exact E descriptor.</summary>
-    internal void RequireDescriptor(EventRegistryRow edge)
+    internal void RequireDescriptor(EventRegistryRow edge, EventEvolutionCapabilityLoss capabilityLoss)
     {
+        _executionBinding?.RequireCapabilityScope(capabilityLoss);
+        _executionBinding?.RequireBoundAssembly(Upcaster.GetType().Assembly);
         if (!string.Equals(ImplementationId, edge.GetTextField(7), StringComparison.Ordinal)
             || !_assemblyHash.AsSpan().SequenceEqual(edge.GetEncodedField(8))
             || !_optionsHash.AsSpan().SequenceEqual(edge.GetEncodedField(9)))

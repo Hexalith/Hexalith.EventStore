@@ -68,6 +68,23 @@ context:
 
 ## Implementation Notes
 
+### Dormant managed artifact admission and observations — 2026-10-07
+
+The [local managed-loader verification](evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md)
+records bounded private G-row/image ownership, exact direct Assembly-object
+binding, scope-bound registry callbacks and composed managed observations.
+Original dependency rows remain privately retained and charged; identical bytes
+cannot be relabelled as another dependency or loader context. Undeclared observed
+loads and loss of retained evidence fence subsequent callbacks. Observations occur
+after loads and cannot undo effects. Unlisted contexts and native loads remain
+outside this local coverage.
+
+These internal prerequisites are unregistered. Authoritative complete catalogs,
+serving-peer pins, transitive/framework/native execution binding, qualified
+process-wide observations and production/Dapr/fleet consumer evidence remain
+required before readiness. Frozen intent, canonical baseline, in-progress status,
+all M1–M8 dispositions and V2/proof-dependent activation fences are unchanged.
+
 ### Source-derived Counter writer and Dapr/PostgreSQL recovery — 2026-10-07
 
 The owner directed this resumed run to derive the missing declarations and
@@ -166,6 +183,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-07 — Added [dormant managed artifact and observation preparation](evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md): privately retained exact G declarations/images, direct loaded-object provenance, original-row and shared-loss checks through actual registry callbacks, and composed managed-load detection. Local supplied graphs grant no catalog, peer or production authority; native/process-wide qualification and broader consumers remain open. Frozen intent, baseline, parent status and M1–M8 tasks remain unchanged.
 
 - 2026-10-07 — On the owner's direction to derive the inputs, implemented and registered the [source-derived Counter V1 serializer declarations](evidence/story-6-6/verification-2026-10-07-counter-v1-serialization.md) and verified the real Sample/actor path with [two-host Dapr/PostgreSQL logical recovery](evidence/story-6-6/verification-2026-10-07-counter-v1-postgresql.md). Exact wire compatibility, persisted bytes/metadata, stable separate identities, sequence-one state, once-only domain execution and restart recovery passed. Full Sample regressions and the required Release build passed. These local prerequisites do not close M1–M8 or grant catalog/production/V2 readiness; frozen intent, baseline and parent status are preserved.
 

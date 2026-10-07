@@ -16,7 +16,9 @@ internal sealed class RegisteredEventVersionValidation
     internal RegisteredEventVersionValidation(EventDomainRegistry registry,
         string schemaId, EventVersionValidator schema, ReadOnlyMemory<byte> schemaOptions, IReadOnlyList<EventOptionRule> schemaRules,
         string identityId, EventVersionValidator identity, ReadOnlyMemory<byte> identityOptions, IReadOnlyList<EventOptionRule> identityRules,
-        Func<ReadOnlyMemory<byte>>? schemaRuntimeOptions = null, Func<ReadOnlyMemory<byte>>? identityRuntimeOptions = null)
+        Func<ReadOnlyMemory<byte>>? schemaRuntimeOptions = null, Func<ReadOnlyMemory<byte>>? identityRuntimeOptions = null,
+        EventManagedArtifactExecutionBinding? schemaExecutionBinding = null,
+        EventManagedArtifactExecutionBinding? identityExecutionBinding = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(schema);
@@ -24,8 +26,12 @@ internal sealed class RegisteredEventVersionValidation
         _registry = registry;
         _schema = schema;
         _identity = identity;
-        _schemaBinding = new EventImplementationBinding(schemaId, schema, schemaOptions, schemaRules, schemaRuntimeOptions);
-        _identityBinding = new EventImplementationBinding(identityId, identity, identityOptions, identityRules, identityRuntimeOptions);
+        _schemaBinding = new EventImplementationBinding(schemaId, schema, schemaOptions, schemaRules, schemaRuntimeOptions,
+            schemaExecutionBinding);
+        _identityBinding = new EventImplementationBinding(identityId, identity, identityOptions, identityRules, identityRuntimeOptions,
+            identityExecutionBinding);
+        _schemaBinding.RequireCapabilityScope(registry.CapabilityLoss);
+        _identityBinding.RequireCapabilityScope(registry.CapabilityLoss);
     }
 
     /// <summary>Checks both bindings before invoking either callback with independently expired immutable facades.</summary>

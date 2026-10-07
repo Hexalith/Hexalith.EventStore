@@ -6,7 +6,7 @@ Requested by: Administrator
 Trigger: [Phase 4 architecture handoff, 2026-10-07](architecture/architecture-eventstore-2026-07-05/reviews/phase-4-architecture-handoff-2026-10-07.md), "Routed items" (spine `architecture.md`, SHA-256 `1ff06c5ecc94003765a2fa6fd39491d9ccdb6d5b09419fcf7c8755c30d2d31e5`, `status: draft`)
 Builds on: [sprint-change-proposal-2026-10-07.md](sprint-change-proposal-2026-10-07.md) (approved and applied). Nothing in it is reverted or reworded.
 Review mode: Incremental, grouped; each group is approvable on its own
-Status: Proposed. Awaiting owner approval per group.
+Status: Approved by the owner on 2026-10-07 (all seven groups plus option 4b) and applied to `epics.md`, `prd.md`, and `sprint-status.yaml`, uncommitted. See the Application Record.
 Scope: Moderate. Six new backlog stories, extensions to Stories 2.14, 2.15, 3.19, 4.16, 5.7, and 9.3, one staged AD-ID propagation, and five PRD items routed to the product owner
 
 ## 1. Issue Summary
@@ -555,6 +555,35 @@ Approving this group approves the routing and the proposed text as input to a `b
 | 4.4 Recommended path | [x] | Direct adjustment |
 | 5.1–5.5 Proposal components | [x] | Sections 1–5 |
 | 6.1–6.2 Review | [x] | Groups 1–7 drafted |
-| 6.3 Final approval | [ ] | Pending, per group |
-| 6.4 Sprint-status update | [ ] | On approval |
-| 6.5 Handoff confirmation | [ ] | On approval |
+| 6.3 Final approval | [x] | Owner approved Groups 1–7 and option 4b on 2026-10-07 |
+| 6.4 Sprint-status update | [x] | Six `backlog` rows added; guarded blocks untouched |
+| 6.5 Handoff confirmation | [x] | Section 5; the owner's next steps are the assumption review and the AD-26 records |
+
+## Application Record (2026-10-07)
+
+Applied at `HEAD` `af2892e8cb58e844290e56563f9c2fcadaab90a7`. A concurrent Story 6.6 session committed and pushed the first draft of this file inside that commit ("feat(counter): add event serialization and tests for counter events"). This application record and the status line above were written after it.
+
+The edits were applied by a script that required exactly one match for every replacement and wrote nothing unless all of them matched. New story text and new ACs were copied verbatim from the fenced blocks in this document. The script also asserted three things: no `epics.md` **Architecture constraints** line cites AD-34, AD-35, or AD-36; no `[Gn]` marker leaks; and no 64-hex string enters `sprint-status.yaml`.
+
+| File | SHA-256 after application | Change |
+| --- | --- | --- |
+| `epics.md` | `a7474fc1edce5212689eed383e4424683ce5e821e08ff7b69cb99e082a19dc03` | Groups 1–6 and option 4b, plus one follow-up wording fix: the Story 2.14 CI-lane AC now reads "pass in each" instead of "pass in both", because it names three test sets |
+| `prd.md` | `e1eea2650e66cc167213cd84806f98b27e26cc668daa99db5a9e08b2b0a678fa` | §11.2 mapping for Groups 1–3; `source_artifacts` |
+| `sprint-status.yaml` | `6ea029bd1b1ab2bcc4c074e6f98b99284dba7724e5e657abc786c41fc0b49d11` | Six `backlog` rows under three dated comments |
+
+These digests are observation identifiers, not approval receipts. `architecture.md` is unchanged at `1ff06c5e…`. `epics.md` `inputDocumentDigests` and every other digest are unchanged. Group 7 was routed only, so `prd.md` carries none of items 7.1–7.5.
+
+**Option 4b as applied** in Story 2.14:
+
+- The "I want" line names "the EventStore gateway's and Admin Server's tenant checks".
+- The gateway AC's **Given** adds "Admin Server's `AdminTenantAuthorizationFilter` (`Ordinal`) and stream-query tenant filter (`OrdinalIgnoreCase`)". Its **When** adds "or Admin Server request … through them".
+- The CI-lane AC reads "gateway and Admin Server tests".
+- The Dependencies add: "Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b)."
+- The reconciliation note names Admin Server's tenant checks.
+
+**Validation.**
+
+- Build: `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors.
+- Guard classes: `tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests`, run with `-class` for `CorrectedDeployedRuntimeParityClosureTests`, `DeployedRuntimeParityClosureTests`, `ProofPacketValidatorIntegrityTests`, and `Oq8PlatformClosureTests`, reported 1005 total, 0 failed, 0 skipped. These are every Contracts.Tests class that reads `prd.md` or `sprint-status.yaml`.
+- `Dw6BookkeepingAtddTests` (DeferredWorkGovernance.Tests) also reads `sprint-status.yaml`. It reported 4 tests, all skipped by design (ATDD red phase), so it is not evidence either way.
+- `git diff --check` is clean on all three files.

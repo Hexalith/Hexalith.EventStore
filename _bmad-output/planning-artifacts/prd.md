@@ -93,6 +93,7 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md
   - _bmad-output/planning-artifacts/implementation-readiness.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-07.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-07-architecture-routing.md
 ---
 
 # PRD: eventstore Phase 4 Implementation Readiness Recovery
@@ -604,23 +605,23 @@ Each row classifies what the story's own `epics.md` section declares. A declarat
 
 | NFR | Primary declarations | Supporting declarations | Range-only caveat / primary-owner disposition |
 | --- | --- | --- | --- |
-| NFR1 | 5.2, 5.5, 5.7 | 2.8, 2.10, 3.10, 5.4, 7.2, 7.3, 7.4, 7.7, 7.19, 8.1, 8.3, 8.5, 8.6, 8.7, 8.9, 8.11 | Declared. Entries 7.3, 7.4, 7.19, 8.1, 8.5, 8.7, 8.9, and 8.11 are literal range endpoints. |
-| NFR2 | 2.14, 5.2, 5.5-5.8, 5.10, 7.2 | 1.5, 1.9, 1.10, 1.14, 2.5, 3.10, 7.1, 7.3, 7.4, 7.19, 8.7 | Range-only interiors: 8.1, 8.5, 8.9, 8.11. Story 2.14 owns the corrected tenant-boundary contract (assigned 2026-10-07); the gap stays blocking until G-TENANT passes. |
+| NFR1 | 5.2, 5.5, 5.7, 5.14 | 2.8, 2.10, 3.10, 5.4, 7.2, 7.3, 7.4, 7.7, 7.19, 8.1, 8.3, 8.5, 8.6, 8.7, 8.9, 8.11 | Declared. Entries 7.3, 7.4, 7.19, 8.1, 8.5, 8.7, 8.9, and 8.11 are literal range endpoints. Story 5.14 owns the AD-16 authenticated-fallback and Dapr framework-route slice (assigned 2026-10-07); blocking until its evidence passes, and interactive UI hosts wait for the product-owner decision routed with it. |
+| NFR2 | 2.14, 5.2, 5.5-5.8, 5.10, 7.2 | 1.5, 1.9, 1.10, 1.14, 2.5, 3.10, 5.12, 7.1, 7.3, 7.4, 7.19, 8.7 | Range-only interiors: 8.1, 8.5, 8.9, 8.11. Story 2.14 owns the corrected tenant-boundary contract (assigned 2026-10-07); the gap stays blocking until G-TENANT passes. |
 | NFR3 | 5.3, 5.11 | 8.3, 8.6 | Range-only interiors: 8.1, 8.5, 8.9, 8.11. Story 5.3 does not own Tenants, generated-host, or future-host conformance; Story 5.11 owns that all-host slice (assigned 2026-10-07), which stays blocking until G-AUTH-HOSTS passes. |
 | NFR4 | 5.3, 7.6 | 5.4, 8.1, 8.5, 8.6, 8.9, 8.11 | Declared; 8.1, 8.5, 8.9, and 8.11 are literal range endpoints. |
 | NFR5 | 2.16 | 7.1 | Primary owner Story 2.16 (assigned 2026-10-07), limited to the existing SignalR detail-metadata contract; blocking until its evidence passes. Story 2.8 does not declare NFR5. |
-| NFR6 | 1.18, 7.1 | 1.6, 1.10, 2.8, 4.1, 4.3, 4.6, 6.4 | Declared; Story 1.6 is reference-only and delegates completion to 1.18. |
-| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.9-4.15, 5.1 | 1.3, 1.15, 1.17-1.19, 4.6, 4.8, 6.4-6.6, 7.8, 7.11, 8.1, 8.2, 8.4, 8.5, 8.7, 8.9-8.11 | Declared; historical Story 4.8 has no closure authority, and NFR7 class (c) remains failed. |
+| NFR6 | 1.18, 7.1 | 1.6, 1.10, 2.8, 3.21, 4.1, 4.3, 4.6, 6.4 | Declared; Story 1.6 is reference-only and delegates completion to 1.18. |
+| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.9-4.15, 5.1 | 1.3, 1.15, 1.17-1.19, 4.6, 4.8, 6.4-6.6, 7.8, 7.11, 7.22, 8.1, 8.2, 8.4, 8.5, 8.7, 8.9-8.11 | Declared; historical Story 4.8 has no closure authority, and NFR7 class (c) remains failed. |
 | NFR8 | 1.19, 6.2, 6.4 | 1.2, 1.9, 1.13, 1.16, 2.11, 4.7, 6.1, 6.3 | Declared; Story 6.4 remains unauthorized while G-NFR8 fails. |
 | NFR9 | 3.8, 3.11, 3.14 | 2.12, 3.3-3.6, 3.12, 3.13, 3.15, 3.16, 8.1, 8.8, 8.11 | Declared; 8.1, 8.8, and 8.11 are literal range endpoints. |
 | NFR10 | 3.1, 3.7, 7.10, 7.12, 7.13 | 3.8, 3.11 | Range-only interiors: 8.1, 8.8, 8.11. Otherwise declared. |
 | NFR11 | 3.8, 3.14 | 3.6, 3.9, 3.12, 3.15, 3.16, 7.9, 8.8 | Range-only interiors: 8.1, 8.11; 8.8 is a literal range endpoint. Otherwise declared. |
-| NFR12 | 1.17, 3.13, 3.15, 3.18 | 1.20, 2.7, 2.8, 2.12, 3.16, 6.1-6.6, 7.5, 8.1, 8.2, 8.4, 8.9, 8.10, 8.11 | Story 3.18 owns the expanded public-surface inventory slice (assigned 2026-10-07); blocking until G-COMPAT passes. 8.1 and 8.11 are literal range endpoints. |
+| NFR12 | 1.17, 3.13, 3.15, 3.18 | 1.20, 2.7, 2.8, 2.12, 3.16, 5.12, 6.1-6.6, 7.5, 8.1, 8.2, 8.4, 8.9, 8.10, 8.11 | Story 3.18 owns the expanded public-surface inventory slice (assigned 2026-10-07); blocking until G-COMPAT passes. 8.1 and 8.11 are literal range endpoints. |
 | NFR13 | 2.17 | 2.4, 2.9 | Primary owner Story 2.17 (assigned 2026-10-07), limited to the existing build-quality contract; blocking until its evidence passes. |
 | NFR14 | 7.5, 7.14 | 1.8, 1.11, 2.3, 2.5, 2.6, 2.10, 2.11 | Declared; 2.11 is a literal range endpoint. |
 | NFR15 | 7.4, 7.19 | 1.16, 2.6, 2.8, 3.10, 7.3, 7.5, 7.20 | Range-only interior: 2.11. Otherwise declared. |
-| NFR16 | 1.20, 3.10, 3.13, 3.14, 4.9-4.15, 5.8, 7.3, 7.11 | 1.2-1.5, 1.9, 1.10, 1.13-1.15, 1.17-1.19, 1.21, 2.7, 2.8, 2.11, 2.12, 3.1, 3.2, 3.4-3.6, 3.8, 3.11, 3.12, 3.15, 4.2, 4.4, 4.5, 4.7, 4.8, 6.4, 6.6, 7.1, 7.6-7.10, 7.12, 7.13, 7.19, 7.20, 8.1, 8.7-8.11 | Declared; 1.21 and 4.8 are evidence/historical only, and 2.11, 8.1, and 8.11 are literal range endpoints. |
-| NFR17 | 3.14, 5.6, 5.8, 7.7, 7.21 | 3.12, 5.7, 5.9, 7.6, 7.8-7.10, 8.1, 8.6, 8.11 | NFR17-C5 is owned by Story 7.21 (assigned 2026-10-07); blocking until its evidence passes. 8.1 and 8.11 are literal range endpoints. |
+| NFR16 | 1.20, 3.10, 3.13, 3.14, 4.9-4.15, 5.8, 7.3, 7.11 | 1.2-1.5, 1.9, 1.10, 1.13-1.15, 1.17-1.19, 1.21, 2.7, 2.8, 2.11, 2.12, 3.1, 3.2, 3.4-3.6, 3.8, 3.11, 3.12, 3.15, 4.2, 4.4, 4.5, 4.7, 4.8, 6.4, 6.6, 7.1, 7.6-7.10, 7.12, 7.13, 7.19, 7.20, 7.22, 8.1, 8.7-8.11 | Declared; 1.21 and 4.8 are evidence/historical only, and 2.11, 8.1, and 8.11 are literal range endpoints. |
+| NFR17 | 3.14, 5.6, 5.8, 7.7, 7.21 | 3.12, 3.21, 5.7, 5.9, 5.13, 7.6, 7.8-7.10, 8.1, 8.6, 8.11 | NFR17-C5 is owned by Story 7.21 (assigned 2026-10-07); blocking until its evidence passes. 8.1 and 8.11 are literal range endpoints. |
 | NFR18 | 6.7 | 6.5, 6.6 | Primary owner Story 6.7 (assigned 2026-10-07); blocking until G-NFR18 passes. |
 | NFR19 | 8.11 | 6.5, 6.6, 8.1-8.7, 8.9, 8.10 | Declared for the separately gated post-MVP commitment; not part of Phase 4 MVP readiness. |
 

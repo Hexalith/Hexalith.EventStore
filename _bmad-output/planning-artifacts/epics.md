@@ -337,7 +337,7 @@ Developers can expose typed external REST APIs and build interactive clients thr
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
 **Primary users:** Release maintainers, platform maintainers, deployment operators, and consuming-module owners
 **FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity (FR36-C2) and the FR36-C3 to FR36-C5 publication and consumer-removal authority slices
-**Story set:** 3.1–3.20; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`).
+**Story set:** 3.1–3.21; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Backlog 3.21 qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
 **Implementation notes:** Repository and release reliability delivers value independently of later runtime work. `v3.94.1` remains immutable rejected evidence; only the separately authorized corrective release plus independent Story 3.15 verification may establish positive deployed-runtime parity. Planning, implementation, approval of this epic, and story completion never authorize an external publication; each external release mutation requires its separately bound durable authority record.
 
@@ -353,7 +353,7 @@ Operators can rely on stable event identity, durable idempotency admission, dete
 Tenants and administrators receive consistent fail-closed authentication, authorization, tenant isolation, internal endpoint protection, and runtime topology enforcement.
 **Primary users:** Tenant administrators, security engineers, and platform operators
 **FRs covered:** FR26, FR28, FR32
-**Story set:** 5.1–5.11; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`).
+**Story set:** 5.1–5.14; backlog 5.11 owns G-AUTH-HOSTS and NFR3's all-host conformance slice (`sprint-change-proposal-2026-10-07.md`). Backlog 5.12 and 5.13 own the AD-33 route and idempotency catalog: schema, codec, and envelope ahead of Stories 2.14 and 2.15, then activation; 5.14 owns NFR1's AD-16 authenticated-fallback and Dapr framework-route slice (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Cross-cutting coverage:** NFR1-NFR4, NFR16-NFR17
 **Implementation notes:** Land Phase 0 safe fixes before any dependent surface regardless of epic numbering. Treat application authorization, AppHost topology, DAPR YAML, scopes, ACLs, and denial evidence as one aligned security posture.
 
@@ -369,7 +369,7 @@ Platform users can operate growing event streams with bounded snapshot/projectio
 Operators can inspect delivery and projection evidence, recover poison events, use an accessible consolidated Admin UI, retrieve production secrets safely, and distinguish implemented, unavailable, accepted, and confirmed operations.
 **Primary users:** Administrators, platform operators, support engineers, and incident responders
 **FRs covered:** FR34, FR35
-**Story set:** 7.1–7.21; backlog 7.21 owns NFR17-C5 crypto-shred boundaries (`sprint-change-proposal-2026-10-07.md`).
+**Story set:** 7.1–7.22; backlog 7.21 owns NFR17-C5 crypto-shred boundaries (`sprint-change-proposal-2026-10-07.md`). Backlog 7.22 owns the AD-26 restore-posture input (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Cross-cutting coverage:** NFR1-NFR2, NFR4-NFR6, NFR14-NFR17; primary implementation ownership for UX-DR1-UX-DR41
 **Implementation notes:** Retain one cohesive operator outcome, but decompose it into small journey-focused stories for delivery, recovery, Admin UI, OpenBao, deployment, integration evidence, and backlog visibility. Each story owns one operator journey or one bounded infrastructure/evidence contract that fits a single development-agent context. Never recreate an oversized multi-concern story or render deferred work as functional.
 
@@ -2047,14 +2047,14 @@ So that infrastructure choice does not leak into application delivery contracts.
 ### Story 2.14: Canonical Tenant Boundary In Generated Controllers And The Tenants Host
 
 As a security owner,
-I want every generated controller and the Tenants API host to canonicalize and validate tenants through one shared contract before routing,
+I want every generated controller, the Tenants API host, and the EventStore gateway's and Admin Server's tenant checks to canonicalize and validate tenants through one shared contract before routing,
 So that mixed-case, missing, conflicting, or reserved tenants can never cross a tenant boundary.
 
 **Requirements coverage:** Primary FR12-C2, OR20, NFR2's corrected tenant-boundary contract, and FR15's platform-operation and tenant-boundary slice; gate G-TENANT. Supporting: Stories 2.2, 2.4, 2.5, and 2.12, whose `done` labels remain non-authorizing for the corrected contract.
 
-**Architecture constraints:** AD-27 (`Contracts` owns the canonicalizer and grammar), AD-10, and AD-28.
+**Architecture constraints:** AD-27 (`Contracts` owns the canonicalizer and grammar), AD-10, AD-28, and AD-11 (NFR12 classification of the `system` migration).
 
-**Dependencies:** Story 2.12; a Story 9.1 authorization record for gate G-TENANT. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection and the distinct platform-operation scope.
+**Dependencies:** Story 2.12; Story 5.12 (catalog schema and codec for the cataloged platform-operation scope); a Story 9.1 authorization record for gate G-TENANT. Tenants-host changes land in the Tenants repository under its owner. Boundary with Story 5.10: Story 5.10 keeps the guard against provisioning `system` as a managed tenant; this story owns request-boundary rejection, the distinct platform-operation scope, and the migration of existing `system` usage. Boundary with Story 5.2: Story 5.2 keeps Admin endpoint authorization and tenant-filter behavior; this story replaces only the tenant comparison with the shared canonicalizer (owner option 4b).
 
 **Acceptance Criteria:**
 
@@ -2068,12 +2068,22 @@ So that mixed-case, missing, conflicting, or reserved tenants can never cross a 
 **Then** it uses a distinct, authenticated, cataloged platform-operation scope
 **And** no path synthesizes or forwards `system` as a request tenant.
 
-**Given** compiled generated-controller tests and Tenants runtime tests
+**Given** the EventStore gateway's `ClaimsTenantValidator`, which today compares request tenants and `eventstore:tenant` grants with `StringComparison.Ordinal`, normalizes nothing, and lets a global administrator reach `system`, and Admin Server's `AdminTenantAuthorizationFilter` (`Ordinal`) and stream-query tenant filter (`OrdinalIgnoreCase`)
+**When** a command, query, stream, admin-storage, SignalR hub, or Admin Server request is authorized through them
+**Then** they use the same `Contracts` canonicalizer as the generated controllers and the Tenants host, so every unit accepts or rejects the same request identically
+**And** no principal, including a global administrator, reaches `system` through a public tenant boundary.
+
+**Given** the existing `system` tenant: Tenants' platform-owned aggregates and the paths that address them (such as `TenantIdentity.DefaultTenantId` and the Tenants UI command gateway), the `system` actor-ID and pub/sub topic shape in `AggregateIdentity` and `NamingConventionEngine`, and the public `RestTenantSource.System` generator option
+**When** the story's migration plan is approved by the owner before implementation
+**Then** each moves to the distinct platform-operation scope without editing or deleting persisted events, and persisted `system` streams and topics stay readable and attributable
+**And** the plan classifies every changed public surface under NFR12: removing `RestTenantSource.System` or changing its behavior incompatibly requires an approved SemVer-major proposal, and a plan that changes AD-27 returns to `bmad-architecture` first.
+
+**Given** compiled generated-controller tests, gateway and Admin Server tests, and Tenants runtime tests
 **When** they run in the CI lane this story binds
-**Then** mixed-case positives and every fail-closed negative above pass in both
+**Then** mixed-case positives and every fail-closed negative above pass in each
 **And** approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR20.
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the approved corrective successor for OR20. Scope extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 4) to the gateway `ClaimsTenantValidator`, Admin Server's tenant checks (owner option 4b), and the migration of existing `system` usage.
 
 ### Story 2.15: MessageId-Only Command-Status Identity
 
@@ -2085,7 +2095,7 @@ So that a correlation identifier can never address a status resource.
 
 **Architecture constraints:** AD-17 and AD-32 (correlation is never status identity).
 
-**Dependencies:** A Story 9.1 authorization record for gate G-STATUS-ID.
+**Dependencies:** Story 5.12 (catalog schema and codec); a Story 9.1 authorization record for gate G-STATUS-ID. Until the owner resolves the AD-17 carrier assumption through `bmad-architecture`, each contract's `Contracts` declaration stays the sole source of its MessageId version, and the manifest this story validates is derived from those declarations and fails on drift.
 
 **Acceptance Criteria:**
 
@@ -3162,7 +3172,7 @@ So that no evidence result is ever relabelled as release or promotion authority.
 
 **Architecture constraints:** AD-26 (once ratified) and AD-11.
 
-**Dependencies:** Owner ratification of AD-26 or an approved replacement; Story 5.7 for the production component contents; Story 3.15 (`done` for FR36-C2); Story 9.2 for the Assurance Control; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH.
+**Dependencies:** Owner ratification of AD-26 or an approved replacement; Story 5.7 for the production component contents; Story 3.15 (`done` for FR36-C2); Story 9.2 for the Assurance Control; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. **Issue-step prerequisites** (`sprint-change-proposal-2026-10-07-architecture-routing.md`): the build step does not wait for them, but no `release-available` or `production-promoted` record is issued until each is met. They are Story 3.21 (DAPR runtime pin and selected broker); Story 7.22 (restore posture including scheduler state); Story 5.13 (activated route and idempotency catalog digests); and `ReleaseEvidenceCodec`, which the Hexalith.Builds owner delivers in the SHA-pinned shared Builds publisher/validator and EventStore consumes at a pinned gitlink, and which was absent everywhere on 2026-10-07.
 
 **Acceptance Criteria:**
 
@@ -3176,12 +3186,17 @@ So that no evidence result is ever relabelled as release or promotion authority.
 **Then** it requires one valid predecessor-bound state chain with issuance, expiry, revocation, and invalidation
 **And** existing candidate-publication evidence cannot be recorded as `release-available` or `production-promoted`.
 
+**Given** the pinned Hexalith.Builds gitlink
+**When** the publication-authority validator resolves `ReleaseEvidenceCodec`
+**Then** a missing codec, or one whose identity differs from the pinned Builds publisher/validator, fails every record beyond `evidence-validated` with a named cause
+**And** EventStore never re-implements the codec.
+
 **Given** the build steps are complete
 **When** the release owner and then the deployment owner issue their records for the unchanged Story 3.15 subject
 **Then** the `release-available` entry is release-owner-authenticated and the `production-promoted` entry is deployment-owner-authenticated, binding the canonical profile digest and an immutable deployment identity
 **And** the story is `done` only after both records validate under the Assurance Control; until then the validator reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C3 owner required by OR29.
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C3 owner required by OR29. Issue-step prerequisites named 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md`.
 
 ### Story 3.20: Consumer-Removal Authority Manifest And Validator
 
@@ -3218,6 +3233,42 @@ So that no consumer removes local projection or query infrastructure without val
 **And** no consumer removes local infrastructure without one; the validator otherwise reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C4 and FR36-C5 owner required by OR24.
+
+### Story 3.21: Production DAPR Runtime Pin And Durable Broker Qualification
+
+As a deployment owner,
+I want one tested DAPR runtime pin and qualified durable-broker candidates on the production path,
+So that the AD-26 decision names a broker and runtime from evidence, and the production profile binds exactly what was proven.
+
+**Requirements coverage:** Supporting FR32, FR34, NFR6, and NFR17. No primary FR or NFR claim. Owns the durable-broker and DAPR-runtime-pin inputs that AD-26 requires before any `production-promoted` record.
+
+**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (envelope re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, and AD-31.
+
+**Dependencies:** Story 3.17 (inventory rows); a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. **Selection boundary:** the owner names the broker and runtime pin only in an AD-26 ratification record or an approved replacement; this story builds evidence and never selects. The DAPR CLI pin and catalog alignment belong to the Hexalith.Builds owner. `.github/workflows/integration.yml` and `.github/workflows/ci.yml` are sealed OQ8 v3 inputs: their runtime and CLI pins change only inside a planned Story 4.15 reseal, and otherwise the qualification lane is a new workflow file.
+
+**Acceptance Criteria:**
+
+**Given** a candidate runtime of at least `1.18.3` (`1.18.4` is the current stable release) and its CLI
+**When** every runtime, CLI, placement, and scheduler pin in CI, the AppHost, and the production-profile inputs is inventoried
+**Then** each location is listed with its value, and the candidate passes the live-sidecar suite in the qualification lane
+**And** a production-profile input pinned below the floor or to a mutable tag fails a guard; drift in the deployment guides is reported to Story 5.9.
+
+**Given** the broker candidates `pubsub.kafka` and `pubsub.rabbitmq` (templates in `deploy/dapr`) and the cloud-managed `pubsub.azure.servicebus.topics`
+**When** each is qualified on the candidate runtime
+**Then** at-least-once redelivery after subscriber failure, dead-letter routing, retention, a CloudEvent `id` equal to `MessageId`, publishing and subscription scopes, and `secretKeyRef` credentials are observed and recorded as Story 3.17 inventory rows with exact versions
+**And** an unobserved guarantee stays unresolved, and no candidate is recorded as selected.
+
+**Given** the owner's AD-26 record naming the broker and runtime pin
+**When** the story binds them
+**Then** the selected broker component goes to Story 5.7 for production parity, and the runtime image identity goes to the Story 3.19 profile
+**And** any later runtime minor-version change requires broker requalification and the Story 4.16 envelope re-proof.
+
+**Given** the build steps are complete and no AD-26 record names a broker and pin
+**When** the validator runs
+**Then** it reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule
+**And** the story is `done` only after that record exists and the binding above passes.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 2). CI pins runtime `1.18.2` and CLI `1.18.0`, below the AD-26 floor.
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
@@ -4035,7 +4086,7 @@ So that committed events can never be silently overwritten.
 
 **Architecture constraints:** AD-5, AD-26 (once ratified), and the Story 3.17 Dapr boundary qualification.
 
-**Dependencies:** Story 3.17; owner ratification of AD-26; a Story 9.1 authorization record for gate G-APPEND. **Path decision (owner, 2026-10-07):** envelope first. If the envelope cannot be mechanically enforced on the AD-26 profile, the story stops and requests a fencing scope change through correct-course; it does not implement fencing on its own authority.
+**Dependencies:** Story 3.17; Story 3.21 (the runtime the envelope is proven on; a later runtime minor-version change requires re-proof); owner ratification of AD-26; a Story 9.1 authorization record for gate G-APPEND. **Path decision (owner, 2026-10-07):** envelope first. If the envelope cannot be mechanically enforced on the AD-26 profile, the story stops and requests a fencing scope change through correct-course; it does not implement fencing on its own authority.
 
 **Acceptance Criteria:**
 
@@ -4420,15 +4471,15 @@ So that tenant isolation and allowed operations do not change between local proo
 
 **Requirements coverage:** Primary ownership of the production-DAPR slice of FR32, NFR1, and NFR2; supporting ownership of NFR17's component, resiliency, app-health, and secret-free topology posture. Story 7.6 retains primary ownership of OpenBao component, secret-scope, `secretKeyRef`, and real secret-retrieval closure.
 
-**Architecture constraints:** AD-9, AD-10, and AD-12. Production YAML and AppHost identities are one governed topology; DAPR ACLs are deny-by-default defense in depth and never replace Story 5.5's application credentials.
+**Architecture constraints:** AD-9, AD-10, AD-12, and AD-28. Production YAML and AppHost identities are one governed topology; DAPR ACLs are deny-by-default defense in depth and never replace Story 5.5's application credentials.
 
 **UX coverage:** No new interactive workflow. Admin topology views derive deployed app IDs, component availability, scopes, and health from runtime evidence; missing or mismatched production configuration renders unknown/degraded/unavailable and never exposes connection strings, policy internals that aid attack, or hidden tenant/topic inventories.
 
-**Dependencies:** Story 5.6 establishes the intended AppHost/component model and Story 5.5 establishes protected application endpoints. Story 5.8 will bind both to one automated drift gate.
+**Dependencies:** Story 5.6 establishes the intended AppHost/component model and Story 5.5 establishes protected application endpoints. Story 5.8 will bind both to one automated drift gate. Story 5.14 owns the application-side route policies these ACL deny rules back up. The actor-invocation qualification runs on the Story 3.21 candidate runtime.
 
 **Owner / review boundary:** Winston (Architect) owns the production topology and ACL invariants; Amelia (Developer) reviews deployment YAML and structured validation.
 
-**Current reconciliation:** Story 5.7 remains backlog. Production files are broadly scoped and ACLs default deny, but material parity gaps remain visible: production state-store templates omit the local `keyPrefix: none` posture; the Admin Server production ACL has no policy for the AppHost-modeled `eventstore-admin-ui` caller; production and local caller/resource inventories differ; and example subscription/pub-sub scopes and topic grants are not yet reconciled as one executable topology. OpenBao is absent by design until Story 7.6 and cannot be claimed here.
+**Current reconciliation:** Story 5.7 remains backlog. Production files are broadly scoped and ACLs default deny, but material parity gaps remain visible: production state-store templates omit the local `keyPrefix: none` posture; the Admin Server production ACL has no policy for the AppHost-modeled `eventstore-admin-ui` caller; production and local caller/resource inventories differ; and example subscription/pub-sub scopes and topic grants are not yet reconciled as one executable topology. OpenBao is absent by design until Story 7.6 and cannot be claimed here. **Scope extension (2026-10-07):** peer ACL deny rules for channel-only routes and actor methods, and qualification of actor-invocation restriction, were added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 3). `/**` grants exist today in `deploy/dapr/accesscontrol.yaml` and four AppHost access-control files.
 
 **Acceptance Criteria:**
 
@@ -4461,6 +4512,16 @@ So that tenant isolation and allowed operations do not change between local proo
 **When** the production topology changes
 **Then** all affected component scopes, publishing/subscription scopes, subscriptions, ACL policies, resiliency targets, deployment bindings, documentation, and tests change in the same retained story
 **And** a broad wildcard, default-open omission, placeholder, or copied local-development grant cannot substitute for named production authorization.
+
+**Given** every production and AppHost DAPR `Configuration`, including the `eventstore`, `eventstore-admin`, `tenants`, and `sample` access-control files
+**When** a peer app ID invokes a receiver's subscription routes, `/dapr/subscribe`, `/dapr/config`, actor routes, or actor methods through service invocation
+**Then** the receiving policy denies it: no `/**` or other wildcard grant covers a channel-only route or actor method, and each allowed operation is an exact path and verb
+**And** a regression test proves a denied peer cannot reach those routes (the ACL half of Story 5.5 review deferral D-2).
+
+**Given** the question whether the profile restricts actor invocation and channel-only routes to their hosting app ID
+**When** it is qualified on the Story 3.21 candidate runtime
+**Then** the result is recorded as a Story 3.17 inventory row, with exact runtime and component versions and observed evidence
+**And** the result neither adopts nor rejects the AD-28 `[ASSUMPTION]` about actor-method execution contexts, which the owner resolves through `bmad-architecture`.
 
 **Given** Story 5.7 completion is requested
 **When** structured validation parses all production DAPR YAML variants and exercises representative allowed and denied service-invocation, state-store, publish, subscribe, dead-letter, and app-health paths
@@ -4662,6 +4723,119 @@ So that no host validates tokens with a weaker, hand-rolled subset.
 **And** the story binds the exact release evidence, and approval uses the G-HIGH-RISK Assurance Control at its computed level.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the G-AUTH-HOSTS owner required by OR23.
+
+### Story 5.12: Route And Idempotency Catalog Schema, Codec, And Envelope
+
+As a platform maintainer,
+I want one versioned `Contracts` schema and canonical codec for the deployable route and idempotency catalog envelope,
+So that the gateway, admission, dispatchers, and deployment ACLs resolve every message to exactly one app ID, method, and contract version from the same bytes.
+
+**Requirements coverage:** Supporting FR12, FR15, FR27, FR32, NFR2, and NFR12. No primary FR or NFR claim. Owns the schema, codec, and envelope of the architecture gate row "Canonical routing/idempotency catalog envelope"; Story 5.13 owns its activation.
+
+**Architecture constraints:** AD-33 (`Contracts` owns the schema and codec), AD-25 (idempotency facet), AD-9, AD-17, and AD-27.
+
+**Dependencies:** A Story 9.1 authorization record for gates G-TENANT and G-STATUS-ID, whose owning Stories 2.14 and 2.15 depend on this story. The Platform deployment owner owns the signed or content-bound production instance; this story ships the schema, codec, validator, and the Development/test instance. **Assumption boundary:** the spine tags three catalog fields `[ASSUMPTION]`: the MessageId-version digest (AD-17), the platform-operation namespace (AD-27), and the admitted credential kind with its required operation (AD-33). This story adds none of them as a field until the owner resolves the matching assumption through `bmad-architecture`.
+
+**Acceptance Criteria:**
+
+**Given** `Hexalith.EventStore.Contracts`
+**When** the catalog schema and codec are added
+**Then** the schema is versioned, and the codec produces canonical UTF-8 bytes whose SHA-256 is the root digest, with stable route-entry IDs joining the route facet and the AD-25 idempotency facet under one root digest and generation
+**And** decoding and re-encoding any valid envelope reproduces its bytes exactly, while unknown fields, unsupported versions, and non-canonical bytes are rejected.
+
+**Given** an envelope
+**When** the validator bound by this story runs
+**Then** every command and query maps by `(Domain, MessageType)`, and every projection by `(Domain, ProjectionType)`, to exactly one app ID, method, and contract version, and every idempotency entry binds the AD-25 fields
+**And** a duplicate, missing, or ambiguous key, an undeclared fallback, a runtime override outside Development, or a route/facet digest mismatch fails with the entry ID and field.
+
+**Given** the repository's `Contracts` route declarations
+**When** `deploy/dapr/eventstore-routing-catalog.json` is generated for the Development/test profile
+**Then** its routes equal what Development resolves from those declarations, and a guard fails when a declaration and the committed envelope diverge
+**And** production readiness still fails until Story 5.13 activates an instance.
+
+**Given** the validator's rejection paths
+**When** its tests run
+**Then** each rejection is proven by a checked-in negative fixture observed failing beside a positive control
+**And** no guard is green by construction.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 1). The schema, codec, and envelope file are absent.
+
+### Story 5.13: Route Catalog Activation And Topology Binding
+
+As a deployment owner,
+I want every required host to load and validate one catalog generation before it is committed, and to roll back as a unit,
+So that the gateway, admission, dispatchers, AppHost, and deployment ACLs can never route the same message differently.
+
+**Requirements coverage:** Supporting FR27, FR32, and NFR17. No primary FR or NFR claim. Owns activation for the architecture gate row "Canonical routing/idempotency catalog envelope".
+
+**Architecture constraints:** AD-33 (activation), AD-9, AD-12, AD-25, and AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`).
+
+**Dependencies:** Story 5.12; Stories 5.6 and 5.7 for the AppHost and production ACL models it compares; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. Signing the production instance belongs to the Platform deployment owner and the Story 3.19 issue step.
+
+**Acceptance Criteria:**
+
+**Given** a new catalog generation
+**When** it is activated
+**Then** activation runs prepare, ready, and commit: every required host loads and validates the same root and facet digests before the deployment owner commits, and any failure rolls back to the prior complete generation
+**And** a duplicate, missing, or ambiguous entry, unsupported override, partial generation, signature or trust failure, or fingerprint mismatch fails readiness on every host.
+
+**Given** the AppHost, deployment ACLs, gateway, admission, and domain and projection dispatchers
+**When** the topology check runs
+**Then** each reports the root digest it activated, and all of them match
+**And** an ACL operation or app ID that the activated catalog does not declare fails the check.
+
+**Given** a multi-host drill on the production-equivalent profile
+**When** a host fails during prepare, during ready, and after commit
+**Then** the generation each host serves is read back through its Dapr path, and no host serves a mixed or partial generation
+**And** the evidence binds the root digest, the host set, and the drill results.
+
+**Given** no activated production instance
+**When** production readiness is evaluated
+**Then** it fails
+**And** the activated root digest is the only catalog identity the Story 3.19 profile may bind.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 1).
+
+### Story 5.14: Authenticated Fallback And Dapr Framework-Route Protection On Every HTTP Host
+
+As a security owner,
+I want every HTTP host to deny any endpoint that names no policy, and the Dapr framework and Operations routes to require the right credential,
+So that endpoint mapping order, peer invocation, or a forged caller header can never expose a host.
+
+**Requirements coverage:** Primary NFR1's AD-16 authenticated-fallback and Dapr framework-route slice. Supporting FR26, FR28, and FR34.
+
+**Architecture constraints:** AD-16, AD-28, AD-10, AD-29, and AD-31.
+
+**Dependencies:** Story 5.3 (probe anonymity); Story 5.5 (sidecar-channel policy and workload assertions); a Story 9.1 authorization record for gate G-AUTH-HOSTS. Tenants hosts land in the Tenants repository under its owner, as in Story 5.11. Interactive UI hosts wait for the product-owner decision on static assets and login callbacks (`sprint-change-proposal-2026-10-07-architecture-routing.md`, item 7.2). Story 7.1 keeps Operations delivery, capture, and acknowledgement semantics; this story owns only the authentication and authorization of the Operations endpoints.
+
+**Acceptance Criteria:**
+
+**Given** the EventStore gateway, Admin Server Host, Sample API and generated-host fixtures, Operations, DomainService SDK hosts, and the Tenants hosts
+**When** endpoint metadata is enumerated
+**Then** each host configures an authenticated fallback that denies any endpoint without a named policy, every endpoint names its policy and authentication scheme, and only `/health`, `/alive`, and `/ready` carry `AllowAnonymous`
+**And** the sidecar-channel scheme never satisfies the fallback, and an endpoint-metadata test fails on any unexpected anonymous or unnamed endpoint, including endpoints added later.
+
+**Given** the gateway and Operations map `MapSubscribeHandler` and `MapActorsHandlers`
+**When** a request reaches those routes without the receiver's app-channel token
+**Then** it is denied before actor activation or subscription handling, and no actor state change is observed
+**And** those routes carry the explicit sidecar-channel policy the DomainService SDK already applies (closes Story 5.5 review deferral D-1).
+
+**Given** the Operations dead-letter list and action endpoints
+**When** a request arrives
+**Then** authorization validates the credential the route admits (the human bearer relayed by Admin Server, validated through the shared JWT contract, or a workload assertion) and preserves AD-29 attribution
+**And** the caller app ID can only deny, and a missing, unvalidated, or mismatched credential is rejected before any list, replay, or skip effect.
+
+**Given** the interactive UI hosts (Admin UI, Sample Blazor UI)
+**When** the product-owner decision on static assets and login callbacks is still pending
+**Then** they are reported as failing conformance, with the conflict named
+**And** this story adds no exemption.
+
+**Given** completion is requested
+**When** forged-header, peer-invocation, missing-credential, and wrong-credential suites run against real host pipelines
+**Then** every denial shows zero downstream execution and unchanged persisted state
+**And** valid sidecar deliveries, actor callbacks, and probes still work.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 3). Only the DomainService SDK configures a fallback policy. The gateway (`Program.cs:47-48`) and Operations (`Program.cs:43-44`) map framework routes without a policy, and Operations authorizes dead-letter calls by caller app ID plus an unvalidated bearer (`DeadLetterOperationsEndpointExtensions.cs:227-234`).
 
 <!-- Epic 5 story set confirmed complete for planning. -->
 
@@ -6473,6 +6647,37 @@ So that no MVP surface claims crypto-shred guarantees that only post-MVP payload
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the NFR17-C5 owner.
 
+### Story 7.22: Production Restore Posture Including Scheduler State
+
+As a platform operator,
+I want a written restore posture for production state, proven by a restore drill,
+So that a restore never re-admits a consumed idempotency key, repeats a global position, or silently loses reminders.
+
+**Requirements coverage:** Supporting FR34, NFR7, and NFR16. No primary FR or NFR claim. Owns the restore-posture input that AD-26 requires before any `production-promoted` record. Numeric RTO and RPO targets, retention, and environment promotion stay with Platform Operations and are not inferred here.
+
+**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5, AD-6, AD-12, and AD-25.
+
+**Dependencies:** Story 3.21 (scheduler and placement behavior is runtime-specific); Story 3.17; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. The owner names the restore posture only in an AD-26 ratification record or an approved replacement.
+
+**Acceptance Criteria:**
+
+**Given** the production-profile state: actor state in `statestore`, admission and fence state, the global-position allocator, read models and checkpoints, DAPR scheduler state for reminders and jobs, and placement
+**When** the restore posture is written
+**Then** it states, for each, the backup method (a platform operation, never application code), the consistency point, and the restore order
+**And** it names the states that may never be restored on their own.
+
+**Given** a restore drill on the production-equivalent profile to a point before later commands
+**When** the restored system serves traffic
+**Then** no consumed idempotency key is re-admitted, no fence is reissued, no `GlobalPosition` repeats, and reminders and jobs are restored or re-registered as declared
+**And** any invariant the posture cannot guarantee is declared as a restore prohibition, and end state is read back through Dapr paths.
+
+**Given** the owner's AD-26 record naming the restore posture
+**When** the story binds it
+**Then** the posture digest goes to the Story 3.19 profile
+**And** until that record exists, the validator reports a truthful FAIL and the story is not `done`.
+
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 2). No restore-posture artifact exists.
+
 <!-- Epic 7 story set confirmed complete for planning. -->
 
 ## Epic 8: Domains Can Opt Into Portable Payload Protection - Post-MVP
@@ -7409,6 +7614,11 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 **Then** it binds the SHA-256 of `prd.md`, `architecture.md`, the detailed DESIGN and EXPERIENCE documents, `ux.md`, `epics.md`, `sprint-status.yaml`, every story record it names, the relevant evidence digests, and the Story 9.1 authorization registry
 **And** it rejects any digest mismatch, `draft` status, open `[ASSUMPTION]`, active or unreconciled corrective-work authorization, and any approval that predates the bytes it binds.
 
+**Given** a manifest that binds an architecture digest different from the one `epics.md` records
+**When** that digest is repinned in `epics.md`, the PRD §11.3 register, and the manifest
+**Then** the same change adds every AD ID the newly pinned spine introduces to the **Architecture constraints** line of each affected story, starting from the staged table in `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 5)
+**And** the validator rejects a repin that changes only digests, a constraint line that cites an AD ID absent from the pinned spine, and a staged story that omits its assigned AD ID.
+
 **Given** the PRD and `epics.md`
 **When** the drift guard runs
 **Then** it compares PRD FR/NFR text with the epics Requirements Inventory, and PRD §7.1 and §11 primary ownership with each story's declared coverage
@@ -7429,7 +7639,7 @@ So that the PRD, architecture, UX, epics, tracker, and story records cannot sile
 **Then** each rejection is proven by a checked-in negative fixture observed failing, alongside a positive control, and no guard is green by construction
 **And** the workflow follows the Epic 9 truthful-FAIL CI rule.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`.
+**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md`. Extended 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 5): the repin change carries the staged AD-ID propagation.
 
 ### Story 9.4: Stable Clause Ledger And All-Clauses Validator
 

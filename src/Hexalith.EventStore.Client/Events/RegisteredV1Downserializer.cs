@@ -8,9 +8,11 @@ internal sealed class RegisteredV1Downserializer
 {
     private readonly byte[] _assemblyHash;
     private readonly byte[] _optionsHash;
+    private readonly EventManagedArtifactExecutionBinding? _executionBinding;
 
     /// <summary>Captures the actual implementation file digest and admitted immutable options digest.</summary>
-    internal RegisteredV1Downserializer(string implementationId, IV1Downserializer downserializer, byte[] optionsHash)
+    internal RegisteredV1Downserializer(string implementationId, IV1Downserializer downserializer, byte[] optionsHash,
+        EventManagedArtifactExecutionBinding? executionBinding = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(implementationId);
         ArgumentNullException.ThrowIfNull(downserializer);
@@ -23,6 +25,14 @@ internal sealed class RegisteredV1Downserializer
         ImplementationId = implementationId;
         Downserializer = downserializer;
         _optionsHash = optionsHash.ToArray();
+        _executionBinding = executionBinding;
+        if (executionBinding is not null)
+        {
+            executionBinding.RequireBoundAssembly(downserializer.GetType().GetInterfaceMap(typeof(IV1Downserializer)).TargetMethods.Single().Module.Assembly);
+            _assemblyHash = executionBinding.CopyHashForAssembly(downserializer.GetType().Assembly);
+            return;
+        }
+
         string location = downserializer.GetType().Assembly.Location;
         if (string.IsNullOrEmpty(location))
         {
@@ -40,8 +50,10 @@ internal sealed class RegisteredV1Downserializer
     internal IV1Downserializer Downserializer { get; }
 
     /// <summary>Requires exact F direct-assembly and options agreement.</summary>
-    internal void RequireDescriptor(EventRegistryRow descriptor)
+    internal void RequireDescriptor(EventRegistryRow descriptor, EventEvolutionCapabilityLoss capabilityLoss)
     {
+        _executionBinding?.RequireCapabilityScope(capabilityLoss);
+        _executionBinding?.RequireBoundAssembly(Downserializer.GetType().Assembly);
         if (!string.Equals(ImplementationId, descriptor.GetTextField(7), StringComparison.Ordinal)
             || !_assemblyHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(8))
             || !_optionsHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(9)))

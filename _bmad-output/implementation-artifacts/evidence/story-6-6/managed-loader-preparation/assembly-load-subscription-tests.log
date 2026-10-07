@@ -1,0 +1,30 @@
+$ dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -method Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad
+Timeout: 60s
+Exit: 1
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad(throughReflection: False) [FAIL]
+      Shouldly.ShouldAssertException : `registry.CapabilityLoss.RequireNoObservedLoss`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs(329,0): at Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.RequireLoss(EventDomainRegistry registry)
+        tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs(89,0): at Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad(Boolean throughReflection)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad(throughReflection: True) [FAIL]
+      Shouldly.ShouldAssertException : `registry.CapabilityLoss.RequireNoObservedLoss`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs(329,0): at Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.RequireLoss(EventDomainRegistry registry)
+        tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs(89,0): at Hexalith.EventStore.Client.Tests.Events.EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad(Boolean throughReflection)
+           at InvokeStub_EventEvolutionManagedLoadObserverTests.UndeclaredLateLoadIsDetectedWithoutPreventingTheLoad(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '2ea957906f0bf1406d4426d3eb5396e63a3760892261a138c68226ff86dc5389')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 2, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 0.196s

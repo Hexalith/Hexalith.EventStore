@@ -21,7 +21,7 @@ internal sealed class EventV1DownserializeExecutor(EventDomainRegistry registry,
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
         EventRegistryRow descriptor = registry.GetDownserializer(canonicalType, writeAlias);
-        binding.RequireDescriptor(descriptor);
+        binding.RequireDescriptor(descriptor, registry.CapabilityLoss);
         (string type, int sourceVersion, string format) = registry.ResolveAlias(writeAlias);
         using ImmutablePayload input = ImmutablePayload.CopyFrom(source, budget, cancellationToken);
         Validate(input, canonicalType, registry.GetCurrentVersion(canonicalType), descriptor.GetTextField(5), cancellationToken);
