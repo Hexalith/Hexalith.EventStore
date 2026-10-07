@@ -1,0 +1,190 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.DomainService.Tests
+  Discovered:  Hexalith.EventStore.DomainService.Tests
+  Starting:    Hexalith.EventStore.DomainService.Tests
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OversizedSourceRefusesBeforeReadsOrServiceResolution(asynchronous: True, count: 100001) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(26,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OversizedSourceRefusesBeforeReadsOrServiceResolution(Boolean asynchronous, Int32 count)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OversizedSourceRefusesBeforeReadsOrServiceResolution(asynchronous: True, count: 32769) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(26,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OversizedSourceRefusesBeforeReadsOrServiceResolution(Boolean asynchronous, Int32 count)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.LaterMetadataRefusalPrecedesOwnershipCallbacks(asynchronous: True) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(63,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.LaterMetadataRefusalPrecedesOwnershipCallbacks(Boolean asynchronous)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(asynchronous: True, first: 2, second: 3, failedSequence: 1) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(85,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(Boolean asynchronous, Int64 first, Int64 second, Int64 failedSequence)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(asynchronous: True, first: 1, second: 3, failedSequence: 2) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(85,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(Boolean asynchronous, Int64 first, Int64 second, Int64 failedSequence)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(asynchronous: True, first: 1, second: 1, failedSequence: 1) [FAIL]
+      System.InvalidOperationException : This service provider doesn't support keyed services.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService(IServiceProvider provider, Type serviceType, Object serviceKey)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService[T](IServiceProvider provider, Object serviceKey)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(267,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(85,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(Boolean asynchronous, Int64 first, Int64 second, Int64 failedSequence)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.SourceCountCancellationPrecedesTypedLimitRefusal [FAIL]
+      Shouldly.ShouldAssertException : Task `) => DomainServiceRequestRouter.ReplayAsync(provider, Request(source), cancellation.Token`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(45,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.SourceCountCancellationPrecedesTypedLimitRefusal()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.HandlerFailureOrCancellationClearsPrivateInputAndPreservesSource(cancelled: False) [FAIL]
+      Shouldly.ShouldAssertException : Task `) => DomainServiceRequestRouter.ReplayAsync(provider, Request([original]), cancellation.Token`
+          should throw
+      System.InvalidOperationException
+          but threw
+      System.ArgumentOutOfRangeException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(161,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.HandlerFailureOrCancellationClearsPrivateInputAndPreservesSource(Boolean cancelled)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.HandlerFailureOrCancellationClearsPrivateInputAndPreservesSource(cancelled: True) [FAIL]
+      Shouldly.ShouldAssertException : Task `) => DomainServiceRequestRouter.ReplayAsync(provider, Request([original]), cancellation.Token`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.ArgumentOutOfRangeException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(155,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.HandlerFailureOrCancellationClearsPrivateInputAndPreservesSource(Boolean cancelled)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.BuiltInReplayStillProducesCanonicalStateThroughIndependentRoutes [FAIL]
+      Shouldly.ShouldAssertException : (await DomainServiceRequestRouter.ReplayAsync(provider, request)).StateJson
+          should be
+      "{"count":2}"
+          but was
+      "{"count":0}"
+          difference
+      Difference     |                                               |        
+                     |                                              \|/       
+      Index          | 0    1    2    3    4    5    6    7    8    9    10   
+      Expected Value | {    "    c    o    u    n    t    "    :    2    }    
+      Actual Value   | {    "    c    o    u    n    t    "    :    0    }    
+      Expected Code  | 123  34   99   111  117  110  116  34   58   50   125  
+      Actual Code    | 123  34   99   111  117  110  116  34   58   48   125  
+      Stack Trace:
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(248,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.BuiltInReplayStillProducesCanonicalStateThroughIndependentRoutes()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OwnershipMutationCannotReplacePrivateInputAndCompletionClearsCopies [FAIL]
+      Shouldly.ShouldAssertException : captured.Events.Select(item => item.SequenceNumber)
+          should be
+      [1L, 2L]
+          but was
+      [] (System.Linq.Enumerable+IListSelectIterator`2[Hexalith.EventStore.Contracts.Replay.ReplayEventEnvelope,System.Int64])
+          difference
+      [*, *]
+      Stack Trace:
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(113,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.<>c__DisplayClass4_0.<OwnershipMutationCannotReplacePrivateInputAndCompletionClearsCopies>b__1(CallInfo call)
+           at NSubstitute.Core.ReturnValueFromFunc`1.ReturnFor(CallInfo info)
+           at NSubstitute.Core.CallResults.ResultForCallSpec.GetResult(ICall call, ICallInfoFactory callInfoFactory)
+           at NSubstitute.Core.CallResults.TryGetResult(ICall call, Object& result)
+           at NSubstitute.Routing.Handlers.ReturnConfiguredResultHandler.Handle(ICall call)
+           at NSubstitute.Routing.Route.Handle(ICall call)
+           at NSubstitute.Core.CallRouter.Route(ICall call)
+           at NSubstitute.Proxies.CastleDynamicProxy.CastleForwardingInterceptor.Intercept(IInvocation invocation)
+           at Castle.DynamicProxy.AbstractInvocation.Proceed()
+           at NSubstitute.Proxies.CastleDynamicProxy.ProxyIdInterceptor.Intercept(IInvocation invocation)
+           at Castle.DynamicProxy.AbstractInvocation.Proceed()
+           at Castle.Proxies.ObjectProxy_2.ReplayAsync(AggregateReconstructionRequest request, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs(277,0): at Hexalith.EventStore.DomainService.DomainServiceRequestRouter.ReplayAsync(IServiceProvider serviceProvider, AggregateReconstructionRequest request, CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs(124,0): at Hexalith.EventStore.DomainService.Tests.LegacyAggregateReplayRoutingTests.OwnershipMutationCannotReplacePrivateInputAndCompletionClearsCopies()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '8e712476610944271b4e380640185baab0cae07e37da948878186445b766d2cd')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.DomainService.Tests  Total: 22, Errors: 0, Failed: 11, Skipped: 0, Not Run: 0, Time: 0.320s

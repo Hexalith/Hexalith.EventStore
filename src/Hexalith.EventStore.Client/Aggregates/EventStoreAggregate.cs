@@ -20,9 +20,13 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
-public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay
+public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay, IAdmittedLegacyAggregateReplay
     where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateCommandDispatchMetadata> _metadataCache = new();
+
+    /// <summary>Gets an optional owner declaration that detaches known typed command snapshots.</summary>
+    /// <remarks>Undeclared legacy state retains its existing typed-reference behavior.</remarks>
+    protected virtual DetachedStateCapture<TState>? SnapshotCapture => null;
 
     /// <summary>
     /// Called once during cascade configuration resolution to allow subclasses to set per-domain options imperatively (Layer 3).
@@ -67,6 +71,25 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         => Task.FromResult(AggregateReplayer.Replay<TState>(request, cancellationToken));
 
     /// <inheritdoc/>
+    bool IAdmittedLegacyAggregateReplay.CanReplayAdmitted(bool asynchronous) {
+        Type replayInterface = asynchronous ? typeof(IAsyncAggregateReplay) : typeof(IAggregateReplay);
+        string methodName = asynchronous ? nameof(IAsyncAggregateReplay.ReplayAsync) : nameof(IAggregateReplay.Replay);
+        InterfaceMapping mapping = GetType().GetInterfaceMap(replayInterface);
+        for (int index = 0; index < mapping.InterfaceMethods.Length; index++) {
+            if (mapping.InterfaceMethods[index].Name == methodName) {
+                return mapping.TargetMethods[index].DeclaringType == typeof(EventStoreAggregate<TState>);
+            }
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc/>
+    AggregateReconstructionResult IAdmittedLegacyAggregateReplay.ReplayAdmitted(
+        AggregateReconstructionRequest request, LegacyReplayInput input, CancellationToken cancellationToken)
+        => AggregateReplayer.ReplayAdmitted<TState>(request, input, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
         => ProcessAsync(command, currentState, CancellationToken.None);
 
@@ -77,7 +100,14 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         cancellationToken.ThrowIfCancellationRequested();
 
         AggregateCommandDispatchMetadata metadata = GetOrBuildMetadata();
-        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken);
+        DetachedStateCapture<TState>? snapshotCapture;
+        try { snapshotCapture = SnapshotCapture; }
+        catch (Exception) when (cancellationToken.IsCancellationRequested) {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken, snapshotCapture);
 
         bool terminated = state is ITerminatable { IsTerminated: true };
         cancellationToken.ThrowIfCancellationRequested();

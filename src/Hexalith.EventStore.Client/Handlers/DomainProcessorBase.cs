@@ -16,6 +16,10 @@ namespace Hexalith.EventStore.Client.Handlers;
 /// <typeparam name="TState">The aggregate state type. Must be a reference type.</typeparam>
 public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDomainProcessor
     where TState : class, new() {
+    /// <summary>Gets an optional owner declaration that detaches known typed command snapshots.</summary>
+    /// <remarks>Undeclared legacy state retains its existing typed-reference behavior.</remarks>
+    protected virtual DetachedStateCapture<TState>? SnapshotCapture => null;
+
     /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
         => ProcessAsync(command, currentState, CancellationToken.None);
@@ -25,10 +29,17 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
     public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
+        DetachedStateCapture<TState>? snapshotCapture;
+        try { snapshotCapture = SnapshotCapture; }
+        catch (Exception) when (cancellationToken.IsCancellationRequested) {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
         TState? typedState = DomainProcessorStateRehydrator.RehydrateState<TState>(
             currentState,
             DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)),
-            cancellationToken);
+            cancellationToken, snapshotCapture);
         cancellationToken.ThrowIfCancellationRequested();
         DomainResult result = await HandleAsync(command, typedState, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();

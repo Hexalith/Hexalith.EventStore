@@ -20,13 +20,14 @@ internal static class DomainProcessorStateRehydrator {
     internal static ApplyMethodTable DiscoverApplyMethods(Type stateType)
         => ApplyMethodResolver.GetOrBuildTable(stateType);
 
-    internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken = default)
+    internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken = default,
+        DetachedStateCapture<TState>? snapshotCapture = null)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         TState? rehydratedState;
         using var input = new LegacyCommandReplayInput(cancellationToken);
         try {
-            currentState = CaptureReplayInput<TState>(currentState, cancellationToken, input);
+            currentState = CaptureReplayInput(currentState, cancellationToken, input, snapshotCapture);
             rehydratedState = currentState switch {
                 null => null,
                 TState typed => typed,
@@ -49,18 +50,27 @@ internal static class DomainProcessorStateRehydrator {
         return rehydratedState;
     }
 
-    private static object? CaptureReplayInput<TState>(object? input, CancellationToken cancellationToken, LegacyCommandReplayInput owner, int depth = 0)
+    private static object? CaptureReplayInput<TState>(object? input, CancellationToken cancellationToken, LegacyCommandReplayInput owner,
+        DetachedStateCapture<TState>? snapshotCapture, int depth = 0)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         switch (input) {
-            case TState:
-                return input;
+            case TState typed:
+                return snapshotCapture is null ? typed : owner.CaptureState(typed, snapshotCapture);
             case DomainServiceCurrentState current:
                 owner.AdmitSnapshotWrapper(depth);
+                // Detach the snapshot before any caller tail Count/enumerator callback.
+                // This is an ordered private capture, not an atomic read of concurrently mutated input.
+                object? snapshot = snapshotCapture is null ? null
+                    : CaptureReplayInput(current.SnapshotState, cancellationToken, owner, snapshotCapture, depth + 1);
                 var events = CaptureEvents(current.Events, cancellationToken, owner).Cast<EventEnvelope>().ToArray();
+                if (snapshotCapture is null) {
+                    // Preserve the undeclared legacy admission order as well as reference semantics.
+                    snapshot = CaptureReplayInput(current.SnapshotState, cancellationToken, owner, snapshotCapture, depth + 1);
+                }
                 return current with {
                     Events = events,
-                    SnapshotState = CaptureReplayInput<TState>(current.SnapshotState, cancellationToken, owner, depth + 1),
+                    SnapshotState = snapshot,
                 };
             case JsonElement json when IsDomainServiceCurrentState(json):
                 owner.AdmitSnapshotWrapper(depth);
@@ -69,7 +79,7 @@ internal static class DomainProcessorStateRehydrator {
                 foreach (JsonElement envelope in admitted.GetProperty("events").EnumerateArray()) {
                     ValidateJsonReplayMetadata(GetReplayProperty(envelope, "metadata") ?? envelope);
                 }
-                return CaptureReplayInput<TState>(DeserializeDomainServiceCurrentState(admitted, owner), cancellationToken, owner, depth);
+                return CaptureReplayInput(DeserializeDomainServiceCurrentState(admitted, owner), cancellationToken, owner, snapshotCapture, depth);
             case JsonElement { ValueKind: JsonValueKind.Array } json:
                 JsonElement captured = owner.CaptureJson(json, reserveEvents: true);
                 foreach (JsonElement item in captured.EnumerateArray()) {

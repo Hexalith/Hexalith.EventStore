@@ -1,0 +1,169 @@
+{
+  "scope": "dormant supplied-inventory managed process observation only",
+  "controls": [
+    {
+      "scenario": "value-equal-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 115,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "value-equal-declared",
+      "result": "passed",
+      "refused": false,
+      "callbacks": 1,
+      "liveBytes": 0,
+      "managedDeclarations": 204,
+      "manifestBytes": 38821,
+      "elapsedMilliseconds": 138,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "value-equal-unloaded",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 101,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "declared",
+      "result": "passed",
+      "refused": false,
+      "callbacks": 1,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 136,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "startup-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 121,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "late-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 112,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "reflection-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 115,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "dynamic-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 0,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 117,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    },
+    {
+      "scenario": "in-flight-unlisted",
+      "result": "passed",
+      "refused": true,
+      "callbacks": 1,
+      "liveBytes": 0,
+      "managedDeclarations": 203,
+      "manifestBytes": 38618,
+      "elapsedMilliseconds": 119,
+      "nativeObservation": false,
+      "immutableProcessImageBinding": false,
+      "activationAuthority": false
+    }
+  ],
+  "mutations": [
+    {
+      "mutation": "process-baseline",
+      "result": "killed",
+      "killing_case": "startup-unlisted",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: refusal=False, callbacks=1, liveBytes=0.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "unlisted-process-context",
+      "result": "killed",
+      "killing_case": "late-unlisted",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: refusal=False, callbacks=1, liveBytes=0.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "assembly-load-subscription",
+      "result": "killed",
+      "killing_case": "reflection-unlisted",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: refusal=False, callbacks=1, liveBytes=0.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "context-membership-identity",
+      "result": "killed",
+      "killing_case": "value-equal-declared",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: observer admission unexpectedly refused 'value-equal-declared'.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "context-binding-identity",
+      "result": "killed",
+      "killing_case": "value-equal-declared",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: observer admission unexpectedly refused 'value-equal-declared'.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "context-presence-identity",
+      "result": "killed",
+      "killing_case": "value-equal-unloaded",
+      "observed_failure": "Unhandled exception. System.InvalidOperationException: Fixture assertion failed: refusal=False, callbacks=1, liveBytes=0.",
+      "timeout_seconds_per_lane": 60
+    }
+  ],
+  "nativeObservation": false,
+  "immutableProcessImageBinding": false,
+  "activationAuthority": false
+}

@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
@@ -51,6 +52,16 @@ public class AddEventStoreTests : IDisposable {
 
         Assert.NotNull(processor);
         _ = Assert.IsType<SmokeTestAggregate>(processor);
+    }
+
+    [Fact]
+    public void AddEventStore_RegistersIndependentReplayCapabilities() {
+        var services = new ServiceCollection();
+        _ = services.AddEventStore(typeof(SmokeTestAggregate).Assembly);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.IsType<SmokeTestAggregate>(provider.GetRequiredKeyedService<IAggregateReplay>("smoke-test"));
+        Assert.IsType<SmokeTestAggregate>(provider.GetRequiredKeyedService<IAsyncAggregateReplay>("smoke-test"));
     }
 
     [Fact]

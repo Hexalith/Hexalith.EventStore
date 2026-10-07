@@ -18,15 +18,17 @@ internal sealed class LegacyReplayInput : IDisposable
     private const int PerEventCharge = 8192;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly ReplayEventEnvelope[] _events;
+    private readonly IReadOnlyList<ReplayEventEnvelope> _eventView;
 
     private LegacyReplayInput(ReplayEventEnvelope[] events, AggregateReconstructionResult? refusal = null)
     {
         _events = events;
+        _eventView = Array.AsReadOnly(events);
         Refusal = refusal;
     }
 
     /// <summary>Gets private eligible events in stream order after complete admission.</summary>
-    internal IReadOnlyList<ReplayEventEnvelope> Events => _events;
+    internal IReadOnlyList<ReplayEventEnvelope> Events => _eventView;
 
     /// <summary>Gets the typed refusal, with no partial state or timeline.</summary>
     internal AggregateReconstructionResult? Refusal { get; }
@@ -43,6 +45,7 @@ internal sealed class LegacyReplayInput : IDisposable
         }
 
         int count = source.Count;
+        cancellationToken.ThrowIfCancellationRequested();
         if (count is < 0 or > MaximumEvents || count > MaximumAccountedBytes / PerEventCharge)
         {
             return Refuse("LegacyArrayLimit");
@@ -54,6 +57,7 @@ internal sealed class LegacyReplayInput : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             ReplayEventEnvelope? item = source[index];
+            cancellationToken.ThrowIfCancellationRequested();
             if (item is null)
             {
                 return Refuse("ReplayScalarInvalid", AggregateReconstructionErrorCategory.Conflict);
@@ -169,6 +173,47 @@ internal sealed class LegacyReplayInput : IDisposable
         {
             CryptographicOperations.ZeroMemory(item.Payload);
         }
+    }
+
+    /// <summary>Refuses an incomplete or ambiguous selected prefix before replay ownership callbacks.</summary>
+    /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <returns>The existing legacy sequence refusal, or null for a contiguous selected prefix.</returns>
+    internal AggregateReconstructionResult? ValidatePrefix(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<ReplayEventEnvelope> events = _eventView;
+        cancellationToken.ThrowIfCancellationRequested();
+        if (events.Count > 0 && events[0].SequenceNumber != 1)
+        {
+            return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Unexpected,
+                "Missing stream sequence 1 detected during replay; reconstruction cannot skip events.",
+                failedSequenceNumber: 1, failedEventType: string.Empty);
+        }
+
+        for (int index = 1; index < events.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReplayEventEnvelope current = events[index];
+            long priorSequence = events[index - 1].SequenceNumber;
+            if (current.SequenceNumber == priorSequence)
+            {
+                return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Unexpected,
+                    string.Format(CultureInfo.InvariantCulture,
+                        "Duplicate stream sequence {0} detected during replay; reconstruction cannot disambiguate ordering.", current.SequenceNumber),
+                    failedSequenceNumber: current.SequenceNumber, failedEventType: current.EventTypeName);
+            }
+
+            // The sorted non-duplicate successor proves the prior is below long.MaxValue.
+            long expectedSequence = priorSequence + 1;
+            if (current.SequenceNumber != expectedSequence)
+            {
+                return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Unexpected,
+                    string.Format(CultureInfo.InvariantCulture,
+                        "Missing stream sequence {0} detected during replay; reconstruction cannot skip events.", expectedSequence),
+                    failedSequenceNumber: expectedSequence, failedEventType: string.Empty);
+            }
+        }
+
+        return null;
     }
 
     private static long EncodedMetadataLength(ReplayEventEnvelope item, CancellationToken token)

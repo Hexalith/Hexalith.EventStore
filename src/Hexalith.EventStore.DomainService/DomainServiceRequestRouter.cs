@@ -155,7 +155,7 @@ public static class DomainServiceRequestRouter {
     }
 
     /// <summary>
-    /// Replays an aggregate's events through the owning domain processor's Apply convention.
+    /// Replays an aggregate's events through its independently registered replay capability.
     /// Implements the canonical <c>POST /replay-state</c> endpoint required by the Admin
     /// state-inspection surface (admin-ui-aggregate-state-replay-correctness story).
     /// </summary>
@@ -169,31 +169,65 @@ public static class DomainServiceRequestRouter {
             throw new InvalidOperationException("ReplayRestartRequired: legacy replay cannot consume a paged context.");
         }
 
-        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request);
+        using LegacyReplayInput input = LegacyReplayInput.Capture(request, CancellationToken.None);
+        if (input.Refusal is not null) {
+            return input.Refusal;
+        }
+
+        request = request with { Events = input.Events };
+        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request) ?? input.ValidatePrefix(CancellationToken.None);
         if (refusal is not null) {
             return refusal;
         }
 
-        IDomainProcessor? processor = serviceProvider.GetKeyedService<IDomainProcessor>(request.Domain);
-        if (processor is null) {
+        return ReplayLegacyAdmitted(serviceProvider, request, input, CancellationToken.None);
+    }
+
+    private static AggregateReconstructionResult ReplayLegacyAdmitted(IServiceProvider serviceProvider,
+        AggregateReconstructionRequest request, LegacyReplayInput input, CancellationToken cancellationToken) {
+        IAggregateReplay[] routes = SelectReplayRoutes(
+            serviceProvider.GetKeyedServices<IAggregateReplay>(request.Domain),
+            route => route.CanReplayAggregateType(request.AggregateType), cancellationToken);
+        if (routes.Length > 1) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.UnknownAggregateType,
-                $"No domain processor is registered for domain '{request.Domain}'.");
+                $"Aggregate type '{request.AggregateType}' has ambiguous replay ownership in domain '{request.Domain}'.");
         }
 
-        if (processor is not IAggregateReplay replay) {
-            return AggregateReconstructionResult.Failed(
-                AggregateReconstructionErrorCategory.UnknownAggregateType,
-                $"Domain processor '{processor.GetType().Name}' for domain '{request.Domain}' does not implement IAggregateReplay. Inherit from EventStoreAggregate<TState> to enable Admin replay.");
+        IAggregateReplay? replay = routes.SingleOrDefault();
+        if (replay is null) {
+            // Preserve existing manually registered command processors as a compatibility seam.
+            cancellationToken.ThrowIfCancellationRequested();
+            IDomainProcessor? processor = serviceProvider.GetKeyedService<IDomainProcessor>(request.Domain);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (processor is null) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnknownAggregateType,
+                    $"No domain processor is registered for domain '{request.Domain}'.");
+            }
+
+            if (processor is not IAggregateReplay legacyReplay) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnknownAggregateType,
+                    $"Domain processor '{processor.GetType().Name}' for domain '{request.Domain}' does not implement IAggregateReplay. Inherit from EventStoreAggregate<TState> to enable Admin replay.");
+            }
+
+            bool ownsAggregate = legacyReplay.CanReplayAggregateType(request.AggregateType);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!ownsAggregate) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnknownAggregateType,
+                    $"Aggregate type '{request.AggregateType}' is not owned by domain '{request.Domain}'.");
+            }
+
+            replay = legacyReplay;
         }
 
-        if (!replay.CanReplayAggregateType(request.AggregateType)) {
-            return AggregateReconstructionResult.Failed(
-                AggregateReconstructionErrorCategory.UnknownAggregateType,
-                $"Aggregate type '{request.AggregateType}' is not owned by domain '{request.Domain}'.");
-        }
-
-        AggregateReconstructionResult result = replay.Replay(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        AggregateReconstructionResult result = replay is IAdmittedLegacyAggregateReplay admitted && admitted.CanReplayAdmitted(asynchronous: false)
+            ? admitted.ReplayAdmitted(request, input, cancellationToken)
+            : replay.Replay(request);
+        cancellationToken.ThrowIfCancellationRequested();
         if (result.Status == AggregateReconstructionStatus.InProgress) {
             throw new InvalidOperationException("ReplayRestartRequired: legacy replay cannot return incomplete page state.");
         }
@@ -218,16 +252,21 @@ public static class DomainServiceRequestRouter {
                 "ReplayRestartRequired: this route has no authenticated paged source or private state session.");
         }
 
-        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request);
+        using LegacyReplayInput input = LegacyReplayInput.Capture(request, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (input.Refusal is not null) {
+            return input.Refusal;
+        }
+
+        request = request with { Events = input.Events };
+        AggregateReconstructionResult? refusal = RefuseVersionedReplay(request) ?? input.ValidatePrefix(cancellationToken);
         if (refusal is not null) {
             return refusal;
         }
 
-        IAsyncAggregateReplay[] asyncRoutes = serviceProvider
-            .GetKeyedServices<IAsyncAggregateReplay>(request.Domain)
-            .Where(route => route.CanReplayAggregateType(request.AggregateType))
-            .Take(2)
-            .ToArray();
+        IAsyncAggregateReplay[] asyncRoutes = SelectReplayRoutes(
+            serviceProvider.GetKeyedServices<IAsyncAggregateReplay>(request.Domain),
+            route => route.CanReplayAggregateType(request.AggregateType), cancellationToken);
         if (asyncRoutes.Length > 1) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.UnknownAggregateType,
@@ -235,7 +274,9 @@ public static class DomainServiceRequestRouter {
         }
 
         if (asyncRoutes.Length == 1) {
-            AggregateReconstructionResult result = await asyncRoutes[0].ReplayAsync(request, cancellationToken).ConfigureAwait(false);
+            AggregateReconstructionResult result = asyncRoutes[0] is IAdmittedLegacyAggregateReplay admitted && admitted.CanReplayAdmitted(asynchronous: true)
+                ? admitted.ReplayAdmitted(request, input, cancellationToken)
+                : await asyncRoutes[0].ReplayAsync(request, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             if (request.PagedContext is null && result.Status == AggregateReconstructionStatus.InProgress) {
                 throw new InvalidOperationException("ReplayRestartRequired: whole-array replay cannot return incomplete page state.");
@@ -246,9 +287,25 @@ public static class DomainServiceRequestRouter {
 
         // The old synchronous path is an explicit compatibility adapter. It can
         // observe cancellation at either edge, but cannot interrupt Apply itself.
-        AggregateReconstructionResult legacyResult = Replay(serviceProvider, request);
+        AggregateReconstructionResult legacyResult = ReplayLegacyAdmitted(serviceProvider, request, input, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return legacyResult;
+    }
+
+    private static TRoute[] SelectReplayRoutes<TRoute>(IEnumerable<TRoute> routes,
+        Func<TRoute, bool> ownsAggregate, CancellationToken cancellationToken) {
+        var selected = new List<TRoute>(2);
+        foreach (TRoute route in routes) {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool owns = ownsAggregate(route);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (owns) {
+                selected.Add(route);
+                if (selected.Count == 2) { break; }
+            }
+        }
+
+        return selected.ToArray();
     }
 
     private static AggregateReconstructionResult? RefuseVersionedReplay(AggregateReconstructionRequest request) {

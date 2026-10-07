@@ -1,7 +1,7 @@
 ---
 name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators, inheriting FrontComposer and Blazor Fluent UI V5.
-status: draft
+status: final
 created: 2026-07-05
 updated: 2026-10-07
 reviewed_repository_revision: c60503c13069fde13f329f2166ff39c90c3661c4
@@ -12,6 +12,13 @@ sources:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md
   - https://fluentui-blazor-v5.azurewebsites.net/
+omitted:
+  - section: colors
+    reason: 'Inherited from FrontComposer and Fluent UI V5; no EventStore palette override.'
+  - section: typography
+    reason: 'Inherited from FrontComposer and Fluent UI V5; no EventStore type-ramp override.'
+  - section: rounded
+    reason: 'Inherited from Fluent UI V5 components; no EventStore radius override.'
 spacing:
   density-unit: 4px
   compact-gap: 8px
@@ -93,7 +100,7 @@ The design must communicate operational state honestly. Accepted, evidence-pendi
 
 The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
 
-The reviewed repository revision is `c60503c13069fde13f329f2166ff39c90c3661c4`. `EXPERIENCE.md` records the 2026-10-07 input-snapshot digests and authority order. `status: draft` keeps this update open for finalization. Document finality does not authorize implementation, release, deployment, migration, or a readiness verdict.
+The reviewed repository revision is `c60503c13069fde13f329f2166ff39c90c3661c4`. `EXPERIENCE.md` records the 2026-10-07 input-snapshot digests and authority order. `status: final` records completion of this UX contract update. Document finality does not authorize implementation, release, deployment, migration, or a readiness verdict.
 
 Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
 
@@ -130,7 +137,7 @@ Interactive targets have a 24 by 24 CSS pixel minimum unless a documented WCAG e
 
 ## Elevation & Depth
 
-Depth inherits from Fluent components. Use shell layers, dividers, dialogs, drawers, message bars, and the occasional repeated stat card to establish hierarchy. Add no custom shadow language and do not place ordinary page sections in floating cards.
+Depth inherits from Fluent components. Use shell layers, dividers, dialogs, evidence asides, message bars, and the occasional repeated stat card to establish hierarchy. Add no custom shadow language and do not place ordinary page sections in floating cards.
 
 ## Shapes
 

@@ -1,6 +1,6 @@
 # UX Handoff — Hexalith.EventStore Phase 4
 
-Status: draft
+Status: final
 Updated: 2026-10-07
 
 This is the canonical top-level UX handoff expected by `prd.md`,

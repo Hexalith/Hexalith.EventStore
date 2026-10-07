@@ -42,6 +42,20 @@ public static class AggregateReplayer {
         }
 
         using LegacyReplayInput input = LegacyReplayInput.Capture(request, cancellationToken);
+        return ReplayAdmitted<TState>(request, input, cancellationToken);
+    }
+
+    /// <summary>Replays under a router-owned private input without allocating another complete payload copy.</summary>
+    /// <param name="request">The admitted legacy request.</param>
+    /// <param name="input">The private input retained by the caller until replay completes.</param>
+    /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <returns>The complete legacy reconstruction result.</returns>
+    internal static AggregateReconstructionResult ReplayAdmitted<TState>(AggregateReconstructionRequest request,
+        LegacyReplayInput input, CancellationToken cancellationToken)
+        where TState : class, new() {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(input);
+        cancellationToken.ThrowIfCancellationRequested();
         if (input.Refusal is not null) {
             return input.Refusal;
         }

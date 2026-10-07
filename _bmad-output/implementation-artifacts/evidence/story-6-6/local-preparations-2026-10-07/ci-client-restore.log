@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 261 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 261 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 265 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 264 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj (in 265 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 265 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 265 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 273 ms).
+  3 of 11 projects are up-to-date for restore.

@@ -10,6 +10,9 @@ namespace Hexalith.EventStore.Sample.Counter.State;
 /// Implements <see cref="ITerminatable"/> for tombstoning support (FR66).
 /// </summary>
 public sealed class CounterState : ITerminatable {
+    // Only two scalar fields are retained; no serializer/converter or nested graph is involved.
+    internal CounterState DetachedCopy() => new() { Count = Count, IsTerminated = IsTerminated };
+
     /// <summary>Gets the current count value.</summary>
     public int Count { get; private set; }
 

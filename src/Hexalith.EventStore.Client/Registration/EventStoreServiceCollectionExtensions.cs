@@ -219,6 +219,10 @@ public static class EventStoreServiceCollectionExtensions {
             if (typeof(IAsyncAggregateReplay).IsAssignableFrom(aggregate.Type)) {
                 _ = services.AddKeyedScoped(typeof(IAsyncAggregateReplay), aggregate.DomainName, aggregate.Type);
             }
+
+            if (typeof(IAggregateReplay).IsAssignableFrom(aggregate.Type)) {
+                _ = services.AddKeyedScoped(typeof(IAggregateReplay), aggregate.DomainName, aggregate.Type);
+            }
         }
 
         // Register projections as themselves and initialize optional post-construction services.

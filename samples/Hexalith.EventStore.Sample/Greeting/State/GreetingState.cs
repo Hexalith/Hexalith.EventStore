@@ -7,6 +7,9 @@ namespace Hexalith.EventStore.Sample.Greeting.State;
 /// Aggregate state for the Greeting domain. Tracks message count.
 /// </summary>
 public sealed class GreetingState {
+    // Only one scalar field is retained; no serializer/converter or nested graph is involved.
+    internal GreetingState DetachedCopy() => new() { MessageCount = MessageCount };
+
     /// <summary>Gets the number of greetings sent.</summary>
     public int MessageCount { get; private set; }
 

@@ -10,14 +10,17 @@
     --border: #e7e5e4;
     --text: #1c1917;
     --muted: #78716c;
+
     --verdict-strong: #16a34a;
     --verdict-adequate: #65a30d;
     --verdict-thin: #d97706;
     --verdict-broken: #dc2626;
+
     --sev-low: #64748b;
     --sev-medium: #ca8a04;
     --sev-high: #ea580c;
     --sev-critical: #dc2626;
+
     --grade-exc: #16a34a;
     --grade-good: #65a30d;
     --grade-fair: #d97706;
@@ -33,6 +36,7 @@
     font-size: 15px;
   }
   .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
   header.report-header {
     display: flex;
     align-items: flex-start;
@@ -56,6 +60,7 @@
   .grade-good { background: var(--grade-good); }
   .grade-fair { background: var(--grade-fair); }
   .grade-poor { background: var(--grade-poor); }
+
   .synthesis {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -67,6 +72,7 @@
   }
   .synthesis p { margin: 0 0 10px; }
   .synthesis p:last-child { margin-bottom: 0; }
+
   .dimension-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -81,6 +87,7 @@
   }
   .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
   .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
   section.dimension, section.reviewer-section { margin-bottom: 14px; }
   section.dimension details, section.reviewer-section details {
     background: var(--surface);
@@ -126,9 +133,11 @@
   .verdict-adequate { background: var(--verdict-adequate); }
   .verdict-thin { background: var(--verdict-thin); }
   .verdict-broken { background: var(--verdict-broken); }
+
   .dim-body { padding: 4px 20px 18px; }
   .dim-judgment { color: var(--text); font-size: 14.5px; }
   .dim-judgment p { margin: 0 0 10px; }
+
   .findings-list { padding: 0 20px 4px; }
   article.finding {
     padding: 14px 0;
@@ -159,11 +168,13 @@
   .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
   .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
   .finding-fix strong { color: var(--muted); font-weight: 500; }
+
   .reviewer-source {
     font-size: 12px;
     color: var(--muted);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
   }
+
   .mechanical {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -175,6 +186,7 @@
   .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .mechanical ul { margin: 0; padding-left: 20px; }
   .mechanical li { margin-bottom: 4px; color: var(--text); }
+
   footer.report-footer {
     margin-top: 40px;
     padding-top: 16px;
@@ -188,40 +200,100 @@
 </head>
 <body>
   <div class="container">
+
     <header class="report-header">
       <div class="title">
         <h1>eventstore Phase 4 Implementation Readiness Recovery — Validation Report</h1>
-        <div class="subtitle">_bmad-output/planning-artifacts/prd.md</div>
+        <div class="subtitle">_bmad-output/planning-artifacts/prd.md<br>SHA-256 d5632ba71c838ba7f0b8ca61a24889cb21edb4506531e823d8c0dfb12b7e6ae6<br>baseline HEAD 40c92e085d8a6463d469c1b340c410fec84a690f · run 2026-10-07T16:41:08+02:00</div>
       </div>
       <div class="grade grade-poor">Poor</div>
     </header>
 
     <div class="synthesis">
-      <p>This is a technically substantive and unusually candid requirements catalogue that supports one immediate decision well: keep implementation readiness blocked. It is not safe as the authoritative chain-top baseline it claims to be because downstream usability is broken by an unreconciled artifact set and unavailable normative OQ8 source, while acceptance clarity and shape remain thin. The explicit <code>Reject</code> posture must stay in force until those gaps close.</p>
-      <p>The platform-contract review materially strengthens that conclusion with current repository evidence: generated REST tenant handling and command-status <code>Location</code> behavior contradict adopted public-boundary rules, silent append loss remains unguarded, and compatibility, authentication-conformance, and consumer-removal contracts are incomplete. The previous reject remains directionally correct, but its baseline and reasons do not describe one coherent current repository snapshot.</p>
+      <p>The PRD now fixes almost every content gap the 2026-09-10 review raised. It has a computed exit contract (§11.4), a 49-clause acceptance ledger (§7.1), five journeys with named protagonists, NFR2, NFR3, NFR12 and FR36 contracts defined by capability rather than by a closed list, and a named primary story for every gate. Its <code>final</code>-but-<code>Reject</code> posture is coherent and well defended. The weak point is the PRD's second job as a live readiness ledger. The §11.3 identity register is stale for every artifact it binds, and 18 of 56 FR/NFR texts differ from the <code>epics.md</code> inventory without the PRD listing them. The 2026-10-07 edits also brought in new inconsistencies: NFR1 adds an anonymous-endpoint class that is never listed and cites AD-16, which currently forbids it; the exit contract and SM10 cannot represent the UI-host carve-out; SM11 counts an OQ8 loss class that the PRD itself calls non-authoritative; and OR30, the MediatR licence blocker, sits outside the gate contract. The PRD is a trustworthy requirements source for the stop decision and for writing corrective stories. It is not yet a clean chain-top handoff.</p>
+      <p>The three extra reviewers materially sharpen that picture. Adversarial general (REJECT as gate authority) finds the machinery for leaving FAIL circular: §0 forbids every handoff that lacks a validator, only a forbidden handoff can build that validator, and the sole escape is a Story 9.1 "bootstrap rule" that lives in <code>epics.md</code>; the 2026-10-07 amendment that a single-maintainer seal "never blocks <code>main</code>" means it cannot block any transition it names, its "required run" is defined only by the validator it seals, and G-HIGH-RISK seals itself. Platform contract (NOT ACCEPTED as complete) finds two code-level criticals that no mandatory gate would catch: the public gateway maps Dapr actor callbacks with no app-layer authentication, and the gateway status endpoint still resolves <code>CorrelationId</code> values to status records against §8.2 and FR12-C4; the parent verified both against source. Brownfield truth (fail as the current chain-top baseline; pass as a fail-closed readiness posture; no critical) confirms the fail-closed safety claim and every recorded code contradiction, but shows that the §11.3 register reports September digests and statuses as current, the ownership tables cite <code>epics.md</code> story sections that declare something else, the Epic 8 and Epic 6 lifecycle statements are stale, and the current bytes (<code>d5632ba7…</code>) were never reviewed: 15 commits changed the PRD after the last sealed version, several under unrelated commit subjects. Rubric dimensions alone would grade Fair (no broken dimension and no critical finding, but seven high findings and two thin dimensions); the consolidated grade is Poor because the Adversarial general and Platform contract reviewers each report two critical findings, and any critical finding grades Poor.</p>
+      <p>Findings raised independently by two or more reviewers: the NFR1 UI-host anonymous class that contradicts AD-16 (all four reviewers); the stale §11.3 digests and <code>ux.md</code> status (all four); SM11 counting NFR7 class (e) as delivered on source-only evidence (rubric, brownfield, adversarial); OR30 sitting outside every gate with "release" undefined (rubric, adversarial, platform); "INDEPENDENT" status labels that contradict the single-maintainer Assurance Control (rubric, brownfield, adversarial); ownership-table contradictions on NFR5 and NFR17 (rubric, brownfield, adversarial); the imported AD-26 <code>[ASSUMPTION]</code> read as binding (rubric, brownfield, adversarial); the 18-of-56 PRD/<code>epics.md</code> FR/NFR text drift (rubric, brownfield); the UI-host carve-out that the exit contract and SM10 cannot represent (rubric, adversarial); Epic 9 missing from §9.1 (rubric, brownfield); the stale Epic 8 lifecycle (brownfield, adversarial); unreviewed post-seal bytes and unlisted source proposals (brownfield, adversarial); gate commands that are undefined or set by the gated story (rubric, adversarial); NFR2's Unicode case-folding alias (adversarial, platform); and smaller overlaps on stale OR rows, the Story 2.9 reopen wording in G-STATUS-ID, the SM8 denominator and the mixed-version rollout contract.</p>
     </div>
 
     <div class="dimension-summary">
-      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
-      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
-      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
-      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-broken)">broken</div></div>
-      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
+      <div class="dim-card">
+        <div class="dim-name">Decision-readiness</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Substance over theater</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Strategic coherence</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Done-ness clarity</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Scope honesty</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Downstream usability</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
     </div>
 
     <section class="dimension">
       <details>
-        <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The PRD makes the current stop decision unmistakable: document finality is separate from readiness, the bound result is <code>Reject</code>, and §0 forbids release, deployment, migration, and downstream handoff. The blocker register is owned and trigger-bound, but the eventual go decision lacks a single executable exit contract.</p>
-        </div></div>
+        <summary>
+          <h2>Decision-readiness</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>§0 and §11.4 make the stop decision computable rather than rhetorical: "<code>READY</code> is computed, not asserted." The table has 17 mandatory rows. Each row binds governed requirements, evidence, evaluator, current result, and invalidation, and each now names a primary owner story. Owner decisions are written as dated decisions: Story 4.16 is the "owner-selected enforced-envelope path; fencing requires a separate approved scope change"; the roster-dependent Assurance Control was adopted on 2026-09-26; interactive UI hosts were excluded from the production profile on 2026-10-07; and the Story 3.15 tracker <code>done</code> applies "for FR36-C2 only".</p>
+            <p>Trade-offs name what is given up. §9 calls the append-fencing exclusion "not a safety waiver", and §2 says what each half of the bet costs without the other. There are no <code>[NOTE FOR PM]</code> callouts, but the OR register (24 blocking items, each with an owner and a trigger) does that job. The newest decision items are weaker than the older ones: OR30 offers options without a recommendation and cannot be enforced, and two status headlines misdescribe the control that is actually blocking.</p>
+          </div>
+        </div>
         <div class="findings-list">
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The future READY decision has no single executable exit contract</h3><span class="finding-location">§12 OR17</span></header>
-            <div class="finding-note">A reviewer must reconstruct mandatory gates, evidence, evaluators, waiver rules, and current results across several sections.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add one Phase 4 exit table with a pass/fail row for each gate and durable approval evidence.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The OR30 licence blocker sits outside the decision machinery and has an undefined trigger</h3>
+              <span class="finding-location">§12 OR30 (line 744); §11.4</span>
+            </header>
+            <div class="finding-note">The row is labelled "Blocking for the next release", yet no §11.4 row lists OR30, and neither G-PUBLICATION-AUTH nor G-READINESS computes it. "Release" is also not one of the PRD's own Publication Lifecycle states (<code>release-available</code> is), and a NuGet publication by the release workflow is a different event. The row admits that the already "released <code>Server</code> and <code>Gateway</code> packages reference it" and that "the host suppresses its license log", yet decides nothing about those published versions, and lists three options with no recommendation and no trade-off: RPL-1.5 reciprocal obligations passed to consumers, against the cost of an NFR12-classified dependency replacement. Also raised by: Adversarial general H7 and H8 · Platform contract M11.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add OR30 to the governed blockers of G-PUBLICATION-AUTH (or G-COMPAT) so the computed aggregate sees it. Define "release" as either the package publication or <code>release-available</code>. Recommend an option and state its consequence for consumers. Say what happens to the versions already published (notice, deprecate, or accept with a documented reason).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">"INDEPENDENT" status labels contradict the roster-dependent Assurance Control</h3>
+              <span class="finding-location">§6.8 line 342; §11.4 G-RUNTIME-PARITY line 687</span>
+            </header>
+            <div class="finding-note">While the registry names one human, the glossary sets the required level to <code>single-maintainer-attested</code>. What unblocks it is sealed CI plus a time-separated owner attestation (Story 9.2), not an independent approver. "TECHNICALLY VALIDATED; INDEPENDENT CONTROL OPEN" and "TECHNICAL PASS; INDEPENDENT GATE BLOCKED", the two most visible status headlines, tell readers the opposite of the 2026-09-26 owner decision and invite exactly the "find a second reviewer" reading that decision superseded. Also raised by: Brownfield truth M8 · Adversarial general M5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Rename them, for example "ASSURANCE CONTROL OPEN" and "TECHNICAL PASS; ASSURANCE GATE BLOCKED". Update the guard in the same change: <code>tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4593</code> pins the G-RUNTIME-PARITY string.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">The residual risk accepted with the Assurance Control is never named</h3>
+              <span class="finding-location">§4 Owner Roles line 200; Assurance Control line 201</span>
+            </header>
+            <div class="finding-note">The owner "accepted its residual risk", but the PRD never says what that risk is. A reader cannot tell what <code>single-maintainer-attested</code> fails to catch: for example, a requirement the author misreads, or a validator that is green by construction. Sealed CI checks that the validator ran, not that it checks the right property, and the 24-hour separation protects against haste, not against a shared blind spot. Without that statement nobody can revisit the trade-off.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one sentence that names what the control does not protect against and what partly compensates (the optional <code>tool-persona</code> adversarial review, mutation checks). Note that the control re-evaluates automatically when the registry gains a second human.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Gate evidence text keeps an alternative the owner already decided against</h3>
+              <span class="finding-location">§11.4 G-TENANT line 680, G-STATUS-ID line 681; OR20/OR21</span>
+            </header>
+            <div class="finding-note">G-STATUS-ID still requires an "Approved corrective or reopened Story 2.9", while the same row and OR21 name successor Story 2.15 as primary owner. The same applies to G-TENANT and Story 2.14. Also raised by: Platform contract L2 · Brownfield truth L1 (OR20/OR21).</div>
+            <div class="finding-fix"><strong>Fix:</strong> State the decision (successor story) and drop the reopen alternative, or say why it remains open.</div>
           </article>
         </div>
       </details>
@@ -229,50 +301,25 @@
 
     <section class="dimension">
       <details>
-        <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The content is earned. The vision is specific to a DAPR-native event-sourcing platform, roles directly drive SDK, API, UI, release, operator, and evidence requirements, and NFRs carry product-specific limits. Known failures and negative evidence are retained instead of being presented as success.</p>
-        </div></div>
-      </details>
-    </section>
-
-    <section class="dimension">
-      <details>
-        <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The PRD has a clear thesis: platform reuse and operational hardening must ship together. Metrics test both halves and counter-metrics prevent shortcuts. The minimum slice, however, is still described mostly as the inherited Epic 1–7 inventory rather than as a thesis-derived priority order.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding">
-            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">MVP priority follows the epic inventory more than the product thesis</h3><span class="finding-location">§9.1</span></header>
-            <div class="finding-note">The scope does not identify which outcomes are indispensable to validating the reuse-and-hardening bet versus supporting readiness work.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a short scope-logic paragraph grouping mandatory MVP outcomes by the thesis they validate.</div>
-          </article>
+        <summary>
+          <h2>Substance over theater</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The content is earned. NFRs carry product-specific thresholds: NFR2's tenant grammar <code>^[a-z0-9]([a-z0-9-]*[a-z0-9])?$</code>, NFR3's algorithm allow-list and 60-second clock skew, NFR5's 16 entries / 2,048 bytes, NFR8's 4,096-byte snapshot overhead, FR26's <code>1_048_576</code> and <code>10 * 1024 * 1024</code> request limits, and NFR17's named resiliency policies.</p>
+            <p>The vision makes a falsifiable bet. Each of the six roles appears in a UJ or a requirement. UJ1–UJ5 each end with a requirement list and a failure path, for example "absent proof leaves the operation unresolved rather than successful". The product-bet metrics are counts with targets that "can fail". Negative evidence is kept rather than smoothed over: the §6.1 accepted evasions DW-64/65/77–79, and "the Test Architect receipt is self-attested".</p>
+          </div>
         </div>
-      </details>
-    </section>
-
-    <section class="dimension">
-      <details open>
-        <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Many clauses define precise bounds and evidence denominators, but an engineer still cannot determine completion from the PRD alone. Acceptance is delegated to epics, section-level evidence covers several FRs at once, and multiple requirements bundle independently fail-able consequences.</p>
-        </div></div>
         <div class="findings-list">
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Omnibus requirements have no clause-level closure rule</h3><span class="finding-location">FR26, FR33, FR34, NFR17; OR7</span></header>
-            <div class="finding-note">Whole-ID story mappings cannot show which independent clauses are delivered.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Assign stable sub-IDs or add a clause-to-story-to-evidence table with an all-clauses-required rule.</div>
-          </article>
-          <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Acceptance ambiguity extends beyond OR7</h3><span class="finding-location">FR4, FR5, FR7, FR12</span></header>
-            <div class="finding-note">Feature-level evidence paragraphs do not round-trip every consequence in several multi-clause requirements.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Give each FR a verifiable consequence list or extend clause-level evidence coverage to every multi-clause FR.</div>
-          </article>
-          <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR8's projection-cost outcome has no measurable bound</h3><span class="finding-location">NFR8; OR16</span></header>
-            <div class="finding-note">The missing projection specification leaves the projection half untestable and Story 6.4 unauthorized.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Approve numeric bounds, workload, pass condition, and evidence path, then bind them from NFR8.</div>
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Furniture the PRD itself acknowledges remains</h3>
+              <span class="finding-location">§5 lines 214–226; §10 SM1 line 526, SM5 line 528</span>
+            </header>
+            <div class="finding-note">§5 restates §6/§7, as OR9 admits. SM1 "cannot fail and does not measure Phase 4 delivery". Neither SM1 nor SM5 discriminates any longer.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Fold §5 into the OR9 pass. Move the achieved planning-recovery metrics to a one-line history note so §10 lists only live metrics.</div>
           </article>
         </div>
       </details>
@@ -280,34 +327,131 @@
 
     <section class="dimension">
       <details>
-        <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Scope is unusually honest. MVP, exclusions, and committed post-MVP work are separated; append fencing remains a blocker rather than a waiver; planning/evidence outcomes are not misrepresented as implementation; and open refinements have owners and triggers.</p>
-        </div></div>
+        <summary>
+          <h2>Strategic coherence</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The thesis is explicit in §2: reuse and hardening must ship together, and "evidence discipline" belongs to the hardening half. That covers the Epic 9 gate machinery that now dominates the remaining work. SM8–SM12 measure both halves of the bet. Each counter-metric (SM-C1–SM-C5) names the metric it counterbalances, and SM-C5 explicitly forbids reaching SM11 "by narrowing its definition". MVP, post-MVP (Epic 8/G5), and exclusions are cleanly separated.</p>
+            <p>Two things weaken the arc. One thesis metric reports progress that the PRD elsewhere declares non-authoritative. And MVP scope is still defined by the epic inventory rather than derived from the thesis, which matters more now that 17 failed gates compete for one maintainer.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">SM11 counts NFR7 class (e) as delivered on evidence the PRD calls non-authoritative</h3>
+              <span class="finding-location">§10 SM11 line 544; §1.1 line 133; NFR7 line 367; §11.3 OQ8 row line 653; G-OQ8 line 679</span>
+            </header>
+            <div class="finding-note">SM11 says "four of five are delivered", counting class (e) on "closed source-only platform evidence from Stories 4.9-4.15". NFR7 counts a class as delivered only when "production-path evidence proves" prevention. §1.1 says "No OQ8 closure claim under FR27, NFR7, or NFR16 is authoritative" until G-OQ8 passes. §11.3 calls Story 4.15's completion "a bounded source-only packet claim". The thesis metric therefore overstates hardening by one class, which is the drift SM-C5 exists to prevent. Also raised by: Brownfield truth H1 · Adversarial general H3.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Report SM11 as three of five delivered, with class (e) shown as "implemented; not countable until G-OQ8 passes and production-path evidence is bound". Alternatively, state explicitly why the 4.9–4.15 evidence meets NFR7's production-path bar despite the "source-only" label.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">MVP scope still follows the epic inventory rather than the thesis</h3>
+              <span class="finding-location">§9.1 lines 490–500</span>
+            </header>
+            <div class="finding-note">This is open from 2026-09-10. §9.1 still begins "Epics 1-7 as listed in <code>epics.md</code>". With 17 failed gates and 24 blocking ORs, the PRD gives no thesis-derived order: which outcomes are exit-critical for the bet, and which are enabling infrastructure? The 2026-10-07 work already implies an order (Story 9.1 bootstrap, gate validators, G-APPEND envelope first), but only <code>epics.md</code> carries it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short scope-logic paragraph that groups gates by thesis leg and enabling dependency, for example: corrective-work bootstrap (9.1), then gate infrastructure (9.2–9.5), then the safety gates (G-APPEND, G-TENANT, G-STATUS-ID, G-AUTH-HOSTS), then the parity → publication → consumer chain. Do not duplicate story sequencing.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">SM8 measures only the Tenants module</h3>
+              <span class="finding-location">§10 SM8 line 541</span>
+            </header>
+            <div class="finding-note">FR9 and UJ1 cover Sample and Tenants adoption, but SM8 counts duplicated plumbing in Tenants alone. Related: Brownfield truth L3 (SM8 also omits the Tenants AppHost and Aspire projects).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Include Sample in the count or state why it is excluded.</div>
+          </article>
+        </div>
       </details>
     </section>
 
     <section class="dimension">
-      <details open>
-        <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-broken">broken</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The glossary, requirement IDs, feature grouping, and traceability aids are locally strong. Yet the PRD itself records that PRD, architecture, UX, epics, and lifecycle evidence do not form one approved baseline. Safety-sensitive OQ8 rules are also governed by external bytes unavailable inside EventStore.</p>
-        </div></div>
+      <details>
+        <summary>
+          <h2>Done-ness clarity</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>This is the most improved dimension. The §7.1 ledger gives 49 stable clauses for FR4, FR5, FR7, FR12, FR26, FR33, FR34, FR36 and NFR17. Each clause has an observable consequence and a primary slice, under an explicit rule: "A <code>done</code> label, ownership declaration, smoke status, or evidence for another clause never substitutes". G-MVP-COVERAGE forbids <code>N/A</code> and unsupported <code>done</code>. Most single-clause FRs carry a directly testable consequence (FR3's endpoint list, FR18, FR20, FR21's no-local-<code>PackageVersion</code> rule). NFR8 is honest about its missing projection bound and fails closed.</p>
+            <p>The remaining softness is concentrated in three places: the newest NFR1 text; "bounded" used without a bound; and four gates that cannot yet be evaluated mechanically.</p>
+          </div>
+        </div>
         <div class="findings-list">
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Planning artifacts are not one approved baseline</h3><span class="finding-location">§11.3; OR14, OR15</span></header>
-            <div class="finding-note">Matching PRD/architecture hashes in epics were refreshed without the required approval sequence; architecture remains draft, lifecycle sources conflict, and UX hashes are stale.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Reconcile and approve the planning set atomically, then run guarded drift and lifecycle validations before handoff.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">NFR1's new anonymous-endpoint class is never listed, and it cites a decision that forbids it</h3>
+              <span class="finding-location">§7 NFR1 line 361; §11.2 NFR1 row line 609; architecture.md AD-16 line 244</span>
+            </header>
+            <div class="finding-note">NFR1 now admits "an enumerated set of static framework assets and authentication-protocol callback endpoints … enumerated by endpoint-metadata tests (AD-16)". Neither the PRD nor AD-16 lists that set. AD-16 still reads: "Only <code>/health</code>, <code>/alive</code>, and <code>/ready</code> carry explicit <code>AllowAnonymous</code> metadata … Any future anonymous asset or callback first requires a governed PRD change." The closed list is therefore whatever the tests happen to enumerate, so the test becomes the requirement, and the cited authority contradicts the PRD. No OR tracks the AD-16 amendment: OR14's architecture task list names AD-10, AD-11 and AD-26 only, and the approved <code>sprint-change-proposal-2026-10-07-story-9-2-nfr1.md</code> §4 notes that the amendment "remains routed to <code>bmad-architecture</code>". "Carry no tenant, operational, or user data" is a judgment, not a check, inside a fail-closed security NFR. Also raised by: Brownfield truth H5 · Adversarial general H1 · Platform contract H5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> List the class in the PRD, or name the single approved artifact that holds the closed list, by endpoint kind or path pattern (for example framework static web assets, and OIDC sign-in/sign-out callback paths). Define the mechanical test for "data-free". Add the AD-16 amendment to OR14 or a new OR so that NFR1 no longer cites a contradicting decision.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Normative OQ8 requirements are unavailable inside the evidence boundary</h3><span class="finding-location">§1.1; OR11</span></header>
-            <div class="finding-note">A digest without accessible governed bytes cannot let downstream workflows extract or validate the overriding state machine, timers, tombstones, public errors, and evidence denominators.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Retain accessible immutable normative content or a verifiable attestation and make absence or mismatch fail closed.</div>
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">"Bounded" is used without a bound or a pointer to one</h3>
+              <span class="finding-location">FR34 line 323; FR34-C1 line 415; FR6 line 241; FR17 line 270; FR30 line 290; UJ4 line 172</span>
+            </header>
+            <div class="finding-note">FR34 "bound in-memory deduplication", FR34-C1 "bounded deduplication", FR6 "payload limits", FR17 "readiness retry", FR30 (no recovery window) and UJ4 "bounded recovery contract" give neither a number nor the spec that will hold one. NFR5, NFR8 and FR26 do. Any finite value satisfies these, so a story can close them by assertion.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give each a number, or name the owning artifact that holds it (an architecture AD or a spec), as NFR8 does for the projection bound.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR traceability is incomplete</h3><span class="finding-location">§0; §11.2</span></header>
-            <div class="finding-note">NFR5, NFR12, and NFR13 are absent from the NFR table although epics declares coverage.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add every NFR and distinguish primary from supporting ownership without treating declarations as delivery proof.</div>
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Four of the 17 mandatory gates have no command that can be evaluated</h3>
+              <span class="finding-location">G-BASELINE line 678; G-CLAUSE line 683; G-TENANT line 680; G-STATUS-ID line 681; OR17</span>
+            </header>
+            <div class="finding-note">G-BASELINE and G-CLAUSE are "not yet defined"; G-TENANT and G-STATUS-ID "must be bound by that story". OR17 acknowledges this, but OR17 is the only gate-infrastructure refinement without a primary story. Also raised by: Adversarial general H9 (at high: the gated work chooses its own pass condition) · Brownfield truth L6 (OR17 has no primary story).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Assign OR17 to the stories that own those validators (9.3, 9.4, 2.14, 2.15), and require each story to name its command before it starts.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Scope honesty</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The posture is exemplary. FR24 and FR31 are framed as evidence and planning outcomes only. "Assignment is not delivery" recurs wherever a 2026-10-07 owner was named. Each of the 24 blocking ORs has an owner and a trigger, and three non-blocking items are kept visibly separate. §13 names the one scope reduction. Open-item density (24 blocking ORs, 17 failed gates, 0 inline assumptions) suits a document that authorizes nothing.</p>
+            <p>The scope statement itself, however, now has gaps that the reader must infer.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The exit contract cannot represent the 2026-10-07 UI-host carve-out</h3>
+              <span class="finding-location">§9.1 line 490; §9.2 line 507; §10 SM10 line 543; §11.4 G-MVP-COVERAGE line 693; §13 line 770</span>
+            </header>
+            <div class="finding-note">§9.2 moves interactive UI hosts' NFR1 conformance out of the MVP production profile. But §9.1 says MVP is "total over FR1-FR36, NFR1-NFR18", and G-MVP-COVERAGE says "<code>N/A</code> is forbidden for MVP IDs". SM10 targets "100% of entries in the … <code>nfr1_surfaces</code> inventory", while UI-host surfaces are "listed with that scope reason and never counted as covered". So either SM10 can never reach 100%, or its denominator silently excludes them. The Story 9.5 validator will have to invent a rule the PRD never states. Also raised by: Adversarial general H2.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give the carve-out a stable clause, for example NFR1-C1 for MVP surfaces and NFR1-C2 for the interactive-UI-host class (post-MVP). Allow one reason-coded <code>outside-mvp-production-profile</code> state in G-MVP-COVERAGE for that clause only. Define SM10's denominator to exclude it explicitly.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Epic 9 is missing from the MVP scope statement</h3>
+              <span class="finding-location">§9.1 line 492; §11.4 owners</span>
+            </header>
+            <div class="finding-note">§9.1 lists "Epics 1-7" and notes that <code>epics.md</code> "also lists Epic 8". The PRD never mentions Epic 9, yet <code>epics.md</code> line 389 declares it an "MVP epic, independent of Epic 8". Its Stories 9.1–9.5 own the §0 corrective-work bootstrap, G-BASELINE, G-CLAUSE, G-HIGH-RISK and G-MVP-COVERAGE. Also raised by: Brownfield truth M6.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add Epic 9 to §9.1 with one line on its role (gate machinery that grants no readiness, release or deployment authority).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">§13 reports no assumptions, but normative text rests on an architecture [ASSUMPTION]</h3>
+              <span class="finding-location">§4 Canonical Production Profile Inventory line 188; G-PUBLICATION-AUTH line 688; G-CONSUMER line 689; §11.3 architecture row line 648</span>
+            </header>
+            <div class="finding-note">The glossary states that "AD-26 defines exactly one currently authorizing production profile", and two gates compute against it. §11.3 says that AD-26 "remains <code>[ASSUMPTION]</code>" pending owner ratification, and <code>architecture.md</code> line 337 confirms the tag. Also raised by: Adversarial general M4 · Brownfield truth L4.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Index imported assumptions in §13 (AD-26, its owner, and the ratification trigger). Phrase the glossary entry conditionally ("AD-26, once ratified, defines …").</div>
           </article>
         </div>
       </details>
@@ -315,20 +459,78 @@
 
     <section class="dimension">
       <details open>
-        <summary><h2>Shape fit</h2><span class="verdict-pill verdict-thin">thin</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The capability-spec shape fits this brownfield platform, but the PRD covers six roles, three UI surfaces, release, and incident/recovery work without user journeys. It also mixes a stable requirements baseline with volatile receipt counts, story state, digests, and historical reconciliation.</p>
-        </div></div>
+        <summary>
+          <h2>Downstream usability</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The aids for extracting from the PRD are now strong: 32 glossary terms, including the six-way "Parity" disambiguation, MessageId Contract Version and Assurance Control; stable IDs; UJs that list their requirements; complete §11.1 and §11.2 tables for every FR and NFR; all 24 recently added owner or supporting stories (2.13–2.17, 3.17–3.21, 4.16, 4.17, 5.11–5.14, 6.7, 7.21, 7.22, 9.1–9.5) present as <code>### Story</code> headings in <code>epics.md</code>; and accurate presence and absence claims for cited paths. <code>deploy/dapr/production-profile.yaml</code>, the five unbuilt validators, the AOT document and the projection-cost spec are absent as stated; the Story 3.15 <code>closure.json</code>, its validator and <code>deploy/dapr/resiliency.yaml</code> exist as stated.</p>
+            <p>What breaks downstream use is the PRD's own identity data and contradictions between its sections.</p>
+          </div>
+        </div>
         <div class="findings-list">
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Multi-stakeholder and UI-affecting workflows have no user journeys</h3><span class="finding-location">§3; §8.3</span></header>
-            <div class="finding-note">Downstream UX and story work must reconstruct cross-role order, visible state, and failure recovery from scattered requirements.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a small set of named-protagonist journeys for load-bearing success and failure/recovery flows.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The §11.3 identity register is stale for every artifact it binds</h3>
+              <span class="finding-location">§11.3 lines 648–650 and the ux.md row</span>
+            </header>
+            <div class="finding-note">At <code>HEAD</code> <code>c60503c1</code>: <code>architecture.md</code> is stated as <code>7e3dbc7b…</code> but is <code>7fd805a8…</code>; <code>epics.md</code> <code>d067c8fb…</code> is <code>0697679b…</code>; <code>ux.md</code> <code>2927f97d…</code> is <code>23b17217…</code> at HEAD and <code>a135c969…</code> in the worktree; DESIGN "current" <code>3f4f0181…</code> is <code>7b743e79…</code> at HEAD (the worktree differs again); EXPERIENCE "current" <code>11f75403…</code> is <code>3985789a…</code> at HEAD (the worktree differs again). The <code>architecture.md</code> and <code>ux.md</code> values are the digests recorded in <code>epics.md</code> (lines 15–18), relabelled as each artifact's own "SHA-256". The status claims are also wrong: §11.3 and §3.3 call <code>ux.md</code> <code>final</code>, but <code>HEAD</code> reads <code>Status: draft</code>; the uncommitted worktree reads <code>final</code> and now also marks DESIGN and EXPERIENCE <code>final</code>, contrary to "both have <code>status: draft</code>". The column header says "Identity/status at stated date", but no row states a date. §1 makes this register the PRD's mechanism for content identity, so wrong values are a false anchor. G-BASELINE's FAIL remains correct. Also raised by: Brownfield truth H2 · Adversarial general M2 · Platform contract L3.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either generate the register (the Story 9.3 baseline manifest) and replace the in-PRD digests with a pointer, or date every row and separate "digest recorded in <code>epics.md</code>" from "artifact digest at <code>&lt;commit&gt;</code>".</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Volatile readiness evidence is embedded in the stable PRD</h3><span class="finding-location">§1.1; §6.8; §10–§12; OR9</span></header>
-            <div class="finding-note">Receipt counts, statuses, verdict history, source identities, and retired refinements stale after each review cycle.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Keep stable authority and fail-closed rules in the PRD; move run history and evidence state to a generated ledger or addendum.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The epics.md Requirements Inventory differs from the PRD for 18 of 56 requirement texts, and the PRD reports only digest staleness</h3>
+              <span class="finding-location">§11.3 rows lines 647, 650; OR8; OR14</span>
+            </header>
+            <div class="finding-note">Comparing each PRD §6/§7 row with the <code>FRn:</code>/<code>NFRn:</code> lines in <code>epics.md</code>, these differ: FR5, FR12, FR15, FR16, FR26, FR33, FR34, FR36, FR37, NFR2, NFR3, NFR5, NFR7, NFR8, NFR12, NFR17, NFR18 and NFR19. Several differences are substantive weakenings: the <code>epics.md</code> NFR2 is still the pre-correction one-liner ("Tenant provisioning must reject the reserved <code>system</code> tenant name"), with no canonicalizer or grammar; the <code>epics.md</code> NFR5 has no 16 / 2,048 bound; the <code>epics.md</code> NFR12 protects only "additive framework changes such as SignalR …"; the <code>epics.md</code> FR36 lacks the five-outcome structure. A story writer working from the <code>epics.md</code> inventory would build to superseded security and compatibility contracts. NFR1 shows propagation works when someone does it. Also raised by: Brownfield truth M7.</div>
+            <div class="finding-fix"><strong>Fix:</strong> List the differing IDs in §11.3 or OR14 so the reconciliation is scoped and checkable. Put the security and compatibility rows (NFR2, NFR3, NFR12, FR12, FR36) first in the OR14 sequence.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">§11.2.1 contradicts §11.2 on NFR5 ownership</h3>
+              <span class="finding-location">§11.2.1 line 634 vs §11.2 line 613 and G-NFR-OWNERSHIP line 692</span>
+            </header>
+            <div class="finding-note">§11.2.1 says "NFR5's primary-owner gap remains open", while §11.2 says "Primary owner Story 2.16 (assigned 2026-10-07)". Also raised by: Brownfield truth M2 · Adversarial general M1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace it with "NFR5's primary owner is Story 2.16; Story 2.13 supports."</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Some cross-references are stale</h3>
+              <span class="finding-location">OR6 line 722; OR2 retirement note line 764; OR15 line 725; §0 line 108</span>
+            </header>
+            <div class="finding-note">OR6 still asks to "give NFR18 an owning story", but NFR18, §11.2 and G-NFR18 already name Story 6.7. The OR2 retirement note says <code>epics.md</code> "still describe[s] loop-3 partial delivery" for Story 5.3, but OR15 says Story 5.3 was reconciled on 2026-10-07. §0 cites only the 2026-09-10 observations, while the frontmatter records a 2026-10-06 readiness assessment against <code>a6fc951e…</code>. Also raised by: Brownfield truth L1 and L5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Refresh these. They are exactly the drift the OR8 guard should catch.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>Shape fit</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Fit improved where it matters most. The UJs are load-bearing for a platform with several roles. The brownfield path references are accurate. The NFRs are defined by capability rather than by a closed host list.</p>
+            <p>The structural problem the earlier reviews flagged has grown. This is still three documents in one: a requirements baseline, a readiness exit contract, and a live status and evidence ledger. It is now 770 lines and 163 KB, against 583 lines in the 2026-09-10 review. Volatile state has also moved into requirement text: NFR8 carries Story 6.1's 2026-10-04 reopen and review patch P-D1, NFR18 carries an assignment date, and the FR26 row in §11.1 carries Story 5.3 status. §1 says "Readiness re-opens whenever FR or NFR text changes", and OR8's guard will diff FR/NFR text against <code>epics.md</code>, so every lifecycle update now edits a requirement and churns both. Three sections are also pinned word-for-word by <code>Contracts.Tests</code> (the GUARDED comments at lines 338, 643 and 674), so correcting PRD prose requires a code change.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Lifecycle state embedded in requirement text and test-pinned prose means the PRD cannot stay current</h3>
+              <span class="finding-location">NFR8 line 368; NFR18 line 378; §6.8 lines 340–343; §11.3; §11.4 "Current result" cells; OR9 line 756</span>
+            </header>
+            <div class="finding-note">This review shows the cost: stale identities (§11.3), stale ownership (§11.2.1, OR6), and an 18-requirement inventory divergence. All come from status churn in a hand-maintained ledger. OR9 defers the restructure "to preserve stable downstream section anchors", but anchor stability is now costing correctness.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Do the OR9 split in its minimal form now: keep FR/NFR text free of dates, story states and patch IDs (move NFR8's Story 6.1 narrative to OR5 and §11.3, and NFR18's assignment to §11.2); move the §6.8 status bullets, the §11.3 register and the §11.4 "Current result" cells into a generated ledger keyed by gate and clause ID, with the G-BASELINE and G-MVP-COVERAGE manifests as the natural home; leave anchor stubs that point to the ledger; retarget the GUARDED tests to the ledger.</div>
           </article>
         </div>
       </details>
@@ -336,82 +538,773 @@
 
     <section class="reviewer-section">
       <details>
-        <summary><h2>Platform / API-contract adversarial review</h2><span class="reviewer-source">review-platform-contract.md</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Reject as a current chain-top implementation or consumer-handoff baseline. Current tracked behavior exposes public-contract conflicts beyond the rubric's structural findings.</p>
-        </div></div>
+        <summary>
+          <h2>Brownfield truth</h2>
+          <span class="reviewer-source">_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-brownfield-truth-validate-2026-10-07.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Fail as the current chain-top baseline; pass as a fail-closed readiness posture.</strong> The PRD's central safety claim still holds: readiness is <code>Reject</code>, every mandatory §11.4 row except the bounded G-RUNTIME-PARITY technical pass is FAIL/BLOCKED, and no spot check found a gate shown as passing that should fail. Every artifact the PRD calls absent is absent, and each code-level contradiction it records is real: the generator's <code>MessageId ?? CorrelationId</code> fallback, raw and synthetic <code>system</code> tenants, Tenants' hand-rolled JWT subset, MediatR 14.2.0 with a suppressed license log, and the 14 release packages. There is therefore no critical finding. The document still cannot be trusted as the current baseline, for six reasons: the §11.3 register reports September digests and statuses as current; the ownership tables cite <code>epics.md</code> story sections that declare something else; SM11 was quietly raised to count NFR7 class (e) as delivered on source-only evidence that the PRD's own §1.1 and NFR7 rules disallow; NFR1 cites AD-16 for an anonymous UI-host class that AD-16 still forbids; the Epic 8 and Epic 6 lifecycle statements are stale; and the current bytes (<code>d5632ba7…</code>) were never reviewed — 15 commits changed the PRD after the last sealed version (<code>9a35ebce…</code>, 2026-09-10), five carry unrelated commit subjects, and the run memlog states that nothing was committed when the Group 7 edits are already in <code>HEAD</code>.</p>
+            <p>Basis: <code>HEAD</code> <code>40c92e08</code> with <code>prd.md</code> identical to the worktree; git comparisons use committed <code>HEAD</code>. Executed read-only checks: <code>python3 -I tools/validate-oq8-platform-evidence.py</code> exits 0; <code>--pre-review</code> exits 1 (Story 4.15 lifecycle drift); the exact G-RUNTIME-PARITY command exits 0. Counts: 0 critical, 6 high, 8 medium, 7 low.</p>
+            <p>Delta vs 2026-09-10: no reviewer gate has run since reviewers sealed <code>9a35ebce…</code> (commit <code>94482189</code>). Since then FR/NFR requirement text changed only in FR37, NFR1, NFR8 and NFR18, each traceable to an approved proposal or a dated owner decision; the silent changes are in metrics, gates and status narrative (SM11, the §11.3 register, OR15). All five 2026-09-10 criticals remain open and correctly fail-closed (baseline drift now wider; OQ8 bytes absent; generator <code>system</code> and raw tenants at <code>RestApiControllerEmitter.cs:410-444</code>; generator <code>MessageId ?? CorrelationId</code> at line 281; append race unfenced), while the 2026-09-10 highs on §11.2 completeness, user journeys, NFR12 breadth and FR36 consumer authority were fixed in the text.</p>
+          </div>
+        </div>
         <div class="findings-list">
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Generated public API contradicts the canonical tenant boundary</h3><span class="finding-location">NFR2; §8.2; AD-27</span></header>
-            <div class="finding-note">Generated controllers can emit reserved <code>system</code> and fail to canonicalize or fully validate route/claim tenants.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Bind the full canonicalization contract in the PRD, use the shared canonicalizer, and add negative generated-controller tests.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H1 — SM11 counts NFR7 class (e) as delivered on evidence the PRD itself says cannot close it</h3>
+              <span class="finding-location">§10 SM11 line 544; NFR7 line 367; §1.1 line 133; §11.2 NFR7 row line 615; G-OQ8 line 679</span>
+            </header>
+            <div class="finding-note">Claim: "Currently four of five are delivered: … class (e) duplicate side effects has implementation and closed source-only platform evidence from Stories 4.9-4.15." NFR7 requires that "production-path evidence proves that the guard or recovery prevents the loss". §1.1 says "No OQ8 closure claim under FR27, NFR7, or NFR16 is authoritative" until G-OQ8 passes, and G-OQ8 is FAIL/BLOCKED. The change from "three" to "four" was made in <code>98395e5f</code> ("fix(oq8): close story 4.15 lifecycle", 2026-09-21; <code>git show --word-diff</code> shows <code>[-three-]{+four+}</code>), with no sprint-change proposal and no PRD memlog entry. The Story 4.15 v4 record calls itself source-only (<code>evidence/story-4-15-successors/v4/source-only-handoff.json</code>: "grants no release approval, package authority…"). The §11.2 NFR7 note names only class (c) as failed, which repeats the over-claim. Also raised by: Rubric (Strategic coherence) · Adversarial general H3.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restore "three of five delivered; class (e) has implementation and source-only platform evidence, but delivery is pending G-OQ8 and production-path proof." The alternative is a logged, proposal-backed owner decision that amends NFR7 and §1.1 to accept this evidence. In either case, name class (e) next to class (c) in the §11.2 NFR7 note.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Command Location can select CorrelationId as status identity</h3><span class="finding-location">FR12; FR27; AD-17</span></header>
-            <div class="finding-note">Generated code falls back from MessageId to CorrelationId despite the adopted sole-selector rule.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Remove the fallback, fail closed on missing/invalid MessageId, add runtime tests, and reopen Story 2.9.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H2 — The §11.3 baseline register reports 2026-09 digests and statuses as current</h3>
+              <span class="finding-location">§11.3 rows architecture.md, ux.md, epics.md (lines 648–650); §3.3 line 167</span>
+            </header>
+            <div class="finding-note">Claims: architecture <code>7e3dbc7b…</code>; "<code>ux.md</code> SHA-256 <code>2927f97d…</code>; top-level status <code>final</code>"; "<code>epics.md</code> matches this top-level digest"; DESIGN "current <code>3f4f0181…</code>"; EXPERIENCE "current <code>11f75403…</code>"; <code>epics.md</code> <code>d067c8fb…</code>; line 167 "the final top-level <code>ux.md</code> handoff". At <code>HEAD</code>: architecture <code>7fd805a8…</code>; ux.md <code>23b17217…</code> with <code>Status: draft</code> (changed in <code>40c92e08</code>); DESIGN <code>7b743e79…</code>; EXPERIENCE <code>3985789a…</code>; epics <code>0697679b…</code>. The epics <code>inputDocumentDigests</code> still pin ux.md <code>2927f97d…</code>, so "epics matches" is false, and was already false on 2026-10-06. The values the PRD gives date from commit <code>0994c378</code> (2026-09-09). The worktree holds an uncommitted UX update that sets ux.md back to <code>final</code> (<code>a135c969…</code>), so these rows will drift again when it lands. The "Identity/status at stated date" header does not rescue rows that state no date. Also raised by: Rubric (Downstream usability) · Adversarial general M2 · Platform contract L3.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give every row an explicit observation date and commit, or replace the hard-coded digests with "see G-BASELINE manifest (Story 9.3)". Delete the "epics matches this top-level digest" sentence. Fix line 167 so it does not call ux.md final.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Silent append loss remains unguarded</h3><span class="finding-location">NFR7; §9; SM11; OR4</span></header>
-            <div class="finding-note">The reproduced same-key overwrite class still lacks a provider-level fence or enforced single-writer envelope.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Deliver and prove append fencing, or mechanically exclude the race from the supported operating envelope.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H3 — Epic 8 lifecycle is wrong: Story 8.2 is done and Story 8.3 is in progress</h3>
+              <span class="finding-location">§11.3 bullet line 658; SM4 line 533</span>
+            </header>
+            <div class="finding-note">Claims: "Story 8.2 is authorized but still <code>backlog</code> pending its story file, and Stories 8.3-8.11 remain predecessor-gated" and (SM4) "Stories 7.14 and 8.2 … Both remain <code>backlog</code>". <code>sprint-status.yaml</code> has 8-2 <code>done</code> and 8-3 <code>in-progress</code>. <code>epics.md:6779</code>: "Story 8.2 is done under <code>AR-20260914-01</code>, which … authorizes 8.3". The 8.2 story file records implementation done on 2026-09-13 and Story 8.3 authorized at <code>2026-09-14T07:04:19Z</code>; the 8.3 file records implementation through a fourth review pass on 2026-09-17. Also raised by: Adversarial general M2 (Epic 8 bullet).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate the G5 path as 8.1 and 8.2 done, 8.3 in progress, and 8.4–8.11 predecessor-gated. Correct SM4 so that only 7.14 remains backlog. G5 stays <code>needs-additive-api</code>.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">OQ8 semantics remain unreproducible and validation is red</h3><span class="finding-location">§1.1; OR11; AD-25</span></header>
-            <div class="finding-note">The governed bytes are unavailable and the current OQ8 pre-review validator fails on public-document drift.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Make normative bytes available, bind them through all artifacts, repair the drift through the governed review path, and keep handoff closed.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H4 — §11.1 and §7.1 primary slices are not what the cited epics.md story sections declare</h3>
+              <span class="finding-location">§11.1 FR4, FR5, FR7, FR34 rows (lines 564, 565, 567, 594) and footnote line 599; §7.1 FR4-C2..C6, FR5-C1/C2, FR7-C2..C5, FR34-C10, NFR17-C1/C3/C4 (lines 388–434)</span>
+            </header>
+            <div class="finding-note">The footnote says "Story ownership is declared by each <code>### Story</code> section in <code>epics.md</code>", but those sections disagree: FR4 — 1.16 "Supports FR4", 2.7 "Supports FR4 and FR15", 2.11 "supporting … FR4", with only 1.2 primary; FR5 — 1.3 and 1.14 "Supports primary FR5"; FR7 — 1.6 "Supports primary FR7", 1.18 and 1.19 "supporting FR7", and Story 1.15, which the PRD assigns FR7-C3, declares no FR7 at all; FR34-C10 — 7.11 is "supporting FR34". Internally, §7.1 makes 7.6, 7.8 and 7.9 the primary slices for NFR17-C1, C3 and C4, but §11.2's NFR17 row lists them as supporting, matching epics. <code>epics.md</code> contradicts itself on FR12: Story 2.9 still claims primary ownership of the <code>Location</code> clause and Story 2.11 says FR12's primary slices stay with 2.2 and 2.9, while the FR12 completion rule and the PRD name 2.15. §11.1 attributes FR4 to "Epic 2 - metadata/provenance", but the epics FR Coverage Map gives FR4 to Epic 1 only. G-CLAUSE fails closed on clause closure, but the ownership tables misstate their own source. Also raised by: Adversarial general M1 (NFR17).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either label the §7.1 and §11.1 slices "PRD-proposed, not yet declared in <code>epics.md</code> (G-CLAUSE / Story 9.4)", or promote the declarations in <code>epics.md</code> through correct-course. Make §7.1 and §11.2 agree on NFR17. Route the stale coverage lines on Stories 2.9 and 2.11 to the OR8 guard.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Backward compatibility excludes most public surfaces</h3><span class="finding-location">NFR12</span></header>
-            <div class="finding-note">SDK, generator, HTTP, envelope, serialization, DAPR-wire, and NuGet contracts lack a complete PRD-level compatibility policy.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Inventory and classify public contracts, define SemVer/deprecation/removal rules, and gate releases on API/wire and package-consumer evidence.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H5 — NFR1 cites AD-16 for an anonymous class that AD-16 still forbids, and no story owns that class</h3>
+              <span class="finding-location">NFR1 line 361; SM10 line 543; §11.2 NFR1 row line 609</span>
+            </header>
+            <div class="finding-note"><code>architecture.md:244</code> (AD-16, <code>[ADOPTED]</code>, unchanged at <code>HEAD</code> and in the worktree): "Only <code>/health</code>, <code>/alive</code>, and <code>/ready</code> carry explicit <code>AllowAnonymous</code> metadata. Endpoint metadata tests enumerate exactly those support-safe exceptions… Any future anonymous asset or callback first requires a governed PRD change." Story 5.14's AC (<code>epics.md:4815</code>, 4828–4831) still requires only those three and treats the UI-host decision as "still pending". <code>architecture.md:541</code> still says PRD Assurance Control (1) reads "required, blocking run", which predates the 7.1 amendment. In code, only <code>ServiceDefaults/Extensions.cs:184-186</code> applies <code>AllowAnonymous</code>. The UI-host class has no enumeration owner; the exclusion of UI hosts from the production profile (§9.2) limits the exposure. Also raised by: Rubric (Done-ness clarity) · Adversarial general H1 · Platform contract H5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Until <code>bmad-architecture</code> amends AD-16, mark the UI-host clause "AD-16 amendment owed (routing 7.2)". Route the Story 5.14 AC and the <code>architecture.md:541</code> row to their owners, and name which story will enumerate the class once a UI host enters a production profile.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Authentication conformance excludes Tenants and future generated hosts</h3><span class="finding-location">NFR3</span></header>
-            <div class="finding-note">The shared JWT posture is expressed as a closed host list rather than a capability-level obligation.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Apply NFR3 to every externally reachable or JWT-binding host and add generated-host conformance evidence.</div>
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H6 — The current PRD bytes are unreviewed; final and the finalize fields describe an earlier document</h3>
+              <span class="finding-location">frontmatter lines 3–4, 17–19; folder .memlog.md lines 106–120</span>
+            </header>
+            <div class="finding-note">Claims: <code>status: final</code>; <code>prd_finalize_assessed: 2026-09-10</code>; <code>prd_finalize_reviewed_head: dd55a6d1…</code>; memlog "…readiness stays FAIL, nothing committed" and "No reviewer gate run". Reviewers sealed <code>9a35ebce…</code> at <code>9cde9f2d</code>, so the frontmatter head <code>dd55a6d1</code> was not the sealed head. The 15 later commits changed requirement text (FR37, NFR1, NFR8, NFR18), the MVP production-profile scope (§9.2, §13), the Assurance Control definition, SM11 and the gate narrative with no reviewer gate; H1, H2, H4 and H5 all come from that unreviewed delta. <code>git show --stat c60503c1</code> includes <code>prd.md</code> and the memlog under "feat: add obligation audit for current amendments…", and <code>b2c4bf79</code> carries item 7.1 under "test: add LegacyCommandReplayJsonAdmissionTests…". Planning changes landing in <code>feat</code> commits also feed semantic-release versioning. Also raised by: Adversarial general L2 (finality).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Run the reviewer gate on the current bytes before keeping <code>status: final</code>, or set <code>document_status</code> to <code>draft-pending-review</code>. Record the sealed digest and head that the reviewers actually examined. Append a memlog correction stating that the Group 7 edits were committed in <code>b2c4bf79</code> and <code>c60503c1</code>. Keep planning edits in separate <code>docs(planning)</code> commits.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Consumer-removal safety is weaker in the PRD than in architecture</h3><span class="finding-location">FR36; AD-22</span></header>
-            <div class="finding-note">Consumer identity, subject digest, authenticated receipt, validity, and invalidation conditions are stranded in architecture.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Promote stable authorization outcomes into FR36 and define the Consumer-owner role.</div>
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M1 — Story 6.5's event-versioning gate is done and Story 6.6 is in progress, but the PRD still says the specification is required</h3>
+              <span class="finding-location">§11.3 bullet line 662; FR33-C5 line 413</span>
+            </header>
+            <div class="finding-note">Claim: "…and the event-versioning specification remains required before Story 6.6." <code>sprint-status.yaml</code> has 6-5 and 6-5a through 6-5d <code>done</code> and 6-6 <code>in-progress</code>. <code>spec-event-versioning-upcasting.md</code> has <code>status: normative-approved</code> and says "The owner has approved this design; Story 6.6 is ready". The 6.6 implementation spec has <code>status: 'in-progress'</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Record FR33-C5's approved specification by identity and Story 6.6's in-progress state. The FR33-C6 evidence stays open.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The dated reject no longer describes one current baseline</h3><span class="finding-location">frontmatter; §0; OR14</span></header>
-            <div class="finding-note">Current HEAD is fourteen commits beyond the bound baseline; some reasons changed even though the conservative posture remains correct.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Reconcile and validate against an explicit clean current commit and refresh provenance atomically.</div>
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M2 — §11.2 and §11.2.1 contradict each other and omit declared owners</h3>
+              <span class="finding-location">§11.2.1 line 634; §11.2 NFR5, NFR7, NFR12, NFR17 rows (lines 613, 615, 620, 625)</span>
+            </header>
+            <div class="finding-note">§11.2.1 says "NFR5's primary-owner gap remains open", but §11.2 names primary owner 2.16 and G-NFR-OWNERSHIP repeats it. The NFR7 row omits Story 4.16 ("Primary OR4, NFR7 class (c)", <code>epics.md:4085</code>) and the supporting Story 4.17. Supporting cells also omit 2.13 for NFR5, NFR12, NFR15 and NFR16, and 3.17 for NFR12 and NFR17. Also raised by: Rubric (Downstream usability) · Adversarial general M1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Remove the stale NFR5 sentence, add 4.16 as the class (c) primary owner, and complete the supporting cells.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Ownership traceability is not delivery traceability</h3><span class="finding-location">§10–§12</span></header>
-            <div class="finding-note">Tracker, wrapper, evidence, and shipped behavior can disagree despite ownership tables.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Generate a stable-ID exit ledger with result, evidence, evaluator, waiver, and invalidation data.</div>
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M3 — The PRD contradicts itself on whether the default OQ8 validator passes</h3>
+              <span class="finding-location">§11.3 OQ8 row line 653 and G-OQ8 line 679 vs OR15 line 725</span>
+            </header>
+            <div class="finding-note">"Story 4.15 v4 default, closed, and historical validators pass…" against "the current default OQ8 probe is blocked by v5 clean-checkout validation and the changed <code>docs/ci.md</code> requires separate gate-input reconciliation" (sentence added in <code>400589a5</code>). <code>python3 -I tools/validate-oq8-platform-evidence.py</code> exited 0 with "OQ8 platform evidence validation passed." on <code>HEAD</code> plus the dirty worktree; <code>--pre-review</code> exited 1 with a 4.15 lifecycle drift, which is expected after closure.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Drop or date the OR15 sentence, or name the exact failing command and checkout mode.</div>
           </article>
           <article class="finding">
-            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Workflow governance mixes mutable and immutable authority</h3><span class="finding-location">FR25; NFR9; OR18</span></header>
-            <div class="finding-note">The PRD does not classify which shared workflow results authorize a gate and which mutable dependencies are merely advisory.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Classify workflow authority, immutably pin authorizing dependencies, and bind identities into evidence.</div>
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M4 — OR14 still owes architecture work that has already landed</h3>
+              <span class="finding-location">OR14 line 724</span>
+            </header>
+            <div class="finding-note">Claim: "Architecture must add the Tenants boundary to AD-10 and align AD-11/AD-26 to the PRD's <code>built</code> → … → <code>production-promoted</code> vocabulary". AD-10 (<code>architecture.md:186</code>) already names the "Tenants domain-service host, Tenants API". AD-11 (line 208) carries the full five-state lifecycle, and AD-26 uses it. <code>architecture.md:540</code> reports that all eleven inline <code>[ASSUMPTION]</code>s were owner-resolved on 2026-10-07; AD-26 alone keeps its tag, and §11.3 says so correctly.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Narrow OR14 to what remains: reviewer closure, the AD-26 ratification records, the AD-16 amendment, the UX assumptions, and the epics renewal.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M5 — Provenance gaps: a proposal that changed the PRD is unlisted, and an "Approved" claim has no source</h3>
+              <span class="finding-location">frontmatter source_artifacts lines 23–96; banner line 101; FR26-C4 line 408</span>
+            </header>
+            <div class="finding-note"><code>sprint-change-proposal-2026-10-05.md</code>, which added §8.4 and §11.2.1 and changed FR37's text, is not listed, although the 2026-09-08 decision recorded at memlog line 68 is that every proposal is listed. Also unlisted, though PRD-referencing: 2026-09-27 (Story 6.5 split, cites FR33-C5), 2026-09-30 (cites <code>prd.md:408</code>), and 2026-10-07-story-9-2-nfr1. The "Approved McpCli course correction (2026-09-27)" banner and the FR26-C4 rewrite (<code>4fcb2b5c</code>) cite no artifact: <code>sprint-change-proposal-2026-09-27.md</code> concerns the Story 6.5 split, and AD-35 attributes the correction to a "Platform course correction" that lives only in the <code>references/Hexalith.Platform</code> planning artifacts. Also raised by: Adversarial general L2 (source list).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add the four proposals and cite the McpCli authority by repository, path, and commit, or mark it unverified. Move the banner into §1.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M6 — §9.1 MVP scope omits Epic 9, which epics.md calls an MVP epic and which owns mandatory gates</h3>
+              <span class="finding-location">§9.1 line 492</span>
+            </header>
+            <div class="finding-note">Claim: "Epics 1-7 as listed in <code>epics.md</code>; <code>epics.md</code> also lists Epic 8, which is committed post-MVP". The PRD never mentions "Epic 9", yet <code>epics.md:389</code> says "MVP epic, independent of Epic 8", and Stories 9.1–9.5 are the primary owners of OR28, G-HIGH-RISK, OR10, OR13, the G-BASELINE validator, G-CLAUSE and G-MVP-COVERAGE. Also raised by: Rubric (Scope honesty).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add Epic 9 to §9.1 as governance scope with no FR, and say whether it enters the G-MVP-COVERAGE denominator.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M7 — 18 of 56 FR/NFR texts differ from the epics.md Requirements Inventory, but the register records only digest drift</h3>
+              <span class="finding-location">§11.3 epics.md row line 650; G-BASELINE line 678; OR8 line 723</span>
+            </header>
+            <div class="finding-note">A read-only comparison found 38 identical and 18 different: FR5, FR12, FR15, FR16, FR26, FR33, FR34, FR36, FR37, NFR2, NFR3, NFR5, NFR7, NFR8, NFR12, NFR17, NFR18, NFR19. The epics inventory still carries pre-2026-09-10 wording for safety contracts: NFR2 ("Tenant provisioning must reject…", word similarity 0.36), NFR7 (0.30), NFR12 (0.10) and FR36 (0.20). The 2026-10-07 proposal mentioned only "NFR3 and NFR5". NFR1 now matches, after <code>40c92e08</code>. Also raised by: Rubric (Downstream usability, at high).</div>
+            <div class="finding-fix"><strong>Fix:</strong> List the divergent IDs in §11.3 as an explicit G-BASELINE and OR8 input, so stories written from the inventory are known to cite superseded text.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M8 — "INDEPENDENT" labels misapply the 2026-09-26 Assurance Control</h3>
+              <span class="finding-location">§6.8 line 342; G-RUNTIME-PARITY line 687</span>
+            </header>
+            <div class="finding-note">With a one-human registry, the required level is <code>single-maintainer-attested</code> (glossary line 201), and the gate's own text says the blocker is "G-HIGH-RISK's assurance and sealed CI controls". The labels are pinned by <code>tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4562-4592</code>. The PRD-bound record <code>implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:24</code> links an "independent Test Architect decision" that the same paragraph and the tracker call self-attested. Also raised by: Rubric (Decision-readiness) · Adversarial general M5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Rename the labels to "ASSURANCE CONTROL OPEN" and "ASSURANCE GATE BLOCKED" and update the pinned test in the same change. Fix the record's link text.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L1 — OR rows still owe work that the 2026-10-07 assignments completed</h3>
+              <span class="finding-location">OR6 line 722; OR7 line 732; OR25–OR26 lines 739–740; OR20, OR21</span>
+            </header>
+            <div class="finding-note">OR6: "give NFR18 an owning story", although 6.7 is assigned. OR7: "assign FR36-C3, FR36-C4, FR36-C5, and NFR17-C5", although 3.19, 3.20, and 7.21 are assigned. OR25 and OR26: "Assign NFR5/NFR13 one disjoint primary story", although 2.16 and 2.17 are assigned. OR20 and OR21: "Reopen … or approve corrective successors", although 2.14 and 2.15 exist. Also raised by: Rubric (Downstream usability, OR6; Decision-readiness, OR20/OR21).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reword each as "deliver and prove".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L2 — OR19's premises no longer hold</h3>
+              <span class="finding-location">OR19 line 758</span>
+            </header>
+            <div class="finding-note"><code>epic-2: in-progress</code> is now correct because 2.13–2.17 are backlog, and the Story 2.12 key is complete (<code>sprint-status.yaml:114</code>, matching the epics title).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Retire or restate OR19.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L3 — SM8 undercounts residual per-domain plumbing</h3>
+              <span class="finding-location">SM8 line 541</span>
+            </header>
+            <div class="finding-note">Tenants still ships <code>src/Hexalith.Tenants.AppHost</code> and <code>src/Hexalith.Tenants.Aspire</code> (gitlink <code>81144734</code>), which is per-domain Aspire wiring on FR9's own removal list. SM8 names only the host composition (<code>AddDaprClient</code>, <code>UseCloudEvents</code>, MediatR, controllers at <code>Hexalith.Tenants/Program.cs:46-181</code>). Also raised by: Rubric (Strategic coherence: SM8 omits Sample).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add those projects to the SM8 count.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L4 — The glossary overstates AD-26</h3>
+              <span class="finding-location">glossary line 188</span>
+            </header>
+            <div class="finding-note">"AD-26 defines exactly one currently authorizing production profile" omits that AD-26 is <code>[ASSUMPTION]</code> (<code>architecture.md:337</code>): its target binds only after ratification, and only the profile-slot mechanics bind now. Also raised by: Rubric (Scope honesty) · Adversarial general M4.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Say so.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L5 — The body cites a superseded readiness result</h3>
+              <span class="finding-location">§0 line 110; §1 line 127; OR1 line 750</span>
+            </header>
+            <div class="finding-note">These still present the 2026-09-10 Poor/Reject as the bound result, but the frontmatter binds <code>implementation-readiness.md</code> (2026-10-06), whose verdict is "FAIL" rather than "Reject". Also raised by: Rubric (Downstream usability).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Cite the 2026-10-06 report and map FAIL to <code>reject</code> once.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L6 — Mandatory rows and blocking refinements without a primary story</h3>
+              <span class="finding-location">G-NFR-OWNERSHIP; G-READINESS; OR14; OR17; OR30</span>
+            </header>
+            <div class="finding-note">These name no primary story, although the 2026-10-07 proposal's success criterion 1 requires every mandatory gate and blocking refinement to name one.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Name an owner story or mark the row owner-only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L7 — The run memlog miscounts the drift</h3>
+              <span class="finding-location">folder .memlog.md line 107</span>
+            </header>
+            <div class="finding-note">It reports 18 unlogged commits; there are 16 non-merge commits, and three of them (<code>2dd7ebfb</code>, <code>9cde9f2d</code>, <code>94482189</code>) are logged in <code>_bmad-output/planning-artifacts/.memlog.md</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Append a correction.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Adversarial general</h2>
+          <span class="reviewer-source">_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-adversarial-general-validate-2026-10-07.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>REJECT as gate authority; usable only as a requirements inventory.</strong> The PRD is candid that readiness is FAIL, but the machinery it defines for leaving FAIL does not hold together. §0 forbids every handoff that lacks a validator, and only a forbidden handoff can build that validator. The only way out is a "bootstrap rule" that lives in <code>epics.md</code>, which the PRD never sanctions. The single-maintainer seal, amended on 2026-10-07 to "never block <code>main</code>", now cannot block the transitions it names, because every one of them is a commit to <code>main</code>. Its "required run" is required only by the validator it is supposed to seal, and G-HIGH-RISK seals itself. The 2026-10-07 NFR1 and §9.2 edits cite AD-16 as the basis for an anonymous class that AD-16 (<code>[ADOPTED]</code>) forbids. They define a callback class that no OIDC callback can satisfy, and they turn the UI-host carve-out into either a permanent G-MVP-COVERAGE deadlock or an unstated waiver of fail-closed on the Admin UI. SM11 counts NFR7 class (e) as "delivered" on source-only evidence, which NFR7's own text and §1.1 forbid. "Release" is never defined, so §0 ("authorizes no … release") and OR30 ("Blocking for the next release") cannot both be true, and fourteen packages have already shipped. Downstream authors following this text will build different seals, different anonymous-endpoint inventories, and different release controls.</p>
+            <p>Stance: adversarial, document logic first; repository greps used only to substantiate. Out of scope by owner decision: the <code>single-maintainer-attested</code> level itself — the absence of a second human is not counted as a defect anywhere. Counts: 2 critical, 9 high, 14 medium, 5 low.</p>
+            <p>Delta vs the prior adversarial review (2026-09-09): prior C2 (MVP success despite append loss), H1 (OR12 traceability), H3 ("final" conflated with readiness) and H6 (no exit decision rule) are resolved in text, but the paperwork-scored-as-guard pattern recurs for class (e) (H3) and the new exit rule's entry path is circular (C1). Prior H5 (self-approval) is superseded by the owner's <code>single-maintainer-attested</code> decision, but the replacement control is circular and unenforceable as amended (C2, H4, H5, M10). Prior C1 (OQ8 bytes) is still open but now honestly gated, and the PRD-as-status-mirror problem (prior M1) is worse (M2). New defects were introduced by the 2026-10-07 edits (C2, H1, H2, H7, H8) and by the 2026-09-26 roster-dependent control (H4, H5, M10); the rest sat in pre-existing text unraised.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">C1 — The path out of FAIL is circular, and its only escape is an owner note outside the PRD</h3>
+              <span class="finding-location">§0 lines 110, 112; §11.4 preamble line 672; OR28 line 742; cf. epics.md Story 9.1 "Bootstrap rule" line 7531</span>
+            </header>
+            <div class="finding-note">§0: "This PRD therefore authorizes no <code>READY</code> verdict, … or general dependent implementation handoff until every mandatory gate passes"; the exception requires "a passing <code>python3 tools/validate-corrective-work-authorization.py</code>"; OR28: "Until this exists, no gate-closing implementation handoff is authorized by the §0 exception"; §11.4: "no mandatory row permits deferral, risk text, or owner assertion to substitute for proof". Every corrective story (2.14, 2.15, 3.18–3.20, 4.16, 4.17, 5.11, 5.14, 9.2–9.5) needs a §0 record checked by a validator that Story 9.1 builds. Story 9.1 cannot be handed off under §0, because its validator does not yet exist, and it cannot be handed off under general handoff either, because general handoff is barred until every gate passes. The deadlock is broken only in <code>epics.md</code> ("a dated owner authorization … is recorded in the story before development starts") — an owner assertion with no Assurance Control, no 24-hour separation and no seal, which is exactly what line 672 forbids, and which the PRD never authorizes. "General dependent implementation handoff" is undefined: Story 6.6 is <code>in-progress</code>, 5.5 is in <code>review</code> and 8.3 is <code>in-progress</code> while <code>evidence/corrective-work-authorizations/</code> does not exist. Either those handoffs fall outside the prohibition, whose boundary is then unstated, or the prohibition is not being followed; a downstream author cannot tell which.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a PRD-level bootstrap clause that names Story 9.1 as the single bootstrap exception, its exact allowed paths, and the evidence it must leave, and state that the first sealed transition re-validates Story 9.1 after the fact. Define "dependent implementation handoff" as an enumerable class, for example "work whose acceptance consumes a failed gate's subject", and state explicitly that non-dependent work may proceed.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">C2 — The amended seal cannot block its own guarded transitions; "required run" is circular; G-HIGH-RISK seals itself</h3>
+              <span class="finding-location">Glossary "Assurance Control" item (1) line 201; OR10 amendment line 713; OR13 line 715; G-HIGH-RISK line 690</span>
+            </header>
+            <div class="finding-note">The seal "blocks only its transition (a high-risk gate result to PASS, a story recorded against a high-risk NFR to <code>done</code>, readiness, <code>release-available</code>, <code>production-promoted</code>, or consumer removal) and never <code>main</code>"; OR10: "a seal belongs to one guarded transition and never blocks <code>main</code>"; OR13 requires enforcement "before a story may be recorded <code>done</code> against a high-risk NFR". The transitions are commits to <code>main</code>: a gate result, a tracker <code>done</code>, a readiness report and an authority record are all files on <code>main</code>, so a seal that never blocks <code>main</code> cannot stop any of them from landing, and the amended OR10 makes OR13 impossible. The result is a tracker full of unsealed <code>done</code> values that are formally "ineffective" but indistinguishable from sealed ones — the values every loop and sprint tool reads. "Required run" is never defined in the PRD; <code>epics.md</code> Story 9.2 defines it as "enforcement by the guarded transition's validator", so the seal is a run that the validator decides to require, of a workflow whose digest a matrix written by the same author pins, and the validator is the code being sealed: validator, workflow and subject can change in one push and then seal each other. G-HIGH-RISK is in its own matrix, sealed by the validator whose correctness it certifies, with no bootstrap rule. Legacy <code>done</code> labels set before the seal existed (5.1, 5.3, 4.9–4.15 against NFR3, NFR7 and NFR16) are neither grandfathered nor required to re-transition; two teams will differ.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define a guarded transition as a record that is void unless it carries a seal reference, and require G-BASELINE and G-MVP-COVERAGE to treat an unsealed high-risk <code>done</code> as an error, not as "ineffective". Pin the seal workflow and validator to a predecessor commit that predates the subject, so a validator change cannot seal its own subject. Add an explicit G-HIGH-RISK bootstrap, for example a first seal re-run by the next transition with the validator pinned to a commit before the subject. State how pre-existing high-risk <code>done</code> labels are treated.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H1 — The new NFR1 anonymous class cites a decision that forbids it, cannot be satisfied by an OIDC callback, cannot be enumerated by the stated test, and has no owner</h3>
+              <span class="finding-location">NFR1 line 361; §11.2 NFR1 row line 609; G-AUTH-HOSTS line 686; cf. architecture.md AD-16 lines 240–244; epics.md Story 5.14</span>
+            </header>
+            <div class="finding-note">The citation is false: AD-16 is <code>[ADOPTED]</code> and says "Only <code>/health</code>, <code>/alive</code>, and <code>/ready</code> carry explicit <code>AllowAnonymous</code> metadata … Any future anonymous asset or callback first requires a governed PRD change." AD-16 has not been amended, and Story 5.14 says UI hosts "are reported as failing conformance … this story adds no exemption". The class may be empty: an OIDC callback (<code>signin-oidc</code>) receives an authorization code and/or an <code>id_token</code>, and an <code>id_token</code> is user data, so read literally no callback qualifies; if teams ignore that condition, the class is unbounded. The test method misses assets: static assets served by static-file middleware are not endpoints and carry no endpoint metadata, so "enumerated by endpoint-metadata tests" cannot see them, and the asset half of the class can grow without any test failing. No owner: §11.2 gives Story 5.14 only "the AD-16 authenticated-fallback and Dapr framework-route slice", no story owns the UI-host enumeration, and G-NFR-OWNERSHIP does not list NFR1. G-AUTH-HOSTS names NFR1–NFR3, yet its evidence is JWT-only; nothing in the gate tests fallback or anonymous enumeration. Also raised by: Rubric (Done-ness clarity) · Brownfield truth H5 · Platform contract H5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Drop the "(AD-16)" citation until AD-16 is amended. Redefine the callback class as "endpoints whose responses disclose no data beyond the protocol exchange", and name the protocol endpoints. Require the inventory to cover middleware-served paths as well as endpoints, for example an HTTP-level crawl of anonymous 2xx responses. Assign a primary story, and add fallback and anonymous-enumeration evidence to a gate.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H2 — "NFR1 conformance moves with them" either deadlocks MVP coverage or silently waives admin-surface fail-closed</h3>
+              <span class="finding-location">§9.1 line 490; §9.2 line 507; SM10 line 543; G-MVP-COVERAGE line 693; §13 line 770</span>
+            </header>
+            <div class="finding-note">"Phase 4 MVP delivery is total over FR1-FR36, NFR1-NFR18"; "Until then they stay outside the canonical MVP production profile, and their NFR1 conformance moves with them"; "Interactive UI-host surfaces outside the MVP production profile are listed with that scope reason and never counted as covered"; "<code>N/A</code> is forbidden for MVP IDs". Two readings, both bad: if UI-host surfaces stay in the <code>nfr1_surfaces</code> denominator but are never counted as covered, SM10 can never reach 100% and NFR1 can never pass while login is post-MVP — the Option-B deadlock the owner tried to avoid; if they leave the denominator, that is an <code>N/A</code> in everything but name, which G-MVP-COVERAGE forbids. "Moves with them" has no defined meaning: NFR1 is not profile-scoped, the routing proposal records that the Admin UI and Sample UI "map their pages with no policy" today, and the Admin UI is an admin surface that NFR1 says must fail closed, so the text reads as a waiver for every non-production deployment, including shared and staging environments, and it stacks with H6. No story, gate or evidence defines "before human interactive login exists". §13 calls this "one scope reduction", but the cut removes every interactive UI host from production, including the Admin shell (FR34-C11) and the Tenants UI that UJ3 depends on. Also raised by: Rubric (Scope honesty).</div>
+            <div class="finding-fix"><strong>Fix:</strong> State whether UI-host surfaces are in or out of the denominator. If out, record a bounded, reason-coded MVP exclusion that G-MVP-COVERAGE accepts, and say so in §9.1. State the minimum posture for UI hosts outside production, for example network-isolated or authenticated by reverse proxy. Bind re-entry to an AD-26 profile change plus a named login-evidence gate.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H3 — SM11 counts NFR7 class (e) as delivered on evidence that NFR7 and §1.1 both reject</h3>
+              <span class="finding-location">SM11 line 544; NFR7 line 367; §1.1 line 133; G-OQ8 line 679</span>
+            </header>
+            <div class="finding-note">SM11: "Currently four of five are delivered: … class (e) duplicate side effects has implementation and closed source-only platform evidence from Stories 4.9-4.15". NFR7: "A loss class is delivered only when … production-path evidence proves that the guard or recovery prevents the loss". §1.1: "No OQ8 closure claim under FR27, NFR7, or NFR16 is authoritative". "Source-only" is by definition not production-path evidence (see the glossary entry "Production Path"). The OQ8 governing bytes are unavailable and G-OQ8 fails. SM11 therefore tells downstream readers that only class (c) is outstanding, which steers Story 4.16 and the readiness reviewer toward a 4/5 baseline that does not exist. This is the C2 pattern from the prior review (paperwork scored as a guard) reappearing in a different class. Also raised by: Rubric (Strategic coherence) · Brownfield truth H1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate SM11 as 3/5. Record class (e) as "implemented, source-only; production-path proof and G-OQ8 outstanding", and tie its delivery to G-OQ8 plus a production-path receipt.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H4 — The time-separated attestation has no trusted clock, no authentication mechanism, and no subject boundary</h3>
+              <span class="finding-location">Glossary "Assurance Control" item (2) line 201; §11.4 invalidation rule line 672; G-BASELINE line 678</span>
+            </header>
+            <div class="finding-note">The control requires "an authenticated owner approval bound to the subject digest and created at least 24 hours after the last authored change to that subject". No trusted clock: "last authored change" has no time source; git author and committer dates are author-controlled and can be backdated, and <code>architecture.md</code> fixes a trusted clock (repository push-activity time) only for AD-26 records, so for every other subject a solo maintainer can satisfy the 24-hour window instantly. No authentication mechanism: "authenticated" is not tied to a signed commit, a platform review, or the CI identity. No subject boundary: "subject" is undefined per transition. For <code>READY</code> the subject is the G-BASELINE manifest, which binds <code>sprint-status.yaml</code>, and concurrent loops edit that file continuously; since "any governed … change invalidates", <code>READY</code> needs a 24-hour freeze of every bound artifact, which the PRD never states, leaving the path out of FAIL ambiguous.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define the clock as the platform push-activity time of the push that last changed the subject digest, for every subject. Define the attestation carrier, for example a signed tag or record verified by the sealed run. Define the subject per guarded-transition type. State the freeze or exclusion rule for volatile inputs such as the tracker.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H5 — G-HIGH-RISK lets the author classify any gate out of the Assurance Control, and the level for "standard" rows is undefined</h3>
+              <span class="finding-location">§11.4 preamble line 672; G-HIGH-RISK line 690; per-row evaluator cells lines 680–689, 693</span>
+            </header>
+            <div class="finding-note">"Each entry is <code>high-risk</code> or a reason-coded <code>standard-control</code>; standard classification is not omission or waiver"; "Every passing row must retain … approval at its required assurance level …; <code>READY</code> carries the lowest assurance level of its inputs". No floor on classification: the PRD does not say which gates must be high-risk, so the matrix author can reason-code G-TENANT as <code>standard-control</code> even though the G-TENANT row demands "approval at the G-HIGH-RISK Assurance Control level"; the row and the matrix can disagree, and the PRD gives no precedence. No level for standard rows: G-BASELINE, G-CLAUSE, G-NFR8, G-NFR18, G-NFR-OWNERSHIP and G-READINESS name no level, and "lowest level of its inputs" is undefined once one input has no level.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Fix the high-risk set in the PRD, at minimum every row that already says "G-HIGH-RISK Assurance Control level". Give <code>standard-control</code> an explicit assurance level, and make the matrix validator reject any classification below a row's PRD-declared level.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H6 — The NFR3 break-glass keys on environment names, so any production deployment not literally named "Production" can run symmetric keys</h3>
+              <span class="finding-location">NFR3 line 363; Glossary "Break-glass" line 184</span>
+            </header>
+            <div class="finding-note">NFR3: "Production must always reject symmetric-key mode … the break-glass option admits symmetric mode only in environments that are neither Development nor Production"; glossary: "which never reaches Production". "Production" is an environment-name string. A real deployment named <code>Staging</code>, <code>prod</code>, <code>production-eu</code>, or <code>Live</code> is "neither Development nor Production", so <code>AllowInsecureSymmetricKey</code> admits HS256 there. Development also admits symmetric mode without break-glass, so a misnamed environment fails open twice. NFR4's "non-Development fallback" has the same name-based shape.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define production by the canonical profile and deployment identity (AD-26 or G-PUBLICATION-AUTH), not by environment name. Permit break-glass only on a closed allowlist of non-production environment identities, and reject unknown names.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H7 — "Release" is undefined, so §0, NFR12, G-COMPAT, and OR30 contradict each other</h3>
+              <span class="finding-location">§0 line 110; NFR12 line 372; G-COMPAT line 685; OR30 line 744; Glossary "Publication Lifecycle" line 186</span>
+            </header>
+            <div class="finding-note">§0 "authorizes no … release … until every mandatory gate passes"; NFR12 "Release must fail unless API and wire baselines plus representative package-only consumers pass"; G-COMPAT "Fourteen release packages exist, but … an enforcing release gate [is] absent"; OR30 "Blocking for the next release". The PRD uses "release" for NuGet or OCI publication and also for the <code>release-available</code> lifecycle state. If §0 bars publication, OR30's trigger can never arrive before readiness, and the fourteen shipped packages contradict §0. If publication continues — which the operator-dispatched <code>release.yml</code> allows, including its <code>bypass-validation</code> input that substitutes commitlint proof for CI proof — then §0 bars only <code>release-available</code>, NFR12's "must fail" is false today, and nothing in the PRD stops the next publication. Two release owners would act oppositely. Also raised by: Rubric (Decision-readiness, OR30 trigger).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define "package publication" and "<code>release-available</code>" as separate terms. State which gates block publication now. Either make NFR12 and OR30 publication blockers with an enforcing lane, or say explicitly that publication continues ungated until G-COMPAT, and name the risk owner.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H8 — Licensing is handled by one ungated row while §8.1 keeps pulling in the next licence change</h3>
+              <span class="finding-location">§8.1 catalog-currency bullet line 444; OR30 line 744; NFR11 and NFR12 lines 371–372</span>
+            </header>
+            <div class="finding-note">§8.1: "Keep the shared Builds catalog on the latest validated compatible versions … never downgrade because search omits or unlists a package"; OR30: "Record a commercial license, accept the RPL-1.5 obligations after review, or replace or re-pin the dependency". The policy caused the problem: the latest-version mandate has no licence criterion in "validated compatible", which is how MediatR <code>14.2.0</code> (RPL-1.5 or commercial) entered the catalog. OR30 is ungated: no §11.4 row, no G-HIGH-RISK matrix entry, and no release lane enforces it. "Re-pin" to a pre-commercial version is a downgrade, which §8.1 forbids unless documented as an exception, and OR30 does not mention that route. OR30 ignores already-published packages, consumers that inherit the dependency (Tenants retains MediatR composition per SM8 and DW-64), and the licence-notice suppression itself (<code>"LuckyPennySoftware.MediatR.License": "None"</code> in <code>src/Hexalith.EventStore/appsettings.json</code>). No supply-chain requirement exists: no licence allowlist, SBOM, or provenance or signing requirement. Also raised by: Rubric (Decision-readiness) · Platform contract M11.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an NFR, with a gate, for dependency licence compliance: an allowlist checked on catalog changes and on publication. Make licence change an explicit criterion in §8.1. Route OR30's re-pin option through the §8.1 exception mechanism. Cover inherited consumers and already-published versions.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H9 — Several gates let the work being gated choose its own pass condition</h3>
+              <span class="finding-location">G-TENANT line 680; G-STATUS-ID line 681; G-NFR8 and NFR8 lines 684, 368; G-BASELINE and G-CLAUSE lines 678, 683</span>
+            </header>
+            <div class="finding-note">"Exact CI lane/command must be bound by that story" (G-TENANT and G-STATUS-ID); "the dependent validation command must be recorded in that spec" (G-NFR8); "No numeric value is inferred by this PRD" (NFR8); "The exact baseline validator lane/command is not yet defined" (G-BASELINE). Stories 2.14 and 2.15 define the command that decides whether 2.14 and 2.15 pass. Story 6.3 sets the projection-cost budget that 6.4 must meet, with no PRD floor, so the budget can be written after the implementation's measured cost is known. Under one maintainer, the evaluator, the author, and the criterion-setter are the same identity, and only the 24-hour attestation separates them (see H4). Also raised by: Rubric (Done-ness clarity, at low).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Have the PRD fix minimum pass conditions, for example NFR8 bounds relative to stream length and page size. Require the gating command to be pinned in a predecessor record before the gated implementation starts, with its digest bound by G-HIGH-RISK.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M1 — Ownership tables contradict each other on NFR17, NFR5, and NFR18</h3>
+              <span class="finding-location">§7.1 NFR17-C1..C5 lines 431–435; §11.2 NFR17 row line 625; §11.2.1 row 2 line 634; §11.2 NFR5 row line 613; G-NFR18 line 691 vs NFR18 line 378</span>
+            </header>
+            <div class="finding-note">NFR17: §7.1 makes 7.6, 7.8 and 7.9 the primary owners of NFR17-C1, C3 and C4; §11.2 lists those same stories as supporting only, and lists 3.14, 5.6 and 5.8 as primary even though they own no NFR17 clause. NFR5: §11.2.1 says "NFR5's primary-owner gap remains open", while §11.2 assigns Story 2.16. NFR18: G-NFR18 says "Document, owner, evidence, and validation command are absent", while NFR18 and the same row name Story 6.7. G-CLAUSE and OR8 compare exactly these tables, so the PRD fails its own drift guard. Also raised by: Rubric (Downstream usability, NFR5) · Brownfield truth H4 (NFR17) and M2 (NFR5).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Regenerate §11.2 primary columns from §7.1 for clause-bearing NFRs, and correct the stale §11.2.1 and G-NFR18 text.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M2 — The §11.3 baseline register is stale on the day of the edit and carries no dates</h3>
+              <span class="finding-location">§11.3 rows for architecture.md, ux.md, epics.md lines 647–650; Epic 8 bullet line 658</span>
+            </header>
+            <div class="finding-note"><code>architecture.md</code> "SHA-256 <code>7e3dbc7b…</code>": HEAD is <code>7fd805a8…</code>. <code>epics.md</code> "<code>d067c8fb…</code>": HEAD is <code>0697679b…</code>. <code>ux.md</code> "<code>2927f97d…</code>": HEAD is <code>23b17217…</code>. DESIGN "current <code>3f4f0181…</code>": HEAD is <code>7b743e79…</code>. EXPERIENCE "current <code>11f75403…</code>": HEAD is <code>3985789a…</code>. "Story 8.2 is authorized but still <code>backlog</code>": the tracker records 8.2 as <code>done</code> and 8.3 as <code>in-progress</code>. The column header says "Identity/status at stated date", but these rows state no date. G-BASELINE and OR14 treat this register as the drift baseline, so a reader cannot tell a stale observation from a current one. This is prior M1 (PRD as a status mirror), now worse. Also raised by: Rubric (Downstream usability, at high) · Brownfield truth H2 and H3 · Platform contract L3.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Date every row, or move the register into the Story 9.3 manifest and cite it by digest.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M3 — Story 6.2 authority is revoked only in prose, while the machine-readable flag still says authorized</h3>
+              <span class="finding-location">NFR8 line 368; OR5 line 721</span>
+            </header>
+            <div class="finding-note">The PRD says "its <code>approved-authorized</code> frontmatter is superseded until review patch P-D1 lands", but <code>spec-folded-snapshot.md</code> still carries <code>status: approved-authorized</code> and <code>story_6_2_authorized: true</code>, and its body still says "AUTHORIZED". Any loop or validator that parses the flag will start Story 6.2. NFR8 also still pins the pre-reopen digest <code>0b456b5f…</code> as "binding".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Require P-D1, or an interim flag flip, before the PRD claims supersession. Remove "binding" from the reopened digest.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M4 — The glossary declares a production profile "currently authorizing" in the same entry that says none is, and treats an [ASSUMPTION] as binding</h3>
+              <span class="finding-location">Glossary "Canonical Production Profile Inventory" line 188; §11.3 architecture row line 648; G-PUBLICATION-AUTH line 688</span>
+            </header>
+            <div class="finding-note">"AD-26 defines exactly one currently authorizing production profile … The file is currently absent, so no profile is authorizing", while the architecture row says "AD-26 remains <code>[ASSUMPTION]</code>". The entry contradicts itself, and it presents an unratified decision as defining the inventory that G-PUBLICATION-AUTH and G-CONSUMER bind. Also raised by: Rubric (Scope honesty) · Brownfield truth L4.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reword the entry as "AD-26, once ratified, will define …", and make the gate rows depend on AD-26 ratification explicitly.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M5 — Guarded wording labels the solo control "INDEPENDENT", and a test locks the mislabel in</h3>
+              <span class="finding-location">§6.8 line 342; G-RUNTIME-PARITY line 687</span>
+            </header>
+            <div class="finding-note">"TECHNICALLY VALIDATED; INDEPENDENT CONTROL OPEN" and "TECHNICAL PASS; INDEPENDENT GATE BLOCKED". With a one-human registry, the required level is <code>single-maintainer-attested</code>. Labelling the open control "independent" tells readers a second human is required, which contradicts the 2026-09-26 owner decision that the glossary records. <code>CorrectedDeployedRuntimeParityClosureTests.cs:4593</code> asserts the wrong wording. Also raised by: Rubric (Decision-readiness) · Brownfield truth M8.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Change the wording to "ASSURANCE CONTROL OPEN" or "ASSURANCE GATE BLOCKED", and update the guard test in the same change.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M6 — SM3 and OR13 measure "high-risk NFR" coverage at clause level, but most of those NFRs have no clauses</h3>
+              <span class="finding-location">SM3 line 527; §11.2 preamble line 603; OR13 line 715; §7.1 lines 385–435</span>
+            </header>
+            <div class="finding-note">SM3: "High-risk NFRs NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 must map to complete clause-level primary coverage." §7.1 defines clauses only for NFR17, so for the other high-risk NFRs "complete clause-level coverage" has no denominator and SM3 cannot be measured. The PRD also has two "high-risk" universes — the SM3 NFR list and the G-HIGH-RISK gate classification — and OR13's "a story recorded against a high-risk NFR" does not say which one applies, or whether a supporting declaration counts.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either add clauses for the high-risk NFRs or restate SM3 at requirement level. Define "recorded against" as primary or supporting.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M7 — "ULID-safe" is undefined and conflicts with the preserved v1 MessageId grammar</h3>
+              <span class="finding-location">FR33 line 313; Glossary "MessageId Contract Version" line 198; "Aggregate Identity" line 182; §8.2 line 452</span>
+            </header>
+            <div class="finding-note">FR33: "reject an event whose metadata identity components are absent or not ULID-safe rather than accepting it"; glossary: "Version 1 is the preserved legacy grammar: 1-128 ASCII alphanumeric or hyphen characters" and "ULID semantics where applicable". One team reads "ULID-safe" as "is a ULID" and rejects every event whose identity carries a v1-derived or non-ULID aggregate ID, breaking NFR12 v1 compatibility and possibly making legacy streams unreadable on replay; another reads it as "not parsed with <code>Guid.TryParse</code>". "Identity components" and the point of rejection (append or replay) are also undefined.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define "ULID-safe" per field. State which fields must be canonical ULIDs and which may carry v1 or <code>AggregateIdentity</code> strings, and state where rejection occurs.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M8 — The "Production Path" definition does not require production-profile components</h3>
+              <span class="finding-location">Glossary "Production Path" line 206; cf. AD-26</span>
+            </header>
+            <div class="finding-note">The definition requires that "the real OS process, DAPR sidecar, durable state component, actor placement, and host pipeline are exercised". Evidence gathered on Redis or any other "durable" component qualifies as production-path under the PRD, yet AD-26 says Redis is Development/test only and non-authorizing. NFR7, NFR16 and SM11 can then be "proven" on a provider the production profile excludes, and the append-race outcome is provider-specific.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Require production-path packets to declare their component profile, and count only canonical-profile components toward the production-path classes in NFR7 and NFR16.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M9 — The FR34 IntegrationTests lane only has to run, not pass</h3>
+              <span class="finding-location">FR34 line 323; FR34-C10 line 424</span>
+            </header>
+            <div class="finding-note">"the lane runs on every push to <code>main</code> and asserts persisted state for at least the FR23, FR27, and FR30 paths". A lane that runs and stays red satisfies the literal text; nothing requires it to pass or to block any transition.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Require a passing result on the bound subject as evidence for FR23, FR27, and FR30 closure, and name the transition that the lane blocks.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M10 — The role vocabulary is not closed, and the roster that sets the assurance level governs itself</h3>
+              <span class="finding-location">Glossary "Owner Roles" line 200; "Assurance Control" line 201</span>
+            </header>
+            <div class="finding-note">"This PRD distinguishes six" roles, and the Assurance Control's "required level is computed from the owner-role registry". Other parts of the PRD and architecture invoke roles the six do not include: architecture owner (FR5, §8.4), test owner and Test Architect, tracker owner, persistence owner, Builds owner, and the Platform deployment role (AD-26). Validators must reject "wrong-role issuers" against a vocabulary that does not exist. The registry is edited by the gated party, nothing makes the required level monotonic, and nothing defines how a human identity is distinguished from a tool account.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Enumerate the full role set. Make registry edits a sealed, time-separated transition. Forbid lowering the required level for subjects already evaluated.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M11 — "Or" escape hatches create alternative conformance paths with no selection rule</h3>
+              <span class="finding-location">FR4 vs FR4-C5 lines 239, 391; FR16 line 260; FR30 line 290; FR12 line 256</span>
+            </header>
+            <div class="finding-note">FR4 allows a "lossless lifecycle representation or owner-approved mapping", while FR4-C5 requires preserving "all six lifecycle states", so a lossy mapping approved by the owner satisfies FR4 and violates its own clause. FR16's DAPR path is required "only where a subscriber cannot hold a SignalR connection", and no one is named to determine that, so the condition is vacuous. FR30 says "complete their publication, drain them, or recover them", and "drain" can be read as discarding events, which is NFR7 class (d) loss. FR12 says "omit <code>Location</code> or cause a safe rejection", which leaves two different client contracts.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Pick one behavior per requirement, or state the selection criterion and who decides it. Remove "drain" or define it as non-lossy.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M12 — NFR2's lowercase normalization folds non-ASCII lookalikes into valid tenants</h3>
+              <span class="finding-location">NFR2 line 362</span>
+            </header>
+            <div class="finding-note">NFR2 "performs invariant lowercase case normalization before comparison and authorization, then validates the 1-64-character grammar". Unicode simple case mapping lowercases, for example, U+212A KELVIN SIGN to ASCII <code>k</code> before the ASCII grammar check runs, so distinct raw inputs alias one tenant. Any component that logs, caches, or forwards the raw value diverges. "Whitespace or other characters are not … repaired" is contradicted by the normalization step itself. Also raised by: Platform contract M1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reject any non-ASCII input before normalizing, then lowercase ASCII only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M13 — The FR36 consumer binding names a source SHA for package-mode consumers</h3>
+              <span class="finding-location">FR36 line 334; FR21 line 274</span>
+            </header>
+            <div class="finding-note">"The consumer's checked-out EventStore SHA and deployment profile must match the production-promoted authority." FR21 makes package references the default. A consumer's checked-out EventStore submodule SHA is irrelevant to what it runs, so the binding can match while the consumer runs different packages, or fail while it runs the right ones.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Bind the consumer to the promoted package or OCI identities, keeping the SHA as provenance only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M14 — The PRD omits concerns that an event-sourcing platform carries, without excluding them</h3>
+              <span class="finding-location">§5 lines 216–226; §7; §9.2</span>
+            </header>
+            <div class="finding-note">Mixed-version compatibility: FR33 requires upcasting, but nothing requires forward compatibility or mixed-version readers during rolling deployments, and nothing covers rollback after newer event schemas are written; FR37 requires this for payload protection only. Recovery targets: there is no RPO, RTO, or restore-consistency requirement, yet AD-26 and Story 7.22 make restore posture a promotion precondition with no PRD anchor. Retention: event-stream, command-status, dead-letter, and audit-record retention are unstated, and §9.2 excludes only deletion. Performance and availability: there are no targets beyond the deferred NFR8. Quotas: there are no per-tenant quotas or rate limits; only admin body-size limits exist. Also raised by: Platform contract L4 (mixed-version rollout).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add requirements for each, or list each as an explicit exclusion in §9.2.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L1 — "Documented crypto-shred boundaries" is unbounded and depends on post-MVP capability</h3>
+              <span class="finding-location">NFR17 line 377; NFR17-C5 line 435</span>
+            </header>
+            <div class="finding-note">No acceptance content is defined. Crypto-shredding presupposes key-per-subject protection, which ships post-MVP (FR37, Epic 8), while GDPR-1 is out of MVP. It is unclear what the MVP documents.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define the required content, or move this to Epic 8 with an explicit MVP statement that crypto-shredding is not supported.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L2 — Frontmatter finality predates material amendments, and the source list misses a same-day proposal</h3>
+              <span class="finding-location">Frontmatter lines 3–21, 96</span>
+            </header>
+            <div class="finding-note"><code>status: final</code> and <code>prd_finalize_reviewed_head: dd55a6d1</code> predate the 2026-10-07 NFR1, §9.2, OR10, and OR30 edits. <code>sprint-change-proposal-2026-10-07-story-9-2-nfr1.md</code>, which states that "No PRD edit is proposed", is not in <code>source_artifacts</code>. Also raised by: Brownfield truth H6 (at high) and M5.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Record a finalize pass for the 2026-10-07 edits, and add the proposal to <code>source_artifacts</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L3 — NFR5 allows metadata values in logs at Debug level</h3>
+              <span class="finding-location">NFR5 line 365</span>
+            </header>
+            <div class="finding-note">"Framework logs must not expose metadata values above Debug level." Production hosts with Debug enabled will log values. "Above" is also ambiguous in direction.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Say "at Information or higher", or forbid value logging in non-Development environments.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L4 — Implementation prescriptions still crowd the PRD</h3>
+              <span class="finding-location">§8.3 (FluentAccordion, line 464); FR2 and FR3 method names; NFR17 YAML policy names</span>
+            </header>
+            <div class="finding-note">This is prior finding M3, unchanged. Replaceable mechanisms sit beside product contracts without labels that distinguish them.</div>
+            <div class="finding-fix"><strong>Fix:</strong> As prior M3 and OR9.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L5 — The NFR19 key-zeroing proof cannot observe what it claims, and may pass vacuously</h3>
+              <span class="finding-location">NFR19 line 379</span>
+            </header>
+            <div class="finding-note">"proven by a test that inspects the buffer after disposal". Copies made by the managed runtime are unobservable. If key operations stay in the Dapr crypto sidecar (§8.4), no in-process key exists and the test passes vacuously.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Scope the test to in-process derived and unwrapped keys, using pinned or unmanaged buffers, and require a positive control that proves a key was present.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Platform contract</h2>
+          <span class="reviewer-source">_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-platform-contract-validate-2026-10-07.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>PRD platform contract: NOT ACCEPTED as complete. Two Critical, seven High.</strong> The 2026-10-07 PRD has absorbed every 2026-09-10 platform-contract finding at requirement level: NFR2 states one canonical tenant contract, FR12-C3/C4 and §8.2 make <code>MessageId</code> the only status selector, NFR7/G-APPEND refuse to count the append race as closed, and NFR12/NFR3/FR36 are now defined by capability and backed by gates. Where code still contradicts those rules (generator tenant handling, the generator <code>MessageId ?? CorrelationId</code> fallback, the shared actor-state store), the PRD records it truthfully with a failing gate and a named owner. The independent pass found a different class of gap: public-boundary behaviour that code ships today and that no mandatory gate would catch. The public gateway maps Dapr actor callbacks with no app-layer authentication, so a client that can reach its port can call aggregate-actor methods directly. The gateway status endpoint still resolves <code>CorrelationId</code> values to status records, which contradicts §8.2, and G-STATUS-ID tests only <code>Location</code>, so it could pass while that contradiction is live. Other gaps are at contract level: NFR2 does not say whether a credential grant can set the request tenant scope (AD-27 says it cannot); NFR3 contradicts the workload-assertion profile in AD-36; generated command endpoints have no retry-safe identity or idempotency-key channel; the amended NFR1 UI-host exception is not closed in the PRD and contradicts AD-16 as currently written; and dead-letter CloudEvents use a caller-reusable <code>CorrelationId</code> as their <code>id</code>. The readiness <code>Reject</code> stays correct and was not re-judged. All findings concern contract precision and gate coverage, and none recommends a second reviewer.</p>
+            <p>Severity rule: critical means the code contradicts a public-boundary rule and no mandatory gate would detect it, or the code lets unauthenticated, cross-tenant, or silent-loss behaviour through. Contradictions the PRD already records under a failing mandatory gate with a named owner are listed as captured contradictions and not counted: the generated tenant boundary (G-TENANT, Story 2.14), the generator <code>Location</code> fallback (G-STATUS-ID, Story 2.15; when both identifiers are null an accepted command becomes a 500), the append race (G-APPEND, Story 4.16), compatibility baselines (G-COMPAT, Story 3.18), all-host JWT (G-AUTH-HOSTS, Story 5.11), and consumer removal, publication authority and OQ8 bytes. Verified conforming: route provenance, health probes, AD-18 outbound headers, event CloudEvent identity, central package versions, and status-endpoint tenant scoping. Baseline <code>HEAD</code> <code>40c92e08</code>, read-only; the uncommitted legacy-replay routing changes were not judged. Counts: 2 critical, 7 high, 11 medium, 5 low.</p>
+            <p>Delta vs 2026-09-10: every 2026-09-10 platform-contract finding is resolved at PRD level, with the code still open and truthfully gated (generated tenant boundary, generator <code>Location</code> fallback, append race, compatibility baselines, all-host JWT, consumer removal); the bound-reject baseline is only partially resolved (§11.3 still binds the stale architecture digest), and FR25's mutable <code>@main</code> workflow governance is still open, now sharpened by M9. New since 2026-09-10: C1, C2, H1, H3–H7, M2–M6, M10, M11, L1, L4 and L5. The NFR1 2026-10-07 amendment introduced H5, AD-36 exposed H4, and the rest come from code paths earlier lenses did not inspect: actor callbacks, the gateway status resource, dead-letter publication, generated-command identity, and options ceilings.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">C1 — The public gateway exposes Dapr actor callbacks with no app-layer authentication, and no PRD gate binds that surface</h3>
+              <span class="finding-location">§7 NFR1 line 361; §8.2 bullet 6 line 457; §6.5 FR28 line 302; §10 SM10 line 543; §11.2 NFR1 row line 609; §11.4 G-AUTH-HOSTS line 686</span>
+            </header>
+            <div class="finding-note">NFR1: "Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture … the fail-closed default is never weakened to reach either exception." <code>src/Hexalith.EventStore/Program.cs:47-48</code> maps <code>MapSubscribeHandler()</code> and <code>MapActorsHandlers()</code> on the same pipeline as the public REST API. No <code>RequireAuthorization</code>, app-channel-token middleware, or fallback policy covers them: <code>src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:105</code> calls a bare <code>AddAuthorization()</code>, and no <code>/actors</code> guard exists anywhere in <code>Hexalith.EventStore</code>, <code>.Server</code>, or <code>.ServiceDefaults</code>. Operations, by contrast, guards its routes with <code>DaprAppChannelTokenMiddleware</code>, but only when a token is configured. The gateway hosts the aggregate actors in-process, and <code>IAggregateActor.GetEventsAsync(long fromSequence)</code> takes no tenant or caller context, so any HTTP client that reaches the gateway port can address <code>PUT /actors/AggregateActor/{id}/method/...</code> directly, bypassing gateway authentication, NFR2 tenant validation, and AD-5 single activation (by inspection; not exercised). The only anonymous-endpoint tests enumerate endpoints that carry <code>IAllowAnonymous</code> metadata, so endpoints that are anonymous only because there is no fallback policy are invisible to that test design. Architecture records the gap only as peer exposure (<code>architecture.md:548</code>), not the external port. Why critical: the code lets unauthenticated, cross-tenant read (and, through the keyless legacy path, mutation) through on a public host; the PRD's only routing is an ownership note to Story 5.14, G-AUTH-HOSTS is JWT-only, and SM10's <code>nfr1_surfaces</code> inventory has no completeness rule. <strong>Verified by parent against source:</strong> <code>src/Hexalith.EventStore/Program.cs:48</code> calls <code>app.MapActorsHandlers()</code> with no <code>.RequireEventStoreSidecarChannel()</code>, and the gateway project defines no authorization FallbackPolicy, unlike the domain-service host (<code>src/Hexalith.EventStore.DomainService/EventStoreReminderEndpointExtensions.cs:32</code> chains <code>.RequireEventStoreSidecarChannel()</code>); exploitability depends on network reachability of the gateway app port, but nothing in code prevents it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an NFR1 clause to §7.1 and bind it in §11.4, either as a new gate or as an explicit extension of G-AUTH-HOSTS: every endpoint on every host must carry an authorization requirement or appear in the closed anonymous list. Dapr framework routes (subscription discovery, pub/sub delivery, actor and reminder callbacks) must be AD-28 sidecar-channel authenticated, and readiness must fail when the token is unconfigured outside Development. Require an all-endpoints test that fails on any endpoint carrying neither <code>IAllowAnonymous</code> nor authorization metadata, run against the gateway, Operations, Admin Server Host, Admin UI, and generated-host fixtures. Define the <code>nfr1_surfaces</code> universe so that framework routes are mandatory members.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">C2 — CorrelationId still selects public command-status resources at the gateway, and G-STATUS-ID cannot detect it</h3>
+              <span class="finding-location">§8.2 bullet 4 line 455; §7.1 FR12-C4 line 404; §11.4 G-STATUS-ID line 681; OR21 line 735</span>
+            </header>
+            <div class="finding-note">§8.2: "A public command-status resource is selected only by a <code>MessageId</code> valid under the endpoint's declared contract version. <code>CorrelationId</code> remains diagnostic and cannot be substituted for status identity"; FR12-C4: "A <code>CorrelationId</code> never selects a status resource, including when it differs from or is present without <code>MessageId</code>." <code>src/Hexalith.EventStore/Controllers/CommandStatusController.cs:112-146</code> resolves the path segment through <code>ICommandCorrelationIndex.ResolveAsync</code>, described there as "the bounded index is the sole compatibility lookup for a correlation identifier", and on a unique hit returns that command's status; the public OpenAPI documentation advertises "message or correlation identifier". The index is registered by default (<code>ServiceCollectionExtensions.cs:163</code>), tests pin the behaviour (<code>CommandStatusControllerTests.cs:97</code>, <code>GetStatus_UniqueCorrelationIndexResolution_ReadsMessagePrimaryRecord</code>), and done Story 4.2 mandates the lookup (<code>epics.md:3365-3366</code>), while AD-17 and AD-32 agree with the PRD, not with the code. Story 2.15's acceptance criteria remove only "every <code>MessageId ?? CorrelationId</code> fallback … from the generator, its tests, and its documentation", so G-STATUS-ID could pass with the contradiction still live. Tenant scoping is preserved, so this is not a cross-tenant leak. <strong>Verified by parent against source:</strong> <code>src/Hexalith.EventStore/Controllers/CommandStatusController.cs:127-142</code> still resolves the path identifier through the correlation index as a compatibility lookup.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Choose one rule and apply it everywhere. Option (a): retire the correlation lookup under NFR12, with a deprecation path and a SemVer-major release, and extend FR12-C4, G-STATUS-ID, and Story 2.15 to the gateway status resource and the Story 4.2 text. Option (b): narrow §8.2 and FR12-C4 so they explicitly admit one bounded, tenant-scoped, deprecated compatibility lookup with a stated exit, and reconcile AD-17, AD-32, and Story 4.2 to that wording.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H1 — NFR2 does not say whether a credential grant can set the request tenant scope; AD-27 says it never can, and the default generated mode does</h3>
+              <span class="finding-location">§7 NFR2 line 362; §3.3 UJ2 line 170; §8.2 bullet 3 line 454</span>
+            </header>
+            <div class="finding-note">AD-27: "the scope comes from the request route, body, or headers … tenant grants in a credential authorize but never set the scope". The default <code>RestApiAttribute(tenantSource = RestTenantSource.Claims)</code> makes the generated controller use the sole <code>eventstore:tenant</code> grant as the request tenant (<code>RestApiControllerEmitter.cs:432-444</code>). The gateway status endpoint uses every grant as a lookup scope (<code>CommandStatusController.cs:90-114</code>). Admin Server fills a missing tenant with the caller's first grant (<code>AdminTenantAuthorizationFilter.cs:31-37</code>). NFR2 conflates two cardinalities: exactly one request scope, and the grant set, where a principal may legitimately hold many grants; "duplicate" is undefined (duplicate request values, or duplicate grants after normalization). Story 2.14's acceptance criteria do not mention the <code>Claims</code> mode.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State the scope-source rule. Either the scope comes from route, body, or header only and the <code>Claims</code> mode is classified as a breaking change under NFR12, or sole-grant derivation is admitted explicitly as a cataloged mode with AD-27 amended to match. Define grant-set semantics: many grants are allowed, each is canonicalized, and duplicates after normalization are collapsed rather than rejected. Mirror the rule in UJ2, §8.2, and Story 2.14.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H2 — G-TENANT's required evidence is narrower than NFR2 and narrower than Story 2.14's extended scope</h3>
+              <span class="finding-location">§11.4 G-TENANT line 680; §7.1 FR12-C2 line 402</span>
+            </header>
+            <div class="finding-note">G-TENANT: "compiled generated-controller and Tenants runtime tests for mixed-case request/grant normalization plus missing, duplicate … reserved <code>system</code> inputs". Story 2.14 was extended on 2026-10-07 to the gateway <code>ClaimsTenantValidator</code>, Admin Server tenant checks, the SignalR hub, and admin storage. The gateway lets a global administrator reach any tenant, including <code>system</code> and an empty tenant (<code>ClaimsTenantValidator.cs:22-25</code>), and compares tenants with <code>Ordinal</code> without normalizing (<code>:44-45</code>); the SignalR hub uses the same validator, and Admin Server compares with <code>Ordinal</code>. So G-TENANT and FR12-C2 can pass on generator and Tenants tests while the gateway, the hub, and Admin Server still violate NFR2.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make G-TENANT's governed universe every NFR2 boundary by name: gateway command, query, status, stream, and admin-storage routes; the SignalR hub; Admin Server; generated controllers; and the Tenants host. Add a §7.1 clause for the non-generator boundaries owned by Story 2.14, and require identical accept/reject results across all of them.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H3 — Generated command endpoints have no retry-safe identity or idempotency-key contract</h3>
+              <span class="finding-location">§6.2 FR12 line 256; §6.4 FR27 line 288; §7 NFR7 class (e) line 367; UJ2 line 170</span>
+            </header>
+            <div class="finding-note">FR27 provides "an EventStore-owned, tenant-scoped durable admission contract accepting only a trusted, versioned canonical-intent descriptor …", while FR12 says nothing about how an external caller supplies a key or a <code>MessageId</code>. Every generated command action mints a new <code>MessageId</code> server-side (<code>RestApiControllerEmitter.cs:266-267</code>) and never forwards <code>IdempotencyKey</code> or <code>CorrelationId</code>. Durable admission runs only when a key is present (<code>IdempotencyAdmissionCoordinator.cs:24-27</code>; <code>SubmitCommandHandler.cs:65</code>), so keyless commands run the legacy path in every environment. AD-5 requires "a non-empty opaque idempotency key, a successful AD-25 admission, and the current nonzero fence" for every production mutation, and says unfenced entry points "fail closed or remain unmapped outside Development". As a result every client retry through a generated API is a new command (NFR7 class (e) duplicate side effects), and once AD-5 is enforced, generated APIs must either fail closed or bypass admission. The roles of <code>MessageId</code> (FR23 duplicate replay) and <code>IdempotencyKey</code> (FR27 admission) are not defined for consumers.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an FR12 clause defining one caller-supplied idempotency channel (for example an <code>Idempotency-Key</code> header mapped to <code>IdempotencyKey</code>) and whether callers may supply <code>MessageId</code> under the declared version. Define how <code>MessageId</code> dedupe relates to keyed admission. State that keyless production mutations fail closed, extend NFR7(e)/SM11 to keyless entry points, and bind the clause to G-STATUS-ID or G-OQ8.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H4 — NFR3 contradicts the AD-10/AD-36 credential profiles, and the PRD has no workload-versus-delegated-user call contract</h3>
+              <span class="finding-location">§7 NFR3 line 363; §6.5 FR28 line 302; §8.2 bullets 5–6 lines 456–457</span>
+            </header>
+            <div class="finding-note">NFR3: "Role and tenant validation also remain mandatory in every mode and are owned by NFR1 and NFR2." FR28: "require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints". AD-10 defines three versioned validation profiles, each with its own per-host fingerprint: human bearer, AD-36 workload assertion with tenant, role and administrator claims forbidden, and resource-bound delegation (<code>architecture.md:186</code>). AD-36 says a workload principal "never carries tenant, role, or administrator claims", and every sidecar-routed call is exactly one of delegated-user or workload. Read literally, NFR3 makes every workload assertion nonconforming. The PRD never names the call kinds that domain modules depend on (Tenants domain-service hosts, trusted-effect submitters, and generated hosts that forward a bearer). Generated API hosts hand-roll delegated-user bearer forwarding (<code>samples/Hexalith.EventStore.Sample.Api/Services/InboundBearerForwardingHandler.cs:9-17</code>), and no platform handler exists in <code>src/Hexalith.EventStore.Client/Handlers/</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate NFR3 per validation profile, with mandatory and forbidden claims for each. Promote the AD-36 call-kind rule (one kind per call, never both, workload principals never satisfy human policies) into FR28 or §8.2. Require G-AUTH-HOSTS evidence per profile fingerprint, and require a platform-owned delegated-user forwarding handler, in line with FR1/SM8.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H5 — The amended NFR1 UI-host exception is not closed in the PRD and contradicts AD-16; other shipped anonymous endpoints fit neither exception</h3>
+              <span class="finding-location">§7 NFR1 line 361; §9.2 bullet 4 line 507; §11.2 NFR1 row line 609; SM10 line 543</span>
+            </header>
+            <div class="finding-note">The PRD never enumerates the set; the tests are designated as the enumeration, which makes the contract open-ended. "Static framework assets" is undefined: <code>MapStaticAssets</code> publishes app-owned <code>wwwroot</code> and RCL <code>_content/*</code> files as well as <code>_framework/*</code>. "Authentication-protocol callback endpoints" names no protocol or paths, and interactive login (IAM-1) is backlog, so nothing exists to enumerate today. AD-16 still reads "Only <code>/health</code>, <code>/alive</code>, and <code>/ready</code> carry explicit <code>AllowAnonymous</code> metadata" (<code>architecture.md:244</code>), and architecture records the amendment as pending (<code>architecture.md:548</code>). The Admin UI has no fallback policy (<code>AdminUIServiceExtensions.cs:37</code>), maps static assets and Razor components without authorization, and maps <code>/dapr/subscribe</code> anonymously. The gateway also serves anonymous <code>/problems/*</code> documents (<code>ErrorReferenceEndpoints.cs:149-164</code>) and <code>/openapi/v1.json</code> plus <code>/swagger</code>, enabled by default (<code>Program.cs:36-42</code>); neither fits either NFR1 exception class. No story owns the UI-asset enumeration tests. Also raised by: Rubric (Done-ness clarity) · Brownfield truth H5 · Adversarial general H1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Enumerate the class in the PRD by rule, for example GET/HEAD only; static-asset manifest entries under <code>_framework/</code> and <code>_content/</code> with no auth state; and OIDC <code>signin-oidc</code>/<code>signout-callback-oidc</code> admitted only when IAM-1 lands. State that the exception stays inert until a UI host enters a production profile. Decide explicitly whether documentation endpoints (problem-type references, OpenAPI) are anonymous exceptions or must authenticate. Require the AD-16 amendment in the same change, and assign an owning story and test.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H6 — Dead-letter CloudEvents use the caller-reusable CorrelationId as their id</h3>
+              <span class="finding-location">§6.4 FR23 line 286; §6.7 FR34 line 323; §7 NFR6 line 366; NFR12 line 372</span>
+            </header>
+            <div class="finding-note">FR23: "CloudEvent IDs must use the event <code>MessageId</code>"; NFR6: "subscribers must deduplicate by <code>MessageId</code>". <code>src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56</code> sets <code>["cloudevent.id"] = safeMessage.CorrelationId</code> under source <code>eventstore/{tenant}/{domain}</code>. Callers may supply and reuse a correlation ID across commands (<code>CommandsController.cs:184</code>; AD-32 propagates it unchanged). CloudEvents requires <code>source</code> + <code>id</code> to be unique per distinct event, so a consumer or broker that deduplicates by <code>id</code>, as NFR6 directs, can silently collapse distinct dead letters that share a correlation. Publication failure is swallowed as non-blocking (<code>DeadLetterPublisher.cs:77</code> catch block). FR23 covers only events, FR34 is silent on dead-letter identity, and AD-8 requires durable poison records "keyed by stable <code>MessageId</code>".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Extend FR23 or FR34-C1 so that every CloudEvent EventStore publishes, including dead letters, has a unique, stable, <code>MessageId</code>-derived <code>id</code>, and state that correlation is never message identity. Classify the wire change under NFR12 and make dead-letter publication durability explicit.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">H7 — A projection-backed 304 can be returned for changed data, and the PRD neither forbids it nor gates it</h3>
+              <span class="finding-location">§6.1 FR4 line 239; §7 NFR8 line 368; §7.1 FR4-C3/C6 lines 389, 392</span>
+            </header>
+            <div class="finding-note">NFR8: "freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed". Architecture records that "Under <code>Direct</code>, a lost regeneration may return <code>304 Not Modified</code> on changed data" and routes the fix only to "Story 5.5 owner confirms by test, then routes retry or repair …" (<code>architecture.md:549</code>; AD-8 "Freshness signals", line 170). The client accepts a <code>304</code> as projection-confirmed whenever provenance is <code>ProjectionBacked</code> and a strong ETag is present (<code>EventStoreGatewayClient.cs:205-228</code>). The PRD therefore labels as authoritative a response that architecture knows can be stale.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an FR4 clause: a projection-backed <code>304</code> is allowed only when its validator derives from persisted read-model or checkpoint state, and otherwise the response is <code>200</code> or degraded. Name the owner and bind the clause under G-CLAUSE.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M1 — NFR2's "invariant lowercase" normalization admits non-ASCII aliases</h3>
+              <span class="finding-location">NFR2 line 362</span>
+            </header>
+            <div class="finding-note">NFR2: "invariant lowercase case normalization before comparison and authorization, then validates the … grammar … Whitespace or other characters are not trimmed or repaired." .NET <code>"Kcme".ToLowerInvariant() == "kcme"</code> (first character U+212A) returns <code>True</code>, verified with a scratch <code>dotnet run</code> probe. U+212A KELVIN SIGN folds to ASCII <code>k</code> and then passes the grammar, so a non-ASCII spelling, or a non-ASCII grant, reaches tenant <code>kcme</code>. This contradicts "not repaired". Also raised by: Adversarial general M12.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Specify ASCII-only case folding (A–Z to a–z) and reject any non-ASCII code point before normalization. Add Kelvin-sign and dotted-I negatives to G-TENANT.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M2 — The MessageId version is undefined for shared surfaces, and "version-ambiguous" is undefined</h3>
+              <span class="finding-location">Glossary "MessageId Contract Version" line 198; FR12 line 256</span>
+            </header>
+            <div class="finding-note">FR12: "An absent, blank, invalid-for-version, unavailable, or version-ambiguous <code>MessageId</code> must omit <code>Location</code>". AD-17 assigns a version per command-contract declaration (<code>architecture.md:252</code>). The generic <code>POST /api/v1/commands</code> and the shared <code>GET /api/v1/commands/status/{messageId}</code> have no declared version, and the gateway validator accepts the v1 grammar for every command (<code>SubmitCommandRequestValidator.cs:35-40</code>). Every v2 value is also a valid v1 value, so ambiguity cannot be decided syntactically.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Assign a version, or a resolution rule, to the generic submit and status surfaces, and define "version-ambiguous" operationally, for example as "the endpoint has no single declared version".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M3 — NFR5 reads as configurable defaults; code lets operators raise the limits that architecture calls ceilings</h3>
+              <span class="finding-location">NFR5 line 365</span>
+            </header>
+            <div class="finding-note">NFR5: "at most 16 entries and 2048 total UTF-8 bytes, as configured by <code>ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataEntries</code> and <code>DefaultMaxDetailMetadataBytes</code>". The options validators check only <code>&gt; 0</code> (<code>ProjectionChangeNotifierOptions.cs:125-131</code>; <code>SignalROptions.cs:59-65</code>). AD-8 says the limits are "<code>Contracts</code>-owned ceilings … options may lower but never raise them", counting "keys plus values", with receivers rejecting and broadcasters clipping.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate NFR5 as non-raisable ceilings over keys plus values, with receiver-reject and broadcaster-clip behaviour, and add raising-attempt negatives to Story 2.16's evidence.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M4 — The ProjectionVersion token semantics are missing from the PRD</h3>
+              <span class="finding-location">FR4 line 239</span>
+            </header>
+            <div class="finding-note">FR4 lists "projection version" as propagated metadata only. AD-15 makes it "an optional, bounded, header-safe, opaque equality token … never parse, order, or increment". The PRD forbids inferring lifecycle from ETags but says nothing about ordering or parsing <code>ProjectionVersion</code>, a consumer-visible header protected by NFR12.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an FR4 clause carrying AD-15's equality-only, scope-bounded, may-change-on-rebuild semantics.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M5 — There is no canonical public error contract, and generated hosts diverge from the gateway</h3>
+              <span class="finding-location">NFR12 line 372; FR12-C1 line 401</span>
+            </header>
+            <div class="finding-note">NFR12 inventories "Problem Details codes", and FR12-C1 requires "safe Problem Details", which is not testable as written. Generated controllers emit <code>Type = "about:blank"</code> for their own failures (<code>RestApiControllerEmitter.cs:667</code>). The gateway uses a catalog of 20 URIs (<code>ProblemTypeUris.cs</code>) with <code>code</code>/<code>category</code>/<code>retryable</code>/<code>clientAction</code> extensions (<code>ErrorReferenceEndpoints.cs:86</code>). The same tenant rejection therefore carries different <code>type</code>s depending on the host.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define the stable error contract (type-URI catalog, required extensions, retryability, <code>Retry-After</code> rules, support-safe detail), and require the generator to match the gateway catalog.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M6 — The gateway's own 202 Location is built from the request Host</h3>
+              <span class="finding-location">FR12 line 256</span>
+            </header>
+            <div class="finding-note">FR12 regulates only "An accepted generated command"; AD-17 says "built from trusted gateway configuration". <code>src/Hexalith.EventStore/Controllers/CommandsController.cs:193-195</code> builds <code>$"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{statusKey}"</code> with <code>AllowedHosts: "*"</code> (<code>appsettings.json:9</code>). The header reflects any caller-supplied <code>Host</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Extend the absolute, trusted-configuration <code>Location</code> rule to every public 202, including the gateway, or require a validated forwarded-host configuration.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M7 — NFR12 has no deprecation window or signalling, and approval is not tied to the version bump</h3>
+              <span class="finding-location">NFR12 line 372; G-COMPAT line 685</span>
+            </header>
+            <div class="finding-note">NFR12: "deprecations require a documented replacement and migration path; removals … require an approved breaking-change proposal and SemVer-major release." There is no minimum support or deprecation period, no <code>[Obsolete]</code>/diagnostic-ID, OpenAPI <code>deprecated</code>, or <code>Deprecation</code>/<code>Sunset</code> header requirement, and nothing binds the approval record to the commit-derived semantic-release major bump. No API baseline tooling exists (no <code>PublicAPI*.txt</code>, <code>EnablePackageValidation</code>, or ApiCompat in the repository), which is consistent with G-COMPAT's FAIL.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a support window, deprecation signalling per surface kind, and a release-lane check that a major bump carries an approved proposal digest.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M8 — The NFR7 class (c) "supported operating envelope" is undefined in the PRD</h3>
+              <span class="finding-location">NFR7 line 367; G-APPEND line 682; §9 safety boundary line 486</span>
+            </header>
+            <div class="finding-note">AD-5 defines the envelope: per-actor-host <code>actorStateStore</code> components, physical targets bound into the AD-26 digest, one-app-ID database grants, and re-proof on every DAPR minor-version change (<code>architecture.md:150</code>). G-APPEND binds none of these. Today the AppHost shares <code>statestore</code> (<code>actorStateStore: true</code>, <code>keyPrefix: none</code>) across <code>eventstore</code>, <code>eventstore-admin</code>, and <code>tenants</code> (<code>statestore.yaml:39-53</code>). C1's unauthenticated actor callbacks add a second-activation path.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote the envelope's mandatory elements, AD-26 digest binding, and runtime re-proof trigger into G-APPEND's evidence and invalidation columns.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M9 — FR25 still mandates mutable @main shared gates, so a sealed result is not reproducible</h3>
+              <span class="finding-location">FR25 line 276; Glossary "Assurance Control" (1) line 201; OR18 line 757</span>
+            </header>
+            <div class="finding-note">FR25: "use shared Hexalith.Builds security gates through <code>@main</code>"; the seal binds "the exact head SHA and workflow-file digest"; OR18 covers only the OCI platform set. <code>.github/workflows/ci.yml:18,184</code>, <code>codeql.yml:20</code>, <code>commitlint.yml:19</code>, and <code>dependency-review.yml:19</code> call <code>Hexalith.Builds@main</code>. A seal binds the caller workflow's digest but not the reusable-workflow content resolved from <code>@main</code>. The release path is SHA-pinned instead (<code>release.yml:127,159</code> via the pinned builds-execution checkout).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Classify each shared workflow as authorizing or advisory, require a SHA pin for anything a seal or release consumes, and bind the resolved reusable-workflow SHAs into seal evidence. Amend FR25 accordingly.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M10 — AD-18 outbound control-plane header ownership has no PRD requirement</h3>
+              <span class="finding-location">None: no FR, NFR, or §8.2 bullet</span>
+            </header>
+            <div class="finding-note">No requirement mentions <code>dapr-app-id</code>/<code>dapr-api-token</code> or inbound header steering. The handler replaces rather than appends (<code>DaprServiceInvocationHandler.cs</code>, the <code>Remove</code>/<code>TryAddWithoutValidation</code> pairs) and is guarded structurally (<code>DaprRoutingHeaderOwnershipGuardTests.cs</code>). Architecture still records that omitting <code>.AddEventStoreDaprServiceInvocation</code> "is currently fail-open" (AD-18). That residual has no PRD owner or gate.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a §8.2 bullet and an FR28 clause covering discard, replace, and caller-own-token, plus fail-closed detection of missing registration.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">M11 — OR30 (MediatR licence) is "blocking for the next release" but no gate consumes it</h3>
+              <span class="finding-location">OR30 line 744</span>
+            </header>
+            <div class="finding-note">MediatR is referenced by the released <code>Server</code> and <code>Gateway</code> packages (<code>Hexalith.EventStore.Server.csproj:37</code>; <code>Hexalith.EventStore.Gateway.csproj:49</code>) at the Builds-catalog pin (<code>references/Hexalith.Builds/Props/Directory.Packages.props:194</code>, <code>14.2.0</code>). The shipped host suppresses the licence log (<code>src/Hexalith.EventStore/appsettings.json:6</code>). Neither G-PUBLICATION-AUTH, G-COMPAT, nor G-READINESS references OR30. The evidence form is undefined, and package consumers such as Tenants inherit the obligation with no disclosure. Also raised by: Rubric (Decision-readiness, at high) · Adversarial general H8.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Bind OR30 into G-PUBLICATION-AUTH's <code>release-available</code> preconditions with a named record, and require either removing the log suppression or documenting a rationale.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L1 — FR3's endpoint list is incomplete</h3>
+              <span class="finding-location">FR3 line 238</span>
+            </header>
+            <div class="finding-note">The SDK also maps <code>/project/v2</code>, <code>/project/v2/reconcile</code>, <code>/project/rebuild/{,stage/,commit/,abort/,verify/}v1</code>, and <code>/project/rebuild/shared/v1</code> (<code>src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:244-449</code>).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make the NFR12 / AD-33 inventory the authoritative endpoint list and call FR3's five a minimum.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L2 — G-STATUS-ID's evidence column still names "Approved corrective or reopened Story 2.9" while its owner is Story 2.15</h3>
+              <span class="finding-location">G-STATUS-ID line 681</span>
+            </header>
+            <div class="finding-note">The evidence column keeps the reopen alternative although the row's primary owner is successor Story 2.15. Also raised by: Rubric (Decision-readiness) · Brownfield truth L1.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Name Story 2.15 in the evidence column.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L3 — The §11.3 architecture row is stale</h3>
+              <span class="finding-location">§11.3 line 648</span>
+            </header>
+            <div class="finding-note">It binds SHA-256 <code>7e3dbc7b…</code>, but the current spine is <code>7fd805a8…</code> (updated 2026-10-07). G-BASELINE already fails, so this has no readiness effect. Also raised by: Rubric (Downstream usability, at high) · Brownfield truth H2 · Adversarial general M2.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Refresh only with the OR14 sequence.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L4 — The event-evolution rollout contract exists only in architecture</h3>
+              <span class="finding-location">FR33-C5/C6 lines 413–414</span>
+            </header>
+            <div class="finding-note">The AD-13 rule that the "V2 admission fence stays until the writer and every serving reader and consumer are compatible", and the fail-closed evolution-service outcomes, have no FR33-C5/C6 wording visible to consumers. The uncommitted legacy-replay routing is not judged. Also raised by: Adversarial general M14 (mixed-version compatibility).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a one-line mixed-version rollout consequence to FR33-C6.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">L5 — FR16 does not state that PubSub projection-change transport is non-production</h3>
+              <span class="finding-location">FR16 line 260</span>
+            </header>
+            <div class="finding-note">AD-8 makes <code>Direct</code> the only production-eligible transport (<code>ProjectionChangeNotifierOptions.cs</code> default <code>Transport = Direct</code>; validator lines 120–123 refuse <code>PubSub</code> without a binding issuer).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add that limit to FR16.</div>
           </article>
         </div>
       </details>
     </section>
 
     <div class="mechanical">
+      <h3>Delta vs 2026-09-10</h3>
+      <ul>
+        <li><strong>Resolved in the PRD text:</strong> no executable exit contract (§11.4 now has 17 computed rows plus a post-MVP G5 row); omnibus requirements without clause-level closure and acceptance ambiguity in FR4, FR5, FR7 and FR12 (the §7.1 ledger, 49 clauses); §11.2 omitting NFR5, NFR12 and NFR13; no user journeys (UJ1–UJ5); NFR12 scope, the NFR3 closed host list and FR36 consumer authority (capability-defined and gated). The three 2026-09-10 platform criticals (generated tenant boundary, <code>CorrelationId</code> <code>Location</code> fallback, silent append loss) are resolved at requirement level with truthful FAIL gates and named owners (Stories 2.14, 2.15, 4.16), but the code is unchanged (<code>RestApiControllerEmitter.cs:281</code> and <code>:407-445</code>; shared <code>statestore</code>).</li>
+        <li><strong>Still open, correctly fail-closed:</strong> OQ8 normative bytes (G-OQ8, OR11, Story 4.17); the NFR8 projection bound (G-NFR8, OR16, Story 6.3); the unapproved planning baseline (G-BASELINE); MVP priority still follows the epic inventory; FR25's mutable <code>@main</code> workflow governance (OR18 still non-blocking; sharpened by Platform contract M9). Partially resolved: the bound reject result (frontmatter binds the 2026-10-06 assessment while §0 still cites 2026-09-10) and ownership-versus-delivery traceability (G-MVP-COVERAGE manifest specified but unbuilt).</li>
+        <li><strong>Worse:</strong> the PRD as a volatile status ledger (583 → 770 lines, with lifecycle state now inside NFR8 and NFR18; raised to high); the register that documents the baseline is itself stale for every artifact, and PRD/<code>epics.md</code> text drift is 18 of 56; 15 post-seal commits changed the PRD with no reviewer gate, several under unrelated commit subjects.</li>
+        <li><strong>New:</strong> introduced by the 2026-10-07 edits — the NFR1 UI-host anonymous class against AD-16, the unrepresentable UI-host carve-out, OR30 outside the gate contract with "release" undefined, and the seal that "never blocks <code>main</code>" (Adversarial general C2); introduced by the 2026-09-26 roster-dependent control — no trusted clock or subject boundary, no classification floor, an open role vocabulary; introduced silently on 2026-09-21 — SM11 counting class (e); surfaced by code inspection — gateway actor callbacks (Platform contract C1), the gateway correlation lookup (Platform contract C2, a new gateway-side instance of the 2026-09-10 <code>CorrelationId</code> critical that G-STATUS-ID does not cover), the grant-scope rule, the idempotency channel, NFR3 against AD-36, dead-letter CloudEvent <code>id</code>, and the projection-backed <code>304</code>.</li>
+        <li><strong>Net:</strong> 2026-09-10 recorded 5 critical, 10 high, 4 medium and 0 low (rubric plus platform contract). This run records 0 critical, 7 high, 7 medium and 5 low from the rubric alone, and 4 critical, 21 high, 30 medium and 13 low across all four reviewers after deduplication. None of the four criticals is a carry-over; every earlier PRD-content defect has been addressed in the text, and every remaining rubric high is ledger drift or an inconsistency introduced by the 2026-10-07 edits.</li>
+      </ul>
+    </div>
+
+    <div class="mechanical">
       <h3>Mechanical notes</h3>
       <ul>
-        <li>FR1–FR37 and NFR1–NFR19 are complete and unique in their declaration sections; thematic FR ordering is deliberately non-numeric.</li>
-        <li>§11.1 covers every FR. §11.2 omits NFR5, NFR12, and NFR13; this is promoted to a substantive finding.</li>
-        <li>No duplicate IDs or obviously broken internal section references were found; every frontmatter source path exists.</li>
-        <li>Glossary terminology is generally disciplined, especially the parity and provenance distinctions.</li>
-        <li>The Assumptions Index round-trips cleanly.</li>
-        <li>No named-protagonist journeys are present; this is treated as a shape finding rather than an ID defect.</li>
+        <li><strong>IDs:</strong> FR1–FR37 (in thematic rather than numeric order, as before), NFR1–NFR19, UJ1–UJ5, SM1–SM12 and SM-C1–SM-C5 are unique and contiguous. §7.1 clause IDs are contiguous within each parent. OR1–OR30 are complete, with OR2, OR3 and OR12 retired and documented (line 760).</li>
+        <li><strong>§11.4 inventory:</strong> G-HIGH-RISK's enumerated gate list matches the 17 mandatory rows exactly. Every blocking OR is referenced by at least one gate row except OR17 (a meta item, acceptable) and OR30 (see Decision-readiness).</li>
+        <li><strong>Range annotations:</strong> §11.2's "literal range endpoint" vs "range-only interior" annotations are consistent with Story 8.1 ("NFR1–NFR4"), because they classify the NFR range, not the story range. The column header does not say so.</li>
+        <li><strong>§10 heading:</strong> "Planning-recovery metrics (achieved)" contains SM3, which is marked "not met".</li>
+        <li><strong>Source artifacts:</strong> every frontmatter <code>source_artifacts</code> path exists. <code>sprint-change-proposal-2026-10-07-story-9-2-nfr1.md</code> (approved, edits <code>epics.md</code> only, "No PRD edit is proposed") is not listed. That is acceptable, but listing it would record that the NFR1 propagation happened.</li>
+        <li><strong>Assumptions Index:</strong> it round-trips, since there are no inline <code>[ASSUMPTION]</code> tags. See Scope honesty for the imported AD-26 assumption.</li>
+        <li><strong>Line length:</strong> two lines exceed 2,000 characters: the Assurance Control glossary entry (line 201, 2,266) and OR15 (line 725, 2,174). They are hard to diff and review.</li>
+        <li><strong>Terminology:</strong> "Stories 22.7a-d" (line 504) is legacy numbering explained inline, which is fine. For "INDEPENDENT" used as a status label, see Decision-readiness.</li>
       </ul>
     </div>
 
     <footer class="report-footer">
       <div class="meta">
-        <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
-        <span>Generated: 2026-09-10T08:31:03+02:00</span>
-        <span>Baseline: 293c69c42d35dee26682d42f05c943c0b65786f4</span>
+        <span>Rubric: .claude/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-10-07T16:41:08+02:00</span>
+        <span>PRD: _bmad-output/planning-artifacts/prd.md (SHA-256 d5632ba7…)</span>
+        <span>Baseline: 40c92e085d8a6463d469c1b340c410fec84a690f</span>
       </div>
     </footer>
   </div>

@@ -47,10 +47,11 @@ public sealed class EventEvolutionLegacyIntakeTests
             StoredEventContractType = "evt", StoredPayloadVersion = 1,
         };
         var request = new AggregateReconstructionRequest("tenant", "d", "aggregate", "id", 1, [future], false, null);
-        _ = replay.ReplayAsync(request, cancellation.Token).Returns(AggregateReconstructionResult.Failed(
+        _ = replay.ReplayAsync(Arg.Any<AggregateReconstructionRequest>(), cancellation.Token).Returns(AggregateReconstructionResult.Failed(
             AggregateReconstructionErrorCategory.UnknownEventType, "fixture"));
         _ = await DomainServiceRequestRouter.ReplayAsync(provider, request, cancellation.Token);
-        _ = await replay.Received(1).ReplayAsync(request, cancellation.Token);
+        _ = await replay.Received(1).ReplayAsync(Arg.Is<AggregateReconstructionRequest>(
+            captured => captured.UpToSequence == request.UpToSequence && captured.Events.Count == 0), cancellation.Token);
     }
 
     /// <summary>Checks full, named, staged, reconciliation and shared rebuild routes refuse before resolving state or handlers.</summary>

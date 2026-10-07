@@ -1,6 +1,6 @@
 # Hexalith.EventStore UX Index
 
-Status: draft
+Status: final
 Updated: 2026-10-07
 
 This folder is the canonical UX source for Hexalith.EventStore. It is updated
@@ -39,7 +39,7 @@ Prior lens reviews are historical evidence; superseded bodies are recoverable fr
 - [Accessibility and support-safety review](review-accessibility-support-safety.md) — regenerated 2026-09-09
 - [Rubric review](review-rubric.md) — regenerated 2026-09-09
 
-These reports describe earlier spines. Fresh optional multi-lens validation has not run for the 2026-10-07 update; the reports remain historical review evidence rather than a verdict on the current pair.
+These reports describe earlier spines. The user skipped fresh optional multi-lens validation for the 2026-10-07 update; the reports remain historical review evidence rather than a verdict on the current pair. Required structure/prose polish and mechanical checks completed during finalization. The approved Overview/Commands visual set is retained; all other surfaces remain spine-only.
 
 ## Visual References
 

@@ -8,9 +8,10 @@ namespace Hexalith.EventStore.Client.Events;
 /// <summary>Detects managed-load policy violations in explicitly inventoried local loader contexts.</summary>
 /// <remarks>
 /// This dormant observer checks supplied graph/file declarations and observed assembly identities,
-/// contexts, locations and current file bytes. A matching observation does not bind the loaded image
-/// to an immutable artifact, establish graph completeness, cover unlisted contexts or native loads,
-/// or confer readiness. It cannot prevent or undo effects executed before an observation. The host
+/// contexts, locations and current file bytes. The optional process mode refuses any observed managed
+/// assembly outside those contexts. A matching observation does not bind the loaded image to an
+/// immutable artifact, establish graph completeness, cover native loads or confer readiness.
+/// It cannot prevent or undo effects executed before an observation. The host
 /// must separately qualify complete process coverage and immutable execution binding before use.
 /// </remarks>
 internal sealed class EventEvolutionManagedLoadObserver : IDisposable
@@ -21,7 +22,9 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
     private readonly EventEvolutionCapabilityLoss _capabilityLoss;
     private readonly AssemblyLoadContext[] _contexts;
     private readonly HashSet<AssemblyLoadContext> _contextSet;
-    private readonly Dictionary<(AssemblyLoadContext Context, string FullName), (string File, EventRegistryRow Declaration)> _bindings = [];
+    private readonly bool _requireAllManagedContexts;
+    private readonly Dictionary<(AssemblyLoadContext Context, string FullName), (string File, EventRegistryRow Declaration)> _bindings
+        = new(new EventManagedAssemblyBindingComparer());
     private readonly Dictionary<Assembly, EventManagedArtifactExecutionBinding> _privateImages = [];
     private bool _disposed;
 
@@ -32,7 +35,8 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
         IReadOnlyList<EventDependencyIdentity> executedRoots,
         IReadOnlyList<EventManagedLoadContext> loaderContexts,
         CancellationToken cancellationToken,
-        IReadOnlyList<EventManagedArtifactExecutionBinding>? privateImages = null)
+        IReadOnlyList<EventManagedArtifactExecutionBinding>? privateImages = null,
+        bool requireAllManagedContexts = false)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(resolvedGraph);
@@ -48,13 +52,14 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
         }
 
         _capabilityLoss = registry.CapabilityLoss;
+        _requireAllManagedContexts = requireAllManagedContexts;
         EventResolvedDependency[] graph = resolvedGraph.ToArray();
         EventDependencyIdentity[] roots = executedRoots.ToArray();
         EventManagedLoadContext[] suppliedContexts = loaderContexts.ToArray();
         EventManagedArtifactExecutionBinding[] images = privateImages?.ToArray() ?? [];
         EventDependencyClosureVerifier.RequireResolvedGraph(registry, graph, roots, cancellationToken);
         var contexts = new Dictionary<string, AssemblyLoadContext>(StringComparer.Ordinal);
-        var runtimeContexts = new HashSet<AssemblyLoadContext>();
+        var runtimeContexts = new HashSet<AssemblyLoadContext>(ReferenceEqualityComparer.Instance);
         long accounted = 64 * 1024; // One serialized observation's hashing workspace.
         foreach (EventManagedLoadContext entry in suppliedContexts)
         {
@@ -162,14 +167,14 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             _capabilityLoss.RequireNoObservedLoss();
             RequirePresentContexts();
-            foreach (AssemblyLoadContext context in _contexts)
+            IEnumerable<Assembly> assemblies = _requireAllManagedContexts
+                ? AppDomain.CurrentDomain.GetAssemblies()
+                : _contexts.SelectMany(static context => context.Assemblies);
+            foreach (Assembly assembly in assemblies)
             {
-                foreach (Assembly assembly in context.Assemblies)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    ObserveAssembly(assembly, cancellationToken);
-                    _capabilityLoss.RequireNoObservedLoss();
-                }
+                cancellationToken.ThrowIfCancellationRequested();
+                ObserveAssembly(assembly, cancellationToken);
+                _capabilityLoss.RequireNoObservedLoss();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -197,7 +202,7 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
     private void OnAssemblyLoad(object? sender, AssemblyLoadEventArgs arguments)
     {
         AssemblyLoadContext? context = AssemblyLoadContext.GetLoadContext(arguments.LoadedAssembly);
-        if (context is null || !_contextSet.Contains(context)) { return; }
+        if (!_requireAllManagedContexts && (context is null || !_contextSet.Contains(context))) { return; }
         lock (_gate)
         {
             if (_disposed) { return; }
@@ -210,7 +215,11 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
         try
         {
             AssemblyLoadContext? context = AssemblyLoadContext.GetLoadContext(assembly);
-            if (context is null || !_contextSet.Contains(context)) { return; }
+            if (context is null || !_contextSet.Contains(context))
+            {
+                if (_requireAllManagedContexts) { _capabilityLoss.ObserveViolation(); }
+                return;
+            }
             if (assembly.IsDynamic || assembly.FullName is not string fullName
                 || !_bindings.TryGetValue((context, fullName), out (string File, EventRegistryRow Declaration) binding))
             {
@@ -288,7 +297,7 @@ internal sealed class EventEvolutionManagedLoadObserver : IDisposable
     {
         foreach (AssemblyLoadContext context in _contexts)
         {
-            if (!AssemblyLoadContext.All.Contains(context)) { _capabilityLoss.ObserveViolation(); }
+            if (!AssemblyLoadContext.All.Any(candidate => ReferenceEquals(candidate, context))) { _capabilityLoss.ObserveViolation(); }
         }
 
         _capabilityLoss.RequireNoObservedLoss();

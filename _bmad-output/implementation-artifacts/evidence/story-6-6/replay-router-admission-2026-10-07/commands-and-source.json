@@ -1,0 +1,392 @@
+{
+  "scope": "local M4 legacy replay admission and dispatch; no authenticated-source, activation or parent-story closure authority",
+  "storyKey": "6-6-event-versioning-and-upcasting-implementation",
+  "baselineCommit": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "observedHead": "40c92e085d8a6463d469c1b340c410fec84a690f",
+  "commands": [
+    {
+      "lane": "domainservice-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-router-build.log",
+      "archivedLog": "domainservice-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "lane": "domainservice-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-domainservice-final.log",
+      "archivedLog": "domainservice-full.log",
+      "runner": {
+        "total": 517,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "client-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-client-final-build.log",
+      "archivedLog": "client-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "lane": "client-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-client-final.log",
+      "archivedLog": "client-full.log",
+      "runner": {
+        "total": 1285,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "sample-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-sample-build.log",
+      "archivedLog": "sample-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "lane": "sample-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Sample.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Tests.dll"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-sample-full.log",
+      "archivedLog": "sample-full.log",
+      "runner": {
+        "total": 175,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "release-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--configuration",
+        "Release",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-release-build.log",
+      "archivedLog": "release-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "lane": "local-package-pack",
+      "argv": [
+        "python3",
+        "scripts/pack-release-packages.py",
+        "/tmp/story-6-6-router-packages",
+        "999.0.0-ci-test"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-router-packages.log",
+      "archivedLog": "local-package-pack.log"
+    },
+    {
+      "lane": "package-consumers",
+      "argv": [
+        "python3",
+        "scripts/validate-consumer-package-references.py",
+        "/tmp/story-6-6-router-packages",
+        "--package",
+        "Hexalith.EventStore.Contracts",
+        "--package",
+        "Hexalith.EventStore.Client",
+        "--package",
+        "Hexalith.EventStore.DomainService"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-router-consumers.log",
+      "archivedLog": "package-consumers.log"
+    },
+    {
+      "lane": "isolated-mutations",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-replay-routing.py",
+        "--output",
+        "/tmp/story-6-6-router-mutations-verified",
+        "--timeout",
+        "60"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-router-mutations-verified.log",
+      "archivedLog": "isolated-mutations.log"
+    },
+    {
+      "lane": "historical-preflight",
+      "argv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "--mutations"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-historical-preflight.json",
+      "archivedLog": "historical-preflight.json",
+      "scope": "historical approval only"
+    },
+    {
+      "lane": "current-preflight",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution.py",
+        "--mutations"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "originalLog": "/tmp/story-6-6-current-preflight.json",
+      "archivedLog": "current-preflight.json",
+      "openObligations": 20,
+      "timedMutations": 22
+    },
+    {
+      "lane": "deferred-check",
+      "argv": [
+        "python3",
+        "scripts/check-deferred-work.py",
+        "--json"
+      ],
+      "exitCode": 0,
+      "status": "passed-with-existing-advisories",
+      "originalLog": "/tmp/story-6-6-deferred.json",
+      "archivedLog": "deferred.json",
+      "legacyUnclassified": 406
+    },
+    {
+      "lane": "production-profile-presence",
+      "argv": [
+        "test",
+        "-f",
+        "deploy/dapr/production-profile.yaml"
+      ],
+      "exitCode": 1,
+      "status": "missing-required-external-profile",
+      "output": "",
+      "observedBy": "parent final read-only check"
+    },
+    {
+      "lane": "diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "status": "passed",
+      "output": ""
+    },
+    {
+      "lane": "staging-check",
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--name-only"
+      ],
+      "exitCode": 0,
+      "status": "no-paths",
+      "output": "",
+      "observedBy": "parent final read-only check"
+    },
+    {
+      "lane": "aspire-cleanup",
+      "argv": [
+        "aspire",
+        "ps",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "status": "no-running-apphost",
+      "output": "Scanning for running AppHosts...\nNo running AppHost found. Use aspire run to start one first."
+    }
+  ],
+  "ownedSources": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs",
+      "sha256": "073a0a5c5ca89fe5c8c9ed3fb06193205bd5365d58030c0a9971e26175336f87"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs",
+      "sha256": "662170113cf7ddcf103f0891549f9b59b5530975854129ad5ab4d83920c852fe"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/IAdmittedLegacyAggregateReplay.cs",
+      "sha256": "5026e15406c1d85bb5d4379fedd265c0accdaba7af9d576143bf050ca170571c"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/LegacyReplayInput.cs",
+      "sha256": "dbb65d31d54bfda89d59c26223d858671425f01263750f54a752d4af50967f5e"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "sha256": "3ba2a5670bd2ee86e11fad61ee55eaeaca82e9d65688e6667d6e5acb48137e29"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs",
+      "sha256": "e0971a761db9d80e6b4a2cdf9541f6ca134e2b2dc0b8c9fec951eee1d9a92ea7"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs",
+      "sha256": "6b5be29e412552d5d8f9195b637316b1cc57d81df2a25aed8cc2a2fc7465f7c7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs",
+      "sha256": "96f833f220fa77a2d2621dcdeca0d06cc48d5c773598a6b9fb04d0ae8a0f3d1f"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs",
+      "sha256": "7b8839756325cc854b781c82c3e2981b671460ab0810496a1bad01d02e192b6a"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs",
+      "sha256": "daf9fbaf76f7e216fa4ec353b08ba87162b89f6b6a2256534ecfdf9d96ab6fd9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/ReplayAdmissionProbeCollection.cs",
+      "sha256": "843472b8e87ba444490d49b8a37d6f57f4d09f9d29743874494b914682f63aa8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/CustomAsyncReplayAggregate.cs",
+      "sha256": "527ab6c867a81261bdb9f1cde829fd4ec0caafeb14aac62dd1eefbcf346e59e7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/CustomSyncReplayAggregate.cs",
+      "sha256": "3e5746cf761ead0c485b1e330c716c0aed2bf3b199cbef7478f1d0ba8a465a09"
+    },
+    {
+      "path": "scripts/verify-event-evolution-replay-routing.py",
+      "sha256": "3d69b96b9151313465d62f7ee0fe4d0f7f36645be59353bf93c9dd1f9c0473ba"
+    }
+  ],
+  "localPackages": [
+    {
+      "name": "Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg",
+      "sha256": "6102072254a24fa99f62b2e54280504678df807e940774b36dd379225e1a2d72"
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg",
+      "sha256": "6f8e515171d17d83ce1908d6db6b51c7d76e49b31a0f1960cada54aebccedd90"
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg",
+      "sha256": "7b22dd5fd02492e809a0a6464420328e77a452a3250bcc8ca3fbd29088350e85"
+    },
+    {
+      "name": "Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg",
+      "sha256": "a5324a1ddfdcdf4820e0464b5fac02b642e09ddd73fc9c8ded89bddf6547484b"
+    },
+    {
+      "name": "Hexalith.EventStore.Client.999.0.0-ci-test.nupkg",
+      "sha256": "d8122956adda5d71f39eac76e43a2c45ea36a20f81e566df412e697eb34ebf45"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg",
+      "sha256": "0057a25e8573536a30a8dcf3dba825edaf6dfc7f460311da9eeba7e0ff23127e"
+    },
+    {
+      "name": "Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg",
+      "sha256": "cf7ff07e46f9584ad5280b8f5c4cb108a3c4c873130f42bf16fdf0b3bc422a28"
+    },
+    {
+      "name": "Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg",
+      "sha256": "061705ccaa6c8944446e798190398a51bee058a7ad6962723f261b276bc86e59"
+    },
+    {
+      "name": "Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg",
+      "sha256": "4b36af9f6f92e85113ea9e70cac90fc6a28b61f3c27aba06933a3d1c703ee276"
+    },
+    {
+      "name": "Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
+      "sha256": "e0da76029edf7812e1abff223d5102ef8faa7852fc7f828f26e945ba5e12e7f4"
+    },
+    {
+      "name": "Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg",
+      "sha256": "a1ce2109ea2c94d6f13f692b3031568a88179e811bebb3e4cc9db37b03035573"
+    },
+    {
+      "name": "Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg",
+      "sha256": "792115035a2fc72b977b3896b37597c0e38875e8d7a93c5b9c73955c963eea9b"
+    },
+    {
+      "name": "Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg",
+      "sha256": "eccb4d2e061800eb7624a2dd081df18973e2cb726636e0c11aeb900c5054c76f"
+    },
+    {
+      "name": "Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg",
+      "sha256": "e81caa4549c42e760d9a6e429e796b6ef65bf0e9bde3f7d79465f138fa35fe3f"
+    }
+  ],
+  "cleanupEvidence": {
+    "observed": "private handler payloads clear after success, thrown failure and post-handler cancellation; caller bytes stay intact",
+    "inferred": "disposal after ownership callbacks, route refusal and prefix/version refusal follows the using scope; no private-byte observer is installed at those boundaries"
+  },
+  "productionQualification": false,
+  "activationAuthority": false,
+  "parentTasksClosed": [],
+  "obligationsClosed": []
+}

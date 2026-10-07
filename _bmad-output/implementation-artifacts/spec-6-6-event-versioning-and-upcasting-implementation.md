@@ -92,6 +92,33 @@ boundary. The conservative live-array ceiling remains explicit.
 
 ## Implementation Notes
 
+### Local replay router admission and dispatch — 2026-10-07
+
+The [scoped verification](evidence/story-6-6/verification-2026-10-07-replay-router-admission.md)
+records bounded private whole-prefix admission before custom legacy replay
+resolution/ownership, independent synchronous replay registration, and original
+cancellation checks through source admission, ownership and handler completion.
+Built-in replay borrows the admitted owner while explicit derived replay
+implementations retain public interface dispatch. A read-only event-list view
+preserves private cleanup ownership. Actual-router tests reproduce and resolve
+custom dispatch bypass, mutable slot replacement and count-getter cancellation.
+
+Final affected full assemblies passed DomainService 517/517, Client 1,285/1,285
+and Sample 175/175 with zero failures/skips. The required Release package-mode
+solution build had zero warnings/errors; all 14 local packages and three isolated
+package-only consumers passed. Five isolated timeout-bounded router mutations
+were killed by named tests after successful builds. Logs identify provider
+sentinel exceptions separately from assertion failures and distinguish observed
+handler-buffer clearing from disposal inferred at earlier ownership/refusal paths.
+
+The [remaining-task inventory](evidence/story-6-6/replay-router-admission-2026-10-07/remaining-tasks.md)
+separates unfinished local implementation from concrete catalog, key/peer,
+control-owner, migration, broker and production qualification dependencies.
+The required production profile is absent; dormant preparation can continue.
+Frozen intent, original baseline, in-progress status, M1–M8 dispositions, all
+20 open obligations and V2/proof-dependent activation fences remain unchanged.
+Concurrent UX and root-declared Memories/Platform changes were preserved.
+
 ### Current-amendment obligation audit — 2026-10-07
 
 The [current obligation audit](6-6-obligation-audit.json) re-evaluates O-01
@@ -265,6 +292,12 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
+- 2026-10-07 — Continued dormant local preparation with whole-managed-process observation and reference-identity context guards, exact Greeting V1 writing, optional owner-declared detached Counter/Greeting typed snapshots, private opaque outer proof framing and an additive isolated-guard workflow. [Final verification](evidence/story-6-6/verification-2026-10-07-local-preparations.md) retains actual source/Release/package/control results. [Source-derived candidates](evidence/story-6-6/source-candidates-2026-10-07/index.md) and a field-level Dapr logical claim design expose the missing semantic, execution-image and control-owner inputs without granting authority. Canonical production profile remains absent; all M1–M8/O01–O20 and activation fences remain open. Frozen intent, original baseline and historical approval are unchanged.
+
+- 2026-10-07 — Recorded local replay-router admission/dispatch, the three reproduced
+  review repairs, final affected regressions, package lanes, isolated mutations
+  and retained logs. Added the concrete local/external remaining-task inventory;
+  no parent task, obligation, baseline or activation disposition changed.
 - 2026-10-07 — Added the [current-amendment obligation audit](6-6-obligation-audit.json)
   and its [scoped verification](evidence/story-6-6/verification-2026-10-07-obligation-audit.md).
   The existing CI gate binds historical approval separately from both current

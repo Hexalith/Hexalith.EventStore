@@ -1,0 +1,13 @@
+{
+  "ownedSourceHashes": "matched all 14",
+  "frontmatter": "unchanged from observed HEAD",
+  "frozenIntent": "unchanged from observed HEAD",
+  "parentTasks": "all 8 remain open",
+  "currentObligations": "all 20 remain open",
+  "documentLinks": "resolved",
+  "documentLineEndings": "LF",
+  "mutationControls": "unmutated passed and five compiled mutants killed",
+  "head": "40c92e085d8a6463d469c1b340c410fec84a690f",
+  "stagedPaths": [],
+  "productionProfilePresent": false
+}

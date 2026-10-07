@@ -1,0 +1,675 @@
+{
+  "scope": "local dormant preparations only; no full Story 6.6 acceptance",
+  "baselineCommit": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "observedHead": "40c92e085d8a6463d469c1b340c410fec84a690f",
+  "activationAuthority": false,
+  "productionAuthority": false,
+  "parentTasksClosed": [],
+  "obligationsClosed": [],
+  "commands": [
+    {
+      "lane": "client-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-client-build.log",
+      "archivedLog": "client-build.log"
+    },
+    {
+      "lane": "client-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-client-full-final.log",
+      "archivedLog": "client-full.log",
+      "runner": {
+        "total": 1327,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "domainservice-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-domainservice-build.log",
+      "archivedLog": "domainservice-build.log"
+    },
+    {
+      "lane": "domainservice-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-domainservice-full.log",
+      "archivedLog": "domainservice-full.log",
+      "runner": {
+        "total": 517,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "sample-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-detached-sample-build.log",
+      "archivedLog": "sample-build.log"
+    },
+    {
+      "lane": "sample-final-release-full",
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-sample-release-full.log",
+      "archivedLog": "sample-final-release-full.log",
+      "runner": {
+        "total": 186,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "lane": "release-build",
+      "argv": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--configuration",
+        "Release",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-release-final.log",
+      "archivedLog": "release-build.log"
+    },
+    {
+      "lane": "local-package-pack",
+      "argv": [
+        "python3",
+        "scripts/pack-release-packages.py",
+        "/tmp/story-6-6-final-local-packages",
+        "999.0.0-ci-test"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-packages.log",
+      "archivedLog": "local-package-pack.log"
+    },
+    {
+      "lane": "package-consumers",
+      "argv": [
+        "python3",
+        "scripts/validate-consumer-package-references.py",
+        "/tmp/story-6-6-final-local-packages",
+        "--package",
+        "Hexalith.EventStore.Contracts",
+        "--package",
+        "Hexalith.EventStore.Client",
+        "--package",
+        "Hexalith.EventStore.DomainService"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-consumers.log",
+      "archivedLog": "package-consumers.log"
+    },
+    {
+      "lane": "current-preflight",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution.py",
+        "--mutations"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-current-preflight.log",
+      "archivedLog": "current-preflight.log"
+    },
+    {
+      "lane": "candidate-generation",
+      "argv": [
+        "python3",
+        "scripts/prepare-event-evolution-candidates.py",
+        "--output",
+        "_bmad-output/implementation-artifacts/evidence/story-6-6/source-candidates-2026-10-07"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-candidate-generation-final.log",
+      "archivedLog": "candidate-generation.log"
+    },
+    {
+      "lane": "workflow-actionlint",
+      "argv": [
+        "actionlint",
+        ".github/workflows/event-evolution-local-guards.yml"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-actionlint-final.log",
+      "archivedLog": "workflow-actionlint.log"
+    },
+    {
+      "lane": "ci-client-restore",
+      "argv": [
+        "dotnet",
+        "restore",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "-p:Configuration=Debug",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-ci-client-restore.log",
+      "archivedLog": "ci-client-restore.log"
+    },
+    {
+      "lane": "ci-domainservice-restore",
+      "argv": [
+        "dotnet",
+        "restore",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "-p:Configuration=Debug",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-ci-domainservice-restore.log",
+      "archivedLog": "ci-domainservice-restore.log"
+    },
+    {
+      "lane": "deferred-check",
+      "argv": [
+        "python3",
+        "scripts/check-deferred-work.py",
+        "--json"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-deferred.json",
+      "archivedLog": "deferred-check.log"
+    },
+    {
+      "lane": "router-guards",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-replay-routing.py",
+        "--output",
+        "/tmp/story-6-6-final-local-router-guards",
+        "--timeout",
+        "60"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-router-guards.log",
+      "archivedLog": "router-guards.log",
+      "result": "router-guards/result.json",
+      "mutations": 5,
+      "timeoutSecondsPerLane": 60
+    },
+    {
+      "lane": "managed-guards",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-process-managed-observation.py",
+        "--output",
+        "/tmp/story-6-6-final-local-managed-guards",
+        "--timeout",
+        "60"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-final-local-managed-guards.log",
+      "archivedLog": "managed-guards.log",
+      "result": "managed-guards/result.json",
+      "mutations": 6,
+      "timeoutSecondsPerLane": 60
+    },
+    {
+      "lane": "snapshot-guards",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-detached-snapshots.py",
+        "--output",
+        "/tmp/story-6-6-detached-mutations-final-source"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-detached-mutations-final-source.log",
+      "archivedLog": "snapshot-guards.log",
+      "result": "snapshot-guards/result.json",
+      "mutations": 5,
+      "timeoutSecondsPerLane": 60
+    },
+    {
+      "lane": "framing-guards",
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-detached-snapshots.py",
+        "--proof-framing",
+        "--output",
+        "/tmp/story-6-6-proof-framing-mutations-final"
+      ],
+      "exitCode": 0,
+      "originalLog": "/tmp/story-6-6-proof-framing-mutations-final.log",
+      "archivedLog": "framing-guards.log",
+      "result": "framing-guards/result.json",
+      "mutations": 5,
+      "timeoutSecondsPerLane": 60
+    },
+    {
+      "lane": "candidate-fact-audit",
+      "argv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-6/local-preparations-2026-10-07/audit-candidates.py"
+      ],
+      "exitCode": 0,
+      "archivedLog": "candidate-fact-audit.log"
+    }
+  ],
+  "ownedSources": [
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Counter/CounterAggregate.cs",
+      "bytes": 1901,
+      "sha256": "367d3be8ae627a597feccbb58d33f6ca0c302538d8954661a101ee0052673460"
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Counter/State/CounterState.cs",
+      "bytes": 1744,
+      "sha256": "075b65b9c65fe0259a4b779dabc7a1153a7a3057170f15947f38cfd587bf644e"
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Greeting/GreetingAggregate.cs",
+      "bytes": 1215,
+      "sha256": "2ab7b81476f001460df417764863f8280b4ca5bc6d8f722ddba6d01134ea77f4"
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Greeting/State/GreetingState.cs",
+      "bytes": 648,
+      "sha256": "eb1a08bd2aa4fa0693d78db6e9d7edf699321c0c737f658eab4c65299b689654"
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Program.cs",
+      "bytes": 2285,
+      "sha256": "bedfd288d82960f0ce1ff98ae1ffbe8e0fbf554674de0045d56d2b33b422fcbd"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs",
+      "bytes": 18603,
+      "sha256": "073a0a5c5ca89fe5c8c9ed3fb06193205bd5365d58030c0a9971e26175336f87"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs",
+      "bytes": 15919,
+      "sha256": "d4568398afcce0686caca30db2c19bd9b7c9f70c0af3ade16fdf5502bba5d835"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/LegacyReplayInput.cs",
+      "bytes": 12860,
+      "sha256": "dbb65d31d54bfda89d59c26223d858671425f01263750f54a752d4af50967f5e"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionManagedLoadObserver.cs",
+      "bytes": 15234,
+      "sha256": "3d2d881a730df4a830fe2e645d476d10db68ff9d867877efb0cd56bee079fc9f"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs",
+      "bytes": 3836,
+      "sha256": "8125a72526f458cd499236aa5ceb36ef77b9ced137f224544fae819001f54586"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs",
+      "bytes": 26277,
+      "sha256": "4aa984e4a7b6ad9c5e2023605cb9b86b442fff6fcb30b0332bb06795af8f2f9d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs",
+      "bytes": 15372,
+      "sha256": "9503be3e2bc6f5c78a83fa5ae9e8ee0566fe8e94787689ecd5ed0e4aa19a06bb"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "bytes": 1308,
+      "sha256": "3ba2a5670bd2ee86e11fad61ee55eaeaca82e9d65688e6667d6e5acb48137e29"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs",
+      "bytes": 13301,
+      "sha256": "e0971a761db9d80e6b4a2cdf9541f6ca134e2b2dc0b8c9fec951eee1d9a92ea7"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs",
+      "bytes": 17299,
+      "sha256": "6b5be29e412552d5d8f9195b637316b1cc57d81df2a25aed8cc2a2fc7465f7c7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionManagedLoadObserverTests.cs",
+      "bytes": 18499,
+      "sha256": "edef3ea848d2e68cd37290cafeb2179d3a3bea667995079496c9853a04446c01"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs",
+      "bytes": 14789,
+      "sha256": "96f833f220fa77a2d2621dcdeca0d06cc48d5c773598a6b9fb04d0ae8a0f3d1f"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs",
+      "bytes": 7096,
+      "sha256": "7b8839756325cc854b781c82c3e2981b671460ab0810496a1bad01d02e192b6a"
+    },
+    {
+      "path": ".github/workflows/event-evolution-local-guards.yml",
+      "bytes": 2626,
+      "sha256": "9b8f25b8f803532c529506ddf75789e09bd2766d56fbdba0b55b6ba750c87eb0"
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/Greeting/GreetingEventSerialization.cs",
+      "bytes": 1273,
+      "sha256": "3227f9952a43846a29b016d44b06c2267037be37235c5da979904b50641d3664"
+    },
+    {
+      "path": "scripts/fixtures/event-evolution-process-managed-observation/ObservationInventory.cs",
+      "bytes": 3652,
+      "sha256": "20cdabe16591fa6723278d04586947d571b993d31838b69b76580b9a732c79f0"
+    },
+    {
+      "path": "scripts/fixtures/event-evolution-process-managed-observation/Program.cs",
+      "bytes": 7250,
+      "sha256": "8476e90b3673916d643761e01e696db5d4668dd1cb433eb38266d929d0af644c"
+    },
+    {
+      "path": "scripts/fixtures/event-evolution-process-managed-observation/ValueEqualManagedLoadContext.cs",
+      "bytes": 429,
+      "sha256": "21b3aedfef23d70b60d89a54c9b06922e337a40e844091a3951b7b712d14c193"
+    },
+    {
+      "path": "scripts/prepare-event-evolution-candidates.py",
+      "bytes": 18877,
+      "sha256": "f8945c8f0b9c81e7fa65055aab7ed7e4217d0080d2d356f5b1661695775946dc"
+    },
+    {
+      "path": "scripts/verify-event-evolution-detached-snapshots.py",
+      "bytes": 8053,
+      "sha256": "2d84aa76e49f7d1a0b5ed64e21abaacb3f4e0fe1dbd64d2bcaebd38e77e6c89f"
+    },
+    {
+      "path": "scripts/verify-event-evolution-process-managed-observation.py",
+      "bytes": 7748,
+      "sha256": "4d31b77370f9cb70e0b14ef816c0e84cca2206ffab11ac79533d9f0c62703e21"
+    },
+    {
+      "path": "scripts/verify-event-evolution-replay-routing.py",
+      "bytes": 8484,
+      "sha256": "3d69b96b9151313465d62f7ee0fe4d0f7f36645be59353bf93c9dd1f9c0473ba"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Aggregates/IAdmittedLegacyAggregateReplay.cs",
+      "bytes": 1308,
+      "sha256": "5026e15406c1d85bb5d4379fedd265c0accdaba7af9d576143bf050ca170571c"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionProofEntrySlice.cs",
+      "bytes": 293,
+      "sha256": "cec5aaea7168e0f314eafaf2f0c66098a675dadd5cf6ad42d378bb7699e278c4"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventEvolutionProofFraming.cs",
+      "bytes": 5799,
+      "sha256": "68f08c72b3887a0fc22aacad6613a374cd6a8e9becff158de22d1605a8f205e6"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedAssemblyBindingComparer.cs",
+      "bytes": 835,
+      "sha256": "41eefe7c422a3b1eaba56eba9789af57b3849d6e253c82f5df7b004684ad5f21"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/UnverifiedEventEvolutionProofFrame.cs",
+      "bytes": 3284,
+      "sha256": "c27ce8f3dc1985d112f7fa1775ff71ebcac3c45e07f2e971aa6c84932be71170"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/DetachedStateCapture.cs",
+      "bytes": 2304,
+      "sha256": "fc199209f25148406fffaac5f90fae6286f78905a779782bb31e4e9941c2f6a3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionProofFramingTests.cs",
+      "bytes": 10624,
+      "sha256": "8e438a5c281d5c41debb6d4dfc5a2514de1ab1c2b9f4cb44a22723f97354dd53"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotAggregate.cs",
+      "bytes": 985,
+      "sha256": "61651997759990dfc305fda4dd8c4d09191e89aea713e5bf1b11f0afafcc28b3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotCommand.cs",
+      "bytes": 100,
+      "sha256": "2a568ad3fadd6c4159dd4921354cb365bbf17b4db5e703b679531461ed95d3fa"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotEvent.cs",
+      "bytes": 190,
+      "sha256": "7a26f24a2232079eaf53cfd1b61d2afb2cec37c178e5220731830d83b246897b"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotProbe.cs",
+      "bytes": 801,
+      "sha256": "e7a7cf25d81530edb22b4c94788b539b979d9f2e594d15dcd0a860783578dfcf"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotProcessor.cs",
+      "bytes": 1030,
+      "sha256": "f2c970cb7c14af72dec5c3f2a0fa1710581b32371f73176561ab3fbde6898bce"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotState.cs",
+      "bytes": 512,
+      "sha256": "cf137e9505331206615bb843acba0598f3f3a040b1417e5112acf91b93fbd85a"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedSnapshotTail.cs",
+      "bytes": 784,
+      "sha256": "d2159e8828b701e8539096aa9be76e6e37b73eddddfc315415883c17bebe4cef"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/DetachedStateCaptureTests.cs",
+      "bytes": 9243,
+      "sha256": "00a42cc62b3940dd4e506af89ddc7b23018c8c0cba9c06f9b1e27b692c9695cb"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/CustomAsyncReplayAggregate.cs",
+      "bytes": 667,
+      "sha256": "527ab6c867a81261bdb9f1cde829fd4ec0caafeb14aac62dd1eefbcf346e59e7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/CustomSyncReplayAggregate.cs",
+      "bytes": 587,
+      "sha256": "3e5746cf761ead0c485b1e330c716c0aed2bf3b199cbef7478f1d0ba8a465a09"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/LegacyAggregateReplayRoutingTests.cs",
+      "bytes": 12216,
+      "sha256": "daf9fbaf76f7e216fa4ec353b08ba87162b89f6b6a2256534ecfdf9d96ab6fd9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/ReplayAdmissionProbeCollection.cs",
+      "bytes": 903,
+      "sha256": "843472b8e87ba444490d49b8a37d6f57f4d09f9d29743874494b914682f63aa8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Sample.Tests/DetachedSnapshotTests.cs",
+      "bytes": 3869,
+      "sha256": "5fa71ceb543f237d7ee4f986bc31abc540968a7fc4167bc76f7bf2c8e2eb536d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Sample.Tests/Greeting/GreetingEventSerializationTests.cs",
+      "bytes": 5132,
+      "sha256": "405fa4922dee2c0abd1dd15eaea00b11cb537c3033359d85c98b6b6689db1857"
+    }
+  ],
+  "contextInputs": [
+    {
+      "path": "_bmad-output/implementation-artifacts/epic-6-context.md",
+      "bytes": 6259,
+      "sha256": "832aa6e262f37871d6d077dc8ef26340c74fbf7a89d7aa8b31701b6b0f8e430d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/6-6-implementation-map.md",
+      "bytes": 20805,
+      "sha256": "58bf5a1d8694820eb78db3e149ad06bcfa6ca22c103b96cb93ed64f1b3b30fd3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+      "bytes": 4969,
+      "sha256": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md",
+      "bytes": 5266,
+      "sha256": "2c1dc2e80d032a7f1622ab6f00057e9c0298ec2a1114df23e74a1ce28f5feaef"
+    }
+  ],
+  "localPackages": [
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg",
+      "bytes": 117218,
+      "sha256": "a956d8664305906f843ebddd2c3f3eb64cc389b98697fe89718ff3ff690aed55"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg",
+      "bytes": 734288,
+      "sha256": "49715ebfd81b085cbabc0dbc136cc64d212d7fe65ff68116d1b5c92a083a763c"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg",
+      "bytes": 178314,
+      "sha256": "55a8cc9d52ff36d23264ebfe5dabbf20b6d1447c6873a774627c1cfc4aab9aec"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg",
+      "bytes": 31352,
+      "sha256": "965b68088570b153b6c49c47bf12f5cf29b5a50b68da3c91a3591b1139874d4b"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Client.999.0.0-ci-test.nupkg",
+      "bytes": 297814,
+      "sha256": "45d381228c89f81edd0442343263e644e6fe0124870e9c0e4aaa58dc5fae6a97"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg",
+      "bytes": 204563,
+      "sha256": "ebb63071583af18ce7cead5641091987d6205b9fb78846a3755f1babf8d1d323"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg",
+      "bytes": 153725,
+      "sha256": "933a5c778a0614db2b9beac2a7f6d428be7cbfc2c468f7135364ea72d393c77f"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg",
+      "bytes": 244168,
+      "sha256": "a71c75348cbb7566ae3b80335110e9304d5d86ee8451b5f5d29565c8a9295bab"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg",
+      "bytes": 36957,
+      "sha256": "d23faec20c512fc9d24d04f22e2ef68d337b9c639fec35ef2019e482acdab71c"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
+      "bytes": 568448,
+      "sha256": "6de7b71499d68469d66417f6b5ddd49ba38005e1a38050c1bf01fa2bf3c876be"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg",
+      "bytes": 48505,
+      "sha256": "2b9282ad313a068b8476d41b124566d1375daf62928813f2ed18594c676379d5"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg",
+      "bytes": 21115,
+      "sha256": "b2cfe8326bd57dee840eebc8a3301c407ab5e18b44c3916da662e6c0f577a245"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg",
+      "bytes": 55116,
+      "sha256": "068cf40db5f5092ee78d559e352b5192a60203bbc540594d92c44ad29575a754"
+    },
+    {
+      "path": "/tmp/story-6-6-final-local-packages/Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg",
+      "bytes": 64216,
+      "sha256": "de9d862e90817143c530ff24a0bfbb9de50e523152e9dcfeebdbef0412ce4512"
+    }
+  ],
+  "externalDirtyPathsExcluded": [
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/.memlog.md",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.html",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/.memlog.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md",
+    "_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/index.md",
+    "_bmad-output/planning-artifacts/ux.md",
+    "references/Hexalith.Memories",
+    "references/Hexalith.Platform",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-adversarial-general-validate-2026-10-07.md",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-brownfield-truth-validate-2026-10-07.md",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-platform-contract-validate-2026-10-07.md",
+    "_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/review-rubric-validate-2026-10-07.md"
+  ],
+  "candidateDirectory": "../source-candidates-2026-10-07",
+  "hostedCIObserved": false,
+  "genericTypedGraphIsolationQualified": false,
+  "nativeObservationQualified": false,
+  "immutableExecutedProcessImageBindingQualified": false,
+  "candidateDocuments": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/source-candidates-2026-10-07/index.md",
+      "bytes": 3660,
+      "sha256": "d7b0b17cdd9373b7c04b945ef25f4562adb4a5a793a4bb6b189cfae5b556ed07"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/source-candidates-2026-10-07/dapr-logical-claims.design-candidate.md",
+      "bytes": 8656,
+      "sha256": "0bed54176380553aa519f6409ab886fad6502d875e9fb288fa5a9a0b242777c5"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/source-candidates-2026-10-07/remaining-tasks-current.md",
+      "bytes": 6423,
+      "sha256": "52abaebcd8ba5138f65687fe1768798771e6e4aac7d67c2c5f831faeed73c2f1"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/source-candidates-2026-10-07/candidate-generation.json",
+      "bytes": 1209,
+      "sha256": "7c30c496972675c51ed1fc75511e5f5dc9a2bebf838fd1defb8e69e8512f3890"
+    }
+  ]
+}

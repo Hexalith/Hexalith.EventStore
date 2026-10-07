@@ -1,0 +1,28 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj (in 381 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj (in 381 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj (in 382 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj (in 382 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj (in 382 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj (in 410 ms).
+  8 of 14 projects are up-to-date for restore.
+  Hexalith.Commons.UniqueIds -> /home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Sample.Contracts -> /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.RestApi.Generators -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.RestApi.Generators/bin/Debug/netstandard2.0/Hexalith.EventStore.RestApi.Generators.dll
+  Hexalith.EventStore.Sample.Api -> /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/bin/Debug/net10.0/Hexalith.EventStore.Sample.Api.dll
+  Hexalith.EventStore.SignalR -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Sample.BlazorUI -> /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/bin/Debug/net10.0/Hexalith.EventStore.Sample.BlazorUI.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Sample -> /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll
+  Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Testing -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Testing/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll
+  Hexalith.EventStore.Sample.Tests -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Sample.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:24.54

@@ -1,0 +1,41 @@
+{
+  "scope": "local legacy replay admission and dispatch; no activation authority",
+  "control": "passed",
+  "mutations": [
+    {
+      "mutation": "async-private-admission",
+      "result": "killed",
+      "killing_test": "OversizedSourceRefusesBeforeReadsOrServiceResolution(asynchronous: True",
+      "observed_failure": "System.InvalidOperationException : This service provider doesn't support keyed services.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "async-custom-dispatch",
+      "result": "killed",
+      "killing_test": "ExplicitDerivedAsyncReplayKeepsCustomInterfaceDispatch",
+      "observed_failure": "Shouldly.ShouldAssertException : (await DomainServiceRequestRouter.ReplayAsync(provider, request)).StateJson",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "sync-custom-dispatch",
+      "result": "killed",
+      "killing_test": "ExplicitDerivedSynchronousReplayKeepsCustomInterfaceDispatch",
+      "observed_failure": "Shouldly.ShouldAssertException : DomainServiceRequestRouter.Replay(provider, request).StateJson",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "async-complete-prefix",
+      "result": "killed",
+      "killing_test": "IncompleteOrDuplicatePrefixRefusesBeforeOwnershipCallbacks(asynchronous: True",
+      "observed_failure": "System.InvalidOperationException : This service provider doesn't support keyed services.",
+      "timeout_seconds_per_lane": 60
+    },
+    {
+      "mutation": "immutable-input-slots",
+      "result": "killed",
+      "killing_test": "OwnershipMutationCannotReplacePrivateInputAndCompletionClearsCopies",
+      "observed_failure": "Shouldly.ShouldAssertException : captured.Events",
+      "timeout_seconds_per_lane": 60
+    }
+  ]
+}

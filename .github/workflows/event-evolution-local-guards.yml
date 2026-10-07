@@ -1,0 +1,70 @@
+name: Event evolution local guards
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: event-evolution-local-guards-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    name: event-evolution-local-guards / ${{ matrix.lane }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: replay-router
+            script: scripts/verify-event-evolution-replay-routing.py
+            options: ''
+          - lane: managed-process
+            script: scripts/verify-event-evolution-process-managed-observation.py
+            options: ''
+          - lane: detached-snapshot
+            script: scripts/verify-event-evolution-detached-snapshots.py
+            options: ''
+          - lane: opaque-proof-framing
+            script: scripts/verify-event-evolution-detached-snapshots.py
+            options: --proof-framing
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Warm source dependency restore before timed guard lanes
+        run: |
+          dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
+          dotnet restore tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
+
+      # These lanes compile private source copies and run finite mutation controls.
+      # Passing them grants no catalog, production, semantic-proof or activation authority.
+      - name: Verify isolated local guard controls
+        run: >-
+          python3 ${{ matrix.script }} ${{ matrix.options }}
+          --timeout 60 --output "${{ runner.temp }}/event-evolution-${{ matrix.lane }}"
+
+      - name: Retain control and mutation logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: event-evolution-local-guards-${{ matrix.lane }}
+          path: ${{ runner.temp }}/event-evolution-${{ matrix.lane }}
+          if-no-files-found: error
+          retention-days: 7

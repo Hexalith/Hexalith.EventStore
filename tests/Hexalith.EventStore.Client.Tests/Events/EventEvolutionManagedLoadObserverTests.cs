@@ -13,6 +13,22 @@ namespace Hexalith.EventStore.Client.Tests.Events;
 /// <summary>Exercises actual managed-load observations without claiming production loader qualification.</summary>
 public sealed class EventEvolutionManagedLoadObserverTests
 {
+    /// <summary>Checks process mode cannot admit a scoped graph that omits the existing default runtime context.</summary>
+    [Fact]
+    public void ProcessModeRefusesExistingAssembliesOutsideDeclaredContexts()
+    {
+        var context = new AssemblyLoadContext("local-managed-observation", isCollectible: true);
+        using EventDomainRegistry registry = CreateRegistry(out EventResolvedDependency node);
+        try
+        {
+            Should.Throw<InvalidOperationException>(() => new EventEvolutionManagedLoadObserver(
+                registry, [node], [node.Identity], [new("declared-context", context)], CancellationToken.None,
+                requireAllManagedContexts: true)).Message.ShouldStartWith("CapabilityMismatch:");
+            RequireLoss(registry);
+        }
+        finally { context.Unload(); }
+    }
+
     /// <summary>Checks a declared late load and an existing declared load retain local capability.</summary>
     /// <param name="loadBeforeSubscription">Whether the assembly is loaded before observer construction.</param>
     [Theory]

@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter.Commands;
@@ -11,6 +12,13 @@ namespace Hexalith.EventStore.Sample.Counter;
 /// Counter aggregate using the fluent EventStoreAggregate API.
 /// </summary>
 public sealed class CounterAggregate : EventStoreAggregate<CounterState> {
+    // 256 bytes conservatively covers both fixed scalar-only state objects and their overhead.
+    private static readonly DetachedStateCapture<CounterState> _snapshotCapture = new(256,
+        static (state, cancellationToken) => { cancellationToken.ThrowIfCancellationRequested(); return state.DetachedCopy(); });
+
+    /// <inheritdoc/>
+    protected override DetachedStateCapture<CounterState> SnapshotCapture => _snapshotCapture;
+
     public static DomainResult Handle(IncrementCounter command, CounterState? state)
         => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
 

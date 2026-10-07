@@ -17,7 +17,7 @@ namespace Hexalith.EventStore.Client.Handlers;
 /// This local owner grants no authenticated source authority or bound on typed state/event graphs.
 /// JSON documents and base64 buffers are admitted before private materialization. Original
 /// transport parsing and application converter/typed graph allocations remain unqualified.
-/// Caller-owned typed snapshots are not cloned.
+/// Typed snapshots are detached only when their owner supplies an explicit capture declaration.
 /// </remarks>
 internal sealed class LegacyCommandReplayInput : IDisposable
 {
@@ -52,6 +52,15 @@ internal sealed class LegacyCommandReplayInput : IDisposable
         Account(256);
     }
 
+    /// <summary>Admits the owner's entire graph charge before its optional typed-copy callback.</summary>
+    internal TState CaptureState<TState>(TState source, DetachedStateCapture<TState> declaration) where TState : class
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cancellationToken.ThrowIfCancellationRequested();
+        Account(declaration.MaximumAccountedBytes);
+        return declaration.Capture(source, _cancellationToken);
+    }
+
     /// <summary>Captures references once, admits the whole sequence, then copies contract payloads.</summary>
     internal List<object?> CaptureEvents(IEnumerable events)
     {
@@ -82,8 +91,9 @@ internal sealed class LegacyCommandReplayInput : IDisposable
             references.Add(item);
         }
 
-        // All source references and capacities are admitted before private payload copying.
-        // No payload converter, state constructor or Apply runs inside this owner.
+        // All event references and capacities are admitted before private payload copying.
+        // Event capture runs no payload converter, state constructor or Apply. Optional
+        // snapshot copying has its own prior graph charge and may precede tail access.
         foreach (object? item in references)
         {
             _cancellationToken.ThrowIfCancellationRequested();

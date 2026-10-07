@@ -1,0 +1,74 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Registration.AddEventStoreTests.AddEventStore_AggregateResolvesAsIDomainProcessor [FAIL]
+      System.InvalidOperationException : Unable to resolve service for type 'Hexalith.EventStore.Client.Handlers.DetachedStateCapture`1[Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotState]' while attempting to activate 'Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotAggregate'.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateArgumentCallSites(ServiceIdentifier serviceIdentifier, Type implementationType, CallSiteChain callSiteChain, ParameterInfo[] parameters, Boolean throwIfCallSiteNotFound)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateConstructorCallSite(ResultCache lifetime, ServiceIdentifier serviceIdentifier, Type implementationType, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateExact(ServiceDescriptor descriptor, ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain, Int32 slot)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.TryCreateEnumerable(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateCallSite(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.GetCallSite(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+           at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+        tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs(186,0): at Hexalith.EventStore.Client.Tests.Registration.AddEventStoreTests.AddEventStore_AggregateResolvesAsIDomainProcessor()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Registration.AddEventStoreTests.AddEventStoreClient_StillWorksAlongsideAddEventStore [FAIL]
+      System.InvalidOperationException : Unable to resolve service for type 'Hexalith.EventStore.Client.Handlers.DetachedStateCapture`1[Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotState]' while attempting to activate 'Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotAggregate'.
+      Stack Trace:
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateArgumentCallSites(ServiceIdentifier serviceIdentifier, Type implementationType, CallSiteChain callSiteChain, ParameterInfo[] parameters, Boolean throwIfCallSiteNotFound)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateConstructorCallSite(ResultCache lifetime, ServiceIdentifier serviceIdentifier, Type implementationType, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateExact(ServiceDescriptor descriptor, ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain, Int32 slot)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.TryCreateEnumerable(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.CreateCallSite(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteFactory.GetCallSite(ServiceIdentifier serviceIdentifier, CallSiteChain callSiteChain)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.CreateServiceAccessor(ServiceIdentifier serviceIdentifier)
+           at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+           at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+           at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+        tests/Hexalith.EventStore.Client.Tests/Registration/AddEventStoreTests.cs(173,0): at Hexalith.EventStore.Client.Tests.Registration.AddEventStoreTests.AddEventStoreClient_StillWorksAlongsideAddEventStore()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 0 domains
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+    Hexalith.EventStore.Client.Tests.Registration.UseEventStoreTests.UseEventStore_ActivationMetadata_HasCorrectConventionDerivedNames [FAIL]
+      Assert.Single() Failure: The collection contained 2 matching items
+      Expected:      (predicate expression)
+      Collection:    [EventStoreDomainActivation { DomainName = detached-snapshot, Kind = Aggregate, Type = Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotAggregate, StateType = Hexalith.EventStore.Client.Tests.Handlers.DetachedSnapshotState, StateStoreName = detached-snapshot-eventstore, TopicPattern = detached-snapshot.events, DeadLetterTopicPattern = deadletter.detached-snapshot.events }, EventStoreDomainActivation { DomainName = smoke-test, Kind = Aggregate, Type = Hexalith.EventStore.Client.Tests.Discovery.SmokeTestAggregate, StateType = Hexalith.EventStore.Client.Tests.Discovery.SmokeTestState, StateStoreName = smoke-test-eventstore, TopicPattern = smoke-test.events, DeadLetterTopicPattern = deadletter.smoke-test.events }, EventStoreDomainActivation { DomainName = smoke-test, Kind = Projection, Type = Hexalith.EventStore.Client.Tests.Discovery.SmokeTestProjection, StateType = Hexalith.EventStore.Client.Tests.Discovery.SmokeTestReadModel, StateStoreName = smoke-test-eventstore, TopicPattern = smoke-test.events, DeadLetterTopicPattern = deadletter.smoke-test.events }]
+      Match indices: 0, 1
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Registration/UseEventStoreTests.cs(76,0): at Hexalith.EventStore.Client.Tests.Registration.UseEventStoreTests.UseEventStore_ActivationMetadata_HasCorrectConventionDerivedNames()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 3 domains (detached-snapshot [Aggregate: DetachedSnapshotAggregate], smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+warn: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      UseEventStore() has already been called. Skipping duplicate activation.
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'c2d1978986f2db4f732725dfeabdc21d7b30f8896fecf92cb7bcdcf9b2d4cbd9')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 1301, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 6.541s
