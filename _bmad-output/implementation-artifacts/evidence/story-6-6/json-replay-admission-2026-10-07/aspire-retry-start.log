@@ -1,0 +1,8 @@
+Starting Aspire AppHost in the background...
+{
+  "appHostPath": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "appHostPid": 94734,
+  "cliPid": 93325,
+  "dashboardUrl": "https://localhost:17017/login?t=[redacted]",
+  "logFile": "/home/administrator/.aspire/logs/cli_20261007T123634311_detach-child_0e976aca525b4ae48e111bd01267d89c.log"
+}

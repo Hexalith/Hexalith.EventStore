@@ -1,0 +1,151 @@
+{
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "scope": "Post-review focused checks only; broad Release/package lanes intentionally deferred until parent inspects source",
+  "source_frozen": true,
+  "owned_files": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs",
+      "sha256": "b99b5e808b3405f8c36799a570fd9e3ca6cce90982298cc315a3880ebd3b0f9d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs",
+      "sha256": "685b40ed7fcfa3788d236e43108b035118d5ed7781136dfd7795a3a807111516"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs",
+      "sha256": "583aaebfa70e0d75ab03ad0bfd38d8dfcb28dc5be17af292015e93489bf11ff3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs",
+      "sha256": "6be4ec232da925d78bb56b5d0f725b8a47b839b4a4b0ebf76a9c6796e074da3c"
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 1,
+      "log": "/tmp/story-6-6-json-admission-review-build.log",
+      "observation": "CS1529: two added imports after class; corrected placement"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 1,
+      "log": "/tmp/story-6-6-json-admission-review-build-corrected.log",
+      "observation": "CA1062: theory string parameter indexed without null guard; added ThrowIfNull"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-review-build-final.log",
+      "observation": "Zero warnings/errors; before timestamp-boundary correction"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-review-build-boundary-fixed.log",
+      "observation": "Final frozen source; zero warnings/errors"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-class",
+        "*LegacyCommandReplayJsonAdmissionTests",
+        "-class",
+        "*LegacyCommandReplayInputTests",
+        "-class",
+        "*DomainProcessorStateRehydratorTests"
+      ],
+      "exit_code": 1,
+      "log": "/tmp/story-6-6-json-admission-review-focused.log",
+      "observation": "100 tests, 6 failures; timestamp escaping overcharge corrected; fixture and cleanup assertion semantics corrected"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-class",
+        "*LegacyCommandReplayJsonAdmissionTests",
+        "-class",
+        "*LegacyCommandReplayInputTests",
+        "-class",
+        "*DomainProcessorStateRehydratorTests"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-review-focused-corrected.log",
+      "observation": "100 tests, zero failures/errors/skips/not-run"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs",
+        "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs"
+      ],
+      "exit_code": 0,
+      "observation": "No whitespace diagnostics"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs"
+      ],
+      "exit_code": 1,
+      "observation": "No whitespace diagnostics; no-index returns 1 for the expected new-file difference"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs"
+      ],
+      "exit_code": 1,
+      "observation": "No whitespace diagnostics; no-index returns 1 for the expected new-file difference"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+FormatException: Invalid replay payload base64. input=[{"eventTypeName":"Event","amount":1,"Payload":"!"}]
+InvalidOperationException: LegacyArrayLimit: legacy command-state JSON admission failed. input=[{"eventTypeName":"Event","payload":{"amount":1}},]
+InvalidOperationException: LegacyArrayLimit: legacy command-state JSON admission failed. input=[/*comment*/{"eventTypeName":"Event","payload":{"amount":1}}]
+Whitespace decode: readable=0, documents=33555536, decode allocations=16777240, decoded=0
+ACCEPT: {"currentSequence":1,"events":[{"metadata":{"aggregateId":"aggregate","tenantId":"tenant",

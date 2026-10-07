@@ -1,0 +1,18 @@
+{
+  "runtime_follow_up": "No remaining runtime defect found in memory/token/cleanup areas. Probed final frozen hashes before escaped-name guard deletion.",
+  "token_guard": "Original32MiB decoded payload refused at accounted268435370, allocating2976bytes; no token table allocated.",
+  "decoder_scratch": "Escaped whitespace decode allocated24bytes versus16777240before.",
+  "name_lookup": "1000 huge ignored-name fixed lookups allocated0bytes.",
+  "cleanup": "refusal/failure/cancellation clear retained buffers, invalidate private documents, preserve caller documents.",
+  "grammar": "20000 randomized valid/invalid base64 cases,0mismatches with framework",
+  "metadata_boundaries": "30 independent timestamp offset/fractional-tick limit-1/limit/limit+1 cases passed; all17 escaped contradictory aliases refused",
+  "readable_mutation": {
+    "readable_bytes": 69206114,
+    "accounted_bytes": 171994110,
+    "original": "refused",
+    "mutant": "admitted all3entries",
+    "mutation": "remove only _readableBytes += readable",
+    "result": "killed"
+  },
+  "escaped_ignored_name": "Final probe exit0: raw/escaped100000-character ignored names both reconstruct Total1;20k grammar controls,30timestamp boundaries,17aliases pass. Final admission065f32d04253649e19f960f2a09b9259c6c449368c0933a1dc068754edabdc27 unchanged."
+}

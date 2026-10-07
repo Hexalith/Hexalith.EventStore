@@ -66,7 +66,51 @@ context:
 - Given concurrent recovery and mixed fleets, when crash/rollback matrices run through Dapr APIs, then durable intent, logical readback, fences and stable identities prevent duplicate effects or incompatible admission within the demonstrated Dapr capability boundary.
 - Given completion, when all affected regressions, compatibility and Dapr live-sidecar lanes run, then required checks pass without unexpected skips; only proven obligations close. Missing production authority or required evidence leaves the story incomplete.
 
+### Review Findings — local JSON replay admission, 2026-10-07
+
+The four independent review layers assessed this run's owned diff as an M4
+prerequisite. All layers reported before triage. These findings do not qualify
+the complete parent story or change its frozen intent or M1–M8 dispositions.
+
+- [x] [Review][Patch] Preserve exact lowercase inline payload classification while retaining case-insensitive contract-envelope binding [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:99].
+- [x] [Review][Patch] Preserve already parsed JSON containing comments or trailing commas in measurement and private capture [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:156].
+- [x] [Review][Patch] Admit decoded payload JSON token-table capacity before parsing in both contract-envelope and inline base64 routes [src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs:364].
+- [x] [Review][Patch] Decode base64 through bounded fixed scratch rather than unaccounted framework unescape/decode buffers [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:172].
+- [x] [Review][Patch] Reject contradictory aliases in fixed contract metadata before binding [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:55].
+- [x] [Review][Patch] Prove positive and negative default-Web metadata boundaries using independently serialized images [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:29].
+- [x] [Review][Patch] Prove private buffer/document cleanup after later refusal, failure and cancellation [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:139].
+- [x] [Review][Patch] Exercise aggregate readable admission for individually supplied enumerable JsonElements [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:116].
+- [x] [Review][Patch] Bound ignored JSON property-name decoding during fixed alias lookup while preserving case/escape compatibility [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:146].
+- [x] [Review][Patch] Apply the metadata ceiling to the emitted key image so equivalent raw/escaped ignored names remain compatible [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:154].
+- [x] [Review][Patch] Isolate the enumerable readable ceiling from the independent accounted-memory ceiling with a killing mutation control [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:372].
+
+Rejected: blind-hunter nested subtree recharging — low. This is conservative
+admission of actual additional private copies, not a demonstrated budget bypass;
+the former wrapper binder also copied nested snapshot subtrees. Removing copies
+would add ownership-tracking complexity without an established required acceptance
+boundary. The conservative live-array ceiling remains explicit.
+
 ## Implementation Notes
+
+### Local JSON replay admission — 2026-10-07
+
+The [JSON replay admission verification](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md)
+extends the earlier command-state owner to private JSON capture, fixed wrapper
+binding, fixed-scratch base64 decoding and pre-parse decoded token-table admission.
+It preserves legacy payload classification and accepted source-document syntax,
+checks fixed metadata aliases and exact emitted metadata boundaries, and proves
+clearing after later refusal, failure and cancellation. Four independent review
+layers and targeted follow-ups resolved all 11 local patch groups; an isolated
+readable-guard mutation distinguishes the 64 MiB ceiling from accounted capacity.
+
+Final focused checks passed 101/101, full Client tests 1,284/1,284, DomainService
+495/495 and Sample 175/175, with no runner failures/skips. The required Release
+package-mode solution build had zero warnings/errors; all 14 local CI packages
+and three isolated package-only consumers passed. Original ingress parsing,
+application converters/typed graphs and caller-owned typed snapshot isolation
+remain unqualified. Catalog, immutable execution, consumer, Dapr/fleet and
+production qualifications remain open. Frozen intent, canonical baseline,
+in-progress status, M1–M8 dispositions and activation fences are unchanged.
 
 ### Local command-state envelope ownership — 2026-10-07
 
@@ -202,6 +246,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-07 — Added [local JSON replay admission](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md), including reviewed compatibility fixes, emitted metadata boundaries, bounded decoding, pre-parse token capacity, deterministic cleanup and an independently killed readable-guard mutation. Final source suites, Release build and local package consumers pass; all parent tasks and production/authority gates remain open.
 
 - 2026-10-07 — Added [dormant managed artifact and observation preparation](evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md): privately retained exact G declarations/images, direct loaded-object provenance, original-row and shared-loss checks through actual registry callbacks, and composed managed-load detection. Local supplied graphs grant no catalog, peer or production authority; native/process-wide qualification and broader consumers remain open. Frozen intent, baseline, parent status and M1–M8 tasks remain unchanged.
 

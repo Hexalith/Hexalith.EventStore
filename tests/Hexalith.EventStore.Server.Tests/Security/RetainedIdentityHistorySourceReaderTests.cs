@@ -501,6 +501,40 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         }
     }
 
+    /// <summary>Restored decoded evidence stays fixed while independent synthetic authority advances its receipt or revision.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestoredOriginalEvidence_ChangedIndependentLifecycleDeniesRelease(bool changeRevision)
+    {
+        RetainedIdentityHistorySourceReader reader = Arrange();
+        EventEnvelope[] stored = [Stored(1, "Profile", "sealed-profile"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")];
+        byte[] backup = JsonSerializer.SerializeToUtf8Bytes(stored);
+        IdentityHistoryCustodyEvidence decoded = Evidence();
+        IdentityHistoryCustodyEvidence accepted = decoded;
+        _actor.ReadEventsRangeAsync(0, 2, 100).Returns(stored);
+        _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(decoded)), "json"));
+        _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<AggregateIdentity>() == _identity && call.Arg<IdentityHistoryCustodyEvidence>() == accepted);
+        (await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken)).IsAuthoritative.ShouldBeTrue();
+        _custody.ClearReceivedCalls();
+
+        EventEnvelope[] restored = JsonSerializer.Deserialize<EventEnvelope[]>(backup)!;
+        _actor.ReadEventsRangeAsync(0, 2, 100).Returns(restored);
+        accepted = changeRevision ? accepted with { LifecycleRevision = accepted.LifecycleRevision + 1 }
+            : accepted with { EvidenceId = "independent-successor-receipt" };
+        var restarted = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, _clock);
+
+        RetainedIdentityHistoryReadResult result = await restarted.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken);
+
+        result.Stream.ShouldBeNull();
+        result.FailureReason.ShouldBe("history-custody-unavailable-or-expired");
+        await _custody.Received(1).CanReadAsync(_identity, decoded, Arg.Any<CancellationToken>());
+        JsonSerializer.SerializeToUtf8Bytes(restored).ShouldBe(backup);
+        JsonSerializer.Serialize(result).ShouldNotContain(accepted.EvidenceId);
+    }
+
     private void ArrangeCompleteSource()
         => _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
 

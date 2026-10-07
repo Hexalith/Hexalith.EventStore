@@ -1,0 +1,60 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Sample.Tests
+  Discovered:  Hexalith.EventStore.Sample.Tests
+  Starting:    Hexalith.EventStore.Sample.Tests
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (greeting [Aggregate: GreetingAggregate], counter [Aggregate: CounterAggregate])
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application started. Press Ctrl\u002BC to shut down.","State":{"{OriginalFormat}":"Application started. Press Ctrl\u002BC to shut down."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Hosting environment: Production","State":{"EnvName":"Production","{OriginalFormat}":"Hosting environment: {EnvName}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Content root path: /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","State":{"ContentRoot":"/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","{OriginalFormat}":"Content root path: {ContentRoot}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application is shutting down...","State":{"{OriginalFormat}":"Application is shutting down..."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application started. Press Ctrl\u002BC to shut down.","State":{"{OriginalFormat}":"Application started. Press Ctrl\u002BC to shut down."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Hosting environment: Development","State":{"EnvName":"Development","{OriginalFormat}":"Hosting environment: {EnvName}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Content root path: /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","State":{"ContentRoot":"/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","{OriginalFormat}":"Content root path: {ContentRoot}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application is shutting down...","State":{"{OriginalFormat}":"Application is shutting down..."}}
+{"EventId":11,"LogLevel":"Error","Category":"Microsoft.Extensions.Hosting.Internal.Host","Message":"Hosting failed to start","Exception":"Microsoft.Extensions.Options.OptionsValidationException: Authentication:JwtBearer:RequireHttpsMetadata must be false for an HTTP Authority in Development.\n   at Microsoft.Extensions.Options.OptionsFactory\u00601.Create(String name)\n   at System.Lazy\u00601.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy\u00601.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy\u00601.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache\u00601.GetOrAdd[TArg](String name, Func\u00603 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.\u003C\u003Ec__DisplayClass0_1\u00601.\u003CValidateOnStart\u003Eb__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n--- End of stack trace from previous location ---\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)","State":{"{OriginalFormat}":"Hosting failed to start"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application started. Press Ctrl\u002BC to shut down.","State":{"{OriginalFormat}":"Application started. Press Ctrl\u002BC to shut down."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Hosting environment: Development","State":{"EnvName":"Development","{OriginalFormat}":"Hosting environment: {EnvName}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Content root path: /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","State":{"ContentRoot":"/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","{OriginalFormat}":"Content root path: {ContentRoot}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application is shutting down...","State":{"{OriginalFormat}":"Application is shutting down..."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application started. Press Ctrl\u002BC to shut down.","State":{"{OriginalFormat}":"Application started. Press Ctrl\u002BC to shut down."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Hosting environment: Development","State":{"EnvName":"Development","{OriginalFormat}":"Hosting environment: {EnvName}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Content root path: /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","State":{"ContentRoot":"/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","{OriginalFormat}":"Content root path: {ContentRoot}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application is shutting down...","State":{"{OriginalFormat}":"Application is shutting down..."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application started. Press Ctrl\u002BC to shut down.","State":{"{OriginalFormat}":"Application started. Press Ctrl\u002BC to shut down."}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Hosting environment: Development","State":{"EnvName":"Development","{OriginalFormat}":"Hosting environment: {EnvName}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Content root path: /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","State":{"ContentRoot":"/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api","{OriginalFormat}":"Content root path: {ContentRoot}"}}
+{"EventId":0,"LogLevel":"Information","Category":"Microsoft.Hosting.Lifetime","Message":"Application is shutting down...","State":{"{OriginalFormat}":"Application is shutting down..."}}
+{"EventId":11,"LogLevel":"Error","Category":"Microsoft.Extensions.Hosting.Internal.Host","Message":"Hosting failed to start","Exception":"Microsoft.Extensions.Options.OptionsValidationException: Authentication:JwtBearer:SigningKey is forbidden in Production, including when AllowInsecureSymmetricKey is true.\n   at Microsoft.Extensions.Options.OptionsFactory\u00601.Create(String name)\n   at System.Lazy\u00601.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy\u00601.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy\u00601.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache\u00601.GetOrAdd[TArg](String name, Func\u00603 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.\u003C\u003Ec__DisplayClass0_1\u00601.\u003CValidateOnStart\u003Eb__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n--- End of stack trace from previous location ---\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)","State":{"{OriginalFormat}":"Hosting failed to start"}}
+{"EventId":11,"LogLevel":"Error","Category":"Microsoft.Extensions.Hosting.Internal.Host","Message":"Hosting failed to start","Exception":"Microsoft.Extensions.Options.OptionsValidationException: Authentication:JwtBearer:AllowedAlgorithms must contain at least one non-blank supported asymmetric algorithm and must not contain symmetric or unknown algorithms.\n   at Microsoft.Extensions.Options.OptionsFactory\u00601.Create(String name)\n   at System.Lazy\u00601.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy\u00601.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy\u00601.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache\u00601.GetOrAdd[TArg](String name, Func\u00603 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.\u003C\u003Ec__DisplayClass0_1\u00601.\u003CValidateOnStart\u003Eb__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n--- End of stack trace from previous location ---\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)","State":{"{OriginalFormat}":"Hosting failed to start"}}
+  Finished:    Hexalith.EventStore.Sample.Tests (ID = '78ecae69f9581b0c2443c2c12932f4a0b428500c8fc284f5c625f688f381d45b')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Sample.Tests  Total: 175, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.790s

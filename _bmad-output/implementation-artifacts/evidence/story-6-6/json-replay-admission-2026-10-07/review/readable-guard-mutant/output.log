@@ -1,0 +1,2 @@
+Fixture readable=69206114, cap=67108864; JSON entry readable=8388657, document=16778338
+Guard assertion FAILED: admitted 3 entries, readable-counter=52428800, accounted=171994110

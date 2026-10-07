@@ -1,0 +1,90 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.AlreadyParsedCommentsAndTrailingCommasRemainReadable(route: "array") [FAIL]
+      System.InvalidOperationException : Unable to rehydrate aggregate state 'LegacyReplayMutationState'. Event 'LegacyReplayMutationEvent' could not be deserialized to 'LegacyReplayMutationEvent'.
+      ---- System.Text.Json.JsonException : The JSON object contains a trailing comma at the end which is not supported in this mode. Change the reader options. Path: $ | LineNumber: 0 | BytePositionInLine: 12.
+      -------- System.Text.Json.JsonReaderException : The JSON object contains a trailing comma at the end which is not supported in this mode. Change the reader options. LineNumber: 0 | BytePositionInLine: 12.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs(441,0): at Hexalith.EventStore.Client.Handlers.DomainProcessorStateRehydrator.PrepareJsonEventByName[TState](String eventTypeName, JsonElement eventElement, ApplyMethodTable applyMethods, CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs(281,0): at Hexalith.EventStore.Client.Handlers.DomainProcessorStateRehydrator.ReplayEventsFromJsonArray[TState](JsonElement jsonArray, ApplyMethodTable applyMethods, CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs(37,0): at Hexalith.EventStore.Client.Handlers.DomainProcessorStateRehydrator.RehydrateState[TState](Object currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(562,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.Rehydrate(Object source)
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(162,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.AlreadyParsedCommentsAndTrailingCommasRemainReadable(String route)
+           at InvokeStub_LegacyCommandReplayJsonAdmissionTests.AlreadyParsedCommentsAndTrailingCommasRemainReadable(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+        ----- Inner Stack Trace -----
+           at System.Text.Json.ThrowHelper.ReThrowWithPath(ReadStack& state, JsonReaderException ex)
+           at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+           at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.Deserialize(Utf8JsonReader& reader, ReadStack& state)
+           at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.DeserializeAsObject(Utf8JsonReader& reader, ReadStack& state)
+           at System.Text.Json.JsonSerializer.ReadFromSpanAsObject(ReadOnlySpan`1 utf8Json, JsonTypeInfo jsonTypeInfo, Nullable`1 actualByteCount)
+           at System.Text.Json.JsonSerializer.Deserialize(JsonElement element, Type returnType, JsonSerializerOptions options)
+        src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs(411,0): at Hexalith.EventStore.Client.Handlers.DomainProcessorStateRehydrator.PrepareJsonEventByName[TState](String eventTypeName, JsonElement eventElement, ApplyMethodTable applyMethods, CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        ----- Inner Stack Trace -----
+           at System.Text.Json.ThrowHelper.ThrowJsonReaderException(Utf8JsonReader& json, ExceptionResource resource, Byte nextByte, ReadOnlySpan`1 bytes)
+           at System.Text.Json.Utf8JsonReader.ConsumeNextToken(Byte marker)
+           at System.Text.Json.Utf8JsonReader.ConsumeNextTokenOrRollback(Byte marker)
+           at System.Text.Json.Utf8JsonReader.ReadSingleSegment()
+           at System.Text.Json.Utf8JsonReader.Read()
+           at System.Text.Json.Serialization.Converters.ObjectWithParameterizedConstructorConverter`1.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value)
+           at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+           at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.SerializedMetadataBoundaryIsInclusive(wrapper: True, boundaryOffset: -1) [FAIL]
+      System.InvalidOperationException : MetadataLimit: legacy command-state JSON admission failed.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(343,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Refuse(String reason)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(187,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.EncodedMetadata(JsonElement value, CancellationToken token, Boolean eventRoot, Boolean contractEnvelope)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(123,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Event(JsonElement item, Int32& events, Int64& readable, CancellationToken token, Boolean contractEnvelope)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(99,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.State(JsonElement state, Int32 depth, Int32& events, Int64& readable, CancellationToken token)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(48,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Measure(JsonElement source, CancellationToken cancellationToken, Boolean eventRoot)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs(130,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayInput.CaptureJson(JsonElement source, Boolean reserveEvents, Boolean eventRoot, Boolean countAlreadyAdmitted)
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(300,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.SerializedMetadataBoundaryIsInclusive(Boolean wrapper, Int32 boundaryOffset)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.SerializedMetadataBoundaryIsInclusive(wrapper: True, boundaryOffset: 0) [FAIL]
+      System.InvalidOperationException : MetadataLimit: legacy command-state JSON admission failed.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(343,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Refuse(String reason)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(187,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.EncodedMetadata(JsonElement value, CancellationToken token, Boolean eventRoot, Boolean contractEnvelope)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(123,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Event(JsonElement item, Int32& events, Int64& readable, CancellationToken token, Boolean contractEnvelope)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(99,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.State(JsonElement state, Int32 depth, Int32& events, Int64& readable, CancellationToken token)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs(48,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayJsonAdmission.Measure(JsonElement source, CancellationToken cancellationToken, Boolean eventRoot)
+        src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs(130,0): at Hexalith.EventStore.Client.Handlers.LegacyCommandReplayInput.CaptureJson(JsonElement source, Boolean reserveEvents, Boolean eventRoot, Boolean countAlreadyAdmitted)
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(300,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.SerializedMetadataBoundaryIsInclusive(Boolean wrapper, Int32 boundaryOffset)
+           at InvokeStub_LegacyCommandReplayJsonAdmissionTests.SerializedMetadataBoundaryIsInclusive(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(outcome: "refusal") [FAIL]
+      Shouldly.ShouldAssertException : `payloadDocument!.RootElement`
+          should throw
+      System.ObjectDisposedException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(484,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(String outcome)
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(outcome: "failure") [FAIL]
+      Shouldly.ShouldAssertException : else if (outcome == "failure") { error
+          should be of type
+      System.Text.Json.JsonException
+          but was
+      System.Text.Json.JsonReaderException
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(479,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(String outcome)
+           at InvokeStub_LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(outcome: "cancellation") [FAIL]
+      Shouldly.ShouldAssertException : `payloadDocument!.RootElement`
+          should throw
+      System.ObjectDisposedException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs(484,0): at Hexalith.EventStore.Client.Tests.Handlers.LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(String outcome)
+           at InvokeStub_LegacyCommandReplayJsonAdmissionTests.LaterFailureClearsEarlierOwnedBuffersAndDocuments(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'c2d1978986f2db4f732725dfeabdc21d7b30f8896fecf92cb7bcdcf9b2d4cbd9')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 100, Errors: 0, Failed: 6, Skipped: 0, Not Run: 0, Time: 2.969s

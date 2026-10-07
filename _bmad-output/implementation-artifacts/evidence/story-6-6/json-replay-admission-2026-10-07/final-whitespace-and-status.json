@@ -1,0 +1,68 @@
+[
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check",
+      "--",
+      "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs",
+      "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs",
+      "_bmad-output/implementation-artifacts/epic-6-context.md",
+      "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md"
+    ],
+    "exit_code": 0,
+    "diagnostics": "",
+    "expected_new_file_difference": false
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs"
+    ],
+    "exit_code": 1,
+    "diagnostics": "",
+    "expected_new_file_difference": true
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs"
+    ],
+    "exit_code": 1,
+    "diagnostics": "",
+    "expected_new_file_difference": true
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "_bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-07-json-replay-admission.md"
+    ],
+    "exit_code": 1,
+    "diagnostics": "",
+    "expected_new_file_difference": true
+  },
+  {
+    "check": "owned C#/Markdown LF and trailing whitespace",
+    "files": 28,
+    "result": "passed"
+  },
+  {
+    "check": "frozen baseline, in-progress spec/sprint, eight parent tasks unchanged,11local review patches checked",
+    "result": "passed"
+  }
+]

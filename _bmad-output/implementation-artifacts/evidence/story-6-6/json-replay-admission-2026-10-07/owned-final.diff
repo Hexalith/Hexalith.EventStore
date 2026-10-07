@@ -1,0 +1,1486 @@
+diff --git a/_bmad-output/implementation-artifacts/epic-6-context.md b/_bmad-output/implementation-artifacts/epic-6-context.md
+index 353ebff1..b726cb36 100644
+--- a/_bmad-output/implementation-artifacts/epic-6-context.md
++++ b/_bmad-output/implementation-artifacts/epic-6-context.md
+@@ -4,7 +4,7 @@
+ 
+ ## Goal
+ 
+-Platform users can operate long-lived streams with bounded snapshot and projection cost, sequence-safe projection updates, event schema versioning and upcasting, validated event metadata, and cancellation-aware processing seams. Specification stories authorize their paired runtime slices and do not deliver runtime capability. Runtime value requires the folded-snapshot, projection-cost, and event-evolution implementations together.
++Support long-lived streams with bounded snapshots/projections, sequence-safe delivery, stable event versions, deterministic upcasting, validated identity, and cancellation-aware processing. Delivered runtime value requires Stories 6.2, 6.4, and 6.6 together.
+ 
+ ## Stories
+ 
+@@ -18,37 +18,33 @@ Platform users can operate long-lived streams with bounded snapshot and projecti
+ - Story 6.5c: Publication, Subscription, and Rollout Spec
+ - Story 6.5d: Hold Lifecycle, Resume, and Legacy Admission Spec
+ - Story 6.6: Event Versioning And Upcasting Implementation
++- Story 6.7: AOT And Trimming Posture Reference
+ 
+ ## Requirements & Constraints
+ 
+-- Folded snapshots persist aggregate state at one exact sequence plus minimal versioned envelope and protection metadata. Equivalent state has identical folded bytes regardless of event count. Full snapshot size stays within folded-state size plus a 4,096-byte envelope overhead. Snapshot-plus-tail recovery equals canonical full replay. Legacy, corrupt, protected-unreadable, cancelled, and infrastructure-failure paths stay typed and safe.
+-- One requirements record treats that snapshot specification as approved and authorizing implementation, while leaving lifecycle drift open and withholding runtime delivery. The epic reconciliation still treats the specification as absent and implementation as unauthorized. Reconcile the artifact before snapshot implementation. Approval authorizes the next slice only.
+-- An already-current projection performs zero event reads. A lagging incremental projection reads only a contiguous, page-bounded tail from the checkpoint through the admitted head. Cost follows that tail and page size. The projection specification must bind a numeric budget, workload model, pass condition, and evidence identity. That specification is absent, so projection-cost implementation stays unauthorized.
+-- Sequence guards are scoped to tenant, domain, aggregate, and projection. Duplicate identity is the persisted message id. Aggregate sequence is gapless per aggregate and is not global order. Duplicates, gaps, stale attempts, conflicts, and replica races leave checkpoints and the last complete live model intact. Paged rebuild output equals canonical replay.
+-- Freshness and version evidence is authoritative only for projection-backed provenance. Other provenance stays non-authoritative. Lifecycle remains stale, rebuilding, degraded, unavailable, local-only, or unknown until persisted production-path completion proves current.
+-- Versioned events carry a canonical kebab-case contract type and a positive payload schema version across command result, storage, read, replay, projection, publication, and operator metadata. CLR names stay allow-listed runtime mappings. Addressed-stream metadata must match tenant, domain, aggregate identity and type, contract type, message identity, and positive contiguous sequence before persistence or trusted use. Absent or non-ULID-safe identity fails closed.
+-- Retained history stays immutable. Replay, projection, subscription, reconstruction, snapshot recovery, and inspection share one bounded upcast pipeline. Original payload bytes and message, sequence, and correlation evidence stay unchanged. Failed, partial, unreadable, or cancelled work publishes no partial state and advances no checkpoint.
+-- Published processing, query, and projection seams propagate the caller cancellation token until the durable boundary. Pre-commit cancellation leaves no mutation. Post-commit cancellation preserves committed truth. Cancellation stays distinct from domain rejection and infrastructure failure.
+-- Public source, binary, wire, and package compatibility stays inventory-backed. Incompatible changes need an approved breaking-change proposal and a major release. High-risk proof inspects persisted production-path state. AOT and trimming stay outside the reflection-based posture. Current no-op and legacy payload protection remain valid.
++- Snapshots contain only folded state at one exact sequence and minimal versioned/protection metadata. Equivalent state has identical bytes regardless of history length, within an approved overhead bound. Automatic/manual snapshot-plus-tail recovery equals canonical replay, preserving legacy/protected readability.
++- Current projections read zero events; incremental delivery reads a contiguous bounded tail through the admitted head, with cost following lag/page size. Unsupported handlers use canonical replay. Duplicate/gap/race/cancellation/rebuild failures preserve checkpoints and the complete live model. Paged rebuild equals canonical replay.
++- New events carry canonical kebab-case type and positive payload version. Addressed tenant/domain/aggregate/type, message identity, and contiguous sequence must agree before dispatch. Legacy aliases are allow-listed; ambiguous/malformed identity fails closed.
++- All consumers share bounded contiguous deterministic upcasting after readability/unprotection and before deserialization. Only a private in-memory view changes. Stored bytes, identity, sequence, and protection evidence stay immutable. Typed failures commit no partial state, checkpoint, publication marker, or handler effect.
++- Cancellation propagates through processing/query/projection/read/upcast seams until the durable boundary. Pre-commit cancellation stops mutation; post-commit cancellation preserves committed truth/reconciliation. Cancellation stays distinct from rejection/failure.
++- Source/binary/wire/package compatibility requires inventory-backed baselines and mixed-version/rollback evidence. Breaking changes need approved migration and SemVer-major release. Packages cannot claim AOT/trimming while reflection is load-bearing.
+ 
+ ## Technical Decisions
+ 
+-- Snapshot folding, projection cost and sequence guards, and upcaster ordering require an approved versioned specification and compatibility vectors before runtime work. The owning actor is the sole coordinator of admitted event and snapshot mutation. Persisted events remain replay authority.
+-- Read-model and checkpoint writes require durable completion and readback before checkpoint advancement or a current claim. Projection dispatch records one outcome per route after durable work. Cost optimizations preserve existing duplicate, gap, and rebuild correctness.
+-- Event evolution uses one allow-listed registry and pipeline. Invalid registries, branching or cyclic chains, and unsupported version combinations fail readiness or fail closed before incompatible writes. Upcasting changes the in-memory view only.
+-- Story 6.6 is in progress under the owner’s Dapr-only amendment. Supported persistence, actor, messaging, and invocation stay on Dapr. Aggregate, event, snapshot, and existing drain-registration mutation stay on the actor state manager. Other coordinator state may use Dapr state or actor APIs only after transaction and ETag behavior is qualified at the Dapr API boundary, with no independent physical-byte or historical-generation receipt. Application code keeps PostgreSQL connections, schemas, credentials, and private actor-state keys out of this slice. Withdrawn provider SQL and provider-attestation claims stay withdrawn. The project-wide Dapr rule adds no implementation authority and changes no readiness verdict.
+-- Deployment and operations own Dapr component configuration and two-host crash qualification.
++- `AggregateActor` alone mutates admitted aggregate/event/snapshot state through `IActorStateManager`. Events, metadata, snapshots, results, and outbox stage together and save once. Ambiguous saves require fresh addressed actor readback independent of staged state before retry/acknowledgement.
++- Story 6.6 stays strictly within Dapr: no application SQL, database driver/credential/schema, private actor-state key, provider fork, or direct-database product evidence. Control state uses qualified Dapr ETag/transactions or a dedicated actor. Separate actors/components, broker delivery, and external effects use durable intent, idempotency, and reconciliation.
++- Digests and Dapr readback prove logical returned values, not physical bytes, provider attestation, or historical generations. Withdrawn SQL/provider designs grant no authority; operations needing unavailable provider proof remain disabled with typed unavailable/hold outcomes.
++- Deterministic allow-listed registries reject malformed metadata, invalid chains, unsupported versions, corrupt digests, unreadable protection, and incomplete prefixes before effects. One evolution service serves every replay/projection/subscription/reconstruction/inspection consumer.
++- Catalogs/dependencies are trusted deployer-reviewed code; tenants supply no code, paths, or CLR selection. Admission binds complete immutable manifests/options/artifacts to gateway/serving-peer pins; execution uses those artifacts. Missing/changed/ambiguous artifacts refuse admission; undeclared loads are prohibited. Observed violations remove capability and refuse uncommitted success, without hostile-code confinement or universal prevention of earlier effects.
++- Qualification checks persisted end state through Dapr, live-sidecar crash/retry, consumer equivalence, cancellation, and compatibility. Local checks grant no fleet readiness or activation.
+ 
+ ## UX & Interaction Patterns
+ 
+-- Storage and snapshot views show support-safe sequence, size or bound status, readability, and typed failures. Completion follows persisted readback. Unknown storage cost is labelled. Open snapshot work stays unavailable. Folded state, raw events, secrets, and stack traces stay hidden.
+-- Projection views show head, checkpoint, lag, delivery mode, lifecycle, fallback, guard rejection, and cost. Missing authoritative provenance renders unknown. Acknowledgement or notification delivery does not establish projection-confirmed success. Transport failure keeps unavailable or stale behavior and tenant-scoped delivery.
+-- Type Catalog, stream, and replay views may show canonical contract type, stored and current version, legacy or upcast state, bounded hop count, and typed failure reasons. The live type catalog stays under Streams & Events, with events, commands, and aggregates tabs. Assembly-qualified CLR names, payloads, secrets, and provider internals stay out of the UI.
+-- The Dapr infrastructure-boundary change adds no screen or route. Projections, topology, services, and health keep their existing evidence-based states.
++Expose support-safe snapshot size/sequence/readability, projection head/checkpoint/lag/lifecycle, and event type/version/legacy/upcast/hop/outcome evidence. Hide payloads, CLR assembly details, secrets, provider internals, and traces. Persisted authoritative evidence establishes completion/freshness; acknowledgement or notification does not. Open capabilities stay unavailable; missing provenance is `Unknown`.
+ 
+ ## Cross-Story Dependencies
+ 
+-- Stories 6.1, 6.3, and 6.5 authorize Stories 6.2, 6.4, and 6.6 respectively. Epic runtime value waits until 6.2, 6.4, and 6.6 all complete.
+-- Snapshot implementation waits on one reconciled, content-bound specification that explicitly authorizes it. Projection-cost implementation also preserves Stories 1.18 and 1.19 and waits on its missing approved specification.
+-- Stories 6.5a–6.5d supplied reviewed section candidates. Story 6.5 integrated them, and Jérôme Piquot approved that design. Child specifications grant no separate implementation authority. Story 6.6 follows that design only where it remains compatible with the Dapr-only amendment. The shared production evolution pipeline, consumer qualification, and remaining runtime verification stay open. V2 admission stays fenced.
+-- Event evolution leaves folded-snapshot redesign, projection-cost redesign, and the optional protection engine outside its slice. Epic 8 is not a prerequisite. Operator presentation belongs to the admin experience and must leave unimplemented snapshot or projection behavior unavailable.
++- Story 6.1 is reopened pending current inventory and owner re-attestation of final bytes; superseded frontmatter does not authorize Story 6.2. Story 6.3's approved specification is absent; Story 6.4 stays unauthorized and preserves Stories 1.18/1.19 correctness.
++- Stories 6.5a–6.5d feed the owner-approved integrated Story 6.5 design. Story 6.6 follows compatible rules under the controlling Dapr-only and trusted-code amendments; the earlier digest remains historical approval evidence.
++- Story 6.6 remains in progress. Production consumer wiring, authoritative catalogs/serving peers, immutable execution, Dapr recovery, compatibility, and fleet qualification remain open. V2 admission stays fenced until writer and all serving readers/consumers qualify; amendments grant no migration/publication/deployment/promotion authority.
++- Story 6.7 requires Story 9.1 gate authorization. The optional Epic 8 protection engine is not a prerequisite. Event evolution does not authorize snapshot or projection-cost redesign.
+diff --git a/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md b/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md
+index ad40ed7e..24c7d389 100644
+--- a/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md
++++ b/_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md
+@@ -66,8 +66,52 @@ context:
+ - Given concurrent recovery and mixed fleets, when crash/rollback matrices run through Dapr APIs, then durable intent, logical readback, fences and stable identities prevent duplicate effects or incompatible admission within the demonstrated Dapr capability boundary.
+ - Given completion, when all affected regressions, compatibility and Dapr live-sidecar lanes run, then required checks pass without unexpected skips; only proven obligations close. Missing production authority or required evidence leaves the story incomplete.
+ 
++### Review Findings — local JSON replay admission, 2026-10-07
++
++The four independent review layers assessed this run's owned diff as an M4
++prerequisite. All layers reported before triage. These findings do not qualify
++the complete parent story or change its frozen intent or M1–M8 dispositions.
++
++- [x] [Review][Patch] Preserve exact lowercase inline payload classification while retaining case-insensitive contract-envelope binding [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:99].
++- [x] [Review][Patch] Preserve already parsed JSON containing comments or trailing commas in measurement and private capture [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:156].
++- [x] [Review][Patch] Admit decoded payload JSON token-table capacity before parsing in both contract-envelope and inline base64 routes [src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs:364].
++- [x] [Review][Patch] Decode base64 through bounded fixed scratch rather than unaccounted framework unescape/decode buffers [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:172].
++- [x] [Review][Patch] Reject contradictory aliases in fixed contract metadata before binding [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:55].
++- [x] [Review][Patch] Prove positive and negative default-Web metadata boundaries using independently serialized images [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:29].
++- [x] [Review][Patch] Prove private buffer/document cleanup after later refusal, failure and cancellation [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:139].
++- [x] [Review][Patch] Exercise aggregate readable admission for individually supplied enumerable JsonElements [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs:116].
++- [x] [Review][Patch] Bound ignored JSON property-name decoding during fixed alias lookup while preserving case/escape compatibility [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:146].
++- [x] [Review][Patch] Apply the metadata ceiling to the emitted key image so equivalent raw/escaped ignored names remain compatible [src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs:154].
++- [x] [Review][Patch] Isolate the enumerable readable ceiling from the independent accounted-memory ceiling with a killing mutation control [tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs:372].
++
++Rejected: blind-hunter nested subtree recharging — low. This is conservative
++admission of actual additional private copies, not a demonstrated budget bypass;
++the former wrapper binder also copied nested snapshot subtrees. Removing copies
++would add ownership-tracking complexity without an established required acceptance
++boundary. The conservative live-array ceiling remains explicit.
++
+ ## Implementation Notes
+ 
++### Local JSON replay admission — 2026-10-07
++
++The [JSON replay admission verification](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md)
++extends the earlier command-state owner to private JSON capture, fixed wrapper
++binding, fixed-scratch base64 decoding and pre-parse decoded token-table admission.
++It preserves legacy payload classification and accepted source-document syntax,
++checks fixed metadata aliases and exact emitted metadata boundaries, and proves
++clearing after later refusal, failure and cancellation. Four independent review
++layers and targeted follow-ups resolved all 11 local patch groups; an isolated
++readable-guard mutation distinguishes the 64 MiB ceiling from accounted capacity.
++
++Final focused checks passed 101/101, full Client tests 1,284/1,284, DomainService
++495/495 and Sample 175/175, with no runner failures/skips. The required Release
++package-mode solution build had zero warnings/errors; all 14 local CI packages
++and three isolated package-only consumers passed. Original ingress parsing,
++application converters/typed graphs and caller-owned typed snapshot isolation
++remain unqualified. Catalog, immutable execution, consumer, Dapr/fleet and
++production qualifications remain open. Frozen intent, canonical baseline,
++in-progress status, M1–M8 dispositions and activation fences are unchanged.
++
+ ### Local command-state envelope ownership — 2026-10-07
+ 
+ The [local command-state admission verification](evidence/story-6-6/verification-2026-10-07-command-state-envelope-admission.md)
+@@ -203,6 +247,8 @@ Current follow-up implementation and exact verification evidence is recorded in
+ 
+ ## Spec Change Log
+ 
++- 2026-10-07 — Added [local JSON replay admission](evidence/story-6-6/verification-2026-10-07-json-replay-admission.md), including reviewed compatibility fixes, emitted metadata boundaries, bounded decoding, pre-parse token capacity, deterministic cleanup and an independently killed readable-guard mutation. Final source suites, Release build and local package consumers pass; all parent tasks and production/authority gates remain open.
++
+ - 2026-10-07 — Added [dormant managed artifact and observation preparation](evidence/story-6-6/verification-2026-10-07-managed-loader-preparation.md): privately retained exact G declarations/images, direct loaded-object provenance, original-row and shared-loss checks through actual registry callbacks, and composed managed-load detection. Local supplied graphs grant no catalog, peer or production authority; native/process-wide qualification and broader consumers remain open. Frozen intent, baseline, parent status and M1–M8 tasks remain unchanged.
+ 
+ - 2026-10-07 — On the owner's direction to derive the inputs, implemented and registered the [source-derived Counter V1 serializer declarations](evidence/story-6-6/verification-2026-10-07-counter-v1-serialization.md) and verified the real Sample/actor path with [two-host Dapr/PostgreSQL logical recovery](evidence/story-6-6/verification-2026-10-07-counter-v1-postgresql.md). Exact wire compatibility, persisted bytes/metadata, stable separate identities, sequence-one state, once-only domain execution and restart recovery passed. Full Sample regressions and the required Release build passed. These local prerequisites do not close M1–M8 or grant catalog/production/V2 readiness; frozen intent, baseline and parent status are preserved.
+diff --git a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
+index 52b6da78..ee56d0d6 100644
+--- a/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
++++ b/src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs
+@@ -30,13 +30,13 @@ internal static class DomainProcessorStateRehydrator {
+             rehydratedState = currentState switch {
+                 null => null,
+                 TState typed => typed,
+-                DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods, cancellationToken),
++                DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods, cancellationToken, input),
+                 JsonElement je when IsDomainServiceCurrentState(je) =>
+-                    RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods, cancellationToken),
++                    RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input),
+                 JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
+-                JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken),
++                JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input),
+                 JsonElement je when je.ValueKind == JsonValueKind.Null => null,
+-                System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken),
++                System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input),
+                 _ => throw new InvalidOperationException(
+                     $"Expected state type '{typeof(TState).Name}' but received '{currentState.GetType().Name}'."),
+             };
+@@ -64,18 +64,21 @@ internal static class DomainProcessorStateRehydrator {
+                 };
+             case JsonElement json when IsDomainServiceCurrentState(json):
+                 owner.AdmitSnapshotWrapper(depth);
++                JsonElement admitted = owner.CaptureJson(json, reserveEvents: false);
+                 // Check aliases before transport deserialization can select one of duplicate metadata members.
+-                foreach (JsonElement envelope in json.GetProperty("events").EnumerateArray()) {
++                foreach (JsonElement envelope in admitted.GetProperty("events").EnumerateArray()) {
+                     ValidateJsonReplayMetadata(GetReplayProperty(envelope, "metadata") ?? envelope);
+                 }
+-                return CaptureReplayInput<TState>(DeserializeDomainServiceCurrentState(json), cancellationToken, owner, depth);
++                return CaptureReplayInput<TState>(DeserializeDomainServiceCurrentState(admitted, owner), cancellationToken, owner, depth);
+             case JsonElement { ValueKind: JsonValueKind.Array } json:
+-                JsonElement captured = json.Clone();
++                JsonElement captured = owner.CaptureJson(json, reserveEvents: true);
+                 foreach (JsonElement item in captured.EnumerateArray()) {
+                     cancellationToken.ThrowIfCancellationRequested();
+                     if (item.ValueKind == JsonValueKind.Object) { ValidateJsonReplayMetadata(item); }
+                 }
+                 return captured;
++            case JsonElement { ValueKind: JsonValueKind.Object } json:
++                return owner.CaptureJson(json, reserveEvents: false);
+             case System.Collections.IEnumerable sequence when input is not string:
+                 return CaptureEvents(sequence, cancellationToken, owner);
+             default:
+@@ -105,7 +108,7 @@ internal static class DomainProcessorStateRehydrator {
+     private static JsonElement? GetReplayProperty(JsonElement json, string name) {
+         JsonElement? found = null;
+         foreach (JsonProperty property in json.EnumerateObject()) {
+-            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)) { continue; }
++            if (!LegacyCommandReplayJsonAdmission.NameMatches(property, name)) { continue; }
+             if (found is { } prior && !JsonElement.DeepEquals(prior, property.Value)) {
+                 throw new InvalidOperationException("CapabilityMismatch: replay metadata contains conflicting property aliases.");
+             }
+@@ -125,9 +128,30 @@ internal static class DomainProcessorStateRehydrator {
+             payloadVersion is { ValueKind: not JsonValueKind.Null } payloadValue ? payloadValue.GetInt32() : null);
+     }
+ 
+-    private static DomainServiceCurrentState DeserializeDomainServiceCurrentState(JsonElement json) =>
+-        json.Deserialize<DomainServiceCurrentState>(EventStorePayloadSerialization.Options)
+-        ?? throw new InvalidOperationException("Unable to deserialize snapshot-aware current state payload.");
++    private static DomainServiceCurrentState DeserializeDomainServiceCurrentState(JsonElement json, LegacyCommandReplayInput input) {
++        // SnapshotState remains a view of the already admitted private document. Binding the
++        // entire object would create another full JsonElement snapshot before nested admission.
++        JsonElement eventsJson = GetReplayProperty(json, "events")!.Value;
++        var events = new EventEnvelope[eventsJson.GetArrayLength()];
++        int index = 0;
++        foreach (JsonElement item in eventsJson.EnumerateArray()) {
++            EventMetadata metadata = GetReplayProperty(item, "metadata")?.Deserialize<EventMetadata>(EventStorePayloadSerialization.Options)
++                ?? throw new ArgumentNullException(nameof(EventEnvelope.Metadata));
++            IReadOnlyDictionary<string, string>? extensions = GetReplayProperty(item, "extensions")
++                ?.Deserialize<Dictionary<string, string>>(EventStorePayloadSerialization.Options);
++            JsonElement? payload = GetReplayProperty(item, "payload");
++            if (payload is null or { ValueKind: JsonValueKind.Null }) { throw new ArgumentNullException(nameof(EventEnvelope.Payload)); }
++            byte[] bytes = input.DecodePayload(payload.Value);
++            events[index++] = new EventEnvelope(metadata, bytes, extensions);
++        }
++
++        JsonElement? snapshot = GetReplayProperty(json, "snapshotState");
++        return new DomainServiceCurrentState(
++            snapshot is { ValueKind: not JsonValueKind.Null } ? snapshot.Value : null,
++            events,
++            GetReplayProperty(json, "lastSnapshotSequence")?.Deserialize<long>(EventStorePayloadSerialization.Options) ?? 0,
++            GetReplayProperty(json, "currentSequence")?.Deserialize<long>(EventStorePayloadSerialization.Options) ?? 0);
++    }
+ 
+     private static bool IsDomainServiceCurrentState(JsonElement json) =>
+         json.ValueKind == JsonValueKind.Object
+@@ -137,25 +161,25 @@ internal static class DomainProcessorStateRehydrator {
+     private static TState? RehydrateFromDomainServiceCurrentState<TState>(
+         DomainServiceCurrentState currentState,
+         ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         // Resolve and deserialize the entire tail before snapshot replay can invoke Apply.
+         var prepared = currentState.Events.Select(envelope =>
+-            PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken)).ToList();
++            PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input)).ToList();
+         TState? state = currentState.SnapshotState switch {
+             null when currentState.Events.Count == 0 => null,
+             null => new TState(),
+             TState typed => typed,
+-            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods, cancellationToken),
++            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods, cancellationToken, input),
+             JsonElement je when IsDomainServiceCurrentState(je) =>
+-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je), applyMethods, cancellationToken),
++                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input),
+             JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
+-            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken),
++            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input),
+             JsonElement je when je.ValueKind == JsonValueKind.Null && currentState.Events.Count == 0 => null,
+             JsonElement je when je.ValueKind == JsonValueKind.Null => new TState(),
+-            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken),
+-            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods, cancellationToken),
++            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input),
++            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods, cancellationToken, input),
+         };
+ 
+         if (state is null) {
+@@ -169,7 +193,7 @@ internal static class DomainProcessorStateRehydrator {
+     private static TState? RehydrateFromArbitrarySnapshot<TState>(
+         object? snapshotState,
+         ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         if (snapshotState is null) {
+@@ -177,11 +201,12 @@ internal static class DomainProcessorStateRehydrator {
+         }
+ 
+         JsonElement json = JsonSerializer.SerializeToElement(snapshotState, snapshotState.GetType(), EventStorePayloadSerialization.Options);
++        json = input.CaptureJson(json, reserveEvents: true);
+         return json.ValueKind switch {
+             JsonValueKind.Object when IsDomainServiceCurrentState(json) =>
+-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json), applyMethods, cancellationToken),
++                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json, input), applyMethods, cancellationToken, input),
+             JsonValueKind.Object => RehydrateFromJsonObject<TState>(json, cancellationToken),
+-            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods, cancellationToken),
++            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods, cancellationToken, input),
+             JsonValueKind.Null => null,
+             _ => throw new InvalidOperationException(
+                 $"Expected state type '{typeof(TState).Name}' but received '{snapshotState.GetType().Name}'."),
+@@ -220,7 +245,7 @@ internal static class DomainProcessorStateRehydrator {
+     }
+ 
+     private static TState ReplayEventsFromJsonArray<TState>(JsonElement jsonArray, ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         var prepared = new List<(MethodInfo Method, object Event)>();
+@@ -253,7 +278,7 @@ internal static class DomainProcessorStateRehydrator {
+                         typeof(TState).Name));
+             }
+ 
+-            prepared.Add(PrepareJsonEventByName<TState>(eventTypeName, eventElement, applyMethods, cancellationToken));
++            prepared.Add(PrepareJsonEventByName<TState>(eventTypeName, eventElement, applyMethods, cancellationToken, input));
+         }
+ 
+         var state = new TState();
+@@ -262,7 +287,7 @@ internal static class DomainProcessorStateRehydrator {
+     }
+ 
+     private static TState ReplayEventsFromEnumerable<TState>(System.Collections.IEnumerable events, ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         var prepared = new List<(MethodInfo Method, object Event)>();
+@@ -274,7 +299,7 @@ internal static class DomainProcessorStateRehydrator {
+ 
+             switch (evt) {
+                 case EventEnvelope envelope:
+-                    prepared.Add(PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken));
++                    prepared.Add(PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input));
+                     continue;
+                 case JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Object:
+                     if (!jsonElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
+@@ -286,7 +311,7 @@ internal static class DomainProcessorStateRehydrator {
+                                 typeof(TState).Name));
+                     }
+ 
+-                    prepared.Add(PrepareJsonEventByName<TState>(eventTypeElement.GetString()!, jsonElement, applyMethods, cancellationToken));
++                    prepared.Add(PrepareJsonEventByName<TState>(eventTypeElement.GetString()!, jsonElement, applyMethods, cancellationToken, input));
+                     continue;
+             }
+ 
+@@ -319,7 +344,7 @@ internal static class DomainProcessorStateRehydrator {
+     private static (MethodInfo Method, object Event) PrepareContractEventEnvelope<TState>(
+         EventEnvelope envelope,
+         ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         RequireSupportedReplayMetadata(envelope.Metadata.MetadataVersion, envelope.Metadata.SerializationFormat,
+@@ -336,7 +361,7 @@ internal static class DomainProcessorStateRehydrator {
+         Type eventType = applyMethod.GetParameters()[0].ParameterType;
+ 
+         try {
+-            using var payloadDoc = JsonDocument.Parse(envelope.Payload);
++            using JsonDocument payloadDoc = input.ParsePayload(envelope.Payload);
+             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
+                 ?? throw new InvalidOperationException(
+                     string.Format(
+@@ -365,7 +390,7 @@ internal static class DomainProcessorStateRehydrator {
+         string eventTypeName,
+         JsonElement eventElement,
+         ApplyMethodTable applyMethods,
+-        CancellationToken cancellationToken)
++        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+         where TState : class, new() {
+         cancellationToken.ThrowIfCancellationRequested();
+         ValidateJsonReplayMetadata(eventElement);
+@@ -378,8 +403,8 @@ internal static class DomainProcessorStateRehydrator {
+             if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
+                 object? deserializedEvent;
+                 if (payloadElement.ValueKind == JsonValueKind.String) {
+-                    byte[] payloadBytes = payloadElement.GetBytesFromBase64();
+-                    using var payloadDoc = JsonDocument.Parse(payloadBytes);
++                    byte[] payloadBytes = input.DecodePayload(payloadElement);
++                    using JsonDocument payloadDoc = input.ParsePayload(payloadBytes);
+                     deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options);
+                 }
+                 else {
+diff --git a/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs b/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs
+index 6a307688..e777ced7 100644
+--- a/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs
++++ b/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs
+@@ -1,6 +1,7 @@
+ using System.Buffers;
+ using System.Collections;
+ using System.Globalization;
++using System.Runtime.InteropServices;
+ using System.Security.Cryptography;
+ using System.Text;
+ using System.Text.Encodings.Web;
+@@ -14,8 +15,9 @@ namespace Hexalith.EventStore.Client.Handlers;
+ /// <remarks>
+ /// Nested envelope sequences share one count, readable-payload and live-array admission budget.
+ /// This local owner grants no authenticated source authority or bound on typed state/event graphs.
+-/// Raw JSON cloning, transport deserialization and base64 materialization remain compatibility
+-/// adapters outside its pre-allocation assurance. Caller-owned typed snapshots are not cloned.
++/// JSON documents and base64 buffers are admitted before private materialization. Original
++/// transport parsing and application converter/typed graph allocations remain unqualified.
++/// Caller-owned typed snapshots are not cloned.
+ /// </remarks>
+ internal sealed class LegacyCommandReplayInput : IDisposable
+ {
+@@ -27,8 +29,10 @@ internal sealed class LegacyCommandReplayInput : IDisposable
+     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+     private readonly CancellationToken _cancellationToken;
+     private readonly List<byte[]> _payloads = [];
++    private readonly List<JsonDocument> _jsonDocuments = [];
+     private long _accountedBytes;
+     private long _readableBytes;
++    private long _jsonDecodedBytesAvailable;
+     private int _eventCount;
+     private bool _disposed;
+ 
+@@ -109,8 +113,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
+             }
+             else if (references[index] is JsonElement json)
+             {
+-                // Retained for legacy compatibility; this does not establish bounded raw ingress.
+-                references[index] = json.Clone();
++                references[index] = CaptureJson(json, reserveEvents: true, eventRoot: true, countAlreadyAdmitted: true);
+             }
+         }
+ 
+@@ -118,11 +121,88 @@ internal sealed class LegacyCommandReplayInput : IDisposable
+         return references;
+     }
+ 
++    /// <summary>Admits the complete JSON source before privately copying or binding any of it.</summary>
++    internal JsonElement CaptureJson(JsonElement source, bool reserveEvents,
++        bool eventRoot = false, bool countAlreadyAdmitted = false)
++    {
++        ObjectDisposedException.ThrowIf(_disposed, this);
++        _cancellationToken.ThrowIfCancellationRequested();
++        (int count, long readable, long documents) = LegacyCommandReplayJsonAdmission.Measure(source, _cancellationToken, eventRoot);
++        int additionalCount = countAlreadyAdmitted ? 0 : count;
++        RequireCount(additionalCount);
++        if (readable > MaximumReadableBytes - _readableBytes) { Refuse("LegacyArrayLimit"); }
++        long eventCapacity = checked(additionalCount * (long)PerEventCharge + 2 * readable);
++        if (documents + eventCapacity > MaximumAccountedBytes - _accountedBytes) { Refuse("LegacyArrayLimit"); }
++        // Only built-in fixed metadata/dictionary binding runs here. No event payload,
++        // application converter, state constructor or Apply is materialized by this check.
++        LegacyCommandReplayJsonAdmission.ValidateContractMetadata(source, AdmitEnvelope, _cancellationToken);
++        if (documents + eventCapacity > MaximumAccountedBytes - _accountedBytes) { Refuse("LegacyArrayLimit"); }
++        Account(documents);
++        if (reserveEvents)
++        {
++            Account(eventCapacity);
++            _eventCount += additionalCount;
++            _readableBytes += readable;
++        }
++
++        _jsonDecodedBytesAvailable += readable;
++
++        byte[] copy = JsonMarshal.GetRawUtf8Value(source).ToArray();
++        RetainPayload(copy);
++        JsonDocument document = JsonDocument.Parse((ReadOnlyMemory<byte>)copy, new JsonDocumentOptions
++        {
++            AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip,
++        });
++        try { _jsonDocuments.Add(document); }
++        catch { document.Dispose(); throw; }
++        _cancellationToken.ThrowIfCancellationRequested();
++        return document.RootElement;
++    }
++
++    /// <summary>Retains an already admitted base64 decode until reconstruction ends.</summary>
++    internal byte[] DecodePayload(JsonElement value)
++    {
++        ObjectDisposedException.ThrowIf(_disposed, this);
++        _cancellationToken.ThrowIfCancellationRequested();
++        long expectedLength = LegacyCommandReplayJsonAdmission.DecodedBase64Length(value, _cancellationToken);
++        if (expectedLength > _jsonDecodedBytesAvailable) { Refuse("LegacyArrayLimit"); }
++        _jsonDecodedBytesAvailable -= expectedLength;
++        byte[] bytes = new byte[checked((int)expectedLength)];
++        RetainPayload(bytes);
++        LegacyCommandReplayJsonAdmission.DecodeBase64(value, bytes, _cancellationToken);
++        _cancellationToken.ThrowIfCancellationRequested();
++        return bytes;
++    }
++
++    /// <summary>Admits decoded JSON token-table capacity before parsing retained payload bytes.</summary>
++    internal JsonDocument ParsePayload(byte[] bytes)
++    {
++        ObjectDisposedException.ThrowIf(_disposed, this);
++        _cancellationToken.ThrowIfCancellationRequested();
++        var reader = new Utf8JsonReader(bytes);
++        while (reader.Read())
++        {
++            _cancellationToken.ThrowIfCancellationRequested();
++            // Cover document token-table capacity and resizing slack, in addition to
++            // the source/private byte buffers admitted by envelope or JSON capture.
++            Account(128);
++        }
++
++        _cancellationToken.ThrowIfCancellationRequested();
++        JsonDocument document = JsonDocument.Parse((ReadOnlyMemory<byte>)bytes);
++        try { _jsonDocuments.Add(document); }
++        catch { document.Dispose(); throw; }
++        _cancellationToken.ThrowIfCancellationRequested();
++        return document;
++    }
++
+     /// <summary>Clears every privately retained payload on success, refusal, failure or cancellation.</summary>
+     public void Dispose()
+     {
+         if (_disposed) { return; }
+         _disposed = true;
++        foreach (JsonDocument document in _jsonDocuments) { document.Dispose(); }
++        _jsonDocuments.Clear();
+         foreach (byte[] payload in _payloads)
+         {
+             CryptographicOperations.ZeroMemory(payload);
+@@ -131,6 +211,12 @@ internal sealed class LegacyCommandReplayInput : IDisposable
+         _payloads.Clear();
+     }
+ 
++    private void RetainPayload(byte[] bytes)
++    {
++        try { _payloads.Add(bytes); }
++        catch { CryptographicOperations.ZeroMemory(bytes); throw; }
++    }
++
+     private void AdmitEnvelope(EventEnvelope envelope)
+     {
+         EventMetadata metadata = envelope.Metadata;
+diff --git a/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs b/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs
+new file mode 100644
+index 00000000..857fbed4
+--- /dev/null
++++ b/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs
+@@ -0,0 +1,358 @@
++using System.Buffers.Text;
++using System.Runtime.InteropServices;
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.Encodings.Web;
++using System.Text.Json;
++
++using Hexalith.EventStore.Contracts.Events;
++using Hexalith.EventStore.Contracts.Serialization;
++
++namespace Hexalith.EventStore.Client.Handlers;
++
++/// <summary>Measures legacy JSON replay before cloning, transport binding or base64 decoding.</summary>
++/// <remarks>The supplied document already exists; this check cannot bound its original transport parsing.</remarks>
++internal static class LegacyCommandReplayJsonAdmission
++{
++    private const long MaximumReadableBytes = 64L * 1024 * 1024;
++    private const int MaximumMetadataBytes = 512 * 1024;
++
++    /// <summary>Measures source bytes, document tokens, event count and readable payload without materialization.</summary>
++    internal static (int Events, long ReadableBytes, long DocumentBytes) Measure(JsonElement source,
++        CancellationToken cancellationToken, bool eventRoot = false)
++    {
++        ReadOnlySpan<byte> raw = JsonMarshal.GetRawUtf8Value(source);
++        long documentBytes = checked(2L * raw.Length);
++        var reader = new Utf8JsonReader(raw, new JsonReaderOptions
++        {
++            MaxDepth = 64, AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip,
++        });
++        try
++        {
++            while (reader.Read())
++            {
++                cancellationToken.ThrowIfCancellationRequested();
++                // Conservatively cover source/private document token tables and growth slack.
++                documentBytes = checked(documentBytes + 128);
++                if (documentBytes > 256L * 1024 * 1024) { Refuse("LegacyArrayLimit"); }
++            }
++        }
++        catch (JsonException)
++        {
++            Refuse("LegacyArrayLimit");
++        }
++
++        int events = 0;
++        long readable = 0;
++        if (eventRoot) { Event(source, ref events, ref readable, cancellationToken, contractEnvelope: false); }
++        else { State(source, 0, ref events, ref readable, cancellationToken); }
++        return (events, readable, documentBytes);
++    }
++
++    /// <summary>Checks the exact built-in envelope metadata image before transport binding decodes its payload.</summary>
++    internal static void ValidateContractMetadata(JsonElement source, Action<EventEnvelope> validate, CancellationToken token)
++    {
++        token.ThrowIfCancellationRequested();
++        if (!IsWrapper(source)) { return; }
++        _ = Property(source, "currentSequence");
++        JsonElement events = Property(source, "events")!.Value;
++        foreach (JsonElement item in events.EnumerateArray())
++        {
++            token.ThrowIfCancellationRequested();
++            JsonElement? metadataJson = Property(item, "metadata");
++            if (metadataJson is { ValueKind: JsonValueKind.Object } fields)
++            {
++                // Only fixed contract names have case-insensitive binding. Extension keys
++                // remain application-owned, case-sensitive dictionary entries.
++                foreach (string name in new[] { "messageId", "aggregateId", "aggregateType", "tenantId", "domain",
++                    "sequenceNumber", "globalPosition", "timestamp", "correlationId", "causationId", "userId",
++                    "domainServiceVersion", "eventTypeName", "metadataVersion", "serializationFormat",
++                    "eventContractType", "payloadVersion" })
++                {
++                    token.ThrowIfCancellationRequested();
++                    _ = Property(fields, name);
++                }
++            }
++
++            EventMetadata metadata = metadataJson?.Deserialize<EventMetadata>(EventStorePayloadSerialization.Options)
++                ?? throw new InvalidOperationException("ReplayScalarInvalid: replay envelope metadata is missing.");
++            IReadOnlyDictionary<string, string>? extensions = Property(item, "extensions")
++                ?.Deserialize<Dictionary<string, string>>(EventStorePayloadSerialization.Options);
++            validate(new EventEnvelope(metadata, [], extensions));
++        }
++
++        if (Property(source, "snapshotState") is { } prior) { ValidateContractMetadata(prior, validate, token); }
++    }
++
++    private static void State(JsonElement state, int depth, ref int events, ref long readable, CancellationToken token)
++    {
++        if (state.ValueKind == JsonValueKind.Array)
++        {
++            foreach (JsonElement item in state.EnumerateArray()) { Event(item, ref events, ref readable, token, contractEnvelope: false); }
++        }
++        else if (IsWrapper(state))
++        {
++            if (depth >= 64) { Refuse("LegacyArrayLimit"); }
++            _ = Property(state, "currentSequence");
++            JsonElement tail = Property(state, "events")!.Value;
++            _ = Property(state, "lastSnapshotSequence");
++            foreach (JsonElement item in tail.EnumerateArray()) { Event(item, ref events, ref readable, token, contractEnvelope: true); }
++            if (Property(state, "snapshotState") is { } prior)
++            {
++                State(prior, depth + 1, ref events, ref readable, token);
++            }
++        }
++    }
++
++    private static bool IsWrapper(JsonElement value)
++        => value.ValueKind == JsonValueKind.Object && value.TryGetProperty("currentSequence", out _)
++            && value.TryGetProperty("events", out _);
++
++    private static void Event(JsonElement item, ref int events, ref long readable, CancellationToken token, bool contractEnvelope)
++    {
++        token.ThrowIfCancellationRequested();
++        if (++events > 100_000) { Refuse("LegacyArrayLimit"); }
++        if (item.ValueKind != JsonValueKind.Object) { return; }
++        ReadOnlySpan<byte> raw = JsonMarshal.GetRawUtf8Value(item);
++        long payloadBytes = raw.Length;
++        JsonElement? payload = contractEnvelope ? Property(item, "payload")
++            : item.TryGetProperty("payload", out JsonElement inlinePayload) ? inlinePayload : null;
++        long metadataBytes = 2;
++        if (payload is { } body)
++        {
++            metadataBytes = EncodedMetadata(item, token, contractEnvelope: contractEnvelope);
++            payloadBytes = body.ValueKind == JsonValueKind.String
++                ? DecodedBase64Length(body, token)
++                : JsonMarshal.GetRawUtf8Value(body).Length;
++        }
++        else
++        {
++            int members = 0;
++            foreach (string name in new[] { "eventTypeName", "metadataVersion", "serializationFormat", "eventContractType", "payloadVersion" })
++            {
++                if (Property(item, name) is { } property)
++                {
++                    metadataBytes = checked(metadataBytes + (members++ == 0 ? 0 : 1) + name.Length + 3
++                        + EncodedMetadata(property, token, eventRoot: false));
++                    if (metadataBytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++                }
++            }
++        }
++
++        if (metadataBytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++        if (payloadBytes > MaximumReadableBytes - readable) { Refuse("LegacyArrayLimit"); }
++        readable += payloadBytes;
++    }
++
++    /// <summary>Rejects conflicting aliases using the same case-insensitive names as Web binding.</summary>
++    private static JsonElement? Property(JsonElement json, string name)
++    {
++        JsonElement? found = null;
++        foreach (JsonProperty property in json.EnumerateObject())
++        {
++            if (!NameMatches(property, name)) { continue; }
++            if (found is { } prior && !JsonElement.DeepEquals(prior, property.Value))
++            {
++                throw new InvalidOperationException("CapabilityMismatch: replay JSON contains conflicting property aliases.");
++            }
++
++            found = property.Value;
++        }
++
++        return found;
++    }
++
++    /// <summary>Bounds name decoding for case-insensitive fixed contract lookups.</summary>
++    internal static bool NameMatches(JsonProperty property, string name, bool ignoreCase = true)
++        => JsonMarshal.GetRawUtf8PropertyName(property).Length <= 6L * name.Length
++            && (property.NameEquals(name)
++                || (ignoreCase && string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)));
++
++    private static long EncodedMetadata(JsonElement value, CancellationToken token, bool eventRoot = true,
++        bool contractEnvelope = false, bool contractMetadata = false)
++    {
++        long bytes = 0;
++        switch (value.ValueKind)
++        {
++            case JsonValueKind.Object:
++                bytes = 2;
++                int members = 0;
++                foreach (JsonProperty property in value.EnumerateObject())
++                {
++                    token.ThrowIfCancellationRequested();
++                    long valueBytes;
++                    if (eventRoot && NameMatches(property, "payload", ignoreCase: contractEnvelope)) { valueBytes = 2; }
++                    else if (contractMetadata && NameMatches(property, "timestamp")
++                        && property.Value.ValueKind == JsonValueKind.String
++                        && property.Value.TryGetDateTimeOffset(out DateTimeOffset timestamp))
++                    {
++                        // The fixed DateTimeOffset converter writes its canonical primitive
++                        // image directly, including an unescaped '+' in the UTC offset.
++                        valueBytes = JsonSerializer.SerializeToUtf8Bytes(timestamp).Length;
++                    }
++                    else
++                    {
++                        valueBytes = EncodedMetadata(property.Value, token, eventRoot: false,
++                            contractMetadata: eventRoot && contractEnvelope && NameMatches(property, "metadata"));
++                    }
++
++                    bytes = checked(bytes + (members++ == 0 ? 0 : 1)
++                        + EncodedString(JsonMarshal.GetRawUtf8PropertyName(property), token) + 1 + valueBytes);
++                    if (bytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++                }
++
++                break;
++            case JsonValueKind.Array:
++                bytes = 2;
++                int elements = 0;
++                foreach (JsonElement item in value.EnumerateArray())
++                {
++                    bytes = checked(bytes + (elements++ == 0 ? 0 : 1) + EncodedMetadata(item, token, eventRoot: false));
++                    if (bytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++                }
++
++                break;
++            case JsonValueKind.String:
++                ReadOnlySpan<byte> raw = JsonMarshal.GetRawUtf8Value(value);
++                bytes = EncodedString(raw[1..^1], token);
++                break;
++            default:
++                bytes = JsonMarshal.GetRawUtf8Value(value).Length;
++                break;
++        }
++
++        if (bytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++        return bytes;
++    }
++
++    private static long EncodedString(ReadOnlySpan<byte> value, CancellationToken token)
++    {
++        long bytes = 2;
++        for (int offset = 0; offset < value.Length;)
++        {
++            token.ThrowIfCancellationRequested();
++            Rune rune;
++            if (value[offset] == '\\')
++            {
++                offset++;
++                int scalar = value[offset++] switch
++                {
++                    (byte)'"' => '"', (byte)'\\' => '\\', (byte)'/' => '/',
++                    (byte)'b' => 8, (byte)'f' => 12, (byte)'n' => 10, (byte)'r' => 13, (byte)'t' => 9,
++                    (byte)'u' => ReadHex(value, ref offset),
++                    _ => -1,
++                };
++                if (scalar is >= 0xd800 and <= 0xdbff)
++                {
++                    if (value.Length - offset < 6 || value[offset++] != '\\' || value[offset++] != 'u') { Refuse("ReplayScalarInvalid"); }
++                    int low = ReadHex(value, ref offset);
++                    if (low is < 0xdc00 or > 0xdfff) { Refuse("ReplayScalarInvalid"); }
++                    scalar = 0x10000 + ((scalar - 0xd800) << 10) + low - 0xdc00;
++                }
++
++                if (!Rune.TryCreate(scalar, out rune)) { Refuse("ReplayScalarInvalid"); }
++            }
++            else
++            {
++                if (Rune.DecodeFromUtf8(value[offset..], out rune, out int consumed) != System.Buffers.OperationStatus.Done)
++                {
++                    Refuse("ReplayScalarInvalid");
++                }
++
++                offset += consumed;
++            }
++
++            bytes += rune.Value switch
++            {
++                8 or 9 or 10 or 12 or 13 or 92 => 2,
++                _ => JavaScriptEncoder.Default.WillEncode(rune.Value) ? 6L * rune.Utf16SequenceLength : rune.Utf8SequenceLength,
++            };
++            if (bytes > MaximumMetadataBytes) { Refuse("MetadataLimit"); }
++        }
++
++        return bytes;
++    }
++
++    private static int ReadHex(ReadOnlySpan<byte> value, ref int offset)
++        => Hex(value[offset++]) * 4096 + Hex(value[offset++]) * 256 + Hex(value[offset++]) * 16 + Hex(value[offset++]);
++
++    /// <summary>Checks base64 syntax and measures the exact decode before payload allocation.</summary>
++    internal static long DecodedBase64Length(JsonElement value, CancellationToken token)
++        => ReadBase64(value, Span<byte>.Empty, decode: false, token);
++
++    /// <summary>Decodes into an admitted buffer using only fixed quartet and three-byte scratch.</summary>
++    internal static void DecodeBase64(JsonElement value, Span<byte> destination, CancellationToken token)
++    {
++        if (ReadBase64(value, destination, decode: true, token) != destination.Length)
++        {
++            throw new FormatException("Invalid replay payload base64 length.");
++        }
++    }
++
++    private static int ReadBase64(JsonElement value, Span<byte> destination, bool decode, CancellationToken token)
++    {
++        token.ThrowIfCancellationRequested();
++        if (value.ValueKind != JsonValueKind.String) { throw new InvalidOperationException("Replay payload must be a base64 string."); }
++        ReadOnlySpan<byte> raw = JsonMarshal.GetRawUtf8Value(value);
++        ReadOnlySpan<byte> text = raw[1..^1];
++        Span<byte> quartet = stackalloc byte[4];
++        Span<byte> decoded = stackalloc byte[3];
++        int count = 0;
++        int length = 0;
++        int untilCancellation = 0;
++        bool ended = false;
++        try
++        {
++            for (int offset = 0; offset < text.Length; offset++)
++            {
++                if (untilCancellation-- == 0) { token.ThrowIfCancellationRequested(); untilCancellation = 4095; }
++                int character = text[offset];
++                if (character == '\\')
++                {
++                    character = text[++offset] switch
++                    {
++                        (byte)'/' => '/',
++                        (byte)'n' => '\n',
++                        (byte)'r' => '\r',
++                        (byte)'t' => '\t',
++                        (byte)'u' => Hex(text[++offset]) * 4096 + Hex(text[++offset]) * 256
++                            + Hex(text[++offset]) * 16 + Hex(text[++offset]),
++                        _ => -1,
++                    };
++                }
++
++                if (character is 9 or 10 or 13 or 32) { continue; }
++                if (ended || character is < 0 or > 127) { throw new FormatException("Invalid replay payload base64."); }
++                quartet[count++] = (byte)character;
++                if (count != 4) { continue; }
++                if (!Base64.IsValid(quartet, out int bytes)
++                    || Base64.DecodeFromUtf8(quartet, decoded, out _, out int written) != System.Buffers.OperationStatus.Done
++                    || written != bytes) { throw new FormatException("Invalid replay payload base64."); }
++                if (decode) { decoded[..bytes].CopyTo(destination[length..]); }
++                length = checked(length + bytes);
++                ended = bytes != 3;
++                count = 0;
++            }
++
++            token.ThrowIfCancellationRequested();
++            if (count != 0) { throw new FormatException("Invalid replay payload base64."); }
++            return length;
++        }
++        finally
++        {
++            CryptographicOperations.ZeroMemory(decoded);
++            CryptographicOperations.ZeroMemory(quartet);
++        }
++    }
++
++    private static int Hex(byte value) => value switch
++    {
++        >= (byte)'0' and <= (byte)'9' => value - '0',
++        >= (byte)'a' and <= (byte)'f' => value - 'a' + 10,
++        >= (byte)'A' and <= (byte)'F' => value - 'A' + 10,
++        _ => throw new FormatException("Invalid replay payload base64 escape."),
++    };
++
++    private static void Refuse(string reason)
++        => throw new InvalidOperationException($"{reason}: legacy command-state JSON admission failed.");
++}
+diff --git a/tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs b/tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs
+new file mode 100644
+index 00000000..396eb192
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs
+@@ -0,0 +1,604 @@
++using System.Reflection;
++using System.Text;
++using System.Text.Encodings.Web;
++using System.Text.Json;
++
++using Hexalith.EventStore.Client.Handlers;
++using Hexalith.EventStore.Client.Tests.Aggregates;
++using Hexalith.EventStore.Contracts.Commands;
++using Hexalith.EventStore.Contracts.Events;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Client.Tests.Handlers;
++
++/// <summary>Exercises JSON admission before private replay allocation and application callbacks.</summary>
++public sealed class LegacyCommandReplayJsonAdmissionTests
++{
++    /// <summary>Checks whole-array count admission before private copying or state construction.</summary>
++    [Fact]
++    public void JsonArrayCountRefusesBeforeStateConstruction()
++    {
++        using var scope = new LegacyReplayMutationScope();
++        using JsonDocument source = JsonDocument.Parse("[" + string.Join(",", Enumerable.Repeat("{}", 32_769)) + "]");
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("LegacyArrayLimit:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks raw metadata which expands under default Web encoding refuses before payload decoding.</summary>
++    [Theory]
++    [InlineData('<')]
++    [InlineData('+')]
++    [InlineData('\u00e9')]
++    public void DefaultWebMetadataEscapingIsCheckedBeforeInvalidBase64(char character)
++    {
++        EventEnvelope envelope = Event(new Dictionary<string, string> { ["evidence"] = new string(character, 90_000) });
++        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
++        JsonSerializer.SerializeToUtf8Bytes(new EventEnvelope(envelope.Metadata, [], envelope.Extensions), web)
++            .Length.ShouldBeGreaterThan(512 * 1024);
++        var relaxed = new JsonSerializerOptions(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [envelope], 0, 1), relaxed)
++            .Replace(Convert.ToBase64String(envelope.Payload), "!", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("MetadataLimit:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks inline metadata follows the case-insensitive lookup before any private clone.</summary>
++    [Theory]
++    [InlineData("eventContractType")]
++    [InlineData("EventContractType")]
++    [InlineData("serializationFormat")]
++    [InlineData("SerializationFormat")]
++    public void InlineMetadataAliasesAreBoundedWithDefaultEscaping(string member)
++    {
++        using JsonDocument source = JsonDocument.Parse("[{\"eventTypeName\":\"LegacyReplayMutationEvent\",\"amount\":1,\""
++            + member + "\":\"" + new string('<', 90_000) + "\"}]");
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("MetadataLimit:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks contradictory wrapper aliases refuse before their payloads can be bound.</summary>
++    [Theory]
++    [InlineData("Events", "[{\"payload\":\"!\"}]")]
++    [InlineData("SnapshotState", "[{\"payload\":\"!\"}]")]
++    [InlineData("CurrentSequence", "1")]
++    [InlineData("LastSnapshotSequence", "1")]
++    public void ConflictingWrapperAliasesRefuseBeforeBinding(string member, string value)
++    {
++        string json = "{\"currentSequence\":0,\"lastSnapshotSequence\":0,\"events\":[],\"snapshotState\":null,\""
++            + member + "\":" + value + "}";
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("CapabilityMismatch:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks a later alias in a nested snapshot wrapper cannot bypass whole-source admission.</summary>
++    [Fact]
++    public void NestedWrapperAliasesRefuseBeforeBinding()
++    {
++        using JsonDocument source = JsonDocument.Parse("""
++            {"currentSequence":0,"events":[],"snapshotState":
++                {"currentSequence":0,"events":[],"Events":[{"payload":"!"}]}}
++            """);
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("CapabilityMismatch:");
++        scope.Constructed.ShouldBe(0);
++    }
++
++    /// <summary>Checks ordinary state JSON keeps the existing exact wrapper classification.</summary>
++    [Fact]
++    public void CapitalizedStatePropertiesRemainOrdinaryStateJson()
++    {
++        using JsonDocument source = JsonDocument.Parse("""{"Total":23,"CurrentSequence":5,"Events":[{"payload":"!"}]}""");
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(23);
++        scope.Constructed.ShouldBe(1);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks inline replay uses only the exact lowercase payload member.</summary>
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public void CapitalizedInlinePayloadRemainsApplicationData(bool lowercasePayload)
++    {
++        string payload = lowercasePayload ? ",\"payload\":{\"amount\":5}" : string.Empty;
++        using JsonDocument source = JsonDocument.Parse("[{\"eventTypeName\":\"LegacyReplayMutationEvent\",\"amount\":3,\"Payload\":\"!\""
++            + payload + "}]");
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(lowercasePayload ? 5 : 3);
++        scope.Applied.ShouldBe([lowercasePayload ? 5 : 3]);
++    }
++
++    /// <summary>Checks contract wrappers retain case-insensitive payload binding.</summary>
++    [Fact]
++    public void CapitalizedContractPayloadStillBinds()
++    {
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [Event(new Dictionary<string, string>())], 0, 1),
++            new JsonSerializerOptions(JsonSerializerDefaults.Web)).Replace("\"payload\":", "\"Payload\":", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(1);
++    }
++
++    /// <summary>Checks uppercase inline members are not excluded from envelope metadata admission.</summary>
++    [Fact]
++    public void CapitalizedInlinePayloadIsNotExcludedFromMetadata()
++    {
++        using JsonDocument source = JsonDocument.Parse("[{\"eventTypeName\":\"LegacyReplayMutationEvent\",\"payload\":{\"amount\":1},\"Payload\":\""
++            + new string('<', 90_000) + "\"}]");
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("MetadataLimit:");
++        scope.Constructed.ShouldBe(0);
++    }
++
++    /// <summary>Checks capture preserves syntax already accepted by a caller's document parser.</summary>
++    [Theory]
++    [InlineData("state")]
++    [InlineData("array")]
++    [InlineData("wrapper")]
++    public void AlreadyParsedCommentsAndTrailingCommasRemainReadable(string route)
++    {
++        string json = route switch
++        {
++            "state" => "{\"Total\":7,/*state*/}",
++            "array" => "[{\"eventTypeName\":\"LegacyReplayMutationEvent\",/*event*/\"payload\":{\"amount\":1},},]",
++            _ => JsonSerializer.Serialize(new DomainServiceCurrentState(null, [Event(new Dictionary<string, string>())], 0, 1),
++                new JsonSerializerOptions(JsonSerializerDefaults.Web)).Insert(1, "/*wrapper*/")[..^1] + ",}",
++        };
++        using JsonDocument source = JsonDocument.Parse(json, new JsonDocumentOptions
++        {
++            AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip,
++        });
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(route == "state" ? 7 : 1);
++    }
++
++    /// <summary>Checks fixed metadata aliases refuse before built-in metadata deserialization.</summary>
++    [Theory]
++    [InlineData("messageId")]
++    [InlineData("aggregateId")]
++    [InlineData("aggregateType")]
++    [InlineData("tenantId")]
++    [InlineData("domain")]
++    [InlineData("sequenceNumber")]
++    [InlineData("globalPosition")]
++    [InlineData("timestamp")]
++    [InlineData("correlationId")]
++    [InlineData("causationId")]
++    [InlineData("userId")]
++    [InlineData("domainServiceVersion")]
++    [InlineData("eventTypeName")]
++    [InlineData("metadataVersion")]
++    [InlineData("serializationFormat")]
++    [InlineData("eventContractType")]
++    [InlineData("payloadVersion")]
++    public void ContradictoryFixedMetadataAliasesRefuseBeforeBinding(string member)
++    {
++        ArgumentNullException.ThrowIfNull(member);
++        EventEnvelope envelope = Event(new Dictionary<string, string>());
++        EventMetadata metadata = envelope.Metadata with { EventContractType = "contract", PayloadVersion = 1 };
++        string metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        using JsonDocument fields = JsonDocument.Parse(metadataJson);
++        JsonElement original = fields.RootElement.GetProperty(member);
++        string different = original.ValueKind == JsonValueKind.Number ? "2" : "\"different\"";
++        string alias = char.ToUpperInvariant(member[0]) + member[1..];
++        string json = "{\"currentSequence\":1,\"events\":[{\"metadata\":" + metadataJson[..^1]
++            + ",\"" + alias + "\":" + different + "},\"payload\":\"" + Convert.ToBase64String(envelope.Payload) + "\"}]}";
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("CapabilityMismatch:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks case-sensitive retained extension keys remain valid independent dictionary entries.</summary>
++    [Fact]
++    public void CaseVariantExtensionKeysRetainTheirOriginalGrammar()
++    {
++        EventEnvelope envelope = Event(new Dictionary<string, string> { ["trace"] = "first", ["Trace"] = "second" });
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [envelope], 0, 1), new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(1);
++        source.RootElement.GetProperty("events")[0].GetProperty("extensions").EnumerateObject().Count().ShouldBe(2);
++    }
++
++    /// <summary>Checks bounded name matching preserves mixed-case and escaped fixed aliases.</summary>
++    [Theory]
++    [InlineData("EvEnTtYpEnAmE", false)]
++    [InlineData("\\u0045vEnTtYpEnAmE", false)]
++    [InlineData("EvEnTtYpEnAmE", true)]
++    [InlineData("\\u0045vEnTtYpEnAmE", true)]
++    public void EscapedAndMixedCaseMetadataAliasesRetainTheirMeaning(string member, bool conflicting)
++    {
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [Event(new Dictionary<string, string>())], 0, 1),
++            new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        string value = conflicting ? "different" : nameof(LegacyReplayMutationEvent);
++        json = json.Replace("\"metadataVersion\":", "\"" + member + "\":\"" + value + "\",\"metadataVersion\":", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        if (conflicting)
++        {
++            Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("CapabilityMismatch:");
++            scope.Constructed.ShouldBe(0);
++        }
++        else
++        {
++            Rehydrate(source.RootElement).Total.ShouldBe(1);
++        }
++    }
++
++    /// <summary>Checks a large ignored metadata name remains accepted without repeated alias-name decoding.</summary>
++    [Fact]
++    public void LargeIgnoredMetadataNameRemainsCompatible()
++    {
++        string key = new('k', 400_000);
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [Event(new Dictionary<string, string>())], 0, 1),
++            new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        json = json.Replace("\"metadataVersion\":", "\"" + key + "\":0,\"metadataVersion\":", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(1);
++        source.RootElement.GetProperty("events")[0].GetProperty("metadata").TryGetProperty(key, out _).ShouldBeTrue();
++    }
++
++    /// <summary>Checks equivalent raw and escaped ignored metadata names share the emitted metadata limit.</summary>
++    [Fact]
++    public void RawAndEscapedIgnoredMetadataNamesRemainEquivalent()
++    {
++        string key = new('k', 100_000);
++        string json = JsonSerializer.Serialize(new DomainServiceCurrentState(null, [Event(new Dictionary<string, string>())], 0, 1),
++            new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        json = json.Replace("\"metadataVersion\":", "\"" + key + "\":0,\"metadataVersion\":", StringComparison.Ordinal);
++        string escaped = json.Replace(key, string.Concat(Enumerable.Repeat("\\u006b", key.Length)), StringComparison.Ordinal);
++        using JsonDocument rawSource = JsonDocument.Parse(json);
++        using JsonDocument escapedSource = JsonDocument.Parse(escaped);
++        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
++        byte[] rawImage = JsonSerializer.SerializeToUtf8Bytes(rawSource.RootElement.GetProperty("events")[0], web);
++        byte[] escapedImage = JsonSerializer.SerializeToUtf8Bytes(escapedSource.RootElement.GetProperty("events")[0], web);
++        rawImage.ShouldBe(escapedImage);
++        rawImage.Length.ShouldBeLessThan(512 * 1024);
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(rawSource.RootElement).Total.ShouldBe(1);
++        Rehydrate(escapedSource.RootElement).Total.ShouldBe(1);
++        scope.Applied.ShouldBe([1, 1]);
++    }
++
++    /// <summary>Checks exact metadata limits using independently serialized Web images and escaped keys/values.</summary>
++    [Theory]
++    [InlineData(true, -1)]
++    [InlineData(true, 0)]
++    [InlineData(true, 1)]
++    [InlineData(false, -1)]
++    [InlineData(false, 0)]
++    [InlineData(false, 1)]
++    public void SerializedMetadataBoundaryIsInclusive(bool wrapper, int boundaryOffset)
++    {
++        const int limit = 512 * 1024;
++        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
++        var relaxed = new JsonSerializerOptions(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
++        Dictionary<string, string> extras = new() { ["<+é"] = "\n\"😀", ["padding"] = string.Empty };
++        EventEnvelope envelope = Event(extras);
++        Dictionary<string, object?> inline = new()
++        {
++            ["eventTypeName"] = nameof(LegacyReplayMutationEvent), ["payload"] = string.Empty,
++            ["<+é"] = "\n\"😀", ["padding"] = string.Empty,
++        };
++        int initialLength = wrapper
++            ? JsonSerializer.SerializeToUtf8Bytes(new EventEnvelope(envelope.Metadata, [], extras), web).Length
++            : JsonSerializer.SerializeToUtf8Bytes(inline, web).Length;
++        string padding = new('a', limit + boundaryOffset - initialLength);
++        extras["padding"] = padding;
++        inline["padding"] = padding;
++        int independentlyEncoded = wrapper
++            ? JsonSerializer.SerializeToUtf8Bytes(new EventEnvelope(envelope.Metadata, [], extras), web).Length
++            : JsonSerializer.SerializeToUtf8Bytes(inline, web).Length;
++        independentlyEncoded.ShouldBe(limit + boundaryOffset);
++        inline["payload"] = Convert.ToBase64String(envelope.Payload);
++        string json = wrapper
++            ? JsonSerializer.Serialize(new DomainServiceCurrentState(null, [new EventEnvelope(envelope.Metadata, envelope.Payload, extras)], 0, 1), relaxed)
++            : "[" + JsonSerializer.Serialize(inline, relaxed) + "]";
++        // Escape a known property name independently of the serializer's encoder.
++        json = json.Replace("\"eventTypeName\"", "\"event\\u0054ypeName\"", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse(json);
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        using var scope = new LegacyReplayMutationScope();
++        if (boundaryOffset > 0)
++        {
++            Should.Throw<InvalidOperationException>(() => owner.CaptureJson(source.RootElement, reserveEvents: true))
++                .Message.ShouldStartWith("MetadataLimit:");
++        }
++        else
++        {
++            JsonElement captured = owner.CaptureJson(source.RootElement, reserveEvents: true);
++            captured.ValueKind.ShouldBe(wrapper ? JsonValueKind.Object : JsonValueKind.Array);
++        }
++
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks no-payload inline metadata aliases have the same inclusive default-Web boundary.</summary>
++    [Theory]
++    [InlineData(-1)]
++    [InlineData(0)]
++    [InlineData(1)]
++    public void SerializedInlineMetadataWithoutPayloadBoundaryIsInclusive(int boundaryOffset)
++    {
++        const int limit = 512 * 1024;
++        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
++        Dictionary<string, string> metadata = new()
++        {
++            ["eventTypeName"] = nameof(LegacyReplayMutationEvent), ["EventContractType"] = "<+é\n\"😀",
++        };
++        int initialLength = JsonSerializer.SerializeToUtf8Bytes(metadata, web).Length;
++        metadata["EventContractType"] += new string('a', limit + boundaryOffset - initialLength);
++        JsonSerializer.SerializeToUtf8Bytes(metadata, web).Length.ShouldBe(limit + boundaryOffset);
++        string json = JsonSerializer.Serialize(metadata,
++            new JsonSerializerOptions(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping })
++            .Replace("\"EventContractType\"", "\"\\u0045ventContractType\"", StringComparison.Ordinal);
++        using JsonDocument source = JsonDocument.Parse("[" + json + "]");
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        if (boundaryOffset > 0)
++        {
++            Should.Throw<InvalidOperationException>(() => owner.CaptureJson(source.RootElement, reserveEvents: true))
++                .Message.ShouldStartWith("MetadataLimit:");
++        }
++        else
++        {
++            owner.CaptureJson(source.RootElement, reserveEvents: true).GetArrayLength().ShouldBe(1);
++        }
++    }
++
++    /// <summary>Checks decoded token tables share admission before parsing or invoking domain code.</summary>
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public void TokenDenseDecodedPayloadRefusesBeforeParsingOrCallbacks(bool contractEnvelope)
++    {
++        byte[] bytes = Encoding.UTF8.GetBytes("{\"amount\":1,\"values\":[" + string.Concat(Enumerable.Repeat("0,", 2_097_152)) + "0]}");
++        bytes.Length.ShouldBeLessThan(64 * 1024 * 1024);
++        using var scope = new LegacyReplayMutationScope();
++        if (contractEnvelope)
++        {
++            EventEnvelope original = Event(new Dictionary<string, string>());
++            var envelope = new EventEnvelope(original.Metadata, bytes, original.Extensions);
++            Should.Throw<InvalidOperationException>(() => Rehydrate(new[] { envelope })).Message.ShouldStartWith("LegacyArrayLimit:");
++        }
++        else
++        {
++            using JsonDocument source = JsonDocument.Parse("[{\"eventTypeName\":\"LegacyReplayMutationEvent\",\"payload\":\""
++                + Convert.ToBase64String(bytes) + "\"}]");
++            Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("LegacyArrayLimit:");
++            source.RootElement[0].GetProperty("payload").GetBytesFromBase64().ShouldBe(bytes);
++        }
++
++        bytes[0].ShouldBe((byte)'{');
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks enumerable JsonElement entries share aggregate readable admission before domain callbacks.</summary>
++    [Fact]
++    public void IndividualEnumerableJsonEventsShareTheReadableCeiling()
++    {
++        const int typedBytes = 50 * 1024 * 1024;
++        const int jsonPaddingBytes = 8 * 1024 * 1024;
++        EventEnvelope original = Event(new Dictionary<string, string>());
++        byte[] bytes = new byte[typedBytes];
++        Array.Fill(bytes, (byte)' ');
++        "{\"amount\":1}"u8.CopyTo(bytes);
++        var envelope = new EventEnvelope(original.Metadata, bytes, original.Extensions);
++        string padding = new('a', jsonPaddingBytes);
++        using JsonDocument source = JsonDocument.Parse("{\"eventTypeName\":\"LegacyReplayMutationEvent\",\"amount\":1,\"padding\":\"" + padding + "\"}");
++        (typedBytes + 2L * jsonPaddingBytes).ShouldBeGreaterThan(64L * 1024 * 1024);
++        using var scope = new LegacyReplayMutationScope();
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        Should.Throw<InvalidOperationException>(() => owner.CaptureEvents(new object[] { envelope, source.RootElement, source.RootElement }))
++            .Message.ShouldStartWith("LegacyArrayLimit:");
++        owner.Dispose();
++        source.RootElement.GetProperty("padding").GetString()!.Length.ShouldBe(padding.Length);
++        envelope.Payload[0].ShouldBe((byte)'{');
++        envelope.Payload[^1].ShouldBe((byte)' ');
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks fixed wrapper binding preserves snapshot values and Web numeric-string compatibility.</summary>
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public void JsonSnapshotAndTailPreserveTheOriginalWebBinding(bool numericStrings)
++    {
++        string number = numericStrings ? "\"6\"" : "6";
++        string eventJson = JsonSerializer.Serialize(Event(new Dictionary<string, string>()), new JsonSerializerOptions(JsonSerializerDefaults.Web));
++        using JsonDocument source = JsonDocument.Parse("{\"currentSequence\":" + number + ",\"lastSnapshotSequence\":" + number
++            + ",\"events\":[" + eventJson + "],\"snapshotState\":{\"Total\":7}}");
++        using var scope = new LegacyReplayMutationScope();
++        Rehydrate(source.RootElement).Total.ShouldBe(8);
++        scope.Applied.ShouldBe([1]);
++        source.RootElement.GetProperty("snapshotState").GetProperty("Total").GetInt32().ShouldBe(7);
++    }
++
++    /// <summary>Checks all nested readable payloads are measured before snapshot-aware binding.</summary>
++    [Fact]
++    public void NestedJsonHistoriesShareTheReadableCeilingBeforeBinding()
++    {
++        string payload = new('A', 4 * ((32 * 1024 * 1024 + 2) / 3));
++        string item = "{\"payload\":\"" + payload + "\"}";
++        using JsonDocument source = JsonDocument.Parse("{\"currentSequence\":2,\"events\":[" + item
++            + "],\"snapshotState\":{\"currentSequence\":1,\"events\":[" + item + "]}}");
++        using var scope = new LegacyReplayMutationScope();
++        Should.Throw<InvalidOperationException>(() => Rehydrate(source.RootElement)).Message.ShouldStartWith("LegacyArrayLimit:");
++        scope.Constructed.ShouldBe(0);
++        scope.Applied.ShouldBeEmpty();
++    }
++
++    /// <summary>Checks private JSON survives source disposal and decoded plaintext is cleared at scope disposal.</summary>
++    [Fact]
++    public void JsonAndDecodedPayloadOwnershipEndsWithTheReplayOwner()
++    {
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        JsonElement captured;
++        using (JsonDocument source = JsonDocument.Parse("""[{"eventTypeName":"event","payload":"YWJj"}]"""))
++        {
++            captured = owner.CaptureJson(source.RootElement, reserveEvents: true);
++        }
++
++        byte[] bytes = owner.DecodePayload(captured[0].GetProperty("payload"));
++        bytes.ShouldBe("abc"u8.ToArray());
++        owner.Dispose();
++        bytes.ShouldAllBe(static value => value == 0);
++        Should.Throw<ObjectDisposedException>(() => captured.GetArrayLength());
++    }
++
++    /// <summary>Checks all earlier retained bytes/documents are released when later work refuses, fails or cancels.</summary>
++    [Theory]
++    [InlineData("refusal")]
++    [InlineData("failure")]
++    [InlineData("cancellation")]
++    public void LaterFailureClearsEarlierOwnedBuffersAndDocuments(string outcome)
++    {
++        using JsonDocument source = JsonDocument.Parse("""[{"eventTypeName":"event","payload":"eyJhbW91bnQiOjF9"}]""");
++        string original = source.RootElement.GetRawText();
++        using var cancellation = new CancellationTokenSource();
++        List<byte[]> retained = [];
++        JsonElement captured = default;
++        JsonDocument? payloadDocument = null;
++        Exception error = Should.Throw<Exception>(() =>
++        {
++            using var owner = new LegacyCommandReplayInput(cancellation.Token);
++            captured = owner.CaptureJson(source.RootElement, reserveEvents: true);
++            byte[] bytes = owner.DecodePayload(captured[0].GetProperty("payload"));
++            payloadDocument = owner.ParsePayload(bytes);
++            if (outcome == "failure")
++            {
++                using JsonDocument malformed = JsonDocument.Parse("""[{"eventTypeName":"event","payload":"e2ludmFsaWQ="}]""");
++                JsonElement second = owner.CaptureJson(malformed.RootElement, reserveEvents: true);
++                byte[] invalid = owner.DecodePayload(second[0].GetProperty("payload"));
++                retained.AddRange(PrivateBuffers(owner));
++                using JsonDocument ignored = owner.ParsePayload(invalid);
++            }
++            else
++            {
++                retained.AddRange(PrivateBuffers(owner));
++                if (outcome == "cancellation")
++                {
++                    cancellation.Cancel();
++                    using JsonDocument ignored = owner.ParsePayload(bytes);
++                }
++                else
++                {
++                    using JsonDocument excessive = JsonDocument.Parse("[{\"eventTypeName\":\"event\",\"SerializationFormat\":\""
++                        + new string('<', 90_000) + "\"}]");
++                    _ = owner.CaptureJson(excessive.RootElement, reserveEvents: true);
++                }
++            }
++        });
++        if (outcome == "cancellation")
++        {
++            error.ShouldBeOfType<OperationCanceledException>().CancellationToken.ShouldBe(cancellation.Token);
++        }
++        else if (outcome == "failure") { (error is JsonException).ShouldBeTrue(); }
++        else { error.ShouldBeOfType<InvalidOperationException>().Message.ShouldStartWith("MetadataLimit:"); }
++        retained.Count.ShouldBeGreaterThanOrEqualTo(2);
++        foreach (byte[] buffer in retained) { buffer.ShouldAllBe(static value => value == 0); }
++        Should.Throw<ObjectDisposedException>(() => captured.GetArrayLength());
++        Should.Throw<ObjectDisposedException>(() => payloadDocument!.RootElement.GetRawText());
++        source.RootElement.GetRawText().ShouldBe(original);
++    }
++
++    /// <summary>Checks exact escaped base64 measurement against independent framework decoding.</summary>
++    [Theory]
++    [InlineData("\"YWJj\"")]
++    [InlineData("\"\\u0059WJj\"")]
++    [InlineData("\"\\u002fw==\"")]
++    [InlineData("\"YQ==\\n\"")]
++    [InlineData("\" YW Jj \"")]
++    [InlineData("\"\\u0020YW\\tJj\\r\\n\"")]
++    [InlineData("\"\"")]
++    public void Base64MeasurementMatchesTheFrameworkDecoder(string json)
++    {
++        using JsonDocument source = JsonDocument.Parse(json);
++        byte[] expected = source.RootElement.GetBytesFromBase64();
++        LegacyCommandReplayJsonAdmission.DecodedBase64Length(source.RootElement, CancellationToken.None)
++            .ShouldBe(expected.LongLength);
++        byte[] decoded = new byte[expected.Length];
++        LegacyCommandReplayJsonAdmission.DecodeBase64(source.RootElement, decoded, CancellationToken.None);
++        decoded.ShouldBe(expected);
++    }
++
++    /// <summary>Checks escaped base64 allocates the admitted output without an additional unescape-sized heap buffer.</summary>
++    [Fact]
++    public void EscapedBase64UsesOnlyTheAdmittedOutputBuffer()
++    {
++        using JsonDocument source = JsonDocument.Parse("[{\"eventTypeName\":\"event\",\"payload\":\""
++            + string.Concat(Enumerable.Repeat("\\u0041", 200_000)) + "\"}]");
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        JsonElement captured = owner.CaptureJson(source.RootElement, reserveEvents: true);
++        long before = GC.GetAllocatedBytesForCurrentThread();
++        byte[] decoded = owner.DecodePayload(captured[0].GetProperty("payload"));
++        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
++        decoded.Length.ShouldBe(150_000);
++        allocated.ShouldBeLessThan(decoded.LongLength + 16 * 1024);
++        owner.Dispose();
++        decoded.ShouldAllBe(static value => value == 0);
++    }
++
++    /// <summary>Checks malformed escaped/unescaped base64 is rejected by the incremental decoder.</summary>
++    [Theory]
++    [InlineData("\"YWJ\"")]
++    [InlineData("\"YWJ!\"")]
++    [InlineData("\"YQ==YQ==\"")]
++    [InlineData("\"YQ==\\u00a0\"")]
++    [InlineData("\"YQ==\\f\"")]
++    public void IncrementalBase64RejectsTheExistingInvalidGrammar(string json)
++    {
++        using JsonDocument source = JsonDocument.Parse(json);
++        Should.Throw<FormatException>(() => source.RootElement.GetBytesFromBase64());
++        Should.Throw<FormatException>(() => LegacyCommandReplayJsonAdmission.DecodedBase64Length(source.RootElement, CancellationToken.None));
++    }
++
++    /// <summary>Checks no decode may consume capacity which the owner has not admitted.</summary>
++    [Fact]
++    public void UnadmittedPayloadDecodeRefusesBeforeAllocation()
++    {
++        using JsonDocument source = JsonDocument.Parse("\"YWJj\"");
++        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
++        Should.Throw<InvalidOperationException>(() => owner.DecodePayload(source.RootElement)).Message.ShouldStartWith("LegacyArrayLimit:");
++    }
++
++    /// <summary>Checks cancellation wins before reading even a disposed source document.</summary>
++    [Fact]
++    public void CancellationBeforeAdmissionPreservesTheOriginalToken()
++    {
++        using var cancellation = new CancellationTokenSource();
++        using var owner = new LegacyCommandReplayInput(cancellation.Token);
++        JsonElement source;
++        using (JsonDocument document = JsonDocument.Parse("[]")) { source = document.RootElement; }
++        cancellation.Cancel();
++        Should.Throw<OperationCanceledException>(() => owner.CaptureJson(source, reserveEvents: true))
++            .CancellationToken.ShouldBe(cancellation.Token);
++    }
++
++    private static LegacyReplayMutationState Rehydrate(object source)
++        => DomainProcessorStateRehydrator.RehydrateState<LegacyReplayMutationState>(source,
++            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(LegacyReplayMutationState)))!;
++
++    private static List<byte[]> PrivateBuffers(LegacyCommandReplayInput owner)
++        => (List<byte[]>)typeof(LegacyCommandReplayInput).GetField("_payloads", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(owner)!;
++
++    private static EventEnvelope Event(IReadOnlyDictionary<string, string> extensions)
++        => new(new EventMetadata("message", "aggregate", "mutation", "tenant", "domain", 1, 1,
++            DateTimeOffset.UnixEpoch, "correlation", "cause", "user", "1", nameof(LegacyReplayMutationEvent), 1, "json"),
++            "{\"amount\":1}"u8.ToArray(), extensions);
++}

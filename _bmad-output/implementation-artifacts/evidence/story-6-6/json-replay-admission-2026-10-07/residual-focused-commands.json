@@ -1,0 +1,92 @@
+{
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "source_frozen": true,
+  "owned_files": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs",
+      "sha256": "b99b5e808b3405f8c36799a570fd9e3ca6cce90982298cc315a3880ebd3b0f9d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs",
+      "sha256": "685b40ed7fcfa3788d236e43108b035118d5ed7781136dfd7795a3a807111516"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs",
+      "sha256": "065f32d04253649e19f960f2a09b9259c6c449368c0933a1dc068754edabdc27"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs",
+      "sha256": "63a17a9134d04fa538fd3a0ab68999ae073fae7cd8ffe85866dd2175af6d7f2b"
+    }
+  ],
+  "preliminary_previous_lanes": "/tmp/story-6-6-json-admission-final-commands.json",
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-residual-build.log",
+      "observation": "Intermediate residual build before valid typed-payload fixture; zero warnings/errors",
+      "archived_log": "story-6-6-json-admission-residual-build.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-residual-build-valid-fixture.log",
+      "observation": "Final residual source hash build; zero warnings/errors",
+      "archived_log": "story-6-6-json-admission-residual-build-valid-fixture.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-class",
+        "*LegacyCommandReplayJsonAdmissionTests",
+        "-class",
+        "*LegacyCommandReplayInputTests",
+        "-class",
+        "*DomainProcessorStateRehydratorTests"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-residual-focused.log",
+      "observation": "101 tests; zero errors/failures/skips/not-run",
+      "archived_log": "story-6-6-json-admission-residual-focused.log"
+    },
+    {
+      "argv": [
+        "dotnet",
+        "run",
+        "--project",
+        "/tmp/story-6-6-json-admission-readable-mutation-axm2fk2o/Probe.csproj",
+        "--configuration",
+        "Release",
+        "--no-launch-profile"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/story-6-6-json-admission-readable-baseline.log",
+      "observation": "Baseline-only isolated owner capture; refused below256MiB, caller unchanged. Parent supplied independent mutation evidence; no duplicate mutant run.",
+      "archived_log": "story-6-6-json-admission-readable-baseline.log"
+    }
+  ],
+  "independent_readable_mutation": {
+    "original": "/tmp/eventstore-json-readable-mutation-y_fsgf7n/original/output.log",
+    "mutant": "/tmp/eventstore-json-readable-mutation-y_fsgf7n/mutant/output.log"
+  }
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "argv": [
+      "python3",
+      "scripts/verify-event-evolution.py",
+      "--mutations"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-10-07T12:23:09.205463+00:00",
+    "elapsed_seconds": 0.715,
+    "log": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/current-preflight.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "scripts/check-deferred-work.py",
+      "--json"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-10-07T12:23:09.920431+00:00",
+    "elapsed_seconds": 0.054,
+    "log": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/deferred-ledger.log"
+  },
+  {
+    "argv": [
+      "test",
+      "-f",
+      "deploy/dapr/production-profile.yaml"
+    ],
+    "exit_code": 1,
+    "started_utc": "2026-10-07T12:23:09.974274+00:00",
+    "elapsed_seconds": 0.004,
+    "log": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/production-profile.log"
+  }
+]

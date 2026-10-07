@@ -1,0 +1,2 @@
+Fixture readable=69206114, cap=67108864; JSON entry readable=8388657, document=16778338
+Guard assertion PASSED: LegacyArrayLimit: legacy command-state envelope admission failed.; readable-counter=60817457, accounted-if-all-admitted=171994110, cap=268435456

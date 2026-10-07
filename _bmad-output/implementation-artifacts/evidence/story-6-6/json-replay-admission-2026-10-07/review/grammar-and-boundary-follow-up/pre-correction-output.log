@@ -1,0 +1,17 @@
+uppercase payload: Total=1
+uppercase payload without gate control: Total=1
+trailing comma: Total=7
+comment: Total=7
+base64 "YWJj": measured=3,actual=3
+base64 "\u0059WJj": measured=3,actual=3
+base64 "YQ==\n": measured=1,actual=1
+base64 " YQ==\u0009": measured=1,actual=1
+base64 "\u002f w==": measured=1,actual=1
+base64 "\u0009": measured=0,actual=0
+capitalized wrapper payload: Total=1
+large raw ignored metadata name: Total=1
+escaped-name default-Web event size: 100430
+large escaped ignored metadata name: InvalidOperationException: MetadataLimit: legacy command-state JSON admission failed.
+base64 framework differential cases: 20000, mismatches: 0
+independent timestamp metadata boundary controls: 30, mismatches: 0
+escaped fixed metadata alias controls: 17, contradictory aliases rejected: 17

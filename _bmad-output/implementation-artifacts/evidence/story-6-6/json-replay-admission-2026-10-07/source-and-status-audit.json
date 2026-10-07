@@ -1,0 +1,17 @@
+{
+  "head": "02e99bfa282ace7d56a1d7d7ad5c0321f63293e3",
+  "frozen_block_unchanged": true,
+  "baseline_preserved": true,
+  "m1_m8_unchecked": true,
+  "status": "in-progress",
+  "source_sha256": {
+    "src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs": "685b40ed7fcfa3788d236e43108b035118d5ed7781136dfd7795a3a807111516",
+    "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayInput.cs": "b99b5e808b3405f8c36799a570fd9e3ca6cce90982298cc315a3880ebd3b0f9d",
+    "src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs": "065f32d04253649e19f960f2a09b9259c6c449368c0933a1dc068754edabdc27",
+    "tests/Hexalith.EventStore.Client.Tests/Handlers/LegacyCommandReplayJsonAdmissionTests.cs": "63a17a9134d04fa538fd3a0ab68999ae073fae7cd8ffe85866dd2175af6d7f2b"
+  },
+  "owned_diff_bytes": 96134,
+  "audit_correction": "First task check incorrectly counted only backtick-prefixed task rows (7); corrected to all M1-M8 rows (8). Frozen block and baseline comparisons passed in both checks.",
+  "observed_final_utc": "2026-10-07T12:43:10.686131+00:00",
+  "all11local_review_patches_checked": true
+}

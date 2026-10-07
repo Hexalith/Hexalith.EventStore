@@ -1,0 +1,31 @@
+Validating isolated package-only consumer for Hexalith.EventStore.Contracts...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-oesz3xs3/PackageConsumer.csproj (in 292 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-oesz3xs3/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.71
+Validating isolated package-only consumer for Hexalith.EventStore.Client...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-930o0_86/PackageConsumer.csproj (in 477 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-930o0_86/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.74
+Validating isolated package-only consumer for Hexalith.EventStore.DomainService...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-8_5akmwj/PackageConsumer.csproj (in 768 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-8_5akmwj/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.68
+Validated 3 isolated package-only consumers and 0 isolated tool consumers at version 999.0.0-ci-test.

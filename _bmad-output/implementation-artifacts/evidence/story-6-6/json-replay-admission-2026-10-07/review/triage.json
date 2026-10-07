@@ -1,0 +1,134 @@
+{
+  "scope": "owned local JSON replay admission prerequisite, not complete Story 6.6",
+  "all_layers_reported": true,
+  "failed_layers": [],
+  "decision_needed": 0,
+  "patch_groups": 11,
+  "defer_groups": 0,
+  "rejected": 1,
+  "findings": [
+    {
+      "id": 1,
+      "source": "blind-hunter",
+      "title": "Inline Payload compatibility",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Current/before replay probes demonstrate an ordinary capitalized Payload value now fails base64 admission; exact inline classification must match replay."
+    },
+    {
+      "id": 2,
+      "source": "blind-hunter",
+      "title": "Comments and trailing commas",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Current/before ordinary state probes show previously accepted parsed JSON is now rejected by default measurement and private parse options."
+    },
+    {
+      "id": 3,
+      "source": "blind-hunter",
+      "title": "Decoded JSON token-table budget",
+      "verdict": "high",
+      "route": "patch",
+      "evidence": "Independent 32 MiB token probe admits 156596650 bytes then allocates a 268435456-byte parsed token table; combined 425032106 exceeds the 268435456-byte ceiling before callbacks."
+    },
+    {
+      "id": 4,
+      "source": "blind-hunter",
+      "title": "Base64 decoder scratch",
+      "verdict": "high",
+      "route": "patch",
+      "evidence": "Retained whitespace probe decodes zero bytes but allocates 16777240 bytes beyond the measured 33555536-byte document charge. Incremental decoding removes opaque scratch."
+    },
+    {
+      "id": 5,
+      "source": "blind-hunter",
+      "title": "Fixed metadata aliases",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Retained reflection probe accepts contradictory eventTypeName/EventTypeName before case-insensitive metadata binding; fixed known metadata aliases must be checked."
+    },
+    {
+      "id": 6,
+      "source": "blind-hunter",
+      "title": "Repeated nested subtree copies",
+      "verdict": "low",
+      "route": "rejected",
+      "evidence": "Static repeated charges cover actual copies. The previous wrapper binder likewise copied nested subtrees; no mandatory acceptance boundary was demonstrated. Tracking owned views would add complexity for a rare conservative refusal."
+    },
+    {
+      "id": 7,
+      "source": "blind-hunter",
+      "title": "Positive metadata boundaries",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Existing tests prove only over-limit escaped metadata. Accepted below/at-limit default-Web images have no independent positive controls, risking blanket or off-by-one refusals."
+    },
+    {
+      "id": 8,
+      "source": "blind-hunter",
+      "title": "Cleanup after failures",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Existing ownership assertion covers success disposal only. Replay refusal/failure/cancellation after private capture lacks retained-private-memory assertions."
+    },
+    {
+      "id": 9,
+      "source": "edge-case-hunter",
+      "title": "Inline Payload compatibility",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Independent current/before linked-source probes reproduce the same capitalized inline Payload regression; grouped with finding 1."
+    },
+    {
+      "id": 10,
+      "source": "edge-case-hunter",
+      "title": "Comments and trailing commas",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Independent current/before linked-source probes reproduce state Total=7 previously accepted versus current refusal; grouped with finding 2."
+    },
+    {
+      "id": 11,
+      "source": "verification-gap",
+      "title": "Enumerable JsonElement readable budget",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Pre-verified filed evidence: no enumerable-of-individual-JsonElements test covers eventRoot/countAlreadyAdmitted; flipping reserveEvents false allows two individually admissible 33 MiB events to bypass the aggregate 64 MiB readable limit."
+    },
+    {
+      "id": 12,
+      "source": "acceptance-auditor",
+      "title": "Inline Payload compatibility",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Actual rebuilt DLL probe confirms AC2 compatibility regression for inline Payload=!; grouped with findings 1 and 9."
+    },
+    {
+      "id": 13,
+      "source": "parent-follow-up",
+      "title": "Large ignored metadata name amplification",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Frozen linked-source probe: one accepted 400000-byte ignored metadata key charges815810 but allocates15509528 bytes during fixed binding. This is aggregate allocation, not measured simultaneous-live peak. Repeated property.Name decoding causes the amplification; bounded alias matching preserves compatibility."
+    },
+    {
+      "id": 14,
+      "source": "blind-hunter-follow-up",
+      "title": "Enumerable readable guard masked by accounted ceiling",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Two32MiB base64 fixtures exceed both64MiB readable and256MiB accounted; removing only JSON readable accumulation can leave the original LegacyArrayLimit assertion green. Mixed typed50MiB plus two inline8MiB entries isolates66MiB readable while accounted stays below256MiB."
+    },
+    {
+      "id": 15,
+      "source": "edge-case-hunter-follow-up",
+      "title": "Equivalent escaped ignored metadata names refused",
+      "verdict": "medium",
+      "route": "patch",
+      "evidence": "Raw100000-character ignored name succeeds; equivalent Unicode-escaped name fails raw-name512KiB guard, despite independently emitted metadata100430 bytes. Bounded NameMatches removes the earlier allocation reason for this raw-length refusal."
+    }
+  ],
+  "patch_groups_applied": 11,
+  "remaining_local_patch_groups": 0,
+  "full_parent_story_status": "in-progress"
+}
