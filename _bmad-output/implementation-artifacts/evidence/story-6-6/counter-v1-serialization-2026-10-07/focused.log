@@ -1,0 +1,8 @@
+The '-xml' switch has been deprecated in favor of '-result-xml' and will be removed in the next major version
+
+  Discovering: Hexalith.EventStore.Sample.Tests
+  Discovered:  Hexalith.EventStore.Sample.Tests
+  Starting:    Hexalith.EventStore.Sample.Tests
+  Finished:    Hexalith.EventStore.Sample.Tests (ID = '78ecae69f9581b0c2443c2c12932f4a0b428500c8fc284f5c625f688f381d45b')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Sample.Tests  Total: 17, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.386s

@@ -1,0 +1,36 @@
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Events.CounterPostgresqlLogicalReadbackProbe.BoundedCounterWriterPreservesLogicalBytesAcrossTwoHostsAndRestart [FAIL]
+      Shouldly.ShouldAssertException : first.StatusCode
+          should be
+      HttpStatusCode.Accepted
+          but was
+      HttpStatusCode.Forbidden
+      Stack Trace:
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/CounterPostgresqlLogicalReadbackProbe.cs(29,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Events.CounterPostgresqlLogicalReadbackProbe.BoundedCounterWriterPreservesLogicalBytesAcrossTwoHostsAndRestart()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    [Test Collection Cleanup Failure (Oq8Postgresql)] Xunit.Sdk.TestPipelineException
+      Collection fixture type 'Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture' threw in DisposeAsync
+      ---- System.InvalidOperationException : OQ8 evidence retained a private path or forbidden closure claim.
+      Stack Trace:
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(1450,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.EnsureSanitized(String value)
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(1489,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.<ScanBoundedDiagnostics>b__98_1(String value)
+           at System.Linq.Enumerable.ArraySelectIterator`2.Fill(ReadOnlySpan`1 source, Span`1 destination, Func`2 func)
+           at System.Linq.Enumerable.ArraySelectIterator`2.ToArray()
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(1486,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.ScanBoundedDiagnostics()
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(1312,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.BuildEvidenceJsonAsync()
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(1405,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.EmitEvidenceIfRequestedAsync()
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(631,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.DisposeAsync()
+        /tmp/story66-counter-postgresql-vrm78c8q/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs(636,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8PostgresqlFixture.DisposeAsync()
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = 'c88715e4ea1e9761d78ba2733e7ad4cd25e6d85a62d15e61080d542870a3532e')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 1, Failed: 1, Skipped: 0, Not Run: 0, Time: 10.872s

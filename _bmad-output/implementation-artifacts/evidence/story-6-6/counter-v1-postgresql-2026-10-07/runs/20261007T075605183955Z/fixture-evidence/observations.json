@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "captureKind": "debug-entry-binaries-test-seams-sidecar-postgresql",
+  "capturedOn": "2026-10-07",
+  "topology": {
+    "eventStoreProcessCount": 2,
+    "eventStoreSidecarCount": 2,
+    "sampleProcessCount": 1,
+    "sampleSidecarCount": 1,
+    "independentProcessIdentities": true
+  },
+  "profile": {
+    "name": "oq8-postgresql-v1",
+    "stateStoreType": "state.postgresql",
+    "stateComponentSha256": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+    "resiliencySha256": "115bdb0d3d330c69920692a80654066937e6b2dd3bd18806c0b276e1de011645"
+  },
+  "runtime": {
+    "dotnet": "10.0.12",
+    "dapr": "1.18.4",
+    "postgresImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "postgresImageIdentity": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+  },
+  "executionConfiguration": {
+    "shippedReleaseEntryAssemblies": false,
+    "shadowCopiedBeforeLaunch": true,
+    "environmentName": "Testing",
+    "testOnlyHostingStartup": true,
+    "productionConfigurationUntouched": false,
+    "seams": [
+      "deterministic-time",
+      "idempotency-intent-adapter",
+      "boundary-counter"
+    ]
+  },
+  "artifacts": {
+    "eventStoreSha256": "ad8e0106d3445798f70f2fc0d1da413696e7720187ff3e9b550a761037717af7",
+    "sampleSha256": "f44a62a215af9bbdb282cf126cd1e25a1af27c38dc7165f5d6c2354c5eb19da4",
+    "eventStoreRuntimeSetSha256": "ea678129fdeb3e73ba108bf31be3e1fe4cb2f569a4e03af277eb38c2a302fced",
+    "sampleRuntimeSetSha256": "4024674d4b626285f6608cf35ef6b752ca2084bdbbfb96f9765edb26cb4f6fdc",
+    "hostingStartupSha256": "8145022b36ea87778f531e6f3bd6ee92d7e7a84a5f935253b956f91c6c246758",
+    "additionalDepsSha256": "7fdc6ab0e453b2bf57976cfe9023f9dd60a9b1d95dcb4a510070fcbe274327fc"
+  },
+  "diagnostics": {
+    "streamsScanned": 12,
+    "boundedCharacterLimitPerStream": 32768,
+    "forbiddenTermClassesScanned": [
+      "protected-input",
+      "protected-result",
+      "request-identifier",
+      "test-key-material",
+      "bearer-token",
+      "database-credential",
+      "private-path"
+    ],
+    "postRedactionProtectedMatches": 0,
+    "rawDiagnosticsCommitted": false,
+    "sanitizedProjectionSha256": "281ac0f0a85863112e201138119ea1b7d234238e1ebd5fa7eaf9c48271b8407d"
+  },
+  "observations": {
+    "counter-bounded-v1-logical-readback": {
+      "observedHosts": 2,
+      "hostRestarted": true,
+      "payloadSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "eventMessageIdentitySha256": "60d987ad4abf821060f96c04f986b4552b681a43dd88580bb7ed84c0f48dc123",
+      "commandMessageIdentitySha256": "6b3aa6c6b71f0b75fefc50b259a10966ad5282549624ab8b05d599f268484b8f",
+      "sequence": 1,
+      "distinctDomainExecutions": 1,
+      "persistedLogicalEventUnchanged": true,
+      "directDatabaseReads": 0
+    }
+  }
+}

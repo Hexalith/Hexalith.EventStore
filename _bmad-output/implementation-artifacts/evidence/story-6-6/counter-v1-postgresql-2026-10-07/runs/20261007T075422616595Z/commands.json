@@ -1,0 +1,123 @@
+[
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "label": "revision",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.002
+  },
+  {
+    "command": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ],
+    "label": "daprd-version",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.059
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/tmp/story66-counter-postgresql-ys35u2pp/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "--configuration",
+      "Debug",
+      "-m:1",
+      "-warnaserror",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:HexalithEventStoreRoot=/home/administrator/projects/hexalith/eventstore",
+      "-p:HexalithCommonsRoot=/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons",
+      "-p:HexalithTenantsBasePath=/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src"
+    ],
+    "label": "build",
+    "timeoutSeconds": 180,
+    "exitCode": 0,
+    "elapsedSeconds": 10.179
+  },
+  {
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-story66-placement-20261007t075422616595z",
+      "--entrypoint",
+      "./placement",
+      "-p",
+      "127.0.0.1:25582:50005",
+      "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e"
+    ],
+    "label": "placement-start",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.552
+  },
+  {
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-story66-scheduler-20261007t075422616595z",
+      "--entrypoint",
+      "./scheduler",
+      "-p",
+      "127.0.0.1:26552:50006",
+      "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "--etcd-data-dir=/tmp/story66-scheduler",
+      "--etcd-client-listen-address=0.0.0.0",
+      "--override-broadcast-host-port=127.0.0.1:26552"
+    ],
+    "label": "scheduler-start",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.527
+  },
+  {
+    "command": [
+      "dotnet",
+      "/tmp/story66-counter-postgresql-ys35u2pp/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-noLogo",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.CounterPostgresqlLogicalReadbackProbe",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-6/counter-v1-postgresql-2026-10-07/runs/20261007T075422616595Z/test.xml"
+    ],
+    "label": "logical-readback",
+    "timeoutSeconds": 240,
+    "exitCode": 1,
+    "elapsedSeconds": 11.501,
+    "failureType": "RuntimeError"
+  },
+  {
+    "command": [
+      "docker",
+      "rm",
+      "-f",
+      "767f658fc966011551ad735bea211c6c08c4358399d30f6348aa62c5fb730232"
+    ],
+    "label": "scheduler-cleanup",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.562
+  },
+  {
+    "command": [
+      "docker",
+      "rm",
+      "-f",
+      "20ea32d89b8e2bd6166da2313d469436ed8b8de577a209fa26172c5feeb71354"
+    ],
+    "label": "placement-cleanup",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.571
+  }
+]

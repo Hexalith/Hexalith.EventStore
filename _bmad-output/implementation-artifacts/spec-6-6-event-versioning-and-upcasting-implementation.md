@@ -68,6 +68,33 @@ context:
 
 ## Implementation Notes
 
+### Source-derived Counter writer and Dapr/PostgreSQL recovery — 2026-10-07
+
+The owner directed this resumed run to derive the missing declarations and
+qualification inputs from the repository. The root-owned Counter host now
+registers its six exact V1/json serializer declarations: five two-byte marker
+events and a maximum 309-byte framework termination rejection. The existing
+bounded router selects this profile; independent byte/alias compatibility,
+refusal, cancellation and count controls pass. Other domains retain their
+existing compatibility behavior.
+
+The [Counter writer and PostgreSQL logical recovery evidence](evidence/story-6-6/verification-2026-10-07-counter-v1-postgresql.md)
+records the actual Sample/actor/Dapr path with two EventStore hosts, immutable
+application bytes and metadata, separate stable command/event identities,
+sequence-one end state, exactly one domain execution, duplicate/failover/restart
+recovery and exact owned-resource cleanup. The original sealed OQ8 fixture is
+preserved; the probe instruments a temporary copy. This Testing profile uses
+Dapr 1.18.4 and the tracked PostgreSQL v1 state component, with Redis pub/sub and
+fixture authentication; it supplies no AD-26 production authority. Focused
+Sample tests passed 17/17, full Sample tests 175/175, the live test 1/1, and the
+required package-mode Release solution build had zero warnings/errors.
+
+This completes these local Counter writer and recovery prerequisites. Full
+catalog/artifact admission, qualified loader observations, all consumer
+integrations and production/fleet qualification remain required. Frozen intent,
+canonical baseline, in-progress status, M1–M8 dispositions and activation fences
+are unchanged.
+
 ### Dapr-only slice — 2026-10-05
 
 The dormant SQL control adapter, its tests and Npgsql footprint were removed.
@@ -139,6 +166,8 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-07 — On the owner's direction to derive the inputs, implemented and registered the [source-derived Counter V1 serializer declarations](evidence/story-6-6/verification-2026-10-07-counter-v1-serialization.md) and verified the real Sample/actor path with [two-host Dapr/PostgreSQL logical recovery](evidence/story-6-6/verification-2026-10-07-counter-v1-postgresql.md). Exact wire compatibility, persisted bytes/metadata, stable separate identities, sequence-one state, once-only domain execution and restart recovery passed. Full Sample regressions and the required Release build passed. These local prerequisites do not close M1–M8 or grant catalog/production/V2 readiness; frozen intent, baseline and parent status are preserved.
 
 - 2026-10-07 — Closed the local [bounded V1 scratch-admission verification prerequisite](evidence/story-6-6/verification-2026-10-07-bounded-v1-scratch-admission.md): independent 42/43 one-MiB serialized-source controls, a zero-callback refusal sentinel, exact unchanged-source/detached-output checks and an isolated killing mutation of only the scratch guard. The full Debug/source DomainService suite passed 494 tests. Runtime/profile/registration APIs and the compatible router fallback were unchanged; authoritative application serializer declarations and broader catalog/Dapr/fleet qualification remain required. Frozen intent, canonical baseline, in-progress status and all M1–M8 tasks are unchanged.
 

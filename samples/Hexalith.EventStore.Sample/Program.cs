@@ -1,4 +1,5 @@
 using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.Sample.Counter;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // This project writes only its domain code plus this host. The /project endpoint dispatches to the discovered
 // CounterProjection handler (Epic A3) — the domain no longer hand-maps it.
 builder.AddEventStoreDomainService();
+builder.Services.AddCounterEventSerialization();
 
 bool malformedProjectionResponse = builder.Configuration
     .GetValue<bool>("EventStore:SampleFaults:MalformedProjectResponse");

@@ -1,0 +1,40 @@
+[
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "label": "revision",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.002
+  },
+  {
+    "command": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ],
+    "label": "daprd-version",
+    "timeoutSeconds": 120,
+    "exitCode": 0,
+    "elapsedSeconds": 0.063
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/tmp/story66-counter-postgresql-35ux5jxk/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "--configuration",
+      "Debug",
+      "-m:1",
+      "-warnaserror",
+      "-p:UseHexalithProjectReferences=true"
+    ],
+    "label": "build",
+    "timeoutSeconds": 180,
+    "exitCode": 1,
+    "elapsedSeconds": 4.827,
+    "failureType": "RuntimeError"
+  }
+]
