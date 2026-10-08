@@ -206,10 +206,12 @@ public static class EventStoreDomainServiceExtensions {
     }
 
     /// <summary>
-    /// Maps the canonical HTTP endpoints the EventStore gateway invokes on a domain service. Every route requires
-    /// the Dapr application-channel token plus an EventStore workload assertion granting the route's operation
-    /// (see <see cref="EventStoreDomainServiceRoutes"/>); none is anonymous:
+    /// Maps the protected status root and the canonical HTTP endpoints the EventStore gateway invokes on a domain
+    /// service. Every route requires the Dapr application-channel token plus a validated EventStore workload
+    /// assertion. The status root uses <see cref="EventStoreDomainServicePolicies.AnyWorkload"/>; operational routes
+    /// additionally require their catalog operation (see <see cref="EventStoreDomainServiceRoutes"/>):
     /// <list type="bullet">
+    /// <item><description><c>GET /</c> — returns the constant <c>Hexalith EventStore domain service</c> label for any authenticated workload.</description></item>
     /// <item><description><c>POST /process</c> — routes a command to the keyed domain processor.</description></item>
     /// <item><description><c>POST /replay-state</c> — reconstructs aggregate state through the Apply convention.</description></item>
     /// <item><description><c>POST /query</c> — dispatches a query to the matching <see cref="IDomainQueryHandler"/>.</description></item>
