@@ -1,0 +1,222 @@
+{
+  "startedAtUtc": "2026-10-08T08:33:16.121493+00:00",
+  "completedAtUtc": "2026-10-08T08:34:07.634892+00:00",
+  "commands": [
+    {
+      "command": [
+        "aspire",
+        "start",
+        "--isolated",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-start.log",
+      "sha256": "4b6a331eb8f05536e90eca006ba89b650ff2a6a8198eeb65079ab1f4ee7bbffa"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "eventstore",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-eventstore.log",
+      "sha256": "e056e1a64a8eba7b84f5ec762a2b9a3f82e0ae00548a75dc4e69e15def70baf1"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "eventstore-admin",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-eventstore-admin.log",
+      "sha256": "0d794676241f164bd0441787c3d22721cf484da2e8aaad66fb869dafe6e64710"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "eventstore-admin-ui",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-eventstore-admin-ui.log",
+      "sha256": "d40ae86527a08416e0b1dd03b34c1254ce51e8ce97d074c9e68cd58a07a510b3"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "sample",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-sample.log",
+      "sha256": "dc8819e73575d6143731b9c27b839a9db59c3905cbd04deb97ea59b46d663d98"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "sample-api",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-sample-api.log",
+      "sha256": "61f5dc8c6711d9d1a0d1c9f568a4156b7b33c19f028676596a68390cda50e606"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "sample-blazor-ui",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-sample-blazor-ui.log",
+      "sha256": "28e27fa8a211afb3091078f81033136aef1f4380e2ff5f89047380c15026fcf2"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "tenants-api",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-tenants-api.log",
+      "sha256": "3dff00e570e4bdd3e42842640739d092ed1798a176d642d11f95798ca98f5674"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "security",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-wait-security.log",
+      "sha256": "ca7db177f759680ddb8f2a61908171ffe862b7dadb3e7b5e44d7587cd98297a1"
+    },
+    {
+      "command": [
+        "aspire",
+        "describe",
+        "--format",
+        "Json",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-describe.log",
+      "sha256": "f90ba19b56b499211b0e6486f68985400b9bd5574020dd446e85457fe67fb379"
+    },
+    {
+      "command": [
+        "aspire",
+        "logs",
+        "--format",
+        "Json",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-console.log",
+      "sha256": "19f82a057b06693946561ef43b4ca9ea06cc1427f7c4623ba7ba12fd9f593a5b"
+    },
+    {
+      "command": [
+        "aspire",
+        "stop",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "log": "review-runtime-stop.log",
+      "sha256": "e122616cb442df5e99ecbf0effb30d593310441376a97f585f12770f6977e570"
+    }
+  ],
+  "requiredServices": [
+    "eventstore",
+    "eventstore-admin",
+    "eventstore-admin-ui",
+    "sample",
+    "sample-api",
+    "sample-blazor-ui",
+    "tenants-api",
+    "security"
+  ],
+  "resourcesPath": "review-runtime-resources.json",
+  "resourcesSha256": "58fc83d79bf9c230cf6b42ec689026403916514049e18b9d71a4c5596183898d",
+  "resourceCount": 30,
+  "requiredServicesRunningHealthy": true,
+  "allModeledResourcesRunningHealthy": true,
+  "consolePath": "review-runtime-console.log",
+  "consoleSha256": "19f82a057b06693946561ef43b4ca9ea06cc1427f7c4623ba7ba12fd9f593a5b",
+  "binaryFailureCounts": {
+    "TypeLoadException": 0,
+    "MissingMethodException": 0,
+    "MissingFieldException": 0,
+    "FileLoadException": 0
+  },
+  "beforeInputs": {
+    "sha256": {
+      "references/Hexalith.Builds/Props/Directory.Packages.props": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+      "references/Hexalith.Builds/Tools/package-version-exceptions.json": "240f4ebd3d4d98e51ac141ba0c12994e0680e39a1f238e770f45e5a2994da7c1",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": "d77e20113b68d21260a6bbf8a9648b769fe4b5e6b1b54681900a202bcef5b1f6",
+      "src/Hexalith.EventStore.AppHost/Program.cs": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+      "references/Hexalith.Tenants/Directory.Build.props": "d527484a6528bd36087a222951b7b8b3cdc46f1f886c6c7b38ae6be2f95750a0",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": "ec962a92d60c0107281b6067341f39ae640333cf48e6b6505377fe9d9425430d",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": "03c3a6d90ee14b92bf9d5ef4e7ca6e773f9a74a65313b361c11851803824f81c"
+    },
+    "revisions": {
+      ".": "b830d9829af70536d2a3fd21c5e2a23b2ca2f256",
+      "references/Hexalith.Builds": "ad52c5bdd4361c59eedf12a16620150006403584",
+      "references/Hexalith.Tenants": "86aa888301b40cda12b000f68d9292d53cd93efe"
+    }
+  },
+  "afterInputs": {
+    "sha256": {
+      "references/Hexalith.Builds/Props/Directory.Packages.props": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+      "references/Hexalith.Builds/Tools/package-version-exceptions.json": "240f4ebd3d4d98e51ac141ba0c12994e0680e39a1f238e770f45e5a2994da7c1",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": "d77e20113b68d21260a6bbf8a9648b769fe4b5e6b1b54681900a202bcef5b1f6",
+      "src/Hexalith.EventStore.AppHost/Program.cs": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+      "references/Hexalith.Tenants/Directory.Build.props": "d527484a6528bd36087a222951b7b8b3cdc46f1f886c6c7b38ae6be2f95750a0",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": "ec962a92d60c0107281b6067341f39ae640333cf48e6b6505377fe9d9425430d",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": "03c3a6d90ee14b92bf9d5ef4e7ca6e773f9a74a65313b361c11851803824f81c"
+    },
+    "revisions": {
+      ".": "b830d9829af70536d2a3fd21c5e2a23b2ca2f256",
+      "references/Hexalith.Builds": "ad52c5bdd4361c59eedf12a16620150006403584",
+      "references/Hexalith.Tenants": "86aa888301b40cda12b000f68d9292d53cd93efe"
+    }
+  },
+  "inputsStableDuringRun": true,
+  "driverSha256": "3b441975e0ea10eff303806cf9085cbe721c7eac1800c898faeb992e67fc6a5b",
+  "note": "Current unchanged pins; explicit isolated start, eight waits, describe, logs, and stop. Failure counts are computed from the retained sanitized console bytes and checked against raw in-memory output. Prior observations remain history.",
+  "describeSanitization": "Environment and property payloads were removed from the retained full describe output; actual names, states, and health statuses remain intact in both describe output and the separate resource list."
+}

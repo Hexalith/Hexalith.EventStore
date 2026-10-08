@@ -44,12 +44,12 @@ state.Apply(Event)                          // fold events back into state
 |----------|-----------|---------|------|
 | Runtime | .NET | `net10.0` (SDK 10.0.401) | Target framework |
 | Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.10` | State store, pub/sub, actors, service invocation |
-| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.0` (Keycloak/K8s `13.6.0-preview.1.26479.8`) | Local topology + publish targets |
+| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.1` (Keycloak/K8s `13.6.1-preview.1.26506.6`) | Local topology + publish targets |
 | DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.0-preview.1.261001-0243` | DAPR sidecar wiring in AppHost |
 | Mediation | MediatR | `14.2.0` | CQRS command/query pipeline |
 | Validation | FluentValidation (+ DI extensions) | `12.1.1` | Command/query/options validation |
 | Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.12` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
-| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.12` / `10.2.3` | OpenAPI 3.1 + Swagger UI |
+| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.12` / `10.3.0` | OpenAPI 3.1 + Swagger UI |
 | Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.12` | Projection-changed notifications + Redis backplane |
 | UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.0` | Blazor admin + sample UI |
 | CLI | `System.CommandLine` | `2.0.12` | Admin CLI tool |

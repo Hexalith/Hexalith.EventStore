@@ -1,0 +1,212 @@
+[
+  {
+    "name": "eventstore-admin-dapr-cli-pbtmxzze",
+    "displayName": "eventstore-admin-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-admin-sdqxsapf",
+    "displayName": "eventstore-admin",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-admin-ui-dapr-cli-mrcepxgp",
+    "displayName": "eventstore-admin-ui-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-admin-ui-wzpepwdb",
+    "displayName": "eventstore-admin-ui",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-app-api-token",
+    "displayName": "eventstore-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-dapr-cli-pmqhefry",
+    "displayName": "eventstore-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "eventstore-qefdqybh",
+    "displayName": "eventstore",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-admin-password",
+    "displayName": "local-auth-admin-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-admin-user-id",
+    "displayName": "local-auth-admin-user-id",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-admin-username",
+    "displayName": "local-auth-admin-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-sample-password",
+    "displayName": "local-auth-sample-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-sample-user-id",
+    "displayName": "local-auth-sample-user-id",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-sample-username",
+    "displayName": "local-auth-sample-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-signing-key",
+    "displayName": "local-auth-signing-key",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "local-auth-workload-client-secret",
+    "displayName": "local-auth-workload-client-secret",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-api-dapr-cli-bpczdtks",
+    "displayName": "sample-api-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-api-rbwfthxw",
+    "displayName": "sample-api",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-app-api-token",
+    "displayName": "sample-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-blazor-ui-dapr-cli-ucwjemdb",
+    "displayName": "sample-blazor-ui-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-blazor-ui-mjyvvgzy",
+    "displayName": "sample-blazor-ui",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-dapr-cli-vbacmgnm",
+    "displayName": "sample-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "sample-dxyfdwat",
+    "displayName": "sample",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "security-eavsgudt",
+    "displayName": "security",
+    "resourceType": "Container",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "security-eventstore-client-password",
+    "displayName": "security-eventstore-client-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "security-eventstore-client-username",
+    "displayName": "security-eventstore-client-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "tenants-api-dapr-cli-hvxpeahw",
+    "displayName": "tenants-api-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "tenants-api-nnaqedbp",
+    "displayName": "tenants-api",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "tenants-app-api-token",
+    "displayName": "tenants-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "tenants-dapr-cli-adyjagtc",
+    "displayName": "tenants-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "name": "tenants-mbujbncr",
+    "displayName": "tenants",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  }
+]

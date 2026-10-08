@@ -1,0 +1,338 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Contracts.Tests
+  Discovered:  Hexalith.EventStore.Contracts.Tests
+  Starting:    Hexalith.EventStore.Contracts.Tests
+    Hexalith.EventStore.Contracts.Tests.Packaging.TrustedEffectPackageContractTests.NamedPackagesExposeTrustedEffectContracts [SKIP]
+      EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+    Hexalith.EventStore.Contracts.Tests.Packaging.PackagedReminderApiTests.PackagedReminderApiRunsWithoutWorksTypes [SKIP]
+      EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+    Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync [FAIL]
+      Shouldly.ShouldAssertException : exitCode
+          should be
+      0
+          but was
+      1
+      
+      Additional Info:
+          Shared consumer package authority validation failed.
+      
+      Consumer package authority validation failed with 306 error(s):
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj does not evaluate CentralPackageVersionOverrideEnabled=false.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj does not import the authoritative catalog marker.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Gateway'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Azure.Messaging.ServiceBus'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.AI.Microsoft.Extensions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Folders'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authentication.OpenIdConnect'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.Protocols'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Projects.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Testing.Extensions.CodeCoverage'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Basecamp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.KeyValueStorages.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.WebServer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'ModelContextProtocol.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Grpc.HealthCheck'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Security.ApiServer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Docker'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.PolymorphicSerializations'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj resolves 'Hexalith.EventStore.Server' to '[3.115.0]' instead of '3.115.0'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Instrumentation.StackExchangeRedis'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Folders.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OrchardCore.Localization.Core'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.NetAspire.Defaults'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Mvc.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NUlid'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Aspire'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Projects'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.TeamsFx'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NBomber'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Google.Apis'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Hosting.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Threenine.Data'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Microsoft.Azure.Cosmos'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FsCheck.Xunit.v3'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FluentValidation'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.WebApp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Identity.Http'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Admin.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Azure.Cosmos'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.Server'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Discord'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Instrumentation.Http'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Memories.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FsCheck'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Moq'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.Storage.Blobs'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.OpenApi'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Applications'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AdaptiveCards'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Applications.Commands.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.NetAspire.Hosting'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.ServiceDefaults'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.IdentityStores.UI'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Shopify'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.UI'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Azure.Storage.Blobs'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.TypeScript.MSBuild'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FluentValidation.DependencyInjectionExtensions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Configuration.UserSecrets'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Configuration.FileExtensions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NFalkorDB'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Enrichers.Process'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.CodeAnalysis.Analyzers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Folders.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Sinks.File'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Configurations'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Playwright'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Redis'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Kreuzberg'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'xunit.runner.visualstudio'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'xunit.v3'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.AI'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Google.Apis.Auth.AspNetCore3'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Keycloak'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Options.ConfigurationExtensions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.Web'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.UI'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.SignalR.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.WebAssembly.Authentication'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'SonarAnalyzer.CSharp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.KeyValueStorages'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.Requests'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.TimeProvider.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authentication.JwtBearer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Roslynator.Analyzers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Radzen.Blazor'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.ResourceManager.KeyVault'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Verify.XunitV3'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj resolves 'Hexalith.EventStore.ServiceDefaults' to '[3.115.0]' instead of '3.115.0'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Moq.Contrib.HttpClient'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.SourceLink.GitHub'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Newtonsoft.Json'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.WebAssembly'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.Identity'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NetArchTest.eNhancedEdition'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NBomber.Http'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Sinks.Debug'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.DataProtection'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Slack'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Exporter.InMemory'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.Actors'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Okta'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Notion'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.OpenApi'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Yahoo'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'BenchmarkDotNet'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.WebAssembly.Server'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Deque.AxeCore.Commons'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.KeyValueStorages.DaprComponents'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.ServiceDefaults'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.Logging'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Localization'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Extensions.Hosting'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NSwag.MSBuild'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.WebAssembly.DevServer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Logging.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.FrontComposer.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'coverlet.collector'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.Threading.Tasks.Extensions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.LinkedIn'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.Commands'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.IdentityStores.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.Reactive'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.KeyValueStorages.Files'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Testcontainers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AdaptiveCards.Templating'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.Actors.Generators'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Amazon'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.Picker'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.GitHub'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Swashbuckle.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.ConsumerPortal'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.Protocols.OpenIdConnect'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Cocona'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Aspire'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.ResourceManager.CognitiveServices'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.CodeAnalysis.CSharp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'MessagePack'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Hosting'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Paypal'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Configuration.Binder'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'docfx.console'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.Server'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.ServiceDiscovery'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'StyleCop.Analyzers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.CodeAnalysis.Workspaces.Common'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Graph'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Azure.Security.KeyVault'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.ResourceManager.Logic'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.DependencyInjection'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Admin.Server'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Http.Resilience'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Deque.AxeCore.Playwright'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.RestApi.Generators'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.IdentityModel.Tokens.Jwt'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.FrontComposer.Mcp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Instagram'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Scriban'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Configuration.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Shouldly'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Identity'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj resolves 'Hexalith.EventStore.Client' to '[3.115.0]' instead of '3.115.0'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'CompareNETObjects'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.Testing.Integration'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Exporter.OpenTelemetryProtocol'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Reddit'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Publication'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'CommunityToolkit.Aspire.Hosting.Dapr'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Apple'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Diagnostics.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Folders.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Projects.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.Monitor.OpenTelemetry.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Instrumentation.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'JsonSchema.Net'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.SemanticKernel'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.ComponentModel.Annotations'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.IdentityStores'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'ObjectComparator'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Octokit'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'xunit.v3.assert'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Sinks.Browser'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'MailKit'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NRedisStack'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.Actors.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.ApiServer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Chatbot.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.TenantAccess'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'xunit.v3.extensibility.core'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Projects.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'SendGrid'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Conversations.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Sinks.Console'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Tenants.Aspire'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.DataProtection.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Security.WebApp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'HotChocolate'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authentication.MicrosoftAccount'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'NSubstitute'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Swashbuckle.AspNetCore.SwaggerUI'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.ResourceManager'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Kubernetes'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Conversations.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.JsonWebTokens'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.Tokens'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Options'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.UniqueIds'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Folders.Aspire'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.Text.Json'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Http'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.FluentUI.AspNetCore.Components'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Enrichers.Environment'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.ResourceManager.ContainerRegistry'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FluentAssertions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.AdminPortal'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Security.WebServer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Http'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'MediatR'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'ModelContextProtocol'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.Security.KeyVault.Secrets'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.VisualStudio.Threading.Analyzers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Memories.Aspire'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.FrontComposer.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'LibGit2Sharp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Instrumentation.GrpcNetClient'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.Contracts'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Identity.Stores'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.EventStore.SignalR'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authentication.Facebook'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.FluentUI.AspNetCore.Components.Icons'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Fluxor'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Grpc'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.NET.Test.Sdk'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Applications.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.FrontComposer.Shell'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Enrichers.Thread'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.Collections.Immutable'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'PactNet'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Azure.Bicep.Core'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Memories.Client.Rest'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.TestHost'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Fluxor.Blazor.Web'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Documents.UI.Components'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Verify'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Serialization'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Azure.AppContainers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.IdentityModel.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Domains.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.PolymorphicSerializations.CodeGenerators'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Dapr.Workflow'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'bunit'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Azure.Storage.Queues'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Domains'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Metadatas'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Identity.Web'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'FluentValidation.AspNetCore'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.FrontComposer.SourceTools'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'MinVer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Serilog.Formatting.Compact'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.SignalR.StackExchangeRedis'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj resolves 'Hexalith.EventStore.Contracts' to '[3.115.0]' instead of '3.115.0'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.Diagnostics'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authorization'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Authentication.Google'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Parties.Testing'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'ByteAether.Ulid'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Humanizer'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AspNet.Security.OAuth.Twitter'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj resolves 'Hexalith.EventStore.DomainService' to '[3.115.0]' instead of '3.115.0'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Projects.ServiceDefaults'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'System.CommandLine'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Configuration'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Grpc.Net.ClientFactory'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'OpenTelemetry.Instrumentation.Runtime'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'SendGrid.Extensions.DependencyInjection'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Options.DataAnnotations'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'YamlDotNet'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'GitHubActionsTestLogger'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.Authorization'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.CodeAnalysis.Common'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'AngleSharp'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.AspNetCore.Components.CustomElements'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Bot.Builder'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'StackExchange.Redis'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Roslynator.Formatting.Analyzers'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Commons.StringEncoders'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Hexalith.Applications.Commands'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.CodeAnalysis.CSharp.Workspaces'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'ISO3166'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Aspire.Hosting.Azure.CosmosDB'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.DependencyInjection.Abstractions'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Identity.Client'.
+      - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj is missing authoritative PackageVersion 'Microsoft.Extensions.Localization.Abstractions'.
+      
+      Stack Trace:
+        tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs(171,0): at Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Contracts.Tests (ID = 'b69d49f0f9139b7985e167ba5b193262fef0e808f1d6fb5e5ea11ca27e981d2a')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Contracts.Tests  Total: 2279, Errors: 0, Failed: 1, Skipped: 2, Not Run: 0, Time: 274.701s

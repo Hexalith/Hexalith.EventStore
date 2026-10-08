@@ -1,0 +1,45 @@
+{
+  "sourcePath": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs",
+  "sourceSha256": "afbef85dbe2c47fbf0b8a50d498c750169ef4b68b8c4008be0afa3ed4b121ea5",
+  "excludedPaths": [
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.props",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.targets",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/domain/Domain.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/host/Host.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj"
+  ],
+  "sealedFiles": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props",
+      "expectedCanonicalSha256": "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28",
+      "actualCanonicalSha256": "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28",
+      "rawSha256": "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj",
+      "expectedCanonicalSha256": "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c",
+      "actualCanonicalSha256": "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c",
+      "rawSha256": "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c"
+    }
+  ],
+  "checksumPath": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/SHA256SUMS",
+  "checksumSha256": "8ed6796c906c00c1d5da928d1b5797e80108803f257c14a39167af525a9b15a5",
+  "canonicalization": "UTF-8 decode/encode with CRLF replaced by LF, matching VerifySealedPackageObservation",
+  "completedAtUtc": "2026-10-08T08:31:58.791186+00:00",
+  "command": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/consumer_authority.py"
+  ],
+  "exitCode": 0,
+  "driverSha256": "12ea8cc40ce45e4bf2d63dd1555baae4b0e356521b449eb3468490cddcf6f423"
+}

@@ -1,0 +1,180 @@
+{
+  "schema": "hexalith.eventstore.current-ci-local-verification.v1",
+  "capturedAtUtc": "2026-10-08T07:53:43Z",
+  "authoritative": false,
+  "baselineCommit": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+  "sourceState": "pre-review implementation snapshot; later review patches and verification are recorded separately",
+  "workingDirectory": "/tmp/eventstore-ci-release-current",
+  "sdk": "10.0.401",
+  "testedSourceHashes": {
+    ".gitattributes": "620474aabcda135bac8ae2b97c86d16db9da678e38ac3da839304c835fc08682",
+    "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json": "c5da45778d526ac083ff43a4ce0361dc241617638dec432f355fc5151ee19e93",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs": "62eb27964316c36b5b8a755ddfe6bbfabe9b5904423661c0bb033184ff14f29a",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs": "526c09f9937f1b4a633282a70a73e1aa8b6bb22aed618eef0cb734151c7221f7",
+    "tests/Hexalith.EventStore.ProviderVerification/ProviderVerificationHost.cs": "2d1ea9d2a4d796d1ad504758684ff145f1d727b798ef50bfe3a9c00c121c5eb7"
+  },
+  "preservedCaptureHashes": {
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props": "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj": "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/aspire-retry-describe.log": "920af53b3660885236289c92e78c8841a64b1f0df978a8e35d8b53dab991e2e7"
+  },
+  "aspireBaseline": {
+    "commands": [
+      "aspire start --isolated --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "aspire describe --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json",
+      "aspire stop --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+    ],
+    "exitCodes": [
+      0,
+      0,
+      0
+    ],
+    "result": "The isolated AppHost started; eventstore, sample-api, security and tenants-api were Running. The isolated AppHost was stopped successfully before build validation."
+  },
+  "completedChecks": [
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "result": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-contracts-build.log",
+      "outputSha256": "5ecedf667cf9546da872161ca856749c445e87a2f8e17472a4df110ea23c4de6",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-contracts-build.log"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "result": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-server-build.log",
+      "outputSha256": "0f4c1b8121ce7b816dde895ca608030511c2156d8e24f6586076dd5851ee92c2",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-server-build.log"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "result": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-provider-build.log",
+      "outputSha256": "fd3ba3136a0b8650b87ac47d2efbbdf16806ad842e79079a3bc12f444a4e66d8",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-provider-build.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.ArchivedPackageObservationExemptionRejectsDriftAndSiblingOverridesAsync -method Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorRejectsNonExemptExecutableOverrideAsync -noColor",
+      "exitCode": 0,
+      "result": {
+        "total": 14,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-contracts-focused.log",
+      "outputSha256": "914b603c1f713af194dc782573477a11b4425d24689c8ca336e15c19c8325b97",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-contracts-focused.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests -noColor",
+      "exitCode": 0,
+      "result": {
+        "total": 69,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-secrets-final.log",
+      "outputSha256": "b6ab15ff431a37e08984a689e778b1c01811d8b26cd157272a3c7144eb2caf2a",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-secrets-final.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -noColor",
+      "exitCode": 0,
+      "result": {
+        "total": 3951,
+        "failed": 0,
+        "skipped": 25,
+        "notRun": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-server-final.log",
+      "outputSha256": "3f92236bce4709b979fb3c70f9cba1c6ab315514c939229f1d419069fbb92fb5",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-server-final.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll -noColor",
+      "exitCode": 0,
+      "result": {
+        "total": 83,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-provider-full.log",
+      "outputSha256": "67dcf243e13cb736ab9dff4196b9324619b920de9c3ee9b248dfa29b02d30b98",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-provider-full.log"
+    },
+    {
+      "command": "python3 tools/validate-oq8-platform-evidence.py",
+      "exitCode": 0,
+      "result": {
+        "message": "OQ8 platform evidence validation passed."
+      },
+      "completeOutputLocalPath": "/tmp/eventstore-current-oq8-final.log",
+      "outputSha256": "1924f622671a38e882930ceed9fda53b02558fea3aa28371382678bb6a4d6f20",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-oq8-final.log"
+    },
+    {
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false",
+      "completeOutputLocalPath": "/tmp/eventstore-current-solution-build.log",
+      "exitCode": 0,
+      "result": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "outputSha256": "a697dd5fbcc15f339f09c11554a80fc07bea803ba39d971fa49dd7e9881659d7",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-solution-build.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor",
+      "completeOutputLocalPath": "/tmp/eventstore-current-contracts-final.log",
+      "dependency": "Runs after the Release solution build exits zero.",
+      "exitCode": 0,
+      "result": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "outputSha256": "a697dd5fbcc15f339f09c11554a80fc07bea803ba39d971fa49dd7e9881659d7",
+      "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-solution-build.log"
+    }
+  ],
+  "diffHygiene": {
+    "command": "git diff --check",
+    "exitCode": 0
+  },
+  "initialContractsFailure": {
+    "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor",
+    "exitCode": 1,
+    "total": 2279,
+    "failed": 1,
+    "skipped": 2,
+    "completeOutputLocalPath": "/tmp/eventstore-current-contracts-before-companion.log",
+    "outputSha256": "92f522057ab202571d59b94f4597a0fc258cd8ac3b94c7e8ab01c0c4ed263ece",
+    "diagnostic": "The frozen companion Identity.csproj was evaluated as a live consumer and produced 306 catalog-authority errors. The final exact hash-bound map also covers that preserved companion; its drift controls now pass.",
+    "retainedOutputPath": "_bmad-output/implementation-artifacts/evidence/current-ci-release-2026-10-08/logs/before-review/eventstore-current-contracts-before-companion.log"
+  },
+  "pendingChecks": [],
+  "limitations": [
+    "Full Server retains 25 existing skipped DW1 ATDD placeholders.",
+    "The initial unfiltered Contracts run skipped two existing package-contract cases because EVENTSTORE_PACKAGE_CONTRACT_DIR is unset; the final rerun uses the same environment.",
+    "Independent review, Git preflight/mutations, exact merged-main CI and Commitlint, protected ordinary Release, and GitHub/NuGet publication validation remain with the parent."
+  ],
+  "interruptedContractsAttempt": {
+    "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor",
+    "result": "Interrupted during implementation-to-review handoff; no full-suite conclusion recorded. An unchanged Dapr process test had hit its five-second deadline and passed independently. Parent reruns the full suite.",
+    "partialOutputSha256": "3aaa60820358575e9f73ecb6ebded319dc28ebadb111e0c3330effc4be0470a7"
+  }
+}

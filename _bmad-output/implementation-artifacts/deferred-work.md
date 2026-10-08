@@ -5654,3 +5654,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
   summary: Assert release step presence before testing relative order.
   evidence: TrustedPublishingReleaseTests compares IndexOf values without requiring the first revalidation step name to exist; deleting that name returns -1 and still passes the ordering assertion.
+
+- source_spec: `spec-update-latest-packages-and-aspire.md`
+  summary: Verify representative Azure integration registration and publishing-model behavior for external Aspire consumers (unverified medium compatibility concern).
+  evidence: The package refresh compiled and loaded public integration types and ran the local topology; no failing external Azure path was reproduced. A concrete supported consumer reproduction and an offline model test or authorized live service check would settle the concern.

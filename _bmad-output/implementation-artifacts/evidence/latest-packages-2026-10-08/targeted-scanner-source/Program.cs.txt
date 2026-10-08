@@ -1,0 +1,39 @@
+using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using System.Runtime.Loader;
+using System.Security.Cryptography;
+using System.Text.Json;
+
+string root = args[0];
+string packet = args[1];
+string assemblyPath = args[2];
+string scannerSource = args[3];
+byte[] expectedHash = SHA256.HashData(File.ReadAllBytes(scannerSource));
+using var stream = File.OpenRead(assemblyPath);
+using var pe = new PEReader(stream);
+using var provider = MetadataReaderProvider.FromPortablePdbStream(File.OpenRead(Path.ChangeExtension(assemblyPath, ".pdb")));
+var reader = provider.GetMetadataReader();
+var sourceDocument = reader.Documents.Select(handle => reader.GetDocument(handle)).Single(document => reader.GetString(document.Name).EndsWith("/Security/SecretsProtectionTests.cs", StringComparison.Ordinal));
+if (!reader.GetBlobBytes(sourceDocument.Hash).SequenceEqual(expectedHash)) throw new InvalidOperationException("Compiled scanner source differs from current SecretsProtectionTests.cs");
+AssemblyLoadContext.Default.Resolving += (context, name) =>
+{
+    string path = Path.Combine(Path.GetDirectoryName(assemblyPath)!, name.Name + ".dll");
+    return File.Exists(path) ? context.LoadFromAssemblyPath(path) : null;
+};
+var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+var scanner = assembly.GetType("Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests", throwOnError: true)!;
+var method = scanner.GetMethod("FindViolations", BindingFlags.NonPublic | BindingFlags.Static, [typeof(string), typeof(string)]) ?? throw new InvalidOperationException("Existing scanner method not found");
+var decode = scanner.GetMethod("DecodeTrackedText", BindingFlags.NonPublic | BindingFlags.Static, [typeof(string), typeof(byte[])]) ?? throw new InvalidOperationException("Existing decoder method not found");
+var files = Directory.GetFiles(packet, "*", SearchOption.AllDirectories).Where(path => !path.Contains("/__pycache__/", StringComparison.Ordinal)).Order().ToArray();
+var violations = new List<string>();
+var recognizedBinaryArtifacts = new List<string>();
+foreach (string file in files)
+{
+    string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+    string? content = (string?)decode.Invoke(null, [relative, File.ReadAllBytes(file)]);
+    if (content is null) { recognizedBinaryArtifacts.Add(relative); continue; }
+    violations.AddRange((IEnumerable<string>)(method.Invoke(null, [relative, content]) ?? throw new InvalidOperationException("Existing scanner returned null")));
+}
+Console.WriteLine(JsonSerializer.Serialize(new { scannerSourceSha256 = Convert.ToHexString(expectedHash).ToLowerInvariant(), compiledSourceMatchesCurrent = true, scannedFileCount = files.Length, recognizedBinaryArtifacts, violations }, new JsonSerializerOptions { WriteIndented = true }));
+return violations.Count == 0 ? 0 : 1;

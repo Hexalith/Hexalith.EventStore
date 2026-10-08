@@ -1,0 +1,92 @@
+  Determining projects to restore...
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 466 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests.csproj (in 505 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj (in 517 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Operations/Hexalith.EventStore.Operations.csproj (in 506 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj (in 5 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.LoadTests.Tests/Hexalith.EventStore.LoadTests.Tests.csproj (in 577 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj (in 574 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Cli.Tests/Hexalith.EventStore.Admin.Cli.Tests.csproj (in 576 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj (in 526 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj (in 599 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj (in 13 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj (in 20 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj (in 576 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Operations.Tests/Hexalith.EventStore.Operations.Tests.csproj (in 514 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj (in 20 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 22 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.UI.E2E/Hexalith.EventStore.Admin.UI.E2E.csproj (in 29 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj (in 525 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 25 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj (in 110 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj (in 617 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj (in 5 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj (in 29 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj (in 20 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj (in 621 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj (in 60 ms).
+  Restored /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj (in 97 ms).
+  Restored /tmp/eventstore-ci-release-current/perf/Hexalith.EventStore.LoadTests/Hexalith.EventStore.LoadTests.csproj (in 13 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Testing.Integration/Hexalith.EventStore.Testing.Integration.csproj (in 70 ms).
+  Restored /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj (in 56 ms).
+  Restored /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 20 ms).
+  22 of 53 projects are up-to-date for restore.
+  Hexalith.EventStore.LoadTests -> /tmp/eventstore-ci-release-current/perf/Hexalith.EventStore.LoadTests/bin/Release/net10.0/Hexalith.EventStore.LoadTests.dll
+  Hexalith.EventStore.Contracts -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Sample.Contracts -> /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample.Contracts/bin/Release/net10.0/Hexalith.EventStore.Sample.Contracts.dll
+  Hexalith.EventStore.Client -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.ServiceDefaults/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.RestApi.Generators -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.RestApi.Generators/bin/Release/netstandard2.0/Hexalith.EventStore.RestApi.Generators.dll
+  Hexalith.EventStore.Sample.Api -> /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample.Api/bin/Release/net10.0/Hexalith.EventStore.Sample.Api.dll
+  Hexalith.EventStore.SignalR -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.SignalR/bin/Release/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Sample.BlazorUI -> /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample.BlazorUI/bin/Release/net10.0/Hexalith.EventStore.Sample.BlazorUI.dll
+  Hexalith.EventStore.DomainService -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.DomainService/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Sample -> /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample/bin/Release/net10.0/Hexalith.EventStore.Sample.dll
+  Hexalith.EventStore.Sample.Tests -> /tmp/eventstore-ci-release-current/samples/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll
+  Hexalith.EventStore.Admin.Abstractions -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Abstractions/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Admin.Cli -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Cli/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.dll
+  Hexalith.EventStore.Admin.Mcp -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Mcp/bin/Release/net10.0/Hexalith.EventStore.Admin.Mcp.dll
+  Hexalith.EventStore.Admin.Server -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Server/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Hexalith.EventStore.Admin.Server.Host -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.Server.Host/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+  Hexalith.EventStore.Admin.UI -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Admin.UI/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.dll
+  Hexalith.EventStore.Server -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore/bin/Release/net10.0/Hexalith.EventStore.dll
+  Hexalith.EventStore.TestSubscriber -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll
+  Hexalith.EventStore.Aspire -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Aspire/bin/Release/net10.0/Hexalith.EventStore.Aspire.dll
+  Hexalith.EventStore.AppHost -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.AppHost/bin/Release/net10.0/Hexalith.EventStore.AppHost.dll
+  Hexalith.EventStore.Operations -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Operations/bin/Release/net10.0/Hexalith.EventStore.Operations.dll
+  Hexalith.EventStore.Testing -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Testing/bin/Release/net10.0/Hexalith.EventStore.Testing.dll
+  Hexalith.EventStore.Testing.Integration -> /tmp/eventstore-ci-release-current/src/Hexalith.EventStore.Testing.Integration/bin/Release/net10.0/Hexalith.EventStore.Testing.Integration.dll
+  Hexalith.EventStore.Admin.Abstractions.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Abstractions.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.Tests.dll
+  Hexalith.EventStore.Admin.Cli.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Cli.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.Tests.dll
+  Hexalith.EventStore.Admin.Mcp.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Mcp.Tests.dll
+  Hexalith.EventStore.Admin.Server.Host.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Server.Host.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Host.Tests.dll
+  Hexalith.EventStore.Admin.Server.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Tests.dll
+  Hexalith.EventStore.Admin.UI.E2E -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.E2E.dll
+  Hexalith.EventStore.Admin.UI.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Admin.UI.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll
+  Hexalith.EventStore.AppHost.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll
+  Hexalith.EventStore.Client.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll
+  Hexalith.EventStore.Contracts.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll
+  Hexalith.EventStore.DeferredWorkGovernance.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/bin/Release/net10.0/Hexalith.EventStore.DeferredWorkGovernance.Tests.dll
+  Hexalith.EventStore.DomainService.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll
+  Hexalith.EventStore.IntegrationTests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll
+  Hexalith.EventStore.LoadTests.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.LoadTests.Tests/bin/Release/net10.0/Hexalith.EventStore.LoadTests.Tests.dll
+  Hexalith.EventStore.OperationalEvidence.Validator.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/bin/Release/net10.0/Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll
+  Hexalith.EventStore.Operations.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Operations.Tests/bin/Release/net10.0/Hexalith.EventStore.Operations.Tests.dll
+  Hexalith.EventStore.ProviderVerification -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll
+  Hexalith.EventStore.ProviderVerification.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+  Hexalith.EventStore.QueryRouting.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll
+  Hexalith.EventStore.RestApi.Generators.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll
+  Hexalith.EventStore.Sample.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll
+  Hexalith.EventStore.Server.LiveSidecar.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll
+  Hexalith.EventStore.Server.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll
+  Hexalith.EventStore.SignalR.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.SignalR.Tests/bin/Release/net10.0/Hexalith.EventStore.SignalR.Tests.dll
+  Hexalith.EventStore.Testing.Integration.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Testing.Integration.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Integration.Tests.dll
+  Hexalith.EventStore.Testing.Tests -> /tmp/eventstore-ci-release-current/tests/Hexalith.EventStore.Testing.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:59.05

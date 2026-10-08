@@ -31,10 +31,11 @@ published source generator. [final-build-results.json](final-build-results.json)
 [accepted-consumer-tests.log](accepted-consumer-tests.log) retain the commands
 and results.
 
-Final catalog/default and Folders evaluations, Dapr, exception inventory,
-consumer authority, and documentation checks passed. Consumer authority uses
+Catalog/default and Folders evaluations, Dapr, exception inventory,
+consumer authority, and documentation checks passed. The earlier authority run used
 the existing repository test source's 16 exact standalone-evidence exclusions
-and passes for 82 projects. Concurrent user edits to that exclusion inventory
+and passed for 82 projects. The current 15-exclusion run with sealed-file preflight
+is recorded under review follow-up verification below. Concurrent user edits to that exclusion inventory
 were preserved. The raw scan reports historical fixture declarations; an
 intermediate configured scan overlapped the temporary version rollback and
 reported inconsistent snapshots. Those logs are superseded by the final scan
@@ -79,7 +80,9 @@ failure and rejected candidate are retained separately; no direct consumer was
 fabricated and no validator was relaxed. This limitation does not prevent
 selection/provenance finalization. After local installation/validation, an
 external commit incorporated the exact audit bytes at observed Builds revision
-`ad52c5bdd4361c59eedf12a16620150006403584`. EventStore's SDK edit remains local.
+`ad52c5bdd4361c59eedf12a16620150006403584`. EventStore's SDK edit was local at
+that capture; later external root commits incorporated it. Final review observed
+root revision `b830d982`; this task performed no Git mutations.
 [finalized-input-provenance.json](finalized-input-provenance.json) records the
 final observed revisions/hashes and asserts unchanged tested runtime inputs.
 [final-checkout-state.json](final-checkout-state.json) records the earlier
@@ -129,3 +132,68 @@ and the FsCheck/xUnit property case (100 generated inputs). FrontComposer
 SourceTools is exercised during compilation of `CatalogProjection`; the
 Swashbuckle aggregate and generated Swagger dependencies are also exercised by
 the solution build and running gateway.
+
+## Review follow-up verification
+
+Earlier command results remain time-bound history. The current Contracts source
+defines 15 exact exclusions. Its two sealed-file digests and checksum-file
+entries passed before the unchanged consumer-authority validator passed for
+82 projects. [consumer-authority-sealed-preflight.json](consumer-authority-sealed-preflight.json)
+and [consumer-authority-after-sealed-preflight.json](consumer-authority-after-sealed-preflight.json)
+bind the current source, exclusions, sealed bytes, catalog, and validator.
+The reproducible driver is [consumer_authority.py](consumer_authority.py).
+
+The unchanged isolated consumer passed another 20/20 run. Its actual restored
+`project.assets.json` and runtime `Probe.deps.json` are retained unchanged as the
+only two entries in [Probe.resolved-inputs.zip](consumer-resolved/Probe.resolved-inputs.zip),
+a standard deterministic ZIP. The passing assembly digest is retained too.
+[consumer-resolved-capture.json](consumer-resolved-capture.json) binds the archive
+and uncompressed entry hashes, the version-free source, current central pins,
+and the passing test log. Raw plaintext copies remain in the recorded temporary
+directory. The historical absolute import is checked against its
+recorded capture origin and owned catalog suffix/digest, so validation remains
+portable across relocated checkouts.
+
+The explicit isolated runtime check passed again and stopped successfully.
+[review-runtime-results.json](review-runtime-results.json) binds all eight
+waits, the actual 30-resource describe list, current before/after source hashes,
+and [sanitized console output](review-runtime-console.log). The zero binary
+failure counts are recomputed from that retained output. Environment/property
+payloads were removed from the retained full describe output; resource names,
+states, and health remain intact.
+
+The verifier now uses explicit failures that remain active under Python
+optimization. It checks actual describe resources, exact required service
+names, current source hashes, resolved manifests, source/test/digest bindings,
+and the sealed preflight. This targeted exercise passed:
+
+```bash
+python3 _bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/exercise_verifier.py
+```
+
+[review-verifier-checks.json](review-verifier-checks.json) records an optimized
+passing packet and thirteen malformed copies rejected without changing original
+captures, plus a valid historical import origin at a different checkout path.
+It also checks the two corrected project-overview version cells and
+the packet's `-text` rule under `core.autocrlf=true`. Existing capture bytes were
+preserved.
+
+The targeted secrets check uses the existing scanner's exact
+`DecodeTrackedText` and `FindViolations(path, content)` path for packet files,
+including new untracked captures. Its portable-PDB source digest binds the implementation to current
+unchanged test source; earlier helper setup failures remain historical logs.
+The owning Server.Tests project was rebuilt with its tracked test policy,
+Release/package mode, and no restore after the prior binary's source digest
+proved stale. No scanner source or warning policy was changed.
+The earlier plaintext scan reported 32 findings in the exact raw assets/deps
+captures, all at legitimate NuGet package metadata (including KeyVault Secrets,
+UserSecrets, BearerToken, and restored project/framework entries). Its structural
+metadata exception covers only three IdentityModel package names in selected
+positions. Its exact failures remain in
+[targeted-secrets-scanner-raw-json.log](targeted-secrets-scanner-raw-json.log).
+The actual manifest bytes now remain inside the ZIP, which the existing decoder
+recognizes as binary evidence. The verifier requires exactly those two members,
+checks their uncompressed hashes, and parses their untouched JSON bytes.
+This preserves resolved inputs and uses the existing artifact policy without
+rewriting metadata or changing the scanner. The stored-packet scan result is in
+[targeted-secrets-scanner.json](targeted-secrets-scanner.json).

@@ -1,0 +1,18 @@
+{
+  "recordedAtUtc": "2026-10-08T08:47:04.956095+00:00",
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-restore",
+    "-m:1",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "exitCode": 0,
+  "warnings": 0,
+  "errors": 0,
+  "elapsedSeconds": 10.35,
+  "note": "Owning project rebuilt with tracked test policy after portable-PDB verification detected stale scanner source; no warning policy or source was changed."
+}

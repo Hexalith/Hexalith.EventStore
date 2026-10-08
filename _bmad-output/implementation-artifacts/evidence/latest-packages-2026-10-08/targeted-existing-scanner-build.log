@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  Restored /tmp/eventstore-packet-secrets-pbpoj_q3/Scanner.csproj (in 77 ms).
+  Scanner -> /tmp/eventstore-packet-secrets-pbpoj_q3/bin/Release/net10.0/Scanner.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.02

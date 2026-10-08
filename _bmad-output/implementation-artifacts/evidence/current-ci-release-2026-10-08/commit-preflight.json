@@ -1,0 +1,26 @@
+{
+  "schema": "current-ci-release.commit-preflight.v1",
+  "candidateFullMessage": "fix(ci): restore current main validation and release readiness\n",
+  "command": "./node_modules/.bin/commitlint --config commitlint.config.mjs --edit /tmp/eventstore-current-ci-commit-message.txt --verbose",
+  "cliVersion": "21.1.0",
+  "configurationSha256": "796a04abdd8c35e645f654c9d8d571556f34ccf4ab3611c9327697a452add38d",
+  "exitCode": 0,
+  "validationOutput": "\u29d7   --- input ---\nfix(ci): restore current main validation and release readiness\n\u2714   found 0 problems, 0 warnings\n",
+  "mutationsPerformed": false,
+  "branchRules": {
+    "mainRequiresPullRequest": true,
+    "allowedMergeMethods": [
+      "squash"
+    ],
+    "requiredChecks": [
+      "advisory",
+      "ci / build-and-test",
+      "ci / tenants-source-mode",
+      "codeql / analyze",
+      "commitlint / commitlint",
+      "dependency-review / dependency-review",
+      "live-sidecar"
+    ]
+  },
+  "publicationOwnershipAwaitingUserReply": true
+}

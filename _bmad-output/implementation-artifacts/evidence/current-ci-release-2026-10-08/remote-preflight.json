@@ -1,0 +1,51 @@
+{
+  "sourceSha": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+  "ciRunId": 37742090359,
+  "testFailures": [
+    {
+      "test": "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync",
+      "artifact": "contracts/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.trx"
+    },
+    {
+      "test": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+      "artifact": "blocking/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.trx"
+    },
+    {
+      "test": "Hexalith.EventStore.ProviderVerification.Tests.RealKestrelPactTests.ProductionPipeline_AcceptedPactRequiresMatchingPerRunCredential(useMatchingCredential: True, expectedResultCode: \"interaction.passed\")",
+      "artifact": "blocking/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.trx"
+    }
+  ],
+  "observedUtc": "2026-10-08T07:33:09.074273+00:00",
+  "originalRepair": {
+    "sourceSha": "4ae9cee1e9abe050402fd1405a9abd54892ba13f",
+    "version": "3.102.0",
+    "ciRunId": 33910572828,
+    "commitlintRunId": 33910572816,
+    "releaseRunId": 33948044490,
+    "releaseLogRequest": {
+      "command": "gh api repos/Hexalith/Hexalith.EventStore/actions/runs/33948044490/logs",
+      "exitCode": 1,
+      "result": "HTTP 410; bypass input cannot be reconstructed"
+    },
+    "githubAndNugetPackageCount": 14,
+    "contractsPassed": true,
+    "allNuspecSourceCommitsMatch": true,
+    "publicBytesDifferOnlyByNuGetSignature": true
+  },
+  "currentReleasePolicy": {
+    "protectedEnvironment": "production",
+    "requiredReviewerApproval": true,
+    "publicationEnabled": true,
+    "publisherSha": "22a578b576a515d2af214fe81859447fffc97981",
+    "packageCount": 14,
+    "ordinaryDispatchRequired": true
+  },
+  "originalOq8FocusedValidation": {
+    "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
+    "passed": 483,
+    "failed": 0,
+    "skipped": 0,
+    "checkoutAdvancedDuringRun": true,
+    "limitation": "The shared checkout advanced during this local run; this result is focused evidence, not exact-source CI proof."
+  }
+}

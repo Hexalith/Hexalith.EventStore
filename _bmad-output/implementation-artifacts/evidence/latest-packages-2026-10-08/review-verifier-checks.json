@@ -1,0 +1,200 @@
+{
+  "completedAtUtc": "2026-10-08T09:00:06.903515+00:00",
+  "positiveCommand": [
+    "python3",
+    "-O",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py"
+  ],
+  "positiveExitCode": 0,
+  "positiveOutput": "PASS: Candidate, Aspire, Preview, Incomplete family, Compatibility, and Provenance matrix checks; 304 decisions match the current catalog.",
+  "historicalOriginPortability": {
+    "command": [
+      "python3",
+      "-O",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+      "--evidence-dir",
+      "/tmp/eventstore-relocated-evidence-ek2bhfq4/packet"
+    ],
+    "exitCode": 0,
+    "output": "PASS: Candidate, Aspire, Preview, Incomplete family, Compatibility, and Provenance matrix checks; 304 decisions match the current catalog.",
+    "historicalCatalogOrigin": "/recorded/previous-checkout/references/Hexalith.Builds/Props/Directory.Packages.props"
+  },
+  "negativeCases": [
+    {
+      "name": "unhealthy-actual-resource",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-3sdl588g/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Actual modeled resource is unhealthy"
+    },
+    {
+      "name": "missing-required-resource",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-j8geal9t/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Actual resource list must contain 30 resources"
+    },
+    {
+      "name": "wrong-required-names",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-2355jvp5/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Required service names changed"
+    },
+    {
+      "name": "runtime-input-drift",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-89y5lpkm/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Runtime source drift: src/Hexalith.EventStore.AppHost/Program.cs"
+    },
+    {
+      "name": "binary-failure-with-valid-digest",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-nwx7526n/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Binary failure summary does not match retained console"
+    },
+    {
+      "name": "resolved-asset-drift",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-y2xm2vs0/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Actual resolved direct packages differ from the capture"
+    },
+    {
+      "name": "runtime-dependency-drift",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-6cxxq978/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Runtime dependency absent from restored assets: Aspire.Hosting/13.6.0"
+    },
+    {
+      "name": "consumer-source-drift",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-orr7rzdm/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Retained evidence digest mismatch: isolated-consumer-source/CatalogProjection.cs.txt"
+    },
+    {
+      "name": "malformed-resource-shape",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-6zi1cbrv/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Actual resource list must contain 30 resources"
+    },
+    {
+      "name": "sealed-preflight-drift",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-qgw82cbe/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Retained evidence digest mismatch: consumer-authority-sealed-preflight.json"
+    },
+    {
+      "name": "extra-resolved-archive-member",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-n_6r0j93/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Resolved archive must contain exactly the two actual manifests"
+    },
+    {
+      "name": "wrong-uncompressed-entry-digest",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-er1m1rgm/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: Uncompressed actual manifest digest mismatch: project.assets.json"
+    },
+    {
+      "name": "malformed-resolved-archive",
+      "command": [
+        "python3",
+        "-O",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py",
+        "--evidence-dir",
+        "/tmp/eventstore-malformed-evidence-2l9dv7_0/packet"
+      ],
+      "exitCode": 1,
+      "output": "FAIL: File is not a zip file"
+    }
+  ],
+  "originalCapturesUnchanged": true,
+  "verifierSha256": "7212cf4e825b8bd9da71bade6f0594b8e3f86172b19a1614311965a7f812791c",
+  "attributeChecks": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/discovery-audit.json",
+      "attribute": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/discovery-audit.json: text: unset",
+      "unconvertedGitBlobSha1": "56861094a6a3bc155c022f9a88e0c5fb21633f34"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/isolated-consumer-source/Probe.csproj.txt",
+      "attribute": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/isolated-consumer-source/Probe.csproj.txt: text: unset",
+      "unconvertedGitBlobSha1": "6990324f8b2f4f60b3a31f5d68c3bbfa5fc572d5"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/consumer-resolved/Probe.resolved-inputs.zip",
+      "attribute": "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/consumer-resolved/Probe.resolved-inputs.zip: text: unset",
+      "unconvertedGitBlobSha1": "ef0f656168dc113455f9ebe27fe26c2f5caa39a4"
+    }
+  ],
+  "versionCellsMatch": true
+}

@@ -1,0 +1,3 @@
+# Retained verification output is hashed as emitted, including mixed newlines.
+logs/** -text
+*.diff -text

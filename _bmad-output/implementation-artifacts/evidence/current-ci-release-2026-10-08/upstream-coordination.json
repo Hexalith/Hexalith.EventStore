@@ -1,0 +1,78 @@
+{
+  "upstreamCommit": "3600d196799b7bbc5398a6d126e918171f07a2d3",
+  "ciRun": 37747659600,
+  "ciConclusion": "success",
+  "commitlintRun": 37747659736,
+  "commitlintConclusion": "success",
+  "newReleaseDispatchedByThisSession": false,
+  "ownershipAwaitingUserReply": true,
+  "files": [
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs",
+      "sha256": "afbef85dbe2c47fbf0b8a50d498c750169ef4b68b8c4008be0afa3ed4b121ea5",
+      "sameAsIsolatedFile": false
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "sha256": "5b6e8666355b800515c286c04839cb244babdb351111b61992b04f2040428c65",
+      "sameAsIsolatedFile": false
+    },
+    {
+      "path": "tests/Hexalith.EventStore.ProviderVerification/ProviderVerificationHost.cs",
+      "sha256": "05c52af3b943b650d86cf617d4d3b50f495f8c39c9d1318f3713754162cb23bb",
+      "sameAsIsolatedFile": false
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/aspire-retry-describe.log",
+      "sha256": "76ae569fc939152cc1e6fb83be434abbc0cb21906b990ba1f024e15a0304838d",
+      "sameAsIsolatedFile": false
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/execution-file-manifest.json",
+      "sha256": "cbce1efbf3934269052419f65492e4a6eca9700ed657ea5a6e6b0e077fab3fd5",
+      "sameAsIsolatedFile": false
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/json-replay-admission-2026-10-07/credential-sanitization-2026-10-08.json",
+      "sha256": "e1a573e4f1ffb08a7776ad090e2d0cefeca13dd6c37d40c77ab204616a97120f",
+      "sameAsIsolatedFile": false
+    }
+  ],
+  "requiredIntentClarification": {
+    "constraint": "Never rewrite historical evidence",
+    "sourceSpec": "_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md",
+    "upstreamChangedCapturedLogAndManifest": true,
+    "choices": [
+      "preserve bytes and publish reviewed isolated repair",
+      "accept sanitized capture and publish green upstream main",
+      "other session owns publication; verify its result"
+    ],
+    "status": "awaiting user reply"
+  },
+  "latestObservedMain": {
+    "sha": "b830d9829af70536d2a3fd21c5e2a23b2ca2f256",
+    "ciRun": 37749252540,
+    "ciConclusion": "success",
+    "commitlintRun": 37749252627,
+    "commitlintConclusion": "success"
+  },
+  "otherSessionPublication": {
+    "failedRun": 37748683711,
+    "failedSource": "3600d196799b7bbc5398a6d126e918171f07a2d3",
+    "diagnostic": "[publication-preflight] source-no-longer-current: The release source is no longer the current main tip.",
+    "stage": "publish preflight, before NuGet push",
+    "existingTag": {
+      "name": "v3.116.0",
+      "target": "3600d196799b7bbc5398a6d126e918171f07a2d3",
+      "mustNotDeleteRewriteOrReuse": true
+    },
+    "latestRun": 37750172086,
+    "latestRunSource": "b830d9829af70536d2a3fd21c5e2a23b2ca2f256",
+    "latestRunStatus": "completed",
+    "runUrl": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37750172086",
+    "dispatchedByThisSession": false,
+    "latestRunConclusion": "success",
+    "publishedVersion": "3.117.0",
+    "bothChannelPackageVerification": "14/14 complete"
+  }
+}
