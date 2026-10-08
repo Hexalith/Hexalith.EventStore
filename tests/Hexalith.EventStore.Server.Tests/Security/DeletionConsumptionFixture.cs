@@ -14,12 +14,18 @@ internal sealed class DeletionConsumptionFixture
     internal IDeletionConsumptionAuthority Authority { get; } = Substitute.For<IDeletionConsumptionAuthority>();
     internal IAtomicDeletionManifestProvider Provider { get; } = Substitute.For<IAtomicDeletionManifestProvider>();
     internal Dictionary<string, DeletionManifestProviderResult> Retained { get; } = [];
+    internal long Anchor { get; set; }
+    internal string AnchorDigest { get; set; } = DeletionConsumptionIdentity.Digest(new DeletionConsumptionLedger("tenant-a", 0, 0, [], [], []));
     internal bool LoseResponse { get; set; }
     internal Func<DeletionManifestProviderResult, DeletionManifestProviderResult>? AlterResult { get; set; }
     internal DeletionConsumptionActor Actor { get; }
     internal DeletionConsumptionFixture()
     {
         Authority.AuthorizeOperationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        Authority.ValidateStateAsync("tenant-a", Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => call.Arg<long>() == Anchor && call.ArgAt<string>(2) == AnchorDigest);
+        Authority.RecordRevisionAsync("tenant-a", Arg.Any<long>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => {
+            if (call.ArgAt<long>(1) != Anchor || call.ArgAt<long>(2) != Anchor + 1) { return false; } Anchor++; AnchorDigest = call.ArgAt<string>(3); return true;
+        });
         Authority.VerifyDispatchAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<CancellationToken>()).Returns(true);
         Authority.VerifyAdmissionBlockAsync(Arg.Any<DeletionBatchBlockRequest>(), Arg.Any<CancellationToken>()).Returns(true);
         Authority.VerifyRevocationAsync(Arg.Any<DeletionCapabilityRevocationEnvelope>(), Arg.Any<CancellationToken>()).Returns(true);

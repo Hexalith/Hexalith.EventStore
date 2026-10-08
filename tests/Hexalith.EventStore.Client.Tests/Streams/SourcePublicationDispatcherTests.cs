@@ -70,4 +70,22 @@ public sealed class SourcePublicationDispatcherTests
         else { clock.Advance(TimeSpan.FromSeconds(30)); (await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).AcknowledgedPrefix.ShouldBe(0); }
         f.Acknowledged.ShouldBeEmpty(); f.Read()!.Entries.Count.ShouldBe(3); pending.TrySetResult(SourcePublicationDeliveryStatus.Acknowledged);
     }
+    /// <summary>The automatic poll loop reconnects from the original index and remains cancellable with the original token, without a second checkpoint store.</summary>
+    [Fact]
+    public async Task AutomaticReconnectReconstructsOriginalAcknowledgedPrefix()
+    {
+        var f = new SourcePublicationDispatcherFixture(); using var caller = new CancellationTokenSource();
+        var visited = new List<long>(); var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Delivery.DeliverAsync(Arg.Any<SourcePublicationIndexEntry>(), Arg.Any<CancellationToken>()).Returns(call => {
+            visited.Add(call.Arg<SourcePublicationIndexEntry>().Offset);
+            if (visited.Count == 6) { caller.Cancel(); completed.TrySetResult(); }
+            return SourcePublicationDeliveryStatus.Acknowledged;
+        });
+        var running = f.Dispatcher.RunAsync(f.Scope, TimeSpan.FromMilliseconds(10), cancellationToken: caller.Token);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<OperationCanceledException>(() => running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        exception.CancellationToken.ShouldBe(caller.Token); visited.ShouldBe([1L, 2L, 3L, 1L, 2L, 3L]);
+        f.Read()!.Entries.Select(e => e.Publication.PublicationId).ShouldBe(["publication-1", "publication-2", "publication-3"]);
+    }
+
 }

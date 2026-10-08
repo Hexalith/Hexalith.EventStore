@@ -7,7 +7,7 @@ public interface IInteractionOccurrenceAuthority
 {
     /// <summary>Authenticates current private caller for exact occurrence and named Reserve, RetainSealed, CompleteWriter or Lookup method.</summary>
     Task<bool> AuthorizeOperationAsync(InteractionOccurrenceIdentity identity, string operation, CancellationToken cancellationToken = default);
-    /// <summary>Authenticates the independent installed epoch and exact durable monotonic registry revision; stale restore cannot authorize lookup/encryption.</summary>
+    /// <summary>Authenticates the independent installed epoch and exact captured durable registry revision and state digest; stale or divergent restore cannot authorize lookup/encryption.</summary>
     Task<bool> ValidateStateAsync(string tenantId, string epochId, long revision, string exactStateDigest, CancellationToken cancellationToken = default);
     /// <summary>Reads the independently installed initial epoch; missing installation disables the registry.</summary>
     Task<string?> GetInstalledEpochAsync(string tenantId, CancellationToken cancellationToken = default);

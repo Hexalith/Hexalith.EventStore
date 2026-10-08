@@ -261,7 +261,13 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     {
         await StateManager.ClearCacheAsync().ConfigureAwait(false);
         var value = await StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey).ConfigureAwait(false);
-        if (!value.HasValue) { return new(tenant, 0, 0, [], [], []); }
+        if (!value.HasValue)
+        {
+            var initial = new DeletionConsumptionLedger(tenant, 0, 0, [], [], []);
+            if (authority is null || !await authority.ValidateStateAsync(tenant, 0, DeletionConsumptionIdentity.Digest(initial)).ConfigureAwait(false))
+            { throw new InvalidOperationException("Independent protection state anchor is absent or stale."); }
+            return initial;
+        }
         var state = value.Value;
         if (state.TenantId != tenant || state.Revision <= 0 || state.KeyBlockSetRevision < 0 || state.Batches is null || state.Revocations is null || state.Operations is null || state.Batches.Count > 1000 || state.Revocations.Count > 10000 || state.Operations.Count > 10000
             || state.KeyBlockSetRevision != state.Revocations.Count)
@@ -307,13 +313,18 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
                 || o.Outcome.OwnerRevision <= 0 || o.Outcome.OwnerRevision > state.Revision || string.IsNullOrWhiteSpace(o.OperationId)
                 || o.RequestDigest.Length != 64 || o.RequestDigest.Any(c => !char.IsAsciiHexDigit(c))))
         { throw new InvalidOperationException("Malformed durable protection operation."); }
-        return state with { Batches = Array.AsReadOnly(batches), Revocations = Array.AsReadOnly(state.Revocations.Select(r => r with {
+        var owned = state with { Batches = Array.AsReadOnly(batches), Revocations = Array.AsReadOnly(state.Revocations.Select(r => r with {
             AffectedBatchIds = Array.AsReadOnly(r.AffectedBatchIds.ToArray()) }).ToArray()), Operations = Array.AsReadOnly(state.Operations.ToArray()) };
+        if (authority is null || !await authority.ValidateStateAsync(tenant, owned.Revision, DeletionConsumptionIdentity.Digest(owned)).ConfigureAwait(false))
+        { throw new InvalidOperationException("Independent protection state anchor is absent or stale."); }
+        return owned;
     }
     private async Task SaveAsync(DeletionConsumptionLedger state)
     {
         // Defensive write bound as well as per-operation denial: never persist a state the reader cannot release.
         if (state.Batches.Count > 1000 || state.Operations.Count > 10000 || state.Revocations.Count > 10000) { throw new InvalidOperationException("Protection ledger write bound exceeded."); }
+        if (authority is null || !await authority.RecordRevisionAsync(state.TenantId, state.Revision - 1, state.Revision, DeletionConsumptionIdentity.Digest(state)).ConfigureAwait(false))
+        { throw new InvalidOperationException("Independent protection state anchor compare failed."); }
         await StateManager.SetStateAsync(StateKey, state).ConfigureAwait(false); await StateManager.SaveStateAsync().ConfigureAwait(false);
         var persisted = await ReadAsync(state.TenantId).ConfigureAwait(false);
         if (DeletionConsumptionIdentity.Digest(persisted) != DeletionConsumptionIdentity.Digest(state)) { throw new InvalidOperationException("Protection outcome not confirmed durable."); }

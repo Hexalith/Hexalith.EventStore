@@ -10,6 +10,10 @@ public interface IDeletionConsumptionAuthority
 {
     /// <summary>Authenticates current private caller/credential for exact tenant/batch-or-revocation identity and named actor method, independently of immutable outcome retention.</summary>
     Task<bool> AuthorizeOperationAsync(string tenantId, string identity, string operation, CancellationToken cancellationToken = default);
+    /// <summary>Authenticates the independently installed protection owner and exact tenant/revision/owned safe-state digest, including initial absence. Rollback or divergent restore denies all reads and effects.</summary>
+    Task<bool> ValidateStateAsync(string tenantId, long revision, string exactStateDigest, CancellationToken cancellationToken = default);
+    /// <summary>Conditionally advances the independently durable installed-owner anchor before ledger persistence. A failed or unknown store save leaves availability closed until exact independent reconciliation; no anchor rollback is permitted.</summary>
+    Task<bool> RecordRevisionAsync(string tenantId, long expectedRevision, long nextRevision, string exactStateDigest, CancellationToken cancellationToken = default);
     /// <summary>Authenticates exact signed payload/manifest, separate committed issue revision and successful guard dispatch.</summary>
     Task<bool> VerifyDispatchAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default);
     /// <summary>Authenticates exact persisted post-seal accepted admission evidence for the specified batch.</summary>

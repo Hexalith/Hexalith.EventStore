@@ -173,7 +173,8 @@ public sealed class DeletionConsumptionActorTests
         var persisted = f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single();
         persisted.Outcome.Status.ShouldBe(commitBeforeFault ? DeletionConsumptionStatus.ConsumptionReserved : DeletionConsumptionStatus.Unconsumed);
         await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        (await f.Actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.Consumed);
+        if (commitBeforeFault) { (await f.Actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.Consumed); }
+        else { await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.ReserveAndConsumeAsync(request)); }
         if (commitBeforeFault) { f.Retained.Keys.Single().ShouldBe(persisted.Outcome.ReceiptId); }
     }
 
@@ -256,6 +257,7 @@ public sealed class DeletionConsumptionActorTests
             }).ToArray() };
         }
         await f.Backend.SetStateAsync(saved.Key, state, TestContext.Current.CancellationToken); await f.Backend.SaveStateAsync(TestContext.Current.CancellationToken);
+        f.Anchor = state.Revision; f.AnchorDigest = DeletionConsumptionIdentity.Digest(state); // Synthetic independent capacity installation, not restore authorization.
         string before = DeletionConsumptionIdentity.Digest(f.Backend.CommittedState.Single().Value);
         if (collection == "batches") { (await f.Actor.RegisterAsync(DeletionConsumptionFixture.Request("capacity-new", targets: new[] { new ProtectionTarget("tenant-a", "new", "new") }))).Status.ShouldBe(DeletionConsumptionStatus.Unavailable); }
         else if (collection == "operations") { (await f.Actor.BlockAsync(new("tenant-a", original.Capability.BatchId, "new-op", "admission-evidence"))).Status.ShouldBe(DeletionConsumptionStatus.Unavailable); }
@@ -264,4 +266,23 @@ public sealed class DeletionConsumptionActorTests
         DeletionConsumptionIdentity.Digest(await f.Actor.LookupAsync("tenant-a", original.Capability.BatchId)).ShouldBe(DeletionConsumptionIdentity.Digest(consumed));
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+    /// <summary>Older or equal-revision divergent restored admission state cannot reopen physical consumption; latest independent outcome remains readable.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestoredAdmissionStateCannotReopenConsumption(bool equalRevision)
+    {
+        var f = new DeletionConsumptionFixture(); var request = DeletionConsumptionFixture.Request(); await f.Actor.RegisterAsync(request);
+        var original = JsonSerializer.Deserialize<DeletionConsumptionLedger>(JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value))!;
+        var blocked = await f.Actor.BlockAsync(new("tenant-a", "batch-1", "admission-restore", "accepted-restore"));
+        var latest = f.Backend.CommittedState.Single(); var restored = new InMemoryStateManager();
+        var divergent = equalRevision ? original with { Revision = ((DeletionConsumptionLedger)latest.Value).Revision } : original;
+        await restored.SetStateAsync(latest.Key, divergent, TestContext.Current.CancellationToken); await restored.SaveStateAsync(TestContext.Current.CancellationToken);
+        var actor = DeletionConsumptionFixture.Create(restored, f.Authority, f.Provider);
+        await Should.ThrowAsync<InvalidOperationException>(() => actor.ReserveAndConsumeAsync(request));
+        await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await restored.SetStateAsync(latest.Key, JsonSerializer.Deserialize<DeletionConsumptionLedger>(JsonSerializer.Serialize(latest.Value))!, TestContext.Current.CancellationToken); await restored.SaveStateAsync(TestContext.Current.CancellationToken);
+        DeletionConsumptionIdentity.Digest(await actor.LookupAsync("tenant-a", "batch-1")).ShouldBe(DeletionConsumptionIdentity.Digest(blocked));
+    }
+
 }
