@@ -1,0 +1,339 @@
+{
+  "commitlint_version": "21.1.0",
+  "patches": [
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/cli.py",
+      "substitutions": 2,
+      "before_sha256": "4aa6b24509bf6a4610e59f2d91cdf92e79f405fc7a154d4afa8361ae36834cb9",
+      "after_sha256": "454f953836ee688b83f6dab053b0e42c7460e7a4f5e392c6e0765a3838d2e20d"
+    },
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/decisions.py",
+      "substitutions": 2,
+      "before_sha256": "994bf5b2f0f64eb379e1ea1a40e239198f0e9ea53c6cc7851b3345ca26ab33f4",
+      "after_sha256": "d4375a0fbd8168d6484ee4fdb335eaa1069c6301edc0e72ff0c94a43b3d63d31"
+    },
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py",
+      "substitutions": 4,
+      "before_sha256": "597571b231c125307815bab324c811a6507db010d447e84cc2dfc13f5ee6f86a",
+      "after_sha256": "e4620fe0e2fefd7410e1a5ea4c7b0daf6b73c0c3d2eedbf39f7470224a23f3a3"
+    },
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+      "substitutions": 19,
+      "before_sha256": "4266ce273399ae309b98139f7f32e0fc6e277ca543939ccb1f19d2510aa9c10c",
+      "after_sha256": "9f950f53ad814a53e148eedc93fdff4a96ace115ba76033d465ce4fa34f526e5"
+    },
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/verify.py",
+      "substitutions": 3,
+      "before_sha256": "296c6c33d3e540dd3a571f8e30d128af0754c7bd80861e515c8fb464241e315a",
+      "after_sha256": "58e9b61d5277d805793c21599a2b8dd93779bf5f8fc1a400bf269b90de5827b2"
+    },
+    {
+      "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/worktree_flow.py",
+      "substitutions": 2,
+      "before_sha256": "1654a674f382fb764e24c26082a9fa87b39a8c24b01d81103fd509a177f66e16",
+      "after_sha256": "bd8259240fccd08c49da682640fe612e91992f9184078e49ff095813133cfcc7"
+    }
+  ],
+  "candidates": [
+    {
+      "message": "build(operator): confirm 3-2-digest-delivery",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/cli.py",
+          "line": 4208
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-01.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(operator): confirm 3-2-digest-delivery\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(decisions): pre-answer DW-12",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/decisions.py",
+          "line": 698
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-02.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(decisions): pre-answer DW-12\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(deferred-work): carry harvested findings from 3-2-digest-delivery",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py",
+          "line": 8242
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-03.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(deferred-work): carry harvested findings from 3-2-digest-delivery\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(deferred-work): close 3-2-digest-delivery's declared ids",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py",
+          "line": 8352
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-04.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(deferred-work): close 3-2-digest-delivery's declared ids\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sprint-status): carry 3-2-digest-delivery to done",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py",
+          "line": 8698
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-05.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sprint-status): carry 3-2-digest-delivery to done\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): close resolved deferred-work entries",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 2402
+        },
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 4466
+        },
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 4469
+        },
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 4497
+        },
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 4500
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-06.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): close resolved deferred-work entries\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): drop stale deferred-work pre-answer",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 2856
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-07.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): drop stale deferred-work pre-answer\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): migrate legacy deferred-work entries to DW format",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 3434
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-08.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): migrate legacy deferred-work entries to DW format\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): commit ledger after recovering in-flight bundles",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 1950
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-09.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): commit ledger after recovering in-flight bundles\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): commit a ledger write an interrupted phase left unpublished",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 1952
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-10.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): commit a ledger write an interrupted phase left unpublished\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): commit ledger at the sweep cycle boundary",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 2230
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-11.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): commit ledger at the sweep cycle boundary\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): drop consumed deferred-work pre-answers",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 2771
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-12.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): drop consumed deferred-work pre-answers\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(sweep): record deferred-work decisions",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 5452
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-13.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(sweep): record deferred-work decisions\n\u2714   found 0 problems, 0 warnings\n"
+    },
+    {
+      "message": "build(deferred-work): close 3-2-digest-delivery's bundle ids",
+      "locations": [
+        {
+          "file": "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py",
+          "line": 7735
+        }
+      ],
+      "command": [
+        "npx",
+        "--no",
+        "--",
+        "commitlint",
+        "--edit",
+        "/tmp/bmad-loop-commitlint-r5t13d5n/candidate-14.txt",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "output": "\u29d7   --- input ---\nbuild(deferred-work): close 3-2-digest-delivery's bundle ids\n\u2714   found 0 problems, 0 warnings\n"
+    }
+  ]
+}

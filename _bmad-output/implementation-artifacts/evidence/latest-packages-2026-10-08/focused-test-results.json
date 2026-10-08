@@ -1,0 +1,37 @@
+[
+  {
+    "name": "apphost-tests",
+    "command": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll"
+    ],
+    "exitCode": 0,
+    "log": "apphost-tests.log"
+  },
+  {
+    "name": "admin-ui-tests",
+    "command": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Admin.UI.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll"
+    ],
+    "exitCode": 0,
+    "log": "admin-ui-tests.log"
+  },
+  {
+    "name": "contracts-governance-tests",
+    "command": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-class",
+      "*EffectivePackageVersionEvaluationTests",
+      "-class",
+      "*PackageOwnershipGovernanceTests",
+      "-class",
+      "*DependencyModeEvaluationTests",
+      "-class",
+      "*ContractsPackageDependencyTests"
+    ],
+    "exitCode": 0,
+    "log": "contracts-governance-tests.log"
+  }
+]

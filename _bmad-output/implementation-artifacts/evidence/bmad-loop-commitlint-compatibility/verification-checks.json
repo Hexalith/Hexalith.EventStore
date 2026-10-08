@@ -1,0 +1,54 @@
+[
+  {
+    "command": [
+      "python3",
+      "-m",
+      "compileall",
+      "-q",
+      "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "rg",
+      "-n",
+      "\\bchore(?:\\(|:)",
+      "/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop",
+      "-g",
+      "*.py"
+    ],
+    "exit_code": 1,
+    "expected_exit_code": 1,
+    "output": ""
+  },
+  {
+    "command": [
+      "/home/administrator/.local/share/uv/tools/bmad-loop/bin/python",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/bmad-loop-commitlint-compatibility/check_migration_subject.py"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "output": "{\n  \"check\": \"installed SweepEngine._finish_migration_commit publication subject\",\n  \"installed_package_version\": \"0.12.0\",\n  \"repository_head\": \"4cc77f9554395e84539e173e94b8f0b4df14d643\",\n  \"subject\": \"build(sweep): migrate legacy deferred-work entries to DW format\",\n  \"result\": \"passed\",\n  \"git_mutations\": 0,\n  \"boundary\": \"captured _commit_ledger call; stopped before Git publication\"\n}\n"
+  },
+  {
+    "command": [
+      "/home/administrator/.local/share/uv/tools/bmad-loop/bin/python",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/bmad-loop-commitlint-compatibility/check_publication_subjects.py"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "output": "Passed subject propagation for 14 candidates; no real Git mutations.\n"
+  },
+  {
+    "command": [
+      "/home/administrator/.local/share/uv/tools/bmad-loop/bin/python",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/bmad-loop-commitlint-compatibility/check_operator_subject.py"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "output": "\u2713 1-1-a confirmed \u2014 spec and board are done\nPassed installed operator subject execution and pinned commitlint validation; no real Git mutations.\n"
+  }
+]

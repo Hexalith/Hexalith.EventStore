@@ -1,0 +1,15 @@
+Starting Aspire AppHost in the background...
+
+     AppHost:  src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj                                          
+                                                                                                                           
+   Dashboard:  https://localhost:46663/login?t=[REDACTED]                                            
+                                                                                                                           
+        Logs:  /home/administrator/.aspire/logs/cli_20261008T074422887_detach-child_8173267cf3064199b2f6415a0df8ab8d.log   
+                                                                                                                           
+         PID:  757623                                                                                                      
+
+✅ AppHost started successfully.
+
+A new version of Aspire is available: 13.6.1
+To update, run: aspire update
+For more information, see: https://aka.ms/aspire/update

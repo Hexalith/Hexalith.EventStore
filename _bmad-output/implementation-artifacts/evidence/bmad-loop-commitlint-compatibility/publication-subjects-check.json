@@ -1,0 +1,162 @@
+{
+  "check": "installed verify.commit_paths forwards all validated complete subjects",
+  "boundary": "all Git operations stubbed; hooks are not executed by this check",
+  "real_git_mutations": 0,
+  "subjects_checked": 14,
+  "checks": [
+    {
+      "subject": "build(operator): confirm 3-2-digest-delivery",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(operator): confirm 3-2-digest-delivery",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(decisions): pre-answer DW-12",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(decisions): pre-answer DW-12",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(deferred-work): carry harvested findings from 3-2-digest-delivery",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(deferred-work): carry harvested findings from 3-2-digest-delivery",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(deferred-work): close 3-2-digest-delivery's declared ids",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(deferred-work): close 3-2-digest-delivery's declared ids",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sprint-status): carry 3-2-digest-delivery to done",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sprint-status): carry 3-2-digest-delivery to done",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): close resolved deferred-work entries",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): close resolved deferred-work entries",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): drop stale deferred-work pre-answer",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): drop stale deferred-work pre-answer",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): migrate legacy deferred-work entries to DW format",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): migrate legacy deferred-work entries to DW format",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): commit ledger after recovering in-flight bundles",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): commit ledger after recovering in-flight bundles",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): commit a ledger write an interrupted phase left unpublished",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): commit a ledger write an interrupted phase left unpublished",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): commit ledger at the sweep cycle boundary",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): commit ledger at the sweep cycle boundary",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): drop consumed deferred-work pre-answers",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): drop consumed deferred-work pre-answers",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(sweep): record deferred-work decisions",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(sweep): record deferred-work decisions",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    },
+    {
+      "subject": "build(deferred-work): close 3-2-digest-delivery's bundle ids",
+      "captured_commit_arguments": [
+        "commit",
+        "-m",
+        "build(deferred-work): close 3-2-digest-delivery's bundle ids",
+        "--",
+        ":(literal)deferred-work.md"
+      ],
+      "result": "passed"
+    }
+  ]
+}

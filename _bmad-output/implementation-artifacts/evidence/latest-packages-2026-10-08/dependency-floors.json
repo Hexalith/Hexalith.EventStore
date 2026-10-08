@@ -1,0 +1,261 @@
+[
+  {
+    "package": "fscheck.xunit.v3",
+    "version": "3.4.0",
+    "nuspecSha256": "03a32281f8ddb8ddeba4f5b670011fbc10f0fbe8d59d97924315766465ce1c16",
+    "dependencies": [
+      {
+        "id": "FsCheck",
+        "version": "[3.4.0]",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "FSharp.Core",
+        "version": "5.0.2",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "xunit.v3.extensibility.core",
+        "version": "[4.0.0, 5.0.0)",
+        "exclude": "Build,Analyzers"
+      }
+    ]
+  },
+  {
+    "package": "xunit.v3",
+    "version": "4.0.1",
+    "nuspecSha256": "c0407f2bfbba8b98dfc27d55a8707c47afffa3debf66b1b562aba818159f43e8",
+    "dependencies": [
+      {
+        "id": "xunit.v3.mtp-v2",
+        "version": "[4.0.1]"
+      }
+    ]
+  },
+  {
+    "package": "communitytoolkit.aspire.hosting.dapr",
+    "version": "13.6.0-preview.1.261001-0243",
+    "nuspecSha256": "a59c05e3ff10283e977eadad69faadf79a129a68904abf538c95674218c8f773",
+    "dependencies": [
+      {
+        "id": "Aspire.Hosting",
+        "version": "13.6.0",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "YamlDotNet",
+        "version": "18.1.0",
+        "exclude": "Build,Analyzers"
+      }
+    ]
+  },
+  {
+    "package": "microsoft.aspnetcore.openapi",
+    "version": "10.0.12",
+    "nuspecSha256": "c0ef82c63679d826ac210cd2d152d7450c119880d49e4f510affa59270e92892",
+    "dependencies": [
+      {
+        "id": "Microsoft.OpenApi",
+        "version": "[2.12.0, 3.0.0)",
+        "exclude": "Build,Analyzers"
+      }
+    ]
+  },
+  {
+    "package": "bunit",
+    "version": "2.11.3",
+    "nuspecSha256": "af8ec56493058337d860fc66fef7857f15a84f8cb6911d8624f1b0ab22c0ea67",
+    "dependencies": [
+      {
+        "id": "AngleSharp",
+        "version": "1.8.1",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "AngleSharp.Css",
+        "version": "1.1.2",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "AngleSharp.Diffing",
+        "version": "1.1.1",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Authorization",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Web",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Caching.Memory",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Localization.Abstractions",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging.Abstractions",
+        "version": "10.0.10",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Authorization",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Web",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Caching.Memory",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Localization.Abstractions",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging",
+        "version": "11.0.0-rc.1.26425.128",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Authorization",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Web",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Caching.Memory",
+        "version": "8.0.1",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Localization.Abstractions",
+        "version": "8.0.29",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging",
+        "version": "8.0.1",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging.Abstractions",
+        "version": "8.0.3",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Authorization",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.Web",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Caching.Memory",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Localization.Abstractions",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging.Abstractions",
+        "version": "9.0.12",
+        "exclude": "Build,Analyzers"
+      }
+    ]
+  }
+]

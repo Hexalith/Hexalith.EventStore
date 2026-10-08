@@ -1,0 +1,90 @@
+{
+  "schema": "hexalith.sdk-consumer-observations.v1",
+  "note": "Read-only inspection; inventory expectations are not external-consumer edits or proof of alignment. External repos are outside authorization.",
+  "consumers": [
+    {
+      "owner": "Hexalith.ChatBot",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    },
+    {
+      "owner": "Hexalith.Conversations",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    },
+    {
+      "owner": "Hexalith.EventStore",
+      "expected": "13.6.1",
+      "observations": [
+        {
+          "path": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+          "sdk": "Aspire.AppHost.Sdk/13.6.1",
+          "matchesExpected": true
+        }
+      ],
+      "status": "aligned"
+    },
+    {
+      "owner": "Hexalith.Folders",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    },
+    {
+      "owner": "Hexalith.FrontComposer",
+      "expected": "13.6.1",
+      "observations": [
+        {
+          "path": "references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+          "sdk": "Aspire.AppHost.Sdk/13.6.0",
+          "matchesExpected": false
+        }
+      ],
+      "status": "external-drift"
+    },
+    {
+      "owner": "Hexalith.Memories",
+      "expected": "13.6.1",
+      "observations": [
+        {
+          "path": "references/Hexalith.Memories/src/Hexalith.Memories.AppHost/Hexalith.Memories.AppHost.csproj",
+          "sdk": "Aspire.AppHost.Sdk/13.6.0",
+          "matchesExpected": false
+        }
+      ],
+      "status": "external-drift"
+    },
+    {
+      "owner": "Hexalith.Parties",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    },
+    {
+      "owner": "Hexalith.Projects",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    },
+    {
+      "owner": "Hexalith.Tenants",
+      "expected": "13.6.1",
+      "observations": [
+        {
+          "path": "references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj",
+          "sdk": "Aspire.AppHost.Sdk/13.6.0",
+          "matchesExpected": false
+        }
+      ],
+      "status": "external-drift"
+    },
+    {
+      "owner": "Hexalith.Timesheets",
+      "expected": "13.6.1",
+      "observations": [],
+      "status": "not-present"
+    }
+  ]
+}

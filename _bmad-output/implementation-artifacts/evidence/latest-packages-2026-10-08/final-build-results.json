@@ -1,0 +1,29 @@
+[
+  {
+    "name": "final-restore",
+    "command": [
+      "dotnet",
+      "restore",
+      "Hexalith.EventStore.slnx",
+      "-p:Configuration=Release",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "exitCode": 0,
+    "log": "final-restore.log"
+  },
+  {
+    "name": "final-build",
+    "command": [
+      "dotnet",
+      "build",
+      "Hexalith.EventStore.slnx",
+      "--configuration",
+      "Release",
+      "--no-restore",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "exitCode": 0,
+    "log": "final-build.log"
+  }
+]

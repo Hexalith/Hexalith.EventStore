@@ -1,0 +1,15 @@
+{
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/audit-central-package-versions.ps1",
+    "-OutputPath",
+    "/tmp/eventstore-package-audit-pending-20261008.json"
+  ],
+  "exitCode": 1,
+  "authoritativeAuditSha256": "271dfc6d665189422e0ec347ab89cb4bce683525b2124eed86d44db1ef91c0b3",
+  "unchanged": true,
+  "status": "pending-authorized-catalog-commit",
+  "note": "The generator fails closed before feed discovery while the catalog declaration is uncommitted."
+}

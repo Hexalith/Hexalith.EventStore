@@ -1,0 +1,25 @@
+Package version audit validation failed with 24 error(s):
+- Audit catalogSha256 does not match the evaluated catalog declaration bytes.
+- Package 'AngleSharp' selects '1.8.3' but the evaluated catalog resolves '1.8.4'.
+- Package 'Aspire.Azure.Messaging.ServiceBus' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Azure.Security.KeyVault' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Azure.Storage.Blobs' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Azure.Storage.Queues' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting.Azure.AppContainers' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting.Azure.CosmosDB' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting.Docker' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting.Keycloak' selects '13.6.0-preview.1.26479.8' but the evaluated catalog resolves '13.6.1-preview.1.26506.6'.
+- Package 'Aspire.Hosting.Kubernetes' selects '13.6.0-preview.1.26479.8' but the evaluated catalog resolves '13.6.1-preview.1.26506.6'.
+- Package 'Aspire.Hosting.Redis' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Hosting.Testing' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Package 'Aspire.Microsoft.Azure.Cosmos' selects '13.6.0' but the evaluated catalog resolves '13.6.1'.
+- Internal package 'Hexalith.FrontComposer.Contracts' catalog version '4.6.0' has no matching accepted audit selection.
+- Internal package 'Hexalith.FrontComposer.Mcp' catalog version '4.6.0' has no matching accepted audit selection.
+- Internal package 'Hexalith.FrontComposer.Shell' catalog version '4.6.0' has no matching accepted audit selection.
+- Internal package 'Hexalith.FrontComposer.SourceTools' catalog version '4.6.0' has no matching accepted audit selection.
+- Internal package 'Hexalith.FrontComposer.Testing' catalog version '4.6.0' has no matching accepted audit selection.
+- Package 'Swashbuckle.AspNetCore' selects '10.2.3' but the evaluated catalog resolves '10.3.0'.
+- Package 'Swashbuckle.AspNetCore.SwaggerUI' selects '10.2.3' but the evaluated catalog resolves '10.3.0'.
+- Package 'Verify' selects '33.3.1' but the evaluated catalog resolves '33.3.2'.
+- Package 'Verify.XunitV3' selects '33.3.1' but the evaluated catalog resolves '33.3.2'.

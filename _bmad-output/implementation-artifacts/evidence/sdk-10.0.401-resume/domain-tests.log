@@ -1,0 +1,12 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll (net10.0|x64) passed (8s 496ms)
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/TestResults/Hexalith.EventStore.DomainService.Tests/sdk-401.trx
+
+Test run summary: Passed!
+  total: 521
+  failed: 0
+  succeeded: 521
+  skipped: 0
+  duration: 9s 013ms

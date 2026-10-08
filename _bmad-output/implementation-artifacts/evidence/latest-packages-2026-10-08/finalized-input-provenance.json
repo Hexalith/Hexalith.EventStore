@@ -1,0 +1,62 @@
+{
+  "observedAtUtc": "2026-10-08T08:12:35.353132+00:00",
+  "repositories": [
+    {
+      "path": ".",
+      "revision": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+      "status": "## main...origin/main [behind 2]\n M _bmad-output/implementation-artifacts/deferred-work.md\n M _bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json\n M _bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md\n M _bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md\n M _bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md\n M _bmad-output/implementation-artifacts/spec-independent-followup-reviews.md\n M _bmad-output/implementation-artifacts/spec-update-latest-packages-and-aspire.md\n M _bmad-output/planning-artifacts/architecture.md\n M _bmad-output/project-context.md\n M docs/brownfield/project-overview.md\n M docs/reference/nuget-packages.md\n M references/Hexalith.Builds\n M references/Hexalith.Memories\n M references/Hexalith.Platform\n M references/Hexalith.Tenants\n M src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj\n M tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs\n M tests/Hexalith.EventStore.ProviderVerification.Tests/RealKestrelPactTests.cs\n M tests/Hexalith.EventStore.ProviderVerification/ProviderVerificationHost.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs\n?? _bmad-output/implementation-artifacts/evidence/bmad-loop-commitlint-compatibility/\n?? _bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/\n?? _bmad-output/implementation-artifacts/evidence/sdk-10.0.401-resume/"
+    },
+    {
+      "path": "references/Hexalith.Builds",
+      "revision": "ad52c5bdd4361c59eedf12a16620150006403584",
+      "status": "## main...origin/main"
+    },
+    {
+      "path": "references/Hexalith.Tenants",
+      "revision": "86aa888301b40cda12b000f68d9292d53cd93efe",
+      "status": "## main...origin/main"
+    },
+    {
+      "path": "references/Hexalith.FrontComposer",
+      "revision": "c561b3210f15206a90c39c82c58f2e5b1005cd60",
+      "status": "## main...origin/main"
+    },
+    {
+      "path": "references/Hexalith.Memories",
+      "revision": "aac6d9054cb138881e6e49c8e48233553123ffce",
+      "status": "## main...origin/main"
+    },
+    {
+      "path": "references/Hexalith.Platform",
+      "revision": "f043a2f242762233091abdaa5bbe1ab777bd0f12",
+      "status": "## main...origin/main"
+    }
+  ],
+  "sha256": {
+    "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/discovery-audit.json": "d281ca124c10853a360102912bb12adbfdcccc582f1a2fe8229342116571f3dd",
+    "global.json": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+    "references/Hexalith.Builds/Tools/audit-central-package-versions.ps1": "4c40563c0561696a21a267efc44e72bcdf408c9e80454ef36bd7d84be513973d",
+    "references/Hexalith.Builds/Tools/package-version-audit.json": "cd9ed067bbadf359b9f7974072644642ac32417fb6e7e45ae155354a8b54da7c",
+    "references/Hexalith.Builds/Tools/package-version-exceptions.json": "240f4ebd3d4d98e51ac141ba0c12994e0680e39a1f238e770f45e5a2994da7c1",
+    "references/Hexalith.Builds/Tools/validate-package-version-audit.ps1": "0a21097035d235dc7345e7e6cb2dad522ce4b35ae2a461f9d64fb65168c21065",
+    "references/Hexalith.Tenants/Directory.Build.props": "d527484a6528bd36087a222951b7b8b3cdc46f1f886c6c7b38ae6be2f95750a0",
+    "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": "03c3a6d90ee14b92bf9d5ef4e7ca6e773f9a74a65313b361c11851803824f81c",
+    "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": "ec962a92d60c0107281b6067341f39ae640333cf48e6b6505377fe9d9425430d",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": "d77e20113b68d21260a6bbf8a9648b769fe4b5e6b1b54681900a202bcef5b1f6",
+    "src/Hexalith.EventStore.AppHost/Program.cs": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs": "f4b5e534d17b187abf8fac8ee89fafeda613f433a5b585643cd32aed07bcfb04"
+  },
+  "auditGeneratedFromRevision": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+  "auditValidationExitCode": 0,
+  "note": "Final observations after authoritative audit installation and validation. Concurrent external activity committed the exact installed audit bytes at Builds ad52c5bdd4361c59eedf12a16620150006403584. This agent performed no Git mutation and preserved the externally moved checkout. Runtime claims remain bound to the earlier run revisions/hashes; identical catalog, inventory, SDK, and runtime-source bytes are asserted separately.",
+  "runtimeInputsStillMatch": {
+    "references/Hexalith.Builds/Props/Directory.Packages.props": true,
+    "references/Hexalith.Builds/Tools/package-version-exceptions.json": true,
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": true,
+    "src/Hexalith.EventStore.AppHost/Program.cs": true,
+    "references/Hexalith.Tenants/Directory.Build.props": true,
+    "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": true,
+    "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": true
+  }
+}

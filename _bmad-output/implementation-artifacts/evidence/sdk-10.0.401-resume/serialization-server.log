@@ -1,0 +1,12 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll (net10.0|x64) passed (968ms)
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/TestResults/Hexalith.EventStore.Server.Tests/sdk-401-serialization.trx
+
+Test run summary: Passed!
+  total: 1
+  failed: 0
+  succeeded: 1
+  skipped: 0
+  duration: 1s 171ms

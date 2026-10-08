@@ -1,0 +1,14 @@
+{
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/audit-central-package-versions.ps1",
+    "-PriorAuditPath",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/package-version-audit.json",
+    "-OutputPath",
+    "/tmp/eventstore-authoritative-audit-20261008.json"
+  ],
+  "exitCode": 0,
+  "candidatePath": "/tmp/eventstore-authoritative-audit-20261008.json"
+}

@@ -1,0 +1,12 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll (net10.0|x64) passed (18s 697ms)
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/TestResults/Hexalith.EventStore.RestApi.Generators.Tests/sdk-401.trx
+
+Test run summary: Passed!
+  total: 124
+  failed: 0
+  succeeded: 124
+  skipped: 0
+  duration: 18s 991ms

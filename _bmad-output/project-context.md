@@ -16,14 +16,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — SDK pinned `10.0.401` (`rollForward: latestPatch`) in `global.json`; all projects target `net10.0`, `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
-- **DAPR SDK 1.18.5** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
-- **.NET Aspire 13.5.3** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s are **preview** builds; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` (preview)
+- **.NET 10** — SDK pinned `10.0.401` (`rollForward: latestPatch`) in `global.json`; application and library projects target `net10.0`, except the Roslyn generator (`netstandard2.0`); `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
+- **DAPR SDK 1.18.10** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
+- **.NET Aspire 13.6.1** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s are **preview** builds; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` (preview)
 - **MediatR 14.2.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle
-- **OpenTelemetry 1.18.0**, `Microsoft.Extensions.*` 10.0.11, **SignalR** 10.0.11 (+ StackExchange.Redis backplane)
-- **Blazor FluentUI `5.0.0-rc.5-26219.1`** + matching Icons package (admin/sample UIs)
-- **Testing:** xUnit **v3** (`xunit.v3` 4.0.0) on Microsoft.Testing.Platform, Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.9.0, Testcontainers 4.14.0, Playwright 1.62.0, Microsoft.Testing.Extensions.CodeCoverage 18.10.0, and coverlet 10.0.1; NBomber 6.6.0 (load)
-- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.30.0 (ULID generation)
+- **OpenTelemetry 1.19.1** (instrumentation 1.19.0), `Microsoft.Extensions` servicing packages 10.0.12 (Http.Resilience/ServiceDiscovery 10.10.0), **SignalR** 10.0.12 (+ StackExchange.Redis backplane)
+- **Blazor FluentUI `5.0.0`** + matching Icons package (admin/sample UIs)
+- **Testing:** xUnit **v3** (`xunit.v3` 4.0.1) on Microsoft.Testing.Platform, Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.11.3, Testcontainers 4.15.0, Playwright 1.63.0, Microsoft.Testing.Extensions.CodeCoverage 18.12.0, and coverlet 10.1.0; NBomber 6.6.0 (load)
+- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.30.1 (ULID generation)
 - **All source-owned package versions centralized** in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper — `ManagePackageVersionsCentrally=true`
 
 ## Critical Implementation Rules

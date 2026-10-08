@@ -1,0 +1,84 @@
+[
+  {
+    "name": "catalog",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-central-package-versions.ps1",
+      "-CatalogPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+    ],
+    "exitCode": 0,
+    "log": "catalog.log"
+  },
+  {
+    "name": "catalog-folders",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-central-package-versions.ps1",
+      "-CatalogPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props",
+      "-ConsumerProjectName",
+      "Hexalith.Folders.Aspire"
+    ],
+    "exitCode": 0,
+    "log": "catalog-folders.log"
+  },
+  {
+    "name": "dapr",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-dapr-package-versions.ps1",
+      "-CatalogPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+    ],
+    "exitCode": 0,
+    "log": "dapr.log"
+  },
+  {
+    "name": "exceptions",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-exceptions.ps1",
+      "-InventoryPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/package-version-exceptions.json",
+      "-CatalogPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+    ],
+    "exitCode": 0,
+    "log": "exceptions.log"
+  },
+  {
+    "name": "consumer-authority",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1",
+      "-RepositoryRoot",
+      "/home/administrator/projects/hexalith/eventstore",
+      "-CatalogPath",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+    ],
+    "exitCode": 1,
+    "log": "consumer-authority.log"
+  },
+  {
+    "name": "authoritative-audit",
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-audit.ps1"
+    ],
+    "exitCode": 1,
+    "log": "authoritative-audit.log"
+  }
+]

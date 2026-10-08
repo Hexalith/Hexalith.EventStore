@@ -43,21 +43,21 @@ state.Apply(Event)                          // fold events back into state
 | Category | Technology | Version | Role |
 |----------|-----------|---------|------|
 | Runtime | .NET | `net10.0` (SDK 10.0.401) | Target framework |
-| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.5` | State store, pub/sub, actors, service invocation |
-| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.5.3` | Local topology + publish targets |
-| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.5.0-preview.1.260825-0345` | DAPR sidecar wiring in AppHost |
+| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.10` | State store, pub/sub, actors, service invocation |
+| Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.0` (Keycloak/K8s `13.6.0-preview.1.26479.8`) | Local topology + publish targets |
+| DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.0-preview.1.261001-0243` | DAPR sidecar wiring in AppHost |
 | Mediation | MediatR | `14.2.0` | CQRS command/query pipeline |
 | Validation | FluentValidation (+ DI extensions) | `12.1.1` | Command/query/options validation |
-| Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.11` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
-| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.11` / `10.2.3` | OpenAPI 3.1 + Swagger UI |
-| Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.11` | Projection-changed notifications + Redis backplane |
-| UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.0-rc.5-26219.1` | Blazor admin + sample UI |
-| CLI | `System.CommandLine` | `2.0.11` | Admin CLI tool |
+| Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.12` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
+| API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.12` / `10.2.3` | OpenAPI 3.1 + Swagger UI |
+| Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.12` | Projection-changed notifications + Redis backplane |
+| UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.0` | Blazor admin + sample UI |
+| CLI | `System.CommandLine` | `2.0.12` | Admin CLI tool |
 | AI integration | `ModelContextProtocol` | `2.2.0` | Admin MCP server (AI-callable tools) |
-| Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.18.0` | Traces, metrics, structured logs |
-| Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.9.0` | HTTP resilience + service discovery |
-| Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.0` | ULID generation |
-| Testing | Microsoft.Testing.Platform runner, xUnit v3 `4.0.0`, Microsoft code coverage `18.10.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.9.0`, Playwright `1.62.0`, Testcontainers `4.14.0` | — | Unit → integration → E2E |
+| Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.19.1` (instrumentation `1.19.0`) | Traces, metrics, structured logs |
+| Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.10.0` | HTTP resilience + service discovery |
+| Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.1` | ULID generation |
+| Testing | Microsoft.Testing.Platform runner, xUnit v3 `4.0.1`, Microsoft code coverage `18.12.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.11.3`, Playwright `1.63.0`, Testcontainers `4.15.0` | — | Unit → integration → E2E |
 | Load testing | NBomber + NBomber.Http | `6.6.0` / `6.2.1` | Throughput/latency perf tests |
 | Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
 

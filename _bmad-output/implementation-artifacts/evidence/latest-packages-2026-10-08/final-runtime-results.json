@@ -1,0 +1,156 @@
+{
+  "startedAtUtc": "2026-10-08T07:48:49.924678+00:00",
+  "completedAtUtc": "2026-10-08T07:49:40.267751+00:00",
+  "commands": [
+    [
+      "aspire",
+      "start",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive",
+      "--isolated"
+    ],
+    [
+      "aspire",
+      "wait",
+      "eventstore",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "eventstore-admin",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "eventstore-admin-ui",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "sample",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "sample-api",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "sample-blazor-ui",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "tenants-api",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "wait",
+      "security",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "describe",
+      "--format",
+      "Json",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "ps",
+      "--format",
+      "Json",
+      "--non-interactive"
+    ],
+    [
+      "aspire",
+      "logs",
+      "--apphost",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+      "--non-interactive",
+      "--format",
+      "Json"
+    ]
+  ],
+  "requiredServices": [
+    "eventstore",
+    "eventstore-admin",
+    "eventstore-admin-ui",
+    "sample",
+    "sample-api",
+    "sample-blazor-ui",
+    "tenants-api",
+    "security"
+  ],
+  "requiredServicesRunningHealthy": true,
+  "allModeledResourcesRunningHealthy": true,
+  "resourceCount": 30,
+  "binaryFailureCounts": {
+    "TypeLoadException": 0,
+    "MissingMethodException": 0,
+    "MissingFieldException": 0,
+    "FileLoadException": 0
+  },
+  "beforeInputs": {
+    "sha256": {
+      "references/Hexalith.Builds/Props/Directory.Packages.props": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+      "references/Hexalith.Builds/Tools/package-version-exceptions.json": "240f4ebd3d4d98e51ac141ba0c12994e0680e39a1f238e770f45e5a2994da7c1",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": "d77e20113b68d21260a6bbf8a9648b769fe4b5e6b1b54681900a202bcef5b1f6",
+      "src/Hexalith.EventStore.AppHost/Program.cs": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+      "references/Hexalith.Tenants/Directory.Build.props": "d527484a6528bd36087a222951b7b8b3cdc46f1f886c6c7b38ae6be2f95750a0",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": "ec962a92d60c0107281b6067341f39ae640333cf48e6b6505377fe9d9425430d",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": "03c3a6d90ee14b92bf9d5ef4e7ca6e773f9a74a65313b361c11851803824f81c"
+    },
+    "revisions": {
+      ".": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+      "references/Hexalith.Builds": "5dd29d2c596c1e93c63977b098ad61407d20560a",
+      "references/Hexalith.Tenants": "ade4e04f2c3f3389ba9dc5286480e8d4951ddd13"
+    }
+  },
+  "afterInputs": {
+    "sha256": {
+      "references/Hexalith.Builds/Props/Directory.Packages.props": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+      "references/Hexalith.Builds/Tools/package-version-exceptions.json": "240f4ebd3d4d98e51ac141ba0c12994e0680e39a1f238e770f45e5a2994da7c1",
+      "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj": "d77e20113b68d21260a6bbf8a9648b769fe4b5e6b1b54681900a202bcef5b1f6",
+      "src/Hexalith.EventStore.AppHost/Program.cs": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+      "references/Hexalith.Tenants/Directory.Build.props": "d527484a6528bd36087a222951b7b8b3cdc46f1f886c6c7b38ae6be2f95750a0",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj": "ec962a92d60c0107281b6067341f39ae640333cf48e6b6505377fe9d9425430d",
+      "references/Hexalith.Tenants/src/Hexalith.Tenants/Authorization/TenantsGlobalAdministratorVerifier.cs": "03c3a6d90ee14b92bf9d5ef4e7ca6e773f9a74a65313b361c11851803824f81c"
+    },
+    "revisions": {
+      ".": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+      "references/Hexalith.Builds": "5dd29d2c596c1e93c63977b098ad61407d20560a",
+      "references/Hexalith.Tenants": "ade4e04f2c3f3389ba9dc5286480e8d4951ddd13"
+    }
+  },
+  "inputsStableDuringRun": true,
+  "baselineContext": "The original baseline evidence has tenants Finished; tenants source failure was not counted as a healthy required baseline service. Exact baseline recheck and final candidate states are retained separately."
+}

@@ -1,0 +1,242 @@
+[
+  {
+    "id": "AngleSharp",
+    "family": "bunit-html",
+    "selectedVersion": "1.8.3",
+    "latestStable": "1.8.4",
+    "latestPrerelease": "1.8.4-beta.832",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Azure.Messaging.ServiceBus",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Azure.Security.KeyVault",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Azure.Storage.Blobs",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Azure.Storage.Queues",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Azure.AppContainers",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Azure.CosmosDB",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Docker",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "13.1.3-preview.1.26166.8",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Keycloak",
+    "family": "aspire",
+    "selectedVersion": "13.6.0-preview.1.26479.8",
+    "latestStable": null,
+    "latestPrerelease": "13.6.1-preview.1.26506.6",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Kubernetes",
+    "family": "aspire",
+    "selectedVersion": "13.6.0-preview.1.26479.8",
+    "latestStable": null,
+    "latestPrerelease": "13.6.1-preview.1.26506.6",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Redis",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Hosting.Testing",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Aspire.Microsoft.Azure.Cosmos",
+    "family": "aspire",
+    "selectedVersion": "13.6.0",
+    "latestStable": "13.6.1",
+    "latestPrerelease": "9.0.0-rc.1.24511.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.FrontComposer.Contracts",
+    "family": "hexalith-frontcomposer",
+    "selectedVersion": "4.5.0",
+    "latestStable": "4.6.0",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.FrontComposer.Mcp",
+    "family": "hexalith-frontcomposer",
+    "selectedVersion": "4.5.0",
+    "latestStable": "4.6.0",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.FrontComposer.Shell",
+    "family": "hexalith-frontcomposer",
+    "selectedVersion": "4.5.0",
+    "latestStable": "4.6.0",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.FrontComposer.SourceTools",
+    "family": "hexalith-frontcomposer",
+    "selectedVersion": "4.5.0",
+    "latestStable": "4.6.0",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.FrontComposer.Testing",
+    "family": "hexalith-frontcomposer",
+    "selectedVersion": "4.5.0",
+    "latestStable": "4.6.0",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.AdminPortal",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.Client",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.ConsumerPortal",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.Contracts",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.Picker",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Hexalith.Parties.Testing",
+    "family": "hexalith-parties",
+    "selectedVersion": "1.1.1",
+    "latestStable": "1.2.1",
+    "latestPrerelease": null,
+    "listingState": "listed"
+  },
+  {
+    "id": "Microsoft.OpenApi",
+    "family": "package:microsoft.openapi",
+    "selectedVersion": "2.12.2",
+    "latestStable": "3.10.2",
+    "latestPrerelease": "2.0.0-preview.31",
+    "listingState": "listed"
+  },
+  {
+    "id": "Swashbuckle.AspNetCore",
+    "family": "package:swashbuckle.aspnetcore",
+    "selectedVersion": "10.2.3",
+    "latestStable": "10.3.0",
+    "latestPrerelease": "6.6.0-preview.322",
+    "listingState": "listed"
+  },
+  {
+    "id": "Swashbuckle.AspNetCore.SwaggerUI",
+    "family": "package:swashbuckle.aspnetcore.swaggerui",
+    "selectedVersion": "10.2.3",
+    "latestStable": "10.3.0",
+    "latestPrerelease": "6.6.0-preview.322",
+    "listingState": "listed"
+  },
+  {
+    "id": "Verify",
+    "family": "verify",
+    "selectedVersion": "33.3.1",
+    "latestStable": "33.3.2",
+    "latestPrerelease": "33.3.2-beta.1",
+    "listingState": "listed"
+  },
+  {
+    "id": "Verify.XunitV3",
+    "family": "verify",
+    "selectedVersion": "33.3.1",
+    "latestStable": "33.3.2",
+    "latestPrerelease": "33.3.2-beta.1",
+    "listingState": "listed"
+  }
+]

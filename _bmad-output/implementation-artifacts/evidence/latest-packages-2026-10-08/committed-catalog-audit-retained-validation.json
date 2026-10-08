@@ -1,0 +1,19 @@
+{
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-audit.ps1",
+    "-AuditPath",
+    "/tmp/eventstore-authoritative-audit-20261008.json"
+  ],
+  "exitCode": 0,
+  "candidateSha256": "cd9ed067bbadf359b9f7974072644642ac32417fb6e7e45ae155354a8b54da7c",
+  "generatedFromRevision": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+  "priorHistoryPreserved": true,
+  "classificationLimitations": [
+    "bunit-html",
+    "package:swashbuckle.aspnetcore",
+    "package:swashbuckle.aspnetcore.swaggerui"
+  ]
+}

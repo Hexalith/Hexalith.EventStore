@@ -1,0 +1,43 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+skipped Hexalith.EventStore.Contracts.Tests.Packaging.PackagedReminderApiTests.PackagedReminderApiRunsWithoutWorksTypes
+  EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+  from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+skipped Hexalith.EventStore.Contracts.Tests.Packaging.TrustedEffectPackageContractTests.NamedPackagesExposeTrustedEffectContracts
+  EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+  from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+failed Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync (2s 296ms)
+  from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+  Shouldly.ShouldAssertException : exitCode
+      should be
+  0
+      but was
+  1
+  
+  Additional Info:
+      Shared consumer package authority validation failed.
+  
+  Consumer package authority validation failed with 5 error(s):
+  - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Client'.
+  - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Contracts'.
+  - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.DomainService'.
+  - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Server'.
+  - _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.ServiceDefaults'.
+  
+    at Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync() in /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs:165
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    --- End of stack trace from previous location ---
+    at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+    at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+    at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64) failed with 1 error(s) (3m 20s 099ms)
+Exit code: 2
+
+Test run summary: Failed!
+  total: 2275
+  failed: 1
+  succeeded: 2272
+  skipped: 2
+  duration: 3m 20s 296ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

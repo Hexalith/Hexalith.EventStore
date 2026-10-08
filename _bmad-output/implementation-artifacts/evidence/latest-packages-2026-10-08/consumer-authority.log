@@ -1,0 +1,58 @@
+Consumer package authority validation failed with 57 error(s):
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj contains PackageReference Version metadata '3.108.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj contains PackageReference Version metadata '3.70.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj contains PackageReference Version metadata '3.109.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj contains PackageReference Version metadata '3.70.1'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj contains PackageReference Version metadata '3.110.0'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj sets ManagePackageVersionsCentrally=false.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Server'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.DomainService'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Client'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Contracts'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.DomainService'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.Server'.
+- _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props contains consumer PackageVersion Include 'Hexalith.EventStore.ServiceDefaults'.

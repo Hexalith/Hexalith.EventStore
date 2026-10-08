@@ -1,0 +1,71 @@
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumers-ctn1wj7d/Probe.csproj (in 1.13 sec).
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: No license specified. Package 'Verify' requires a SponsorCheck license property. 'Verify' is published in owner mode, so sponsorship is configured once via an MSBuild property (in Directory.Build.props or the consuming project).
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Set ONE of the following properties (in a <PropertyGroup> in Directory.Build.props or the consuming project):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Sponsor on GitHub Sponsors (https://github.com/VerifyTests/Verify/blob/main/docs/maintenance-fee.md):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_GitHubSponsorAccount><your-github-account></Verify_GitHubSponsorAccount>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Sponsor privately (a private or incognito sponsorship is never bundled, so declare an end month alongside the account; at most 12 months out):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_GitHubSponsorAccount><your-github-account></Verify_GitHubSponsorAccount>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipPrivateUntil>yyyy-MM</Verify_SponsorshipPrivateUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Time-bounded license (replace yyyy-MM with the last covered month):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipLicensedUntil>yyyy-MM</Verify_SponsorshipLicensedUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Claim a publisher-defined exemption (use the example under the one that applies):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - MaintainerConsulting: Organizations that have engaged any of the core maintainers of Verify in consulting work could be exempt from the Maintenance Fee for 6 months from the final date of that work. [time-bounded: SponsorshipExemptionUntil required, at most 6 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>MaintainerConsulting</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - OpenSource: Open source projects that do not generate revenue are exempt. Voluntary donations and sponsorships are not revenue. [time-bounded: SponsorshipExemptionUntil required, at most 12 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>OpenSource</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - SmallRevenue: Consumers under US$10,000 annual gross revenue are exempt. [time-bounded: SponsorshipExemptionUntil required, at most 12 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>SmallRevenue</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Mark as ignored (you accept that the build is in breach of the package license):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipLicenseIgnored>true</Verify_SponsorshipLicenseIgnored>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Sponsor at https://github.com/VerifyTests/Verify/blob/main/docs/maintenance-fee.md
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: See: https://github.com/SimonCropp/SponsorCheck/blob/main/docs/VerifierDiagnosticCodes.md#sc021
+
+Build FAILED.
+
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: No license specified. Package 'Verify' requires a SponsorCheck license property. 'Verify' is published in owner mode, so sponsorship is configured once via an MSBuild property (in Directory.Build.props or the consuming project).
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Set ONE of the following properties (in a <PropertyGroup> in Directory.Build.props or the consuming project):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Sponsor on GitHub Sponsors (https://github.com/VerifyTests/Verify/blob/main/docs/maintenance-fee.md):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_GitHubSponsorAccount><your-github-account></Verify_GitHubSponsorAccount>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Sponsor privately (a private or incognito sponsorship is never bundled, so declare an end month alongside the account; at most 12 months out):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_GitHubSponsorAccount><your-github-account></Verify_GitHubSponsorAccount>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipPrivateUntil>yyyy-MM</Verify_SponsorshipPrivateUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Time-bounded license (replace yyyy-MM with the last covered month):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipLicensedUntil>yyyy-MM</Verify_SponsorshipLicensedUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Claim a publisher-defined exemption (use the example under the one that applies):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - MaintainerConsulting: Organizations that have engaged any of the core maintainers of Verify in consulting work could be exempt from the Maintenance Fee for 6 months from the final date of that work. [time-bounded: SponsorshipExemptionUntil required, at most 6 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>MaintainerConsulting</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - OpenSource: Open source projects that do not generate revenue are exempt. Voluntary donations and sponsorships are not revenue. [time-bounded: SponsorshipExemptionUntil required, at most 12 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>OpenSource</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   - SmallRevenue: Consumers under US$10,000 annual gross revenue are exempt. [time-bounded: SponsorshipExemptionUntil required, at most 12 months out]
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemption>SmallRevenue</Verify_SponsorshipExemption>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:     <Verify_SponsorshipExemptionUntil>yyyy-MM</Verify_SponsorshipExemptionUntil>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Option — Mark as ignored (you accept that the build is in breach of the package license):
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021:   <Verify_SponsorshipLicenseIgnored>true</Verify_SponsorshipLicenseIgnored>
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: Sponsor at https://github.com/VerifyTests/Verify/blob/main/docs/maintenance-fee.md
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: 
+/home/administrator/.nuget/packages/verify/33.3.1/buildTransitive/Verify.targets(172,5): SponsorCheck error SC021: See: https://github.com/SimonCropp/SponsorCheck/blob/main/docs/VerifierDiagnosticCodes.md#sc021
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:02.13

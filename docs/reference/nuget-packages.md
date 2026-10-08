@@ -382,9 +382,9 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
-| Dapr.Client                               | 1.18.5  |
-| Microsoft.Extensions.Configuration.Binder | 10.0.11 |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.11 |
+| Dapr.Client                               | 1.18.10  |
+| Microsoft.Extensions.Configuration.Binder | 10.0.12 |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.12 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Client
@@ -406,9 +406,9 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 
 | Package                | Version |
 | ---------------------- | ------- |
-| Dapr.Client            | 1.18.5  |
-| Dapr.Actors            | 1.18.5  |
-| Dapr.Actors.AspNetCore | 1.18.5  |
+| Dapr.Client            | 1.18.10  |
+| Dapr.Actors            | 1.18.10  |
+| Dapr.Actors.AspNetCore | 1.18.10  |
 | MediatR                | 14.2.0  |
 
 ```bash
@@ -431,7 +431,7 @@ When naming projection types, use short names for compact ETags — see [Project
 
 | Package                             | Version |
 | ----------------------------------- | ------- |
-| Microsoft.AspNetCore.SignalR.Client | 10.0.11 |
+| Microsoft.AspNetCore.SignalR.Client | 10.0.12 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.SignalR
@@ -457,7 +457,7 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 | ------------ | ------- |
 | Shouldly     | 4.3.0   |
 | NSubstitute  | 6.2.0   |
-| xunit.v3.assert | 4.0.0 |
+| xunit.v3.assert | 4.0.1 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing
@@ -492,8 +492,8 @@ audiences, requires HTTPS metadata for publishing, and clears the signing-key ov
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.5.3 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.5.0-preview.1.260825-0345 |
+| Aspire.Hosting                       | 13.6.1 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.6.0-preview.1.261001-0243 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire

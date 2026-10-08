@@ -1,0 +1,17 @@
+Consumer package authority validation failed with 3 error(s):
+- _bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-loader-probe/fixture/Plugin/Plugin.csproj resolves 'Verify.XunitV3' to '33.3.2' instead of '33.3.1'.
+- _bmad-output/implementation-artifacts/evidence/story-6-6/2026-10-05-loader-probe/fixture/Plugin/Plugin.csproj resolves 'Verify' to '33.3.2' instead of '33.3.1'.
+- Authoritative catalog evaluation for 'tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj' failed: Central package version validation failed with 13 error(s):
+- Package 'Aspire.Microsoft.Azure.Cosmos' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Azure.Storage.Queues' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Azure.Storage.Blobs' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Docker' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Azure.Messaging.ServiceBus' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Azure.AppContainers' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Azure.CosmosDB' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Keycloak' source version '13.6.1-preview.1.26506.6' evaluates to '13.6.0-preview.1.26479.8'.
+- Package 'Aspire.Hosting' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Redis' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Hosting.Kubernetes' source version '13.6.1-preview.1.26506.6' evaluates to '13.6.0-preview.1.26479.8'.
+- Package 'Aspire.Hosting.Testing' source version '13.6.1' evaluates to '13.6.0'.
+- Package 'Aspire.Azure.Security.KeyVault' source version '13.6.1' evaluates to '13.6.0'.

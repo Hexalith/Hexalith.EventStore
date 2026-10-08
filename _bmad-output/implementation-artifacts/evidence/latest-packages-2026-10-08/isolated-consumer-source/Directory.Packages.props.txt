@@ -1,0 +1,1 @@
+<Project><Import Project="/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props" /><PropertyGroup><CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled></PropertyGroup></Project>

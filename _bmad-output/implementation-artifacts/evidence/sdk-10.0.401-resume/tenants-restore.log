@@ -1,0 +1,8 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj (in 247 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj (in 246 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj (in 254 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj (in 256 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Testing/Hexalith.Tenants.Testing.csproj (in 256 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj (in 252 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj (in 265 ms).

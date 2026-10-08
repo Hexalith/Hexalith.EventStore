@@ -5548,3 +5548,96 @@ status: open
   summary: Add a `text eol=lf` rule for the hash-bound 6-1-p1r-remediation (and 6-1-p1r-qualification) evidence packets.
   evidence: `git ls-files --eol` reports `attr/text=auto` for evidence/6-1-p1r-remediation/source-candidate.diff, unlike the story-1-21, 3-13, 3-14, 3-15 and 4-15 packets. A core.autocrlf checkout would fail the packet's `sha256sum --check SHA256SUMS`; the scan binding normalizes CRLF only to tolerate this. `.gitattributes` is a sealed gate input, so the change needs its own gate-hash handling.
 
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Preserve no-lifecycle/no-install execution at the relocated trusted-publishing npm boundary.
+  evidence: release.yml uses npm ci before signature verification and npx semantic-release; assess the missing-executable case before grading its unverified installation risk.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Provide hosted coverage for the excluded heavyweight container provenance methods.
+  evidence: ci.yml excludes the HeavyweightContainerPublish trait; real multi-RID and missing-provenance checks have no replacement hosted lane.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Align event-evolution local-guard CI with the Release/package dependency baseline.
+  evidence: event-evolution-local-guards.yml uses Debug and external project references in CI.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Bound isolated package consumer subprocesses before shared CI test shards.
+  evidence: validate-consumer-package-references.py run helper has no timeout and can delay every later shard until job timeout.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Retain compiled-consumer diagnostics from hosted CI.
+  evidence: The event-evolution-compatibility job writes logs under runner.temp but has no artifact upload.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Preserve partial compiled-consumer output on timeout.
+  evidence: verify-event-evolution-compiled-consumer.py writes logs only after subprocess completion; TimeoutExpired bypasses the log write.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Verify descendant cleanup for timed-out local guard subprocesses (medium, unverified).
+  evidence: A process-tree reproduction is needed to establish surviving compiler/runtime descendants after subprocess.run timeout.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Strengthen structural and executable coverage of relocated trusted-publishing guards.
+  evidence: TrustedPublishingReleaseTests uses string checks and does not execute the local publication freeze script; an inverted comparator can authorize a disabled flag without coverage detecting it.
+
+
+### DW-539: Preflight complete bmad-loop bookkeeping subjects before staging
+
+origin: bmad-build review of _bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md, 2026-10-08
+location: bmad_loop/verify.py:commit_paths
+severity: medium
+reason: The unmodified helper stages operands before its git commit invokes the hook; an invalid dynamic subject can fail after staging. Add a repository-aware preflight with retained successful validation evidence without weakening hooks.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md`
+  summary: Preflight complete bmad-loop bookkeeping subjects before staging
+  evidence: The unmodified helper stages operands before its git commit invokes the hook; an invalid dynamic subject can fail after staging. Add a repository-aware preflight with retained successful validation evidence without weakening hooks.
+
+### DW-540: Handle long story identifiers in bmad-loop bookkeeping headers
+
+origin: bmad-build review of _bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md, 2026-10-08
+location: bmad_loop/engine.py:declared deferred-work closure
+severity: medium
+reason: STORY_RE accepts a 170-character slug that produces a 217-character declared-ID closure header. chore and build have equal length, so the hotfix preserves this pre-existing violation of the repository 200-character limit.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md`
+  summary: Handle long story identifiers in bmad-loop bookkeeping headers
+  evidence: STORY_RE accepts a 170-character slug that produces a 217-character declared-ID closure header. chore and build have equal length, so the hotfix preserves this pre-existing violation of the repository 200-character limit.
+
+### DW-541: Use conventional fallback subjects when the bmad-loop commit template is empty
+
+origin: bmad-build review of _bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md, 2026-10-08
+location: bmad_loop/engine.py:_base_commit_message; bmad_loop/sweep.py:_commit_message
+severity: medium
+reason: The original empty-template defaults emit story/sweep headers rejected by commitlint. This workspace currently has a nonempty configured template, so the default-path problem is outside the restored bookkeeping hotfix.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md`
+  summary: Use conventional fallback subjects when the bmad-loop commit template is empty
+  evidence: The original empty-template defaults emit story/sweep headers rejected by commitlint. This workspace currently has a nonempty configured template, so the default-path problem is outside the restored bookkeeping hotfix.
+
+### DW-542: Report failed Git publication after bmad-loop operator confirmation
+
+origin: bmad-build review of _bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md, 2026-10-08
+location: bmad_loop/cli.py:_land_confirmation
+severity: medium
+reason: The unchanged handler swallows GitError and prints confirmation completion even when records remain unpublished. The corrected operator type passes current commitlint, but other hook/repository failures can still be hidden.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-bmad-loop-commitlint-compatibility.md`
+  summary: Report failed Git publication after bmad-loop operator confirmation
+  evidence: The unchanged handler swallows GitError and prints confirmation completion even when records remain unpublished. The corrected operator type passes current commitlint, but other hook/repository failures can still be hidden.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
+  summary: Resolve the existing Tenants published-package compatibility failure for its administrator verifier APIs.
+  evidence: SDK 10.0.401 package-mode Server.Tests build fails CS0246 for IDomainServiceAdministratorVerifier and DomainServiceAdministratorClaim; the governed EventStore DomainService 3.115.0 package lacks the current source APIs, while the clean source-mode build passes. The mismatch predates this SDK documentation resume; publication is outside its authorization.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
+  summary: Disposition the existing standalone package-observation props in maintained consumer-authority validation without modifying sealed evidence or hiding executable overrides.
+  evidence: Full SDK 10.0.401 Contracts MTP run passes 2272 tests but SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync fails on the five previously tracked declarations in evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props; the raw validator reports 57 historical probe/evidence findings without the existing maintained exemptions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
+  summary: Verify the concurrent bmad-loop commitlint compatibility task retains a reproducible migration-subject execution harness.
+  evidence: Unverified medium finding from the blind reviewer: that concurrent spec cites a temporary /tmp harness and a retained result JSON; the other task's final harness/instructions would settle whether the reproduction path survives temporary-file removal. No concurrent task files were modified by the SDK review.

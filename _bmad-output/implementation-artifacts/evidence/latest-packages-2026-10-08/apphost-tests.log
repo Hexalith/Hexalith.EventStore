@@ -1,0 +1,71 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.AppHost.Tests
+  Discovered:  Hexalith.EventStore.AppHost.Tests
+  Starting:    Hexalith.EventStore.AppHost.Tests
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[62]
+      User profile is available. Using '/home/administrator/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://127.0.0.1:45575
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://127.0.0.1:45575/protected - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'HTTP: GET /protected'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'HTTP: GET /protected'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://127.0.0.1:45575/protected - 200 - text/plain;+charset=utf-8 46.1937ms
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Stopping Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Starting Dapr-related resources...
+info: CommunityToolkit.Aspire.Hosting.Dapr.DaprDistributedApplicationLifecycleHook[0]
+      Using default dapr path for component 'pubsub'.
+  Finished:    Hexalith.EventStore.AppHost.Tests (ID = '900a5b172d1c5e2e0d5660ea0e513317fd460ce4fa7e6afae85eee35d3de3284')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.AppHost.Tests  Total: 145, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 1.144s

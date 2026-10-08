@@ -1,0 +1,275 @@
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/cli.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/cli.py
+@@ -4166,7 +4166,7 @@
+     # THE PUBLISHABLE-TARGET GUARD (DW-237), per operand and before any git runs.
+     # `commit_paths` forces every operand LITERAL, so an operand replaced by a
+     # DIRECTORY is handed to `git add` as a pathspec and staged RECURSIVELY —
+-    # an unrelated tree published under this `chore(operator):` message.
++    # an unrelated tree published under this `build(operator):` message.
+     # Family `"store"` at all three: the family names the validation POLICY, not
+     # the file's role, and a spec, a board and a park record all want exactly
+     # "a regular file is there" and nothing about their bytes.
+@@ -4205,7 +4205,7 @@
+         try:
+             verify.commit_paths(
+                 paths.repo_root,
+-                f"chore(operator): confirm {story.story_key}",
++                f"build(operator): confirm {story.story_key}",
+                 survivors,
+             )
+         except verify.GitError:
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/decisions.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/decisions.py
+@@ -560,7 +560,7 @@
+     whatever had happened, and against a TRACKED ledger that has gone absent
+     `commit_paths` deliberately keeps the missing path as a DELETION to stage — so
+     a `close` whose ledger file had vanished published that ledger's own REMOVAL
+-    under a `chore(decisions): pre-answer <id>` message, taking every `decision:`
++    under a `build(decisions): pre-answer <id>` message, taking every `decision:`
+     line and open entry out of HEAD. The `recorded` gate is what closes that: the
+     absent-ledger state never puts the ledger in front of `git add`.
+ 
+@@ -695,7 +695,7 @@
+     # ONE COMMIT PER OPERAND, in the operand's OWN tree (DW-225/226 — see the
+     # docstring). An empty operand list spawns no git at all, which is GATE ONE's
+     # rule and is why this needs no `if operands:` of its own.
+-    message = f"chore(decisions): pre-answer {decision.id}"
++    message = f"build(decisions): pre-answer {decision.id}"
+     for target, path in operands:
+         try:
+             verify.commit_paths(target.parent, message, [target])
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/engine.py
+@@ -8239,7 +8239,7 @@
+                 try:
+                     verify.commit_paths(
+                         self.paths.repo_root,
+-                        f"chore(deferred-work): carry harvested findings from {task.story_key}",
++                        f"build(deferred-work): carry harvested findings from {task.story_key}",
+                         [ledger],
+                     )
+                 except verify.GitError as e:
+@@ -8329,7 +8329,7 @@
+         if carried:
+             # The DW-237 guard, before any git: `commit_paths` hands its operand to
+             # `git add` as a LITERAL pathspec, so a ledger replaced by a directory
+-            # would be staged RECURSIVELY under this `chore(deferred-work):` message.
++            # would be staged RECURSIVELY under this `build(deferred-work):` message.
+             # Every cause refuses here, `target-unreadable` included: this carry holds
+             # no commit latch (its flips are idempotent and its commit was already
+             # best effort), so it has no retry to protect the way
+@@ -8349,7 +8349,7 @@
+                 try:
+                     verify.commit_paths(
+                         self.paths.repo_root,
+-                        f"chore(deferred-work): close {task.story_key}'s declared ids",
++                        f"build(deferred-work): close {task.story_key}'s declared ids",
+                         [ledger],
+                     )
+                 except verify.GitError as e:
+@@ -8695,7 +8695,7 @@
+                 try:
+                     verify.commit_paths(
+                         self.paths.repo_root,
+-                        f"chore(sprint-status): carry {task.story_key} to {target}",
++                        f"build(sprint-status): carry {task.story_key} to {target}",
+                         [board],
+                     )
+                 except verify.GitError as e:
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/sweep.py
+@@ -1697,7 +1697,7 @@
+         Left set, the latch would outlive the phase as a FALSE debt, and the next
+         resume's settle would commit whatever the ledger file happened to be
+         carrying — an operator's hand-edit, a rival writer's harvest — under a
+-        `chore(sweep):` message for a publish that never happened: the DW-183
++        `build(sweep):` message for a publish that never happened: the DW-183
+         hazard back in a narrower form. `owed_here` is `_owe_ledger_commit`'s
+         answer, so a debt inherited from an earlier invocation is never retracted
+         here (see there). A `LedgerLockReleaseError` never reaches this: the
+@@ -1947,9 +1947,9 @@
+             # sits AT the call site because `_commit_ledger` has publishers that
+             # deliberately stay ungated (see `_close_resolved`'s inventory).
+             publish_message = (
+-                "chore(sweep): commit ledger after recovering in-flight bundles"
++                "build(sweep): commit ledger after recovering in-flight bundles"
+                 if recovered
+-                else "chore(sweep): commit a ledger write an interrupted phase left unpublished"
++                else "build(sweep): commit a ledger write an interrupted phase left unpublished"
+             )
+             if self._ledger_unfit_to_publish():
+                 self._withhold_ledger_publish(publish_message)
+@@ -2227,7 +2227,7 @@
+             # miss here too; an attempted commit git refuses raises, as at every
+             # ledger publisher.
+             self._commit_ledger(
+-                "chore(sweep): commit ledger at the sweep cycle boundary",
++                "build(sweep): commit ledger at the sweep cycle boundary",
+                 path=self.workspace.paths.deferred_work,
+                 family="ledger",
+             )
+@@ -2359,7 +2359,7 @@
+         in-flight edits anywhere ELSE in the enclosing repository stay with their
+         owner (DW-183/DW-185). Inside the ledger there is no such boundary — the
+         file is published WHOLE — so an out-of-band edit to it rides into the
+-        `chore(sweep):` commit beside whatever this arm was asked to publish. The
++        `build(sweep):` commit beside whatever this arm was asked to publish. The
+         phase arm has that property only while a stranded write is outstanding;
+         this one keeps it FOREVER, because the probe is keyed on ids that stay
+         `done` once published, so every later resume of the same cycle reaches this
+@@ -2399,7 +2399,7 @@
+             # Nothing would have been published — both probes short-circuit on an
+             # empty list — so there is nothing to decline: no read, no row, no git.
+             return
+-        close_message = "chore(sweep): close resolved deferred-work entries"
++        close_message = "build(sweep): close resolved deferred-work entries"
+         if self._ledger_unfit_to_publish():
+             # DW-250: the run's verdict, over BOTH terms, before either probe reads.
+             # The row names the union — every id this publisher declined to prove.
+@@ -2768,7 +2768,7 @@
+             # different answer. Guarded on `dropped` above: a prune that consumed
+             # nothing wrote nothing and spawns no git.
+             self._commit_ledger(
+-                "chore(sweep): drop consumed deferred-work pre-answers",
++                "build(sweep): drop consumed deferred-work pre-answers",
+                 path=decisions_store.store_path(project),
+                 family="store",
+             )
+@@ -2853,7 +2853,7 @@
+         # commit here republished the very ledger bytes that phase withheld.
+         # Guarded on `drop_pre_answer` above: no store entry, no write, no git.
+         self._commit_ledger(
+-            "chore(sweep): drop stale deferred-work pre-answer",
++            "build(sweep): drop stale deferred-work pre-answer",
+             path=decisions_store.store_path(project),
+             family="store",
+         )
+@@ -3431,7 +3431,7 @@
+             task.migration_ledger_doubt_owned = True
+             self._save()
+         outcome = self._commit_ledger(
+-            "chore(sweep): migrate legacy deferred-work entries to DW format",
++            "build(sweep): migrate legacy deferred-work entries to DW format",
+             path=self.workspace.paths.deferred_work,
+             family="ledger",
+             accepted_text=rewrite,
+@@ -4334,7 +4334,7 @@
+             # with their owner (DW-183/DW-185). Dirt INSIDE the ledger is a different
+             # story and the pending arm widens it — `_commit_ledger` publishes the
+             # whole file, so an out-of-band edit to the ledger (an operator's note, a
+-            # rival writer's half-landed change) rides into the `chore(sweep):`
++            # rival writer's half-landed change) rides into the `build(sweep):`
+             # commit beside the close it was asked to publish. The `closed` arm has
+             # always had that property; what is new is that a pass which wrote
+             # NOTHING can now trigger it. Accepted deliberately: the alternative is
+@@ -4463,10 +4463,10 @@
+             # `_commit_ledger`: see the inventory above for the sites that stay
+             # ungated on purpose.
+             if self._ledger_unfit_to_publish():
+-                self._withhold_ledger_publish("chore(sweep): close resolved deferred-work entries")
++                self._withhold_ledger_publish("build(sweep): close resolved deferred-work entries")
+             else:
+                 self._commit_ledger(
+-                    "chore(sweep): close resolved deferred-work entries",
++                    "build(sweep): close resolved deferred-work entries",
+                     path=self.workspace.paths.deferred_work,
+                     family="ledger",
+                 )
+@@ -4494,10 +4494,10 @@
+             # `if`/`else` rather than folded with the arm above so each arm's gate
+             # can be ablated on its own.
+             if self._ledger_unfit_to_publish():
+-                self._withhold_ledger_publish("chore(sweep): close resolved deferred-work entries")
++                self._withhold_ledger_publish("build(sweep): close resolved deferred-work entries")
+             else:
+                 self._commit_ledger(
+-                    "chore(sweep): close resolved deferred-work entries",
++                    "build(sweep): close resolved deferred-work entries",
+                     path=self.workspace.paths.deferred_work,
+                     family="ledger",
+                 )
+@@ -5449,7 +5449,7 @@
+             # phase's write went to the ledger, and `implementation_artifacts` is
+             # configurable to any absolute path (see `_commit_ledger`).
+             self._commit_ledger(
+-                "chore(sweep): record deferred-work decisions",
++                "build(sweep): record deferred-work decisions",
+                 path=self.workspace.paths.deferred_work,
+                 family="ledger",
+             )
+@@ -5735,7 +5735,7 @@
+         basename and `verify.commit_paths` commits that same single path. That is
+         what bounds the blast radius to the published file (DW-183/DW-185) — an
+         operator's unrelated in-flight edits in the enclosing repository stay
+-        dirty rather than riding into a `chore(sweep):` commit — and what
++        dirty rather than riding into a `build(sweep):` commit — and what
+         quarantines a withheld ledger from a LATER commit in the same cycle
+         (DW-187): a prune commits the pre-answer store alone, so the undecodable
+         bytes the decision phase refused to publish are still unpublished.
+@@ -5832,7 +5832,7 @@
+         still there or still readable, and `verify.commit_paths` deliberately keeps
+         a missing-but-TRACKED path as a DELETION to stage — so a ledger removed
+         after the phase wrote it was committed as a deletion under a
+-        `chore(sweep):` message, and a resume whose ledger held undecodable bytes
++        `build(sweep):` message, and a resume whose ledger held undecodable bytes
+         published them and only then raised on them. `verify.unpublishable_target` is the
+         guard, and it runs between the resolve and `path_clean`: after, because git
+         is asked about the RESOLVED target (DW-188) and those are the bytes that
+@@ -7715,7 +7715,7 @@
+             # The DW-237 publishable-target guard, before any git runs: `commit_paths`
+             # forces every operand LITERAL, so a ledger replaced by a DIRECTORY is
+             # handed to `git add` as a pathspec and staged RECURSIVELY under this
+-            # `chore(deferred-work):` message. Refused, never raised, on every cause
++            # `build(deferred-work):` message. Refused, never raised, on every cause
+             # — see the docstring's best-effort argument, which covers this arm too.
+             refusal = _publication_refusal(ledger, "ledger")
+             if refusal is not None:
+@@ -7732,7 +7732,7 @@
+                 try:
+                     verify.commit_paths(
+                         self.paths.repo_root,
+-                        f"chore(deferred-work): close {task.story_key}'s bundle ids",
++                        f"build(deferred-work): close {task.story_key}'s bundle ids",
+                         [ledger],
+                     )
+                 except verify.GitError as e:
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/verify.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/verify.py
+@@ -6758,7 +6758,7 @@
+     matter who wrote it. The run's carry bookkeeping passes the sprint board and the
+     deferred-work ledger through that call — ``_carry_board_advance``
+     unconditionally — so an operator's private unstaged edit to one of those files
+-    lands in git history under a `chore(sprint-status): carry ...` message, leaving
++    lands in git history under a `build(sprint-status): carry ...` message, leaving
+     the tree clean and no trace of the substitution. The blast radius is strictly
+     SAME-PATH: `git commit -- <pathspec>` is implicitly `--only`, so dirt on any
+     other path is never swept in, which is why this list is a set of exact paths and
+@@ -9684,7 +9684,7 @@
+     alone let a store replaced by a DIRECTORY (or by a symlink to one) through
+     the guard, and `commit_paths` hands the literal pathspec to `git add`, which
+     stages a directory's descendants RECURSIVELY — an unrelated tree published
+-    under a `chore(sweep):`/`chore(decisions):` message. The test is ONE guarded
++    under a `build(sweep):`/`build(decisions):` message. The test is ONE guarded
+     `lstat()` on the argument (DW-257): `S_ISREG` publishes a regular file,
+     `S_ISLNK` publishes a link entry (see the resolved-argument paragraph for
+     which link that is), and any other present type (directory, FIFO, device,
+--- a/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/worktree_flow.py
++++ b/home/administrator/.local/share/uv/tools/bmad-loop/lib/python3.11/site-packages/bmad_loop/worktree_flow.py
+@@ -2263,7 +2263,7 @@
+         ``repo``. That call stages by PATHSPEC — `git add -- :(literal)<path>` — so
+         whatever the working tree holds at that path is committed no matter who wrote
+         it, and a merge that walked past an operator's edit there hands the run its
+-        own bytes to commit under a `chore(...)` message. The blast radius is strictly
++        own bytes to commit under a `build(...)` message. The blast radius is strictly
+         same-path (`git commit -- <pathspec>` is implicitly `--only`), which is why
+         this is an exact path set and not a policy.
+ 
+@@ -2288,7 +2288,7 @@
+         TRACKED ONLY, and that is the whole boundary of the hazard rather than a
+         precaution. What makes the carry dangerous is committing a DIVERGENCE from a
+         baseline somebody else authored: on a tracked board, an operator's local
+-        reopen of a story row rides out under `chore(sprint-status): carry ...` with
++        reopen of a story row rides out under `build(sprint-status): carry ...` with
+         the tree left clean and nothing to read it back from. An UNTRACKED artifact
+         has no such baseline — git reports the whole file as dirt because git has
+         never seen it, the orchestrator has been reading that exact file as its own

@@ -1,0 +1,43 @@
+{
+  "recordedAtUtc": "2026-10-08T08:13:26.005750+00:00",
+  "command": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/verify-decisions.py"
+  ],
+  "exitCode": 0,
+  "log": "matrix-final-verification.log",
+  "scriptSha256": "c4230d0fa2ea1b378212ec0b991d007c309712619f090c919cd3ebb5d0c5754e",
+  "authoritativeAuditSha256": "cd9ed067bbadf359b9f7974072644642ac32417fb6e7e45ae155354a8b54da7c",
+  "diffChecks": [
+    {
+      "directory": ".",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "_bmad-output/implementation-artifacts/spec-update-latest-packages-and-aspire.md",
+        "_bmad-output/planning-artifacts/architecture.md",
+        "_bmad-output/project-context.md",
+        "docs/reference/nuget-packages.md",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+      ],
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "directory": "references/Hexalith.Builds",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "Props/Directory.Packages.props",
+        "Tools/package-version-exceptions.json",
+        "Tools/package-version-audit.json"
+      ],
+      "exitCode": 0,
+      "output": ""
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "catalogRawSha256": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+  "checks": [
+    {
+      "name": "final-catalog",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-central-package-versions.ps1",
+        "-CatalogPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+      ],
+      "exitCode": 0,
+      "log": "final-catalog.log"
+    },
+    {
+      "name": "final-catalog-folders",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-central-package-versions.ps1",
+        "-CatalogPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-ConsumerProjectName",
+        "Hexalith.Folders.Aspire"
+      ],
+      "exitCode": 0,
+      "log": "final-catalog-folders.log"
+    },
+    {
+      "name": "final-dapr",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-dapr-package-versions.ps1",
+        "-CatalogPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+      ],
+      "exitCode": 0,
+      "log": "final-dapr.log"
+    },
+    {
+      "name": "final-exceptions",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-exceptions.ps1",
+        "-InventoryPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/package-version-exceptions.json",
+        "-CatalogPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props"
+      ],
+      "exitCode": 0,
+      "log": "final-exceptions.log"
+    },
+    {
+      "name": "final-consumer-authority",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1",
+        "-RepositoryRoot",
+        "/home/administrator/projects/hexalith/eventstore",
+        "-CatalogPath",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props",
+        "-ExcludedPath",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.targets;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/domain/Domain.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/host/Host.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Build.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj"
+      ],
+      "exitCode": 0,
+      "log": "final-consumer-authority.log"
+    },
+    {
+      "name": "final-doc-versions",
+      "command": [
+        "bash",
+        "scripts/check-doc-versions.sh"
+      ],
+      "exitCode": 0,
+      "log": "final-doc-versions.log"
+    }
+  ],
+  "consumerAuthorityContext": "Uses the existing repository test source standalone evidence exclusions; concurrent user changes were preserved."
+}

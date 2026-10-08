@@ -1,0 +1,14 @@
+{
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-audit.ps1",
+    "-AuditPath",
+    "/tmp/eventstore-authoritative-audit-20261008.json"
+  ],
+  "exitCode": 1,
+  "candidateSha256": "dd5a37306aea22a48437c303d2d35bd8f3290088cd980dc68d65ed51b4e85e2e",
+  "generatedFromRevision": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+  "priorHistoryPreserved": true
+}

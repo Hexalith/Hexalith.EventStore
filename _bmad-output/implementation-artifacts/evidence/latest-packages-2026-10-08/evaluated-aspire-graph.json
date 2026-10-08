@@ -1,0 +1,55 @@
+{
+  "source": "src/Hexalith.EventStore.AppHost/obj/project.assets.json",
+  "sourceSha256": "e26ac8f7819717c5dd2b6d02a7cd76b40f4615b7b5e7a41a755a51f252ec207c",
+  "catalogRawSha256": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+  "packages": [
+    {
+      "package": "Aspire.Dashboard.Sdk.linux-x64",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.AppHost",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Azure",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Azure.AppContainers",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Azure.ContainerRegistry",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Azure.OperationalInsights",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Docker",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Keycloak",
+      "version": "13.6.1-preview.1.26506.6"
+    },
+    {
+      "package": "Aspire.Hosting.Kubernetes",
+      "version": "13.6.1-preview.1.26506.6"
+    },
+    {
+      "package": "Aspire.Hosting.Orchestration.linux-x64",
+      "version": "13.6.1"
+    },
+    {
+      "package": "Aspire.Hosting.Redis",
+      "version": "13.6.1"
+    }
+  ]
+}

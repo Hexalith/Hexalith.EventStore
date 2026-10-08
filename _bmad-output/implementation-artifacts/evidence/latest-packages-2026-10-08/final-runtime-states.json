@@ -1,0 +1,182 @@
+[
+  {
+    "displayName": "eventstore-admin-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore-admin",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore-admin-ui-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore-admin-ui",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "eventstore",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-admin-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-admin-user-id",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-admin-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-sample-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-sample-user-id",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-sample-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-signing-key",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "local-auth-workload-client-secret",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-api-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-api",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-blazor-ui-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-blazor-ui",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "sample",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "security-eventstore-client-password",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "security-eventstore-client-username",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "security",
+    "resourceType": "Container",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "tenants-api-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "tenants-api",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "tenants-app-api-token",
+    "resourceType": "Parameter",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "tenants-dapr-cli",
+    "resourceType": "Executable",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  },
+  {
+    "displayName": "tenants",
+    "resourceType": "Project",
+    "state": "Running",
+    "healthStatus": "Healthy"
+  }
+]

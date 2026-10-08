@@ -1,0 +1,31 @@
+{
+  "initialCandidateBuild": [
+    "dotnet",
+    "build",
+    "/tmp/eventstore-package-consumers-ctn1wj7d/Probe.csproj",
+    "--configuration",
+    "Release",
+    "-m:1"
+  ],
+  "retainedVerifyBuild": [
+    "dotnet",
+    "build",
+    "/tmp/eventstore-package-consumers-ctn1wj7d/Probe.csproj",
+    "--configuration",
+    "Release",
+    "-m:1"
+  ],
+  "acceptedFamiliesBuild": [
+    "dotnet",
+    "build",
+    "/tmp/eventstore-package-consumers-ctn1wj7d/Probe.csproj",
+    "--configuration",
+    "Release",
+    "-m:1"
+  ],
+  "acceptedFamiliesTests": [
+    "dotnet",
+    "/tmp/eventstore-package-consumers-ctn1wj7d/bin/Release/net10.0/Probe.dll"
+  ],
+  "notes": "Initial candidate and retained Verify logs bind their respective catalog selections; final inert source excludes the rejected Verify family and includes the valid annotated projection."
+}

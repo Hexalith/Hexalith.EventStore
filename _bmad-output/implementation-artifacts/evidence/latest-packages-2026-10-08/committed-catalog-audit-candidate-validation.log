@@ -1,0 +1,4 @@
+Package version audit validation failed with 3 error(s):
+- Accepted family 'bunit-html' must name at least one representative consumer.
+- Accepted family 'package:swashbuckle.aspnetcore' must name at least one representative consumer.
+- Accepted family 'package:swashbuckle.aspnetcore.swaggerui' must name at least one representative consumer.

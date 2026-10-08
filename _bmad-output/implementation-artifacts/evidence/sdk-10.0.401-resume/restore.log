@@ -1,0 +1,17 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 253 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 294 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj (in 304 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 230 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj (in 295 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 294 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj (in 210 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 246 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (in 186 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj (in 184 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj (in 312 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj (in 194 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 236 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 278 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj (in 77 ms).
+  38 of 53 projects are up-to-date for restore.

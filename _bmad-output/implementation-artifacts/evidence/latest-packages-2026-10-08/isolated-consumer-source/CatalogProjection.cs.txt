@@ -1,0 +1,11 @@
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace CatalogConsumer;
+
+[Projection]
+[BoundedContext("CatalogConsumer")]
+public partial class CatalogProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public int Count { get; set; }
+}

@@ -1,0 +1,15 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj (in 227 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 227 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj (in 174 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 227 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 228 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 234 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj (in 234 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj (in 247 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 281 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Testing/Hexalith.Tenants.Testing.csproj (in 281 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj (in 283 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj (in 288 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 287 ms).
+  2 of 15 projects are up-to-date for restore.

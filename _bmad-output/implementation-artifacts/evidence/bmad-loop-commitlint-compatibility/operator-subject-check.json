@@ -1,0 +1,28 @@
+{
+  "check": "installed cli._land_confirmation generates the compatible subject",
+  "boundary": "real confirmation and commit_paths; board/record effects and all Git operations stubbed",
+  "repository_head": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+  "real_git_mutations": 0,
+  "captured_commit_arguments": [
+    "commit",
+    "-m",
+    "build(operator): confirm 1-1-a",
+    "--",
+    ":(literal)spec.md",
+    ":(literal)sprint-status.yaml",
+    ":(literal)operator.json"
+  ],
+  "observed_subject": "build(operator): confirm 1-1-a",
+  "commitlint_command": [
+    "npx",
+    "--no",
+    "--",
+    "commitlint",
+    "--edit",
+    "/tmp/bmad-operator-subject-5wyj87py/message.txt",
+    "--verbose"
+  ],
+  "commitlint_exit_code": 0,
+  "commitlint_output": "\u29d7   --- input ---\nbuild(operator): confirm 1-1-a\n\u2714   found 0 problems, 0 warnings\n",
+  "result": "passed"
+}

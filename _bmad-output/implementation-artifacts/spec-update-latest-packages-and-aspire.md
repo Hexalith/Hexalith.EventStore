@@ -2,9 +2,12 @@
 title: 'Update Packages and Aspire to Latest Compatible Releases'
 type: 'chore'
 created: '2026-08-28'
+updated: '2026-10-08'
 status: 'in-review'
-baseline_commit: '05769ed89c4e99b283f862ca956900b14d825b1a'
-review_loop_iteration: 1
+route: 'dispatch'
+baseline_commit: '4cc77f9554395e84539e173e94b8f0b4df14d643'
+builds_baseline_commit: 'af20682ac8fc420068a731ecb87cff84727a3d53'
+review_loop_iteration: 0
 context:
   - '_bmad-output/project-context.md'
 ---
@@ -13,71 +16,75 @@ context:
 
 ## Intent
 
-**Problem:** The shared NuGet catalog is behind currently listed releases, its checked-in audit no longer matches the catalog, and EventStore remains on Aspire 13.4.6 while the latest stable Aspire release is 13.5.3. Partial Aspire upgrades are unsafe because 13.5 is not binary-compatible with mixed 13.4 hosting integrations.
+**Problem:** The August upgrade is superseded. Live discovery on 2026-10-08 finds newer compatible candidates while EventStore uses Aspire 13.6.0.
 
-**Approach:** Re-run the source-aware catalog audit, advance every package to its latest validated compatible release by rollback-safe family, and reconcile retained exceptions. Upgrade the complete EventStore Aspire family to 13.5.3, including aligned previews and the AppHost SDK, then prove package-mode build and runtime compatibility.
+**Approach:** Apply latest validated releases by coupled rollback group, including Aspire 13.6.1, then verify package-mode builds/tests and running topology. The user requested this fresh upgrade on 2026-10-08.
 
 ## Boundaries & Constraints
 
-**Always:** Treat `references/Hexalith.Builds/Props/Directory.Packages.props` as the sole NuGet authority; prefer the latest listed stable version, preserve intentional prerelease channels, and update coupled families atomically. Keep `Aspire.AppHost.Sdk`, stable Aspire packages, Keycloak/Kubernetes previews, CommunityToolkit Dapr, and the exception inventory coherent. Preserve NuGet auditing, warning-as-error behavior, package-mode CI semantics, and unrelated user work.
+**Always:** Use only the Builds catalog. Preserve BOM/CRLF, previews, conditional pins, family alignment, history, auditing, warnings-as-errors, package-mode CI, and concurrent edits. Validate consumers before acceptance; retain failed families with evidence. Prepare an uncommitted patch before requesting Git authorization.
 
-**Ask First:** Expanding into source/API migrations unrelated to compatibility, changing machine-installed Aspire tooling, modifying consumer repositories not owned by this workspace change, or accepting a package family whose focused validation fails.
-
-**Never:** Add versions to the root wrapper or ordinary `PackageReference` items; downgrade because a feed is missing, unlisted, unresolved, or reports an older stable than an intentional prerelease; mix Aspire 13.4 and 13.5 in EventStore; initialize nested submodules; suppress audit/analyzer failures; publish, commit, push, or rewrite unrelated history.
+**Never:** Add PackageReference/wrapper versions; downgrade unresolved packages; alter tooling, global.json, unrelated APIs, or frozen evidence; initialize nested submodules; suppress gates; commit, publish, push, or edit external consumers without authorization.
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|----------|---------------|----------------------------|----------------|
-| Stable update | A listed newer stable candidate exists | Advance the complete rollback family and record current source evidence | Revert that family if representative validation fails |
-| Prerelease family | Current pin intentionally uses preview/RC/beta | Select the newest compatible release on that channel or a newer stable major | Retain with rationale when compatibility is unproven |
-| Incomplete feed result | Package is missing, unlisted, or unresolved | Retain the current pin without downgrade and record a recheck trigger | Fail closed on incomplete audit coverage |
-| Aspire upgrade | Aspire 13.5.3 family is available | Align SDK/stable packages to 13.5.3, Keycloak/Kubernetes to `13.5.3-preview.1.26425.3`, and Dapr toolkit to `13.5.0-preview.1.260825-0345` | Roll back the entire Aspire family on compile or runtime incompatibility |
+| Scenario | Input | Expected behavior | Failure handling |
+|---|---|---|---|
+| Candidate | Listed compatible release | Advance complete dependency-constrained group | Retain whole group on failed validation |
+| Aspire | 13.6.1 available | SDK/hosting 13.6.1; Keycloak/Kubernetes 13.6.1-preview.1.26506.6 | Roll back complete group on compile/runtime failure |
+| Preview | Dapr preview remains latest channel | Retain 13.6.0-preview.1.261001-0243 and Folders' stable conditional | Never downgrade to older stable |
+| Incomplete family | Three Parties rows unresolved | Retain complete Parties 1.1.1 family | Record recheck trigger |
+| Compatibility | OpenApi 3.x conflicts with runtime gate | Retain latest proven 2.x | No validator weakening/API migration |
+| Provenance | Changed catalog is uncommitted | Preserve authoritative audit; capture discovery separately | Finalization waits for catalog-commit authorization |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `references/Hexalith.Builds/Props/Directory.Packages.props` -- authoritative 285-row catalog and all coupled family pins.
-- `references/Hexalith.Builds/Tools/audit-central-package-versions.ps1` / `Tools/package-version-audit.json` -- live NuGet discovery and deterministic selection/disposition evidence; the current audit has a known catalog-hash/five-selection baseline failure.
-- `references/Hexalith.Builds/Tools/package-version-exceptions.json` -- closed non-CPM inventory; all ten declared `Aspire.AppHost.Sdk` expectations must equal `Aspire.Hosting`.
-- `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj:1` -- EventStore's non-CPM SDK pin, currently 13.4.6.
-- `src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj` and `tests/Hexalith.EventStore.AppHost.Tests/` -- representative compile/model tests for Aspire integrations.
-- `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/project-context.md`, and `docs/reference/nuget-packages.md` -- current-version snapshots to synchronize from accepted catalog evidence.
-- `Directory.Packages.props`, `global.json`, and sibling consumer submodules -- read-only boundaries except for the explicitly listed EventStore SDK pin.
+- `references/Hexalith.Builds/Props/Directory.Packages.props` -- 304 rows; property-backed and conditional declarations.
+- `references/Hexalith.Builds/Tools/` -- audit generator, validator, and `package-version-audit.json` bind committed catalog/consumer bytes; changed uncommitted catalogs cannot finalize.
+- `references/Hexalith.Builds/Tools/package-version-exceptions.json` -- ten expected SDKs equal hosting; verify actual consumers separately.
+- `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` -- SDK pin; preserve CLI bundle policy. Aspire library/AppHost tests provide compatibility checks.
+- `docs/reference/nuget-packages.md`, `_bmad-output/project-context.md`, `_bmad-output/planning-artifacts/architecture.md` -- current version snapshots.
+- `_bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/` -- prior spec, discovery, baseline, decisions/results.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `references/Hexalith.Builds/Tools/package-version-audit.json` -- regenerate against configured NuGet sources and disposition every catalog row without losing prior evidence.
-- [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- apply latest compatible candidates atomically by family, including the complete Aspire 13.5.3 set.
-- [x] `references/Hexalith.Builds/Tools/package-version-exceptions.json` and `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` -- align non-CPM Aspire SDK declarations with `Aspire.Hosting`.
-- [x] Version snapshot documentation -- update only current accepted package/Aspire values and retain historical records unchanged.
+- [x] Dated discovery evidence -- complete live 304-row/146-family audit, leaving authoritative audit intact.
+- [x] Builds catalog -- validate/apply 23 candidates: Aspire 13.6.1/previews; FrontComposer 4.6.0; AngleSharp 1.8.4 with existing bUnit; coupled Swashbuckle/SwaggerUI 10.3.0; coupled Verify/Verify.XunitV3 33.3.2. Retain unresolved/incompatible families.
+- [x] AppHost and exception inventory -- align SDK expectations; inspect actual consumers and FsCheck/xUnit/Dapr dependency floors.
+- [x] Documentation/evidence -- record accepted pins, exceptions, exact checks, and blockers.
+- [x] Authoritative audit -- finalize against committed catalog bytes; preserve history and record any owning-consumer classification limitation.
 
 **Acceptance Criteria:**
-- Given the evaluated catalog and configured sources, when the audit is regenerated, then all 285 package rows have a current candidate state, selected version, disposition, rollback group, and evidence.
-- Given accepted updates, when Builds governance runs, then catalog, audit, family, exception, Dapr, and consumer-authority validators all pass.
-- Given Aspire 13.5.3 pins, when EventStore restores, builds, and runs focused AppHost tests in Release package mode, then no 13.4 package remains in its evaluated Aspire graph and all tests pass.
-- Given the upgraded AppHost, when Aspire starts and resource state is described, then the topology reaches a healthy runnable state without type-load or missing-method failures.
+- Given discovery, when decisions are recorded, then every row has candidates, selection/disposition, family/evidence, and exception trigger.
+- Given accepted changes, when governance runs, then applicable gates pass and pre-existing failures are reported separately.
+- Given aligned Aspire pins, when package-mode restore/build and focused tests run, then they pass and the evaluated hosting graph is aligned to 13.6.1.
+- Given upgraded topology, when Aspire starts/describes it, then required resources are Running/Healthy without binary failures; stop afterward.
+- Given committed catalog bytes, when audit regeneration/validation runs, then selections and provenance match. Without commit authorization, completion remains pending.
+
+## Implementation Notes
+
+- Compatibility-validated 21/23 candidate rows: Aspire 13.6.1 and aligned previews, FrontComposer 4.6.0, AngleSharp 1.8.4, and paired Swashbuckle 10.3.0. Catalog BOM/CRLF and Dapr/Folders conditional pins were preserved. Authoritative classification is recorded separately below.
+- Retained Verify/Verify.XunitV3 together at 33.3.1: candidate 33.3.2 and retained 33.3.1 both fail the same unconfigured SponsorCheck SC021 consumer gate. Retained whole Parties 1.1.1 and OpenApi 2.12.2 with explicit recheck triggers.
+- All 304 row decisions and 146 families, exact commands, dependencies, isolated version-free consumer sources, and six executed matrix checks are recorded in [dated evidence](evidence/latest-packages-2026-10-08/README.md).
+- Final package-mode Release restore/build: zero warnings/errors. AppHost 145/145, Admin.UI/bUnit 1,082/1,082, focused Contracts governance 65/65, and isolated consumer 20/20 passed. Final catalog, Folders, Dapr, exception, configured consumer-authority (82 projects/16 existing exact exclusions), and documentation gates passed. Concurrent exclusion edits were preserved.
+- Final explicit Aspire startup/described topology: all 30 resources Running/Healthy; eight required services awaited, no binary load/member failures, inputs stable, and successful stop. Earlier Tenants source failure and exact 13.6.0 recheck are retained separately; external checkout movements were preserved and claims are bound to recorded current revisions/hashes.
+- Actual external FrontComposer, Memories, and Tenants SDKs remain at 13.6.0; six inventory owners are unavailable here. Only EventStore's actual SDK was changed. Inventory expectations are separate from external consumer acceptance.
+- An external commit incorporated the tested catalog/inventory bytes at Builds `520abb5898ad44b30c0744e707b53cd94741e6b1`. Authoritative regeneration and default-path validation now pass for all 304 packages/146 families; selections/provenance match and all prior history is preserved. After local installation/validation, external activity committed the exact audit bytes at observed Builds `ad52c5bdd4361c59eedf12a16620150006403584`. The earlier dirty-catalog rejection at `5dd29d2c596c1e93c63977b098ad61407d20560a` remains historical evidence.
+- Aspire and FrontComposer have authoritative accepted classifications. AngleSharp/bUnit and both Swashbuckle families retain their current externally committed selections with explicit compatibility evidence and retained classifications: owning-Builds committed direct-consumer discovery has no representative for those families. No consumer provenance was fabricated or validator weakened. No commit, publication, push, external consumer edit, or nested submodule initialization was performed by this task.
 
 ## Spec Change Log
 
-- 2026-08-28: Regenerated the 285-row NuGet audit, accepted source-resolved compatible updates, and recorded failed-family rollback evidence for NBomber 6.6.0, Roslyn 5.9.0, and xUnit 4.0.0.
-- 2026-08-28: Upgraded the complete Aspire family and AppHost SDK inventory to 13.5.3, synchronized current version snapshots, and completed package-mode build, focused governance/AppHost tests, and healthy runtime verification.
-
-## Design Notes
-
-Aspire 13.5 explicitly warns that mixed 13.4/13.5 hosting packages can fail at runtime. Keep the existing default orchestration dependency mode; adopting the optional CLI bundle or mutating the user-scoped CLI is outside this repository-only upgrade.
-
-Compatibility validation retained Roslyn 5.6.0 because the pinned SDK compiler cannot load 5.9 analyzers, NBomber 6.5.0 because 6.6 makes `NodeStats.AllFailCount` obsolete under warning-as-error, and the aligned xUnit 3.x family because xUnit 4 rejects the existing parallelization attribute. Their audit family decisions contain the exact failure evidence and recheck triggers.
+- August history remains in the dated evidence's `prior-august-spec.md`.
+- 2026-10-08: User requested latest releases. Rebased on current tree/live evidence. KEEP: authority, previews, atomic rollback, compile/runtime proof, no implicit commits.
 
 ## Verification
 
-**Commands:**
-- `pwsh -NoProfile -File ./Tools/validate-central-package-versions.ps1` plus audit, exception, Dapr, and consumer-authority validators from `references/Hexalith.Builds` -- expected: all deterministic package-governance gates pass.
-- `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false` and serialized warning-as-error Release build -- expected: clean package-mode restore/build.
-- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release` and the equivalent AppHost test project command -- expected: package governance and Aspire tests pass.
-- `aspire start`, `aspire describe`, and `aspire stop` against `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` -- expected: upgraded topology starts and reports healthy resources.
-- `bash scripts/check-doc-versions.sh` -- expected: documented package versions remain catalog-consistent.
+- Builds catalog, Dapr, exception, and consumer-authority validators; authoritative audit validator after authorized catalog commit.
+- `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false`; `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -m:1 -p:UseHexalithProjectReferences=false`.
+- Individual AppHost, Admin.UI/bUnit, focused Contracts governance tests, and isolated consumers of unused changed packages.
+- Explicit AppHost path with `aspire start --isolated --non-interactive`, `aspire wait eventstore`, `aspire describe --format Json`, `aspire stop`; `bash scripts/check-doc-versions.sh`.
 
-**Results:** All package-governance validators passed; Release package-mode restore/build succeeded with only the expected `ASPIRE010` CLI-bundle warning; focused package-governance tests passed 149/149; AppHost tests passed 95/95; the evaluated AppHost graph contained no Aspire 13.4 packages; and EventStore, security, state store, and pub/sub reached `Running`/`Healthy` with no error-severity telemetry. The broad Contracts project run remains externally blocked at 1,563 passed / 200 failed because every OQ8 failure reports the pre-existing `Review subject binding drift: ciWorkflow`; those unrelated frozen evidence bindings were not changed.
+**Baseline:** Restore/build: zero warnings/errors; AppHost: 145/145; required runtime services: Healthy. Contracts: 2,272 passed, two skipped, one existing failure. Consumer authority rejects five PackageVersion rows in the newer `6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props` evidence fixture; preserve its bytes and the gate.

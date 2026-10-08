@@ -1,0 +1,30 @@
+{
+  "status": "finalized-locally",
+  "validatedAtUtc": "2026-10-08T08:08:44.426714+00:00",
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-audit.ps1"
+  ],
+  "exitCode": 0,
+  "generatedFromRevision": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+  "authoritativeAuditSha256": "cd9ed067bbadf359b9f7974072644642ac32417fb6e7e45ae155354a8b54da7c",
+  "catalogRawSha256": "192acfe9364338c6e4556dba2f18ce36a34e86ce6a59f4d6b33544988089beb8",
+  "priorAuditSha256": "271dfc6d665189422e0ec347ab89cb4bce683525b2124eed86d44db1ef91c0b3",
+  "priorHistoryPreserved": true,
+  "authoritativeAcceptedFamilies": [
+    "aspire",
+    "hexalith-frontcomposer"
+  ],
+  "authoritativeRetainedClassificationLimitations": [
+    "bunit-html",
+    "package:swashbuckle.aspnetcore",
+    "package:swashbuckle.aspnetcore.swaggerui"
+  ],
+  "note": "Externally committed catalog bytes allowed local reversible regeneration. Selected AngleSharp/bUnit and Swashbuckle pins remain proven by external/isolated checks, but owning-Builds accepted classification requires real committed direct consumers. No consumer provenance was fabricated and no Git mutation was performed by this agent.",
+  "catalogWorkingTreeSha256": "1dc07cfee8ad94111cb1e42f017125c16ebdd6aca886158ed3a8cb19726ab3f2",
+  "catalogRawSha256Meaning": "Exact committed Git blob, before working-tree line-ending conversion; catalogWorkingTreeSha256 identifies the tested BOM/CRLF bytes.",
+  "observedPostValidationBuildsRevision": "ad52c5bdd4361c59eedf12a16620150006403584",
+  "observedPostValidationBuildsStatus": "## main...origin/main"
+}

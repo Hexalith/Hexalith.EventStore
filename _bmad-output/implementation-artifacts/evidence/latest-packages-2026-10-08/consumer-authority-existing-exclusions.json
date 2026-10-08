@@ -1,0 +1,16 @@
+{
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1",
+    "-RepositoryRoot",
+    "/home/administrator/projects/hexalith/eventstore",
+    "-CatalogPath",
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props",
+    "-ExcludedPath",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.targets;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/domain/Domain.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/host/Host.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Build.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Directory.Packages.props;_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/Identity.csproj"
+  ],
+  "exitCode": 1,
+  "note": "Uses the repository test source existing standalone-evidence exclusions, including concurrent user changes; neither this test nor evidence fixture bytes were modified by this upgrade."
+}

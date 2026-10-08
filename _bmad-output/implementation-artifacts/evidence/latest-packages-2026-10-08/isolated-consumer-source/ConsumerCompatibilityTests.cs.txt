@@ -1,0 +1,40 @@
+using System.Reflection;
+using AngleSharp.Html.Parser;
+using FsCheck.Xunit;
+using Shouldly;
+using Xunit;
+
+public sealed class ConsumerCompatibilityTests
+{
+    [Fact]
+    public void HtmlParserRemainsCompatible()
+    {
+        new HtmlParser().ParseDocument("<main><p>Hello catalog</p></main>").QuerySelector("main p")!.TextContent.ShouldBe("Hello catalog");
+    }
+
+    [Property(MaxTest = 100)]
+    public bool FsCheckAdapterRemainsCompatible(int value)
+        => unchecked(-(-value)) == value;
+
+    [Theory]
+    [InlineData("Aspire.Azure.Messaging.ServiceBus")]
+    [InlineData("Aspire.Azure.Security.KeyVault")]
+    [InlineData("Aspire.Azure.Storage.Blobs")]
+    [InlineData("Aspire.Azure.Storage.Queues")]
+    [InlineData("Aspire.Hosting")]
+    [InlineData("Aspire.Hosting.Azure.AppContainers")]
+    [InlineData("Aspire.Hosting.Azure.CosmosDB")]
+    [InlineData("Aspire.Hosting.Docker")]
+    [InlineData("Aspire.Hosting.Keycloak")]
+    [InlineData("Aspire.Hosting.Kubernetes")]
+    [InlineData("Aspire.Hosting.Redis")]
+    [InlineData("Aspire.Hosting.Testing")]
+    [InlineData("Aspire.Microsoft.Azure.Cosmos")]
+    [InlineData("Hexalith.FrontComposer.Contracts")]
+    [InlineData("Hexalith.FrontComposer.Mcp")]
+    [InlineData("Hexalith.FrontComposer.Shell")]
+    [InlineData("Hexalith.FrontComposer.Testing")]
+    [InlineData("Swashbuckle.AspNetCore.SwaggerUI")]
+    public void PackagePublicTypesLoad(string assemblyName)
+        => Assembly.Load(new AssemblyName(assemblyName)).GetExportedTypes().ShouldNotBeEmpty();
+}

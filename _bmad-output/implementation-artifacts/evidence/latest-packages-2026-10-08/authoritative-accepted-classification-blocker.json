@@ -1,0 +1,27 @@
+{
+  "status": "accepted-classification-blocked",
+  "catalogCommit": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+  "generationStatus": "passed",
+  "validatorResult": {
+    "command": [
+      "pwsh",
+      "-NoProfile",
+      "-File",
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Tools/validate-package-version-audit.ps1",
+      "-AuditPath",
+      "/tmp/eventstore-authoritative-audit-20261008.json"
+    ],
+    "exitCode": 1,
+    "candidateSha256": "dd5a37306aea22a48437c303d2d35bd8f3290088cd980dc68d65ed51b4e85e2e",
+    "generatedFromRevision": "520abb5898ad44b30c0744e707b53cd94741e6b1",
+    "priorHistoryPreserved": true
+  },
+  "families": [
+    "bunit-html",
+    "package:swashbuckle.aspnetcore",
+    "package:swashbuckle.aspnetcore.swaggerui"
+  ],
+  "reason": "Accepted families require at least one representative consumer that exactly matches owning-Builds committed direct-consumer discovery. These families have no such consumer; external/isolated compatibility proof is retained separately and does not authorize synthetic consumer provenance.",
+  "possibleScopedRefresh": "Retain the current committed selections in authoritative disposition while preserving compatibility evidence and explaining the accepted-classification limitation.",
+  "unscopedWork": "Adding and committing owning-Builds consumer declarations requires a separate scope and Git authorization; no validator or tooling relaxation is allowed."
+}

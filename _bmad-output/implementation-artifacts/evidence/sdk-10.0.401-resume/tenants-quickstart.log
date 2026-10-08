@@ -1,0 +1,12 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/bin/Release/net10.0/Hexalith.Tenants.Server.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/bin/Release/net10.0/Hexalith.Tenants.Server.Tests.dll (net10.0|x64) passed (685ms)
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/TestResults/Hexalith.Tenants.Server.Tests/sdk-401-quickstart.trx
+
+Test run summary: Passed!
+  total: 1
+  failed: 0
+  succeeded: 1
+  skipped: 0
+  duration: 878ms

@@ -1,0 +1,419 @@
+{
+  "sdk": "10.0.401",
+  "rootBaseline": "762a745426db66c2846b1af17a10b2a619bf3d95",
+  "tenantsBaseline": "811447342e8f44b644a2074565e83f45519528fd",
+  "rootHead": "4cc77f9554395e84539e173e94b8f0b4df14d643",
+  "buildsHead": "af20682ac8fc420068a731ecb87cff84727a3d53",
+  "tenantsHead": "bd87d68ed5fcf10eb5177286da6cc4bbe8907222",
+  "buildsRemoteMain": "af20682ac8fc420068a731ecb87cff84727a3d53",
+  "testRuns": [
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.LoadTests.Tests/Hexalith.EventStore.LoadTests.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.LoadTests.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "exitCode": 0,
+      "log": "load-tests.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.RestApi.Generators.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 124,
+      "failed": 0,
+      "skipped": 0,
+      "total": 124,
+      "exitCode": 0,
+      "log": "generator-tests.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.DomainService.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 521,
+      "failed": 0,
+      "skipped": 0,
+      "total": 521,
+      "exitCode": 0,
+      "log": "domain-tests.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.AppHost.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 145,
+      "failed": 0,
+      "skipped": 0,
+      "total": 145,
+      "exitCode": 0,
+      "log": "apphost-tests.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.Contracts.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 2272,
+      "failed": 1,
+      "skipped": 2,
+      "total": 2275,
+      "exitCode": 2,
+      "log": "contracts-tests.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--filter-class",
+        "Hexalith.EventStore.IntegrationTests.AssemblyParallelizationTests",
+        "--report-xunit-trx",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.IntegrationTests",
+        "--report-xunit-trx-filename",
+        "sdk-401-serialization.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "exitCode": 0,
+      "log": "serialization-integration.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--filter-class",
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.AssemblyParallelizationTests",
+        "--report-xunit-trx",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.Server.LiveSidecar.Tests",
+        "--report-xunit-trx-filename",
+        "sdk-401-serialization.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "exitCode": 0,
+      "log": "serialization-live.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "--filter-class",
+        "Hexalith.EventStore.Server.Tests.AssemblyParallelizationTests",
+        "--report-xunit-trx",
+        "--results-directory",
+        "TestResults/Hexalith.EventStore.Server.Tests",
+        "--report-xunit-trx-filename",
+        "sdk-401-serialization.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "exitCode": 0,
+      "log": "serialization-server.log"
+    }
+  ],
+  "otherCommands": [
+    {
+      "command": [
+        "dotnet",
+        "restore",
+        "Hexalith.EventStore.slnx",
+        "-p:Configuration=Release",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exitCode": 0,
+      "log": "restore.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--no-restore",
+        "--configuration",
+        "Release",
+        "-warnaserror",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj",
+        "--no-restore",
+        "--configuration",
+        "Release",
+        "-warnaserror",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants",
+      "exitCode": 1,
+      "errors": 2,
+      "log": "tenants-build.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "restore",
+        "tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj",
+        "-p:Configuration=Release",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:HexalithMemoriesFromSource=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants",
+      "exitCode": 0,
+      "log": "tenants-source-restore.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj",
+        "--no-restore",
+        "--configuration",
+        "Release",
+        "-warnaserror",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:HexalithMemoriesFromSource=false"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants",
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0,
+      "log": "tenants-source-build.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "test",
+        "--project",
+        "tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj",
+        "--no-build",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:HexalithMemoriesFromSource=false",
+        "--filter-method",
+        "Hexalith.Tenants.Server.Tests.Documentation.QuickstartDocumentationTests.Quickstart_prerequisite_validation_covers_blocking_local_setup_before_first_command",
+        "--results-directory",
+        "TestResults/Hexalith.Tenants.Server.Tests",
+        "--report-xunit-trx",
+        "--report-xunit-trx-filename",
+        "sdk-401-quickstart.trx"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants",
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "tenants-quickstart.log"
+    },
+    {
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exitCode": 0,
+      "assertions": 169,
+      "log": "workflow-contracts.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/validate-oq8-platform-evidence.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exitCode": 0,
+      "log": "oq8.log"
+    }
+  ],
+  "ociProvenance": {
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "realAmd64Arm64ArchivePassed": true,
+    "sourceRun": "contracts-tests.log"
+  },
+  "runtime": {
+    "resourcesRunningHealthy": 30,
+    "errorTelemetryRecords": 8,
+    "allHealthy": true,
+    "mode": "source; UseHexalithProjectReferences=true; HexalithMemoriesFromSource=false",
+    "sessionRestarted": true,
+    "priorSessionRestoredAndLeftRunning": true,
+    "healthyResourceDisplayNames": [
+      "eventstore",
+      "eventstore-admin",
+      "eventstore-admin-dapr-cli",
+      "eventstore-admin-ui-dapr-cli",
+      "eventstore-admin-ui",
+      "eventstore-app-api-token",
+      "eventstore-dapr-cli",
+      "local-auth-admin-password",
+      "local-auth-admin-user-id",
+      "local-auth-admin-username",
+      "local-auth-sample-password",
+      "local-auth-sample-user-id",
+      "local-auth-sample-username",
+      "local-auth-signing-key",
+      "local-auth-workload-client-secret",
+      "sample-api-dapr-cli",
+      "sample-api",
+      "sample-app-api-token",
+      "sample-blazor-ui-dapr-cli",
+      "sample-blazor-ui",
+      "sample-dapr-cli",
+      "sample",
+      "security",
+      "security-eventstore-client-password",
+      "security-eventstore-client-username",
+      "tenants-api-dapr-cli",
+      "tenants-api",
+      "tenants-app-api-token",
+      "tenants",
+      "tenants-dapr-cli"
+    ]
+  },
+  "acceptanceComplete": false,
+  "reviews": {
+    "layers": 3,
+    "verificationGapFindings": 0,
+    "documentationCorrectionsApplied": true
+  },
+  "artifactHashes": {
+    "apphost-tests.log": "97c1b86a797397f117380329f0c4e794e9a37b30e228483e304a0b79ad83e5de",
+    "build.log": "13e39a67bb0b31c7c2430421f9e17ed08846de392690debedbbdb898fa9dccc1",
+    "contracts-tests.log": "6ed159216696221241c502a842e382c4ab3a9a628651e800f04c363a64d21644",
+    "domain-tests.log": "ed45fbe0186b60ec24c791be3a072ffc0bd212b6d90a74e721e0de48ddd01949",
+    "generator-tests.log": "9c823ed4783bda1dfee1d73c2c82a072d9cd4f938fba2426821fdbe660340369",
+    "load-tests.log": "6f0cbe5c6d081ea720308ec32f7365aff0eef9b433ac5a94992774373cd9f1bc",
+    "oq8.log": "1924f622671a38e882930ceed9fda53b02558fea3aa28371382678bb6a4d6f20",
+    "restore.log": "537ae1c469156c3e573f533ac82ca4c8d1c334c768506a934e5168fac88aaa0c",
+    "serialization-integration.log": "387d946bcb1b6545d7c590764d4d0910a0b63fd8b5dae9fd8517a404284b371d",
+    "serialization-live.log": "b79ec21640d4184d74b10bdc662995913c82d679b2fe18420333e19e08e21a34",
+    "serialization-server.log": "020f00051e8a1fea42b1d48a7e19a929cb9161ae026d7ccd3962a4a63bb8d912",
+    "tenants-build.log": "744747aafcc3bcf028910879327d99dbb26402280366f80a023295b1ef2fcf9a",
+    "tenants-quickstart.log": "12c857cccbe14246b7e8cb9b3ea2b1dda99803cc03ce68954b06c69f32695214",
+    "tenants-restore.log": "3cc9f1b500c186e12f04679ec1d3b7dca5823fa00223c73628528ddbf35f2d03",
+    "tenants-source-build.log": "916156cea37991be04273a37dbd86c451afa8b6196f9ed02dacbe6223c6d9798",
+    "tenants-source-restore.log": "94208cb512f347a517360d25190075b989161d0b45240d5e33dc85d27b87cb1d",
+    "workflow-contracts.log": "c0a201abaa8a1ecde6b570023349cd286004e94eeb0aa98bf96ed0aeb9c759ab"
+  },
+  "scopedDocumentationDiffHashes": {
+    "eventstore": "a029efa0403ee7bf4c48ae06ae41a6884ddc41245ae28ef4407f4d88a52bec94",
+    "tenants": "43e4013f4eba40e5569fff2b2ab9142aab425265a76f59651f07c5fe591518c4",
+    "buildsWorktree": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "packageGovernance": {
+    "centralEntries": 304,
+    "approvedIds": 50,
+    "sharedVersions": 3,
+    "auditPackages": 304,
+    "auditFamilies": 146,
+    "auditSources": 1,
+    "exceptions": 15,
+    "daprIds": 8,
+    "daprVersion": "1.18.10",
+    "workflowAssertions": 169,
+    "rawConsumerAuthorityErrors": 57
+  }
+}

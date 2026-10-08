@@ -1,0 +1,1 @@
+Dapr package validation passed: 8 unique Dapr.* package IDs use 1.18.10 and all required shared SDK IDs are present.
