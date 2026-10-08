@@ -5641,3 +5641,16 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-dotnet-10-0-400-builds-and-packages.md`
   summary: Verify the concurrent bmad-loop commitlint compatibility task retains a reproducible migration-subject execution harness.
   evidence: Unverified medium finding from the blind reviewer: that concurrent spec cites a temporary /tmp harness and a retained result JSON; the other task's final harness/instructions would settle whether the reproduction path survives temporary-file removal. No concurrent task files were modified by the SDK review.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Tighten scalar NuGet version metadata recognition in the secret scanner.
+  evidence: The upstream regex accepts empty/prerelease numeric-leading-zero labels and overflowing components that NuGet rejects; IsNuGetVersion is unchanged by this repair, and malformed metadata can inherit the exemption.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Bound the generated API smoke AppHost token command.
+  evidence: scripts/generated-api-smoke-preflight.sh invokes aspire resource sample-api issue-smoke-token without a deadline; a stalled connection can hang the otherwise bounded smoke diagnostic.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Bypass HTTPS proxies for credential-bearing loopback smoke requests.
+  evidence: The generated API smoke curl options use -k and allow inherited HTTPS proxy settings; a proxy without loopback exclusion can intercept the local bearer request.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33497282544-fix-ci-cd-and-release.md`
+  summary: Assert release step presence before testing relative order.
+  evidence: TrustedPublishingReleaseTests compares IndexOf values without requiring the first revalidation step name to exist; deleting that name returns -1 and still passes the ordering assertion.

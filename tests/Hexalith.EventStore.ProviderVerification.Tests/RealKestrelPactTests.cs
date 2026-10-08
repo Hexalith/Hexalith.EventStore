@@ -1,4 +1,7 @@
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 using Shouldly;
 
@@ -156,6 +159,33 @@ public sealed class RealKestrelPactTests
                 timeline,
                 credential: hostCredential);
             address = host.BaseAddress;
+            using JsonDocument pact = JsonDocument.Parse(Encoding.UTF8.GetString(pactBytes).TrimStart('\uFEFF'));
+            JsonElement accepted = pact.RootElement.GetProperty("interactions").EnumerateArray()
+                .Single(item => item.GetProperty("description").GetString() == description);
+            JsonElement body = accepted.GetProperty("request").GetProperty("body").GetProperty("content");
+            string messageIdentity = body.GetProperty("messageId").GetString().ShouldNotBeNull();
+            coordinator.BeginInteraction(providerState);
+            (await coordinator.ApplyAsync(providerState, "setup", TestContext.Current.CancellationToken))
+                .ShouldBe("state.setup.succeeded");
+            using var client = new HttpClient { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
+            {
+                Content = new StringContent(body.GetRawText(), Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", requestCredential.AccessToken);
+            using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+            response.StatusCode.ShouldBe(useMatchingCredential ? HttpStatusCode.Accepted : HttpStatusCode.Unauthorized);
+            if (useMatchingCredential)
+            {
+                using JsonDocument responseBody = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+                responseBody.RootElement.GetProperty("messageId").GetString().ShouldBe(messageIdentity);
+                responseBody.RootElement.GetProperty("correlationId").GetString().ShouldBe(messageIdentity);
+                response.Headers.Location.ShouldBe(new Uri(address, "/api/v1/commands/status/" + messageIdentity));
+                response.Headers.RetryAfter.ShouldNotBeNull().Delta.ShouldBe(TimeSpan.FromSeconds(1));
+            }
+
+            coordinator.ForceCleanup(providerState).ShouldBeTrue();
+            coordinator.CurrentState.ShouldBeNull();
             var interaction = new InteractionDefinition(
                 description,
                 providerState,
@@ -174,6 +204,12 @@ public sealed class RealKestrelPactTests
                 requestCredential.AccessToken);
 
             result.ResultCode.ShouldBe(expectedResultCode);
+            result.StateEvents.ShouldContain(item => item.Action == "setup" && item.ResultCode == "state.setup.succeeded");
+            result.StateEvents.ShouldContain(item => item.Action == "teardown"
+                && (item.ResultCode == "state.teardown.succeeded" || item.ResultCode == "state.teardown.forced"));
+            coordinator.CurrentState.ShouldBeNull();
+            VerificationInputLoader.ComputeSha256(await File.ReadAllBytesAsync(Path.Combine(directory, pactFile),
+                TestContext.Current.CancellationToken)).ShouldBe(interaction.PactSha256);
         }
         finally
         {

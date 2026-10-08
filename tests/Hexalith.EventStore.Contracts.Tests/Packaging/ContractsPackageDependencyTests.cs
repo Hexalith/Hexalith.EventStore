@@ -193,6 +193,85 @@ public sealed class ContractsPackageDependencyTests
     }
 
     /// <summary>
+    /// Verifies planning evidence retains its sealed identity in either checkout representation and discovery mode.
+    /// </summary>
+    /// <param name="tracked">Whether discovery uses an isolated Git index.</param>
+    /// <param name="crlf">Whether the fixture represents a CRLF checkout.</param>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task PublishedPackageObservationExclusions_AcceptCanonicalFixtureContentAsync(bool tracked, bool crlf)
+        => await ValidatePublishedPackageObservationFixtureAsync(tracked, crlf, changedFile: null).ConfigureAwait(true);
+
+    /// <summary>
+    /// Verifies changed content at an exempt path cannot inherit the archived planning identity.
+    /// </summary>
+    /// <param name="fileName">The sealed file to replace with an executable override.</param>
+    /// <param name="tracked">Whether discovery uses an isolated Git index.</param>
+    [Theory]
+    [InlineData("Directory.Packages.props", false)]
+    [InlineData("Directory.Packages.props", true)]
+    [InlineData("Identity.csproj", false)]
+    [InlineData("Identity.csproj", true)]
+    public async Task PublishedPackageObservationExclusions_RejectChangedFixtureContentAsync(string fileName, bool tracked)
+        => await ValidatePublishedPackageObservationFixtureAsync(tracked, crlf: false, fileName).ConfigureAwait(true);
+
+    private static async Task ValidatePublishedPackageObservationFixtureAsync(bool tracked, bool crlf, string? changedFile)
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string catalogPath = ResolveSharedPackageVersionsPath(repositoryRoot, XDocument.Load(Path.Combine(repositoryRoot, "Directory.Packages.props")));
+        string fixture = Path.Combine(Path.GetTempPath(), "planning-authority-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        try
+        {
+            foreach (string relative in _standaloneEvidenceProbeProjects.Append(PublishedPackageObservation + "Directory.Build.props"))
+            {
+                string destination = Path.Combine(fixture, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                string content = File.ReadAllText(Path.Combine(repositoryRoot, relative)).Replace("\r\n", "\n", StringComparison.Ordinal);
+                File.WriteAllText(destination, crlf ? content.Replace("\n", "\r\n", StringComparison.Ordinal) : content);
+            }
+
+            new XDocument(new XElement("Project",
+                new XElement("PropertyGroup", new XElement("ManagePackageVersionsCentrally", "true")),
+                new XElement("Import", new XAttribute("Project", catalogPath))))
+                .Save(Path.Combine(fixture, "Directory.Packages.props"));
+            Directory.CreateDirectory(Path.Combine(fixture, "src"));
+            File.WriteAllText(Path.Combine(fixture, "src", "Executable.csproj"),
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"Hexalith.EventStore.Server\" /></ItemGroup></Project>");
+            if (changedFile is not null)
+            {
+                File.WriteAllText(Path.Combine(fixture, PublishedPackageObservation, changedFile),
+                    "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"Hexalith.EventStore.Server\" VersionOverride=\"9.9.9\" /></ItemGroup></Project>");
+            }
+
+            if (tracked)
+            {
+                RunFixtureGit(fixture, "init", "--quiet");
+                RunFixtureGit(fixture, "add", "--", ".");
+            }
+
+            if (changedFile is null)
+            {
+                (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(repositoryRoot, fixture, catalogPath).ConfigureAwait(true);
+                exitCode.ShouldBe(0, output + error);
+            }
+            else
+            {
+                Exception? error = await Record.ExceptionAsync(async () =>
+                    _ = await RunConsumerAuthorityValidatorAsync(repositoryRoot, fixture, catalogPath).ConfigureAwait(true)).ConfigureAwait(true);
+                error.ShouldBeOfType<ShouldAssertException>().Message.ShouldContain("original sealed contents");
+            }
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the evidence exemptions cannot hide a new executable-project version override.
     /// </summary>
     /// <param name="metadata">The project-level version metadata to reject.</param>
@@ -306,7 +385,7 @@ public sealed class ContractsPackageDependencyTests
         foreach ((string fileName, string sha256) in _sealedPackageObservations)
         {
             VerifySealedPackageObservation(
-                File.ReadAllBytes(Path.Combine(repositoryRoot, PublishedPackageObservation, fileName)), sha256);
+                File.ReadAllBytes(Path.Combine(root, PublishedPackageObservation, fileName)), sha256);
         }
 
         string validatorPath = Path.Combine(

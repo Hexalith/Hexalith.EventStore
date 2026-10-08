@@ -651,6 +651,66 @@ public sealed partial class SecretsProtectionTests
         FindViolations("capture.log", content).Any().ShouldBe(violation);
     }
 
+    /// <summary>
+    /// Verifies only the framework boolean cancellation constructor is recognized as noncredential source.
+    /// </summary>
+    /// <param name="extension">The C# source surface.</param>
+    /// <param name="type">The supported framework type spelling.</param>
+    [Theory]
+    [InlineData(".cs", "CancellationToken")]
+    [InlineData(".razor", "CancellationToken")]
+    [InlineData(".cs", "System.Threading.CancellationToken")]
+    [InlineData(".razor", "System.Threading.CancellationToken")]
+    [InlineData(".cs", "global::System.Threading.CancellationToken")]
+    [InlineData(".razor", "global::System.Threading.CancellationToken")]
+    public void CancellationTokenBooleanConstructor_IsAllowedOnlyAsExactSource(string extension, string type)
+    {
+        string path = "tests/fixture" + extension;
+        string name = "to" + "ken";
+        foreach (string boolean in new[] { "true", "false" })
+        {
+            foreach (string argument in new[] { boolean, "canceled: " + boolean })
+            {
+                FindViolations(path, Assignment(name, "new " + type + "( " + argument + " )")).ShouldBeEmpty();
+                FindViolations(path, Assignment(name, "new OtherToken(" + argument + ")")).ShouldBe([path + ":1"]);
+                FindViolations(path, Assignment(name, "new Other.CancellationToken(" + argument + ")")).ShouldBe([path + ":1"]);
+            }
+        }
+
+        foreach (string operand in new[] { "\"null\"", "\"" + RandomSecret() + "\"", "1", "true, false" })
+        {
+            foreach (string argument in new[] { operand, "canceled: " + operand })
+            {
+                FindViolations(path, Assignment(name, "new " + type + "(" + argument + ")")).ShouldBe([path + ":1"]);
+            }
+        }
+
+        FindViolations(path, Assignment(name, "new " + type + "(true) + \"" + RandomSecret() + "\""))
+            .ShouldBe([path + ":1"]);
+        FindViolations(path, Assignment(name, "new " + type + "(true)") + "\n" + Assignment("pass" + "word", "\"null\""))
+            .ShouldBe([path + ":2"]);
+        FindViolations(path, "string fixture = \"" + Assignment(name, "new " + type + "(true)") + "\";")
+            .ShouldBe([path + ":1"]);
+        FindViolations("fixture.log", Assignment(name, "new " + type + "(true)")).ShouldBe(["fixture.log:1"]);
+    }
+
+    /// <summary>
+    /// Verifies constructor labels are removed only at argument boundaries, preserving runtime ternary operands.
+    /// </summary>
+    /// <param name="extension">The C# source surface.</param>
+    [Theory]
+    [InlineData(".cs")]
+    [InlineData(".razor")]
+    public void ConstructorArgumentLabels_PreserveRuntimeTernaryOperands(string extension)
+    {
+        string path = "tests/fixture" + extension;
+        string name = "access" + "Token";
+        FindViolations(path, Assignment(name, "new AccessToken(value: true ? sourceToken : null)")).ShouldBeEmpty();
+        FindViolations(path, Assignment(name, "new AccessToken(false, value: true ? sourceToken : null)")).ShouldBeEmpty();
+        FindViolations(path, Assignment(name, "new AccessToken(value: true)")).ShouldBe([path + ":1"]);
+        FindViolations(path, Assignment(name, "new AccessToken(false, value: true)")).ShouldBe([path + ":1"]);
+    }
+
     [Theory]
     [InlineData("lock")]
     [InlineData("assets")]
@@ -703,6 +763,12 @@ public sealed partial class SecretsProtectionTests
     [InlineData("[8.14.0,9.0.0)")]
     [InlineData("[8.14.0]")]
     [InlineData("(,8.14.0]")]
+    [InlineData("8.14.0.1")]
+    [InlineData("[8.14.0,)")]
+    [InlineData("[8.14.0,8.14.0]")]
+    [InlineData("[8.14.0-alpha.2,8.14.0-alpha.10)")]
+    [InlineData("[8.14.0-alpha,8.14.0)")]
+    [InlineData("[8.14.0+build.1,8.14.0+build.2]")]
     public void NuGetDependencyMetadata_AllowsVersionMetadataAndRanges(string version)
     {
         string packageName = "Microsoft.IdentityModel." + "Tokens";
@@ -713,6 +779,45 @@ public sealed partial class SecretsProtectionTests
         FindViolations("packages.lock.json", content).ShouldBeEmpty();
         FindViolations("packages.lock.json", content.Replace(version, RandomSecret(), StringComparison.Ordinal))
             .ShouldNotBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies malformed or empty NuGet intervals cannot classify a credential property as package metadata.
+    /// </summary>
+    /// <param name="version">The invalid dependency range.</param>
+    [Theory]
+    [InlineData("")]
+    [InlineData("^8.14.0")]
+    [InlineData("~8.14.0")]
+    [InlineData("[,]")]
+    [InlineData("(,)")]
+    [InlineData("[,8.14.0]")]
+    [InlineData("[8.14.0,]")]
+    [InlineData("(8.14.0)")]
+    [InlineData("[8.14.0,9.0.0")]
+    [InlineData("[8.14.0,9.0.0,10.0.0]")]
+    [InlineData("[9.0.0,8.14.0]")]
+    [InlineData("(8.14.0,8.14.0)")]
+    [InlineData("[8.14.0,8.14.0)")]
+    [InlineData("(8.14.0,8.14.0]")]
+    [InlineData("[8.14.0,8.14.0-alpha]")]
+    [InlineData("[8.14.0-alpha.10,8.14.0-alpha.2]")]
+    [InlineData("[8.14.0.2,8.14.0.1]")]
+    [InlineData("[8.14.0+build.1,8.14.0+build.2)")]
+    public void NuGetDependencyMetadata_RejectsMalformedEmptyOrReversedIntervals(string version)
+    {
+        ArgumentNullException.ThrowIfNull(version);
+        IsNuGetDependencyVersion(version).ShouldBeFalse();
+        string packageName = "Microsoft.IdentityModel." + "Tokens";
+        string digest = Convert.ToBase64String(new byte[64]);
+        string content = "{\"version\":1,\"dependencies\":{\"net10.0\":{\"Sample.Package\":{\"type\":\"Direct\","
+            + "\"resolved\":\"1.0.0\",\"contentHash\":\"" + digest + "\",\"dependencies\":{\""
+            + packageName + "\":\"" + version + "\"}}}}}";
+        // An empty assignment has no credential bytes for the scanner to report, but is never an exempt edge.
+        if (version.Length > 0)
+        {
+            FindViolations("packages.lock.json", content).ShouldBe(["packages.lock.json:1"]);
+        }
     }
 
     private static IEnumerable<string> FindViolations(string relativePath)
@@ -1542,11 +1647,76 @@ public sealed partial class SecretsProtectionTests
         }
 
         string[] bounds = value[1..^1].Split(',', StringSplitOptions.TrimEntries);
-        return bounds.Length == 1
-            ? value[0] == '[' && value[^1] == ']' && IsNuGetVersion(bounds[0])
-            : bounds.Length == 2
-                && bounds.Any(static bound => bound.Length > 0)
-                && bounds.All(static bound => bound.Length == 0 || IsNuGetVersion(bound));
+        if (bounds.Length == 1)
+        {
+            return value[0] == '[' && value[^1] == ']' && IsNuGetVersion(bounds[0]);
+        }
+
+        if (bounds.Length != 2
+            || bounds.All(static bound => bound.Length == 0)
+            || !bounds.All(static bound => bound.Length == 0 || IsNuGetVersion(bound))
+            || bounds[0].Length == 0 && value[0] != '('
+            || bounds[1].Length == 0 && value[^1] != ')')
+        {
+            return false;
+        }
+
+        if (bounds[0].Length == 0 || bounds[1].Length == 0)
+        {
+            return true;
+        }
+
+        int comparison = CompareNuGetVersions(bounds[0], bounds[1]);
+        return comparison < 0 || comparison == 0 && value[0] == '[' && value[^1] == ']';
+    }
+
+    private static int CompareNuGetVersions(string left, string right)
+    {
+        // Build metadata does not affect precedence; omitted numeric components are zero.
+        string[] leftParts = left.Split('+', 2)[0].Split('-', 2);
+        string[] rightParts = right.Split('+', 2)[0].Split('-', 2);
+        string[] leftNumbers = leftParts[0].Split('.');
+        string[] rightNumbers = rightParts[0].Split('.');
+        for (int index = 0; index < 4; index++)
+        {
+            int comparison = CompareNumericVersionIdentifiers(
+                index < leftNumbers.Length ? leftNumbers[index] : "0",
+                index < rightNumbers.Length ? rightNumbers[index] : "0");
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+        }
+
+        if (leftParts.Length == 1 || rightParts.Length == 1)
+        {
+            return leftParts.Length == rightParts.Length ? 0 : leftParts.Length == 1 ? 1 : -1;
+        }
+
+        string[] leftLabels = leftParts[1].Split('.');
+        string[] rightLabels = rightParts[1].Split('.');
+        for (int index = 0; index < Math.Min(leftLabels.Length, rightLabels.Length); index++)
+        {
+            bool leftNumeric = leftLabels[index].All(char.IsAsciiDigit);
+            bool rightNumeric = rightLabels[index].All(char.IsAsciiDigit);
+            int comparison = leftNumeric && rightNumeric
+                ? CompareNumericVersionIdentifiers(leftLabels[index], rightLabels[index])
+                : leftNumeric != rightNumeric ? leftNumeric ? -1 : 1
+                : StringComparer.OrdinalIgnoreCase.Compare(leftLabels[index], rightLabels[index]);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+        }
+
+        return leftLabels.Length.CompareTo(rightLabels.Length);
+    }
+
+    private static int CompareNumericVersionIdentifiers(string left, string right)
+    {
+        left = left.TrimStart('0');
+        right = right.TrimStart('0');
+        return left.Length != right.Length ? left.Length.CompareTo(right.Length) : StringComparer.Ordinal.Compare(left, right);
     }
 
     [GeneratedRegex(@"^[0-9]+(?:\.[0-9]+){0,3}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$", RegexOptions.CultureInvariant)]
@@ -2199,7 +2369,7 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsCSharpRuntimeExpression(string name, string value)
     {
-        if (value is "string.Empty" or "default")
+        if (value is "string.Empty" or "default" || CancellationTokenBooleanConstructorPattern().IsMatch(value))
         {
             return true;
         }
@@ -2253,6 +2423,12 @@ public sealed partial class SecretsProtectionTests
         }
 
         string withoutLiterals = CSharpLiteralPattern().Replace(arguments, string.Empty);
+        if (value.Length > 3 && value.StartsWith("new", StringComparison.Ordinal) && char.IsWhiteSpace(value[3]))
+        {
+            // A constructor's named-argument labels alone do not supply a runtime value (for example canceled: true).
+            withoutLiterals = Regex.Replace(withoutLiterals, @"(^|,)\s*[A-Za-z_][A-Za-z0-9_]*\s*:(?!:)", "$1", RegexOptions.CultureInvariant);
+        }
+
         return Regex.IsMatch(
             withoutLiterals,
             @"\b(?!true\b|false\b|null\b|default\b|nameof\b)[A-Za-z_][A-Za-z0-9_]*\b",
@@ -2803,6 +2979,9 @@ public sealed partial class SecretsProtectionTests
         @"\bnew\s+(?:NetworkCredential|SymmetricSecurityKey)\s*\(",
         RegexOptions.CultureInvariant)]
     private static partial Regex CredentialConstructorPattern();
+
+    [GeneratedRegex(@"\Anew\s+(?:CancellationToken|(?:global::)?System\.Threading\.CancellationToken)\s*\(\s*(?:canceled\s*:\s*)?(?:true|false)\s*\)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex CancellationTokenBooleanConstructorPattern();
 
     [GeneratedRegex(@"(?:Password|Pwd|SharedAccessKey)\s*=\s*(?<password>[^;\""']+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ConnectionStringPasswordPattern();
