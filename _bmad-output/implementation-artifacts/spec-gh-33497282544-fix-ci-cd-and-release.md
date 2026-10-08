@@ -2,7 +2,7 @@
 title: 'Fix CI timestamp decay and publish the verified release'
 type: 'bugfix'
 created: '2026-09-04'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'fcafc59464efd2f97347a97f19a1d48ad340f10c'
@@ -51,7 +51,7 @@ context:
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` -- use runtime-relative future values and cover v2 preservation plus v3 success/drift/future cases.
 - [x] `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/**` -- seal candidate → subject → reviews → handoff → sorted manifest without changing v1/v2.
 - [x] `docs/ci.md` -- document the durable timestamp rule and active successor lineage if operator guidance changes.
-- [ ] Git/GitHub/NuGet -- validate a `fix(ci): ...` message, commit/push `main`, require exact-source CI, dispatch ordinary Release, then verify tag/source, release assets, NuGet availability, and contents.
+- [x] Git/GitHub/NuGet -- validate a `fix(ci): ...` message, commit/push `main`, require exact-source CI, dispatch ordinary Release, then verify tag/source, release assets, NuGet availability, and contents.
 
 **Acceptance Criteria:**
 - Given any later current date, when OQ8 closure and full Contracts run, then approved evidence passes and future/order/drift mutations fail for their intended reasons.
@@ -101,7 +101,7 @@ Acceptance remains green ordinary exact-source Contracts/shared lanes, unchanged
 
 - Preserved the v1/v2 evidence bytes and bound historical v2 validation to completed closure commit `83b32fcfad7bb608098aebccdc15002636ffb431`; v3 carried the original repair; the subsequently landed v5 is the current selected successor.
 - Aligned `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` with the authoritative shared-policy wording introduced when root commit `fcafc59464efd2f97347a97f19a1d48ad340f10c` updated `references/Hexalith.AI.Tools` to `5f93d2ec8239494852c97032c819cb1689939e36`. The shared instruction changes themselves were preserved.
-- Focused implementation, full clean-checkout tier-1 verification, and exact hosted Contracts verification are complete; final-source publication remains open. The Git/GitHub/NuGet task remains open because push, workflow dispatch, and publication require the post-review remote phase.
+- Focused implementation, full clean-checkout tier-1 verification, and exact hosted Contracts verification are complete; final-source publication is complete. The Git/GitHub/NuGet task is complete: the normal PR and protected release phases passed and both public channels were verified.
 
 ## Spec Change Log
 
@@ -170,7 +170,7 @@ The validator and closure test are content-bound, so their evolution belongs in 
 
 Historical timestamp-repair results: focused OQ8 375/375 and Contracts 1,896/1,896 passed on the earlier source. These are preserved historical results, not the current verification counts.
 
-Current-source results on `b830d982` plus the four-file repair: active v5 and historical v1/v2 validators pass; focused package governance 45/45, scanner 102/102 after the ternary patch, and real HTTP/Pact 3/3 pass. Clean Release build has zero warnings/errors. Full Contracts passes 2,290 with two package-inventory skips, including both heavyweight container-publication tests. Tier 1 passes all 20 projects plus payload-protection lanes: 12,502 passed, zero failed, 53 existing/package-inventory skips. Server passes 3,959 with 25 existing skips; Provider passes 83/83. The exact hosted Contracts restore/build/test command passes 2,286 with two package-inventory skips; its Release build has zero warnings/errors. Final exact-source push CI and publication remain pending. The initial exported dependency-mode flag interfered with intentional matrix fixtures and was removed before the successful full Contracts run.
+Current-source results on `b830d982` plus the four-file repair: active v5 and historical v1/v2 validators pass; focused package governance 45/45, scanner 102/102 after the ternary patch, and real HTTP/Pact 3/3 pass. Clean Release build has zero warnings/errors. Full Contracts passes 2,290 with two package-inventory skips, including both heavyweight container-publication tests. Tier 1 passes all 20 projects plus payload-protection lanes: 12,502 passed, zero failed, 53 existing/package-inventory skips. Server passes 3,959 with 25 existing skips; Provider passes 83/83. The exact hosted Contracts restore/build/test command passes 2,286 with two package-inventory skips; its Release build has zero warnings/errors. Exact-source push CI and Commitlint passed; ordinary protected release v3.117.1 succeeded and both public channels validated. The initial exported dependency-mode flag interfered with intentional matrix fixtures and was removed before the successful full Contracts run.
 
 **Commands:**
 - `python3 tools/validate-oq8-platform-evidence.py` -- expected: historical v1/v2 and active v5 current-source closure pass.
@@ -182,3 +182,15 @@ Current-source results on `b830d982` plus the four-file repair: active v5 and hi
 - `gh workflow run release.yml --repo Hexalith/Hexalith.EventStore --ref main -f bypass-validation=false` and `gh run watch <release-run> --exit-status` -- expected: protected ordinary release succeeds.
 - GitHub tag/release inspection and `python3 tools/validate-release-packages.py <assets> <version>` -- expected: repair SHA and 14 valid assets.
 - NuGet flat-container download plus the same validator -- expected: all 14 public packages exist and validate.
+
+## Completion — 2026-10-08
+
+The reviewed repair was committed as `5714b182e3091b31ba2834d31a8129aea72189a3`, merged through [PR #367](https://github.com/Hexalith/Hexalith.EventStore/pull/367) as `0dad344d37343f589d859d6d8d6701283122b338`, and published as [v3.117.1](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.117.1). The tag resolves to that exact merged source. [Push CI 37753937593](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37753937593), Commitlint, CodeQL, live-sidecar, advisory, payload-protection, and mutation guards all passed. The P1R preparation job first failed its unchanged SIGINT readiness assertion; its same-source retry passed, and the original failure log remains retained.
+
+[Ordinary Release 37754898998](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/37754898998) used `bypass-validation=false`, the unchanged protected production environment and configured reviewer, and immutable publisher `22a578b576a515d2af214fe81859447fffc97981`. Its source/version/inventory identity, OCI index hash, both architecture smokes, and cleanup were verified from retained workflow evidence.
+
+Independent GitHub and NuGet downloads each validated all 14 manifest packages at 3.117.1. All 32 packaged DLL entries agree across channels despite repository signing of archive bytes. Both previously inventory-dependent consumer tests passed against the public GitHub packages, with zero skips; their identical DLL payloads are present in the NuGet packages. Local tier 1 passed 12,502 cases with 53 existing/inventory skips; the two inventory cases are now independently covered, leaving 51 existing ATDD skips. Provider verification passed 83/83 and scanner 102/102. Full Contracts included all container-publication cases; the exact hosted Contracts command also passed.
+
+Sealed OQ8 v1–v5 artifacts and gate inputs remain unchanged. The original runtime capture remains verifiable in its immutable Git blob, and the upstream sanitized capture and record were preserved. Four newly identified pre-existing findings were appended to the deferred-work ledger; all carried findings retain their prior disposition. No outstanding required implementation or publication work remains.
+
+The additive observation record is `evidence/ci-release-2026-10-08/v3.117.1-verification.json`. It records this release verification and grants no OQ8, catalog, event-evolution, or activation authority. Unrelated primary-workspace edits remain preserved.

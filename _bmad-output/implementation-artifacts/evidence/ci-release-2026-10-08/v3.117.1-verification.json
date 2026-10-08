@@ -1,0 +1,48 @@
+{
+  "source": "0dad344d37343f589d859d6d8d6701283122b338",
+  "tag": "v3.117.1",
+  "release_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.117.1",
+  "github_assets": 14,
+  "nuget_packages": 14,
+  "version": "3.117.1",
+  "contract_validation": "passed on both channels",
+  "schema": "hexalith.ci-release-verification.v1",
+  "observational_only": true,
+  "ordinary_release_run": 37754898998,
+  "pr": 367,
+  "push_ci_run": 37753937593,
+  "push_commitlint_run": 37753937546,
+  "push_checks": "all passed; P1R first-attempt SIGINT readiness failure passed unchanged on retry",
+  "local_tier1": {
+    "total": 12555,
+    "passed": 12502,
+    "failed": 0,
+    "notExecuted": 53
+  },
+  "published_consumer_tests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "assembly_agreement": {
+    "package_pairs": 14,
+    "assembly_pairs": 32,
+    "result": "identical assemblies across GitHub and NuGet packages; repository signing may change archive bytes"
+  },
+  "container_verification": {
+    "source": "0dad344d37343f589d859d6d8d6701283122b338",
+    "version": "3.117.1",
+    "publisher_pin": "22a578b576a515d2af214fe81859447fffc97981",
+    "protected_environment": "production",
+    "inventory": 14,
+    "oci_index_hash": "verified",
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "runtime_smokes": "pass",
+    "published_consumer_tests": "2/2 passed without skips"
+  },
+  "sealed_oq8": "unchanged; active v5 and historical v1/v2 validators passed",
+  "review": "three independent bounded repair reviews; ternary regression patched; pre-existing findings deferred"
+}
