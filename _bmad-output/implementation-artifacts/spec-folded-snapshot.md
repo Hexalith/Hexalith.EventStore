@@ -2,8 +2,8 @@
 title: Folded Snapshot Specification
 type: architecture-gate
 story: "6.1"
-status: pending-owner-re-attestation
-story_6_2_authorized: false
+status: approved-authorized
+story_6_2_authorized: true
 created: 2026-09-08
 revised: 2026-10-08
 baseline_commit: "7d76df4981fb070c4d84d817bf6fc800f27d0adb"
@@ -14,10 +14,10 @@ required_by: AD-13
 
 This file is the single AD-13 normative authority required by Story 6.1. It
 inventories current snapshot paths, freezes the target folded payload and
-byte bound, and records the exact normative content digest for owner review.
-Story 6.1 delivers no runtime change. The owner reopened approval on
-2026-10-04 (review decision P-D1); Story 6.2 is **NOT AUTHORIZED** until the
-owner attests the revised bytes in section 19.
+byte bound, and records the owner's approval of the exact normative content
+digest. Story 6.1 delivers no runtime change. The owner reopened approval on
+2026-10-04 (review decision P-D1) and re-attested the revised bytes on
+2026-10-08; section 19 authorizes Story 6.2 within the approved boundary.
 
 ## 1. Document Control And Digest Rule
 
@@ -27,10 +27,10 @@ owner attests the revised bytes in section 19.
 | Architecture constraints | AD-5, AD-6, AD-12, AD-13 |
 | Requirements | FR33 folded-snapshot gate; NFR8 bounded snapshot cost planning; NFR12 compatibility planning |
 | Required artifact | `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` |
-| Story 6.2 authorization | **NOT AUTHORIZED**; pending owner re-attestation of the exact normative digest in section 19 |
+| Story 6.2 authorization | **AUTHORIZED** for the exact normative digest and scope approved in section 19 |
 | Numeric bound | `MaxSnapshotEnvelopeOverheadBytes` = **4096** |
 | Inspected source baseline | `7d76df4981fb070c4d84d817bf6fc800f27d0adb` (2026-10-08) |
-| Open design decisions | **none**; current owner approval remains pending |
+| Open design decisions | **none**; current named-owner approval is recorded in section 19 |
 
 The normative approval digest is SHA-256 over the exact UTF-8 bytes between
 the unique full-line begin and end markers surrounding sections 2 through 18,
@@ -972,27 +972,30 @@ stops work; Story 6.2 MUST NOT select a local design. Approval of the Story
 
 <!-- HX-FS-V1-NORMATIVE-END -->
 
-## 19. Pending Owner Re-Attestation And Story 6.2 Authorization
+## 19. Named Owner Approval And Story 6.2 Authorization
 
 | Field | Value |
 | --- | --- |
-| Named current approver | **Pending** owner attestation; no current approval is recorded |
-| Required role | `architecture_owner` and `eventstore_owner` per `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json` |
-| Current approval date | **Pending** |
-| Approval basis required | Explicit owner approval of this exact revised normative digest and 4096-byte bound, with explicit Story 6.2 authorization |
+| Named current approver | Jérôme Piquot (`jpiquot`) |
+| Approver roles | `architecture_owner` and `eventstore_owner` per `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json` |
+| Current approval date | **2026-10-08** |
+| Approval basis | In this session, the named owner answered **yes** to the explicit request to approve this exact revised normative digest and 4096-byte bound, authorize Story 6.2, and reconcile Story 6.1's completion records |
 | Normative content SHA-256 | `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` |
-| Numeric bound awaiting re-attestation | `MaxSnapshotEnvelopeOverheadBytes` = 4096 |
-| Open design decisions | none; approval is pending |
-| Story 6.1 completion | In progress; current named approval acceptance criterion remains incomplete |
-| Story 6.2 | **NOT AUTHORIZED** |
+| Approved numeric bound | `MaxSnapshotEnvelopeOverheadBytes` = **4096** |
+| Open design decisions | **none** |
+| Story 6.1 completion | **Done** for the specification gate; named approval acceptance criterion is complete |
+| Story 6.2 | **AUTHORIZED**; implementation remains backlog |
 
-STORY 6.2 AUTHORIZATION: Story 6.2 is **NOT AUTHORIZED**. The final bytes
-are ready for review; neither this revision nor completion of its document
-patches substitutes for owner re-attestation. After the owner approves the
-exact digest, record that approver/date/bound/explicit authorization here and
-reconcile the PRD NFR8 digest pin and epics Story 6.1/6.2 approval metadata.
-Until then, the old planning digest remains historical evidence and grants
-no implementation authority. No runtime work or approval is inferred.
+STORY 6.2 AUTHORIZATION: Jérôme Piquot (`jpiquot`) explicitly authorizes
+Story 6.2 to implement **exactly** sections 2 through 17 under normative
+SHA-256 `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`
+and `MaxSnapshotEnvelopeOverheadBytes` = **4096**, with the section 18
+preflight and validation requirements. Any normative byte change, design
+drift, or reopened decision voids this authorization and stops implementation.
+The same owner approval authorizes reconciliation of the wrapper, PRD,
+epics, sprint tracker, and Epic 6 context for this digest. This records
+completion of the specification gate only; Story 6.2 remains backlog and no
+runtime implementation or bounded-cost outcome is claimed.
 
 ### Superseded historical approval
 
@@ -1002,5 +1005,4 @@ and `eventstore_owner`, date 2026-09-08, normative SHA-256
 4096-byte bound. Owner review decision P-D1 on 2026-10-04 reopened that
 approval because it did not establish attestation of the final normative
 bytes. The name/date/digest are retained only as historical provenance;
-they MUST NOT be copied into the current pending block as approval of this
-revision.
+they MUST NOT substitute for the current session's approval of this revision.

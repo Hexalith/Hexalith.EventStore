@@ -2,7 +2,7 @@
 title: 'Story 6.1: Folded Snapshot Frozen Spec'
 type: 'feature'
 created: '2026-09-08'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '7598f67cc94a47734c0f21ae7669b29a931d386c'
@@ -54,7 +54,7 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- write the complete frozen specification: inventory, folded payload, `MaxSnapshotEnvelopeOverheadBytes` 4096, post-command sequence, DSCS safe-bypass, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, this session's approver as named approval, and explicit 6.2 authorization -- this is the only Story 6.1 deliverable; 6.2 stays unauthorized until the approval block is complete
+- [x] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- complete frozen specification: inventory, folded payload, `MaxSnapshotEnvelopeOverheadBytes` 4096, post-command sequence, DSCS safe-bypass, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, named approval by Jérôme Piquot (`jpiquot`) on 2026-10-08, and explicit 6.2 authorization in section 19
 
 **Acceptance Criteria:**
 - Given current automatic and manual snapshot paths, when the artifact is written, then it names every producer, reader, overwrite path, key, field, serializer, protection hook, commit boundary, failure path, operator surface, and test seam, and records where `DomainServiceCurrentState`, prior snapshots, tail events, `/replay-state`, and `SnapshotRecord` diverge.
@@ -71,8 +71,8 @@ Code review 2026-10-04 of `f4d7b91b` only (the 3 unrelated commits in `7598f67c.
 - [x] [Review][Decision] Automatic-fold domain-service boundary is unspecified — **resolved 2026-10-04: domain returns post-command state → P-D3.** the actor never holds `TState` (§3.8), so seeded Apply (§8.2) is a second remote `/replay-state` call inside the open command batch. `AggregateReconstructionRequest` has no seed field; no timeout budget; "cancellation MUST propagate" (§8.2) conflicts with "failed fold MUST NOT block event commit" (§7.3) because a fold timeout surfaces as `TaskCanceledException`; `PreCommandStateJson` would ride on every `/process` reply with no cost bound or logging rule; JSON-null (new aggregate) vs absent (old service) is indistinguishable; whether seeded Apply consumes unprotected in-memory events is unstated. §16 never weighs "domain returns post-command folded state from `/process`". Violates epics 6.1 ("domain-service boundary, cancellation behavior, and error taxonomy"; "no unresolved … replay decision may be deferred into Story 6.2") and §18. [spec-folded-snapshot.md:376-437]
 - [x] [Review][Decision] Automatic writer overwrites snapshots §9.2 says to retain — **resolved 2026-10-04: allow, stated explicitly → P-D4.** opaque/unreadable (and unknown-version) loads return `null`, so `lastSnapshotSequence` is 0 (`AggregateActor.cs:1002` at baseline) and the next interval command stages over the key (`:1119-1129`). §9.2 rows say "Retain"; only the manual path is told not to overwrite. Options: allow (snapshot is derived; events stay authority) and say so; or skip automatic writes while a retained unreadable key exists. [spec-folded-snapshot.md:482-483]
 - [x] [Review][Decision] Inventory omits Admin raw-snapshot readers — **resolved 2026-10-04: 6.2 redacts the snapshot key; event-key redaction deferred to Epic 7 → P-D5.** the Admin actor-state inspector (`KnownActorTypes.cs:30` `{actorId}:snapshot` → `DaprInfrastructureQueryService.ReadActorStateKeyAsync`) returns the raw snapshot JSON and size to Admin, contradicting §11/§13 "raw folded state stays hidden"; `DaprConsistencyCommandService.cs:783` reads the snapshot key outside the actor; `BenchmarkDatasetBuilder` (published Testing.Integration) writes `SnapshotRecord`. AC1 requires every reader/operator surface. Options: 6.2 must redact the inspector's snapshot value; or record it as an accepted diagnostic exception owned elsewhere (Epic 7). [spec-folded-snapshot.md:181-188]
-- [x] [Review][Patch] P-D1 Reopen: re-baselined §1/§3 to current HEAD `7d76df4981fb070c4d84d817bf6fc800f27d0adb` (trusted-effect erasure, pdenc-v2 snapshot overloads, current actor and transport paths); §19 is pending owner re-attestation with Story 6.2 **NOT AUTHORIZED**; the revised normative digest is recorded.
-- [ ] [Review][Approval] P-D1 Final owner attestation: obtain named human approval of the final normative digest, approval date, 4096-byte bound, and explicit Story 6.2 authorization; only then reconcile the `prd.md` NFR8 digest pin and `epics.md` 6.1/6.2 approval metadata. No attestation is inferred from the implementation request.
+- [x] [Review][Patch] P-D1 Reopen: re-baselined §1/§3 to inspected HEAD `7d76df4981fb070c4d84d817bf6fc800f27d0adb` (trusted-effect erasure, pdenc-v2 snapshot overloads, current actor and transport paths); §19's pending block withheld Story 6.2 authority until the final owner attestation below; the revised normative digest is recorded.
+- [x] [Review][Approval] P-D1 Final owner attestation: Jérôme Piquot (`jpiquot`) explicitly approved final normative SHA-256 `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`, the 4096-byte bound, Story 6.2 authorization, and Story 6.1 completion-record reconciliation on 2026-10-08. Section 19 records that session approval; the `prd.md` NFR8 pin and `epics.md` 6.1/6.2 metadata now bind the same digest.
 - [x] [Review][Patch] P-D2 Writers MUST skip (advisory) a v1 snapshot whose folded JSON object has both top-level `currentSequence` and `events`; remove the unimplementable §9.1 exemption and align §5.3. [spec-folded-snapshot.md:261-273,467-469]
 - [x] [Review][Patch] P-D3 Replace `PreCommandStateJson` + seeded `/replay-state` with an optional init-only `PostCommandStateJson` that `/process` returns only when the actor's request flag marks the command snapshot-due; same Apply table over `DomainResult.Events`; absent field or no-op → advisory skip; update §8, §12, §15, §16, §17. [spec-folded-snapshot.md:365-451]
 - [x] [Review][Patch] P-D4 §9.2: opaque, unreadable and unknown-version keys are retained at load (no delete) and MAY be replaced by the next successful folded write, logged with a support-safe reason class; the event stream stays audit authority. [spec-folded-snapshot.md:482-484,535]
@@ -121,6 +121,8 @@ Rejected (historical review; the 2026-10-08 corrections and current triage below
 - 2026-09-08: `spec-6-1-folded-snapshot-frozen-spec.md` was externally reverted to the pre-approval draft (Open Questions restored, `status: draft`). Restored the approved frozen block, `baseline_commit`, and `in-progress` status. Code Map paths corrected to `AggregateReplayer.cs` under Client and `Pages/Snapshots.razor`.
 
 ## Spec Change Log
+
+- 2026-10-08: Recorded the named owner's explicit approval of normative SHA-256 `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`, the 4096-byte bound, Story 6.2 authorization, and completion-record reconciliation. The approval permits the bookkeeping change to `sprint-status.yaml` despite the original no-tracker-edit boundary: Story 6.1 is `done` after owner acceptance, rather than the workflow's generic `review` handoff; Story 6.2 stays backlog. Reconciled the PRD, epics, tracker, and Epic 6 context without changing the approved normative bytes, frozen intent, or original wrapper baseline.
 
 - 2026-10-08: Final consistency corrections distinguish pre-handler state preservation from post-admission event Apply/capture, and make invalid-sequence refusal take precedence over DSCS migration. Final normative SHA-256: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`. No frozen-intent or approval change.
 
@@ -190,20 +192,28 @@ Today automatic writes persist `DomainServiceCurrentState` at `preEventSequence`
 ## Verification
 
 **Commands:**
-- `python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-folded-snapshot.md').read_bytes(); b=b'<!-- HX-FS-V1-NORMATIVE-BEGIN -->\n'; e=b'<!-- HX-FS-V1-NORMATIVE-END -->\n'; assert p.count(b)==p.count(e)==1 and b'\r' not in p and not p.startswith(b'\xef\xbb\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"` -- expected: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` (revised, pending owner attestation; historical `0b456b5f…` is superseded).
+- `python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-folded-snapshot.md').read_bytes(); b=b'<!-- HX-FS-V1-NORMATIVE-BEGIN -->\n'; e=b'<!-- HX-FS-V1-NORMATIVE-END -->\n'; assert p.count(b)==p.count(e)==1 and b'\r' not in p and not p.startswith(b'\xef\xbb\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"` -- expected: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` (approved by the named owner on 2026-10-08; historical `0b456b5f…` is superseded).
 
 **Manual checks (if no CLI):**
 - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` exists and is non-empty.
-- It contains the refreshed inventory, payload, byte bound (`MaxSnapshotEnvelopeOverheadBytes` = 4096), sequence, rehydration, shared fold, protection, compatibility, rejected alternatives and revised content digest. Section 19 explicitly records pending current approver/date and Story 6.2 **NOT AUTHORIZED**; the prior name/date/digest are superseded historical evidence. The approval acceptance criterion remains incomplete until the owner attests these bytes.
+- It contains the refreshed inventory, payload, byte bound (`MaxSnapshotEnvelopeOverheadBytes` = 4096), sequence, rehydration, shared fold, protection, compatibility, rejected alternatives and approved content digest. Section 19 records Jérôme Piquot (`jpiquot`), approval date 2026-10-08, the exact digest and bound, and Story 6.2 **AUTHORIZED**. The prior approval remains superseded historical evidence. Story 6.1's approval acceptance criterion is complete.
 - No runtime, test, or public-contract diff is part of this story.
 
 **Results (2026-10-08, follow-up):** Both literal published digest commands
 (this wrapper and the AD-13 artifact) returned the current revised SHA-256.
 Focused structural checks passed for unique LF/no-BOM markers, normative
-sections 2–18, follow-up contract clauses and validation vectors, pending
-approval, unchanged frozen intent/original wrapper baseline, and preserved
-complete historical/current triage. `git diff --check` passed for the two
-files edited in this follow-up. Owned changes are documentation only; shared
+sections 2–18, follow-up contract clauses and validation vectors, unchanged
+frozen intent/original wrapper baseline, and preserved complete
+historical/current triage. The named owner subsequently approved the exact
+digest and bound, authorized Story 6.2, and approved completion-record
+reconciliation. `git diff --check` passed for the two files edited in the
+review follow-up. Owned changes are documentation only; shared
 source/test edits belong to concurrent work and were not modified. No runtime
 tests were run for this documentation-only gate; the Story 6.2 matrix remains
-required future evidence, not a claim of runtime validation or owner approval.
+required future evidence, not a claim of runtime validation.
+
+**Approval reconciliation results (2026-10-08):** All 32 focused checks
+passed, including unchanged approved normative bytes, both published digest
+commands, frozen intent and baseline preservation, named-owner roles and
+approval fields, matching planning digest pins, tracker consistency, preserved
+review triage, and `git diff --check` across the six approval/planning files.
