@@ -22,6 +22,7 @@ using Hexalith.EventStore.SignalRHub;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -225,6 +226,14 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
             .AddScheme<AuthenticationSchemeOptions, ProviderVerificationAuthenticationHandler>(
                 ProviderVerificationAuthenticationHandler.SchemeName,
                 _ => { });
+
+        // Production's default policy selects JWT explicitly. The verification host
+        // must select its own per-run credential handler for the same protected routes.
+        services.PostConfigure<AuthorizationOptions>(static options =>
+            options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                ProviderVerificationAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser()
+                .Build());
 
         services.RemoveAll<ITenantValidator>();
         services.RemoveAll<IRbacValidator>();

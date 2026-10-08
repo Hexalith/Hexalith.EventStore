@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
@@ -7,6 +9,13 @@ public sealed class ContractsPackageDependencyTests
 {
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
     private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(8);
+    private const string PublishedPackageObservation =
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/";
+    private static readonly (string FileName, string Sha256)[] _sealedPackageObservations =
+    [
+        ("Directory.Packages.props", "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28"),
+        ("Identity.csproj", "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c"),
+    ];
 
     // Hash-bound standalone consumers and the recorded verification harness restore published
     // release and rollback packages outside the live build graph. Exclusions name exact files.
@@ -25,6 +34,8 @@ public sealed class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/domain/Domain.csproj",
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/host/Host.csproj",
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj",
+        PublishedPackageObservation + "Directory.Packages.props",
+        PublishedPackageObservation + "Identity.csproj",
     ];
 
     [Fact]
@@ -167,22 +178,45 @@ public sealed class ContractsPackageDependencyTests
             $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
     }
 
+    [Fact]
+    public void PublishedPackageObservationExclusions_RequireSealedContent()
+    {
+        string root = FindRepositoryRoot();
+        string[] seals = File.ReadAllLines(Path.Combine(root, PublishedPackageObservation, "..", "SHA256SUMS"));
+        foreach ((string fileName, string sha256) in _sealedPackageObservations)
+        {
+            seals.ShouldContain(sha256 + "  package-observation/" + fileName);
+            byte[] bytes = File.ReadAllBytes(Path.Combine(root, PublishedPackageObservation, fileName));
+            VerifySealedPackageObservation(bytes, sha256);
+            Should.Throw<ShouldAssertException>(() => VerifySealedPackageObservation([.. bytes, (byte)'x'], sha256));
+        }
+    }
+
     /// <summary>
     /// Verifies the evidence exemptions cannot hide a new executable-project version override.
     /// </summary>
     /// <param name="metadata">The project-level version metadata to reject.</param>
-    /// <param name="evidenceSibling">Whether the executable is beside the historical exemptions.</param>
+    /// <param name="directory">The directory containing the nonexempt executable.</param>
+    /// <param name="fileName">The nonexempt MSBuild surface.</param>
     /// <param name="tracked">Whether discovery uses an isolated Git index.</param>
     [Theory]
-    [InlineData("Version", false, false)]
-    [InlineData("VersionOverride", false, false)]
-    [InlineData("Version", true, false)]
-    [InlineData("VersionOverride", true, false)]
-    [InlineData("Version", false, true)]
-    [InlineData("VersionOverride", false, true)]
-    [InlineData("Version", true, true)]
-    [InlineData("VersionOverride", true, true)]
-    public async Task SharedConsumerAuthorityValidatorRejectsNonExemptExecutableOverrideAsync(string metadata, bool evidenceSibling, bool tracked)
+    [InlineData("Version", "src", "Executable.csproj", false)]
+    [InlineData("VersionOverride", "src", "Executable.csproj", false)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification", "Executable.csproj", false)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification", "Executable.csproj", false)]
+    [InlineData("Version", "src", "Executable.csproj", true)]
+    [InlineData("VersionOverride", "src", "Executable.csproj", true)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification", "Executable.csproj", true)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification", "Executable.csproj", true)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Executable.csproj", false)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Executable.csproj", false)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Executable.csproj", true)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Executable.csproj", true)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", false)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", true)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", false)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", true)]
+    public async Task SharedConsumerAuthorityValidatorRejectsNonExemptExecutableOverrideAsync(string metadata, string directory, string fileName, bool tracked)
     {
         string root = FindRepositoryRoot();
         string catalogPath = ResolveSharedPackageVersionsPath(root, XDocument.Load(Path.Combine(root, "Directory.Packages.props")));
@@ -201,9 +235,7 @@ public sealed class ContractsPackageDependencyTests
                 new XElement("PropertyGroup", new XElement("ManagePackageVersionsCentrally", "true")),
                 new XElement("Import", new XAttribute("Project", catalogPath))))
                 .Save(Path.Combine(fixture, "Directory.Packages.props"));
-            string executable = Path.Combine(fixture, evidenceSibling
-                ? "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Executable.csproj"
-                : "src/Executable.csproj");
+            string executable = Path.Combine(fixture, directory, fileName);
             Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
             File.WriteAllText(executable,
                 $"<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"Hexalith.EventStore.Server\" {metadata}=\"9.9.9\" /></ItemGroup></Project>");
@@ -216,7 +248,7 @@ public sealed class ContractsPackageDependencyTests
 
             (int exitCode, _, string error) = await RunConsumerAuthorityValidatorAsync(root, fixture, catalogPath).ConfigureAwait(true);
             exitCode.ShouldBe(1, error);
-            error.ShouldContain($"Executable.csproj contains PackageReference {metadata} metadata '9.9.9'");
+            error.ShouldContain($"{fileName} contains PackageReference {metadata} metadata '9.9.9'");
         }
         finally
         {
@@ -271,6 +303,12 @@ public sealed class ContractsPackageDependencyTests
     private static async Task<(int ExitCode, string Output, string Error)> RunConsumerAuthorityValidatorAsync(string repositoryRoot, string root, string catalogPath)
     {
         string buildsRoot = VerifyCatalogRepository(repositoryRoot, catalogPath);
+        foreach ((string fileName, string sha256) in _sealedPackageObservations)
+        {
+            VerifySealedPackageObservation(
+                File.ReadAllBytes(Path.Combine(repositoryRoot, PublishedPackageObservation, fileName)), sha256);
+        }
+
         string validatorPath = Path.Combine(
             buildsRoot,
             "Tools",
@@ -318,6 +356,13 @@ public sealed class ContractsPackageDependencyTests
         string output = await outputTask.ConfigureAwait(true);
         string error = await errorTask.ConfigureAwait(true);
         return (process.ExitCode, output, error);
+    }
+
+    private static void VerifySealedPackageObservation(byte[] bytes, string sha256)
+    {
+        byte[] canonical = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace("\r\n", "\n", StringComparison.Ordinal));
+        Convert.ToHexString(SHA256.HashData(canonical)).ToLowerInvariant().ShouldBe(
+            sha256, "Historical package-authority exclusions require their original sealed contents.");
     }
 
     private static void RunFixtureGit(string root, params string[] arguments)

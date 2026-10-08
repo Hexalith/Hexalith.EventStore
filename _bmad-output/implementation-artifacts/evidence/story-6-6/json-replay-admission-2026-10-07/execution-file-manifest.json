@@ -13,8 +13,8 @@
     },
     {
       "path": "aspire-retry-describe.log",
-      "size": 105214,
-      "sha256": "920af53b3660885236289c92e78c8841a64b1f0df978a8e35d8b53dab991e2e7"
+      "size": 104840,
+      "sha256": "76ae569fc939152cc1e6fb83be434abbc0cb21906b990ba1f024e15a0304838d"
     },
     {
       "path": "aspire-retry-ps-after.log",

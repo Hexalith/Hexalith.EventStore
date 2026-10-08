@@ -21,6 +21,10 @@ public sealed partial class SecretsProtectionTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/source-candidate.diff";
     private const string SealedP1RRemediationSourceCaptureSha256 =
         "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa";
+    private const string SealedCounterSerializationTestResults =
+        "_bmad-output/implementation-artifacts/evidence/story-6-6/counter-v1-serialization-2026-10-07/sample-full.xml";
+    private const string SealedCounterSerializationTestResultsSha256 =
+        "cd94c23807386ef2a245b9f7e81e5243a36b00449de3d19579484989afa82622";
 
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
@@ -625,6 +629,92 @@ public sealed partial class SecretsProtectionTests
         => FindViolations(SealedP1RRemediationSourceCapture)
             .ShouldBe([SealedP1RRemediationSourceCapture + ":2590"]);
 
+    [Fact]
+    public void SealedCounterSerializationResults_ExemptionRequiresExactPathAndContent()
+    {
+        IsExplicitGeneratedPath(SealedCounterSerializationTestResults).ShouldBeTrue();
+        IsExplicitGeneratedPath(SealedCounterSerializationTestResults + ".orig").ShouldBeFalse();
+        IsExplicitGeneratedPath("tools/sample-full.xml").ShouldBeFalse();
+        ReadTrackedText(SealedCounterSerializationTestResults).ShouldBeNull();
+        byte[] bytes = File.ReadAllBytes(Path.Combine(RepoRoot, SealedCounterSerializationTestResults));
+        Should.Throw<ShouldAssertException>(() => VerifySealedCounterSerializationTestResults([.. bytes, (byte)'\n']));
+        FindViolations(SealedCounterSerializationTestResults).ShouldBe([SealedCounterSerializationTestResults + ":1"]);
+    }
+
+    [Theory]
+    [InlineData("null", true, false)]
+    [InlineData("\"null\"", true, true)]
+    [InlineData("null", false, true)]
+    public void JsonNull_IsAllowedOnlyAsAParsedBareValue(string value, bool validJson, bool violation)
+    {
+        string content = "{\"pass" + "word\":" + value + "}" + (validJson ? string.Empty : " trailing-text");
+        FindViolations("capture.log", content).Any().ShouldBe(violation);
+    }
+
+    [Theory]
+    [InlineData("lock")]
+    [InlineData("assets")]
+    [InlineData("capture")]
+    public void NuGetDependencyMetadata_ExemptsOnlySchemaBoundPackageNames(string shape)
+    {
+        string packageName = "Microsoft.IdentityModel." + "Tokens";
+        string digest = Convert.ToBase64String(new byte[64]);
+        string package = "{\"type\":\"Direct\",\"resolved\":\"8.14.0\",\"contentHash\":\"" + digest + "\","
+            + "\"dependencies\":{\"" + packageName + "\":\"8.14.0\"}}";
+        string target = "{\"net10.0\":{\"Sample.Package/1.0.0\":{\"dependencies\":{\""
+            + packageName + "\":\"8.14.0\"}}}}";
+        string libraries = "{\"Sample.Package/1.0.0\":{\"type\":\"package\"},\"" + packageName
+            + "/8.14.0\":{\"type\":\"package\",\"sha512\":\"" + digest + "\"}}";
+        string content = shape switch
+        {
+            "lock" => "{\"version\":1,\"dependencies\":{\"net10.0\":{\"" + packageName + "\":" + package + "}}}",
+            "assets" => "{\"targets\":" + target + ",\"libraries\":" + libraries + "}",
+            _ => "{\"localReleaseArtifacts\":[{\"depsDeclarations\":[{\"declaredTargets\":"
+                + target + ",\"libraries\":" + libraries + ",\"runtimeTarget\":{}}]}]}",
+        };
+        FindViolations("capture.json", content).ShouldBeEmpty();
+        FindViolations("capture.json", content + " trailing-text").ShouldNotBeEmpty();
+        FindViolations("capture.json", "{\"" + packageName + "\":\"8.14.0\"}").ShouldNotBeEmpty();
+        string adjacentField = content.Insert(1, "\"pass" + "word\":\"" + RandomSecret() + "\",");
+        FindViolations("capture.json", adjacentField).ShouldBe(["capture.json:1"]);
+        string unicodePrefix = content.Insert(1, "\"label\":\"é😀\",");
+        FindViolations("capture.json", unicodePrefix).ShouldBeEmpty();
+        string invalidVersions = content.Replace("8.14.0", RandomSecret(), StringComparison.Ordinal);
+        FindViolations("capture.json", invalidVersions).ShouldNotBeEmpty();
+        string lookalike = "{\"libraries\":{},\"targets\":{\"tenant\":{\"foo/bar\":{\"dependencies\":{\"database."
+            + "password\":\"1.2.3\"}}}}}";
+        FindViolations("capture.json", lookalike).ShouldBe(["capture.json:1"]);
+        FindViolations("capture.json", lookalike.Replace("database.password", packageName, StringComparison.Ordinal))
+            .ShouldBe(["capture.json:1"]);
+        if (shape != "lock")
+        {
+            FindViolations("capture.json", content.Replace(
+                    "\"Sample.Package/1.0.0\":{\"type\":\"package\"}",
+                    "\"Sample.Package/1.0.0\":\"unexpected\"", StringComparison.Ordinal))
+                .ShouldBe(["capture.json:1"]);
+            FindViolations("capture.json", "{\"libraries\":{},\"targets\":{\"net10.0\":[{\"dependencies\":{\""
+                + packageName + "\":\"8.14.0\"}}]}}")
+                .ShouldBe(["capture.json:1"]);
+        }
+    }
+
+    [Theory]
+    [InlineData("8.14.0+build.1")]
+    [InlineData("[8.14.0,9.0.0)")]
+    [InlineData("[8.14.0]")]
+    [InlineData("(,8.14.0]")]
+    public void NuGetDependencyMetadata_AllowsVersionMetadataAndRanges(string version)
+    {
+        string packageName = "Microsoft.IdentityModel." + "Tokens";
+        string digest = Convert.ToBase64String(new byte[64]);
+        string content = "{\"version\":1,\"dependencies\":{\"net10.0\":{\"Sample.Package\":{\"type\":\"Direct\","
+            + "\"resolved\":\"1.0.0\",\"contentHash\":\"" + digest + "\",\"dependencies\":{\""
+            + packageName + "\":\"" + version + "\"}}}}}";
+        FindViolations("packages.lock.json", content).ShouldBeEmpty();
+        FindViolations("packages.lock.json", content.Replace(version, RandomSecret(), StringComparison.Ordinal))
+            .ShouldNotBeEmpty();
+    }
+
     private static IEnumerable<string> FindViolations(string relativePath)
     {
         string content = File.ReadAllText(Path.Combine(RepoRoot, relativePath));
@@ -634,6 +724,7 @@ public sealed partial class SecretsProtectionTests
     private static IEnumerable<string> FindViolations(string relativePath, string content)
     {
         var violationLines = new SortedSet<int>();
+        (HashSet<int> nullValues, HashSet<int> dependencyNames) = GetJsonNonSecretMetadata(content);
         void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
 
         foreach (Match match in CompactJwtPattern().Matches(content))
@@ -761,7 +852,9 @@ public sealed partial class SecretsProtectionTests
 
             string effectivePath = GetEffectiveSourcePath(relativePath, content, match.Groups["name"].Index);
             string value = GetAssignmentValue(match);
-            if (IsArgparseMetavar(content, match.Groups["name"].Index)
+            if (dependencyNames.Contains(match.Groups["name"].Index)
+                || match.Groups["bare"].Success && nullValues.Contains(match.Groups["value"].Index)
+                || IsArgparseMetavar(content, match.Groups["name"].Index)
                 || IsJavaScriptDestructuringAlias(effectivePath, content, match.Groups["name"].Index)
                 || IsPackageDependencyMetadata(
                     effectivePath,
@@ -919,6 +1012,10 @@ public sealed partial class SecretsProtectionTests
             {
                 VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
             }
+            else if (string.Equals(path, SealedCounterSerializationTestResults, StringComparison.Ordinal))
+            {
+                VerifySealedCounterSerializationTestResults(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
+            }
 
             return null;
         }
@@ -1046,7 +1143,13 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsExplicitGeneratedPath(string path)
         => ExplicitUiTestArtifactPathPattern().IsMatch(path)
-            || ExplicitEvidenceArtifactPathPattern().IsMatch(path);
+            || ExplicitEvidenceArtifactPathPattern().IsMatch(path)
+            || string.Equals(path, SealedCounterSerializationTestResults, StringComparison.Ordinal);
+
+    private static void VerifySealedCounterSerializationTestResults(byte[] bytes)
+        => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant().ShouldBe(
+            SealedCounterSerializationTestResultsSha256,
+            "The sealed serialization test results changed; their scan exemption no longer applies.");
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
@@ -1252,6 +1355,202 @@ public sealed partial class SecretsProtectionTests
 
         return cursor < content.Length && content[cursor] == '=';
     }
+
+    private static (HashSet<int> NullValues, HashSet<int> DependencyNames) GetJsonNonSecretMetadata(string content)
+    {
+        HashSet<int> nullValues = [];
+        HashSet<int> dependencyNames = [];
+        try
+        {
+            byte[] utf8 = Encoding.UTF8.GetBytes(content);
+            using JsonDocument document = JsonDocument.Parse(utf8);
+            var reader = new Utf8JsonReader(utf8);
+            _ = reader.Read();
+            (int ByteIndex, int CharIndex) position = (0, 0);
+            CollectJsonNonSecretMetadata(
+                ref reader, document.RootElement, null, [], utf8, ref position, nullValues, dependencyNames);
+        }
+        catch (JsonException)
+        {
+            // A malformed capture grants no structural exceptions, including any valid-looking prefix.
+            nullValues.Clear();
+            dependencyNames.Clear();
+        }
+
+        return (nullValues, dependencyNames);
+    }
+
+    private static void CollectJsonNonSecretMetadata(
+        ref Utf8JsonReader reader,
+        JsonElement element,
+        string? name,
+        List<(string? Name, JsonElement Element)> ancestors,
+        byte[] utf8,
+        ref (int ByteIndex, int CharIndex) position,
+        HashSet<int> nullValues,
+        HashSet<int> dependencyNames)
+    {
+        ancestors.Add((name, element));
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (JsonProperty property in element.EnumerateObject())
+            {
+                _ = reader.Read();
+                if (IsNuGetDependencyProperty(ancestors, property))
+                {
+                    dependencyNames.Add(GetJsonCharIndex(utf8, (int)reader.TokenStartIndex, ref position) + 1);
+                }
+
+                _ = reader.Read();
+                CollectJsonNonSecretMetadata(
+                    ref reader, property.Value, property.Name, ancestors, utf8, ref position, nullValues, dependencyNames);
+            }
+
+            _ = reader.Read();
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement child in element.EnumerateArray())
+            {
+                _ = reader.Read();
+                CollectJsonNonSecretMetadata(ref reader, child, null, ancestors, utf8, ref position, nullValues, dependencyNames);
+            }
+
+            _ = reader.Read();
+        }
+        else if (element.ValueKind == JsonValueKind.Null)
+        {
+            nullValues.Add(GetJsonCharIndex(utf8, (int)reader.TokenStartIndex, ref position));
+        }
+
+        ancestors.RemoveAt(ancestors.Count - 1);
+    }
+
+    private static int GetJsonCharIndex(byte[] utf8, int byteIndex, ref (int ByteIndex, int CharIndex) position)
+    {
+        // Tokens arrive in source order, so each UTF-8 byte is counted at most once.
+        position.CharIndex += Encoding.UTF8.GetCharCount(utf8.AsSpan(position.ByteIndex, byteIndex - position.ByteIndex));
+        position.ByteIndex = byteIndex;
+        return position.CharIndex;
+    }
+
+    private static bool IsNuGetDependencyProperty(
+        List<(string? Name, JsonElement Element)> ancestors,
+        JsonProperty property)
+    {
+        // Recognize NuGet package identities only at their schema positions, never arbitrary credential fields.
+        if (property.Name is not ("Microsoft.IdentityModel.Tokens"
+                or "Microsoft.IdentityModel.JsonWebTokens"
+                or "System.IdentityModel.Tokens.Jwt")
+            || ancestors.Count < 3)
+        {
+            return false;
+        }
+
+        if (ancestors[^2].Name == "dependencies"
+            && IsLockDocument(ancestors[^3].Element)
+            && IsLockPackage(property.Value))
+        {
+            return true;
+        }
+
+        if (ancestors[^1].Name != "dependencies"
+            || property.Value.ValueKind != JsonValueKind.String
+            || !IsNuGetDependencyVersion(property.Value.GetString()))
+        {
+            return false;
+        }
+
+        if (ancestors.Count >= 5
+            && ancestors[^4].Name == "dependencies"
+            && IsLockDocument(ancestors[^5].Element)
+            && IsLockPackage(ancestors[^2].Element))
+        {
+            return true;
+        }
+
+        if (ancestors.Count < 5
+            || ancestors[^4].Name is not ("targets" or "declaredTargets")
+            || ancestors[^2].Name is not { } parentName
+            || parentName.LastIndexOf('/') <= 0
+            || !ancestors[^5].Element.TryGetProperty("libraries", out JsonElement libraries)
+            || libraries.ValueKind != JsonValueKind.Object
+            || !IsNuGetVersion(parentName[(parentName.LastIndexOf('/') + 1)..])
+            || !libraries.TryGetProperty(parentName, out JsonElement parent)
+            || parent.ValueKind != JsonValueKind.Object
+            || !parent.TryGetProperty("type", out JsonElement parentType)
+            || parentType.ValueKind != JsonValueKind.String
+            || parentType.GetString() is not ("package" or "project"))
+        {
+            return false;
+        }
+
+        return libraries.EnumerateObject().Any(library =>
+            library.Name.StartsWith(property.Name + "/", StringComparison.Ordinal)
+            && IsNuGetVersion(library.Name[(property.Name.Length + 1)..])
+            && library.Value.ValueKind == JsonValueKind.Object
+            && library.Value.TryGetProperty("type", out JsonElement type)
+            && type.ValueKind == JsonValueKind.String
+            && type.GetString() == "package"
+            && library.Value.TryGetProperty("sha512", out JsonElement hash)
+            && IsNuGetContentHash(hash));
+    }
+
+    private static bool IsLockDocument(JsonElement element)
+        => element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty("version", out JsonElement version)
+            && version.ValueKind == JsonValueKind.Number
+            && version.TryGetInt32(out int value)
+            && value is 1 or 2;
+
+    private static bool IsLockPackage(JsonElement element)
+        => element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty("type", out JsonElement type)
+            && type.ValueKind == JsonValueKind.String
+            && type.GetString() is "Direct" or "Transitive"
+            && element.TryGetProperty("resolved", out JsonElement resolved)
+            && resolved.ValueKind == JsonValueKind.String
+            && IsNuGetVersion(resolved.GetString())
+            && element.TryGetProperty("contentHash", out JsonElement hash)
+            && IsNuGetContentHash(hash);
+
+    private static bool IsNuGetContentHash(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.String || element.GetString() is not { } value)
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> encoded = value.StartsWith("sha512-", StringComparison.Ordinal) ? value.AsSpan(7) : value;
+        Span<byte> hash = stackalloc byte[64];
+        return Convert.TryFromBase64Chars(encoded, hash, out int written) && written == hash.Length;
+    }
+
+    private static bool IsNuGetVersion(string? value)
+        => value is not null && NuGetVersionPattern().IsMatch(value);
+
+    private static bool IsNuGetDependencyVersion(string? value)
+    {
+        if (IsNuGetVersion(value))
+        {
+            return true;
+        }
+
+        if (value is not { Length: >= 3 } || value[0] is not ('[' or '(') || value[^1] is not (']' or ')'))
+        {
+            return false;
+        }
+
+        string[] bounds = value[1..^1].Split(',', StringSplitOptions.TrimEntries);
+        return bounds.Length == 1
+            ? value[0] == '[' && value[^1] == ']' && IsNuGetVersion(bounds[0])
+            : bounds.Length == 2
+                && bounds.Any(static bound => bound.Length > 0)
+                && bounds.All(static bound => bound.Length == 0 || IsNuGetVersion(bound));
+    }
+
+    [GeneratedRegex(@"^[0-9]+(?:\.[0-9]+){0,3}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$", RegexOptions.CultureInvariant)]
+    private static partial Regex NuGetVersionPattern();
 
     private static bool IsPackageDependencyMetadata(
         string path,

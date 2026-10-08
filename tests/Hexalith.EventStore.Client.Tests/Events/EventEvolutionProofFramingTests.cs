@@ -185,10 +185,10 @@ public sealed class EventEvolutionProofFramingTests
     [Fact]
     public void CancellationPrecedesMalformedInputAndPreservesOriginalToken()
     {
-        var token = new CancellationToken(true);
+        var cancellation = new CancellationToken(true);
         var budget = new EventBufferBudget();
-        Should.Throw<OperationCanceledException>(() => EventEvolutionProofFraming.Capture([], budget, false, false, token))
-            .CancellationToken.ShouldBe(token);
+        Should.Throw<OperationCanceledException>(() => EventEvolutionProofFraming.Capture([], budget, false, false, cancellation))
+            .CancellationToken.ShouldBe(cancellation);
         budget.LiveBytes.ShouldBe(0);
     }
 
