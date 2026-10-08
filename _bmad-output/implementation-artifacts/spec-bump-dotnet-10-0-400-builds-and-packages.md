@@ -4,7 +4,11 @@ type: 'chore'
 created: '2026-08-29'
 status: 'in-review'
 review_loop_iteration: 6
-baseline_commit: '62d28510f3c11904b6b2ce22edc075d55878924b'
+baseline_commit: '762a745426db66c2846b1af17a10b2a619bf3d95'
+original_baseline_commit: '62d28510f3c11904b6b2ce22edc075d55878924b'
+resumed_tenants_baseline_commit: 'bd87d68ed5fcf10eb5177286da6cc4bbe8907222'
+requested_sdk: '10.0.401'
+resumed: '2026-10-08'
 tenants_baseline_commit: 'eb965727329c7d7335be4cd341db4e2f9bf57b56'
 correction_baseline_commit: 'b34f252c6fbd103acd0e45168ff238a6badd726c'
 builds_correction_baseline_commit: '18742168b0bcdc40e5223f7573b1dcca441d781f'
@@ -17,9 +21,9 @@ context:
 
 ## Intent
 
-**Problem:** EventStore pins SDK `10.0.302`, which cannot resolve when only current SDK `10.0.400` is installed. The parent already points at latest Builds `main`, but its Roslyn 5.9, NBomber 6.6, and xUnit 4 families remain unreconciled with EventStore consumers and live documentation. The root-declared `Hexalith.Tenants` submodule also pins SDK `10.0.302`, preventing the EventStore AppHost's Tenants resources from remaining healthy under the aligned workspace SDK. Under SDK `10.0.400`, both repositories' legacy VSTest workflow paths fail before discovery because their xUnit projects use Microsoft.Testing.Platform.
+**Problem:** EventStore pins SDK `10.0.302`, which cannot resolve when only current SDK `10.0.401` is installed. The parent already points at latest Builds `main`, but its Roslyn 5.9, NBomber 6.6, and xUnit 4 families remain unreconciled with EventStore consumers and live documentation. The root-declared `Hexalith.Tenants` submodule also pins SDK `10.0.302`, preventing the EventStore AppHost's Tenants resources from remaining healthy under the aligned workspace SDK. Under SDK `10.0.401`, both repositories' legacy VSTest workflow paths fail before discovery because their xUnit projects use Microsoft.Testing.Platform.
 
-**Approach:** Pin SDK `10.0.400` in EventStore and the already-initialized root-declared `Hexalith.Tenants` repository, retain the exact latest reachable Builds `main` and its audited catalog, migrate affected EventStore consumers, and synchronize only live snapshots in both owning repositories. Align both repositories and shared Builds workflows on Microsoft.Testing.Platform, add the latest stable centrally governed MTP coverage extension where needed, and preserve Tenants' blocking coverage gate. Re-review/reseal/rebind a successor Story 4.15 OQ8 closure for the required xUnit source change while retaining every prior sealed artifact, and restore the exact Story 1.20 closure comments required by the integrity guard. Prove Release package mode with routine and focused test-runner, generator, load-test, AppHost, Tenants documentation/coverage, and container checks.
+**Approach:** Pin SDK `10.0.401` in EventStore and the already-initialized root-declared `Hexalith.Tenants` repository, retain the exact latest reachable Builds `main` and its audited catalog, migrate affected EventStore consumers, and synchronize only live snapshots in both owning repositories. Align both repositories and shared Builds workflows on Microsoft.Testing.Platform, add the latest stable centrally governed MTP coverage extension where needed, and preserve Tenants' blocking coverage gate. Re-review/reseal/rebind a successor Story 4.15 OQ8 closure for the required xUnit source change while retaining every prior sealed artifact, and restore the exact Story 1.20 closure comments required by the integrity guard. Prove Release package mode with routine and focused test-runner, generator, load-test, AppHost, Tenants documentation/coverage, and container checks.
 
 ## Boundaries & Constraints
 
@@ -36,7 +40,7 @@ context:
 | Current upstream | Gitlink, checkout, and remote `main` all equal `18742168...` | Leave gitlink/catalog unchanged; update SDK and consumers | Record the no-op identity proof |
 | Upstream advanced | Remote `main` resolves to a newer reachable commit | Advance only the root Builds checkout/gitlink and reassess its catalog delta | Stop on unrelated/local submodule changes |
 | Latest family breaks a consumer | Warning-as-error or test failure is caused by Roslyn, NBomber, or xUnit | Apply the supported EventStore API/config migration and rerun the family lane | Ask before shared-catalog rollback or expansion |
-| Tenants SDK mismatch | AppHost Tenants resources resolve the submodule's `10.0.302` pin while only SDK `10.0.400` is installed | Pin the already-initialized Tenants repository and its live SDK snapshots to `10.0.400`; rerun its documentation test and live topology | Preserve historical evidence and all other Tenants/submodule content |
+| Tenants SDK mismatch | AppHost Tenants resources resolve the submodule's `10.0.302` pin while only SDK `10.0.401` is installed | Pin the already-initialized Tenants repository and its live SDK snapshots to `10.0.401`; rerun its documentation test and live topology | Preserve historical evidence and all other Tenants/submodule content |
 | .NET 10 MTP/VSTest incompatibility | `dotnet test` uses the legacy VSTest target for an MTP-enabled xUnit project | Select `Microsoft.Testing.Platform` in each owning `global.json`; use MTP-native filters/TRX/coverage arguments in local and GitHub workflows | Fail before acceptance if any maintained test lane still reaches the VSTest-target error |
 | MTP coverage gate | Tenants retains `run-coverage-gate: true` under MTP | Govern the latest stable Microsoft coverage extension in Builds, migrate the Tenants test provider, emit Cobertura at the existing paths, and run unchanged thresholds | Never disable or lower the coverage gate to make the migration pass |
 | Frozen OQ8 source drift | Required xUnit 4 migration changes a Story 4.15-bound source file | Create and validate a successor re-review/reseal/rebinding that selects the current source identity while retaining all prior sealed artifacts | Stop rather than editing/deleting the prior seal or weakening integrity assertions |
@@ -44,9 +48,19 @@ context:
 
 </frozen-after-approval>
 
+## Current Resume Scope (2026-10-08)
+
+The user explicitly amended the target to SDK `10.0.401`. EventStore, the initialized root Tenants repository, and Builds already select that exact SDK with `latestPatch` and Microsoft.Testing.Platform. The earlier implementation is committed; its historical results and frozen evidence remain records of the SDK under which they ran. This resume reconciles stale live SDK snapshots and verifies the current consumers without reapplying committed migrations or editing sealed evidence. The review baseline above is the full current EventStore commit; `original_baseline_commit` retains the original implementation baseline. Tenants changes are reviewed against `resumed_tenants_baseline_commit`.
+
+Builds checkout, root gitlink, local `origin/main`, and freshly queried remote `main` all resolve to `af20682ac8fc420068a731ecb87cff84727a3d53`. Its current catalog remains the sole package authority (Roslyn `5.9.0`, NBomber `6.6.0`/HTTP `6.2.1`, xUnit `4.0.1`, Microsoft coverage `18.12.0`). No dependency or submodule-checkout change is needed.
+
+- [x] Confirm the three existing SDK selectors and latest reachable Builds identity.
+- [x] Reconcile EventStore and Tenants live SDK snapshots with `10.0.401`; retain historical SDK references and sealed artifacts.
+- [ ] Run the current package-mode build, relevant MTP consumer and documentation checks, and independent review; record exact blockers separately from successful checks.
+
 ## Code Map
 
-- `global.json:3-4` -- sole EventStore SDK selector; change `10.0.302` to `10.0.400`, preserving `latestPatch`.
+- `global.json:3-4` -- sole EventStore SDK selector; change `10.0.302` to `10.0.401`, preserving `latestPatch`.
 - `global.json`, `.github/workflows/{ci,integration}.yml`, and `scripts/ci-local.sh` -- select Microsoft.Testing.Platform, replace VSTest-only logger/filter/coverage arguments, execute the new load-exit suite in routine Tier 1, and execute the lightweight IntegrationTests serialization assertion in a blocking maintained lane.
 - `references/Hexalith.Tenants/global.json`, `docs/quickstart.md`, `_bmad-output/project-context.md`, `_bmad-output/planning-artifacts/architecture.md`, and `tests/Hexalith.Tenants.Server.Tests/Documentation/QuickstartDocumentationTests.cs` -- approved owning-repository SDK alignment and live snapshot/test update; preserve historical implementation, proposal, archive, investigation, and changelog evidence.
 - `references/Hexalith.Tenants/.github/workflows/ci.yml`, `tests/Directory.Build.props`, and test-project coverage-provider metadata -- select MTP, replace rather than duplicate the VSTest-only coverage provider, preserve the existing coverage scopes/thresholds, and make the quickstart test compare documentation with parsed `global.json` rather than a duplicated literal.
@@ -63,7 +77,7 @@ context:
 - `src/Hexalith.EventStore.RestApi.Generators/` and its test/DomainService consumers -- Roslyn 5.9 compatibility surface; change only compiler-proven incompatibilities.
 - `CONTRIBUTING.md`, `docs/getting-started/prerequisites.md`, `docs/guides/{deployment-azure-container-apps,deployment-docker-compose,deployment-kubernetes,troubleshooting}.md`, `docs/brownfield/*.md`, `_bmad-output/project-context.md`, and `_bmad-output/planning-artifacts/architecture.md` -- live SDK/package snapshots only.
 - `docs/brownfield/index.md` and `docs/reference/nuget-packages.md` -- keep solution/test-project counts and the effective xUnit assertion package identity/version synchronized with the added test project and Builds catalog.
-- `Directory.Build.targets:21-102` and `CorrectiveOciProvenanceReleaseTests` -- SDK-internal container-label workaround requiring real 10.0.400 archive/provenance regression proof; comments are historical observations.
+- `Directory.Build.targets:21-102` and `CorrectiveOciProvenanceReleaseTests` -- SDK-internal container-label workaround requiring real 10.0.401 archive/provenance regression proof; comments are historical observations.
 - `tools/validate-oq8-platform-evidence.py`, Story 4.15 OQ8 closure evidence/tests, and `_bmad-output/implementation-artifacts/sprint-status.yaml` -- human-authorized successor review/reseal/rebinding for the xUnit-migrated `Server.LiveSidecar.Tests/AssemblyInfo.cs`, retention of every prior sealed artifact, and byte-exact restoration of the removed Story 1.20 closure comments.
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs` and its focused tests -- resolve the actual Docker-published `dapr_placement` host port on Linux instead of assuming container port `50005` is the host port.
 - `.github/workflows/integration.yml`, `tools/validate-oq8-platform-evidence.py`, and their Contracts tests -- use xUnit 4's maintained `-result-ctrf` switch and validate the exact hosted capture path and actual CTRF trait representation end to end.
@@ -79,30 +93,33 @@ context:
 
 **Execution:**
 
-- [x] `global.json` and Builds gitlink -- pin SDK `10.0.400`; re-resolve latest Builds and change the gitlink only if upstream advanced.
+- [x] `global.json` and Builds gitlink -- pin SDK `10.0.401`; re-resolve latest Builds and change the gitlink only if upstream advanced.
 - [x] Package consumers above -- migrate NBomber/xUnit APIs and address only demonstrated Roslyn 5.9 compatibility failures.
 - [x] Regression tests above -- prove both load-harness exit outcomes and the three assemblies' effective xUnit 4 serialization metadata.
 - [x] MTP and maintained test lanes -- select MTP in root/Tenants, migrate root/custom/local workflows, add LoadTests.Tests to routine Tier 1, and make the IntegrationTests metadata assertion blocking.
 - [x] Builds/Tenants coverage compatibility -- centrally govern the latest stable MTP coverage extension, update reusable workflow contracts, replace Tenants' provider, preserve its existing coverage gate and thresholds, prove the catalog/audit from CRLF-normalized bytes plus both MTP coverage blocks independently, and bind audit provenance to a revision containing the audited bytes through bounded replacement-proof Git reads.
 - [x] Live documentation surfaces -- synchronize current SDK, Roslyn, NBomber, xUnit, solution counts, assertion-package identity, release-workflow selection/pins, current planning-artifact dependency snapshots, and current brownfield caveats without touching historical/frozen evidence.
-- [x] `Hexalith.Tenants` SDK/live surfaces -- pin SDK `10.0.400`, update only approved live SDK/MTP/coverage surfaces and coupled tests, and preserve its historical evidence/nested worktrees.
+- [x] `Hexalith.Tenants` SDK/live surfaces -- pin SDK `10.0.401`, update only approved live SDK/MTP/coverage surfaces and coupled tests, and preserve its historical evidence/nested worktrees.
 - [x] OQ8 successor authority -- preserve prior Story 4.15 evidence, create/review/reseal/rebind the current xUnit-migrated source identity and maintained CTRF command, keep the review receipt/count/base/external-authority claims exact, make selector/CTRF parsing type- and symlink-safe, restore exact Story 1.20 comments, and pass all integrity/closure validators including the exact capture path.
 - [x] Maintained-lane blockers -- fix all 12 Tenants UI failures without weakening structural/privacy ratchets, preserve deterministic async disposal/refresh, separate retained panel parameters, preserve once-loaded workspace-tab behavior/visibility, keep privileged surfaces fail-closed until authoritative authorization, make every lease/result path renderer-safe and recoverable, clean-build the current UI source, and harden the Linux dynamic Dapr placement endpoint/parser contract; rerun full UI and LiveSidecar MTP lanes with TRX/Cobertura.
 - [x] Validation lanes -- run exact Builds governance/workflow contracts from normalized catalog bytes and bounded replacement-proof revision provenance, package-mode restore/build, maintained MTP test commands including full OQ8 capture/validation, focused consumers/tests, a clean Tenants source build, live AppHost state, Tenants coverage, and SDK container provenance/archive commands below.
 
 **Acceptance Criteria:**
 
-- Given the approved dependency refresh, when identity preflight runs, then EventStore selects SDK `10.0.400`, Builds checkout/gitlink equals the latest reachable remote `main`, and its catalog exactly matches the deterministic audit.
+- Given the approved dependency refresh, when identity preflight runs, then EventStore selects SDK `10.0.401`, Builds checkout/gitlink equals the latest reachable remote `main`, and its catalog exactly matches the deterministic audit.
 - Given the latest catalog, when Release package-mode consumers build and focused tests run, then Roslyn 5.9 generators compile, NBomber uses supported statistics, xUnit 4 preserves required serialization, and no warnings/errors or stale dependency assets remain.
-- Given SDK `10.0.400`, when container regression validation runs, then both local target architectures retain exact provenance labels and no internal-target/type-load regression occurs.
+- Given SDK `10.0.401`, when container regression validation runs, then both local target architectures retain exact provenance labels and no internal-target/type-load regression occurs.
 - Given current documentation, when stale-snapshot checks run, then live SDK/package claims match effective pins while historical and checksum-bound evidence remains byte-unchanged.
-- Given the human-approved cross-repository SDK alignment, when Tenants documentation verification and the EventStore AppHost run, then Tenants selects SDK `10.0.400`, its live snapshots agree, and the Tenants resources remain runnable/healthy without SDK-resolution errors.
-- Given SDK `10.0.400` and MTP-enabled xUnit projects, when maintained local and GitHub-equivalent commands run, then no lane reaches the VSTest-target incompatibility, the load-exit and serialization guards run in routine blocking lanes, and MTP-native TRX artifacts are produced.
+- Given the human-approved cross-repository SDK alignment, when Tenants documentation verification and the EventStore AppHost run, then Tenants selects SDK `10.0.401`, its live snapshots agree, and the Tenants resources remain runnable/healthy without SDK-resolution errors.
+- Given SDK `10.0.401` and MTP-enabled xUnit projects, when maintained local and GitHub-equivalent commands run, then no lane reaches the VSTest-target incompatibility, the load-exit and serialization guards run in routine blocking lanes, and MTP-native TRX artifacts are produced.
 - Given Tenants' existing coverage policy, when MTP tests run through the shared Builds workflow contract, then Cobertura evidence is emitted at the validator's existing paths and the unchanged line/branch/isolation thresholds pass.
 - Given the human-authorized OQ8 successor, when Contracts/Tier 1 integrity validation runs, then the current xUnit-migrated source identity is selected through a reviewed/resealed successor, all prior sealed bytes remain unchanged, exact Story 1.20 closure comments are restored, and every OQ8/proof-packet test passes.
 - Given MTP reaches previously masked maintained tests, when Tenants UI and root LiveSidecar lanes run, then all UI tests pass and the OQ8 production test discovers the Docker-published placement host port on Linux; no test is skipped or filtered to conceal either failure.
 
 ## Spec Change Log
+
+- 2026-10-08 human target amendment: use SDK `10.0.401`. Rebased the resumed review boundary to the already-committed current checkout while retaining the full original baseline and all prior results. Existing root/Tenants/Builds pins already match; update only stale live SDK documentation and verify current package/runner authority. **KEEP:** all committed API, coverage, OQ8 successor, UI safety, container, and workflow migrations; unchanged catalog/gitlinks; every historical and sealed evidence byte; no commit, push, publication, or nested-submodule work.
+
 
 - 2026-08-29: Implemented SDK and consumer migrations, synchronized live version snapshots, and completed the focused validation matrix.
 - 2026-08-29 review loop 1 (`bad_spec`): verification review found compilation-only coverage for the new NBomber exit branch and xUnit serialization plus non-reproducible placeholder commands. Added durable behavior/metadata tests, exact commands, live AppHost state verification, and final HEAD/diff/submodule binding; this avoids a false green where migrated code compiles but exit/serialization/runtime behavior is unproved. **KEEP:** SDK `10.0.400`, latest Builds no-op/package authority, the working scenario/step and `Parallelization` migrations, scoped live-doc updates, historical-evidence preservation, and the successful package/container validation lanes.
@@ -118,7 +135,7 @@ context:
 
 **Commands:**
 
-- `set -euo pipefail; dotnet --version; dotnet --info; jq -e '.test.runner == "Microsoft.Testing.Platform"' global.json; (cd references/Hexalith.Tenants && dotnet --version && jq -e '.test.runner == "Microsoft.Testing.Platform"' global.json)` -- expected: both owning repositories resolve SDK `10.0.400` and select MTP.
+- `set -euo pipefail; dotnet --version; dotnet --info; jq -e '.test.runner == "Microsoft.Testing.Platform"' global.json; (cd references/Hexalith.Tenants && dotnet --version && jq -e '.test.runner == "Microsoft.Testing.Platform"' global.json)` -- expected: both owning repositories resolve SDK `10.0.401` and select MTP.
 - `set -euo pipefail; pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-central-package-versions.ps1 && pwsh -NoProfile -File references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1 && pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1 && pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-package-version-exceptions.ps1 -InventoryPath references/Hexalith.Builds/Tools/package-version-exceptions.json -CatalogPath references/Hexalith.Builds/Props/Directory.Packages.props && pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-dapr-package-versions.ps1 && pwsh -NoProfile -File references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1 -RepositoryRoot . -CatalogPath references/Hexalith.Builds/Props/Directory.Packages.props && pwsh -NoProfile -File references/Hexalith.Builds/Tools/test-domain-workflow-test-platforms.ps1` -- expected: catalog/audit include latest stable `Microsoft.Testing.Extensions.CodeCoverage` (NuGet source reported `18.10.0` during review) and every governance/positive MTP coverage workflow contract passes.
 - `git -C references/Hexalith.Builds ls-files --eol Props/Directory.Packages.props` followed by the exact audit validator above -- expected: the catalog reports `i/crlf w/crlf attr/text eol=crlf`, its audit hash matches those normalized declaration bytes, and mutation contracts prove the unit and integration MTP coverage blocks independently in enabled and disabled modes.
 - `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false && dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false` -- expected: 0 warnings/errors.

@@ -130,7 +130,7 @@ Dapr sidecar is not responding on http://localhost:3500
 The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.0, or use a version of the .NET SDK that supports .NET 10.0.
 ```
 
-**Probable Cause:** The project requires .NET 10 SDK version 10.0.400 as specified in `global.json`. An older or incompatible SDK version is installed.
+**Probable Cause:** The project requires .NET 10 SDK version 10.0.401 as specified in `global.json`. An older or incompatible SDK version is installed.
 
 **Resolution:**
 
@@ -145,7 +145,7 @@ The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.
     ```json
     {
       "sdk": {
-        "version": "10.0.400",
+        "version": "10.0.401",
         "rollForward": "latestPatch"
       }
     }
@@ -157,7 +157,7 @@ The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.
 
     ```bash
     $ dotnet --version
-    # Expected: 10.0.400 or later patch in the same feature band
+    # Expected: 10.0.401 or later patch in the same feature band
     ```
 
 ### Sample Build Failure
