@@ -20,6 +20,8 @@ internal sealed class EventManagedArtifact : IDisposable
     private readonly EventEvolutionCapabilityLoss _capabilityLoss;
     private readonly string _contextId;
     private readonly byte[] _hash = [];
+    private readonly string _assemblyIdentity = string.Empty;
+    private EventBufferReservation? _identityReservation;
     private EventRegistryRow? _declaration;
     private EventBufferReservation? _declarationReservation;
     private byte[]? _image;
@@ -105,6 +107,12 @@ internal sealed class EventManagedArtifact : IDisposable
                 {
                     throw new InvalidOperationException("CapabilityMismatch: private managed metadata disagrees with its dependency row.");
                 }
+                MetadataReader metadataReader = reader.GetMetadataReader();
+                AssemblyDefinition definition = metadataReader.GetAssemblyDefinition();
+                string identity = GetManagedIdentity(metadataReader, definition.Name, definition.Version,
+                    definition.Culture, definition.PublicKey, definition.Flags);
+                _identityReservation = budget.Reserve(checked(identity.Length * 4 + 128));
+                _assemblyIdentity = identity;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -124,6 +132,11 @@ internal sealed class EventManagedArtifact : IDisposable
 
     /// <summary>Loads the admitted image once into a privately owned context and returns direct object evidence.</summary>
     internal EventManagedArtifactExecutionBinding Load(CancellationToken cancellationToken)
+        => LoadInContext(null, cancellationToken);
+
+    /// <summary>Loads the retained image into one composition-owned context instead of probing a file path.</summary>
+    /// <remarks>The composition must admit all its managed references before calling this internal seam.</remarks>
+    internal EventManagedArtifactExecutionBinding LoadInContext(EventManagedArtifactLoadContext? context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -134,7 +147,17 @@ internal sealed class EventManagedArtifact : IDisposable
             {
                 // The context is private until the initial load completes. An existing foreign
                 // same-identity assembly cannot be substituted for this first supplied image.
-                _context = new AssemblyLoadContext(_contextId, isCollectible: true);
+                if (context is not null && !string.Equals(context.Name, _contextId, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("CapabilityMismatch: a managed image requires its declared loader context.");
+                }
+                if (context is not null && context.Assemblies.Any(assembly =>
+                    string.Equals(assembly.FullName, _assemblyIdentity, StringComparison.Ordinal)))
+                {
+                    _capabilityLoss.ObserveViolation();
+                    throw new InvalidOperationException("CapabilityMismatch: a managed image cannot bind pre-existing context contents.");
+                }
+                _context = context ?? new AssemblyLoadContext(_contextId, isCollectible: true);
                 _context.Unloading += OnContextUnloading;
                 try
                 {
@@ -154,6 +177,10 @@ internal sealed class EventManagedArtifact : IDisposable
                     throw new InvalidOperationException("CapabilityMismatch: the admitted managed image could not be loaded.");
                 }
             }
+            else if (context is not null && !ReferenceEquals(context, _context))
+            {
+                throw new InvalidOperationException("CapabilityMismatch: a managed image is already bound to another loader context.");
+            }
 
             // Load observations cannot undo a completed load. Cancellation or observed loss
             // refuses the uncommitted binding; the caller retains existing effect/recovery rules.
@@ -162,6 +189,74 @@ internal sealed class EventManagedArtifact : IDisposable
             RequirePrivateImageHash(cancellationToken);
             return new EventManagedArtifactExecutionBinding(this, _assembly);
         }
+    }
+
+    /// <summary>Reads exact managed identities from the retained private image under a bounded temporary workspace.</summary>
+    /// <remarks>The returned strings are charged and retained by the composition that requested them.</remarks>
+    internal void InspectManagedIdentities(EventBufferBudget budget, Action<string, string[]> inspect, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(budget);
+        ArgumentNullException.ThrowIfNull(inspect);
+        lock (_gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireActive();
+            RequirePrivateImageHash(cancellationToken);
+            using EventBufferReservation workspace = budget.Reserve(checked(_image!.Length * 8));
+            using var image = new MemoryStream(_image, 0, _image.Length, writable: false, publiclyVisible: false);
+            using var reader = new PEReader(image);
+            MetadataReader metadata = reader.GetMetadataReader();
+            if (metadata.AssemblyReferences.Count > 65_536)
+            {
+                throw new InvalidOperationException("RegistryLimit: a private managed image has too many reference declarations.");
+            }
+            AssemblyDefinition definition = metadata.GetAssemblyDefinition();
+            string identity = GetManagedIdentity(metadata, definition.Name, definition.Version, definition.Culture,
+                definition.PublicKey, definition.Flags);
+            using EventBufferReservation slots = budget.Reserve(checked(metadata.AssemblyReferences.Count * 128));
+            var referenceCharges = new List<EventBufferReservation>();
+            try
+            {
+                var references = new string[metadata.AssemblyReferences.Count];
+                int index = 0;
+                foreach (AssemblyReferenceHandle handle in metadata.AssemblyReferences)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AssemblyReference reference = metadata.GetAssemblyReference(handle);
+                    string referencedIdentity = GetManagedIdentity(metadata, reference.Name, reference.Version, reference.Culture,
+                        reference.PublicKeyOrToken, reference.Flags);
+                    referenceCharges.Add(budget.Reserve(checked(referencedIdentity.Length * 4 + 128)));
+                    references[index++] = referencedIdentity;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                inspect(identity, references);
+            }
+            finally { foreach (EventBufferReservation reservation in referenceCharges) { reservation.Dispose(); } }
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireActive();
+        }
+    }
+
+    private static string GetManagedIdentity(MetadataReader metadata, StringHandle name, Version version,
+        StringHandle culture, BlobHandle key, AssemblyFlags flags)
+    {
+        var identity = new AssemblyName
+        {
+            Name = metadata.GetString(name), Version = version, CultureName = metadata.GetString(culture),
+        };
+        if ((flags & AssemblyFlags.Retargetable) != 0) { identity.Flags |= AssemblyNameFlags.Retargetable; }
+        if ((flags & AssemblyFlags.ContentTypeMask) != 0)
+        {
+            if ((flags & AssemblyFlags.ContentTypeMask) != AssemblyFlags.WindowsRuntime)
+            {
+                throw new InvalidOperationException("CapabilityMismatch: a managed image has an unsupported content identity.");
+            }
+            identity.ContentType = AssemblyContentType.WindowsRuntime;
+        }
+        byte[] publicKeyOrToken = metadata.GetBlobBytes(key);
+        if ((flags & AssemblyFlags.PublicKey) != 0) { identity.SetPublicKey(publicKeyOrToken); }
+        else { identity.SetPublicKeyToken(publicKeyOrToken); }
+        return identity.FullName;
     }
 
     /// <summary>Refuses direct-image use after disposal, context unload or observed capability loss.</summary>
@@ -253,6 +348,8 @@ internal sealed class EventManagedArtifact : IDisposable
         CryptographicOperations.ZeroMemory(_hash);
         _reservation?.Dispose();
         _reservation = null;
+        _identityReservation?.Dispose();
+        _identityReservation = null;
         _declaration?.Dispose();
         _declaration = null;
         _declarationReservation?.Dispose();

@@ -1,0 +1,356 @@
+{
+  "scope": "dormant managed composition; no readiness, activation or parent completion",
+  "canonicalBaseline": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "initialHead": "b31c87fbca6280295593f6b0be8f8d4f950a01e1",
+  "observedHead": "07eacb9c659e372a0c1a466e21700af4d8dffd6a",
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--configuration",
+        "Release",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=false"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-managed-artifacts.py",
+        "--timeout",
+        "60",
+        "--output",
+        "/tmp/story-6-6-managed-set-guards-source"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution-managed-artifacts.py",
+        "--configuration",
+        "Release",
+        "--dependency-mode",
+        "packages",
+        "--timeout",
+        "60",
+        "--output",
+        "/tmp/story-6-6-managed-set-guards-package"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "actionlint",
+        ".github/workflows/event-evolution-local-guards.yml"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/6-5-integration/verify.py",
+        "--mutations"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/verify-event-evolution.py",
+        "--mutations"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/check-deferred-work.py",
+        "--json"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "source": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedArtifact.cs",
+      "sha256": "18b5ad99dfd919a9816dfb6ae5771db7a6e69404024deac0ed700978fe75f8f4",
+      "bytes": 18325
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedArtifactSet.cs",
+      "sha256": "3abe3fcaa612c682cad8c980bf4785a155bd6b0031452282c0c1375ec0dae38e",
+      "bytes": 15685
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedArtifactSource.cs",
+      "sha256": "a2ff54ff9489003a57823bafb6f7c8f84bfe9980258cfb62d84828f14636dd99",
+      "bytes": 470
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedAssemblyImport.cs",
+      "sha256": "312d7078006e3c95403e852b29e45669d4a1a99277c45114aa1ce83ffddd76d7",
+      "bytes": 622
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/EventManagedArtifactLoadContext.cs",
+      "sha256": "296f76397290352885890a7922e642e1463e152da3b8fe31d0e207db994eb5ba",
+      "bytes": 1275
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Events/EventManagedArtifactSetTests.cs",
+      "sha256": "c8693c14a622335b85ddac5ef124770d56dde9bdd037d08492a0bed9e1e56481",
+      "bytes": 24509
+    },
+    {
+      "path": "scripts/verify-event-evolution-managed-artifacts.py",
+      "sha256": "e9200ed0212fe454f3b0b0cf3179c5d35d2ebeb7ac7fecabd529940e3c5dcd40",
+      "bytes": 8381
+    },
+    {
+      "path": ".github/workflows/event-evolution-local-guards.yml",
+      "sha256": "804ed9c5c638cb042e6ae366c1dae4dcdd543b993befc6f6276dd8f03e9b618e",
+      "bytes": 3154
+    }
+  ],
+  "logs": [
+    {
+      "archivedPath": "client-build.log",
+      "originalPath": "/tmp/story-6-6-managed-set-build.log",
+      "sha256": "4c472004ef7efae3f098700a16038d5235101e93cf48c3911a864b1f56decf2f"
+    },
+    {
+      "archivedPath": "focused-tests.log",
+      "originalPath": "/tmp/story-6-6-managed-set-tests.log",
+      "sha256": "a4e57b2ea701cae587ebcf9c1f25133eb73d97aa30492cbe7ad485ae781f9a64"
+    },
+    {
+      "archivedPath": "client-full.log",
+      "originalPath": "/tmp/story-6-6-managed-set-client-full.log",
+      "sha256": "1567c7ccda0c36f694ea20ce57aca5cc742aae600fef35173dcddac21d01113c"
+    },
+    {
+      "archivedPath": "release-build.log",
+      "originalPath": "/tmp/story-6-6-managed-set-release.log",
+      "sha256": "22a7a4ba87c2ff92aef05f5a95f71ed23c60a9e1567b503e8e54a1c9be2f3f0a"
+    },
+    {
+      "archivedPath": "workflow-lint.log",
+      "originalPath": "/tmp/story-6-6-managed-set-workflow.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "archivedPath": "historical-preflight.log",
+      "originalPath": "/tmp/story-6-6-managed-set-historical-preflight.log",
+      "sha256": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96"
+    },
+    {
+      "archivedPath": "current-preflight.log",
+      "originalPath": "/tmp/story-6-6-managed-set-preflight.log",
+      "sha256": "e791553059d203eb700636e193f94da9442dbe7ff234a64b9e191987b668b1ad"
+    },
+    {
+      "archivedPath": "deferred-check.log",
+      "originalPath": "/tmp/story-6-6-managed-set-deferred.log",
+      "sha256": "ec07cb9fa920d404198da7eb1420814e5a96cf8042eb716b8cd3cc140dbcde9c"
+    },
+    {
+      "archivedPath": "package-restore.log",
+      "originalPath": "/tmp/story-6-6-managed-set-package-restore.log",
+      "sha256": "a469dcf6d63ed53600de87ad10b4fc2d6b3c3eb85fd9f1c1744fe71a8bb6cd85"
+    }
+  ],
+  "productionProfileCheck": {
+    "argv": [
+      "test",
+      "-f",
+      "deploy/dapr/production-profile.yaml"
+    ],
+    "exitCode": 1,
+    "output": ""
+  },
+  "activationAuthority": false,
+  "parentTasksClosed": [],
+  "obligationsClosed": [],
+  "warmRestore": {
+    "argv": [
+      "dotnet",
+      "restore",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-p:Configuration=Release",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "outcome": "stalled and interrupted",
+    "combinedRestoreLintShellExitCode": 0,
+    "successfulRestoreCompletionObserved": false,
+    "observedOutput": "Determining projects to restore...\nAttempting to cancel the build...\n",
+    "signalsToOwnedRestoreOnly": [
+      "SIGINT",
+      "SIGTERM"
+    ]
+  },
+  "finalChecks": {
+    "gitDiffCheck": 0,
+    "productionProfilePresent": false,
+    "ownedAppHostStopped": true,
+    "csLineEndings": "LF per tracked .gitattributes",
+    "canonicalBaselinePreserved": true,
+    "parentStatus": "in-progress",
+    "parentTasksClosed": [],
+    "obligationsClosed": []
+  },
+  "archivedGuardModes": {
+    "source": {
+      "scope": "dormant retained-image managed composition with supplied Default imports",
+      "configuration": "Debug",
+      "dependencyMode": "source",
+      "control": "passed",
+      "mutations": [
+        {
+          "mutation": "static-reference-admission",
+          "result": "killed",
+          "killingTest": "MissingStaticManagedReferenceRefusesBeforeContextCreationAndReleasesAllCharges",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(new EventManagedArtifactSet([new(row, root)],",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "simple-name-ambiguity",
+          "result": "killed",
+          "killingTest": "SameSimpleNameWithDifferentIdentityRefusesBeforePrivateLoading",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(new EventManagedArtifactSet([new(one, first), new(two, second)],",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "managed-default-fallback",
+          "result": "killed",
+          "killingTest": "UndeclaredDynamicResolutionThrowsBeforeDefaultFallbackAndFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `callback()`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "native-default-fallback",
+          "result": "killed",
+          "killingTest": "NativeResolutionRefusesBeforeProbingAndFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `callback()`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "context-load-observation",
+          "result": "killed",
+          "killingTest": "OwnedContextContaminationFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `loss.RequireNoObservedLoss`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "foreign-context-provenance",
+          "result": "killed",
+          "killingTest": "ArtifactContextSeamRefusesPreExistingSameIdentityForeignBytes",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(artifact.LoadInContext(context, CancellationToken.None))",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "private-image-clearing",
+          "result": "killed",
+          "killingTest": "DisposalClearsPrivateImagesAndFencesRetainedBindings",
+          "observedFailure": "Shouldly.ShouldAssertException : storage",
+          "timeoutSecondsPerLane": 60
+        }
+      ],
+      "immutableFrameworkExecution": false,
+      "processObservationQualification": false,
+      "activationAuthority": false
+    },
+    "package": {
+      "scope": "dormant retained-image managed composition with supplied Default imports",
+      "configuration": "Release",
+      "dependencyMode": "packages",
+      "control": "passed",
+      "mutations": [
+        {
+          "mutation": "static-reference-admission",
+          "result": "killed",
+          "killingTest": "MissingStaticManagedReferenceRefusesBeforeContextCreationAndReleasesAllCharges",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(new EventManagedArtifactSet([new(row, root)],",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "simple-name-ambiguity",
+          "result": "killed",
+          "killingTest": "SameSimpleNameWithDifferentIdentityRefusesBeforePrivateLoading",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(new EventManagedArtifactSet([new(one, first), new(two, second)],",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "managed-default-fallback",
+          "result": "killed",
+          "killingTest": "UndeclaredDynamicResolutionThrowsBeforeDefaultFallbackAndFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `callback()`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "native-default-fallback",
+          "result": "killed",
+          "killingTest": "NativeResolutionRefusesBeforeProbingAndFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `callback()`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "context-load-observation",
+          "result": "killed",
+          "killingTest": "OwnedContextContaminationFencesSubsequentWork",
+          "observedFailure": "Shouldly.ShouldAssertException : `loss.RequireNoObservedLoss`",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "foreign-context-provenance",
+          "result": "killed",
+          "killingTest": "ArtifactContextSeamRefusesPreExistingSameIdentityForeignBytes",
+          "observedFailure": "Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(artifact.LoadInContext(context, CancellationToken.None))",
+          "timeoutSecondsPerLane": 60
+        },
+        {
+          "mutation": "private-image-clearing",
+          "result": "killed",
+          "killingTest": "DisposalClearsPrivateImagesAndFencesRetainedBindings",
+          "observedFailure": "Shouldly.ShouldAssertException : storage",
+          "timeoutSecondsPerLane": 60
+        }
+      ],
+      "immutableFrameworkExecution": false,
+      "processObservationQualification": false,
+      "activationAuthority": false
+    }
+  }
+}

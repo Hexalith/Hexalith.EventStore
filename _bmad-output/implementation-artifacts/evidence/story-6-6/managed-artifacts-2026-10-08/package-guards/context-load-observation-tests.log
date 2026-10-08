@@ -1,0 +1,25 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.OwnedContextContaminationFencesSubsequentWork(useStream: False) [FAIL]
+      Shouldly.ShouldAssertException : `loss.RequireNoObservedLoss`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventManagedArtifactSetTests.cs(256,0): at Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.OwnedContextContaminationFencesSubsequentWork(Boolean useStream)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.OwnedContextContaminationFencesSubsequentWork(useStream: True) [FAIL]
+      Shouldly.ShouldAssertException : `loss.RequireNoObservedLoss`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventManagedArtifactSetTests.cs(256,0): at Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.OwnedContextContaminationFencesSubsequentWork(Boolean useStream)
+           at InvokeStub_EventManagedArtifactSetTests.OwnedContextContaminationFencesSubsequentWork(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'da6471ffa65f3f453294429d6fb740aa42a9d34818c95ddf50beeab2a0a0b1e0')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 0.456s

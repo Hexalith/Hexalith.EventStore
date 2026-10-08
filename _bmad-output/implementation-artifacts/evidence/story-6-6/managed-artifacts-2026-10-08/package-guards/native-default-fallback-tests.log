@@ -1,0 +1,31 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.NativeResolutionRefusesBeforeProbingAndFencesSubsequentWork [FAIL]
+      Shouldly.ShouldAssertException : `callback()`
+          should throw
+      System.InvalidOperationException
+          but threw
+      System.DllNotFoundException
+      ---- System.DllNotFoundException : Unable to load shared library 'undeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc' or one of its dependencies. In order to help diagnose loading problems, consider using a tool like strace. If you're using glibc, consider setting the LD_DEBUG environment variable: 
+      /tmp/eventstore-managed-artifact-guards-ntc4_fv5/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/runtimes/linux-x64/native/undeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc.so: cannot open shared object file: No such file or directory
+      /home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/undeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc.so: cannot open shared object file: No such file or directory
+      /tmp/eventstore-managed-artifact-guards-ntc4_fv5/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/runtimes/linux-x64/native/libundeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc.so: cannot open shared object file: No such file or directory
+      /home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/libundeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc.so: cannot open shared object file: No such file or directory
+      /tmp/eventstore-managed-artifact-guards-ntc4_fv5/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/runtimes/linux-x64/native/undeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc: cannot open shared object file: No such file or directory
+      /home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/undeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc: cannot open shared object file: No such file or directory
+      /tmp/eventstore-managed-artifact-guards-ntc4_fv5/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/runtimes/linux-x64/native/libundeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc: cannot open shared object file: No such file or directory
+      /home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/libundeclared-native-fa6bd5ba33614baebc1dbdf49ef656fc: cannot open shared object file: No such file or directory
+      
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventManagedArtifactSetTests.cs(281,0): at Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.NativeResolutionRefusesBeforeProbingAndFencesSubsequentWork()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+        ----- Inner Stack Trace -----
+           at Boundary.Read()
+        tests/Hexalith.EventStore.Client.Tests/EventManagedArtifactSetTests.cs(281,0): at Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.<>c__DisplayClass8_0.<NativeResolutionRefusesBeforeProbingAndFencesSubsequentWork>b__0()
+        /_/src/Shouldly/ShouldStaticClasses/ShouldThrow.cs(76,0): at Shouldly.Should.ThrowInternal[TException](Func`1 actual, String customMessage, String shouldlyMethod)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'da6471ffa65f3f453294429d6fb740aa42a9d34818c95ddf50beeab2a0a0b1e0')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.465s

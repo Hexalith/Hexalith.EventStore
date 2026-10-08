@@ -28,6 +28,9 @@ jobs:
           - lane: managed-process
             script: scripts/verify-event-evolution-process-managed-observation.py
             options: ''
+          - lane: managed-artifacts
+            script: scripts/verify-event-evolution-managed-artifacts.py
+            options: --configuration Release --dependency-mode packages
           - lane: detached-snapshot
             script: scripts/verify-event-evolution-detached-snapshots.py
             options: ''
@@ -49,9 +52,14 @@ jobs:
           global-json-file: global.json
 
       - name: Warm source dependency restore before timed guard lanes
+        if: matrix.lane != 'managed-artifacts'
         run: |
           dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
           dotnet restore tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
+
+      - name: Warm package dependency restore before timed managed artifact guards
+        if: matrix.lane == 'managed-artifacts'
+        run: dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false
 
       # These lanes compile private source copies and run finite mutation controls.
       # Passing them grants no catalog, production, semantic-proof or activation authority.

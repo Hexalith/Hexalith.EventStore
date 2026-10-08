@@ -1,0 +1,22 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.MissingStaticManagedReferenceRefusesBeforeContextCreationAndReleasesAllCharges [FAIL]
+      Shouldly.ShouldAssertException : Should.Throw<InvalidOperationException>(new EventManagedArtifactSet([new(row, root)],
+                      [new(runtime, typeof(object).Assembly)], budget, new EventEvolutionCapabilityLoss(), CancellationToken.None))
+                      .Message.ShouldContain("undeclared managed reference");
+                  AssemblyLoadContext.All.ShouldNotContain(item => item.Name == context);
+              }
+              finally { Directory.Delete(directory, recursive: true); budget.LiveBytes
+          should be
+      0
+          but was
+      6756
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventManagedArtifactSetTests.cs(78,0): at Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests.MissingStaticManagedReferenceRefusesBeforeContextCreationAndReleasesAllCharges()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'da6471ffa65f3f453294429d6fb740aa42a9d34818c95ddf50beeab2a0a0b1e0')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.400s

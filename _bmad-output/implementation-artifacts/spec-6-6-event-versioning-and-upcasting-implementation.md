@@ -92,6 +92,28 @@ boundary. The conservative live-array ceiling remains explicit.
 
 ## Implementation Notes
 
+### Dormant retained managed dependency composition — 2026-10-08
+
+The [scoped verification](evidence/story-6-6/verification-2026-10-08-managed-artifact-composition.md)
+records one private owned loader context for retained managed images, complete
+static-reference admission for those images and explicit supplied Default-context
+imports. Source replacement, same-identity Default substitution, simple-name
+ambiguity, undeclared managed/native resolution, foreign context contents,
+observed late loads, cancellation and private-image clearing have actual runtime
+controls. Observations fence subsequent binding use after a load; they cannot undo
+effects. Shared framework imports retain local file/object claims, without
+immutable executed-image or complete process/native qualification.
+
+The composition remains internal and unregistered. Focused tests passed 16/16,
+full Client tests 1,378/1,378, and the required package-mode Release solution build
+had zero warnings/errors. Seven isolated compiling guard mutations were killed
+in both local Debug/source and Release/package lanes. The new additive CI lane
+selects Release/package dependencies; hosted execution remains unobserved.
+Complete authoritative catalogs, immutable framework/native execution, the
+unselected Dapr logical claim/control model, consumer integrations and production
+qualification remain open. Frozen intent, original baseline, in-progress status,
+all M1–M8/O01–O20 dispositions and activation fences are unchanged.
+
 ### Local replay router admission and dispatch — 2026-10-07
 
 The [scoped verification](evidence/story-6-6/verification-2026-10-07-replay-router-admission.md)
