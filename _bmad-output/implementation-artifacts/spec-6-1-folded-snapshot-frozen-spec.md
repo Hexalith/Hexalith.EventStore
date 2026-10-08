@@ -2,7 +2,7 @@
 title: 'Story 6.1: Folded Snapshot Frozen Spec'
 type: 'feature'
 created: '2026-09-08'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '7598f67cc94a47734c0f21ae7669b29a931d386c'
@@ -39,13 +39,13 @@ context:
 
 ## Code Map
 
-- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:990-1024` -- command-time load + `DomainServiceCurrentState` build; do not change.
-- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1118-1186` -- only automatic producer: stages `currentState` at `preEventSequence` after persist, commits with events via `SaveStateAsync`; advisory; fenced. Do not change.
-- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1693-1905` -- manual path: inspect, full replay, `/replay-state` fold, fail-closed commit at `CurrentSequence`. Do not change.
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1242-1305` -- command-time load + `DomainServiceCurrentState` build; do not change.
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1392-1490` -- only automatic producer: stages `currentState` at `preEventSequence` after persist, commits with events via `SaveStateAsync`; advisory; fenced. Do not change.
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2219-2463` -- manual path: inspect, full replay, `/replay-state` fold, fail-closed commit at `CurrentSequence`. Do not change.
 - `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` and `ISnapshotManager.cs` -- stage/load/inspect; `SetStateAsync` only; delete corrupt plaintext on command-time load; retain protected/opaque/unreadable. Do not change.
 - `src/Hexalith.EventStore.Server/Events/SnapshotRecord.cs:20-27` -- persisted envelope (`State` is `object`); key from `AggregateIdentity.SnapshotKey` (`{tenant}:{domain}:{aggId}:snapshot`).
 - `src/Hexalith.EventStore.Contracts/Commands/DomainServiceCurrentState.cs:12-16` -- history-bearing rehydration DTO; forbidden snapshot `State`.
-- `src/Hexalith.EventStore.Server/Events/EventStreamReader.cs`, `src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs`, `src/Hexalith.EventStore.Server/Events/DaprAggregateStateReconstructor.cs` -- shared read/fold oracle; reuse as the single 6.2 write seam.
+- `src/Hexalith.EventStore.Server/Events/EventStreamReader.cs`, `src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs`, `src/Hexalith.EventStore.Server/DomainServices/DaprAggregateStateReconstructor.cs` -- shared read/fold oracle; reuse as the single 6.2 write seam.
 - `src/Hexalith.EventStore.Contracts/Security/IEventPayloadProtectionService.cs` and `src/Hexalith.EventStore.Server/Events/NoOpEventPayloadProtectionService.cs` -- current protect/unprotect; Epic 8 engine out of scope.
 - `src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor` and `Storage.razor` -- policy/age/`HasSnapshot` only; no sequence/size/protection evidence yet. Do not implement UI here.
 - Tests to cite, not edit: `AggregateActorDomainResultTests.cs`, `AggregateActorManualSnapshotTests.cs`, `SnapshotManagerTests.cs`, `SnapshotRehydrationTests.cs`, `PayloadSerializationConsistencyTests.cs`.
@@ -54,7 +54,7 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- write the complete frozen specification: inventory, folded payload, `MaxSnapshotEnvelopeOverheadBytes` 4096, post-command sequence, DSCS safe-bypass, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, this session's approver as named approval, and explicit 6.2 authorization -- this is the only Story 6.1 deliverable; 6.2 stays unauthorized until the approval block is complete
+- [ ] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- write the complete frozen specification: inventory, folded payload, `MaxSnapshotEnvelopeOverheadBytes` 4096, post-command sequence, DSCS safe-bypass, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, this session's approver as named approval, and explicit 6.2 authorization -- this is the only Story 6.1 deliverable; 6.2 stays unauthorized until the approval block is complete
 
 **Acceptance Criteria:**
 - Given current automatic and manual snapshot paths, when the artifact is written, then it names every producer, reader, overwrite path, key, field, serializer, protection hook, commit boundary, failure path, operator surface, and test seam, and records where `DomainServiceCurrentState`, prior snapshots, tail events, `/replay-state`, and `SnapshotRecord` diverge.
@@ -71,22 +71,36 @@ Code review 2026-10-04 of `f4d7b91b` only (the 3 unrelated commits in `7598f67c.
 - [x] [Review][Decision] Automatic-fold domain-service boundary is unspecified — **resolved 2026-10-04: domain returns post-command state → P-D3.** the actor never holds `TState` (§3.8), so seeded Apply (§8.2) is a second remote `/replay-state` call inside the open command batch. `AggregateReconstructionRequest` has no seed field; no timeout budget; "cancellation MUST propagate" (§8.2) conflicts with "failed fold MUST NOT block event commit" (§7.3) because a fold timeout surfaces as `TaskCanceledException`; `PreCommandStateJson` would ride on every `/process` reply with no cost bound or logging rule; JSON-null (new aggregate) vs absent (old service) is indistinguishable; whether seeded Apply consumes unprotected in-memory events is unstated. §16 never weighs "domain returns post-command folded state from `/process`". Violates epics 6.1 ("domain-service boundary, cancellation behavior, and error taxonomy"; "no unresolved … replay decision may be deferred into Story 6.2") and §18. [spec-folded-snapshot.md:376-437]
 - [x] [Review][Decision] Automatic writer overwrites snapshots §9.2 says to retain — **resolved 2026-10-04: allow, stated explicitly → P-D4.** opaque/unreadable (and unknown-version) loads return `null`, so `lastSnapshotSequence` is 0 (`AggregateActor.cs:1002` at baseline) and the next interval command stages over the key (`:1119-1129`). §9.2 rows say "Retain"; only the manual path is told not to overwrite. Options: allow (snapshot is derived; events stay authority) and say so; or skip automatic writes while a retained unreadable key exists. [spec-folded-snapshot.md:482-483]
 - [x] [Review][Decision] Inventory omits Admin raw-snapshot readers — **resolved 2026-10-04: 6.2 redacts the snapshot key; event-key redaction deferred to Epic 7 → P-D5.** the Admin actor-state inspector (`KnownActorTypes.cs:30` `{actorId}:snapshot` → `DaprInfrastructureQueryService.ReadActorStateKeyAsync`) returns the raw snapshot JSON and size to Admin, contradicting §11/§13 "raw folded state stays hidden"; `DaprConsistencyCommandService.cs:783` reads the snapshot key outside the actor; `BenchmarkDatasetBuilder` (published Testing.Integration) writes `SnapshotRecord`. AC1 requires every reader/operator surface. Options: 6.2 must redact the inspector's snapshot value; or record it as an accepted diagnostic exception owned elsewhere (Epic 7). [spec-folded-snapshot.md:181-188]
-- [ ] [Review][Patch] P-D1 Reopen: re-baseline §1/§3 to current HEAD (trusted-effect erasure deleting the snapshot key, pdenc-v2 snapshot overloads, `AggregateActor` drift), set §19 to pending owner re-attestation with Story 6.2 **NOT AUTHORIZED**, and recompute the digest. After the owner attests the new digest, update the `prd.md` NFR8 digest pin and the `epics.md` 6.1 reconciliation. [spec-folded-snapshot.md:19-47,98-210,637-655]
-- [ ] [Review][Patch] P-D2 Writers MUST skip (advisory) a v1 snapshot whose folded JSON object has both top-level `currentSequence` and `events`; remove the unimplementable §9.1 exemption and align §5.3. [spec-folded-snapshot.md:261-273,467-469]
-- [ ] [Review][Patch] P-D3 Replace `PreCommandStateJson` + seeded `/replay-state` with an optional init-only `PostCommandStateJson` that `/process` returns only when the actor's request flag marks the command snapshot-due; same Apply table over `DomainResult.Events`; absent field or no-op → advisory skip; update §8, §12, §15, §16, §17. [spec-folded-snapshot.md:365-451]
-- [ ] [Review][Patch] P-D4 §9.2: opaque, unreadable and unknown-version keys are retained at load (no delete) and MAY be replaced by the next successful folded write, logged with a support-safe reason class; the event stream stays audit authority. [spec-folded-snapshot.md:482-484,535]
-- [ ] [Review][Patch] P-D5 Inventory the Admin actor-state inspector, `DaprConsistencyCommandService` snapshot read and `BenchmarkDatasetBuilder`; 6.2 MUST make the inspector return only sequence, size, envelope version and protection/readability class for the snapshot key. [spec-folded-snapshot.md:181-188,542-557]
-- [ ] [Review][Patch] "Additive only" must pin the member form — `SnapshotRecord`, `DomainServiceWireResult`, and `AggregateReconstructionRequest` are public positional records and no package/API-compat validation exists; a positional parameter would break binary compatibility. State that new members are init-only properties with defaults. [spec-folded-snapshot.md:534]
-- [ ] [Review][Patch] Bypassed legacy DSCS must not feed `lastSnapshotSequence` — otherwise migration waits up to one interval of full-replay commands; §10 step 5 and V8 ("next write overwrites") disagree. A non-authoritative DSCS snapshot contributes 0. [spec-folded-snapshot.md:493-505]
-- [ ] [Review][Patch] Load-failure classification — baseline `LoadSnapshotAsync` wraps typed `TryGetStateAsync<SnapshotRecord>` in a non-cancel catch-all that deletes the key (`SnapshotManager.cs:195-211`), so state-store read failures and unknown-version shape failures delete a snapshot §12 says to retain. Correct §3.3/§3.5 inventory, make the §9.2 infra row single-outcome (retain, no delete, full replay; the "dead-letter after a staged batch" branch is unreachable at load), and require reading the envelope version from raw JSON before typed deserialization; delete only on deserialization failure of a known version. [spec-folded-snapshot.md:484]
-- [ ] [Review][Patch] Folded snapshots newly require `TState` JSON round-trip fidelity — today automatic snapshots replay nested DSCS exactly; folded writes round-trip through `RehydrateFromJsonObject`, which sets only properties with a setter (fields, get-only members, custom comparers lost). Current aggregates comply. State the constraint and add a round-trip parity proof to V4/V7. [spec-folded-snapshot.md:243-259]
-- [ ] [Review][Patch] Logging inventory is wrong — §3.6 says logs "continue to omit … stack traces", but `SnapshotManager` logs exception objects on advisory-create and corrupt-load (`SnapshotManager.cs:93,201` at baseline). Name them as behaviors 6.2 must replace. [spec-folded-snapshot.md:188]
-- [ ] [Review][Patch] Story 6.1 deferred-work entries sit under the Story 4.15 heading — add their own heading. [deferred-work.md:3622]
+- [x] [Review][Patch] P-D1 Reopen: re-baselined §1/§3 to current HEAD `7d76df4981fb070c4d84d817bf6fc800f27d0adb` (trusted-effect erasure, pdenc-v2 snapshot overloads, current actor and transport paths); §19 is pending owner re-attestation with Story 6.2 **NOT AUTHORIZED**; the revised normative digest is recorded.
+- [ ] [Review][Approval] P-D1 Final owner attestation: obtain named human approval of the final normative digest, approval date, 4096-byte bound, and explicit Story 6.2 authorization; only then reconcile the `prd.md` NFR8 digest pin and `epics.md` 6.1/6.2 approval metadata. No attestation is inferred from the implementation request.
+- [x] [Review][Patch] P-D2 Writers MUST skip (advisory) a v1 snapshot whose folded JSON object has both top-level `currentSequence` and `events`; remove the unimplementable §9.1 exemption and align §5.3. [spec-folded-snapshot.md:261-273,467-469]
+- [x] [Review][Patch] P-D3 Replace `PreCommandStateJson` + seeded `/replay-state` with an optional init-only `PostCommandStateJson` that `/process` returns only when the actor's request flag marks the command snapshot-due; same Apply table over `DomainResult.Events`; absent field or no-op → advisory skip; update §8, §12, §15, §16, §17. [spec-folded-snapshot.md:365-451]
+- [x] [Review][Patch] P-D4 §9.2: opaque, unreadable and unknown-version keys are retained at load (no delete) and MAY be replaced by the next successful folded write, logged with a support-safe reason class; the event stream stays audit authority. [spec-folded-snapshot.md:482-484,535]
+- [x] [Review][Patch] P-D5 Inventory the Admin actor-state inspector, `DaprConsistencyCommandService` snapshot read and `BenchmarkDatasetBuilder`; 6.2 MUST make the inspector return only sequence, size, envelope version and protection/readability class for the snapshot key. [spec-folded-snapshot.md:181-188,542-557]
+- [x] [Review][Patch] "Additive only" must pin the member form — `SnapshotRecord`, `DomainServiceWireResult`, and `AggregateReconstructionRequest` are public positional records and no package/API-compat validation exists; a positional parameter would break binary compatibility. State that new members are init-only properties with defaults. [spec-folded-snapshot.md:534]
+- [x] [Review][Patch] Bypassed legacy DSCS must not feed `lastSnapshotSequence` — otherwise migration waits up to one interval of full-replay commands; §10 step 5 and V8 ("next write overwrites") disagree. A non-authoritative DSCS snapshot contributes 0. [spec-folded-snapshot.md:493-505]
+- [x] [Review][Patch] Load-failure classification — baseline `LoadSnapshotAsync` wraps typed `TryGetStateAsync<SnapshotRecord>` in a non-cancel catch-all that deletes the key (`SnapshotManager.cs:195-211`), so state-store read failures and unknown-version shape failures delete a snapshot §12 says to retain. Correct §3.3/§3.5 inventory, make the §9.2 infra row single-outcome (retain, no delete, full replay; the "dead-letter after a staged batch" branch is unreachable at load), and require reading the envelope version from raw JSON before typed deserialization; delete only on deserialization failure of a known version. [spec-folded-snapshot.md:484]
+- [x] [Review][Patch] Folded snapshots newly require `TState` JSON round-trip fidelity — today automatic snapshots replay nested DSCS exactly; folded writes round-trip through `RehydrateFromJsonObject`, which sets only properties with a setter (fields, get-only members, custom comparers lost). Current aggregates comply. State the constraint and add a round-trip parity proof to V4/V7. [spec-folded-snapshot.md:243-259]
+- [x] [Review][Patch] Logging inventory is wrong — §3.6 says logs "continue to omit … stack traces", but `SnapshotManager` logs exception objects on advisory-create and corrupt-load (`SnapshotManager.cs:93,201` at baseline). Name them as behaviors 6.2 must replace. [spec-folded-snapshot.md:188]
+- [x] [Review][Patch] Story 6.1 deferred-work entries sit under the Story 4.15 heading — add their own heading. [deferred-work.md:3622]
 - [x] [Review][Defer] `epics.md` Story 6.1 reconciliation still says the artifact is absent [_bmad-output/planning-artifacts/epics.md:4273] — deferred: fix edits a planning spec; `sprint-change-proposal-2026-09-23.md` item 4 already owns it and `epic-6-context.md` blocks 6.2 until reconciled.
 
 - [x] [Review][Defer] Admin actor-state inspector also returns raw event keys (`{actorId}:events:{N}`) [src/Hexalith.EventStore.Admin.Server/Services/KnownActorTypes.cs:31] — deferred: owner decision D5 2026-10-04; event-key redaction belongs to Epic 7 Admin hygiene, outside snapshot scope.
 
-Rejected:
+### Follow-up Review Corrections (2026-10-08)
+
+- [x] [Review][Patch] R2-BH1 — §8.2 requires detached Apply inputs decoded from the exact once-admitted event representation that is sent/persisted; V4 covers ignored/defaulted values and custom bounded serialization without another serializer or fold.
+- [x] [Review][Patch] R2-BH2 / R2-EC1 — canonical event buffers/graphs are isolated before capture callbacks; mutation on success or throw cannot change original results or final wire bytes; V6 requires both proofs.
+- [x] [Review][Patch] R2-BH3 — §5.2 requires an explicit deployment-owned qualified declaration for the exact type/profile; missing qualification defaults to automatic skip and bounded unsupported manual materialization; V15 preserves positional APIs.
+- [x] [Review][Patch] R2-BH4 — §8.6 declares finite workspace/representation limits and reserves optional allocations before copying, working graphs, JSON, escaped wire and actor parsing; V16 proves refusal and preserves existing gates without universal callback heap claims.
+- [x] [Review][Patch] R2-BH5 — §9.1/§9.2 require folded object shape; null/scalar/array/missing state retains/bypasses with sequence 0 before domain use and manual bounded refusal; V17 covers the shapes.
+- [x] [Review][Patch] R2-BH6 — §7.4/§9.1 require addressed existing positive stream metadata, `0 < S <= H`, equality-only `AlreadyCurrent`, retained invalid/orphan state and fail-closed unavailable prefixes/tails; V17 prevents snapshot-derived stream authority.
+- [x] [Review][Patch] R2-BH7 / R2-ROOT1 — §6 requires qualified compact options and exact final protected-envelope/unprotected-state measurements before staging; unsupported options/bound excess skip/fail without metadata changes. V5 covers indented large state and maximum escaped metadata.
+- [x] [Review][Patch] R2-BH8 — §8.3 keeps non-cancel failure of either optional policy lookup advisory and forwards caller cancellation at both due checks; V18 proves both boundaries.
+- [x] [Review][Patch] R2-BH9 — §3.3 inventories the current witness omission; §7.4 requires new envelope-version equality and V18 includes an ambiguous-save record differing only in version.
+- [x] [Review][Patch] R2-BH10 — §3.3 distinguishes command `includeDomainView: false` / refused evolved replay from the separate addressed manual reconstruction path.
+
+Rejected (historical review; the 2026-10-08 corrections and current triage below supersede the earlier bound/indentation/shape/sequence conclusions):
 - `sprint-status.yaml` edited despite the Never clause; manual check relaxed — `low`: letter violation is real but no tool or test reads the 6-1 row; the only fix amends this frozen spec.
 - Lifecycle status contradictions (frontmatter `done`, Note 3 `in-progress`, BH-2 `in-review`, tracker `review`) — `low`: stale lines live in this spec; the tracker is resynced by this review.
 - Code Map path `Server/Events/DaprAggregateStateReconstructor.cs` (actually `Server/DomainServices/`) — `low`: fix edits this spec.
@@ -107,6 +121,12 @@ Rejected:
 - 2026-09-08: `spec-6-1-folded-snapshot-frozen-spec.md` was externally reverted to the pre-approval draft (Open Questions restored, `status: draft`). Restored the approved frozen block, `baseline_commit`, and `in-progress` status. Code Map paths corrected to `AggregateReplayer.cs` under Client and `Pages/Snapshots.razor`.
 
 ## Spec Change Log
+
+- 2026-10-08: Final consistency corrections distinguish pre-handler state preservation from post-admission event Apply/capture, and make invalid-sequence refusal take precedence over DSCS migration. Final normative SHA-256: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`. No frozen-intent or approval change.
+
+- 2026-10-08: Completed follow-up review corrections R2-BH1–BH10, R2-EC1 and R2-ROOT1 in the AD-13 deliverable: once-admitted canonical detached events, explicit qualification and pre-admitted workspace, folded-object/stream-head validity, exact pre-stage compact envelope guard, advisory policy checks, and version-aware manual witness. Revised normative SHA-256: `07f37c006b9a5adfb530edcec7b36bc2eef2bc267fd2d3a9be220d4729dde896`. Preserved the original wrapper baseline, frozen intent, complete triage history, and incomplete owner approval.
+
+- 2026-10-08: Applied the owner-resolved 2026-10-04 review patches to the AD-13 deliverable; refreshed the current-HEAD inventory, post-command request/response fold, collision/bypass, load retention/deletion, compatibility, round-trip validation and snapshot inspector redaction requirements. Normative SHA-256: `d637616d085e90b266b7a8d1be3e7cba0d3d6b1975cdbc2ba9f4dca07ab7ec9d`. Preserved the frozen intent block. Current named-owner approval remains pending; Story 6.1 remains in progress and Story 6.2 is **NOT AUTHORIZED**. Runtime, tests, public contracts and `sprint-status.yaml` are unchanged.
 
 ## Review Triage Log
 
@@ -142,6 +162,27 @@ Rejected:
 | VG-1 | `medium` (pre-verified; not this story) — Create Backup 401/403 confirm has no test. Surface is `Backups.razor`, Story 5.4. | defer |
 | VG-2 | `medium` (pre-verified; not this story) — Snapshots 401/403 confirm has no test. Surface is `Snapshots.razor`, Story 5.4. | defer |
 
+### Current revision review (2026-10-08)
+
+All three layers completed: Blind Hunter, Edge Case Hunter, and Verification Gap. The verification layer reported no gaps for this documentation-only change. The resumed review was scoped to this run's deliverable/ledger diff at `7d76df4981fb070c4d84d817bf6fc800f27d0adb`; the complete historical-baseline diff was retained separately because it includes unrelated subsequent work. Current findings are direct corrections to the AD-13 deliverable, with no current runtime or public API change.
+
+| ID | Verdict and evidence | Route |
+| --- | --- | --- |
+| R2-BH1 | `medium` — AggregateReplayer deserializes stored event JSON, while §8.2 applies live CLR values; ignored/defaulted properties or an admitted custom serializer can change the fold. The capture input must be the exact admitted representation. | patch |
+| R2-BH2 | `medium` — §8.2 isolates state but still passes live returned events to Apply. Existing Apply discovery accepts callbacks over mutable payloads, so capture can alter later wire serialization even if it throws. | patch |
+| R2-BH3 | `medium` — §5.2 declares state ineligible without a declaration/admission rule. An arbitrary registered consumer state cannot be classified by selected V4/V7 fixtures; unknown eligibility needs a defined skip/failure. | patch |
+| R2-BH4 | `medium` — The existing bounded response producer charges payload/window allocations; §8.3 does not charge the new clone, working state, JSON and parsed representations before allocation. Optional capture needs declared finite workspace admission. | patch |
+| R2-BH5 | `medium` — SnapshotRecord.State is object and typed JSON binding can accept null/scalar/array. §9.2 non-DSCS classification alone would pass these to domain restore without an authoritative folded-object check. | patch |
+| R2-BH6 | `medium` — EventStreamReader accepts snapshot-only state with missing metadata and sequence >= head; manual actor also returns AlreadyCurrent for a future sequence. The target table preserves an outcome that contradicts §7.2; admissible read sequences need explicit limits. | patch |
+| R2-BH7 | `medium` — MetadataCarrier accepts eight ASCII compatibility values up to 256 characters; default JSON escapes printable less-than characters into six bytes. Valid unprotected metadata can exceed 4096 overhead, so pre-stage measurement and typed skip/failure are required. | patch |
+| R2-BH8 | `medium` — SnapshotManager.GetIntervalAsync awaits the policy resolver without a non-cancel catch. Moving that optional lookup before /process can reject an otherwise valid command unless the target states advisory failure and cancellation rules. | patch |
+| R2-BH9 | `medium` — AggregateActor.SnapshotRecordsMatch lists fields explicitly and omits the future envelope version. §3.3 must inventory that gap and require version equality for the target save witness. | patch |
+| R2-BH10 | `medium` — EventStreamReader requests includeDomainView:false and rejects replay.Evolved. The new §3.3 claim that this command-time path may supply effective domain events is incorrect; addressed manual reconstruction is a separate path. | patch |
+| R2-EC1 | `medium` — The edge reviewer independently traced the same live-event mutation route as R2-BH2, including successful capture. Detached canonical Apply inputs must protect the returned event list on both success and failure. | patch |
+| R2-ROOT1 | `medium` — A temporary .NET 10 program using the specified serializer calls measured indented-state overhead of 10,191 bytes for 5,000 array items, versus 156 with compact options. The covered writer profile and pre-stage bound enforcement must handle configured indentation. | patch |
+
+| R2-ROOT2 | `medium` — Final reading found that "any capture callback" could include the required pre-handler state copy, and the DSCS row still mentioned sequences above head. Corrected post-command callback timing and explicit classification precedence without changing the frozen intent. | patch |
+
 ## Design Notes
 
 Today automatic writes persist `DomainServiceCurrentState` at `preEventSequence`; manual writes persist `/replay-state` JSON at `CurrentSequence`. The frozen target is post-command folded state at `NewSequenceNumber` on both paths, with legacy DSCS safe-bypassed (retain, full-replay). Rejected alternatives: keep embedding `DomainServiceCurrentState`; pre-command covered sequence; dual-read unwrap; fail-closed on legacy; two fold algorithms; snapshot as append authority; Epic 8 as a 6.2 dependency.
@@ -149,9 +190,20 @@ Today automatic writes persist `DomainServiceCurrentState` at `preEventSequence`
 ## Verification
 
 **Commands:**
-- `python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-folded-snapshot.md').read_bytes(); b=b'<!-- HX-FS-V1-NORMATIVE-BEGIN -->\\n'; e=b'<!-- HX-FS-V1-NORMATIVE-END -->\\n'; assert p.count(b)==p.count(e)==1 and b'\\r' not in p and not p.startswith(b'\\xef\\xbb\\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"` -- expected: `0b456b5fcc49c6f7431e3476cefd073c184cf181d64bf84fb76414c1110d16b2`
+- `python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-folded-snapshot.md').read_bytes(); b=b'<!-- HX-FS-V1-NORMATIVE-BEGIN -->\n'; e=b'<!-- HX-FS-V1-NORMATIVE-END -->\n'; assert p.count(b)==p.count(e)==1 and b'\r' not in p and not p.startswith(b'\xef\xbb\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"` -- expected: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` (revised, pending owner attestation; historical `0b456b5f…` is superseded).
 
 **Manual checks (if no CLI):**
 - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` exists and is non-empty.
-- It contains inventory, payload, byte bound (`MaxSnapshotEnvelopeOverheadBytes` = 4096), sequence, rehydration, shared fold, protection, compatibility, rejected alternatives, content digest, named approver, approval date, and an explicit 6.2 authorization line.
+- It contains the refreshed inventory, payload, byte bound (`MaxSnapshotEnvelopeOverheadBytes` = 4096), sequence, rehydration, shared fold, protection, compatibility, rejected alternatives and revised content digest. Section 19 explicitly records pending current approver/date and Story 6.2 **NOT AUTHORIZED**; the prior name/date/digest are superseded historical evidence. The approval acceptance criterion remains incomplete until the owner attests these bytes.
 - No runtime, test, or public-contract diff is part of this story.
+
+**Results (2026-10-08, follow-up):** Both literal published digest commands
+(this wrapper and the AD-13 artifact) returned the current revised SHA-256.
+Focused structural checks passed for unique LF/no-BOM markers, normative
+sections 2–18, follow-up contract clauses and validation vectors, pending
+approval, unchanged frozen intent/original wrapper baseline, and preserved
+complete historical/current triage. `git diff --check` passed for the two
+files edited in this follow-up. Owned changes are documentation only; shared
+source/test edits belong to concurrent work and were not modified. No runtime
+tests were run for this documentation-only gate; the Story 6.2 matrix remains
+required future evidence, not a claim of runtime validation or owner approval.

@@ -3619,6 +3619,8 @@ resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/c
   summary: InitiatorFocusService may race Fluent dialog unmount; browser activeElement proof remains unverified.
   evidence: RestoreAsync invokes hexalithAdmin.focusElementById immediately after HideAsync/StateHasChanged. A Playwright run with an authenticated Admin UI and a write-time 403 would settle whether the trap still owns focus.
 
+## Deferred from: code review of Story 6.1 Folded Snapshot Frozen Spec (2026-09-08)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
   summary: Story 5.4 Create Backup and Snapshots 401/403 confirm paths close dialogs and restore focus, but page tests only cover cancel and delete-policy denial.
   evidence: Blind-hunter BH-11, edge-case EC-3–EC-8, and verification-gap VG-1/VG-2 cite `Backups.razor` and `Snapshots.razor` confirm catches with no `TriggerBackupAsync`/`SetSnapshotPolicyAsync`/`CreateSnapshotAsync` Forbidden theory. Those files are not Story 6.1's deliverable.

@@ -90,6 +90,202 @@ public sealed class AuthoritativeEventStreamReaderTests
             .ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken)).IsAuthoritative.ShouldBeFalse();
     }
 
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(30001)]
+    public async Task InvalidOperationalDeadline_DeniesBeforeGateway(int milliseconds)
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var reader = new AuthoritativeEventStreamReader(gateway, TimeProvider.System, TimeSpan.FromMilliseconds(milliseconds));
+        var result = await reader.ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        result.IsAuthoritative.ShouldBeFalse();
+        result.FailureReason.ShouldBe("source-invalid-time-bound");
+        await gateway.DidNotReceiveWithAnyArgs().ReadStreamAsync(default!);
+    }
+
+    [Fact]
+    public async Task BlockingProviderCancellationCallback_CannotRetainDeadlineWait()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        CancellationToken providerToken = default;
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            providerToken = call.Arg<CancellationToken>();
+            providerToken.Register(() => { entered.TrySetResult(); release.Wait(); });
+            started.TrySetResult();
+            return new TaskCompletionSource<StreamReadPage>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+        });
+        var reader = new AuthoritativeEventStreamReader(gateway, TimeProvider.System, TimeSpan.FromMilliseconds(200));
+        Task<AuthoritativeStreamReadResult> pending = reader.ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            var result = await pending.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            result.Stream.ShouldBeNull();
+            result.FailureReason.ShouldBe("source-time-bound-exceeded");
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            providerToken.IsCancellationRequested.ShouldBeTrue();
+        }
+        finally
+        {
+            release.Set();
+        }
+    }
+
+    [Fact]
+    public async Task SynchronousGatewayInvocation_CannotRetainReadPastDeadline()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            started.TrySetResult();
+            release.Wait();
+            return Page(call.Arg<StreamReadRequest>(), 0, []);
+        });
+        var reader = new AuthoritativeEventStreamReader(gateway, TimeProvider.System, TimeSpan.FromMilliseconds(200));
+        Task<AuthoritativeStreamReadResult> pending = Task.Run(() => reader.ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            var result = await pending.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            result.Stream.ShouldBeNull();
+            result.FailureReason.ShouldBe("source-time-bound-exceeded");
+        }
+        finally
+        {
+            release.Set();
+        }
+    }
+
+    [Fact]
+    public async Task CumulativeBudget_AndDelayedTimerRejectLateFinalHead()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var clock = new AuthoritativeReadTimeProvider();
+        int calls = 0;
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            calls++;
+            clock.Advance(TimeSpan.FromSeconds(1), fireTimers: false);
+            var request = call.Arg<StreamReadRequest>();
+            return Page(request, 1, request.ToSequence == 0 ? [] : [Event(1)]);
+        });
+        var reader = new AuthoritativeEventStreamReader(gateway, clock, TimeSpan.FromSeconds(3));
+        var result = await reader.ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        result.Stream.ShouldBeNull();
+        result.FailureReason.ShouldBe("source-time-bound-exceeded");
+        calls.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ShortenedBudget_SucceedsImmediatelyBeforeExclusiveBoundary()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var clock = new AuthoritativeReadTimeProvider();
+        int calls = 0;
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (++calls == 3) { clock.Advance(TimeSpan.FromSeconds(3) - TimeSpan.FromTicks(1), fireTimers: false); }
+            var request = call.Arg<StreamReadRequest>();
+            return Page(request, 1, request.ToSequence == 0 ? [] : [Event(1)]);
+        });
+        var result = await new AuthoritativeEventStreamReader(gateway, clock, TimeSpan.FromSeconds(3))
+            .ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        result.IsAuthoritative.ShouldBeTrue();
+        calls.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task CallerCancellationWithBlockingProviderCallback_PreservesOriginalToken()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        using var caller = new CancellationTokenSource();
+        using var release = new ManualResetEventSlim();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Register(() => release.Wait());
+            started.TrySetResult();
+            return new TaskCompletionSource<StreamReadPage>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+        });
+        var pending = new AuthoritativeEventStreamReader(gateway, TimeProvider.System)
+            .ReadAsync(new("tenant-a", "party", "party-1"), caller.Token);
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            var cancel = caller.CancelAsync();
+            var exception = await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            exception.CancellationToken.ShouldBe(caller.Token);
+            await cancel.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            release.Set();
+        }
+    }
+
+    [Fact]
+    public async Task SampledPayload_CannotBeMutatedByFinalHeadProvider()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        StreamReadEvent retained = Event(1);
+        int calls = 0;
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (++calls == 3) { retained.Payload[0] = (byte)'!'; }
+            var request = call.Arg<StreamReadRequest>();
+            return Page(request, 1, request.ToSequence == 0 ? [] : [retained]);
+        });
+        var result = await new AuthoritativeEventStreamReader(gateway, TimeProvider.System)
+            .ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        result.IsAuthoritative.ShouldBeTrue();
+        result.Stream!.Events.Single().Payload.ShouldBe("{}"u8.ToArray());
+        retained.Payload[0].ShouldBe((byte)'!');
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProviderFaultBeforeCallerCancellation_PreservesCallerVerdict(bool expireFirst)
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var clock = new AuthoritativeReadTimeProvider();
+        using var caller = new CancellationTokenSource();
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns<StreamReadPage>(_ =>
+        {
+            if (expireFirst) { clock.Advance(TimeSpan.FromSeconds(3), fireTimers: false); }
+            caller.Cancel();
+            throw new HttpRequestException("Synthetic unavailable gateway.");
+        });
+        var exception = await Should.ThrowAsync<OperationCanceledException>(() =>
+            new AuthoritativeEventStreamReader(gateway, clock, TimeSpan.FromSeconds(3))
+                .ReadAsync(new("tenant-a", "party", "party-1"), caller.Token));
+        exception.CancellationToken.ShouldBe(caller.Token);
+    }
+
+    [Fact]
+    public async Task ExpiredProviderFault_ReturnsDeadlineWithoutEvidence()
+    {
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        var clock = new AuthoritativeReadTimeProvider();
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns<StreamReadPage>(_ =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(3), fireTimers: false);
+            throw new HttpRequestException("Synthetic unavailable gateway.");
+        });
+        var result = await new AuthoritativeEventStreamReader(gateway, clock, TimeSpan.FromSeconds(3))
+            .ReadAsync(new("tenant-a", "party", "party-1"), TestContext.Current.CancellationToken);
+        result.Stream.ShouldBeNull();
+        result.FailureReason.ShouldBe("source-time-bound-exceeded");
+    }
+
     private static StreamReadEvent Event(long sequence) => new(sequence, "Created", "{}"u8.ToArray(), "json", 1, "message", null, null, DateTimeOffset.UnixEpoch, "actor");
     private static StreamReadPage Page(StreamReadRequest request, long head, IReadOnlyList<StreamReadEvent> events)
         => new(request.Tenant, request.Domain, request.AggregateId, events,
