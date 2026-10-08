@@ -170,17 +170,23 @@ public sealed class EventStoreReminderCompositionTests
             fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme)).ShouldBeEmpty();
     }
 
-    /// <summary>A host that already mapped the Dapr actor handlers stays authoritative and is not duplicated.</summary>
+    /// <summary>
+    /// A host that already mapped the Dapr actor handlers with the sidecar-channel policy, the supported
+    /// self-mapping shape, stays authoritative: the routes are not duplicated and the endpoint inventory is valid.
+    /// </summary>
     [Fact]
     public void PreMappedActorHandlersAreNotDuplicated()
     {
         WebApplication app = BuildApp(registerReminders: true);
-        _ = app.MapActorsHandlers();
+        _ = app.MapActorsHandlers().RequireEventStoreSidecarChannel();
 
         _ = app.UseEventStoreDomainService();
         _ = app.MapEventStoreReminders();
 
         CountReminderRoutes(app).ShouldBe(1);
+        EventStoreDomainServiceEndpointInventory.Validate(
+            ((IEndpointRouteBuilder)app).DataSources.SelectMany(static source => source.Endpoints),
+            fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme)).ShouldBeEmpty();
     }
 
     /// <summary>Mapping reminder routes without the registration is a composition error.</summary>
