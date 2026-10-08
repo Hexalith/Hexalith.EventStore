@@ -119,7 +119,12 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         EventStoreActivationContext activation = app.Services.GetRequiredService<EventStoreActivationContext>();
         activation.Activations.ShouldContain(a => a.DomainName == "widget");
 
-        GetMappedRoutes(app).ShouldNotContain("/", "the anonymous status root is removed (AD-16)");
+        AssertRouteSupports(app, "/", HttpMethods.Get);
+        RouteEndpoint rootEndpoint = GetRouteEndpoints(app).Single(endpoint => endpoint.RoutePattern.RawText == "/");
+        rootEndpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().ShouldBeNull();
+        rootEndpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+            .Select(static data => data.Policy)
+            .ShouldBe([EventStoreDomainServicePolicies.AnyWorkload]);
         AssertRouteSupports(app, "/health", HttpMethods.Get);
         AssertRouteSupports(app, "/alive", HttpMethods.Get);
         AssertRouteSupports(app, "/ready", HttpMethods.Get);
@@ -937,6 +942,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         string[] routes = GetMappedRoutes(app);
 
         routes.ShouldBe([
+            "/",
             "/admin/operational-index-metadata",
             "/process",
             "/project",

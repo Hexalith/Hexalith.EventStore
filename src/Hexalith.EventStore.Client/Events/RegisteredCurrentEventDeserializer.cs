@@ -43,12 +43,11 @@ internal sealed class RegisteredCurrentEventDeserializer
         _typeAssemblyHash = SHA256.HashData(stream);
     }
 
-    /// <summary>Checks D/V bindings before invoking the serializer and requires the exact allow-listed output type.</summary>
-    internal object Deserialize(EventDomainRegistry registry, string canonicalType, ImmutablePayload effectivePayload,
+    /// <summary>Checks immutable D/V bindings without invoking serializer or runtime settings callbacks.</summary>
+    internal void RequireDescriptor(EventDomainRegistry registry, string canonicalType,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(effectivePayload);
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
         _serializer.RequireCapabilityScope(registry.CapabilityLoss);
@@ -62,7 +61,18 @@ internal sealed class RegisteredCurrentEventDeserializer
             throw new InvalidOperationException("CapabilityMismatch: current CLR type is not the explicitly allow-listed D binding.");
         }
 
-        _serializer.RequireFields(registry.GetVersion(canonicalType, current.GetIntField(2)), 4);
+        _serializer.RequireDeclaredFields(registry.GetVersion(canonicalType, current.GetIntField(2)), 4);
+        cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
+    }
+
+    /// <summary>Checks D/V bindings before invoking the serializer and requires the exact allow-listed output type.</summary>
+    internal object Deserialize(EventDomainRegistry registry, string canonicalType, IReadOnlyPayload effectivePayload,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(effectivePayload);
+        RequireDescriptor(registry, canonicalType, cancellationToken);
+        _serializer.RequireFields(registry.GetVersion(canonicalType, registry.GetCurrentVersion(canonicalType)), 4);
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
         using var lease = new InvocationPayloadLease(effectivePayload, cancellationToken);

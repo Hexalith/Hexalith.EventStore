@@ -51,9 +51,16 @@ internal sealed class EventImplementationBinding
     /// <summary>Requires the exact adjacent ID, assembly and options fields from a decoded descriptor.</summary>
     internal void RequireFields(EventRegistryRow descriptor, int implementationField)
     {
+        RequireDeclaredFields(descriptor, implementationField);
+        if (_runtimeOptions is not null) { RequireRuntimeOptions(); }
+        RequireDeclaredFields(descriptor, implementationField);
+    }
+
+    /// <summary>Checks immutable descriptor fields without invoking the implementation's runtime options callback.</summary>
+    internal void RequireDeclaredFields(EventRegistryRow descriptor, int implementationField)
+    {
         ArgumentNullException.ThrowIfNull(descriptor);
         _executionBinding?.RequireBoundAssembly(_implementationAssembly);
-        if (_runtimeOptions is not null) { RequireRuntimeOptions(); }
         if (!string.Equals(_implementationId, descriptor.GetTextField(implementationField), StringComparison.Ordinal)
             || !_assemblyHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 1))
             || !_optionsHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 2)))

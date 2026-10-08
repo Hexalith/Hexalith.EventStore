@@ -210,7 +210,8 @@ public sealed class EventLocalImplementationBindingTests
         called.ShouldBeFalse();
     }
 
-    private static EventDomainRegistry CreateRegistry()
+    /// <summary>Creates immutable test-local rows bound to the explicitly supplied current test type and validators.</summary>
+    internal static EventDomainRegistry CreateRegistry()
     {
         Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Events", "Fixtures", "EventRegistryV17.json")))!;

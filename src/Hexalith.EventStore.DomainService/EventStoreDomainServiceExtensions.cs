@@ -240,7 +240,10 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateNamedDomainProjectionHandlerRoutes(app.Services);
 
-        // The former anonymous status root is not mapped: only /health, /alive, and /ready are anonymous (AD-16).
+        // Preserve the status-root contract without adding an anonymous endpoint (AD-16).
+        _ = app.MapGet("/", () => "Hexalith EventStore domain service")
+            .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
+
         _ = app.MapPost(
             "/process",
             async (DomainServiceRequest request, HttpContext httpContext, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {

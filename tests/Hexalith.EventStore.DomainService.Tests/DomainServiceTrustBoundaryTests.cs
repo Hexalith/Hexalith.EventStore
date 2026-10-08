@@ -424,7 +424,7 @@ public sealed class DomainServiceTrustBoundaryTests
 
     /// <summary>The three probes stay anonymous while protected routes challenge the same anonymous caller.</summary>
     [Fact]
-    public async Task Probes_StayAnonymous_WhileTheRootIsGone()
+    public async Task Probes_StayAnonymous_WhileTheRootRequiresCredentials()
     {
         await using WebApplication app = await StartAsync();
         HttpClient client = app.GetTestClient();
@@ -440,7 +440,39 @@ public sealed class DomainServiceTrustBoundaryTests
         postedProbe.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         using HttpResponseMessage root = await client.GetAsync("/", TestContext.Current.CancellationToken);
-        root.StatusCode.ShouldBeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Unauthorized);
+        root.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>The compatibility root requires both credentials and returns only its constant service label.</summary>
+    /// <param name="includeChannelToken">Whether the request carries the valid Dapr channel token.</param>
+    /// <param name="includeAssertion">Whether the request carries a valid workload assertion.</param>
+    /// <param name="expectedStatus">The expected HTTP status.</param>
+    [Theory]
+    [InlineData(false, false, HttpStatusCode.Unauthorized)]
+    [InlineData(true, false, HttpStatusCode.Unauthorized)]
+    [InlineData(false, true, HttpStatusCode.Unauthorized)]
+    [InlineData(true, true, HttpStatusCode.OK)]
+    public async Task Root_RequiresChannelTokenAndWorkloadAssertion(
+        bool includeChannelToken,
+        bool includeAssertion,
+        HttpStatusCode expectedStatus)
+    {
+        var processor = new CapturingWidgetProcessor();
+        await using WebApplication app = await StartAsync(processor: processor);
+        using HttpRequestMessage request = new(HttpMethod.Get, "/");
+        AddInternalHeaders(request,
+            includeAssertion ? Assertion([EventStoreWorkloadOperations.DomainServiceProcess]) : null,
+            includeChannelToken ? [ChannelToken] : []);
+
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(expectedStatus);
+        processor.Commands.ShouldBeEmpty();
+        if (expectedStatus == HttpStatusCode.OK)
+        {
+            (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+                .ShouldBe("Hexalith EventStore domain service");
+        }
     }
 
     /// <summary>The domain-event subscription route requires the app-channel token; a forged delivery is refused.</summary>

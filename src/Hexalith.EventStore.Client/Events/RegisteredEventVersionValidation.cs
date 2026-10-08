@@ -34,6 +34,24 @@ internal sealed class RegisteredEventVersionValidation
         _identityBinding.RequireCapabilityScope(registry.CapabilityLoss);
     }
 
+    /// <summary>Checks exact registry ownership and both immutable V bindings without invoking application callbacks.</summary>
+    internal void RequireDescriptor(EventDomainRegistry registry, string canonicalType, int version,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
+        if (!ReferenceEquals(registry, _registry))
+        {
+            throw new InvalidOperationException("CapabilityMismatch: version validation belongs to another registry.");
+        }
+
+        EventRegistryRow descriptor = registry.GetVersion(canonicalType, version);
+        _schemaBinding.RequireDeclaredFields(descriptor, 1);
+        _identityBinding.RequireDeclaredFields(descriptor, 8);
+        cancellationToken.ThrowIfCancellationRequested();
+        registry.CapabilityLoss.RequireNoObservedLoss();
+    }
+
     /// <summary>Checks both bindings before invoking either callback with independently expired immutable facades.</summary>
     internal void Validate(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
         CancellationToken cancellationToken)
@@ -41,6 +59,7 @@ internal sealed class RegisteredEventVersionValidation
         ArgumentNullException.ThrowIfNull(payload);
         cancellationToken.ThrowIfCancellationRequested();
         _registry.CapabilityLoss.RequireNoObservedLoss();
+        RequireDescriptor(_registry, canonicalType, version, cancellationToken);
         EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
         if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal)
             || !string.Equals(format, descriptor.GetTextField(7), StringComparison.Ordinal))

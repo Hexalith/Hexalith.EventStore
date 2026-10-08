@@ -12,6 +12,7 @@ internal sealed class EventUpcastChainExecutor
     private readonly EventDomainRegistry _registry;
     private readonly FrozenDictionary<(string Type, int Version), RegisteredEventUpcaster> _upcasters;
     private readonly EventVersionValidator _validateVersion;
+    private readonly Action<string, int, CancellationToken>? _requireVersionBindings;
 
     /// <summary>Gets the exact registry instance admitted by this executor.</summary>
     internal EventDomainRegistry Registry => _registry;
@@ -19,7 +20,8 @@ internal sealed class EventUpcastChainExecutor
     /// <summary>Captures immutable registrations; source authentication and complete runtime attestation remain caller prerequisites.</summary>
     internal EventUpcastChainExecutor(EventDomainRegistry registry,
         IReadOnlyDictionary<(string Type, int Version), RegisteredEventUpcaster> upcasters,
-        EventVersionValidator validateVersion)
+        EventVersionValidator validateVersion,
+        Action<string, int, CancellationToken>? requireVersionBindings = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(upcasters);
@@ -28,6 +30,7 @@ internal sealed class EventUpcastChainExecutor
         _registry.CapabilityLoss.RequireNoObservedLoss();
         _upcasters = upcasters.ToFrozenDictionary();
         _validateVersion = validateVersion;
+        _requireVersionBindings = requireVersionBindings;
         foreach (((string type, int source), RegisteredEventUpcaster binding) in _upcasters)
         {
             binding.RequireDescriptor(registry.GetEdge(type, source), registry.CapabilityLoss);
@@ -154,6 +157,13 @@ internal sealed class EventUpcastChainExecutor
         }
 
         // Validate every callable before allocating or invoking an earlier hop.
+        for (int version = sourceVersion; version <= current; version++)
+        {
+            _requireVersionBindings?.Invoke(canonicalType, version, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _registry.CapabilityLoss.RequireNoObservedLoss();
+        }
+
         for (int version = sourceVersion; version < current; version++)
         {
             GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version), _registry.CapabilityLoss);

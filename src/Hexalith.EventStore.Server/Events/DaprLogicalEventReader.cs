@@ -20,6 +20,15 @@ internal sealed class DaprLogicalEventReader
     private readonly EventLogicalViewResolver _resolver;
     private readonly int _maximumReadablePageBytes;
 
+    /// <summary>Uses the same composed registry, validators, transforms and current deserializers for addressed logical pages.</summary>
+    internal DaprLogicalEventReader(IActorStateManager stateManager,
+        IEventPayloadProtectionService protection, EventEvolutionService evolution,
+        int maximumReadablePageBytes = 64 * 1024 * 1024)
+        : this(stateManager, protection,
+            (evolution ?? throw new ArgumentNullException(nameof(evolution))).Resolver, maximumReadablePageBytes)
+    {
+    }
+
     /// <summary>Creates the shared actor-state logical reader without provider-specific access.</summary>
     internal DaprLogicalEventReader(IActorStateManager stateManager,
         IEventPayloadProtectionService protection, EventLogicalViewResolver resolver,
