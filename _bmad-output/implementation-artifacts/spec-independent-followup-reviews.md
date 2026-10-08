@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-09-01'
 baseline_revision: debad3be66b0b1ce135964083f4e0a7a64b37dc4
 baseline_commit: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
-status: in-progress
+status: done
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
@@ -23,6 +23,69 @@ deferred:
       .releaserc.json currently runs validate-publication-preflight.sh in publish mode before dotnet nuget push, but ReleasePackageManifestTests asserts only that secret validation precedes the push. Moving the publish-mode preflight after the push would leave the governance test green; verifyReleaseCmd remains an earlier mitigation, so this is pre-existing test hardening.
     location: >-
       tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:303
+    severity: medium
+  - summary: >-
+      Reject direct dependencies mixed with any named dependency group.
+    evidence: |-
+      The current shared parser and internal dependency contract accept a flat list plus a complete net10.0 group. NuGet's dependency-group reference prohibits mixing grouped and flat formats. This was reproduced in an isolated archive probe and predates this verification-only re-drive.
+    location: >-
+      tools/release_package_contract.py:305
+    severity: medium
+  - summary: >-
+      Add positive coverage for valid ungrouped dependencies and standalone fallback groups.
+    evidence: |-
+      Positive fixtures cover named groups only; the direct-dependency fixture contains intentional duplicates, and blank groups occur only in mixed-shape rejection cases. Valid direct and missing, empty, or whitespace framework fallback groups currently parse but lack regression coverage.
+    location: >-
+      tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:394
+    severity: low
+  - summary: >-
+      Pin automatic PayloadProtection workflow triggers in governance tests.
+    evidence: |-
+      The parsed workflow test inspects jobs and commands but never inspects the on mapping. Removing push or pull_request triggers or adding restrictive path filters leaves those assertions unaffected. The current workflow has the correct automatic triggers; this is existing coverage hardening.
+    location: >-
+      tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:974
+    severity: medium
+  - summary: >-
+      Reject failure-masking shell operators in PayloadProtection workflow commands.
+    evidence: |-
+      The command assertions reject comments, semicolons, and double pipes but allow trailing background operators. Both false & wait and false & true returned exit 0 in isolated shell probes, while their corresponding workflow mutations retain the checked command prefix and flag counts. Current workflow commands remain foreground invocations.
+    location: >-
+      tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:1015
+    severity: medium
+  - summary: >-
+      Inspect the complete test attribute list regardless of Fact or Theory ordering.
+    evidence: |-
+      AttributePreludeBeforeMethod starts at the last Fact or Theory marker, so a HeavyweightContainerPublish trait placed above that marker disappears from the inspected prelude. The negative guard can then accept a test excluded by CI. Existing source attribute ordering is correct; an isolated extraction probe confirmed the latent guard gap.
+    location: >-
+      tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:1243
+    severity: medium
+  - summary: >-
+      Isolate synthetic naming-audit Git subprocesses from inherited repository selectors.
+    evidence: |-
+      RunGitAsync inherits Git environment selectors despite setting WorkingDirectory. An isolated two-repository probe demonstrated that fixture git add modifies the caller's index when GIT_INDEX_FILE points there; GIT_DIR and GIT_WORK_TREE can similarly redirect fixture mutations. Only disposable repositories under /tmp were used, and the required naming tests passed under the actual caller environment.
+    location: >-
+      tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs:464
+    severity: medium
+  - summary: >-
+      Bind the generated-client credential test to the realm template actually imported by its resource.
+    evidence: |-
+      The credential test manually renders the Tenants template while constructing its security resource with the default realm import path. It never inspects that resource's import callback; the EventStore AppHost template and Tenants template currently differ in whether they include the SDK's default-account placeholder. This is a pre-existing credential-test proof gap, and does not establish a defect in the separately rendered production AppHost realm.
+    location: >-
+      tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs:210
+    severity: medium
+  - summary: >-
+      Resolve the credential-test Tenants template through supported dependency layouts.
+    evidence: |-
+      The credential test hardcodes EventStore/references/Hexalith.Tenants although RepositoryProjectPaths.GetReferencedModuleProjectPath and source-mode build configuration support sibling and enclosing checkouts. It fails in those layouts when EventStore's nested Tenants checkout is absent; no nested submodule was initialized during this run.
+    location: >-
+      tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs:258
+    severity: medium
+  - summary: >-
+      Add repeated blank or missing-framework partial-group rejection fixtures through both validators.
+    evidence: |-
+      The parser correctly rejects two groups normalized to the ungrouped key, but existing repeated-group mutations use net10.0 or NET10.0. The verification-gap reviewer demonstrated in memory that ignoring an empty framework key restores the original dependency-union false pass without affecting any existing fixture case. Current production code remains correct.
+    location: >-
+      tools/release_package_contract.py:330
     severity: medium
 ---
 
@@ -100,6 +163,7 @@ deferred:
 - 2026-09-05 -- Clarified that any evidence-free generic blocked outcome, including the outcome that caused the current pause, is non-conforming session output rather than blocker evidence and cannot be carried into the re-drive.
 - 2026-09-05 -- Classified named but out-of-scope dirty-path evidence as non-qualifying and prohibited repository-wide status from becoming a finalization gate when the four Execution paths remain clean and Verification passes.
 - 2026-09-05 -- Made the scoped complete outcome explicitly override generic repository-cleanliness, bundle-finalization, and post-commit clean-tree requirements.
+- 2026-10-08 -- Completed the verification-only re-drive: all seven specified commands passed with an empty dispatch-start four-path snapshot. Preserved the implemented source and original baseline identifiers, recorded fresh results and independent review triage, and retained additional pre-existing follow-ups in frontmatter because the intent prohibits editing deferred-work.md.
 
 ## Review Triage Log
 
@@ -138,6 +202,30 @@ deferred:
   - `[false]` `[reject]` Story 3.4 received only narrow test review — the independent pass also ran the full AppHost assembly, scratch Compose proof, and a live Aspire security baseline; code changed only where findings reproduced.
   - `[false]` `[reject]` Story 3.6 received only synthetic review — the independent pass also ran a real 14-package pack, both validators, and all isolated consumers; the patch targets the reproducible gaps it found.
 
+### 2026-10-08 — Verification re-drive review
+
+- verdicts: 15 findings — high 0, medium 10, low 5, false 0, maybe-false 0
+- routes: 0 implementation patches; 11 deferred findings grouped into 9 additional follow-ups; 4 rejected findings. Every finding concerns unchanged, committed source; this run changed only workflow status and evidence. The original two deferred items remain recorded. The intent's prohibition on editing `deferred-work.md` takes precedence over the workflow's generic ledger instruction, so new follow-ups are retained in frontmatter here.
+- review input: the four Execution code paths from original baseline `28cd5935a156600b52f95b378f9c45ab57ba46cb` through the current working tree. The spec was provided separately only to the claims reviewer, and unrelated committed and workspace paths were excluded.
+- findings:
+  - `[medium]` `[defer]` **Blind B1:** Direct dependencies plus a complete named group are accepted by the current shared parser and internal contract, although NuGet disallows mixing these formats. Reproduced with a disposable Gateway archive; this invalid-shape acceptance predates the verification re-drive. Primary format evidence: https://learn.microsoft.com/en-us/nuget/reference/nuspec#dependency-groups.
+  - `[low]` `[defer]` **Blind B2:** Valid direct dependencies and standalone missing/empty/whitespace-framework fallback groups have no positive fixture. The accepting test covers named groups and existing ungrouped cases deliberately fail; retain this pre-existing coverage gap separately from repeated-group rejection.
+  - `[low]` `[reject]` **Blind B3:** Carried: quoting a NuGet command token can evade the literal invocation guard. The 2026-09-01 review already rejected shell-obfuscation parsing; current configuration uses the exact approved command and no such indirection, so this uncommon case does not justify adding a shell interpreter during finalization.
+  - `[medium]` `[defer]` **Blind B4:** The PayloadProtection governance test never examines workflow triggers, so deleting automatic triggers or adding restrictive filters leaves its parsed job assertions unchanged. Current triggers are correct; this is pre-existing mutation coverage hardening.
+  - `[medium]` `[defer]` **Blind B5:** Background shell operators are not forbidden by the PayloadProtection command assertions. Isolated `false & wait` and `false & true` probes exited 0, and the checked token counts do not reject those suffixes; current workflow commands contain neither. Grouped with Edge E2.
+  - `[medium]` `[defer]` **Blind B6:** A heavyweight trait above Fact/Theory is omitted by `AttributePreludeBeforeMethod`, allowing its negative guard to accept a CI-excluded malformed-input test. Reproduced the extraction on isolated source text; current attribute ordering is correct.
+  - `[low]` `[reject]` **Blind B7:** The tracked wait regex also matches implementation names in an apphost option path or subsequent echo command; all three allowed forms reproduced in a disposable tracked fixture. The continuation-line miss is carried from the prior low/reject row. These uncommon forms require operand or shell parsing beyond a direct correction, so retain the existing conservative line-oriented audit.
+  - `[medium]` `[defer]` **Blind B8:** Fixture Git commands inherit repository selectors. A disposable caller/fixture pair proved that `GIT_INDEX_FILE` causes fixture `git add` to change the caller's index, while `RunGitAsync` contains no environment sanitization. No real repository index was used in the probe. Grouped with Edge E4.
+  - `[medium]` `[defer]` **Blind B9:** The generated-client credential test checks a manually rendered Tenants template instead of its security resource's actual default import callback. The two source templates differ in the SDK-account placeholder, so this test can miss import-template drift; the separately rendered production AppHost path is not disproved by this finding.
+  - `[medium]` `[defer]` **Blind B10:** The credential-test template path hardcodes a nested Tenants checkout while the shared resolver and source-mode build configuration support other layouts. A sibling or enclosing checkout leaves the hardcoded file unavailable; current standalone tests passed and no nested initialization was performed.
+  - `[low]` `[reject]` **Edge E1:** Carried: quoting the dotnet executable hides a second publisher from the literal regex. This is the same unsupported shell-obfuscation claim already rejected on 2026-09-01, and the live publication command remains exact and singular.
+  - `[medium]` `[defer]` **Edge E2:** Appending `& true` can conceal a failing PayloadProtection command without changing the tested flags. The isolated shell probe returned 0; this shares Blind B5's missing execution-shape guard and is one follow-up.
+  - `[low]` `[reject]` **Edge E3:** An apphost option path containing `Aspire.Hosting.Keycloak` falsely matches the case-insensitive wait guard. Reproduced with tracked text; this shares Blind B7's uncommon operand-parsing limitation and does not change the positive audit result for the current repository.
+  - `[medium]` `[defer]` **Edge E4:** An inherited `GIT_INDEX_FILE` routes fixture staging into the caller's index. Confirmed with two disposable repositories, sharing Blind B8's inherited-selector root cause; current required tests passed without this selector.
+  - `[medium]` `[defer]` **Verification V1:** Repeated blank or missing-framework partial groups lack a rejection mutation through either validator. Accepted the reviewer's pre-verified in-memory mutation evidence: skipping an empty framework key permits unioning the partial groups, while current parser code rejects them. Retain this existing regression-coverage gap as a follow-up.
+- independent probe evidence: `/tmp/eventstore-followup-review-probes-y_b66x5l/results.log`. No source or configuration was changed by review probes.
+- completion: the empty dispatch-start snapshot and all seven passing Verification commands satisfy the spec's mandatory complete outcome. Review follow-ups do not reopen checked implementation work or introduce an unpermitted blocker.
+
 ## Design Notes
 
 The package parser should reject structurally ambiguous repeated groups rather than defining union semantics that NuGet consumers may not share. The naming audit's production scan and its mutation cases must consume the same pattern factory so coverage cannot drift from enforcement.
@@ -154,3 +242,5 @@ The package parser should reject structurally ambiguous repeated groups rather t
 - `git diff --check 28cd5935a156600b52f95b378f9c45ab57ba46cb -- tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs tools/release_package_contract.py tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs _bmad-output/implementation-artifacts/spec-independent-followup-reviews.md` -- expected: no whitespace errors in the original implementation-through-working-tree delta; unrelated paths are excluded. Do not require a repository-wide diff check or an empty diff for `_bmad-output/implementation-artifacts/deferred-work.md`; that file is outside the owned paths, and its `Never` boundary is satisfied by leaving any pre-existing or concurrent changes untouched during this re-drive.
 
 **Recorded Results (original implementation run):** Both focused Release builds passed with zero warnings/errors. `AspireSecurityResourceNamingTests` passed 5/5 under hostile persistent/invalid-port environment values, `HexalithEventStoreSecurityExtensionsTests` passed 10/10, and `ReleasePackageManifestTests` passed 114/114 through both validator entry points. The package dry run emitted exactly 14 commands and created no output directory. At that run, `git diff --check` passed and `deferred-work.md` remained unchanged; these historical results do not replace the re-drive's required verification.
+
+**Recorded Results (2026-10-08 verification re-drive):** The dispatch-start status snapshot was empty for all four Execution code paths at `762a745426db66c2846b1af17a10b2a619bf3d95`. All seven specified Verification commands passed; both Release builds reported zero warnings/errors, naming tests passed 5/5 under hostile persistent/invalid-port environment values, security extension tests passed 16/16, and packaging tests passed 115/115, with no failures, skips, or unrun cases. The dry run emitted exactly 14 Release/package-mode commands and created no output directory. The scoped original-baseline whitespace check exited 0 with no output. Verification finished at `4cc77f9554395e84539e173e94b8f0b4df14d643`; none of the four Execution code paths changed between those revisions. Logs are retained under `/tmp/eventstore-followup-verification.yn4Sje/`. Existing implementation, deferred work, and unrelated workspace changes were preserved.
