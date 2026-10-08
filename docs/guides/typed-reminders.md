@@ -266,6 +266,12 @@ sidecar-channel policy fails startup. The app-channel filter is installed by
 the registration itself, so it also guards a host that maps the actor handlers
 on its own.
 
+Point Dapr's application health check at `/alive`. Dapr's health probe sends no
+`dapr-api-token`, and on a reminder host `/healthz` requires the sidecar
+channel, so a probe on Dapr's default path receives `401` and marks the host
+unhealthy. On Kubernetes, set `dapr.io/app-health-check-path: /alive`; the
+in-repo Aspire wiring already uses `/alive`.
+
 ### Trusted-effect submission credentials
 
 Every due reminder is submitted to `POST /api/v1/trusted-effects`, an internal
@@ -283,18 +289,37 @@ retained. Provision three things for each submitting domain service:
    `Development` mode it signs with the shared `Authentication:JwtBearer`
    key it already uses, and its identity is
    `Authentication:WorkloadIssuer:Workload` (default
-   `EventStore:DomainService:AppId`). In authority mode it needs its own
+   `EventStore:DomainService:AppId`). That `Workload` must equal the
+   submitter's Dapr app ID; otherwise the gateway denies the call as
+   `caller-conflict`. In authority mode it needs its own
    confidential, service-account-only client whose `azp` is its app ID, set
    as `Authentication:WorkloadIssuer:ClientId` and `ClientSecret` (in an
    AppHost, `WithEventStoreWorkloadClientCredentials`). That client may
    request only the optional `eventstore-audience.eventstore` and
-   `eventstore-operation.eventstore.trusted-effect` scopes.
-3. **Keep the token short-lived.** The token lifetime must not exceed
-   EventStore's `Authentication:DaprInternal:MaximumLifetimeSeconds`
-   (default 300 seconds).
+   `eventstore-operation.eventstore.trusted-effect` scopes, and the authority
+   must declare both scopes, each with exactly one mapper. If
+   `Authentication:DaprInternal:Audience` is changed from `eventstore`, pass the
+   new audience to `AddEventStoreTrustedEffectWorkloadAssertion(gatewayAudience)`
+   and request the matching `eventstore-audience.<audience>` scope instead.
+3. **Keep the token short-lived.** The token lifetime
+   (`Authentication:WorkloadIssuer:LifetimeSeconds`, default 120, capped at 300)
+   must not exceed EventStore's
+   `Authentication:DaprInternal:MaximumLifetimeSeconds` (default 300 seconds).
+   An authority-issued token follows the same limit.
+
+Once `Authentication:DaprInternal:AllowedCallers` is non-empty, EventStore
+itself needs `APP_API_TOKEN` outside Development, and the submitting domain
+service needs the `Authentication:JwtBearer` contract. See
+[Internal Workload Assertions](security-model.md#internal-workload-assertions),
+including the breaking upgrade step and the external identity provider
+constraints, and the
+[internal caller settings](configuration-reference.md#internal-dapr-callers) and
+[outbound workload assertion settings](configuration-reference.md#outbound-workload-assertions).
 
 The local AppHost topology has no trusted-effect submitter, so it allow-lists
 no internal caller.
+
+### Options
 
 | Key under `EventStore:Reminders` | Default | Meaning |
 | --- | --- | --- |
@@ -350,9 +375,11 @@ and one tenant cannot pull the service out of rotation. Its data holds
 `passCompleted`, `incompleteScans`, `unresolvedItems`, `unresolved`,
 `quarantined`, and `callbackTokenConfigured`.
 
-It is `Unhealthy`, as the gateway is, only when `APP_API_TOKEN` is missing
-outside Development. Every reminder actor call is then refused with `401`.
-Configure the token on the app and its sidecar.
+Outside Development, a host composed with `AddEventStoreDomainService()` fails
+startup without `APP_API_TOKEN`, before readiness is ever reported. The check
+still reports `Unhealthy`, as the gateway does, when the token is missing; that
+is defense in depth for a host composed another way, where every reminder actor
+call is refused with `401`. Configure the token on the app and its sidecar.
 
 It is `Degraded` in any of these cases:
 
@@ -428,6 +455,13 @@ Quarantined witnesses are never submitted. Check the stored witness and its
 disposition to identify the pending operation, then fix its dependency; the next
 firing or convergence retries that operation.
 
+A credential `401` and a transient submission failure both surface as
+`Retrying` with `submission-uncertain` and an `HttpRequestException`. If it
+persists, check the gateway's event `5501` reason code, the workload assertion
+handler on the submitter client, `Authentication:DaprInternal:AllowedCallers`,
+and the assertion lifetime provisioning described under
+[Trusted-effect submission credentials](#trusted-effect-submission-credentials).
+
 ### Quarantine
 
 Quarantine reason codes are `witness-collision`,
@@ -486,6 +520,16 @@ Works adopts this seam in Story 4.15:
 - Call `IReminderRegistrar.ConvergeAsync` from the committed-event handlers that
   change a schedule.
 - Set `ActorTypeName` to `WorkItemReminderActor` and configure both purposes.
+- Replace the host's own `MapActorsHandlers()` with `MapEventStoreReminders()`,
+  which `UseEventStoreDomainService` also calls when reminders are registered, or
+  keep a self-mapping that carries `.RequireEventStoreSidecarChannel()` and runs
+  before `UseEventStoreDomainService`. `WorksHost` calls `app.MapActorsHandlers()`
+  after `app.UseEventStoreDomainService()`, so its startup inventory fails as soon
+  as Works consumes 3.117 or later.
+- Attach `.AddEventStoreTrustedEffectWorkloadAssertion()` to the submitter
+  client.
+- Allow-list the Works workload in EventStore's
+  `Authentication:DaprInternal:AllowedCallers`.
 - Retire `DateReminderActor`, `DateReminderReconciler`, and the startup-only
   `ReminderReconciliationService` only after the 4.15 to 4.16 parity proof.
 

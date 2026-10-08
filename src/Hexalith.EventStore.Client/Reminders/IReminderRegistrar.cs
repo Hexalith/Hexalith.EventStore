@@ -11,8 +11,10 @@ namespace Hexalith.EventStore.Client.Reminders;
 /// rediscover the item.
 /// </para>
 /// <para>
-/// A host that maps the Dapr actor handlers itself must call <c>MapActorsHandlers</c> before
-/// <c>UseEventStoreDomainService</c>; mapping them a second time makes the actor routes ambiguous.
+/// A host that maps the Dapr actor handlers itself must call
+/// <c>MapActorsHandlers().RequireEventStoreSidecarChannel()</c> before <c>UseEventStoreDomainService</c>;
+/// mapping them a second time makes the actor routes ambiguous, and mapping them without the sidecar-channel
+/// policy fails startup.
 /// </para>
 /// </remarks>
 public interface IReminderRegistrar

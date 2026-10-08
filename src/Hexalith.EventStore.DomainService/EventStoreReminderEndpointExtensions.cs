@@ -11,8 +11,10 @@ public static class EventStoreReminderEndpointExtensions
     private const string ReminderCallbackRoute = "actors/{actorTypeName}/{actorId}/method/remind/{reminderName}";
 
     /// <summary>
-    /// Maps the Dapr actor handlers unless the host already mapped the actor reminder route. The app-channel
-    /// token filter is installed by <c>AddEventStoreReminders</c> and guards the reminder actor routes either way.
+    /// Maps the Dapr actor handlers, with the sidecar-channel policy, unless the host already mapped the actor
+    /// reminder route. A host that maps the handlers itself must apply
+    /// <c>.RequireEventStoreSidecarChannel()</c>. The app-channel token filter is installed by
+    /// <c>AddEventStoreReminders</c> and guards the reminder actor routes either way.
     /// </summary>
     /// <param name="endpoints">The endpoint route builder.</param>
     /// <returns>The endpoint route builder for chaining.</returns>
