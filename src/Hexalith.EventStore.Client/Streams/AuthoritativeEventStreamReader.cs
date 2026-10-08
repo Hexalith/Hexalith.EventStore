@@ -20,40 +20,44 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
     /// <inheritdoc/>
     public async Task<AuthoritativeStreamReadResult> ReadAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
     {
-        long startedAt = timeProvider.GetTimestamp();
-        ArgumentNullException.ThrowIfNull(identity);
-        cancellationToken.ThrowIfCancellationRequested();
-        TimeSpan bound = readTimeout ?? TimeSpan.FromSeconds(30);
-        if (bound <= TimeSpan.Zero || bound > TimeSpan.FromSeconds(30))
-        {
-            return new(null, "source-invalid-time-bound");
-        }
-
-        using var deadline = new AuthoritativeStreamReadDeadline(bound, timeProvider, cancellationToken, startedAt);
         try
         {
-            AuthoritativeStreamReadResult result;
-            try
+            cancellationToken.ThrowIfCancellationRequested();
+            long startedAt = timeProvider.GetTimestamp();
+            ArgumentNullException.ThrowIfNull(identity);
+            TimeSpan bound = readTimeout ?? TimeSpan.FromSeconds(30);
+            if (bound <= TimeSpan.Zero || bound > TimeSpan.FromSeconds(30))
             {
-                result = await ReadCoreAsync(identity, deadline).ConfigureAwait(false);
-            }
-            catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
-            {
-                result = new(null, "source-unavailable");
+                cancellationToken.ThrowIfCancellationRequested();
+                return new(null, "source-invalid-time-bound");
             }
 
-            // Every success, validation denial and provider-fault verdict observes the same
-            // caller-first completion boundary; elapsed processing cannot release evidence.
-            deadline.ThrowIfCancellationRequested();
-            return result;
+            using var deadline = new AuthoritativeStreamReadDeadline(bound, timeProvider, cancellationToken, startedAt);
+            try
+            {
+                AuthoritativeStreamReadResult result;
+                try
+                {
+                    result = await ReadCoreAsync(identity, deadline).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
+                {
+                    result = new(null, "source-unavailable");
+                }
+
+                deadline.ThrowIfCancellationRequested();
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return new(null, deadline.IsExpired ? "source-time-bound-exceeded" : "source-unavailable");
+            }
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            return new(null, "source-time-bound-exceeded");
-        }
-        catch (OperationCanceledException)
-        {
+            // Even unexpected provider/clock/snapshot faults preserve caller-first cancellation.
+            // Without caller cancellation, unexpected faults keep their original type and identity.
             cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
@@ -78,7 +82,8 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
             {
                 var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
                     cursor, head, PageSize: PageSize);
-                StreamReadPage page = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
+                StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
+                StreamReadPage page = CapturePage(supplied, request.PageSize, deadline, ref bytes);
                 long next = StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
                 if (page.Metadata.LatestSequence != head)
                 {
@@ -94,28 +99,12 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                 foreach (StreamReadEvent item in page.Events)
                 {
                     deadline.ThrowIfCancellationRequested();
-                    if (item.SequenceNumber != ++cursor
-                        || item.ProtectionMetadata?.State == PayloadProtectionState.ProviderOpaque)
+                    if (item.SequenceNumber != ++cursor)
                     {
                         return new(null, "source-gap-or-unreadable");
                     }
 
-                    bytes += item.Payload.Length;
-                    if (bytes > MaxPayloadBytes)
-                    {
-                        return new(null, "source-bound-exceeded");
-                    }
-
-                    events.Add(item with
-                    {
-                        Payload = item.Payload.ToArray(),
-                        ProtectionMetadata = item.ProtectionMetadata is { } metadata ? metadata with
-                        {
-                            CompatibilityFlags = metadata.CompatibilityFlags is { } flags
-                                ? new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
-                                    flags.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)) : null,
-                        } : null,
-                    });
+                    events.Add(item);
                 }
 
                 if (next != cursor || (!page.Metadata.IsTruncated && cursor != head))
@@ -139,7 +128,9 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
     {
         var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
             ToSequence: 0, PageSize: 1);
-        StreamReadPage page = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
+        StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
+        long bytes = 0;
+        StreamReadPage page = CapturePage(supplied, request.PageSize, deadline, ref bytes);
         _ = StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
         if (page.Events.Count != 0 || page.Metadata.IsTruncated)
         {
@@ -148,4 +139,83 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
 
         return page.Metadata.LatestSequence;
     }
+
+    private static StreamReadPage CapturePage(StreamReadPage supplied, int limit, AuthoritativeStreamReadDeadline deadline, ref long bytes)
+    {
+        deadline.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(supplied);
+        var metadata = supplied.Metadata ?? throw new InvalidOperationException("Missing page metadata.");
+        var providerEvents = supplied.Events ?? throw new InvalidOperationException("Missing page events.");
+        if (providerEvents.Count < 0 || providerEvents.Count > limit || metadata.EventCount < 0 || metadata.EventCount > limit)
+        {
+            throw new InvalidOperationException("Page event bound exceeded.");
+        }
+
+        var owned = new List<StreamReadEvent>();
+        foreach (StreamReadEvent item in providerEvents)
+        {
+            deadline.ThrowIfCancellationRequested();
+            if (owned.Count >= limit || item is null || item.Payload is null || item.Payload.Length > MaxPayloadBytes - bytes)
+            {
+                throw new InvalidOperationException("Page payload or event bound exceeded.");
+            }
+
+            byte[] payload = item.Payload.ToArray();
+            bytes += payload.Length;
+            var protection = CaptureProtection(item.ProtectionMetadata, deadline);
+            deadline.ThrowIfCancellationRequested();
+            owned.Add(item with { Payload = payload, ProtectionMetadata = protection });
+        }
+
+        deadline.ThrowIfCancellationRequested();
+        return supplied with { Metadata = metadata with { }, Events = owned.AsReadOnly() };
+    }
+
+    private static EventStorePayloadProtectionMetadata? CaptureProtection(EventStorePayloadProtectionMetadata? metadata,
+        AuthoritativeStreamReadDeadline deadline)
+    {
+        if (metadata is null) { return null; }
+        deadline.ThrowIfCancellationRequested();
+        if (metadata.Scheme?.Length > EventStorePayloadProtectionMetadata.MaxSchemeLength
+            || metadata.KeyAlias?.Length > EventStorePayloadProtectionMetadata.MaxKeyAliasLength
+            || metadata.ContentHint?.Length > EventStorePayloadProtectionMetadata.MaxContentHintLength)
+        {
+            throw new InvalidOperationException("Protection metadata field bound exceeded.");
+        }
+
+        IReadOnlyDictionary<string, string>? flags = null;
+        if (metadata.CompatibilityFlags is { } supplied)
+        {
+            if (supplied.Count < 0 || supplied.Count > EventStorePayloadProtectionMetadata.MaxCompatibilityFlagCount)
+            {
+                throw new InvalidOperationException("Protection metadata flag bound exceeded.");
+            }
+
+            var captured = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var pair in supplied)
+            {
+                deadline.ThrowIfCancellationRequested();
+                if (captured.Count >= EventStorePayloadProtectionMetadata.MaxCompatibilityFlagCount
+                    || pair.Key is null || pair.Key.Length > EventStorePayloadProtectionMetadata.MaxCompatibilityFlagKeyLength
+                    || pair.Value is null || pair.Value.Length > EventStorePayloadProtectionMetadata.MaxCompatibilityFlagValueLength
+                    || !captured.TryAdd(pair.Key, pair.Value))
+                {
+                    throw new InvalidOperationException("Protection metadata flag is invalid.");
+                }
+            }
+
+            flags = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(captured);
+        }
+
+        var owned = metadata with { CompatibilityFlags = flags };
+        if (owned.State is not (PayloadProtectionState.Unprotected or PayloadProtectionState.Protected)
+            || !EventStorePayloadProtectionMetadataCarrier.TryValidate(owned, out _))
+        {
+            throw new InvalidOperationException("Protection metadata is unreadable or malformed.");
+        }
+
+        deadline.ThrowIfCancellationRequested();
+        return owned;
+    }
+
 }

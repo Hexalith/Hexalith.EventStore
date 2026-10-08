@@ -1,0 +1,41 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: False, loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      6
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(445,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(446,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: False, loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      6
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(445,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(446,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 102, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 45.562s

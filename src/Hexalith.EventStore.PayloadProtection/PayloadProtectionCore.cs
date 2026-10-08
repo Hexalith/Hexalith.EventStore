@@ -48,7 +48,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(materialFactory);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
+        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         PayloadProtectionMaterial? material = null;
         ProtectedPathManifest? requestedManifest = null;
@@ -95,7 +95,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 return result;
             }
 
-            selectedValues = new List<(BoundedJsonNode Node, byte[] Plaintext)>(requestedManifest.Paths.Count);
+            var selectedNodes = new List<BoundedJsonNode>(requestedManifest.Paths.Count);
             var nonNullPaths = new List<string>(requestedManifest.Paths.Count);
             long totalPlaintext = 0;
             long prospectiveOutputBytes = payloadBytes.Length;
@@ -129,15 +129,20 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 prospectiveNodeCount = checked(
                     prospectiveNodeCount - BoundedJsonDocument.GetSubtreeNodeCount(node) + 2);
                 if (prospectiveOutputBytes > PayloadProtectionLimits.PayloadBytes
-                    || prospectiveNodeCount > PayloadProtectionLimits.JsonNodes
                     || BoundedJsonDocument.GetDepth(node) + 1 > PayloadProtectionLimits.JsonDepth)
                 {
                     throw new PayloadProtectionFormatException();
                 }
 
-                byte[] plaintext = document.CopyRawValue(node);
-                selectedValues.Add((node, plaintext));
+                selectedNodes.Add(node);
                 nonNullPaths.Add(path);
+            }
+
+            // A later selected container can remove nodes added by an earlier selected scalar.
+            // Validate the complete plan before copying plaintext or obtaining material.
+            if (prospectiveNodeCount > PayloadProtectionLimits.JsonNodes)
+            {
+                throw new PayloadProtectionFormatException();
             }
 
             if (nonNullPaths.Count == 0)
@@ -151,6 +156,14 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 protectedDiagnosticFormat = false;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
                 return result;
+            }
+
+            selectedValues = new List<(BoundedJsonNode Node, byte[] Plaintext)>(selectedNodes.Count);
+            for (int index = 0; index < selectedNodes.Count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                BoundedJsonNode node = selectedNodes[index];
+                selectedValues.Add((node, document.CopyRawValue(node)));
             }
 
             manifest = ProtectedPathManifestCodec.Create(
@@ -303,7 +316,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             ClearManifest(manifest);
             ClearManifest(requestedManifest);
 
-            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
                 diagnosticResult,
@@ -337,7 +350,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(materialFactory);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
+        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         PayloadProtectionMaterial? material = null;
         ProtectedPathManifest? manifest = null;
@@ -449,7 +462,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
                 diagnosticResult,
@@ -486,7 +499,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(keyResolver);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect);
+        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         byte[]? dek = null;
         byte[]? reconstructed = null;
@@ -702,16 +715,19 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
         catch (PayloadProtectionAuthenticationException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = PayloadProtectionDiagnosticResult.AuthenticationFailed;
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
         }
         catch (PayloadProtectionCryptographicException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = PayloadProtectionDiagnosticResult.CryptographicFailure;
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
         }
         catch (Exception exception) when (exception is PayloadProtectionFormatException or OverflowException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
         }
         finally
@@ -738,7 +754,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
                 diagnosticResult,
@@ -767,7 +783,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(keyResolver);
         Stopwatch stopwatch = Stopwatch.StartNew();
-        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect);
+        Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         byte[]? dek = null;
         byte[]? plaintext = null;
@@ -890,16 +906,19 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
         catch (PayloadProtectionAuthenticationException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = PayloadProtectionDiagnosticResult.AuthenticationFailed;
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
         }
         catch (PayloadProtectionCryptographicException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             diagnosticResult = PayloadProtectionDiagnosticResult.CryptographicFailure;
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
         }
         catch (Exception exception) when (exception is PayloadProtectionFormatException or OverflowException)
         {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
             return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
         }
         finally
@@ -921,7 +940,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
                 diagnosticResult,
@@ -1008,6 +1027,17 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             int examined = checked(zeroBasedIndex + 1);
             checkpoint?.Invoke(examined);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    private static void CheckFailureCancellation(
+        CancellationToken cancellationToken,
+        ref PayloadProtectionDiagnosticResult diagnosticResult)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            diagnosticResult = PayloadProtectionDiagnosticResult.Cancelled;
             cancellationToken.ThrowIfCancellationRequested();
         }
     }

@@ -1087,6 +1087,42 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>Selected scalar expansion and later container contraction share one final node budget.</summary>
+    [Fact]
+    public async Task MixedSelectedScalarAndContainer_AtMaximumNodesRoundTripsAsync()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("{\"a\":0,\"z\":[0,0],\"padding\":["
+            + string.Join(',', Enumerable.Repeat("0", PayloadProtectionLimits.JsonNodes - 6))
+            + "]}");
+        using (BoundedJsonDocument input = BoundedJsonDocument.Inspect(payload, default))
+        {
+            input.NodeCount.ShouldBe(PayloadProtectionLimits.JsonNodes);
+        }
+
+        int materialCalls = 0;
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            payload,
+            ["/a", "/z"],
+            TestFixture.Context(),
+            () =>
+            {
+                materialCalls++;
+                return TestFixture.Material();
+            });
+        protectedResult.ProtectedPathCount.ShouldBe(2);
+        materialCalls.ShouldBe(1);
+        using (BoundedJsonDocument protectedDocument = BoundedJsonDocument.Inspect(protectedResult.PayloadBytes, default))
+        {
+            protectedDocument.NodeCount.ShouldBe(PayloadProtectionLimits.JsonNodes);
+        }
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(payload);
+        using BoundedJsonDocument reconstructed = BoundedJsonDocument.Inspect(result.PayloadBytes!, default);
+        reconstructed.NodeCount.ShouldBe(PayloadProtectionLimits.JsonNodes);
+    }
+
     /// <summary>Verifies predictable wrapper byte, node, and depth expansion fails before material creation.</summary>
     [Theory]
     [InlineData("bytes")]
@@ -1337,6 +1373,31 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
                     source.Cancel();
                 }
             }));
+    }
+
+    /// <summary>Successful iterator disposal can cancel while a malformed-path exception is unwinding.</summary>
+    [Fact]
+    public void Manifest_InvalidPathDisposalCancellationWinsWithoutDisposalFailure()
+    {
+        using var source = new CancellationTokenSource();
+        bool disposed = false;
+        IEnumerable<string> Paths()
+        {
+            try
+            {
+                yield return "malformed-path";
+            }
+            finally
+            {
+                disposed = true;
+                source.Cancel();
+            }
+        }
+
+        OperationCanceledException exception = Should.Throw<OperationCanceledException>(
+            () => ProtectedPathManifestCodec.Create(Paths(), cancellationToken: source.Token));
+        exception.CancellationToken.ShouldBe(source.Token);
+        disposed.ShouldBeTrue();
     }
 
     /// <summary>Cancellation raised by an external enumeration outcome wins immediately.</summary>

@@ -275,7 +275,7 @@
 }
 
 @* Anomaly detail modal *@
-@if (_selectedAnomaly is not null)
+@if (_canUseOpaqueChecks && _selectedAnomaly is not null)
 {
     <FluentDialog @ref="_anomalyDialog" Modal="true"
                   aria-label="Anomaly Detail"
@@ -425,7 +425,11 @@
     private bool _apiUnavailable;
     private bool _disposed;
     private bool _canOperate;
+    private bool _canRead;
     private bool _canUseOpaqueChecks;
+    private int _authorizationGeneration;
+    private int _listGeneration;
+    private int _detailGeneration;
     private string _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
     private string? _tenantFilter;
     private string? _tenantFilterInput;
@@ -434,6 +438,7 @@
     private Timer? _debounceTimer;
     private Timer? _autoRefreshTimer;
     private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _detailCts;
     private ConsistencyCheckSummary? _expandedCheck;
     private ConsistencyCheckResult? _expandedCheckResult;
     private ConsistencyAnomaly? _selectedAnomaly;
@@ -479,7 +484,9 @@
     protected override async Task OnInitializedAsync()
     {
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
-        await RefreshCapabilitiesAsync().ConfigureAwait(false);
+        int generation = _authorizationGeneration;
+        await RefreshCapabilitiesAsync(generation).ConfigureAwait(false);
+        if (!IsCurrentAuthorization(generation)) { return; }
         ReadUrlParameters();
         _tenantFilterInput = _tenantFilter;
         _domainFilterInput = _domainFilter;
@@ -488,33 +495,75 @@
 
     private void OnAuthenticationStateChanged(Task<AuthenticationState> authenticationStateTask)
     {
-        _ = authenticationStateTask;
         _ = InvokeAsync(async () =>
         {
-            await RefreshCapabilitiesAsync().ConfigureAwait(false);
+            int generation = InvalidateProtectedState();
             StateHasChanged();
+            await authenticationStateTask.ConfigureAwait(false);
+            if (!IsCurrentAuthorization(generation)) { return; }
+            await RefreshCapabilitiesAsync(generation).ConfigureAwait(false);
+            if (!IsCurrentAuthorization(generation)) { return; }
+            await InvokeAsync(LoadDataAsync).ConfigureAwait(false);
         });
     }
 
-    private async Task RefreshCapabilitiesAsync()
-    {
-        _canOperate = await UserContext.HasMinimumRoleAsync(AdminRole.Operator).ConfigureAwait(false);
-        _canUseOpaqueChecks = await UserContext.HasMinimumRoleAsync(AdminRole.Admin).ConfigureAwait(false);
-        if (!_canUseOpaqueChecks)
-        {
-            _expandedCheck = null;
-            _expandedCheckResult = null;
-            _showCancelDialog = false;
-            _pendingShowCancel = false;
-            _cancelCheckId = null;
-            _cancelInitiatorId = null;
-        }
+    private bool IsCurrentAuthorization(int generation) => !_disposed && generation == _authorizationGeneration;
 
-        if (!_canOperate)
+    private int InvalidateProtectedState()
+    {
+        _authorizationGeneration++;
+        _listGeneration++;
+        _detailGeneration++;
+        _loadCts?.Cancel();
+        _detailCts?.Cancel();
+        _autoRefreshTimer?.Dispose();
+        _autoRefreshTimer = null;
+        _debounceTimer?.Dispose();
+        _debounceTimer = null;
+        _allChecks = [];
+        _filteredChecks = [];
+        _expandedCheck = null;
+        _expandedCheckResult = null;
+        _selectedAnomaly = null;
+        _pendingShowAnomaly = false;
+        _showCancelDialog = false;
+        _pendingShowCancel = false;
+        _cancelCheckId = null;
+        _cancelInitiatorId = null;
+        _showTriggerDialog = false;
+        _pendingShowTrigger = false;
+        _triggerInitiatorId = null;
+        _triggerTenantId = null;
+        _triggerDomain = null;
+        _isTriggering = false;
+        _isCancelling = false;
+        _tenantFilter = null;
+        _tenantFilterInput = null;
+        _domainFilter = null;
+        _domainFilterInput = null;
+        _canRead = false;
+        _canOperate = false;
+        _canUseOpaqueChecks = false;
+        _isLoading = false;
+        _apiUnavailable = false;
+        return _authorizationGeneration;
+    }
+
+    private async Task RefreshCapabilitiesAsync(int generation)
+    {
+        bool canRead = await UserContext.HasMinimumRoleAsync(AdminRole.ReadOnly).ConfigureAwait(false);
+        if (!IsCurrentAuthorization(generation)) { return; }
+        bool canOperate = await UserContext.HasMinimumRoleAsync(AdminRole.Operator).ConfigureAwait(false);
+        if (!IsCurrentAuthorization(generation)) { return; }
+        bool canUseOpaqueChecks = await UserContext.HasMinimumRoleAsync(AdminRole.Admin).ConfigureAwait(false);
+        if (!IsCurrentAuthorization(generation)) { return; }
+        await InvokeAsync(() =>
         {
-            _showTriggerDialog = false;
-            _pendingShowTrigger = false;
-        }
+            if (!IsCurrentAuthorization(generation)) { return; }
+            _canRead = canRead;
+            _canOperate = canOperate;
+            _canUseOpaqueChecks = canUseOpaqueChecks;
+        }).ConfigureAwait(false);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -540,7 +589,16 @@
 
     private async Task LoadDataAsync()
     {
+        if (!_canRead || _disposed)
+        {
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+            return;
+        }
+
+        int authorizationGeneration = _authorizationGeneration;
+        int listGeneration = ++_listGeneration;
         _loadCts?.Cancel();
+        _loadCts?.Dispose();
         _loadCts = new CancellationTokenSource();
         CancellationToken ct = _loadCts.Token;
 
@@ -550,11 +608,15 @@
             IReadOnlyList<ConsistencyCheckSummary> result = await ConsistencyApi
                 .GetChecksAsync(_tenantFilter, ct)
                 .ConfigureAwait(false);
-            _allChecks = result;
-            UpdateFilteredChecks();
-            _apiUnavailable = false;
-            _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
-            ManageAutoRefresh();
+            await InvokeAsync(() =>
+            {
+                if (!IsCurrentAuthorization(authorizationGeneration) || listGeneration != _listGeneration) { return; }
+                _allChecks = result;
+                UpdateFilteredChecks();
+                _apiUnavailable = false;
+                _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
+                ManageAutoRefresh();
+            }).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -562,30 +624,45 @@
         }
         catch (UnauthorizedAccessException)
         {
-            _apiUnavailable = true;
-            _apiErrorMessage = "Authentication required. Please sign in again.";
+            await SetLoadFailureAsync(authorizationGeneration, listGeneration,
+                "Authentication required. Please sign in again.").ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
-            _apiUnavailable = true;
-            _apiErrorMessage = "Access denied. Insufficient permissions to view consistency checks.";
+            await SetLoadFailureAsync(authorizationGeneration, listGeneration,
+                "Access denied. Insufficient permissions to view consistency checks.").ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
-            _apiUnavailable = true;
-            _apiErrorMessage = $"Unable to load consistency checks ({(int?)ex.StatusCode ?? 0}).";
+            await SetLoadFailureAsync(authorizationGeneration, listGeneration,
+                $"Unable to load consistency checks ({(int?)ex.StatusCode ?? 0}).").ConfigureAwait(false);
         }
         catch (ServiceUnavailableException)
         {
-            _apiUnavailable = true;
-            _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
+            await SetLoadFailureAsync(authorizationGeneration, listGeneration,
+                "Unable to load consistency checks. The admin backend may be unavailable.").ConfigureAwait(false);
         }
         finally
         {
-            _isLoading = false;
-            await InvokeAsync(StateHasChanged);
+            if (IsCurrentAuthorization(authorizationGeneration) && listGeneration == _listGeneration)
+            {
+                await InvokeAsync(() =>
+                {
+                    if (!IsCurrentAuthorization(authorizationGeneration) || listGeneration != _listGeneration) { return; }
+                    _isLoading = false;
+                    StateHasChanged();
+                }).ConfigureAwait(false);
+            }
         }
     }
+
+    private Task SetLoadFailureAsync(int authorizationGeneration, int listGeneration, string message)
+        => InvokeAsync(() =>
+        {
+            if (!IsCurrentAuthorization(authorizationGeneration) || listGeneration != _listGeneration) { return; }
+            _apiUnavailable = true;
+            _apiErrorMessage = message;
+        });
 
     private void UpdateFilteredChecks()
     {
@@ -600,7 +677,7 @@
     {
         if (_allChecks.Any(c => c.Status == ConsistencyCheckStatus.Running))
         {
-            _autoRefreshTimer ??= new Timer(OnAutoRefreshElapsed, null, 10000, 10000);
+            _autoRefreshTimer ??= new Timer(OnAutoRefreshElapsed, _authorizationGeneration, 10000, 10000);
         }
         else
         {
@@ -611,14 +688,14 @@
 
     private void OnAutoRefreshElapsed(object? state)
     {
-        if (_disposed)
+        if (state is not int generation || !IsCurrentAuthorization(generation))
         {
             return;
         }
 
         _ = InvokeAsync(async () =>
         {
-            if (_disposed)
+            if (!IsCurrentAuthorization(generation))
             {
                 return;
             }
@@ -638,19 +715,19 @@
     private void OnTenantFilterChanged()
     {
         _debounceTimer?.Dispose();
-        _debounceTimer = new Timer(OnTenantDebounceElapsed, null, 300, Timeout.Infinite);
+        _debounceTimer = new Timer(OnTenantDebounceElapsed, _authorizationGeneration, 300, Timeout.Infinite);
     }
 
     private void OnTenantDebounceElapsed(object? state)
     {
-        if (_disposed)
+        if (state is not int generation || !IsCurrentAuthorization(generation))
         {
             return;
         }
 
         _ = InvokeAsync(async () =>
         {
-            if (_disposed)
+            if (!IsCurrentAuthorization(generation))
             {
                 return;
             }
@@ -666,19 +743,19 @@
     private void OnDomainFilterChanged()
     {
         _debounceTimer?.Dispose();
-        _debounceTimer = new Timer(OnDomainDebounceElapsed, null, 300, Timeout.Infinite);
+        _debounceTimer = new Timer(OnDomainDebounceElapsed, _authorizationGeneration, 300, Timeout.Infinite);
     }
 
     private void OnDomainDebounceElapsed(object? state)
     {
-        if (_disposed)
+        if (state is not int generation || !IsCurrentAuthorization(generation))
         {
             return;
         }
 
         _ = InvokeAsync(() =>
         {
-            if (_disposed)
+            if (!IsCurrentAuthorization(generation))
             {
                 return;
             }
@@ -720,6 +797,12 @@
     // Row expansion
     private async Task OnRowClick(ConsistencyCheckSummary? check)
     {
+        int authorizationGeneration = _authorizationGeneration;
+        int detailGeneration = ++_detailGeneration;
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
+        _detailCts = new CancellationTokenSource();
+        CancellationToken ct = _detailCts.Token;
         if (check is null)
         {
             _expandedCheck = null;
@@ -747,15 +830,29 @@
         _expandedCheck = check;
         try
         {
-            _expandedCheckResult = await ConsistencyApi.GetCheckResultAsync(check.CheckId).ConfigureAwait(false);
+            ConsistencyCheckResult? result = await ConsistencyApi.GetCheckResultAsync(check.CheckId, ct).ConfigureAwait(false);
+            await InvokeAsync(() =>
+            {
+                if (!IsCurrentAuthorization(authorizationGeneration) || detailGeneration != _detailGeneration) { return; }
+                _expandedCheckResult = result;
+            }).ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
-            _expandedCheck = null;
-            _expandedCheckResult = null;
-            _apiUnavailable = true;
-            _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
+            if (!IsCurrentAuthorization(authorizationGeneration) || detailGeneration != _detailGeneration) { return; }
+            await InvokeAsync(() =>
+            {
+                if (!IsCurrentAuthorization(authorizationGeneration) || detailGeneration != _detailGeneration) { return; }
+                _expandedCheck = null;
+                _expandedCheckResult = null;
+                _apiUnavailable = true;
+                _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
+            }).ConfigureAwait(false);
             await FocusService.RestoreAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Authorization transitions and a newer selection invalidate this lookup.
         }
     }
 
@@ -763,6 +860,7 @@
     private void OpenAnomalyDetail(ConsistencyAnomaly? anomaly)
     {
         if (anomaly is null) { return; }
+        if (!_canUseOpaqueChecks) { return; }
         if (_isAnyDialogOpen) { return; }
         _selectedAnomaly = anomaly;
         _pendingShowAnomaly = true;
@@ -1117,6 +1215,8 @@
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         _loadCts?.Cancel();
         _loadCts?.Dispose();
+        _detailCts?.Cancel();
+        _detailCts?.Dispose();
         if (_debounceTimer is not null)
         {
             await _debounceTimer.DisposeAsync();

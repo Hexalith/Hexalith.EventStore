@@ -1,0 +1,26 @@
+The dotnet runtime version is '10.0.12'.
+Formatting code files in workspace '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj'.
+Loading workspace.
+Project Hexalith.EventStore.Client is using configuration from '/home/administrator/projects/hexalith/eventstore/.editorconfig'.
+Project Hexalith.EventStore.Client is using configuration from '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Aggregates/.editorconfig'.
+Project Hexalith.EventStore.Client is using configuration from '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Events/.editorconfig'.
+Project Hexalith.EventStore.Client is using configuration from '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/obj/Debug/net10.0/Hexalith.EventStore.Client.GeneratedMSBuildEditorConfig.editorconfig'.
+Project Hexalith.EventStore.Client is using configuration from '/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig'.
+Project Hexalith.EventStore.Contracts is using configuration from '/home/administrator/projects/hexalith/eventstore/.editorconfig'.
+Project Hexalith.EventStore.Contracts is using configuration from '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/obj/Debug/net10.0/Hexalith.EventStore.Contracts.GeneratedMSBuildEditorConfig.editorconfig'.
+Project Hexalith.EventStore.Contracts is using configuration from '/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig'.
+Project Hexalith.Commons.UniqueIds is using configuration from '/home/administrator/projects/hexalith/eventstore/.editorconfig'.
+Project Hexalith.Commons.UniqueIds is using configuration from '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/.editorconfig'.
+Project Hexalith.Commons.UniqueIds is using configuration from '/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/obj/Debug/net10.0/Hexalith.Commons.UniqueIds.GeneratedMSBuildEditorConfig.editorconfig'.
+Project Hexalith.Commons.UniqueIds is using configuration from '/home/administrator/.dotnet/sdk/10.0.401/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig'.
+Complete in 1605ms.
+Determining formattable files.
+Skipping referenced project 'Hexalith.EventStore.Contracts'.
+Skipping referenced project 'Hexalith.Commons.UniqueIds'.
+Complete in 188ms.
+Running formatters.
+Complete in 313ms.
+Formatted code file '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Events/EventEvolutionService.cs'.
+Formatted code file '/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Events/ImmutablePayload.cs'.
+Formatted 2 of 237 files.
+Format complete in 2137ms.

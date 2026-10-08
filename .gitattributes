@@ -40,3 +40,7 @@ _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4/** text 
 global.json text eol=crlf
 # This dated packet binds exact existing bytes, including historical captures.
 _bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/** -text
+
+# Story 8.3 binds exact dated receipt bytes, including raw TRX and mixed-newline diagnostics.
+_bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08/** -text
+_bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08-postreview/** -text

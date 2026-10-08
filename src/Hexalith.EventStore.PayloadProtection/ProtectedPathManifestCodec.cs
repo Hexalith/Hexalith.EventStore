@@ -237,6 +237,7 @@ internal static class ProtectedPathManifestCodec
         try
         {
             enumerator.Dispose();
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch
         {

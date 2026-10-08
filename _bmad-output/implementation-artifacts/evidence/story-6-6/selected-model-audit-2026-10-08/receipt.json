@@ -1,0 +1,25 @@
+{
+  "scope": "Selected logical model input binding and local open-gate accounting only",
+  "head": "9542d3c9f48bf9ce1c57f2ef68904703eaba56cc",
+  "baselineCommit": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "startSha256": {
+    "scripts/verify-event-evolution.py": "5848563c961ce842dd4f6437aea5848f85f955f0d18b7dcb6fa91d63ac7ef2f5",
+    "_bmad-output/implementation-artifacts/6-6-obligation-audit.json": "609484b97804f2b4f221eb63493fa75f64a56dfe3567d8b8944da1edc4c8de2f",
+    "tests/Hexalith.EventStore.Contracts.Tests/Events/EventEvolutionObligationAuditTests.cs": "7f5e7d7c715be009affe38c40a89b1670dbe2e1e25cb10262457f5c9c4221485",
+    "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md": "9ce0913f5b442db9a1070d6155c9a34fef4aff69a9df85953d9c2a14184a66f7",
+    "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md": "969cfe58dcbd040587cbe22864007610634e812f8b57687bdaa3f4172d34d188",
+    "scripts/verify-dapr-logical-model-vectors.py": "b6aed6517c6b4be1566e81c446b72b44ea1623a7443ed6b6c82e734eaa9b0457",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json": "4209d24a1a175a951b43d60abd87725d1428a1f62069230abc819b638258a750"
+  },
+  "endSha256": {
+    "scripts/verify-event-evolution.py": "5848563c961ce842dd4f6437aea5848f85f955f0d18b7dcb6fa91d63ac7ef2f5",
+    "_bmad-output/implementation-artifacts/6-6-obligation-audit.json": "609484b97804f2b4f221eb63493fa75f64a56dfe3567d8b8944da1edc4c8de2f",
+    "tests/Hexalith.EventStore.Contracts.Tests/Events/EventEvolutionObligationAuditTests.cs": "7f5e7d7c715be009affe38c40a89b1670dbe2e1e25cb10262457f5c9c4221485",
+    "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md": "9ce0913f5b442db9a1070d6155c9a34fef4aff69a9df85953d9c2a14184a66f7",
+    "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md": "969cfe58dcbd040587cbe22864007610634e812f8b57687bdaa3f4172d34d188",
+    "scripts/verify-dapr-logical-model-vectors.py": "b6aed6517c6b4be1566e81c446b72b44ea1623a7443ed6b6c82e734eaa9b0457",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json": "4209d24a1a175a951b43d60abd87725d1428a1f62069230abc819b638258a750"
+  },
+  "inputsUnchangedDuringVerification": true,
+  "activationAuthority": false
+}

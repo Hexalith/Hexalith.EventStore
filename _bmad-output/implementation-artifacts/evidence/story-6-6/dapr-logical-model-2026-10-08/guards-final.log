@@ -1,0 +1,17 @@
+control-client: passed
+control-server: passed
+registry-instance-disposal: killed
+initial-atomic-participant-admission: killed
+legacy-evidence-opt-in: killed
+source-metadata-presence: killed
+source-trust-before-callback: killed
+v2-exact-canonical-tuple: killed
+trust-disposal-after-time: killed
+verified-decoding-retained-charge: killed
+response-private-clearing: killed
+pending-capacity-retention: killed
+post-save-response-authorization: killed
+committed-pointer-admission: killed
+orphan-blob-admission: killed
+begin-pointer-only-completion: killed
+deterministic-smaller-page: killed

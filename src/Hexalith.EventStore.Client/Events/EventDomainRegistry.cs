@@ -11,6 +11,7 @@ internal sealed class EventDomainRegistry : IDisposable
     private readonly FrozenDictionary<(string Type, int Version), EventRegistryRow> _versions;
     private readonly FrozenDictionary<(string Type, int Version), EventRegistryRow> _edges;
     private readonly FrozenDictionary<string, EventRegistryRow> _aliases;
+    private int _disposed;
 
     /// <summary>Admits one bounded domain inventory and verifies its chain and alias topology.</summary>
     internal EventDomainRegistry(string domain, IReadOnlyList<ReadOnlyMemory<byte>> encodedRows, long referencedManifestBytes = 0)
@@ -58,6 +59,13 @@ internal sealed class EventDomainRegistry : IDisposable
 
     /// <summary>Gets the shared observed-loss control; this value supplies no admission or readiness authority.</summary>
     internal EventEvolutionCapabilityLoss CapabilityLoss { get; }
+
+    /// <summary>Refuses this instance's disposed authority without marking a shared process or host scope as lost.</summary>
+    internal void RequireActive(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+    }
 
     /// <summary>Enumerates exclusively owned immutable rows for the local semantic codec.</summary>
     internal IEnumerable<EventRegistryRow> Rows => _rows;
@@ -110,6 +118,7 @@ internal sealed class EventDomainRegistry : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) { return; }
         foreach (EventRegistryRow row in _rows)
         {
             row.Dispose();

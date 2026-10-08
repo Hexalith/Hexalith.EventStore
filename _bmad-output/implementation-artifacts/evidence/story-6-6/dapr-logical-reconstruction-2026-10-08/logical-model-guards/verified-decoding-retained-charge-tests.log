@@ -1,0 +1,17 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.DaprLogicalClaimCodecTests.CurrentScopedKeySignsAndVerifiesBothClaimsThenClearsItsRetainedImage [FAIL]
+      Shouldly.ShouldAssertException : prefix.Dispose(); budget.LiveBytes
+          should be greater than
+      328
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Events/DaprLogicalClaimCodecTests.cs(143,0): at Hexalith.EventStore.Client.Tests.Events.DaprLogicalClaimCodecTests.CurrentScopedKeySignsAndVerifiesBothClaimsThenClearsItsRetainedImage()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '2f86e5a09d5cf15a08831a2dbb777d31f9b919f6b1973a456eae0e9aa75702c4')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.221s

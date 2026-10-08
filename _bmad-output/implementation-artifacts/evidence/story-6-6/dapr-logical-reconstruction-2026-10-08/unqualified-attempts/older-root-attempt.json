@@ -1,0 +1,16 @@
+[
+  {
+    "originalPath": "/tmp/story66-reconstruction-root-receipt.json",
+    "retainedPath": "older-root-102-failing-receipt.json.gz",
+    "originalSha256": "de7e9e6f5d1c1d94f88a00178d4b65398ae6e3d6a14e86f72a85ac05d6de0bcf",
+    "retainedSha256": "770905bd621d71813eb8f65d5c9e0ce860e91dbc1c35270a2566b9aef764008d",
+    "qualification": "older failed 102-test attempt; superseded by latest 103/103 and Client 60/60; never current success"
+  },
+  {
+    "originalPath": "/tmp/story66-reconstruction-focused.log",
+    "retainedPath": "older-root-102-failing-tests.log",
+    "originalSha256": "f581acca1b1e262322eeb014ea00ce770735e9177af9318e0f3ac046d2c21f78",
+    "retainedSha256": "f581acca1b1e262322eeb014ea00ce770735e9177af9318e0f3ac046d2c21f78",
+    "qualification": "older failed 102-test attempt; superseded by latest 103/103 and Client 60/60; never current success"
+  }
+]

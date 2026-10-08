@@ -229,6 +229,61 @@ public sealed class EventEvolutionServiceTests
         calls.ShouldBe(["schema", "identity", "deserialize"]); budget.LiveBytes.ShouldBe(0);
     }
 
+    /// <summary>Checks cancellation and observed loss take effect before parsing a getter's invalid options output.</summary>
+    [Theory]
+    [InlineData("schema-options", false)]
+    [InlineData("identity-options", false)]
+    [InlineData("deserialize-options", false)]
+    [InlineData("schema-options", true)]
+    [InlineData("identity-options", true)]
+    [InlineData("deserialize-options", true)]
+    public async Task OptionsCallbackCancellationOrLossRefusesBeforeReturnedOptionsParsing(string stage, bool loss)
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        using var cancellation = new CancellationTokenSource();
+        var calls = new List<string>();
+        ReadOnlyMemory<byte> Options(string name)
+        {
+            calls.Add(name);
+            if (stage == name)
+            {
+                if (loss) { registry.CapabilityLoss.ObserveViolation(); }
+                else { cancellation.Cancel(); }
+                return new byte[] { 0xff }; // Parsing this would hide the required cancellation/loss outcome.
+            }
+            return "{}\n"u8.ToArray();
+        }
+        var validation = new RegisteredEventVersionValidation(registry,
+            "test-schema", (_, _, _, _, _, _) => calls.Add("schema"), "{}\n"u8.ToArray(), [],
+            "test-identity", (_, _, _, _, _, _) => calls.Add("identity"), "{}\n"u8.ToArray(), [],
+            () => Options("schema-options"), () => Options("identity-options"));
+        var deserializer = new RegisteredCurrentEventDeserializer(typeof(AllowlistedCurrentEventTestValue), "test-serializer",
+            (_, _) => { calls.Add("deserialize"); return new AllowlistedCurrentEventTestValue(); }, "{}\n"u8.ToArray(), [],
+            () => Options("deserialize-options"));
+        var service = new EventEvolutionService(registry,
+            new Dictionary<(string, int), RegisteredEventVersionValidation> { [("evt", 1)] = validation },
+            new Dictionary<(string, int), RegisteredEventUpcaster>(),
+            new Dictionary<string, RegisteredCurrentEventDeserializer> { ["evt"] = deserializer });
+        var budget = new EventBufferBudget();
+        byte[] source = [1, 2];
+
+        Task<object> pending = service.ResolveAndDeserializeAsync("d", "Legacy.Event", 1, null, null,
+            "json", source, "r", cancellation.Token, budget).AsTask();
+
+        if (loss)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(async () => await pending)).Message.ShouldContain("CapabilityMismatch");
+        }
+        else
+        {
+            (await Should.ThrowAsync<OperationCanceledException>(async () => await pending)).CancellationToken.ShouldBe(cancellation.Token);
+        }
+        string[] expected = ["schema-options", "identity-options", "schema", "identity", "deserialize-options", "deserialize"];
+        calls.ShouldBe(expected.Take(Array.IndexOf(expected, stage) + 1));
+        budget.LiveBytes.ShouldBe(0);
+        source.ShouldBe([1, 2]);
+    }
+
     private static EventEvolutionService CreateService(EventDomainRegistry registry, EventVersionValidator schema,
         EventVersionValidator identity, Func<IReadOnlyPayload, CancellationToken, object> deserialize)
     {

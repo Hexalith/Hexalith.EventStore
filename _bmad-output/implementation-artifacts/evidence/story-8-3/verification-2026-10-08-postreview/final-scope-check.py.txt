@@ -1,0 +1,38 @@
+from pathlib import Path
+import json,subprocess,hashlib,tempfile
+root=Path('/home/administrator/projects/hexalith/eventstore');base=root/'_bmad-output/implementation-artifacts/evidence/story-8-3';out=base/'verification-2026-10-08-postreview'
+b=json.loads((out/'binding.json').read_text());sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+spec='_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md'
+original=subprocess.check_output(['git','show','HEAD:'+spec],cwd=root,text=True);current=(root/spec).read_text()
+start='<frozen-after-approval';end='</frozen-after-approval>'
+frozen=lambda s:s[s.index(start):s.index(end)+len(end)]
+assert frozen(original)==frozen(current),'frozen spec changed'
+assert "status: 'in-review'" in current
+assert '8-3-pdenc-v2-core-cryptographic-engine: in-progress' in (root/'_bmad-output/implementation-artifacts/sprint-status.yaml').read_text()
+for entry in b['production']['files']+b['tests']['files']+b['approvedSecurityInventory']['files']:
+    assert sha(root/entry['path'])==entry['sha256'] or entry['path']==b['concurrentAdditionsOutsideStory83']['testProjectChange']['path'],entry['path']
+for p,h in b['fileHashes'].items():assert sha(root/p)==h or p==b['concurrentAdditionsOutsideStory83']['testProjectChange']['path'],p
+scopes=[f['path'] for f in b['production']['files']+b['tests']['files']]
+scopes+=['.gitattributes','.github/workflows/payload-protection.yml','scripts/ci-local.sh','tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs','_bmad-output/implementation-artifacts/8-3-pdenc-v2-core-cryptographic-engine.md',spec]
+scopes += [str(p.relative_to(root)) for p in base.rglob('*') if p.is_file() and p.suffix!='.trx' and p.name not in ['.receipts.lock','final-scope-check.json']]
+scopes=sorted(set(scopes)-{b['concurrentAdditionsOutsideStory83']['testProjectChange']['path']})
+assert sha(out/b['concurrentAdditionsOutsideStory83']['testProjectChange']['testedProjectArchive'])==b['concurrentAdditionsOutsideStory83']['testProjectChange']['testedSha256']
+# New authored Markdown and durable receipts must survive a reviewable checkout.
+ignored=subprocess.run(['git','check-ignore','--stdin'],cwd=root,input='\n'.join(scopes)+'\n',text=True,capture_output=True)
+assert ignored.returncode==1,ignored.stdout+ignored.stderr
+for p in scopes:
+    if p.endswith(('.md','.cs','.json','.yml','.sh','.txt')):
+        data=(root/p).read_bytes()
+        assert not any(l.rstrip(b' \t')!=l for l in data.splitlines()),p+': trailing whitespace'
+subprocess.run(['git','diff','--check','--',*scopes],cwd=root,check=True)
+tracked=subprocess.check_output(['git','ls-files','-z','--',*scopes],cwd=root).decode().split('\0');tracked=[p for p in tracked if p]
+untracked=[p for p in scopes if p not in tracked]
+fd,path=tempfile.mkstemp(prefix='eventstore-story-8-3-patched-scope-',suffix='.patch');import os;os.close(fd)
+with open(path,'wb') as f:
+    subprocess.run(['git','diff','--no-ext-diff','--binary',b['approvedBaseline'],'--',*tracked],cwd=root,stdout=f,check=True)
+    for p in untracked:
+        result=subprocess.run(['git','diff','--no-ext-diff','--no-index','--binary','--','/dev/null',p],cwd=root,stdout=f)
+        assert result.returncode in (0,1),p
+check=dict(result='PASS',head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),frozenSpecBytesUnchanged=True,ownedCSharpAndApprovedSecurityBytesStable=True,testProjectExternallyChangedAndExcluded=True,scopedWhitespacePass=True,durableEvidenceNotIgnored=True,specStatus='in-review',sprintStatus='in-progress',scopes=scopes,excludedConcurrentCore=[f['path'] for f in b['concurrentAdditionsOutsideStory83']['core']],patchedDiff=dict(path=path,sha256=sha(Path(path)),bytes=Path(path).stat().st_size))
+(out/'final-scope-check.json').write_text(json.dumps(check,indent=2)+'\n')
+print(json.dumps({k:v for k,v in check.items() if k!='scopes'},indent=2))

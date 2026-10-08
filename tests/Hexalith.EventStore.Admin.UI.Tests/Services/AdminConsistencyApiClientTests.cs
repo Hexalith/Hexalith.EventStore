@@ -11,6 +11,29 @@ using NSubstitute;
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
 public class AdminConsistencyApiClientTests {
+    [Fact]
+    public async Task GetCheckResultAsync_ThrowsForbidden_WhenHttpProblemDetailsReturns403() {
+        using HttpClient httpClient = CreateForbiddenHttpClient();
+        AdminConsistencyApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<ForbiddenAccessException>(() => client.GetCheckResultAsync("opaque-check"));
+    }
+
+    [Fact]
+    public async Task CancelCheckAsync_ThrowsForbidden_WhenHttpProblemDetailsReturns403() {
+        using HttpClient httpClient = CreateForbiddenHttpClient();
+        AdminConsistencyApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<ForbiddenAccessException>(() => client.CancelCheckAsync("opaque-check"));
+    }
+
+    private static HttpClient CreateForbiddenHttpClient()
+        => new(new MockHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Forbidden) {
+            Content = new StringContent(
+                """{"status":403,"title":"Forbidden","detail":"The request is not authorized for this resource."}""",
+                System.Text.Encoding.UTF8, "application/problem+json"),
+        })) { BaseAddress = new Uri("https://admin.example/") };
+
     private static AdminConsistencyApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient("AdminApi").Returns(httpClient);

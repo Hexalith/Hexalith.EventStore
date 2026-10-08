@@ -1,0 +1,331 @@
+[
+  {
+    "name": "node-vectors",
+    "arguments": [
+      "node",
+      "scripts/payload-protection/verify-golden-vectors.mjs"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:08:13.418685+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "node-vectors.log",
+    "sha256": "3990951990976fa037b1bb466f1395960451a464dbbe1c2878b487f2a2d619cf"
+  },
+  {
+    "name": "python-vectors",
+    "arguments": [
+      "python3",
+      "scripts/payload-protection/verify-golden-vectors.py"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:08:13.418348+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "python-vectors.log",
+    "sha256": "67af082ce5edfe46f4a53c22d71850f5eaba4f9aa85fb87fe1773ba725e590d4"
+  },
+  {
+    "name": "shell-syntax",
+    "arguments": [
+      "bash",
+      "-n",
+      "scripts/ci-local.sh"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:15:23.501042+00:00",
+    "finishedAtUtc": "2026-10-08T14:15:23.504523+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "shell-syntax.log",
+    "sha256": "ab8e31735f34416ff43114ba7d950fffb95f1455324a47f01732d372f78a66d2"
+  },
+  {
+    "name": "actionlint",
+    "arguments": [
+      "actionlint",
+      ".github/workflows/payload-protection.yml",
+      ".github/workflows/advisory-tests.yml"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:15:23.501187+00:00",
+    "finishedAtUtc": "2026-10-08T14:15:23.868094+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "actionlint.log",
+    "sha256": "865e01d7e4e824a1f1b6cdd502504ac2e0c80cce81be2f60c6c9b17f2e7f9250"
+  },
+  {
+    "name": "dotnet-environment",
+    "arguments": [
+      "dotnet",
+      "--info"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:15:56.467590+00:00",
+    "finishedAtUtc": "2026-10-08T14:15:56.683381+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "dotnet-environment.log",
+    "sha256": "13e740e74fce746353b4c7e86fb9c451d83616ec8615d32c7b1e5f2be3918d90"
+  },
+  {
+    "name": "release-restore",
+    "arguments": [
+      "dotnet",
+      "restore",
+      "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+      "-p:Configuration=Release",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:19:40.900456+00:00",
+    "finishedAtUtc": "2026-10-08T14:19:41.968657+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "release-restore.log",
+    "sha256": "2f57cd8bbb91ff4801caf6c94cd561ea3b9e77568328797296bcf8ff66d60e32"
+  },
+  {
+    "name": "release-build",
+    "arguments": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+      "--no-restore",
+      "--configuration",
+      "Release",
+      "-warnaserror",
+      "-m:1",
+      "-nodeReuse:false",
+      "-p:UseHexalithProjectReferences=false",
+      "-p:GenerateDocumentationFile=true"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:20:06.758376+00:00",
+    "finishedAtUtc": "2026-10-08T14:20:08.480558+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "release-build.log",
+    "sha256": "ef21f598b18f7bc40783e47be564eea1a08fd75981f78cf47684a1080c9e3222"
+  },
+  {
+    "name": "release-tests",
+    "arguments": [
+      "dotnet",
+      "test",
+      "--project",
+      "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+      "--no-build",
+      "--configuration",
+      "Release",
+      "--minimum-expected-tests",
+      "306",
+      "--fail-skips",
+      "on",
+      "--no-ansi",
+      "-p:UseHexalithProjectReferences=false",
+      "--results-directory",
+      "/tmp/eventstore-8-3-postreview-tests",
+      "--report-xunit-trx",
+      "--report-xunit-trx-filename",
+      "release-results.trx"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:22:11.421046+00:00",
+    "finishedAtUtc": "2026-10-08T14:22:14.494719+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "release-tests.log",
+    "sha256": "71d3879dd2f1f9750ac5b6ddf62a46ff7d8536f07586f9be02c78319e29bbeb9"
+  },
+  {
+    "name": "invariant-tests",
+    "arguments": [
+      "dotnet",
+      "test",
+      "--project",
+      "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+      "--no-build",
+      "--configuration",
+      "Release",
+      "--filter-method",
+      "Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams",
+      "--minimum-expected-tests",
+      "1",
+      "--fail-skips",
+      "on",
+      "--no-ansi",
+      "-p:UseHexalithProjectReferences=false",
+      "--results-directory",
+      "/tmp/eventstore-8-3-postreview-tests",
+      "--report-xunit-trx",
+      "--report-xunit-trx-filename",
+      "invariant-results.trx"
+    ],
+    "environmentOverrides": {
+      "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+    },
+    "startedAtUtc": "2026-10-08T14:22:28.998885+00:00",
+    "finishedAtUtc": "2026-10-08T14:22:30.267798+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "invariant-tests.log",
+    "sha256": "d2859a8449d857328dd00a362c6294a59e9fb1f9bba3808cd641ddf3a9485093"
+  },
+  {
+    "name": "contracts-build",
+    "arguments": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+      "--configuration",
+      "Release",
+      "--no-restore",
+      "-warnaserror",
+      "-m:1",
+      "-nodeReuse:false",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:22:52.806343+00:00",
+    "finishedAtUtc": "2026-10-08T14:22:58.673095+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "contracts-build.log",
+    "sha256": "eaf0e01ef4270a3e07e4f6ba5a1d09bc10dc8d649c002aefb30f8e55c11292b6"
+  },
+  {
+    "name": "structural-check",
+    "arguments": [
+      "python3",
+      "/tmp/eventstore-8-3-structural-check.py"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:23:57.390829+00:00",
+    "finishedAtUtc": "2026-10-08T14:23:57.457248+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "structural-check.log",
+    "sha256": "e99ddfb5d1afb08e76b8e0908f2473d901ff465b49d353f7267c1ce3d8c79d41"
+  },
+  {
+    "name": "contracts-compatibility-tests",
+    "arguments": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Contracts.Tests.Security.PayloadProtectionV2ContractTests",
+      "-failSkips",
+      "-noColor"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:26:39.578012+00:00",
+    "finishedAtUtc": "2026-10-08T14:26:40.044878+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "contracts-compatibility-tests.log",
+    "sha256": "9c7080320e3f574ed337e78af55173660118f984dfcae577be420b0916d89fd4"
+  },
+  {
+    "name": "contracts-packaging-tests",
+    "arguments": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests",
+      "-failSkips",
+      "-noColor"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:26:39.578027+00:00",
+    "finishedAtUtc": "2026-10-08T14:27:02.527651+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "contracts-packaging-tests.log",
+    "sha256": "fc10e2ee7d16d3261b1c6b33dd695bedec6c2ee1b84ca238e900dc369fa68ee3"
+  },
+  {
+    "name": "core-style",
+    "arguments": [
+      "dotnet",
+      "format",
+      "style",
+      "src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj",
+      "--verify-no-changes",
+      "--no-restore",
+      "--severity",
+      "info"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:28:30.333198+00:00",
+    "finishedAtUtc": "2026-10-08T14:28:35.918571+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "core-style.log",
+    "sha256": "2c80cbfdc1af5cc8c1cef7d488708ebdcf9e3f20b81577cf396e0db880b2c627"
+  },
+  {
+    "name": "tests-style",
+    "arguments": [
+      "dotnet",
+      "format",
+      "style",
+      "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+      "--verify-no-changes",
+      "--no-restore",
+      "--severity",
+      "info"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:28:30.365674+00:00",
+    "finishedAtUtc": "2026-10-08T14:28:36.500465+00:00",
+    "exitCode": 0,
+    "timeoutSeconds": 300,
+    "log": "tests-style.log",
+    "sha256": "d81de0cc5d50099ee9d0032037f38b7bb6901e699623ffd307617e90a2aa9d54"
+  },
+  {
+    "name": "guard-style",
+    "arguments": [
+      "dotnet",
+      "format",
+      "style",
+      "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+      "--verify-no-changes",
+      "--no-restore",
+      "--severity",
+      "info",
+      "--include",
+      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:28:30.365711+00:00",
+    "finishedAtUtc": "2026-10-08T14:28:42.195229+00:00",
+    "exitCode": 2,
+    "timeoutSeconds": 300,
+    "log": "guard-style.log",
+    "sha256": "09d43ffbc57dba80bce5f089753b0ea1154ccc3b2f56b20b52e6d4290cddfef1"
+  },
+  {
+    "name": "solution-release-build",
+    "arguments": [
+      "dotnet",
+      "build",
+      "Hexalith.EventStore.slnx",
+      "--configuration",
+      "Release",
+      "--no-restore",
+      "-m:1",
+      "-nodeReuse:false",
+      "-p:UseHexalithProjectReferences=false"
+    ],
+    "environmentOverrides": {},
+    "startedAtUtc": "2026-10-08T14:33:01.698669+00:00",
+    "finishedAtUtc": "2026-10-08T14:33:26.666717+00:00",
+    "exitCode": 1,
+    "timeoutSeconds": 300,
+    "log": "solution-release-build.log",
+    "sha256": "f598d6972784289bff4b49c8f62b3a460e9dfe6f54871ab5bc9533e32b03c4f3"
+  }
+]

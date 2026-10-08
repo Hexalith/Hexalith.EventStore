@@ -12,6 +12,7 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/6-6-implementation-map.md'
   - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — renegotiated by owner on 2026-10-05 for Dapr-only storage">
@@ -42,6 +43,36 @@ context:
 </frozen-after-approval>
 
 ## Code Map
+
+The owner selected the proposed Dapr logical evidence model on 2026-10-08 and
+authorized resolving its remaining schema/control choices. The
+[selected-model amendment](story-6-6-dapr-logical-model-amendment.md) governs the
+next M2–M4 integration. It supplies implementation direction, not catalog,
+production-key, profile or activation authority.
+
+Dormant fixed-head event-only reconstruction now composes private logical intake,
+supplied state/serializer/Apply bindings, shared capacity admission, canonical
+last-good bytes and operation-owned page/final readback. Its
+[scoped packet](evidence/story-6-6/dapr-logical-reconstruction-2026-10-08/verification-2026-10-08-logical-reconstruction.md)
+records completed checks and unfinished final verification. The owner requested
+save and stop on 2026-10-08; resume from the [session checkpoint](story-6-6-session-checkpoint-2026-10-08.md).
+
+The next local M2/M4 dependency is individual callback fencing under Client
+`Events/` and Server `Events/`. Thread an optional asynchronous addressed
+source/trust fence through `EventLogicalViewResolver`, `EventUpcastChainExecutor`,
+`RegisteredEventVersionValidation` and `RegisteredCurrentEventDeserializer`.
+The logical source must supply its actual fixed-head/current-trust check; operation
+composition also checks the supplied state binding. Runtime-options getters are
+application callables too. Recheck original cancellation, the specific registry,
+exact bindings and source/trust before and after each getter, schema validator,
+identity validator, upcaster and deserializer, expiring invocation leases before
+the following await. Preserve existing compatibility APIs and whole-page admission.
+Use composed controls that lose head/key/binding authority inside each callable
+and prove zero later callbacks, Apply, save or proof release, plus timed compiling
+mutations and actual private cleanup. Do not change the selected model inputs or
+historical evidence meanings. Purpose-07 command-state proof/intake, effective
+chain/transcript, snapshot/query integration and serving qualification remain later
+dependencies. Supplied local bindings and fixture keys grant no production authority.
 
 [Implementation map](6-6-implementation-map.md) M1–M8 records the previous plan and the current Dapr-only corrections. AD-13's approved digest `bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050` and its passing preflight describe the earlier design, not this amendment. A revised preflight and evidence set are required before claiming Story 6.6 completion.
 
@@ -91,6 +122,86 @@ would add ownership-tracking complexity without an established required acceptan
 boundary. The conservative live-array ceiling remains explicit.
 
 ## Implementation Notes
+
+### Owner-requested stopped checkpoint — 2026-10-08
+
+The owner requested “save and stop” for continuation in a fresh session. Changes
+and completed evidence are saved in the [session checkpoint](story-6-6-session-checkpoint-2026-10-08.md)
+and reconstruction packet. The latest isolated Release/package controls passed
+95 reconstruction tests and killed 18 compiling mutations; the logical-model
+lane killed 15 mutations. The implementation agent reports completed Debug/source
+checks of 103 focused Server and 60 affected Client cases; their exact saved
+receipts govern those claims. Final Release/package solution build, final
+vector/lint/whitespace checks, final seal and parent acceptance review remain
+unfinished. Earlier failed, overlapping, pre-format and pre-lifetime runs remain
+separate unqualified attempts. Work is stopped; parent status remains in progress,
+all M1–M8/O01–O20 dispositions remain open, and activation fences are unchanged.
+
+### Selected logical model input binding — 2026-10-08
+
+The [selected-model input audit](evidence/story-6-6/verification-2026-10-08-selected-model-audit.md)
+binds the owner's model choice and exact derived model/vector inputs separately
+from historical AD-13 approval. The current preflight checks all three amendments,
+missing/changed model inputs and false registration/activation claims. All 28
+timeout-bounded policy mutations were rejected; focused Contracts audit tests
+passed 26/26 with no failures/skips/not-run, and their Debug/source project build
+had zero warnings/errors. The eight independent Python vectors passed. Exact
+command logs and unchanged-input hashes are retained in the scoped packet.
+Historical evidence, frozen intent, original baseline, in-progress status,
+M1–M8/O01–O20 dispositions and activation fences remain unchanged. Model selection
+is resolved; runtime integration and separate qualification remain incomplete.
+
+### Dormant Dapr logical source and operation protocol — 2026-10-08
+
+The [scoped implementation evidence](evidence/story-6-6/dapr-logical-model-2026-10-08/verification-2026-10-08-logical-model.md)
+records strict logical codecs, independently checked source/application/metadata
+digests, scoped retained proof owners, addressed source admission and the local
+ledger/pinned-response/final-result operation protocol. Exact participant
+readback governs success and retry; cancellation or current source/trust loss
+after commit withholds the response while preserving proven durable truth.
+Registry disposal refuses the disposed instance, including empty-source pages,
+without poisoning the shared capability-loss scope.
+
+Final focused controls passed 39 Server and 45 Client cases with no failures or
+skips. Eight independent vectors passed; 15 timed compiling mutations were
+killed, and both guard controls passed. The required Release/package solution
+build with `-warnaserror` had zero warnings/errors. Exact commands, times, source
+hashes and owned-file inventory are retained in the packet. Prior broad Client
+and Server runs predate the final registry lifecycle patch; the packet preserves
+the earlier external Client failure, invalidated overlapping-dependency Server
+run and the exact 25 existing DW1 red-phase skip reasons. Hosted execution of
+the additive local guard lane remains unobserved.
+
+The actor remains internal, unregistered and without an actor interface; local
+composition does not establish actual cross-actor access. The protocol does not
+invoke Apply yet. The next dormant M4 work is bounded private response intake,
+exact supplied state/serializer/Apply bindings, canonical private last-good
+state, and fixed-head reconstruction through committed page/final readback.
+Further local M4–M8 integrations and separate real catalogs/keys/component/
+topology qualification remain open. Frozen intent, original baseline,
+in-progress status, all M1–M8/O01–O20 dispositions and activation fences remain
+unchanged.
+
+### Dormant runtime-options callable admission — 2026-10-08
+
+The [scoped verification](evidence/story-6-6/verification-2026-10-08-runtime-options-admission.md)
+records exact retained-image binding for runtime-options getters, single-callable
+admission, explicit separately retained getter bindings and shared capability-loss
+scope. Actual validator/deserializer wrappers preserve those bindings and original
+cancellation; cancellation or observed loss refuses immediately after a getter,
+before parsing its returned options. Same-identity Default substitution, source
+replacement/deletion, getter-binding disposal and scope mismatch have real image
+controls. File-only compatibility bindings remain local claims.
+
+Final focused tests passed 89/89 and the full Client assembly passed 1,428/1,428
+with no failures/skips, including preserved concurrent stream changes. The required
+Release/package solution build had zero warnings/errors. Eight isolated compiling
+mutations were killed in both Debug/source and Release/package lanes, and workflow
+lint passed. The new package-mode CI lane remains unobserved on the hosted runner.
+This internal prerequisite adds no registration or activation; complete catalogs,
+framework/native execution, Dapr claim/control choices, consumers and production
+qualification remain open. Frozen intent, original baseline, in-progress status,
+all M1–M8/O01–O20 dispositions and activation fences remain unchanged.
 
 ### Dormant retained managed dependency composition — 2026-10-08
 
@@ -313,6 +424,12 @@ Current follow-up implementation and exact verification evidence is recorded in 
 - Aspire was started for baseline inspection and stopped after dependent services remained waiting on Keycloak. No provider or live-sidecar qualification was obtained. The Builds package pin differs from its submodule `HEAD` and was left unchanged.
 
 ## Spec Change Log
+
+- 2026-10-08 — Owner selected the Dapr logical claim proposal as the implementation
+  basis and delegated its remaining schema/control choices within the existing
+  Dapr-only/trusted-code constraints. Added the selected-model amendment as a
+  context input. Historical approval, frozen intent, original baseline, parent
+  task/obligation dispositions and activation fences remain unchanged.
 
 - 2026-10-07 — Continued dormant local preparation with whole-managed-process observation and reference-identity context guards, exact Greeting V1 writing, optional owner-declared detached Counter/Greeting typed snapshots, private opaque outer proof framing and an additive isolated-guard workflow. [Final verification](evidence/story-6-6/verification-2026-10-07-local-preparations.md) retains actual source/Release/package/control results. [Source-derived candidates](evidence/story-6-6/source-candidates-2026-10-07/index.md) and a field-level Dapr logical claim design expose the missing semantic, execution-image and control-owner inputs without granting authority. Canonical production profile remains absent; all M1–M8/O01–O20 and activation fences remain open. Frozen intent, original baseline and historical approval are unchanged.
 

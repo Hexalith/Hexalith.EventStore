@@ -20,6 +20,19 @@ public class AdminActorApiClientTests {
     // === GetActorRuntimeInfoAsync ===
 
     [Fact]
+    public async Task GetActorInstanceStateAsync_ThrowsForbidden_WhenHttpProblemDetailsReturns403() {
+        using HttpClient httpClient = new(new MockHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Forbidden) {
+            Content = new StringContent(
+                """{"status":403,"title":"Forbidden","detail":"The request is not authorized for this resource."}""",
+                System.Text.Encoding.UTF8, "application/problem+json"),
+        })) { BaseAddress = new Uri("https://admin.example/") };
+        AdminActorApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<ForbiddenAccessException>(
+            () => client.GetActorInstanceStateAsync("AggregateActor", "opaque-actor"));
+    }
+
+    [Fact]
     public async Task GetActorRuntimeInfoAsync_ReturnsInfo_WhenApiResponds() {
         // remoteMetadataStatus: 1 = Available (enum integer value)
         string json = """{"actorTypes":[],"totalActiveActors":0,"configuration":{"idleTimeout":"01:00:00","scanInterval":"00:00:30","drainOngoingCallTimeout":"00:01:00","drainRebalancedActors":true,"reentrancyEnabled":false,"reentrancyMaxStackDepth":32},"remoteMetadataStatus":1,"remoteEndpoint":"http://localhost:3501"}""";

@@ -18,6 +18,22 @@ namespace Hexalith.EventStore.Admin.Server.Authorization;
 public sealed class AdminAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareResultHandler {
     private static readonly AuthorizationMiddlewareResultHandler DefaultHandler = new();
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly IAuthorizationMiddlewareResultHandler _hostHandler;
+
+    /// <summary>
+    /// Creates a normalizer with framework behavior for other endpoints.
+    /// </summary>
+    public AdminAuthorizationMiddlewareResultHandler() : this(DefaultHandler) {
+    }
+
+    /// <summary>
+    /// Creates a normalizer preserving the host's existing authorization behavior.
+    /// </summary>
+    /// <param name="hostHandler">The previously effective host result handler.</param>
+    public AdminAuthorizationMiddlewareResultHandler(IAuthorizationMiddlewareResultHandler hostHandler) {
+        ArgumentNullException.ThrowIfNull(hostHandler);
+        _hostHandler = hostHandler;
+    }
 
     /// <inheritdoc/>
     public async Task HandleAsync(
@@ -31,18 +47,17 @@ public sealed class AdminAuthorizationMiddlewareResultHandler : IAuthorizationMi
         ArgumentNullException.ThrowIfNull(authorizeResult);
 
         if (authorizeResult.Succeeded || !IsAdminEndpoint(context)) {
-            await DefaultHandler.HandleAsync(next, context, policy, authorizeResult).ConfigureAwait(false);
+            await _hostHandler.HandleAsync(next, context, policy, authorizeResult).ConfigureAwait(false);
             return;
         }
 
-        IHeaderDictionary capturedHeaders = await CaptureSchemeResponseAsync(
+        string correlationId = context.Items["CorrelationId"]?.ToString() ?? "unknown";
+        StringValues authenticateHeaders = await DiscardSchemeResponseAsync(
             next,
             context,
             policy,
             authorizeResult).ConfigureAwait(false);
 
-        StringValues authenticateHeaders = capturedHeaders.WWWAuthenticate;
-        StringValues correlationHeaders = capturedHeaders["X-Correlation-ID"];
         context.Response.Clear();
         context.Response.StatusCode = authorizeResult.Challenged
             ? StatusCodes.Status401Unauthorized
@@ -52,11 +67,7 @@ public sealed class AdminAuthorizationMiddlewareResultHandler : IAuthorizationMi
             context.Response.Headers[HeaderNames.WWWAuthenticate] = authenticateHeaders;
         }
 
-        if (correlationHeaders.Count > 0) {
-            context.Response.Headers["X-Correlation-ID"] = correlationHeaders;
-        }
-
-        string correlationId = context.Items["CorrelationId"]?.ToString() ?? "unknown";
+        context.Response.Headers["X-Correlation-ID"] = correlationId;
         var problem = new ProblemDetails {
             Status = context.Response.StatusCode,
             Title = authorizeResult.Challenged ? "Unauthorized" : "Forbidden",
@@ -73,19 +84,16 @@ public sealed class AdminAuthorizationMiddlewareResultHandler : IAuthorizationMi
             context.RequestAborted).ConfigureAwait(false);
     }
 
-    private static async Task<IHeaderDictionary> CaptureSchemeResponseAsync(
+    private static async Task<StringValues> DiscardSchemeResponseAsync(
         RequestDelegate next,
         HttpContext context,
         AuthorizationPolicy policy,
         PolicyAuthorizationResult authorizeResult) {
         Stream originalBody = context.Response.Body;
-        using var capturedBody = new MemoryStream();
-        context.Response.Body = capturedBody;
+        context.Response.Body = Stream.Null;
         try {
             await DefaultHandler.HandleAsync(next, context, policy, authorizeResult).ConfigureAwait(false);
-            return new HeaderDictionary(context.Response.Headers.ToDictionary(
-                pair => pair.Key,
-                pair => pair.Value));
+            return context.Response.Headers.WWWAuthenticate;
         }
         finally {
             context.Response.Body = originalBody;

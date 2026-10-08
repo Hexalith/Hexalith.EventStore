@@ -229,7 +229,7 @@ development_status:
   # Corrected 2026-10-07 (correct-course OR15). Commit 57fa0909 flipped this row
   # 'backlog' -> 'done' in an IdempotencyChecker change whose subject never mentions
   # a status change, while spec-5-2 records status 'in-review' at review loop 2.
-  5-2-admin-endpoint-authorization-and-tenant-filters: review
+  5-2-admin-endpoint-authorization-and-tenant-filters: in-progress
   # Corrected 2026-09-08 (correct-course OR2). Commit c83cc4c3 flipped this row
   # 'backlog' -> 'done' in a test-only change whose subject and body never mention
   # a status change, and whose story spec forbids it from touching this file.

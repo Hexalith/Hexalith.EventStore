@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -29,6 +30,88 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
     private readonly RequestSizeHostFactory _factory;
 
     public AdminRequestBodySizeTests(RequestSizeHostFactory factory) => _factory = factory;
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task Kestrel_EnforcesEntityByteBoundaryBeforeServiceWork(bool import, bool rejected, bool chunked) {
+        await using var factory = new RequestSizeHostFactory();
+        factory.UseKestrel(0);
+        using HttpClient client = CreateAdminClient(factory);
+        long bodySize = (import ? AdminRequestSizeLimits.BackupImportJsonBody : AdminRequestSizeLimits.OrdinaryJsonBody)
+            + (rejected ? 1 : 0);
+        string json = import
+            ? $"\"{new string('a', checked((int)bodySize - 2))}\""
+            : CreatePaddedJson("{\"commandType\":\"Test.Command\",\"payloadJson\":\"{}\",\"padding\":\"", "\"}", bodySize);
+        using var request = new HttpRequestMessage(HttpMethod.Post, import
+            ? "/api/v1/admin/backups/import-stream?tenantId=tenant-a"
+            : "/api/v1/admin/streams/tenant-a/domain/aggregate/sandbox") {
+            Version = HttpVersion.Version11,
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact,
+            Content = CreateJsonContent(json),
+        };
+        request.Headers.TransferEncodingChunked = chunked;
+        request.Headers.ExpectContinue = true;
+        const string correlationId = "c9b14556-119c-4917-bbc4-5a92e2cc7a28";
+        _ = request.Headers.TryAddWithoutValidation(CorrelationIdMiddleware.HeaderName, correlationId);
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        await AssertBoundaryResultAsync(response, rejected);
+        response.Headers.GetValues(CorrelationIdMiddleware.HeaderName).Single().ShouldBe(correlationId);
+        if (rejected) {
+            using JsonDocument problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            problem.RootElement.GetProperty("correlationId").GetString().ShouldBe(correlationId);
+            _ = await factory.StreamService.DidNotReceiveWithAnyArgs()
+                .SandboxCommandAsync(default!, default!, default!, default!, default);
+            _ = await factory.BackupCommandService.DidNotReceiveWithAnyArgs().ImportStreamAsync(default!, default!, default);
+        }
+        else if (import) {
+            _ = await factory.BackupCommandService.Received(1)
+                .ImportStreamAsync("tenant-a", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else {
+            _ = await factory.StreamService.Received(1).SandboxCommandAsync(
+                "tenant-a", "domain", "aggregate", Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TransportBodyLimitException_IsNormalizedBeforeProtectedWork(bool knownLength) {
+        Stream requestBody = Substitute.For<Stream>();
+        _ = requestBody.ReadAsync(Arg.Any<Memory<byte>>(), Arg.Any<CancellationToken>())
+            .Returns<ValueTask<int>>(_ => throw new BadHttpRequestException("protected transport details", StatusCodes.Status413PayloadTooLarge));
+        HttpContext context = CreateMiddlewareContext(requestBody);
+        context.Request.ContentLength = knownLength ? 1 : null;
+        context.Items[CorrelationIdMiddleware.HttpContextKey] = "host-correlation";
+        context.Response.Headers[CorrelationIdMiddleware.HeaderName] = "untrusted-header";
+        bool protectedWork = false;
+        var middleware = new AdminRequestBodySizeMiddleware(async requestContext => {
+            _ = await requestContext.Request.Body.ReadAsync(new byte[1]);
+            protectedWork = true;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        protectedWork.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status413PayloadTooLarge);
+        context.Response.ContentType.ShouldBe("application/problem+json");
+        context.Response.Headers[CorrelationIdMiddleware.HeaderName].ToString().ShouldBe("host-correlation");
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body);
+        string body = await reader.ReadToEndAsync();
+        body.Length.ShouldBeLessThan(512);
+        body.ShouldContain("host-correlation");
+        body.ShouldNotContain("protected transport details");
+    }
 
     [Theory]
     [InlineData(AdminRequestSizeLimits.OrdinaryJsonBody, false)]
@@ -171,8 +254,10 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
         context.Response.StatusCode.ShouldNotBe(StatusCodes.Status413PayloadTooLarge);
     }
 
-    private HttpClient CreateAdminClient() {
-        HttpClient client = _factory.CreateClient();
+    private HttpClient CreateAdminClient() => CreateAdminClient(_factory);
+
+    private static HttpClient CreateAdminClient(RequestSizeHostFactory factory) {
+        HttpClient client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
             CreateToken(new Claim(AdminClaimTypes.AdminRole, "Admin")));

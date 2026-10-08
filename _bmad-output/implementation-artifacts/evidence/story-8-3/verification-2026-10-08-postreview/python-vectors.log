@@ -1,0 +1,7 @@
+Command arguments: ["python3", "scripts/payload-protection/verify-golden-vectors.py"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:08:13.418348+00:00
+
+{"verifier":"python","python":"3.14.4","openssl":"OpenSSL 3.5.5 27 Jan 2026","cryptography":"46.0.5","normativeDigest":"de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e","executedVectors":["V001","V002","V003"],"futureVectors":135,"envelopeSha256":"247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be","wrapperSha256":"35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3","result":"PASS"}
+
+Exit code: 0

@@ -16,7 +16,11 @@ public sealed class RetainedIdentityHistoryReaderTests
     private readonly TimeProvider _clock = Substitute.For<TimeProvider>();
 
     /// <summary>Verifies retained Identity History Reader Tests.</summary>
-    public RetainedIdentityHistoryReaderTests() => _clock.GetUtcNow().Returns(_now);
+    public RetainedIdentityHistoryReaderTests()
+    {
+        _clock.GetUtcNow().Returns(_now);
+        _clock.TimestampFrequency.Returns(TimeSpan.TicksPerSecond);
+    }
 
     /// <summary>Verifies complete Authenticated Sparse Source Retains Its Original Head And Positions.</summary>
     [Fact]
@@ -185,6 +189,174 @@ public sealed class RetainedIdentityHistoryReaderTests
         {
             await body.Disposed.Task.WaitAsync(watchdog);
         }
+    }
+
+    /// <summary>Synchronous send, stream acquisition and both body-read overloads cannot retain caller/deadline waits.</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(3, true)]
+    public async Task SynchronousTransportInvocationIsBoundedAndLateOwnedMaterialDisposed(int stage, bool expire)
+    {
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Action<CancellationToken> block = _ => { entered.TrySetResult(); release.Wait(); };
+        using var body = new RetainedHistorySuspendedStream(stage == 3) { BeforeReturn = stage >= 2 ? block : null };
+        using var content = new RetainedHistorySuspendedContent(false, body) { BeforeReturn = stage == 1 ? block : null };
+        using var handler = new RetainedHistorySuspendedHandler(false, content) { BeforeReturn = stage == 0 ? block : null };
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        using var caller = new CancellationTokenSource();
+        var reading = new RetainedIdentityHistoryReader(client, clock).ReadAsync(_identity, RetainedIdentityHistoryReadRequest.AttributionPurpose, caller.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            if (expire)
+            {
+                clock.Advance(TimeSpan.FromSeconds(30));
+                (await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).FailureReason.ShouldBe("history-time-bound-exceeded");
+            }
+            else
+            {
+                caller.Cancel();
+                var exception = await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+                exception.CancellationToken.ShouldBe(caller.Token);
+            }
+            content.Disposed.Task.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            release.Set(); body.Complete(); content.Complete(); handler.Complete();
+        }
+        await content.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        if (stage > 0) { await body.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+        content.AcquisitionCount.ShouldBe(stage == 0 ? 0 : 1);
+        body.ReadCount.ShouldBe(stage < 2 ? 0 : 1);
+    }
+
+    /// <summary>Blocked provider cancellation callbacks cannot retain the private deadline wait or release late evidence.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task BlockingProviderCancellationCannotRetainTransportDeadline(int stage)
+    {
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Action<CancellationToken> register = token =>
+        {
+            token.Register(() => { entered.TrySetResult(); release.Wait(); });
+            registered.TrySetResult();
+        };
+        using var body = new RetainedHistorySuspendedStream(stage == 3) { BeforeReturn = stage >= 2 ? register : null };
+        using var content = new RetainedHistorySuspendedContent(stage == 1, body) { BeforeReturn = stage == 1 ? register : null };
+        using var handler = new RetainedHistorySuspendedHandler(stage == 0, content) { BeforeReturn = stage == 0 ? register : null };
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        var reading = new RetainedIdentityHistoryReader(client, clock).ReadAsync(_identity, RetainedIdentityHistoryReadRequest.AttributionPurpose, TestContext.Current.CancellationToken);
+        try
+        {
+            await registered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            clock.Advance(TimeSpan.FromSeconds(30));
+            (await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).FailureReason.ShouldBe("history-time-bound-exceeded");
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            content.Disposed.Task.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            release.Set(); body.Complete(); content.Complete(); handler.Complete();
+        }
+        await content.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        if (stage > 0) { await body.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+    }
+
+    /// <summary>Delayed timer delivery cannot permit a complete certificate at the exclusive whole-read boundary.</summary>
+    [Fact]
+    public async Task CumulativeTerminalValidationCannotReleaseAtReadBudgetBoundary()
+    {
+        long ticks = 0;
+        _clock.GetTimestamp().Returns(_ => Interlocked.Read(ref ticks));
+        _clock.GetUtcNow().Returns(_ => { Interlocked.Exchange(ref ticks, TimeSpan.FromSeconds(30).Ticks); return _now; });
+        using var handler = new RetainedHistoryResponseHandler(new(Stream(), null));
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        var result = await new RetainedIdentityHistoryReader(client, _clock).ReadAsync(_identity, RetainedIdentityHistoryReadRequest.AttributionPurpose, TestContext.Current.CancellationToken);
+        result.Stream.ShouldBeNull();
+        result.FailureReason.ShouldBe("history-time-bound-exceeded");
+    }
+
+    /// <summary>Completed response disposal cannot retain direct failure or a deadline's completed late task.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompletedResponseBlockingDisposalCannotRetainRead(bool completedAtDeadline)
+    {
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var body = new RetainedHistorySuspendedStream(false);
+        using var content = new RetainedHistorySuspendedContent(false, body)
+        {
+            BeforeDispose = () => { entered.TrySetResult(); release.Wait(); }
+        };
+        using var handler = new RetainedHistorySuspendedHandler(false, content,
+            completedAtDeadline ? System.Net.HttpStatusCode.OK : System.Net.HttpStatusCode.ServiceUnavailable)
+        {
+            BeforeReturn = completedAtDeadline ? _ => clock.Advance(TimeSpan.FromSeconds(30)) : null
+        };
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        var reading = Task.Run(() => new RetainedIdentityHistoryReader(client, clock).ReadAsync(_identity,
+            RetainedIdentityHistoryReadRequest.AttributionPurpose, TestContext.Current.CancellationToken));
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            var result = await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            result.Stream.ShouldBeNull();
+            result.FailureReason.ShouldBe(completedAtDeadline ? "history-time-bound-exceeded" : "history-unavailable");
+            content.Disposed.Task.IsCompleted.ShouldBeFalse();
+            content.AcquisitionCount.ShouldBe(0);
+        }
+        finally
+        {
+            release.Set();
+        }
+        await content.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Cleanup faults are observed away from the query and do not prevent request disposal.</summary>
+    [Fact]
+    public async Task CompletedResponseCleanupFailureStillDisposesOwnedRequest()
+    {
+        using var body = new RetainedHistorySuspendedStream(false);
+        // The query owns this content, including its failing Dispose implementation.
+        var content = new RetainedHistorySuspendedContent(false, body) { BeforeDispose = () => throw new IOException("Controlled cleanup failure.") };
+        using var handler = new RetainedHistorySuspendedHandler(false, content, System.Net.HttpStatusCode.ServiceUnavailable);
+        using var client = new HttpClient(handler) { BaseAddress = new("https://owner.invalid/") };
+        var result = await new RetainedIdentityHistoryReader(client, _clock).ReadAsync(_identity,
+            RetainedIdentityHistoryReadRequest.AttributionPurpose, TestContext.Current.CancellationToken);
+        result.FailureReason.ShouldBe("history-unavailable");
+        await content.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await Task.Run(async () =>
+        {
+            while (true)
+            {
+                try
+                {
+                    _ = await handler.CapturedRequest!.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                await Task.Yield();
+            }
+        }).WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
     }
 
     private static RetainedIdentityHistoryStream Stream()

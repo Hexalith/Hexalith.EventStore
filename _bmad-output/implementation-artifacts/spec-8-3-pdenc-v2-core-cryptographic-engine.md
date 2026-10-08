@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 292-case minimum (updated when the suite changes), plus the dedicated invariant-globalization regression, while preserving V138 as observation-only and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
+- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 306-case minimum (updated when the suite changes), plus the dedicated invariant-globalization regression, while preserving V138 as observation-only and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -105,6 +105,23 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   acceptance evidence for review-loop iteration 1.
 
 ## Spec Change Log
+
+- 2026-10-08: Resumed independent review classified all 14 fresh findings
+  before grouping. Direct internal corrections preserve complete pre-copy node
+  planning, caller cancellation, activity ownership/ambient restoration and
+  closed baggage, and iterator cleanup. Added 14 core and four trigger-guard
+  cases; current lane/verification floor is 306. Durable `.trx.xml` receipts,
+  evaluated source/build/dependency inputs and compiled outputs are bound in
+  the post-review packet. Receipt-directory Git attributes preserve exact raw
+  bytes across checkout without changing source line rules. Updated the stale non-frozen standalone command to
+  use existing project-scoped AOT/trim settings, preserving DW-517. Frozen
+  intent/authority/contracts/fixtures/release inventory remain unchanged.
+  KEEP byte-oriented authenticated transformation, complete local rejection
+  before plaintext copy/material, typed failures, key/buffer clearing, no-leak
+  diagnostics, 51 vector identifiers, v1 compatibility, non-packability, and
+  later-story/G5 gates. Required broad verification remains blocked; separately
+  authored concurrent additions are preserved/excluded. No new deferral,
+  approval, successor, or Git mutation is inferred.
 
 - 2026-09-14: Added the bounded provider-neutral core, focused vector suite,
   preflight/verification evidence, and completion artifact. Frozen intent and
@@ -743,6 +760,22 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC14-07 | false | reject | carried from BH8-01/EC8-07/BH10-16/EC13-08: the no-op payload behavior is separately authored and explicitly disclosed in completion evidence, so Story 8.3 does not claim that behavior as unchanged. |
 | VG14-01 | medium | defer | pre-verified; carried from VG12-01/VG13-03: the default command-status request route remains unpinned in separately authored Client tests and is not deferred again. |
 | VG14-02 | medium | defer | pre-verified; carried from VG10-02/VG10-03/BH12-13/BH12-14/VG13-05: non-404 status-specific ProblemDetails translation remains unverified in separately authored Client tests and is not deferred again. |
+| R20261008-BH01 | medium | patch | Verified at `PayloadProtectionCore.cs:141-146`: the 65,536-node `{a:scalar,z:large-array}` input rejects the temporary first replacement count although the complete protected document has five nodes. Defer the existing node ceiling until every selected subtree delta is included; no public surface changes. |
+| R20261008-BH02 | medium | patch | Verified by the independent probe: an `ActivityStarted` exception leaves the core child in `Activity.Current` because `StartActivity` throws before returning its handle. Retain the created activity and restore the captured ambient activity on the demonstrated callback exit. |
+| R20261008-BH03 | medium | patch | Verified by the independent probe: an `ActivityStopped` exception bypasses ambient restoration during disposal. Restore the captured ambient activity in the existing diagnostic cleanup boundary. |
+| R20261008-BH04 | high | patch | Verified by the independent probe: an existing parent's `payload-canary` baggage becomes visible on the core child despite the closed diagnostic contract. Create the child with explicit parent identity so correlation survives without inheriting the parent object's baggage. |
+| R20261008-BH05 | medium | patch | Verified at both reader exception mappings: cancellation during authentication-failure plaintext cleanup produces `BytesMetadataMismatch` with a cancelled caller token. Recheck cancellation in the existing typed-failure mapping and record the closed cancelled outcome. |
+| R20261008-BH06 | medium | patch | Verified by the independent probe: malformed `/~2` followed by successful iterator disposal that cancels the token escapes as a format error. Recheck caller cancellation after successful disposal as already done after exceptional disposal. |
+| R20261008-BH07 | medium | patch | Verified with `git check-ignore`: the three dated `.trx` receipts are ignored by `*.trx`; the linked evidence would be absent from a reviewable checkout. Preserve their exact bytes under non-ignored `.trx.xml` names and bind those receipts. |
+| R20261008-BH08 | medium | patch | Verified: the dated packet has no durable focused Release restore/build logs and explicitly relies on the session transcript. Save the post-patch restore/build command, exit status, and full output. |
+| R20261008-BH09 | medium | patch | Verified in the dated binding: root build properties, evaluated restored inputs, `AggregateIdentity.cs`, and dependency checkout/content identities are absent although they participate in compilation. Bind the actual post-patch build inputs and compiled outputs before execution. |
+| R20261008-BH10 | medium | patch | Verified at the YAML-aware required-lane guard: job and step checks omit `on`, so removal of PR/main-push execution can leave the guard green. Assert the existing triggers and add trigger-removal mutation regressions. |
+| R20261008-EC01 | medium | patch | Independently reproduced the same temporary-node-ceiling rejection as R20261008-BH01, including the five-node final output. Group only after this separate verdict; apply the same direct ceiling correction. |
+| R20261008-EC02 | medium | patch | Independently reproduced the same ambient-child leak after a throwing start listener as R20261008-BH02. Group only after this separate verdict; retain ownership and restore the prior ambient activity. |
+| R20261008-VG01 | medium | patch | Pre-verified gap: every snapshot success test resolves default key identity/version 1, so a resolver version hard-coded to 1 can pass. Add an exact nondefault key-reference/version-2 snapshot round trip. |
+| R20261008-VG02 | medium | patch | Pre-verified gap: no pending resolver test distinguishes the forwarded caller token from `CancellationToken.None`. Add bounded event/snapshot pending-lookup cancellation regressions with cleanup that releases a mutated non-cancellable resolver. |
+
+Resume review grouping: BH01/EC01 share the intermediate node-count defect; BH02/EC02 share lost start-activity ownership. All other rows retain separate demonstrated bad outcomes. These are direct internal corrections, focused test gaps, or evidence preservation; none requires changing frozen intent, public surface, providers, packages, or successors. All 14 findings are resolved in the post-review source/evidence packet. There are no new deferred findings in this resume review. Historical deferred rows retain their recorded owners and are not re-opened or duplicated.
 
 ## Design Notes
 
@@ -753,12 +786,29 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 292 --fail-skips on --no-ansi` and the same built project under `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` filtered to `V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams` with a one-test floor -- expected: all core vectors and the inert-normalizer fail-closed path pass with no skip/unrun.
-- `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 306 --fail-skips on --no-ansi` and the same built project under `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` filtered to `V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams` with a one-test floor -- expected: all core vectors and the inert-normalizer fail-closed path pass with no skip/unrun.
+- `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:UseHexalithProjectReferences=false` (AOT/trim are enabled by the core project properties; do not pass them globally into frozen Contracts) and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
-**Observed results (2026-09-17):** both independent V001-V003 verifiers passed;
+**Current observed results (2026-10-08, post-review):** scoped Release
+restore/build passes with zero warnings/errors; 306/306 focused cases, 1/1
+invariant globalization, 31/31 frozen v1/API compatibility, and 119/119 required
+lane/package guards pass with no failure/skip/unrun. Node/Python verifiers,
+owned core/test style, structural checks, actionlint and shell syntax pass.
+All 14 fresh review findings are resolved; no new deferral is recorded.
+The broad Release build fails with six unrelated Tenants mapping errors;
+whole guard-file style reports 34 existing unchanged-line diagnostics. Normal
+shared packing lacks a completed current restore-based result. Concurrent
+out-of-scope additions and a later test-project dependency/test addition changed
+the live graph after compilation; exact tested source/project and captured
+unchanged executed assemblies are bound separately. Full closure
+is unmet: retain `in-review` and sprint `in-progress`, keep successors gated,
+G5 closed and Parties 8.7 blocked. Exact identities, commands, exits and result
+rows are in `evidence/story-8-3/verification-2026-10-08-postreview.md` and its
+binding. The older source/Debug and broad PASS records below are historical.
+
+**Historical observed results (2026-09-17):** both independent V001-V003 verifiers passed;
 focused Release tests passed 292/292 and the invariant-globalization invocation
 passed 1/1 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete

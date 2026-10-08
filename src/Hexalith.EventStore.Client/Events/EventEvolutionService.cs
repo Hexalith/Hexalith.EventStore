@@ -1,6 +1,8 @@
 using System.Collections.Frozen;
 using System.Security.Cryptography;
 
+using Hexalith.EventStore.Contracts.Events;
+
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Composes exact version validators, adjacent transforms and current deserializers through one registry.</summary>
@@ -26,6 +28,7 @@ internal sealed class EventEvolutionService
         ArgumentNullException.ThrowIfNull(upcasters);
         ArgumentNullException.ThrowIfNull(deserializers);
         _registry = registry;
+        registry.RequireActive(CancellationToken.None);
         registry.CapabilityLoss.RequireNoObservedLoss();
         _validations = validations.ToFrozenDictionary();
         _deserializers = deserializers.ToFrozenDictionary(StringComparer.Ordinal);
@@ -58,11 +61,78 @@ internal sealed class EventEvolutionService
 
         var executor = new EventUpcastChainExecutor(registry, transforms, ValidateVersion, RequireVersionBindings);
         Resolver = new EventLogicalViewResolver(registry, executor);
+        registry.RequireActive(CancellationToken.None);
         registry.CapabilityLoss.RequireNoObservedLoss();
     }
 
     /// <summary>Gets the composed resolver for addressed Dapr page preparation and bounded effective resolution.</summary>
     internal EventLogicalViewResolver Resolver { get; }
+
+    /// <summary>Gets the exact immutable registry identity shared by all composed evolution routes.</summary>
+    internal string RegistryFingerprint
+    {
+        get {
+            _registry.RequireActive(CancellationToken.None);
+            return _registry.Fingerprint;
+        }
+    }
+
+    /// <summary>Gets the supplied event registry domain.</summary>
+    internal string Domain => _registry.Domain;
+
+    /// <summary>Admits an explicitly declared aggregate route without invoking event callbacks.</summary>
+    internal void RequireAggregateRoute(string domain, string aggregateType, CancellationToken token)
+    {
+        RequireActive(token);
+        if (domain != _registry.Domain || !_registry.Rows.Where(static row => row.Tag == 0x44)
+            .Any(row => _registry.GetAggregateRoute(row.GetTextKey(1)) == aggregateType))
+        {
+            throw new InvalidOperationException("CapabilityMismatch: aggregate route is not declared in the supplied event registry.");
+        }
+    }
+
+    /// <summary>Gets the shared observed-loss scope required by the logical source and trust composition.</summary>
+    internal EventEvolutionCapabilityLoss CapabilityLoss
+    {
+        get {
+            _registry.RequireActive(CancellationToken.None);
+            return _registry.CapabilityLoss;
+        }
+    }
+
+    /// <summary>Checks the supplied registry instance and its shared capability before addressed source or callback admission.</summary>
+    internal void RequireActive(CancellationToken cancellationToken)
+    {
+        _registry.RequireActive(cancellationToken);
+        Resolver.RequireNoObservedLoss(cancellationToken);
+    }
+
+    /// <summary>Admits an effective route without invoking application code.</summary>
+    internal void RequireCurrentRoute(string domain, string aggregateType, string canonicalType, int version,
+        string format, CancellationToken cancellationToken)
+    {
+        RequireActive(cancellationToken);
+        if (version != _registry.GetCurrentVersion(canonicalType))
+        {
+            throw new InvalidOperationException("CapabilityMismatch: logical replay requires the current event version.");
+        }
+        Resolver.RequireReadableSource(domain, canonicalType, 2, canonicalType, version, format, aggregateType, cancellationToken);
+    }
+
+    /// <summary>Deserializes a privately admitted signed current view through the shared catalog.</summary>
+    internal async ValueTask<object> DeserializeCurrentAsync(string domain, string aggregateType, string canonicalType, int version,
+        string format, IReadOnlyPayload payload, Func<CancellationToken, Task> sourceFence, CancellationToken cancellationToken)
+    {
+        RequireCurrentRoute(domain, aggregateType, canonicalType, version, format, cancellationToken);
+        await _validations[(canonicalType, version)].ValidateAsync(domain, canonicalType, version, format, payload,
+            sourceFence, cancellationToken).ConfigureAwait(false);
+        await sourceFence(cancellationToken).ConfigureAwait(false);
+        RequireActive(cancellationToken);
+        object value = _deserializers[canonicalType].Deserialize(_registry, canonicalType, payload, cancellationToken);
+        await sourceFence(cancellationToken).ConfigureAwait(false);
+        RequireActive(cancellationToken);
+        return value;
+    }
 
     /// <summary>Resolves a readable logical event and invokes only its exact current deserializer after all version checks pass.</summary>
     /// <remarks>The private effective owner is cleared on success, refusal, exception and original-token cancellation.</remarks>
@@ -72,7 +142,7 @@ internal sealed class EventEvolutionService
         EventBufferBudget? sharedBudget = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
-        Resolver.RequireNoObservedLoss(cancellationToken);
+        RequireActive(cancellationToken);
         if (applicationPayload.Length > 64 * 1024 * 1024)
         {
             throw new InvalidOperationException("ReadableLimit: logical source payload exceeds 64 MiB.");
@@ -86,7 +156,7 @@ internal sealed class EventEvolutionService
                 cancellationToken, sharedBudget, aggregateType).ConfigureAwait(false);
             object value = _deserializers[resolved.CanonicalType].Deserialize(_registry, resolved.CanonicalType,
                 resolved.Payload, cancellationToken);
-            Resolver.RequireNoObservedLoss(cancellationToken);
+            RequireActive(cancellationToken);
             byte[] after = SHA256.HashData(applicationPayload.Span);
             try
             {
@@ -97,7 +167,7 @@ internal sealed class EventEvolutionService
             }
             finally { CryptographicOperations.ZeroMemory(after); }
 
-            Resolver.RequireNoObservedLoss(cancellationToken);
+            RequireActive(cancellationToken);
             return value;
         }
         finally { CryptographicOperations.ZeroMemory(before); }

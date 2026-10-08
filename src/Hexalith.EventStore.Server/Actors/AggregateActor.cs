@@ -1388,6 +1388,11 @@ public partial class AggregateActor(
                         string aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
 
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                        // Qualified publication namespaces require durable pre-create registration before any event staging.
+                        if (serviceProvider?.GetService(typeof(Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration))
+                            is Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration publicationRegistration) {
+                            await publicationRegistration.RegisterBeforeWriteAsync(command.AggregateIdentity, cancellationToken).ConfigureAwait(false);
+                        }
                         persistResult = await eventPersister
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,

@@ -1,0 +1,16 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.ForeignOptionsCapabilityScopeRefusesBeforeCallback [FAIL]
+      Shouldly.ShouldAssertException : `binding.RequireCapabilityScope(loss)`
+          should throw
+      System.InvalidOperationException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventRuntimeOptionsBindingTests.cs(146,0): at Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.ForeignOptionsCapabilityScopeRefusesBeforeCallback()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '23e6b6250035a1acbf8c4d4da2b59912ff136cc1c13efc093a6794427808b69c')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 15, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.432s

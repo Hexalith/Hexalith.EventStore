@@ -60,6 +60,243 @@ public sealed class DiagnosticsTests
             && !activity.Baggage.Any()).ShouldBeTrue();
     }
 
+    /// <summary>Start/stop callback failures preserve ownership and restore a prior ambient parent.</summary>
+    [Theory]
+    [InlineData("started")]
+    [InlineData("stopped")]
+    public void ThrowingActivityCallbacks_RestorePriorParentAndRetainOwnedActivity(string callback)
+    {
+        using var parent = new Activity("prior-parent").SetIdFormat(ActivityIdFormat.W3C).Start();
+        Activity? observed = null;
+        int stopped = 0;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = static source => source.Name == PayloadProtectionDiagnostics.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllData,
+            ActivityStarted = activity =>
+            {
+                observed = activity;
+                if (callback == "started")
+                {
+                    Activity.Current = null;
+                    throw new InvalidOperationException();
+                }
+            },
+            ActivityStopped = _ =>
+            {
+                stopped++;
+                if (callback == "stopped")
+                {
+                    Activity.Current = null;
+                    throw new InvalidOperationException();
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        Activity? owned = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect, out Activity? ambient);
+        owned.ShouldNotBeNull();
+        owned.ShouldBeSameAs(observed);
+        ambient.ShouldBeSameAs(parent);
+        Activity.Current.ShouldBeSameAs(callback == "started" ? parent : owned);
+        PayloadProtectionDiagnostics.Stop(owned, PayloadProtectionDiagnosticResult.Success, ambient);
+
+        stopped.ShouldBe(1);
+        owned.Duration.ShouldBeGreaterThan(TimeSpan.Zero);
+        owned.Status.ShouldBe(ActivityStatusCode.Ok);
+        Activity.Current.ShouldBeSameAs(parent);
+    }
+
+    /// <summary>CurrentChanged faults during start/stop recovery cannot replace a successful core outcome.</summary>
+    [Theory]
+    [InlineData("started")]
+    [InlineData("stopped")]
+    public void ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(string callback)
+    {
+        using var parent = new Activity("prior-parent").SetIdFormat(ActivityIdFormat.W3C).Start();
+        int restorationFaults = 0;
+        int stopped = 0;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = static source => source.Name == PayloadProtectionDiagnostics.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllData,
+            ActivityStarted = _ =>
+            {
+                if (callback == "started")
+                {
+                    throw new InvalidOperationException();
+                }
+            },
+            ActivityStopped = _ =>
+            {
+                stopped++;
+                if (callback == "stopped")
+                {
+                    Activity.Current = null;
+                    throw new InvalidOperationException();
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        void Changed(object? sender, ActivityChangedEventArgs args)
+        {
+            if (args.Current == parent)
+            {
+                restorationFaults++;
+                throw new InvalidOperationException();
+            }
+        }
+
+        Activity.CurrentChanged += Changed;
+        try
+        {
+            TestFixture.Protect().ProtectedPathCount.ShouldBe(1);
+            Activity.Current.ShouldBeSameAs(parent);
+            restorationFaults.ShouldBeGreaterThanOrEqualTo(1);
+            stopped.ShouldBe(1);
+        }
+        finally
+        {
+            Activity.CurrentChanged -= Changed;
+            Activity.Current = parent;
+        }
+    }
+
+    /// <summary>Explicit parent identity correlates all core operations without inheriting sensitive baggage.</summary>
+    [Fact]
+    public async Task PriorParent_CorrelatesEventAndSnapshotWithoutSensitiveBaggageAsync()
+    {
+        const string canary = "sensitive-parent-baggage-canary";
+        using var parent = new Activity("prior-parent").SetIdFormat(ActivityIdFormat.W3C);
+        parent.AddBaggage("tenant", canary);
+        parent.Start();
+        var observed = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = static source => source.Name == PayloadProtectionDiagnostics.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = observed.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        CoreProtectionResult protectedEvent = TestFixture.Protect();
+        (await TestFixture.UnprotectAsync(protectedEvent.PayloadBytes)).IsReadable.ShouldBeTrue();
+        ProtectedSnapshotPayloadV2 snapshot = TestFixture.ProtectSnapshot();
+        (await TestFixture.UnprotectSnapshotAsync(snapshot)).IsReadable.ShouldBeTrue();
+
+        observed.Count.ShouldBe(4);
+        foreach (Activity activity in observed)
+        {
+            activity.Parent.ShouldBeNull();
+            activity.ParentId.ShouldBe(parent.Id);
+            activity.TraceId.ShouldBe(parent.TraceId);
+            activity.ParentSpanId.ShouldBe(parent.SpanId);
+            activity.Baggage.ShouldBeEmpty();
+            activity.TagObjects.ShouldBeEmpty();
+            activity.Events.ShouldBeEmpty();
+            activity.Links.ShouldBeEmpty();
+            activity.StatusDescription.ShouldBeNull();
+            activity.ToString().ShouldNotContain(canary);
+        }
+
+        parent.GetBaggageItem("tenant").ShouldBe(canary);
+        Activity.Current.ShouldBeSameAs(parent);
+    }
+
+    /// <summary>Cleanup-raised caller cancellation wins over reader failure mappings and records cancelled outcomes.</summary>
+    [Theory]
+    [InlineData("event", "authentication")]
+    [InlineData("event", "format")]
+    [InlineData("snapshot", "authentication")]
+    [InlineData("snapshot", "format")]
+    public async Task ReaderFailureCleanup_CancellationWinsAndRecordsCancelledAsync(string payloadKind, string failure)
+    {
+        ProtectedSnapshotPayloadV2 snapshot = TestFixture.ProtectSnapshot();
+        byte[] envelopeBytes = Base64UrlCodec.Decode(payloadKind == "event"
+            ? TestFixture.EnvelopeBase64Url
+            : snapshot.Envelope);
+        if (failure == "authentication")
+        {
+            envelopeBytes[^1] ^= 1;
+        }
+        else
+        {
+            envelopeBytes[4] = 0;
+        }
+
+        string encoded = Base64UrlCodec.Encode(envelopeBytes);
+        snapshot = new ProtectedSnapshotPayloadV2(snapshot.Format, snapshot.SnapshotTypeId, encoded);
+        using var source = new CancellationTokenSource();
+        SensitiveBufferKind cancellationKind = failure == "authentication"
+            ? SensitiveBufferKind.DecryptedPlaintext
+            : payloadKind == "event" ? SensitiveBufferKind.InputSnapshot : SensitiveBufferKind.ProtectedOutput;
+        var observer = new RecordingBufferObserver(kind =>
+        {
+            if (kind == cancellationKind)
+            {
+                source.Cancel();
+            }
+        });
+        byte[] dek = TestFixture.Dek();
+        int resolverCalls = 0;
+        ValueTask<byte[]?> Resolver(string _, uint __, CancellationToken ___)
+        {
+            resolverCalls++;
+            return ValueTask.FromResult<byte[]?>(dek);
+        }
+
+        var measurements = new List<KeyValuePair<string, object?>[]>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name)
+            {
+                current.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) => measurements.Add(tags.ToArray()));
+        listener.SetMeasurementEventCallback<double>((_, _, tags, _) => measurements.Add(tags.ToArray()));
+        listener.Start();
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(async () =>
+        {
+            if (payloadKind == "event")
+            {
+                _ = await TestFixture.UnprotectAsync(
+                    TestFixture.WrapperPayloadBytes(encoded),
+                    observer: observer,
+                    cancellationToken: source.Token,
+                    keyResolver: Resolver);
+            }
+            else
+            {
+                _ = await TestFixture.UnprotectSnapshotAsync(
+                    snapshot,
+                    observer: observer,
+                    cancellationToken: source.Token,
+                    keyResolver: Resolver);
+            }
+        });
+
+        exception.CancellationToken.ShouldBe(source.Token);
+        observer.Observed.ShouldContain(cancellationKind);
+        resolverCalls.ShouldBe(failure == "authentication" ? 1 : 0);
+        if (failure == "authentication")
+        {
+            observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+            dek.ShouldAllBe(static value => value == 0);
+        }
+
+        measurements.Count.ShouldBe(2);
+        foreach (KeyValuePair<string, object?>[] tags in measurements)
+        {
+            tags.Length.ShouldBe(3);
+            tags.Single(static tag => tag.Key == "operation").Value.ShouldBe("unprotect");
+            tags.Single(static tag => tag.Key == "result").Value.ShouldBe("cancelled");
+            tags.Single(static tag => tag.Key == "format_version").Value.ShouldBe("v2");
+        }
+    }
+
     /// <summary>Verifies throwing process-wide diagnostic callbacks cannot alter end-to-end core outcomes.</summary>
     [Fact]
     public async Task ThrowingDiagnosticCallbacks_DoNotChangeProtectOrUnprotectOutcomesAsync()

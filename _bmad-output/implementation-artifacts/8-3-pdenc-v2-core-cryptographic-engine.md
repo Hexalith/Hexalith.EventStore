@@ -1,6 +1,51 @@
 # Story 8.3 pdenc-v2 Core Cryptographic Engine
 
-## Disposition
+## Current disposition — 2026-10-08
+
+The resumed Story 8.3 implementation and three-layer independent review are
+complete for the exact scoped candidate. Fourteen review findings are resolved;
+no new deferral was added. **Closure remains blocked by required verification
+failures and concurrent changes outside this run.** The spec stays `in-review`
+and the sprint stays `in-progress`; no later story is authorized.
+
+[Post-review verification](evidence/story-8-3/verification-2026-10-08-postreview.md)
+and its [binding receipt](evidence/story-8-3/verification-2026-10-08-postreview/binding.json)
+record exact commands, exits, source/dependency/build-input/assembly hashes,
+result rows, review dispositions, and excluded concurrent work. They supersede
+current counts/identities below; historical evidence and approvals remain intact.
+
+- Checkout: `9542d3c9f48bf9ce1c57f2ef68904703eaba56cc`; workflow baseline `e8886ec4c277460de3d3208b3fc0b9c261c4967d`.
+- Tested production: 35 files, `3a657ad349bc2f738cd0c596d9c3829e53b690ed4ed5bf75ca2aa091563e9c5e`.
+- Focused tests: 12 files, `d22365a5ec94a87975d2069241eebc5cff864a4c98f694f801d6429f732e2b55`.
+- Final Release: 306/306; invariant globalization: 1/1; v1/API compatibility:
+  31/31; required-lane/package guards: 119/119. Zero final failures or skips.
+- Source fixes cover complete node planning before plaintext copies/material,
+  cancellation precedence, successful iterator disposal, activity ownership/
+  restoration, and parent correlation without inherited baggage. Fourteen core
+  regressions and four trigger-guard mutations were added; both lane floors are 306.
+- Receipt-specific Git attributes retain raw capture bytes across checkout.
+- The broad Release build still exits 1 with six unrelated Tenants mapping
+  errors. Whole guard-file style exits 2 on 34 unchanged pre-existing lines,
+  with zero introduced diagnostics. Normal shared restore-based packing has no
+  completed current result; the historical cached fallback has exactly 14 archives.
+- All 46 approved Security files remain identical. At the final recorded
+  snapshot, separately authored concurrent additions enlarge the live core to
+  39 files and Security to 74; their identities are disclosed and excluded.
+  The captured executed binaries and Story 8.3 C# bytes remain unchanged;
+  a later separately authored test-project dependency/additional-test change
+  is also recorded and excluded from the exact 306-case execution.
+
+The next EventStore owner is **8.4, Compatibility Readers and Mixed-History
+Routing**, after approved 8.3 closure and exact successor authorization. Story
+8.5 may then proceed in parallel. Neither is executable under this record yet.
+
+**G5 stays closed; Parties Story 8.7 stays blocked.** Production provider and
+real backend qualification, persisted Server integration, package-only evidence,
+Parties dual-provider parity, post-v2-write rollback, and the exact Story 8.11
+approval-closure packet remain required. No stage, commit, push, branch,
+dependency update, external action, or successor implementation occurred here.
+
+## Historical disposition — 2026-09-17
 
 Implementation and technical verification through the full-diff fourth review pass completed on 2026-09-17 against
 EventStore baseline `e8886ec4c277460de3d3208b3fc0b9c261c4967d`, Story 8.2 approval

@@ -1,0 +1,6 @@
+Command arguments: ["dotnet", "format", "style", "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj", "--verify-no-changes", "--no-restore", "--severity", "info"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:28:30.365674+00:00
+
+
+Exit code: 0

@@ -1,0 +1,247 @@
+{
+  "comparisonBaseline": "HEAD",
+  "head": "9542d3c9f48bf9ce1c57f2ef68904703eaba56cc",
+  "diagnostics": [
+    {
+      "line": 15,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 18,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 16,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 31,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 42,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 49,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 55,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 57,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 20,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 17,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 23,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 12,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 25,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 22,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 19,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 21,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 13,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 14,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 24,
+      "severity": "error",
+      "rule": "IDE1006",
+      "message": "Naming rule violation: Missing prefix: '_'",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 154,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 379,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1106,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1142,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1246,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1828,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1751,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1897,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1885,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1930,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 1933,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 2061,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 2088,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 2094,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    },
+    {
+      "line": 2100,
+      "severity": "info",
+      "rule": "IDE0305",
+      "message": "Collection initialization can be simplified",
+      "introducedInChangedLine": false
+    }
+  ],
+  "totalDiagnostics": 34,
+  "introducedDiagnostics": 0,
+  "result": "FAIL on existing unchanged lines; no new diagnostics in the Story 8.3 patch"
+}

@@ -17,6 +17,13 @@ internal sealed class DaprLogicalEventView : IDisposable
     /// <summary>Takes ownership of the resolved payload and its retained metadata reservation.</summary>
     internal DaprLogicalEventView(EventEnvelope source, ResolvedLogicalEvent resolved, int readablePayloadLength,
         EventBufferReservation? metadataReservation)
+        : this(source, resolved, readablePayloadLength, metadataReservation, source.ApplicationPayloadDigest, source.SerializationFormat)
+    {
+    }
+
+    /// <summary>Takes ownership of an addressed source's recomputed application digest and exact readable format.</summary>
+    internal DaprLogicalEventView(EventEnvelope source, ResolvedLogicalEvent resolved, int readablePayloadLength,
+        EventBufferReservation? metadataReservation, string? applicationLogicalDigest, string readableFormat)
     {
         Source = source;
         MessageId = source.MessageId;
@@ -27,6 +34,8 @@ internal sealed class DaprLogicalEventView : IDisposable
         ReadablePayloadLength = readablePayloadLength;
         _resolved = resolved;
         _metadataReservation = metadataReservation;
+        ApplicationLogicalDigest = applicationLogicalDigest;
+        ReadableFormat = readableFormat;
     }
 
     /// <summary>Gets the addressed stored envelope. Its payload bytes stay the actor value.</summary>
@@ -52,6 +61,12 @@ internal sealed class DaprLogicalEventView : IDisposable
 
     /// <summary>Gets the privately owned current event view.</summary>
     internal ResolvedLogicalEvent Resolved => _resolved;
+
+    /// <summary>Gets recomputed application evidence separately from every historical StoredDigest meaning.</summary>
+    internal string? ApplicationLogicalDigest { get; }
+
+    /// <summary>Gets the post-unprotection application format before any upcast.</summary>
+    internal string ReadableFormat { get; }
 
     /// <summary>Transfers the retained source metadata charge to a longer-lived range owner exactly once.</summary>
     internal EventBufferReservation? TakeMetadataReservation()

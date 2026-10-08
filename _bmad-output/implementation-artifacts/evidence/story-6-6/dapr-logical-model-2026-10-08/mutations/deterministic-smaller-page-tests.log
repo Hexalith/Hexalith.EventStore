@@ -1,0 +1,14 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged [FAIL]
+      System.InvalidOperationException : ProofLimit: mutation refused smaller page.
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(249,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(171,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(321,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'f8346ff8f790a5e0e7b22e906e17c3cbcbe7efbfcaf2e6a2e8fefc360b06c7e3')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 39, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.707s

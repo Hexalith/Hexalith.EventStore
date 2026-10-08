@@ -1,0 +1,18 @@
+Command arguments: ["dotnet", "test", "--project", "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj", "--no-build", "--configuration", "Release", "--minimum-expected-tests", "306", "--fail-skips", "on", "--no-ansi", "-p:UseHexalithProjectReferences=false", "--results-directory", "/tmp/eventstore-8-3-postreview-tests", "--report-xunit-trx", "--report-xunit-trx-filename", "release-results.trx"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:22:11.421046+00:00
+
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll (net10.0|x64) passed (2s 420ms)
+
+  In process file artifacts produced:
+    - /tmp/eventstore-8-3-postreview-tests/release-results.trx
+
+Test run summary: Passed!
+  total: 306
+  failed: 0
+  succeeded: 306
+  skipped: 0
+  duration: 2s 582ms
+
+Exit code: 0

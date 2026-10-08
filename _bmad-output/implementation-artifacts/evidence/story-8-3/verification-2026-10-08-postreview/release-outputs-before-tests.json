@@ -1,0 +1,366 @@
+{
+  "count": 72,
+  "sha256sumStreamSha256": "d51307256a383bc15779589dc8b21786683eb3affacb1c7c9d73dea256838a86",
+  "files": [
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Diagnostics.DiagnosticSource.dll",
+      "sha256": "4b6ee5a5f7fad00b9c9221105b94c683058d31ed45339ac306158a1211850436",
+      "bytes": 498000
+    },
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Private.CoreLib.dll",
+      "sha256": "26304a2985357b9ee277f273667fcd9c892edae3ee6eba76f739033e95eb39b3",
+      "bytes": 15576872
+    },
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Runtime.dll",
+      "sha256": "417e7882e2a2689aafbf86bd6256db906357afa775f58e3c86a94a9f119cc3ef",
+      "bytes": 44840
+    },
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Security.Cryptography.dll",
+      "sha256": "49c7a0f1657dc1da331fbe5dcca5fd13700c692514528380eaff4cf15ddc64a1",
+      "bytes": 2653992
+    },
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/System.Text.Json.dll",
+      "sha256": "50724e46049548a8efdb3e56ddaf6efaf7c9acb510c3fb5581c10c85577189ea",
+      "bytes": 1882920
+    },
+    {
+      "path": "/home/administrator/.dotnet/shared/Microsoft.NETCore.App/10.0.12/libSystem.Security.Cryptography.Native.OpenSsl.so",
+      "sha256": "47d1d1095fddb359d03dcfd5a51d73a56f5c3cb32739ab288aba82fb67888ac1",
+      "bytes": 189504
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.deps.json",
+      "sha256": "7544a083dc4d3c2fee221111c2a15915ff6c4e4963b080de7772b0578790240b",
+      "bytes": 1704
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "e2ddfbf53f9b5c6de1170efb83953d96ce70e65e91a7bf9aafc4ad18f9e7ea5c",
+      "bytes": 420352
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.pdb",
+      "sha256": "feb7e93078da03b8d4f92377acad08ea718265236c022f9a3ab8668daa536cee",
+      "bytes": 107688
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.xml",
+      "sha256": "8f4b76e6d5266c4f161f9c7273fa44b82420521d9b170658338dfcaa288e2c88",
+      "bytes": 659428
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "e2ddfbf53f9b5c6de1170efb83953d96ce70e65e91a7bf9aafc4ad18f9e7ea5c",
+      "bytes": 420352
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.Contracts.pdb",
+      "sha256": "feb7e93078da03b8d4f92377acad08ea718265236c022f9a3ab8668daa536cee",
+      "bytes": 107688
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.Contracts.xml",
+      "sha256": "8f4b76e6d5266c4f161f9c7273fa44b82420521d9b170658338dfcaa288e2c88",
+      "bytes": 659428
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.deps.json",
+      "sha256": "6e6bd5dcf78ed2fb41c756bdcc36f8c6397174d9baef6dc998a11991f9720434",
+      "bytes": 2177
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.dll",
+      "sha256": "e07aa4d71f269578e5fc32e6ae624343ef19fda325b0fc96a83042addd6668b9",
+      "bytes": 77312
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.pdb",
+      "sha256": "be62c36923245497d498aef62609a85a69d33645a005e727a072037d83277500",
+      "bytes": 40092
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.xml",
+      "sha256": "63ef7f3919e3b552b23cc8b42bce1875c1d249b2c53ee7de6dcd5cc46a2c769b",
+      "bytes": 69934
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/ByteAether.Ulid.dll",
+      "sha256": "6fcf380ea234091dd7c28b7f18898bee1446829d7665044cc87f7d948e66e950",
+      "bytes": 27136
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/DiffEngine.dll",
+      "sha256": "0c6b99a47c609a4263b80feaed95a357e30be3ad5a1cda79355663e407682aa7",
+      "bytes": 109568
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/EmptyFiles.dll",
+      "sha256": "d5b63e68b8966567f73df025b449e1a2e3b2306c8cec364fd240310c757b3adc",
+      "bytes": 75264
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.Commons.UniqueIds.dll",
+      "sha256": "14f40a3801490d32cca54e56a1d1b020510e8fa2c7a02f3e566b47940a31d317",
+      "bytes": 9728
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "e2ddfbf53f9b5c6de1170efb83953d96ce70e65e91a7bf9aafc4ad18f9e7ea5c",
+      "bytes": 420352
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.pdb",
+      "sha256": "feb7e93078da03b8d4f92377acad08ea718265236c022f9a3ab8668daa536cee",
+      "bytes": 107688
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.xml",
+      "sha256": "8f4b76e6d5266c4f161f9c7273fa44b82420521d9b170658338dfcaa288e2c88",
+      "bytes": 659428
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.deps.json",
+      "sha256": "e95b31de377f1138f6e92f6e507552e56af93d1f0c19ac7409632989b1884a37",
+      "bytes": 44308
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+      "sha256": "c921fe71c75c44f5f0055c5b61cd3276a71e2bdf1e8e4d1ca989accf8a51e94d",
+      "bytes": 284160
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.pdb",
+      "sha256": "0927513f42d7432d69165dffa55f411f6c0c97610d5c864ad96b5484912f82a5",
+      "bytes": 61816
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.runtimeconfig.json",
+      "sha256": "0443d3d0ff16be6ca053c0b2601beab25dd91c2c12e6865d289d6a272207081a",
+      "bytes": 377
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.xml",
+      "sha256": "7399c6e84263dfcddd639b77495eab8e02d5ac98c7db131f3335f1bcd377f2f5",
+      "bytes": 57191
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.dll",
+      "sha256": "e07aa4d71f269578e5fc32e6ae624343ef19fda325b0fc96a83042addd6668b9",
+      "bytes": 77312
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.pdb",
+      "sha256": "be62c36923245497d498aef62609a85a69d33645a005e727a072037d83277500",
+      "bytes": 40092
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.xml",
+      "sha256": "63ef7f3919e3b552b23cc8b42bce1875c1d249b2c53ee7de6dcd5cc46a2c769b",
+      "bytes": 69934
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.ApplicationInsights.dll",
+      "sha256": "bf9a4b88c7f94267e1cc7ed0700c575d3eb3266ff25bcb76e4f40f1b0fba022d",
+      "bytes": 386080
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Bcl.AsyncInterfaces.dll",
+      "sha256": "5705d245072d3eb78400547b32147dbb6e2c8b02ba8bda76729798f5efdeaecb",
+      "bytes": 16000
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.CodeCoverage.Core.dll",
+      "sha256": "6a332099c9b4940dcb2876d507527988f5911bf68478089e73694b2d23b26a0c",
+      "bytes": 532792
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.CodeCoverage.Instrumentation.Core.dll",
+      "sha256": "b47729f86fe70c502b8c8525d800419928f2ea6ca8d4128cabf4c453d1a88022",
+      "bytes": 35680
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.CodeCoverage.Instrumentation.dll",
+      "sha256": "2956072ce225f43c6f55ea13269e95a7499edc8bfce54131910f96f35c415b12",
+      "bytes": 261944
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.CodeCoverage.Interprocess.dll",
+      "sha256": "562d1db168d56d9068a8be0213e53c22915d595843733c8c0a8ffd4411df6092",
+      "bytes": 152928
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.DiaSymReader.dll",
+      "sha256": "b954800a263122a383573c8698bb28629fb2af7fe3ef8a2621522a7fae979440",
+      "bytes": 345384
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Extensions.DependencyModel.dll",
+      "sha256": "2385bfbc9344e03acb2ff44f1ed21a3770fbafdf1ba4be2dbcacd42027b8c3bd",
+      "bytes": 84776
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.TestPlatform.CommunicationUtilities.dll",
+      "sha256": "24c3b9f2710340c328db8bc9c37797d15e2cf32e4fca37f60f6f01bd35b6e0ff",
+      "bytes": 527160
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.TestPlatform.CoreUtilities.dll",
+      "sha256": "ca8cd4a0c394af3cc03c8e83b0377ecf14e6a8c68e4b0b50f732b1370950d7df",
+      "bytes": 102240
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.TestPlatform.CrossPlatEngine.dll",
+      "sha256": "9cde8a3ed9b3d2bc95f6c351af59ac943ee3495d3c1312950eedf6176a489b5a",
+      "bytes": 339768
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.TestPlatform.PlatformAbstractions.dll",
+      "sha256": "8bc7faec348a71336af3bfbeecad564ad0f97a8216835ed90cd2ceff621a3697",
+      "bytes": 53600
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.TestPlatform.Utilities.dll",
+      "sha256": "29d176ae1f87dac87c8064dddf30a5e2439e4f48e28417e8604d71cc9d920ce8",
+      "bytes": 69432
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Testing.Extensions.CodeCoverage.dll",
+      "sha256": "d4c5b20901c33cbc7a162d6720754faafff94d39a37dccc0ad0261a464430504",
+      "bytes": 105784
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Testing.Extensions.MSBuild.dll",
+      "sha256": "d2f6d65e5883d5c534540ea7fda74a73945a28b6eb0c8307a47d9ca27b85c512",
+      "bytes": 107320
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Testing.Extensions.Telemetry.dll",
+      "sha256": "7f27ea7e6eff81e1b8f78878d279302e0ee1368d3db7190c5556bc922352e578",
+      "bytes": 36704
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Testing.Extensions.TrxReport.Abstractions.dll",
+      "sha256": "4abda24b56302b93f256e857a9a242e75446827dec4509bdf206db7c3a0974f0",
+      "bytes": 22328
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.Testing.Platform.dll",
+      "sha256": "bddd8a2d55326a45dcb6785141d05b811b599f625677e668a5bd827333c62c51",
+      "bytes": 1477432
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.VisualStudio.CodeCoverage.Shim.dll",
+      "sha256": "30d1b68b025cde0f5653475b1602c02c5ef089cb43bdc035fc726ce7675c3711",
+      "bytes": 16184
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.VisualStudio.TestPlatform.Common.dll",
+      "sha256": "c38efb5cfcceb4cdf0f1fb04eea0b1d17310c6eda839dd3ae31e658e91cc7de6",
+      "bytes": 250680
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Microsoft.VisualStudio.TestPlatform.ObjectModel.dll",
+      "sha256": "ff730c68bebe827f74e2bdcfb571400ab328c00be11c7fe3a1fe01143b483bc6",
+      "bytes": 331064
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Mono.Cecil.Mdb.dll",
+      "sha256": "28cb367972bdc1cd43e4006306af2fd96d37f4ed4b239ee90e1dc7237a93af7f",
+      "bytes": 39936
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Mono.Cecil.Pdb.dll",
+      "sha256": "a332332633fbcb20e8d50e49b4db7bd1557721417122cf0c5f4c42f2332391d0",
+      "bytes": 90112
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Mono.Cecil.Rocks.dll",
+      "sha256": "bf992f3dce364ebcc3200fa7832ef07e20b4e2dbc3a8a6213ce44e3d239db984",
+      "bytes": 27136
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Mono.Cecil.dll",
+      "sha256": "831dca77470d85cb6ffbea3072daa7a3df5b7c9fcfd9c3f43674a9be99d4bfcf",
+      "bytes": 361472
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Shouldly.dll",
+      "sha256": "498dad657f324ab068e800d5711ae36feb4af4ba9a572eb941197e2fb677549d",
+      "bytes": 292864
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/System.CodeDom.dll",
+      "sha256": "bfb75074ac26c7632bbe9ffc1063ceca9a56aae86ac4913481d6bba88c4c4a34",
+      "bytes": 184944
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/System.Management.dll",
+      "sha256": "4dc4d6846a3142087bf258e5923abf303c0a4c19e4bb212b066ad7ab8e6de859",
+      "bytes": 72824
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/testhost.dll",
+      "sha256": "ad339a6279013d6af52dde6bcb8b90a19a395a54c6fcf085ff5a42435c60c4c5",
+      "bytes": 49464
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.abstractions.dll",
+      "sha256": "3166dc70323fb30ccf1cedb0fe86f2ad122c46d254542342d90386efc4c9285c",
+      "bytes": 21928
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.runner.visualstudio.testadapter.dll",
+      "sha256": "a5dd2a0765f3891208189261cfe09171f875ff44fd5af99ea56e890085fb7f30",
+      "bytes": 1348608
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.assert.dll",
+      "sha256": "2ed4cbd3fe285091a936eaf67698f2bd060bc432d97f1605ad880725a970396e",
+      "bytes": 217864
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.common.dll",
+      "sha256": "59172544bb8113a6f6b43892ac1b9d8928708c90696c1bdb7e451c764626b88a",
+      "bytes": 200456
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.core.dll",
+      "sha256": "b87e6b8a7807c03bc40598acef451fa36491f282f9379867c68e5927b7762ef3",
+      "bytes": 646920
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.mtp-v2.dll",
+      "sha256": "b8135b5eec4257c6aea52bc7136832a45b2bfec730b817ed24a30138ff8b51d1",
+      "bytes": 131336
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.runner.common.dll",
+      "sha256": "65de30123f02a8632610d37ebd01fc7e85dcac6a30092faf77e4e370b56d9085",
+      "bytes": 1091336
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.runner.inproc.console.dll",
+      "sha256": "76d1b132bd68d5f3b78cf2a5c96548054d0958810b5eb8e930e36fd85ae15e7e",
+      "bytes": 82184
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/xunit.v3.runner.utility.netcore.dll",
+      "sha256": "a0dd5c0be8d901d0353a53d9dc897be2c98ad469a0dc75e0fb291c3eb1ce3d48",
+      "bytes": 160520
+    },
+    {
+      "path": "/usr/lib/x86_64-linux-gnu/libcrypto.so.3",
+      "sha256": "5385f0436ac2e284ba8c5fb1488874057c29c04be72dea32add832694f381e28",
+      "bytes": 6386528
+    },
+    {
+      "path": "/usr/lib/x86_64-linux-gnu/libssl.so.3",
+      "sha256": "63b47f444efa588e291e9b650a5ba2ab02f856356f2d50f13a2e477db9119e09",
+      "bytes": 1114280
+    }
+  ]
+}

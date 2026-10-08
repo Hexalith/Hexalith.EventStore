@@ -1,0 +1,6 @@
+Command arguments: ["actionlint", ".github/workflows/payload-protection.yml", ".github/workflows/advisory-tests.yml"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:15:23.501187+00:00
+
+
+Exit code: 0

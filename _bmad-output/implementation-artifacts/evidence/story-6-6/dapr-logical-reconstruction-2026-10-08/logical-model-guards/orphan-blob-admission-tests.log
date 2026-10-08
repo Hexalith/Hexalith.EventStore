@@ -1,0 +1,49 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "ledger") [FAIL]
+      System.InvalidOperationException : ReplayRestartRequired: retained proof disagrees with its operation-owned ledger.
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(1045,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.RequirePinned(ReadOnlySpan`1 bytes, DaprReplayPageLedger ledger, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(659,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(350,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "null-ledger-field") [FAIL]
+      Shouldly.ShouldAssertException : else { using var result = await owner.ExecutePageAsync(fixture.Source, binding, fixture.Trust, fixture.Key, "owner", 1, 2, "second", 1, CancellationToken.None); result.Outcome
+          should be
+      DaprReplayCommitOutcome.Indeterminate
+          but was
+      DaprReplayCommitOutcome.Proven
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(350,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(corruption: "blob") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Indeterminate
+          but was
+      DaprReplayCommitOutcome.Proven
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(276,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(278,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'dd0bf7d546fbd8b69ee4bc563bdff5ade81e69e205b5a865142c07e5fe5eaeeb')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 39, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 1.142s

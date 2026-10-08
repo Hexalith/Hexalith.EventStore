@@ -5,13 +5,19 @@ namespace Hexalith.EventStore.Client.Tests.Streams;
 internal sealed class RetainedHistoryTimeProvider(DateTimeOffset now) : TimeProvider
 {
     private readonly List<RetainedHistoryTimer> _timers = [];
-    private DateTimeOffset _now = now;
+    private long _ticks;
 
     /// <summary>Gets the last deadline duration requested by the SDK.</summary>
     public TimeSpan LastDueTime { get; private set; }
 
     /// <inheritdoc/>
-    public override DateTimeOffset GetUtcNow() => _now;
+    public override DateTimeOffset GetUtcNow() => now.AddTicks(Interlocked.Read(ref _ticks));
+
+    /// <inheritdoc/>
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+    /// <inheritdoc/>
+    public override long GetTimestamp() => Interlocked.Read(ref _ticks);
 
     /// <inheritdoc/>
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
@@ -24,12 +30,13 @@ internal sealed class RetainedHistoryTimeProvider(DateTimeOffset now) : TimeProv
     }
 
     /// <summary>Moves source time and fires every timer due at the resulting instant.</summary>
-    public void Advance(TimeSpan elapsed)
+    public void Advance(TimeSpan elapsed, bool fireTimers = true)
     {
-        _now += elapsed;
+        Interlocked.Add(ref _ticks, elapsed.Ticks);
+        if (!fireTimers) { return; }
         foreach (RetainedHistoryTimer timer in _timers.ToArray())
         {
-            timer.FireIfDue(_now);
+            timer.FireIfDue(GetUtcNow());
         }
     }
 }

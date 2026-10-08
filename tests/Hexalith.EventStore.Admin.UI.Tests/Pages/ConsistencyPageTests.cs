@@ -1025,6 +1025,162 @@ public class ConsistencyPageTests : AdminUITestContext {
             TimeSpan.FromSeconds(5));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Consistency_AuthenticationChangeClearsGlobalSummariesAndOpenAnomalyDialog(bool signOut) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary globalCheck = CreateSummary("foreign-check", "tenant-secret", ConsistencyCheckStatus.Running, 50, 7, "secret-domain");
+        SetupChecks([globalCheck]);
+        ConsistencyAnomaly anomaly = new("secret-anomaly", ConsistencyCheckType.SequenceContinuity, AnomalySeverity.Error,
+            "tenant-secret", "secret-domain", "secret-aggregate", "Protected anomaly description", "Protected anomaly details", 5, 7);
+        _ = _mockConsistencyApi.GetCheckResultAsync(globalCheck.CheckId, Arg.Any<CancellationToken>())
+            .Returns(CreateResult(globalCheck.CheckId, "tenant-secret", [anomaly]));
+        NavManager.NavigateTo("/consistency?tenant=tenant-secret&domain=secret-domain");
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("foreign-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, globalCheck));
+        await cut.InvokeAsync(() => OpenAnomaly(cut.Instance, anomaly));
+        cut.Render();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Protected anomaly details"), TimeSpan.FromSeconds(5));
+        GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldNotBeNull();
+        SetupChecks([CreateSummary("scoped-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+        _mockConsistencyApi.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => {
+            if (signOut) { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("foreign-check");
+            cut.Markup.ShouldNotContain("tenant-secret");
+            cut.Markup.ShouldNotContain("Protected anomaly");
+            cut.Markup.ShouldNotContain("Anomaly Detail");
+            GetPrivateField<ConsistencyAnomaly?>(cut.Instance, "_selectedAnomaly").ShouldBeNull();
+            GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult").ShouldBeNull();
+            GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldBeNull();
+            GetPrivateField<bool>(cut.Instance, "_pendingShowAnomaly").ShouldBeFalse();
+            if (signOut) {
+                GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks").ShouldBeEmpty();
+                GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_filteredChecks").ShouldBeEmpty();
+                FindStatCard(cut, "Total Checks").TextContent.ShouldContain("Total Checks: 0");
+            }
+            else {
+                cut.Markup.ShouldContain("scoped-check");
+                FindStatCard(cut, "Total Checks").TextContent.ShouldContain("Total Checks: 1");
+                FindStatCard(cut, "Total Anomalies").TextContent.ShouldContain("Total Anomalies: 0");
+            }
+        }, TimeSpan.FromSeconds(5));
+        if (signOut) {
+            _ = _mockConsistencyApi.DidNotReceive().GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        }
+        else {
+            _ = _mockConsistencyApi.Received(1).GetChecksAsync(null, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("signout")]
+    [InlineData("promote")]
+    public async Task Consistency_OldListIgnoringCancellationCannotRestoreStateAfterAuthenticationChange(string transition) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        var oldResponse = new TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>>();
+        CancellationToken oldToken = default;
+        int calls = 0;
+        ConsistencyCheckSummary current = CreateSummary("current-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(call => {
+            if (calls++ == 0) {
+                oldToken = call.Arg<CancellationToken>();
+                return oldResponse.Task;
+            }
+            return Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([current]);
+        });
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => calls.ShouldBe(1), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => {
+            if (transition == "signout") { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+        cut.WaitForAssertion(() => oldToken.IsCancellationRequested.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        if (transition == "promote") {
+            await cut.InvokeAsync(() => authProvider.SetRole(AdminRole.Admin));
+            cut.WaitForAssertion(() => GetPrivateField<bool>(cut.Instance, "_canUseOpaqueChecks").ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        }
+        if (transition != "signout") {
+            cut.WaitForAssertion(() => cut.Markup.ShouldContain("current-check"), TimeSpan.FromSeconds(5));
+        }
+
+        await cut.InvokeAsync(() => oldResponse.SetResult([
+            CreateSummary("old-foreign-check", "tenant-secret", ConsistencyCheckStatus.Running, 500, 99)]));
+        cut.Render();
+
+        cut.Markup.ShouldNotContain("old-foreign-check");
+        cut.Markup.ShouldNotContain("tenant-secret");
+        GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldBeNull();
+        GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks")
+            .Select(check => check.CheckId).ShouldBe(transition == "signout" ? [] : new[] { "current-check" });
+    }
+
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("signout")]
+    [InlineData("promote")]
+    public async Task Consistency_OldDetailIgnoringCancellationCannotRestoreStateAfterAuthenticationChange(string transition) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary oldCheck = CreateSummary("old-check", "tenant-secret", ConsistencyCheckStatus.Completed, 50, 1);
+        ConsistencyCheckSummary currentCheck = CreateSummary("current-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        SetupChecks([oldCheck]);
+        var oldResponse = new TaskCompletionSource<ConsistencyCheckResult?>();
+        CancellationToken oldToken = default;
+        _ = _mockConsistencyApi.GetCheckResultAsync("old-check", Arg.Any<CancellationToken>()).Returns(call => {
+            oldToken = call.Arg<CancellationToken>();
+            return oldResponse.Task;
+        });
+        _ = _mockConsistencyApi.GetCheckResultAsync("current-check", Arg.Any<CancellationToken>())
+            .Returns(CreateResult("current-check", "tenant-a", []));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("old-check"), TimeSpan.FromSeconds(5));
+        Task oldLookup = cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, oldCheck));
+        cut.WaitForAssertion(() => oldToken.CanBeCanceled.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        SetupChecks([currentCheck]);
+
+        await cut.InvokeAsync(() => {
+            if (transition == "signout") { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+        cut.WaitForAssertion(() => oldToken.IsCancellationRequested.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        if (transition == "promote") {
+            await cut.InvokeAsync(() => authProvider.SetRole(AdminRole.Admin));
+            cut.WaitForAssertion(() => GetPrivateField<bool>(cut.Instance, "_canUseOpaqueChecks").ShouldBeTrue(), TimeSpan.FromSeconds(5));
+            await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, currentCheck));
+        }
+
+        oldResponse.SetResult(CreateResult("old-check", "tenant-secret", []));
+        await oldLookup;
+        cut.Render();
+
+        cut.Markup.ShouldNotContain("tenant-secret");
+        cut.Markup.ShouldNotContain("old-check");
+        ConsistencyCheckResult? detail = GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult");
+        if (transition == "promote") { detail.ShouldNotBeNull().CheckId.ShouldBe("current-check"); }
+        else { detail.ShouldBeNull(); }
+    }
+
+    private static ConsistencyCheckResult CreateResult(string checkId, string tenantId, IReadOnlyList<ConsistencyAnomaly> anomalies)
+        => new(checkId, ConsistencyCheckStatus.Completed, tenantId, null, [ConsistencyCheckType.SequenceContinuity],
+            DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(10),
+            50, anomalies.Count, anomalies, false, null);
+
+    private static void OpenAnomaly(Consistency instance, ConsistencyAnomaly anomaly) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod("OpenAnomalyDetail", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OpenAnomalyDetail was not found.");
+        _ = method.Invoke(instance, [anomaly]);
+    }
+
     // ===== Helpers =====
 
     private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -1110,16 +1266,20 @@ public class ConsistencyPageTests : AdminUITestContext {
     }
 
     private sealed class MutableAuthStateProvider(AdminRole initialRole) : AuthenticationStateProvider {
-        private AdminRole _role = initialRole;
+        private ClaimsPrincipal _user = new(new ClaimsIdentity([new Claim(AdminClaimTypes.Role, initialRole.ToString())], "TestAuth"));
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
-            => Task.FromResult(new AuthenticationState(
-                new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(AdminClaimTypes.Role, _role.ToString())],
-                    "TestAuth"))));
+            => Task.FromResult(new AuthenticationState(_user));
 
-        public void SetRole(AdminRole role) {
-            _role = role;
+        public void SetRole(AdminRole role, string? tenantId = null) {
+            List<Claim> claims = [new Claim(AdminClaimTypes.Role, role.ToString())];
+            if (tenantId is not null) { claims.Add(new Claim("eventstore:tenant", tenantId)); }
+            _user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+
+        public void SignOut() {
+            _user = new ClaimsPrincipal(new ClaimsIdentity());
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
     }

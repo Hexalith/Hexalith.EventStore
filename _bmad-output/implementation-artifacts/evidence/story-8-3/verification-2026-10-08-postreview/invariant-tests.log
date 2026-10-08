@@ -1,0 +1,18 @@
+Command arguments: ["dotnet", "test", "--project", "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj", "--no-build", "--configuration", "Release", "--filter-method", "Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams", "--minimum-expected-tests", "1", "--fail-skips", "on", "--no-ansi", "-p:UseHexalithProjectReferences=false", "--results-directory", "/tmp/eventstore-8-3-postreview-tests", "--report-xunit-trx", "--report-xunit-trx-filename", "invariant-results.trx"]
+Environment overrides: {"DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"}
+Started UTC: 2026-10-08T14:22:28.998885+00:00
+
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll (net10.0|x64) passed (611ms)
+
+  In process file artifacts produced:
+    - /tmp/eventstore-8-3-postreview-tests/invariant-results.trx
+
+Test run summary: Passed!
+  total: 1
+  failed: 0
+  succeeded: 1
+  skipped: 0
+  duration: 760ms
+
+Exit code: 0

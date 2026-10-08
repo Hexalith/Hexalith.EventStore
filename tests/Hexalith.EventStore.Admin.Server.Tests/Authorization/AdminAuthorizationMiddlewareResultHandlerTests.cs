@@ -43,10 +43,41 @@ public class AdminAuthorizationMiddlewareResultHandlerTests {
         context.Response.ContentType.ShouldBe("application/problem+json");
         context.Response.Headers.WWWAuthenticate.ToString().ShouldBe("Test realm=\"admin\"");
         context.Response.Headers.Location.Count.ShouldBe(0);
+        context.Response.Headers["X-Correlation-ID"].ToString().ShouldBe("host-correlation");
         string body = await ReadResponseBodyAsync(context);
         body.ShouldNotContain("protected-scheme-body");
         body.ShouldNotContain("tenant-secret");
+        body.ShouldNotContain("scheme-correlation");
+        body.ShouldContain("host-correlation");
         body.Length.ShouldBeLessThan(512);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AdminChallenge_DiscardsLargeSchemeBodyThroughFramework() {
+        IAuthenticationService authentication = Substitute.For<IAuthenticationService>();
+        _ = authentication.ChallengeAsync(Arg.Any<HttpContext>(), Arg.Any<string?>(), Arg.Any<AuthenticationProperties?>())
+            .Returns(async call => {
+                HttpContext requestContext = call.Arg<HttpContext>();
+                requestContext.Response.Body.ShouldBeSameAs(Stream.Null);
+                byte[] chunk = new byte[64 * 1024];
+                for (int index = 0; index < 1024; index++) {
+                    await requestContext.Response.Body.WriteAsync(chunk);
+                }
+                requestContext.Response.Headers["X-Correlation-ID"] = "scheme-correlation";
+                requestContext.Response.Headers["X-Protected"] = "tenant-secret";
+            });
+        IAuthorizationMiddlewareResultHandler hostHandler = Substitute.For<IAuthorizationMiddlewareResultHandler>();
+        HttpContext context = CreateContext(authentication, adminEndpoint: true);
+        var handler = new AdminAuthorizationMiddlewareResultHandler(hostHandler);
+        AuthorizationPolicy policy = new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().Build();
+
+        await handler.HandleAsync(_ => Task.CompletedTask, context, policy, PolicyAuthorizationResult.Challenge());
+
+        await authentication.Received(1).ChallengeAsync(context, "Test", null);
+        await hostHandler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default!, default!);
+        context.Response.Headers["X-Protected"].Count.ShouldBe(0);
+        context.Response.Headers["X-Correlation-ID"].ToString().ShouldBe("host-correlation");
+        context.Response.Body.Length.ShouldBeLessThan(512L);
     }
 
     [Fact]
@@ -77,6 +108,8 @@ public class AdminAuthorizationMiddlewareResultHandlerTests {
             RequestServices = services.BuildServiceProvider(),
         };
         context.Response.Body = new MemoryStream();
+        context.Items["CorrelationId"] = "host-correlation";
+        context.Response.Headers["X-Correlation-ID"] = "host-correlation";
         if (adminEndpoint) {
             var descriptor = new ControllerActionDescriptor {
                 ControllerTypeInfo = typeof(AdminStreamsController).GetTypeInfo(),
@@ -94,6 +127,7 @@ public class AdminAuthorizationMiddlewareResultHandlerTests {
         context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
         context.Response.Headers.WWWAuthenticate = "Test realm=\"admin\"";
         context.Response.Headers.Location = "/tenant-secret";
+        context.Response.Headers["X-Correlation-ID"] = "scheme-correlation";
         await context.Response.WriteAsync("protected-scheme-body tenant-secret").ConfigureAwait(false);
     }
 

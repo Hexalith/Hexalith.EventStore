@@ -6,6 +6,9 @@ internal sealed class RetainedHistorySuspendedStream(bool useTaskRead) : Stream
 {
     private readonly TaskCompletionSource<int> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Optional synchronous invocation or provider-cancellation hook, installed only by focused tests.</summary>
+    public Action<CancellationToken>? BeforeReturn { get; init; }
+
     /// <summary>Signals a pending read before the test advances or cancels the operation.</summary>
     public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -46,6 +49,7 @@ internal sealed class RetainedHistorySuspendedStream(bool useTaskRead) : Stream
 
         ReadCount++;
         Started.TrySetResult();
+        BeforeReturn?.Invoke(cancellationToken);
         return new(_completion.Task);
     }
 
@@ -54,6 +58,7 @@ internal sealed class RetainedHistorySuspendedStream(bool useTaskRead) : Stream
     {
         ReadCount++;
         Started.TrySetResult();
+        BeforeReturn?.Invoke(cancellationToken);
         return _completion.Task;
     }
 

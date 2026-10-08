@@ -2,8 +2,8 @@
 title: 'Story 5.2: Admin Endpoint Authorization And Tenant Filters'
 type: 'feature'
 created: '2026-09-06'
-status: 'in-review'
-review_loop_iteration: 2
+status: 'in-progress'
+review_loop_iteration: 3
 followup_review_recommended: false
 baseline_revision: 'acf5c4e403699d4f9290fd6636e4d6b1872a3bd6'
 baseline_commit: '04ce5380cd1f6e6e90a5ca03a751f6d94832fc2c'
@@ -79,12 +79,72 @@ deferred: []
 - Given an authenticated request reaches a JSON-body endpoint, when its encoded HTTP body is exactly at the applicable boundary or one byte beyond it, then the exact-size request proceeds normally and the next byte returns bounded `413 application/problem+json` with no payload echo, partial work, or service invocation.
 - Given implementation is complete, when focused authorization/controller/host tests, both Admin test projects, and the Release solution build run, then all pass without warnings or regressions.
 
+**2026-10-08 review completion tasks:**
+- [x] `src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs` and `tests/Hexalith.EventStore.Admin.Server.Host.Tests/AdminRequestBodySizeTests.cs` -- enforce unknown-length entity bytes independently of Kestrel's chunk-framing count; keep buffering inside the proven-overflow catch; preserve the host-owned correlation header; add real Kestrel exact/+1 tests for ordinary and import limits, a transport stream throwing HTTP 413, and retain unrelated I/O/cancellation propagation and zero-service-work assertions.
+- [x] `src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor` and `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/ConsistencyPageTests.cs` -- invalidate cached summaries, pending list/detail requests, auto-refresh state and anomaly-dialog state on authentication changes; close protected dialogs and reload only the current authorized scope; test demotion/sign-out, cross-tenant cached summaries, an open anomaly dialog, and delayed old responses that ignore cancellation so they cannot restore protected state after a transition (including demotion followed by promotion).
+- [x] `src/Hexalith.EventStore.Admin.UI/Services/AdminUserContext.cs` and `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminUserContextTests.cs` -- mirror the server's precedence: if any explicit admin-role claim exists, accept only canonical values and use the highest recognized role; do not derive a fallback role for an invalid explicit claim. Only in the absence of explicit role claims derive Admin from global-administrator claims, Operator from exact `command:replay` permission, or ReadOnly from a usable tenant claim. Test explicit-role ordering, invalid explicit claims plus global hints, mapped tenant/replay roles and anonymous principals.
+- [x] `src/Hexalith.EventStore.Admin.Server/Authorization/AdminAuthorizationMiddlewareResultHandler.cs`, `Configuration/ServiceCollectionExtensions.cs`, and their tests -- preserve the previously effective host result handler and its registration lifetime for non-Admin endpoints; normalize Admin failures through framework challenge/forbid behavior; discard scheme-written bodies without allocating a response-sized buffer; restore correlation only from host-owned request context rather than scheme-controlled headers; test custom host delegation, large discarded scheme bodies and unsafe header replacement.
+- [x] `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminActorApiClientTests.cs` and `AdminConsistencyApiClientTests.cs` -- feed real HTTP 403 Problem Details through each actual client and assert `ForbiddenAccessException` for actor inspection, consistency detail and cancellation, preserving existing page denial/focus behavior.
+
+### Review Findings
+
+2026-10-08 authorization, tenant-filter, and request-limit chunk. Controllers, Admin UI, OpenAPI documents, and the inventory script remain for later chunks.
+
+- [ ] [Review][Patch] Chunked overflow leaves an unbounded keep-alive drain [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:82]
+- [ ] [Review][Patch] Request-body pool buffer is returned uncleared [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:99]
+- [ ] [Review][Patch] Named unknown-length boundary test still sends Content-Length [tests/Hexalith.EventStore.Admin.Server.Host.Tests/AdminRequestBodySizeTests.cs:205]
+- [ ] [Review][Patch] Admin omitted-tenant bypass is untested [tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminTenantAuthorizationFilterTests.cs:124]
+- [ ] [Review][Patch] Blank tenant values are untested [src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs:63]
+
+- [x] [Review][Defer] Repeated tenantId query values are joined and fail closed [src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs:69] — deferred: pre-existing; the baseline filter already compared `queryValue.ToString()`, which joins repeated keys with commas.
+
+#### Rejected
+
+- false: Unknown-length reads should gain a second Kestrel framing ceiling — the entity-byte limit stays authoritative, and `MaxRequestBodySize` stays unset for chunked bodies so exact-size requests are not charged for chunk framing. Resolved 2026-10-08: keep the cap off.
+- false: Authorization failures miss the Admin body cap — the spec places this middleware after authorization, and the size criterion applies to authenticated requests. `Program.cs` registers it after `UseAuthorization`.
+- false: Omitted-tenant narrowing erases an explicit request — writing the first authorized claim into `tenantId` is the specified narrow-or-deny seam. An Admin principal returns before that write, so an omitted Admin scope stays null.
+- false: Body tenant fields skip authorization — consistency and backup controllers compare a body tenant with the caller's claims. The metadata test checks that the filter attribute matches the exhaustive map.
+- false: The literal `Admin` disagrees with `nameof(AdminRole.Admin)` — both are the string `Admin`. Non-canonical role values are required to fail the exact allow-list.
+- false: Admin denials skip the preserved host handler and `Clear` throws — Admin failures are specified to use framework challenge and forbid behavior. The discard path swaps in `Stream.Null` first, and the Admin failure test writes a scheme body and still receives the cleared problem response.
+- false: Authorization denials reveal resource identifiers — an Operator opaque lookup fails the Admin policy in the result handler before the action. Later `CreateProblemResult` path instances sit outside that denial contract.
+- false: HTTP limit tests omit most body endpoints — the story requires exact and plus-one evidence for sandbox, one mutation, and import. Create-tenant is that mutation.
+- false: This chunk leaves anonymous OpenAPI reachable — OpenAPI is mapped only when the host is Development and `EventStore:Admin:OpenApi:Enabled` is true, which matches the epic context. Story 5.4 owns that gate.
+
 ## Spec Change Log
+
+- 2026-10-08 -- Added `scripts/verify-admin-endpoint-inventory.py` so the controller attributes, exhaustive test map, and public policy table are one rerunnable inventory check.
+- 2026-10-08 -- Resumed review demonstrated Kestrel chunk-framing and escaped-overflow failures, retained anomaly/global-summary state after authorization changes, UI/server mapped-role disagreement, non-Admin host-handler shadowing, unbounded discarded scheme capture and missing actual-client forbidden tests. Added the five review completion tasks and generation/transport/handler guidance below. KEEP: authenticated exact role policies, tenant narrow-or-deny and Admin bypass, all-claim body scope, exhaustive inventories, real JWT/redaction/zero-work evidence, recent-command clamp, 1 MiB/10 MiB entity-byte limits, probe reachability, existing UI denial/focus behavior, concurrent Client work and unchanged sprint status. Microsoft.Testing.Platform verification uses `dotnet test --project`; positional project paths from the older spec are not authoritative runner syntax.
 
 - 2026-09-06 -- Review found that the first derivation registered a dead authorization-result handler, omitted explicit authenticated-user requirements, could convert unrelated request-body I/O failures to `413`, verified metadata instead of enough effective host/OpenAPI behavior, and changed opaque lookup roles without updating Admin UI and documentation. Expanded the Code Map, Tasks, Design Notes, and verification targets to require registration replacement, bounded challenge normalization, real-host JWT checks, mutation-size and generated-OpenAPI coverage, executable N/A ownership, and role-aware UI/client/docs propagation. Known-bad states avoided: claims-bearing unauthenticated access, empty or unbounded denial bodies, false `413` classification, hidden runtime metadata drift, and Operator/ReadOnly controls that always fail. KEEP: exact role values; fail-closed tenant narrowing and Admin bypass; correlation-only tenant-denial logs; recent-command default/clamp; 1 MiB ordinary and 10 MiB import limits; exact/+1 and unknown-length tests; opaque lookups remain Admin-only; health probes remain reachable; `sprint-status.yaml` remains untouched.
 - 2026-09-06 -- The second derivation checked consistency body scope against only the first tenant claim, used non-exhaustive role/tenant inventories, allowed unsafe challenge headers and cross-host handler side effects, left exact/current UI-role behavior and initiating-action focus underspecified, and published incomplete policy/N/A documentation. Expanded the Code Map, Tasks, Design Notes, and evidence requirements to match any authorized tenant claim, use explicit exhaustive maps, scope denial normalization, allowlist safe headers, react to role transitions, align exact role casing, make omitted scope truthful, exercise backup/opaque allow-deny paths, and record the full endpoint/body-shape/owner/reason matrix. Known-bad states avoided: false cross-tenant denials, silent ReadOnly defaults for future mutations, missing tenant filters, stale protected UI data, controls that the server always rejects, focus stranded in denied dialogs, and misleading public policy/scope text. KEEP: authenticated exact server policies; effective handler replacement and captured scheme bodies; bounded redacted Problem Details; fail-closed route/query/action tenant filtering and Admin bypass; correlation-only logs; recent-command default/clamp; 1 MiB ordinary and 10 MiB import limits; exact/+1 and unknown-length no-work tests; generated OpenAPI coverage; Admin-only opaque lookups with typed forbidden clients; health probes; and the untouched `sprint-status.yaml`.
 
 ## Review Triage Log
+
+### 2026-10-08 — Resumed independent review
+- verdicts: 20 findings — high 5, medium 15, low 0, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[bad_spec]` Blind hunter: chunked overflow escapes normalization -- the unknown-length buffer is outside the HTTP 413 catch; the live Kestrel reproduction confirms generic 500. Include buffering in the proven-overflow catch.
+  - `[medium]` `[patch]` Blind hunter: overflow clears the correlation header -- `Response.Clear()` removes the host header; restore it from the request's canonical correlation context and assert it.
+  - `[high]` `[bad_spec]` Blind hunter: an open anomaly dialog survives demotion -- capability refresh leaves `_selectedAnomaly` and its independent modal rendered. Clear dialog state and test rendered protected details.
+  - `[high]` `[bad_spec]` Blind hunter: global summaries survive an authorization change -- refresh retains both cached collections and pending loads; completed checks have no refresh timer. Invalidate old generations and reload the current authorized scope.
+  - `[medium]` `[bad_spec]` Blind hunter: strict UI checks reject tenant-derived ReadOnly -- the server derives this role from usable tenant claims, while the changed minimum-role check rejects it. Mirror server role precedence, including replay-derived Operator when no explicit role exists.
+  - `[medium]` `[bad_spec]` Blind hunter: first-only explicit-role parsing disagrees with policy -- new opaque capabilities consume a first-only resolver, while the server accepts any canonical claim. Resolve the highest canonical explicit role and test claim ordering.
+  - `[medium]` `[bad_spec]` Blind hunter: retained host result-handler registration loses behavior -- the effective Admin handler delegates non-Admin requests to a fresh framework handler, bypassing host customization. Preserve the prior effective handler and lifetime for non-Admin requests.
+  - `[medium]` `[patch]` Blind hunter: discarded scheme bodies allocate without a bound -- an unrestricted `MemoryStream` stores bytes that are never used. Replace body capture with a discard stream and test a large scheme response.
+  - `[medium]` `[defer]` Blind hunter: repeated query tenant values differ from scalar binding -- the pre-existing filter joins query values, so repeated matching parameters are rejected. This is a retained fail-closed compatibility issue, not caused by the new optional-scope handling.
+  - `[medium]` `[defer]` Blind hunter: opaque client HTTP 401 handling is incomplete -- carried for consistency row lookup: the prior review already classified its unhandled unauthorized path as pre-existing; actor lookup also previously classified authentication failure as infrastructure failure. Preserve the existing scope and record only the newly identified actor path.
+  - `[medium]` `[bad_spec]` Edge hunter: Kestrel read-time HTTP 413 bypasses the catch -- verified by the same live transport reproduction; grouped with unknown-length overflow normalization.
+  - `[high]` `[bad_spec]` Edge hunter: anomaly details remain after Admin revocation -- the unguarded modal retains the selected anomaly; grouped with protected-dialog invalidation.
+  - `[high]` `[bad_spec]` Edge hunter: completed cross-tenant summaries persist after demotion -- no timer is installed for completed checks and authentication refresh does not reload; grouped with cache/generation invalidation.
+  - `[medium]` `[bad_spec]` Edge hunter: server-derived tenant/replay roles are rejected by UI -- raw JWT claims remain in the UI principal; grouped with server-compatible role precedence.
+  - `[medium]` `[bad_spec]` Edge hunter claim audit: exact/+1 overflow contract lacks transport normalization -- the live reproduction disproves the claim; grouped with the request-size work.
+  - `[high]` `[bad_spec]` Edge hunter claim audit: demotion does not clear all protected state -- selected anomalies and global collections remain; grouped with both demonstrated UI state defects.
+  - `[medium]` `[bad_spec]` Verification gap: request-size tests omit Kestrel -- TestServer lacks `IHttpMaxRequestBodySizeFeature`, so server-specific boundary failures stay green. Add actual Kestrel entity-byte boundary tests and a transport-413 stream regression.
+  - `[medium]` `[patch]` Verification gap: opaque client tests manufacture forbidden exceptions -- actual HTTP 403 translation is untested for actor state, check detail and cancellation. Add real-client HTTP response tests.
+  - `[medium]` `[bad_spec]` Verification gap other finding: exact-size chunked bodies are rejected -- `/tmp/admin-request-size-kestrel-repro.ps1` produced 200 below the limit and 500 at exactly 1,048,576 bytes because Kestrel charges chunk framing. Keep application entity-byte enforcement authoritative for unknown lengths.
+  - `[medium]` `[bad_spec]` Verification gap other finding: chunked +1 yields generic 500 -- the same live reproduction confirms the escaped `BadHttpRequestException(413)`; grouped with the proven-overflow catch fix.
+
+No historical code was reverted: this resume had made no product edits, and later committed changes plus concurrent Client edits are preserved. Lower-priority patches are included in the coherent completion tasks rather than applied against a superseded implementation.
 
 ### 2026-09-06 — Review pass
 - verdicts: 30 findings — high 4, medium 17, low 1, false 8, maybe-false 0
@@ -165,6 +225,10 @@ deferred: []
 
 ## Design Notes
 
+The 2026-10-08 resume starts from an already committed implementation with concurrent, unrelated Client edits in the shared worktree. Preserve those edits and all later historical work; no historical rollback, staging, commit, push, dependency update, or sprint-status mutation is part of this implementation handoff. Re-derive the remaining Admin changes against the current code. A read-only live Kestrel reproducer is available at `/tmp/admin-request-size-kestrel-repro.ps1`; it showed exact 1 MiB chunked entity bytes and +1 both returning 500. TestServer has no Kestrel request-size feature and cannot prove these transport paths. For unknown lengths, application buffering must count entity bytes while avoiding a transport cap that charges chunk framing against the same boundary. Known-length endpoint limits remain enforced.
+
+Authentication changes invalidate data, not only visibility flags. Cancel outstanding consistency loads, advance a generation checked after every list/detail await, clear cached global summaries and all anomaly/opaque state before awaiting refreshed authorization, and prevent old responses from reappearing even if cancellation is ignored or the caller is later promoted again. Reload using the current authorized scope when authenticated; sign-out leaves protected collections empty. Non-Admin handler delegation must preserve an existing host customization as well as its descriptor. Discarded authentication-scheme bodies need no in-memory capture; canonical correlation comes from the host context, never a scheme-supplied header.
+
 Tenant scope must be established without reading the protected resource. Nullable `tenantId` action arguments provide the safe narrowing seam: non-admin callers receive one authorized claim value, while callers with no usable claim are denied. Routes whose only key is an opaque `checkId` or actor ID cannot establish that proof, so their existing route shape remains but their policy becomes Admin-only.
 
 Request limits are encoded-body limits, not deserialized-object estimates. Enforcement must use endpoint metadata for documentation and server behavior, run after authentication/authorization, and normalize both known `Content-Length` rejection and body-reader overflow into the same safe Problem Details contract.
@@ -186,8 +250,9 @@ The request-limit record is an enumerated table, not a generic method-category s
 ## Verification
 
 **Commands:**
-- `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --configuration Release` -- all Admin authorization/controller tests pass.
-- `dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj --configuration Release` -- real host authorization, probe, and request-limit tests pass.
-- `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release` -- role-aware Admin UI/client regressions pass.
+- `dotnet test --project tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --configuration Release` -- all Admin authorization/controller tests pass.
+- `dotnet test --project tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj --configuration Release` -- real host authorization, probe, and request-limit tests pass.
+- `dotnet test --project tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release` -- role-aware Admin UI/client regressions pass.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release` -- solution builds with zero warnings/errors.
 - `git diff --check` -- no whitespace errors.
+- `python3 scripts/verify-admin-endpoint-inventory.py` -- controller attributes, the exhaustive test map, and the public policy table name the same action, policy, tenant filter, and body limit.

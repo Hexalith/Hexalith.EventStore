@@ -519,6 +519,89 @@ public sealed class CryptographyTests
         result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
     }
 
+    /// <summary>Snapshot authentication resolves the envelope's exact alternate reference/version pair.</summary>
+    [Fact]
+    public async Task Snapshot_AlternateReferenceAndVersionResolveExactPairAsync()
+    {
+        const string reference = "01J00000000000000000000001";
+        byte[] payload = "{\"value\":\"alternate snapshot\"}"u8.ToArray();
+        ProtectedSnapshotPayloadV2 protectedSnapshot = TestFixture.ProtectSnapshot(
+            payload,
+            materialFactory: () => new PayloadProtectionMaterial(reference, 2, TestFixture.Dek()));
+        PayloadProtectionEnvelope envelope = EnvelopeCodec.Read(Base64UrlCodec.Decode(protectedSnapshot.Envelope));
+        envelope.KeyReference.ShouldBe(reference);
+        envelope.DekVersion.ShouldBe(2u);
+        int calls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectSnapshotAsync(
+            protectedSnapshot,
+            keyResolver: (keyReference, version, _) =>
+            {
+                calls++;
+                keyReference.ShouldBe(reference);
+                version.ShouldBe(2u);
+                return ValueTask.FromResult<byte[]?>(keyReference == reference && version == 2
+                    ? TestFixture.Dek()
+                    : null);
+            });
+
+        calls.ShouldBe(1);
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(payload);
+    }
+
+    /// <summary>The caller token reaches a genuinely pending resolver and cancels both reader kinds.</summary>
+    [Theory]
+    [InlineData("event")]
+    [InlineData("snapshot")]
+    public async Task PendingKeyLookup_ForwardsCallerCancellationAsync(string payloadKind)
+    {
+        using var source = new CancellationTokenSource();
+        var pending = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        ValueTask<byte[]?> Resolver(string keyReference, uint version, CancellationToken cancellationToken)
+        {
+            keyReference.ShouldBe(TestFixture.KeyReference);
+            version.ShouldBe(1u);
+            entered.SetResult(cancellationToken);
+            return new ValueTask<byte[]?>(pending.Task.WaitAsync(cancellationToken));
+        }
+
+        Task<CoreUnprotectionResult> reading = payloadKind == "event"
+            ? TestFixture.UnprotectAsync(
+                TestFixture.WrapperPayloadBytes(),
+                cancellationToken: source.Token,
+                keyResolver: Resolver).AsTask()
+            : TestFixture.UnprotectSnapshotAsync(
+                TestFixture.ProtectSnapshot(),
+                cancellationToken: source.Token,
+                keyResolver: Resolver).AsTask();
+        try
+        {
+            CancellationToken forwarded = await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            reading.IsCompleted.ShouldBeFalse();
+            source.Cancel();
+            OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+                async () => await reading.WaitAsync(TimeSpan.FromSeconds(5)));
+            exception.CancellationToken.ShouldBe(source.Token);
+            forwarded.ShouldBe(source.Token);
+            pending.Task.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            // Release even a mutated resolver invocation that received a non-cancellable token.
+            pending.TrySetResult(null);
+            try
+            {
+                _ = await reading.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            catch (OperationCanceledException)
+            {
+                // The caller cancellation remains the expected completion after releasing the provider task.
+            }
+        }
+    }
+
     /// <summary>V003 reproduces the named NIST CAVP AES-256-GCM Count 0 tag.</summary>
     [Fact]
     [Trait("Vector", "V003")]

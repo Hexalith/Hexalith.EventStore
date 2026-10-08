@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Events;
 
@@ -43,6 +45,29 @@ internal sealed class ImmutablePayload : IReadOnlyPayload, IDisposable {
         lock (_lifetimeLock) {
             byte[] owner = _owner ?? throw new ObjectDisposedException(nameof(ImmutablePayload));
             return SHA256.HashData(owner.AsSpan(0, Length));
+        }
+    }
+
+    /// <summary>Validates one complete strict UTF-8 JSON state value without materializing a document or token strings.</summary>
+    internal void RequireJsonState(CancellationToken cancellationToken)
+    {
+        lock (_lifetimeLock)
+        {
+            byte[] owner = _owner ?? throw new ObjectDisposedException(nameof(ImmutablePayload));
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = new UTF8Encoding(false, true).GetCharCount(owner.AsSpan(0, Length));
+            var reader = new Utf8JsonReader(owner.AsSpan(0, Length));
+            bool present = false;
+            while (reader.Read())
+            {
+                present = true;
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            if (!present)
+            {
+                throw new JsonException("Canonical state must contain one complete JSON value.");
+            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 

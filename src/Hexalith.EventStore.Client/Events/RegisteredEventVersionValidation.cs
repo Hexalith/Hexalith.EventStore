@@ -18,7 +18,9 @@ internal sealed class RegisteredEventVersionValidation
         string identityId, EventVersionValidator identity, ReadOnlyMemory<byte> identityOptions, IReadOnlyList<EventOptionRule> identityRules,
         Func<ReadOnlyMemory<byte>>? schemaRuntimeOptions = null, Func<ReadOnlyMemory<byte>>? identityRuntimeOptions = null,
         EventManagedArtifactExecutionBinding? schemaExecutionBinding = null,
-        EventManagedArtifactExecutionBinding? identityExecutionBinding = null)
+        EventManagedArtifactExecutionBinding? identityExecutionBinding = null,
+        EventManagedArtifactExecutionBinding? schemaRuntimeOptionsExecutionBinding = null,
+        EventManagedArtifactExecutionBinding? identityRuntimeOptionsExecutionBinding = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(schema);
@@ -27,9 +29,9 @@ internal sealed class RegisteredEventVersionValidation
         _schema = schema;
         _identity = identity;
         _schemaBinding = new EventImplementationBinding(schemaId, schema, schemaOptions, schemaRules, schemaRuntimeOptions,
-            schemaExecutionBinding);
+            schemaExecutionBinding, schemaRuntimeOptionsExecutionBinding);
         _identityBinding = new EventImplementationBinding(identityId, identity, identityOptions, identityRules, identityRuntimeOptions,
-            identityExecutionBinding);
+            identityExecutionBinding, identityRuntimeOptionsExecutionBinding);
         _schemaBinding.RequireCapabilityScope(registry.CapabilityLoss);
         _identityBinding.RequireCapabilityScope(registry.CapabilityLoss);
     }
@@ -56,22 +58,7 @@ internal sealed class RegisteredEventVersionValidation
     internal void Validate(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(payload);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
-        RequireDescriptor(_registry, canonicalType, version, cancellationToken);
-        EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
-        if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal)
-            || !string.Equals(format, descriptor.GetTextField(7), StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("CapabilityMismatch: validation scope or format disagrees with the registered V descriptor.");
-        }
-        _schemaBinding.RequireFields(descriptor, 1);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
-        _identityBinding.RequireFields(descriptor, 8);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
+        RequireValidation(domain, canonicalType, version, format, payload, cancellationToken);
         using (var schemaLease = new InvocationPayloadLease(payload, cancellationToken))
         {
             _schema(domain, canonicalType, version, format, schemaLease, cancellationToken);
@@ -86,5 +73,45 @@ internal sealed class RegisteredEventVersionValidation
             cancellationToken.ThrowIfCancellationRequested();
             _registry.CapabilityLoss.RequireNoObservedLoss();
         }
+    }
+
+    /// <summary>Rechecks addressed source/trust/binding between the separately leased current schema and identity callbacks.</summary>
+    internal async ValueTask ValidateAsync(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
+        Func<CancellationToken, Task> sourceFence, CancellationToken token)
+    {
+        await sourceFence(token).ConfigureAwait(false);
+        RequireValidation(domain, canonicalType, version, format, payload, token);
+        using (var schemaLease = new InvocationPayloadLease(payload, token))
+        {
+            _schema(domain, canonicalType, version, format, schemaLease, token);
+        }
+        await sourceFence(token).ConfigureAwait(false);
+        RequireValidation(domain, canonicalType, version, format, payload, token);
+        using (var identityLease = new InvocationPayloadLease(payload, token))
+        {
+            _identity(domain, canonicalType, version, format, identityLease, token);
+        }
+        await sourceFence(token).ConfigureAwait(false);
+    }
+
+    private void RequireValidation(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
+        RequireDescriptor(_registry, canonicalType, version, cancellationToken);
+        EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
+        if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal)
+            || !string.Equals(format, descriptor.GetTextField(7), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("CapabilityMismatch: validation scope or format disagrees with the registered V descriptor.");
+        }
+        _schemaBinding.RequireFields(descriptor, 1, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
+        _identityBinding.RequireFields(descriptor, 8, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _registry.CapabilityLoss.RequireNoObservedLoss();
     }
 }

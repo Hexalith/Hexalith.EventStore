@@ -24,6 +24,9 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
         _linkedSource = CancellationTokenSource.CreateLinkedTokenSource(callerToken, _timeoutSource.Token);
     }
 
+    /// <summary>Distinguishes the actual whole-read budget from a provider's independent cancellation.</summary>
+    public bool IsExpired => _timeoutSource.IsCancellationRequested || _timeProvider.GetElapsedTime(_startedAt) >= _timeout;
+
     /// <summary>Rejects caller cancellation first, then elapsed or timer-expired deadlines.</summary>
     public void ThrowIfCancellationRequested()
     {
@@ -47,7 +50,7 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
     }
 
     /// <summary>Bounds both synchronous provider invocation and its noncooperative returned task.</summary>
-    public async Task<T> ReadAsync<T>(Func<CancellationToken, Task<T>> read)
+    public async Task<T> ReadAsync<T>(Func<CancellationToken, Task<T>> read, Action<Task<T>>? operationStarted = null)
     {
         ThrowIfCancellationRequested();
         CancellationToken token = _providerSource.Token;
@@ -56,6 +59,7 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
         // without ever resuming the stream read or releasing its result.
         _ = pending.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        operationStarted?.Invoke(pending);
         try
         {
             // The query's private token has no provider callbacks. A provider may block

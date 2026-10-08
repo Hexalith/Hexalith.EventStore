@@ -17,6 +17,7 @@ namespace Hexalith.EventStore.Admin.Server.Configuration;
 /// Extension methods for registering Admin.Server services in the DI container.
 /// </summary>
 public static class ServiceCollectionExtensions {
+    private static readonly object HostAuthorizationHandlerKey = new();
     /// <summary>
     /// Adds the Admin API layer: authorization policies, claims transformation, tenant filter, and admin services.
     /// The host (Story 14-4) MUST additionally call <c>AddAuthentication().AddJwtBearer()</c> and
@@ -28,6 +29,7 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddAdminApi(
         this IServiceCollection services,
         IConfiguration configuration) {
+        ArgumentNullException.ThrowIfNull(services);
         // 1. Authorization policies (NFR46)
         _ = services.AddAuthorizationBuilder()
             .AddPolicy(AdminAuthorizationPolicies.ReadOnly, policy =>
@@ -44,9 +46,24 @@ public static class ServiceCollectionExtensions {
                 policy.RequireAuthenticatedUser()
                     .RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)));
 
-        // AddAuthorization installs the framework result handler with TryAdd. Appending our
-        // scoped normalizer makes it the effective service while preserving host registrations.
-        _ = services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
+        // Retain the previous descriptor and lifetime, and resolve its implementation through
+        // a private keyed registration so the normalizer can delegate without resolving itself.
+        if (!services.Any(descriptor => descriptor.IsKeyedService && descriptor.ServiceKey == HostAuthorizationHandlerKey)) {
+            ServiceDescriptor hostHandler = services.Last(descriptor =>
+                descriptor.ServiceType == typeof(IAuthorizationMiddlewareResultHandler) && !descriptor.IsKeyedService);
+            ServiceDescriptor preservedHandler = hostHandler.ImplementationInstance is not null
+                ? ServiceDescriptor.KeyedSingleton(typeof(IAuthorizationMiddlewareResultHandler), HostAuthorizationHandlerKey, hostHandler.ImplementationInstance)
+                : hostHandler.ImplementationFactory is not null
+                    ? ServiceDescriptor.DescribeKeyed(typeof(IAuthorizationMiddlewareResultHandler), HostAuthorizationHandlerKey,
+                        (provider, _) => hostHandler.ImplementationFactory(provider), hostHandler.Lifetime)
+                    : ServiceDescriptor.DescribeKeyed(typeof(IAuthorizationMiddlewareResultHandler), HostAuthorizationHandlerKey,
+                        hostHandler.ImplementationType!, hostHandler.Lifetime);
+            services.Add(preservedHandler);
+            services.Add(ServiceDescriptor.Describe(typeof(IAuthorizationMiddlewareResultHandler),
+                provider => new AdminAuthorizationMiddlewareResultHandler(
+                    provider.GetRequiredKeyedService<IAuthorizationMiddlewareResultHandler>(HostAuthorizationHandlerKey)),
+                hostHandler.Lifetime));
+        }
 
         // 2. Admin claims transformation (maps existing claims to admin roles)
         _ = services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();

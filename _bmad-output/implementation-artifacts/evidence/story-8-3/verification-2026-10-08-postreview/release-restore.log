@@ -1,0 +1,10 @@
+Command arguments: ["dotnet", "restore", "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj", "-p:Configuration=Release", "-p:UseHexalithProjectReferences=false"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:19:40.900456+00:00
+
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 170 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj (in 170 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj (in 170 ms).
+
+Exit code: 0

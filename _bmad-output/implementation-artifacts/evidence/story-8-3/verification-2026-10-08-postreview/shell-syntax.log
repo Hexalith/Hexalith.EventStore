@@ -1,0 +1,6 @@
+Command arguments: ["bash", "-n", "scripts/ci-local.sh"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:15:23.501042+00:00
+
+
+Exit code: 0

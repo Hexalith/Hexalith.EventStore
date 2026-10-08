@@ -5660,3 +5660,7 @@ status: open
 - source_spec: `spec-update-latest-packages-and-aspire.md`
   summary: Verify representative Azure integration registration and publishing-model behavior for external Aspire consumers (unverified medium compatibility concern).
   evidence: The package refresh compiled and loaded public integration types and ran the local topology; no failing external Azure path was reproduced. A concrete supported consumer reproduction and an offline model test or authorized live service check would settle the concern.
+
+## Deferred from: code review of spec-5-2-admin-endpoint-authorization-and-tenant-filters.md (2026-10-08)
+
+- Repeated `tenantId` query values are joined with commas and fail closed. The baseline `AdminTenantAuthorizationFilter` already compared `queryValue.ToString()`, so a repeated matching key is rejected. This chunk preserved that comparison.

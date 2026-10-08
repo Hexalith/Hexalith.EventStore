@@ -64,7 +64,8 @@ internal sealed class DaprLogicalEventReader
 
     private async Task<DaprLogicalEventPreparation> PrepareCoreAsync(AggregateIdentity identity, long sequenceNumber,
         CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
-        long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget)
+        long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget,
+        bool computeApplicationLogicalDigest = false)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sequenceNumber);
@@ -87,7 +88,7 @@ internal sealed class DaprLogicalEventReader
         }
 
         EventEnvelope source = result.Value;
-        if (!string.Equals(source.TenantId, identity.TenantId, StringComparison.Ordinal)
+        if (source is null || !string.Equals(source.TenantId, identity.TenantId, StringComparison.Ordinal)
             || !string.Equals(source.Domain, identity.Domain, StringComparison.Ordinal)
             || !string.Equals(source.AggregateId, identity.AggregateId, StringComparison.Ordinal)
             || (expectedAggregateType is not null
@@ -208,7 +209,7 @@ internal sealed class DaprLogicalEventReader
                 ownedReadable = new ImmutablePayload(readableCopy, readableCopy.Length, cancellationToken, copyReservation);
                 readableCopy = null;
                 var prepared = new DaprLogicalEventPreparation(source, outcome.SerializationFormat,
-                    ownedReadable, storedHash, metadataReservation);
+                    ownedReadable, storedHash, metadataReservation, computeApplicationLogicalDigest);
                 ownedReadable = null;
                 storedHash = null;
                 metadataReservation = null;
@@ -269,7 +270,8 @@ internal sealed class DaprLogicalEventReader
             prepared.RequireStoredUnchanged();
             _resolver.RequireNoObservedLoss(cancellationToken);
             metadataReservation = prepared.TakeMetadataReservation();
-            return new DaprLogicalEventView(source, resolved, prepared.ReadablePayloadLength, metadataReservation);
+            return new DaprLogicalEventView(source, resolved, prepared.ReadablePayloadLength, metadataReservation,
+                prepared.ApplicationLogicalDigest, prepared.ReadableFormat);
         }
         catch
         {
@@ -284,7 +286,8 @@ internal sealed class DaprLogicalEventReader
     internal async Task<DaprLogicalEventPage> ReadPageAsync(AggregateIdentity identity, string aggregateType,
         long startSequence, int maxCount, CancellationToken cancellationToken,
         long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null,
-        bool requireUnversioned = false, LegacyEventArrayBudget? arrayBudget = null)
+        bool requireUnversioned = false, LegacyEventArrayBudget? arrayBudget = null,
+        DaprLogicalSourceBinding? expectedSourceBinding = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
@@ -299,6 +302,10 @@ internal sealed class DaprLogicalEventReader
         ConditionalValue<AggregateMetadata> before = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
         long head = before.HasValue ? before.Value.CurrentSequence : 0;
         long floor = before.HasValue ? before.Value.RetainedFloor : 1;
+        if (expectedSourceBinding is not null)
+        {
+            RequireBindingMetadata(identity, aggregateType, expectedSourceBinding, before);
+        }
         if (head < 0 || floor < 1 || (head > 0 && floor > head && floor - head > 1)
             || (head == 0 && floor != 1)
             || (expectedActorHead.HasValue && expectedActorHead.Value != head)
@@ -311,7 +318,8 @@ internal sealed class DaprLogicalEventReader
             throw new InvalidOperationException("ReplayRestartRequired: the requested prefix is below the retained floor.");
         }
 
-        int count = startSequence > head ? 0 : (int)Math.Min(maxCount, head - startSequence + 1);
+        long target = expectedSourceBinding?.TargetSequence ?? head;
+        int count = startSequence > target ? 0 : (int)Math.Min(maxCount, target - startSequence + 1);
         var views = new DaprLogicalEventView[count];
         var prepared = new DaprLogicalEventPreparation[count];
         long storedBytes = 0;
@@ -325,7 +333,7 @@ internal sealed class DaprLogicalEventReader
                 DaprLogicalEventPreparation input = await PrepareCoreAsync(identity, startSequence + index,
                     cancellationToken, aggregateType, budget,
                     128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes,
-                    requireUnversioned, arrayBudget).ConfigureAwait(false);
+                    requireUnversioned, arrayBudget, computeApplicationLogicalDigest: expectedSourceBinding is not null).ConfigureAwait(false);
                 prepared[index] = input;
                 storedBytes = checked(storedBytes + input.Source.Payload.Length);
                 if (storedBytes > 128L * 1024 * 1024)
@@ -392,10 +400,34 @@ internal sealed class DaprLogicalEventReader
         if (after.HasValue != before.HasValue
             || (after.HasValue && (after.Value.CurrentSequence != before.Value.CurrentSequence
                 || after.Value.RetainedFloor != before.Value.RetainedFloor
+                || after.Value.LastModified.UtcTicks != before.Value.LastModified.UtcTicks
+                || after.Value.LastModified.Offset != before.Value.LastModified.Offset
                 || !string.Equals(after.Value.ETag, before.Value.ETag, StringComparison.Ordinal))))
         {
             throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during the logical page read.");
         }
+    }
+
+    /// <summary>Rechecks the fixed source and shared capability after catalog calls and before signing/return.</summary>
+    internal async Task RequireSourceBindingAsync(DaprLogicalSourceBinding binding, CancellationToken cancellationToken)
+    {
+        _resolver.RequireNoObservedLoss(cancellationToken);
+        ConditionalValue<AggregateMetadata> metadata = await ReadMetadataAsync(binding.Identity, cancellationToken).ConfigureAwait(false);
+        RequireBindingMetadata(binding.Identity, binding.AggregateType, binding, metadata);
+        _resolver.RequireNoObservedLoss(cancellationToken);
+    }
+
+    private static void RequireBindingMetadata(AggregateIdentity identity, string aggregateType,
+        DaprLogicalSourceBinding binding, ConditionalValue<AggregateMetadata> metadata)
+    {
+        long head = metadata.HasValue ? metadata.Value.CurrentSequence : 0;
+        long floor = metadata.HasValue ? metadata.Value.RetainedFloor : 1;
+        string? etag = metadata.HasValue ? metadata.Value.ETag : null;
+        DateTimeOffset modified = metadata.HasValue ? metadata.Value.LastModified : DateTimeOffset.UnixEpoch;
+        if (binding.MetadataPresent != metadata.HasValue || binding.Identity != identity || binding.AggregateType != aggregateType || binding.ActorHead != head
+            || binding.RetainedFloor != floor || floor != 1 || binding.TargetSequence < 0 || binding.TargetSequence > head
+            || binding.MetadataETag != etag || binding.MetadataLastModified.UtcTicks != modified.UtcTicks
+            || binding.MetadataLastModified.Offset != modified.Offset) { throw new InvalidOperationException("SourceHeadChanged: fixed logical source binding disagrees with actor readback."); }
     }
 
     private static EventEnvelope SnapshotMetadata(EventEnvelope source, out int metadataBytes)
@@ -440,8 +472,10 @@ internal sealed class DaprLogicalEventReader
     {
         try
         {
-            return await _stateManager.TryGetStateAsync<AggregateMetadata>(
+            ConditionalValue<AggregateMetadata> metadata = await _stateManager.TryGetStateAsync<AggregateMetadata>(
                 identity.MetadataKey, cancellationToken).ConfigureAwait(false);
+            if (metadata.HasValue && metadata.Value is null) { throw new InvalidOperationException("ReplayRestartRequired: present actor metadata has no logical value."); }
+            return metadata;
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {

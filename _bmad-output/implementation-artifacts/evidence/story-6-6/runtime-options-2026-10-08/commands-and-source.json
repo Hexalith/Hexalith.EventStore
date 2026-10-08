@@ -1,0 +1,287 @@
+{
+  "scope": "dormant M1 runtime-options callable admission; no activation or parent task closure",
+  "startRevision": "9542d3c9f48bf9ce1c57f2ef68904703eaba56cc",
+  "canonicalBaseline": "1329b35e52852952ecb2c94aabf100674e9691e3",
+  "ownedPaths": [
+    ".github/workflows/event-evolution-local-guards.yml",
+    "src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs",
+    "src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs",
+    "src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs",
+    "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionServiceTests.cs",
+    "tests/Hexalith.EventStore.Client.Tests/Events/EventRuntimeOptionsBindingTests.cs",
+    "scripts/verify-event-evolution-runtime-options.py",
+    "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-08-runtime-options-admission.md"
+  ],
+  "ownedSourceSha256": {
+    ".github/workflows/event-evolution-local-guards.yml": "dcd660207c5faff23649d4b4c9a51588be5c0e94ceeb5080baea7cc6158227b9",
+    "src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs": "d1e67012c9648397ead817b24e9433b150e49c2d152f02f6b161fbcc750cacaa",
+    "src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs": "dba86474acc9710f88b591e5b46ae91e8e9500f90357e5690bc1d87a367acbd0",
+    "src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs": "996e728ed5e16790a25afe20bccf37620b31652e3884d8bb605a26eb2bf118a0",
+    "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionServiceTests.cs": "ffc95a26c60f05c53484a3973e6caca83bf41ab5c46cd36ce246782e0b6f0a86",
+    "tests/Hexalith.EventStore.Client.Tests/Events/EventRuntimeOptionsBindingTests.cs": "7b64cb220e8cf7ff7987dffcaf0266194f6d566fddb21388e74be91c2856ae6b",
+    "scripts/verify-event-evolution-runtime-options.py": "98cb7836ca5b7dc08a4e34eee82bc455e83e4b7fb39f008667208f7dfd3f8e93",
+    "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md": "7e2952e986e369d5c18387d79e9144662321f0553abc96b2bb471bf834114f06",
+    "_bmad-output/implementation-artifacts/evidence/story-6-6/verification-2026-10-08-runtime-options-admission.md": "a23559147c61ad66d6a315d75c6c175008217914766a913bb42cec18517eae6e"
+  },
+  "loadedContextSha256AtEvidenceCapture": {
+    "_bmad-output/implementation-artifacts/epic-6-context.md": "864c581799ec38c9c4f26bd2113ce530a66bb8346ffe33b3958a4cde61ad9afa",
+    "_bmad-output/implementation-artifacts/6-6-implementation-map.md": "58bf5a1d8694820eb78db3e149ad06bcfa6ca22c103b96cb93ed64f1b3b30fd3",
+    "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+  },
+  "commands": [
+    {
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1",
+      "exitCode": 0,
+      "log": "client-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests -class Hexalith.EventStore.Client.Tests.Events.EventEvolutionServiceTests -class Hexalith.EventStore.Client.Tests.Events.EventLocalImplementationBindingTests -class Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactSetTests -class Hexalith.EventStore.Client.Tests.Events.EventManagedArtifactTests",
+      "exitCode": 0,
+      "log": "focused-tests.log",
+      "passed": 89,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "exitCode": 0,
+      "log": "client-full.log",
+      "passed": 1428,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -warnaserror -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "log": "release-build.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "python3 scripts/verify-event-evolution-runtime-options.py --timeout 60 --output /tmp/story-6-6-runtime-options-source-guards",
+      "exitCode": 0,
+      "log": "source-guards.log",
+      "receipt": "source-guards/result.json"
+    },
+    {
+      "command": "python3 scripts/verify-event-evolution-runtime-options.py --configuration Release --dependency-mode packages --timeout 60 --output /tmp/story-6-6-runtime-options-package-guards",
+      "exitCode": 0,
+      "log": "package-guards.log",
+      "receipt": "package-guards/result.json"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5-integration/verify.py --mutations",
+      "exitCode": 0,
+      "log": "historical-preflight.log"
+    },
+    {
+      "command": "python3 scripts/verify-event-evolution.py --mutations",
+      "exitCode": 0,
+      "log": "current-preflight.log"
+    },
+    {
+      "command": "actionlint .github/workflows/event-evolution-local-guards.yml",
+      "exitCode": 0,
+      "log": "workflow-lint.log"
+    },
+    {
+      "command": "python3 scripts/check-deferred-work.py --json",
+      "exitCode": 0,
+      "log": "deferred-check.log"
+    },
+    {
+      "command": "test -f deploy/dapr/production-profile.yaml",
+      "exitCode": 1,
+      "stdout": "",
+      "scope": "separate production qualification blocker"
+    },
+    {
+      "command": "aspire ps --non-interactive --format Json",
+      "exitCode": 0,
+      "stdout": "[]",
+      "scope": "immediate owned AppHost cleanup; later unrelated Parties AppHost preserved"
+    },
+    {
+      "command": "aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive --format Json",
+      "exitCode": 0,
+      "stdout": "No AppHost is currently running for the EventStore AppHost",
+      "scope": "final addressed owned AppHost cleanup inspection"
+    }
+  ],
+  "retainedLogSha256": {
+    "client-build.log": "45cd317a4e7682bd9c3650c4b513bc16a56078812e0672d5c650b904992af060",
+    "client-full.log": "b6e677892f04e11cf279eebac137a201cbdbb1572eb6ad783b43c0d283ca2ff4",
+    "current-preflight.log": "e791553059d203eb700636e193f94da9442dbe7ff234a64b9e191987b668b1ad",
+    "deferred-check.log": "ec07cb9fa920d404198da7eb1420814e5a96cf8042eb716b8cd3cc140dbcde9c",
+    "focused-tests.log": "00071b0970ea34430a05c922d7ab8af3554717af951e471cd60c7342150667f8",
+    "historical-preflight.log": "f5d2e5274133a893e3ed03db8ddaa8c4aaeda668df899c8ef33041f8effe8a96",
+    "package-guards/control-build.log": "b4805ae31651c1bb9652c7feac52aab3f6e17ef0b5617063d47c85e059075c07",
+    "package-guards/control-tests.log": "614791f823d9b55f314b4f710867a622f23c2ab3b157c024d08bf24c787aaca1",
+    "package-guards/exact-options-object-build.log": "b601a7056bc05b4bb6375577738fe5c5c1dbff148fbebc406d4102b7e3321597",
+    "package-guards/exact-options-object-tests.log": "44097d80190e1d81d5de54d3f1721eaa387d6b59940d4aedbc8944d1077a8781",
+    "package-guards/identity-options-forwarding-build.log": "42dc4fb6c9f19f75c76f72217dbc4e5b873a6af97ec37bc955e96b06998e7cb6",
+    "package-guards/identity-options-forwarding-tests.log": "0a0d56cd583df28e54a7b4979b7fae01a51592bc3805cc46ca18d1a085a3d226",
+    "package-guards/implicit-options-image-build.log": "42dc4fb6c9f19f75c76f72217dbc4e5b873a6af97ec37bc955e96b06998e7cb6",
+    "package-guards/implicit-options-image-tests.log": "ad917222184b34d482570f5d990121701561ea3d055ec7704228a118f433d04b",
+    "package-guards/options-capability-scope-build.log": "f60acaae635457d4876d63f5bdb57700dea1cf891711c2e17a6f00aa298a99ed",
+    "package-guards/options-capability-scope-tests.log": "b0ae08c7afaac0ebb2cc8c3a67bfff54f9d8126dbe10f7b49d9db0b584b583f2",
+    "package-guards/post-options-boundary-build.log": "76ec2cdda3c6a08e46430e24a3508356f96c208c39e2103f5adef16ac88b0bf4",
+    "package-guards/post-options-boundary-tests.log": "7e700b0b9cf0a4944057ede609f84c36057dca6e8f8fb676e3b5f33129fa2fd2",
+    "package-guards/result.json": "4aa51f2e92145c3a499160914f9d0f154cbcfc5f9a69df6bd9fb0b540095eeed",
+    "package-guards/schema-options-forwarding-build.log": "da80c070a10a40deb7abed16996af76f05264dabcb8ec690974f86e18845e8cf",
+    "package-guards/schema-options-forwarding-tests.log": "32a8da5e0d26d0dbcaf8b79dcc251520f2aa8d7ba28365ebd95efe6b233e8737",
+    "package-guards/serializer-options-forwarding-build.log": "221becd3b3e77bf4228b4147f50de839282575fc495f341c408b8dc094bc86aa",
+    "package-guards/serializer-options-forwarding-tests.log": "6cf528c4316776afe5836914e617a61ab6b0056b6e52d6810fbd9eec2ea1d7e7",
+    "package-guards/single-options-callable-build.log": "d6a3ad6a42cc2a271dec56330482c1361494386bf8c46270bf66824a86696c1f",
+    "package-guards/single-options-callable-tests.log": "ba42fde4127f0a3f8fb65c1c61b43b9473ab2ae002694bf8e08a9b898298790e",
+    "package-guards.log": "1e96c2bddce0bdefcbaa0e1d17336dee19c08f57d779e7c45d61ebfd07a0c6c7",
+    "release-build.log": "deb4b5202610248b1046d1cde464e1d44a2f6800c691bc6e624764de69af3d01",
+    "source-guards/control-build.log": "f5be5f63bad78a066c7c9282c1e64fd6ee6ee9a05e688a21da83ba8de2b95a16",
+    "source-guards/control-tests.log": "335834b460cbf2ca5d98573b24ca2bfe0a80983fdd63bdf06dc2d24d0e3ba342",
+    "source-guards/exact-options-object-build.log": "422b000180e9b4e0ca230da460cf30955f811f2ed039304fee13b4d0a272b644",
+    "source-guards/exact-options-object-tests.log": "8122fbc83158503ba20370b94c528da1fab4e60ba5ea5817d825ea4e18b06e35",
+    "source-guards/identity-options-forwarding-build.log": "a30629470dac1a4035e4ff0ee6ff16d92e9948cb2456df20884cf6d1ad264d90",
+    "source-guards/identity-options-forwarding-tests.log": "941c282bb667c554d11fc34ba2f431b765041703b8cdf1c8c05e7c1bb2c506a6",
+    "source-guards/implicit-options-image-build.log": "473381763b3c8ecc77df5c039477e527c26fc115f2a4120b614089f651473f56",
+    "source-guards/implicit-options-image-tests.log": "1573c233d2b0ad0799793c12e00e63e64d8bdd0bc31c15c864176bfa98a968ba",
+    "source-guards/options-capability-scope-build.log": "491e61d2517c3383fbe451ab6e66476d2c304511de3e861ce6dd5fb02d0defe5",
+    "source-guards/options-capability-scope-tests.log": "0210904c28e3446ae0acad8d9f0ebefe09385969bbc57ac7561ed0bf042fc6e7",
+    "source-guards/post-options-boundary-build.log": "b46f1ad04b75fe17c6fc2b3da79033bfdb1295ed122fc20040b57ffad3563c7c",
+    "source-guards/post-options-boundary-tests.log": "e80271b246f0504dcf1048c40546d499f2088f5510ba5a1f182cdecc4c846a6d",
+    "source-guards/result.json": "1d3cdb2059cedbf60d34f0cc05ba5ac5859f5f07d2ceba09ac39669bfe5baa25",
+    "source-guards/schema-options-forwarding-build.log": "eaed8b1bf266d9298a08793a4ed663469b3d2379e2015a1c8caab6c8a535f980",
+    "source-guards/schema-options-forwarding-tests.log": "fbb4d096cee1de057ada104c06d0f9b880f9633a4324d899de700a1747f993ed",
+    "source-guards/serializer-options-forwarding-build.log": "df852297ff03fbd9c8680b0bb09a44a505e6e98622eae4ded47cca8a5ac44bc9",
+    "source-guards/serializer-options-forwarding-tests.log": "d1b182a1ab767408fcb9e5b113ee754282c3be0d3eee873d30fe07738d29084a",
+    "source-guards/single-options-callable-build.log": "8cf006a284a3381d4cc7804fab672f6f251f62ecbc6044ae25352b8a4db4bf39",
+    "source-guards/single-options-callable-tests.log": "06a530d62129175102855894086efc44199bf7e64c0d4bc980f73d4eef96e1f5",
+    "source-guards.log": "bd704e13c6aace677a2fa77f5b5277c3859d60b401ebdb458d1d2e284cecc4f2",
+    "workflow-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "externalObservedPaths": [
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-5-2-admin-endpoint-authorization-and-tenant-filters.md",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "6b443910e1091dffe89951327812ae0ffd36289a997e911556420b76a74ecf33"
+    },
+    {
+      "path": "references/Hexalith.Builds",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": null
+    },
+    {
+      "path": "references/Hexalith.Tenants",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "3b4f3af9489449e86f52549bebbbeffcb275a7f7a810f0a4c0b2eef20b55e404"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Server/Authorization/AdminAuthorizationMiddlewareResultHandler.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "e68436127d005e23ced4946a0d99d5fe9d967cb236f8bd81bd30b00b28ec10a6"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Server/Configuration/ServiceCollectionExtensions.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "8517e8deb0d643a05f59e3a2b725a9982ef256e5b13708eee64ba20d7e33731f"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "bf08799ac5670f87559b02e9fad8a6749404aa4a0f3ef0da62245d0e74c04999"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.UI/Services/AdminUserContext.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "8ece8d9fd01652d4b1c1d25edfed80e6eaead01f929f1b0b5cb8b566d5a85a76"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Streams/AuthoritativeEventStreamReader.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "d4d77e8319bd9e1b720ad09b43c2233a2ecd3582cf90264d851f101ed56591b0"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Streams/AuthoritativeStreamReadDeadline.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "e9d239c0467bf8bad586dd799a9b04f71092bb110d64b4e1ef73fd0fce71b09b"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Streams/RetainedIdentityHistoryReader.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "7524b2c64d3586a91137ad20f2b7e4743f84c826e6414f06cfbb63d033ff1b4f"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Server.Host.Tests/AdminRequestBodySizeTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "6439c4e4a1c37cb720a9418ef00f975ebd698e52bed339972bd4e374807b88bc"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminAuthorizationMiddlewareResultHandlerTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "26fa90eb0ffe085447b4799b81b82e05c637a16a99e37a3d2304ea2af3419a7e"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Server.Tests/Configuration/ServiceCollectionExtensionsTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "2ca26c5314b4b363a2a0dc6e7d824078e41242c815ac62c47ed140323a5ed7e4"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminActorApiClientTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "6341f30a070101f65f2bd242288005deef9029c331be08a3c56c5145874f1960"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminConsistencyApiClientTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "c062194d9123d6140d6ba96b6f09d2c89471b03a3ddac306597434254f989002"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminUserContextTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "ae8d20fe2753088dc975aa0fa591b34334e17109a74fa764cfbb5771589584e5"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/AuthoritativeEventStreamReaderTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "f6783589274274544e97c66cbf93d4da08c2a14b28202535bad4922c42a62a84"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedContent.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "94a5fbcd49bb7c67963e4fd90c6f7f27408ba6c0ab9069a126045fcca7a1d19e"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedHandler.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "128c5aa9f86e6d7922ce5505bf747e31c1b0a79da9df7df94e84988840170f46"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistorySuspendedStream.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "8d97051922a2cba9fca553126718c26c7ea0c369782412e37260b00d9f86a78d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedHistoryTimeProvider.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "8f8aac15e4c25e5fae91207205312a47c5b2eb070b97985b5e2be8a556637cdc"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Streams/RetainedIdentityHistoryReaderTests.cs",
+      "gitStatus": " M",
+      "sha256AtEvidenceCapture": "4ba6f48e99cbe0477022dfb962771c36048aa941a018885b0146d8977577d498"
+    }
+  ],
+  "externalValidationScope": "Full Client/build results describe the shared workspace when commands ran. Later external changes are excluded from owned verification; external paths are observed at evidence capture.",
+  "activationAuthority": false,
+  "productionQualification": false,
+  "hostedCiObserved": false,
+  "parentTasksClosed": [],
+  "obligationsClosed": []
+}

@@ -8,6 +8,8 @@ using Hexalith.EventStore.Admin.Server.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -172,6 +174,63 @@ public class ServiceCollectionExtensionsTests {
         provider.GetRequiredService<IAuthorizationMiddlewareResultHandler>()
             .ShouldBeOfType<AdminAuthorizationMiddlewareResultHandler>();
         provider.GetServices<IAuthorizationMiddlewareResultHandler>().ShouldContain(hostHandler);
+    }
+
+    [Theory]
+    [InlineData(ServiceLifetime.Singleton)]
+    [InlineData(ServiceLifetime.Scoped)]
+    [InlineData(ServiceLifetime.Transient)]
+    public async Task AddAdminApi_DelegatesToPreviouslyEffectiveHostHandlerWithItsLifetime(ServiceLifetime lifetime) {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        IAuthorizationMiddlewareResultHandler earlierHandler = Substitute.For<IAuthorizationMiddlewareResultHandler>();
+        _ = services.AddSingleton(earlierHandler);
+        List<IAuthorizationMiddlewareResultHandler> hostHandlers = [];
+        var hostDescriptor = ServiceDescriptor.Describe(typeof(IAuthorizationMiddlewareResultHandler), provider => {
+            IAuthorizationMiddlewareResultHandler handler = Substitute.For<IAuthorizationMiddlewareResultHandler>();
+            hostHandlers.Add(handler);
+            _ = handler.HandleAsync(Arg.Any<RequestDelegate>(), Arg.Any<HttpContext>(), Arg.Any<AuthorizationPolicy>(), Arg.Any<PolicyAuthorizationResult>())
+                .Returns(call => {
+                    call.Arg<HttpContext>().Response.StatusCode = StatusCodes.Status418ImATeapot;
+                    return Task.CompletedTask;
+                });
+            return handler;
+        }, lifetime);
+        services.Add(hostDescriptor);
+
+        _ = services.AddAdminApi(config);
+
+        services.ShouldContain(hostDescriptor);
+        services.Last(descriptor => descriptor.ServiceType == typeof(IAuthorizationMiddlewareResultHandler) && !descriptor.IsKeyedService)
+            .Lifetime.ShouldBe(lifetime);
+        using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using IServiceScope firstScope = provider.CreateScope();
+        using IServiceScope secondScope = provider.CreateScope();
+        IAuthorizationMiddlewareResultHandler first = firstScope.ServiceProvider.GetRequiredService<IAuthorizationMiddlewareResultHandler>();
+        IAuthorizationMiddlewareResultHandler repeated = firstScope.ServiceProvider.GetRequiredService<IAuthorizationMiddlewareResultHandler>();
+        IAuthorizationMiddlewareResultHandler second = secondScope.ServiceProvider.GetRequiredService<IAuthorizationMiddlewareResultHandler>();
+        if (lifetime == ServiceLifetime.Transient) {
+            repeated.ShouldNotBeSameAs(first);
+        }
+        else {
+            repeated.ShouldBeSameAs(first);
+        }
+        if (lifetime == ServiceLifetime.Singleton) {
+            second.ShouldBeSameAs(first);
+        }
+        else {
+            second.ShouldNotBeSameAs(first);
+        }
+        hostHandlers.Count.ShouldBe(lifetime switch { ServiceLifetime.Singleton => 1, ServiceLifetime.Scoped => 2, _ => 3 });
+        var context = new DefaultHttpContext();
+        RequestDelegate next = _ => Task.CompletedTask;
+        AuthorizationPolicy policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+        PolicyAuthorizationResult denied = PolicyAuthorizationResult.Forbid();
+
+        await first.HandleAsync(next, context, policy, denied);
+
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status418ImATeapot);
+        await hostHandlers[0].Received(1).HandleAsync(next, context, policy, denied);
+        await earlierHandler.DidNotReceiveWithAnyArgs().HandleAsync(default!, default!, default!, default!);
     }
 
     [Fact]

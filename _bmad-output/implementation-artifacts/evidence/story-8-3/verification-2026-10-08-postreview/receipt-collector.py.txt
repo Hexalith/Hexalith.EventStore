@@ -1,0 +1,107 @@
+from pathlib import Path
+import subprocess, json, hashlib, datetime, sys, os, re, fcntl
+ROOT=Path('/home/administrator/projects/hexalith/eventstore')
+OUT=ROOT/'_bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08-postreview'
+OUT.mkdir(exist_ok=True)
+
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def shell(cmd):
+    return subprocess.run(cmd,cwd=ROOT,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True).stdout
+
+def receipt(name,cmd,env=None,timeout=300):
+    environment=os.environ.copy();environment.update(env or {})
+    log=OUT/(name+'.log')
+    started=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    print('Running '+name,flush=True)
+    with log.open('w') as f:
+        f.write('Command arguments: '+json.dumps(cmd)+'\nEnvironment overrides: '+json.dumps(env or {})+'\nStarted UTC: '+started+'\n\n');f.flush()
+        p=subprocess.Popen(cmd,cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,env=environment)
+        try:code=p.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            p.terminate()
+            try:p.wait(timeout=10)
+            except subprocess.TimeoutExpired:p.kill();p.wait()
+            code=124;f.write('\nExecution exceeded the stated timeout; terminated.\n')
+        f.write('\nExit code: '+str(code)+'\n')
+    registry=OUT/'commands.json'
+    with (OUT/'.receipts.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        records=json.loads(registry.read_text()) if registry.exists() else []
+        records.append(dict(name=name,arguments=cmd,environmentOverrides=env or {},startedAtUtc=started,finishedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat(),exitCode=code,timeoutSeconds=timeout,log=log.name,sha256=digest(log)))
+        registry.write_text(json.dumps(records,indent=2)+'\n')
+    print(name+' exit '+str(code),flush=True)
+    print(log.read_text()[-3500:],flush=True)
+    return code
+
+def inventory(paths):
+    entries=[]
+    for p in sorted(set(paths)):
+        if not p.is_file():continue
+        try:name=p.relative_to(ROOT).as_posix()
+        except ValueError:name=str(p)
+        entries.append(dict(path=name,sha256=digest(p),bytes=p.stat().st_size))
+    stream=''.join(e['sha256']+'  '+e['path']+'\n' for e in entries).encode()
+    return dict(count=len(entries),sha256sumStreamSha256=hashlib.sha256(stream).hexdigest(),files=entries)
+
+def capture(name,configuration='Release',source=False):
+    projects=['tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj','src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj','src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj']
+    documentation=not name.startswith('contracts')
+    if name.startswith('contracts'):projects=['tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj','src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj']
+    if source:projects.append('references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')
+    files=[];evaluations=[];assets=[]
+    for n,project in enumerate(projects):
+        args=['dotnet','msbuild',project,'-nologo','-p:Configuration='+configuration,'-p:UseHexalithProjectReferences='+str(source).lower()]
+        if documentation:args.append('-p:GenerateDocumentationFile=true')
+        if source:args.append('-p:NuGetAudit=false')
+        queried=json.loads(shell(args+['-getProperty:Configuration,UseHexalithProjectReferences,TargetFramework,IsPackable,EnableAotAnalyzer,EnableTrimAnalyzer,GenerateDocumentationFile,MSBuildAllProjects,HexalithCommonsRoot','-getItem:Compile,ProjectReference,PackageReference']))
+        for reference in queried['Items']['ProjectReference']:
+            child=Path(reference.get('FullPath',str(ROOT/Path(project).parent/reference['Identity'])))
+            if child.is_file():
+                try:childName=child.relative_to(ROOT).as_posix()
+                except ValueError:childName=str(child)
+                if childName not in projects:projects.append(childName)
+        e=OUT/(name+'-evaluation-'+str(n)+'.json');e.write_text(json.dumps(queried,indent=2)+'\n')
+        evaluations.append(dict(project=project,receipt=e.name,sha256=digest(e)))
+        for c in queried['Items']['Compile']:
+            p=Path(c.get('FullPath',str(ROOT/Path(project).parent/c['Identity'])))
+            files.append(p)
+        pp=Path('/tmp/eventstore-8-3-'+name+'-'+str(n)+'.preprocessed.xml')
+        shell(args+['-pp:'+str(pp)])
+        content=pp.read_text()
+        imports=[]
+        for match in re.finditer(r'^\s*(/[^\r\n<>]+\.(?:props|targets|csproj))\s*$',content,re.M):
+            p=Path(match.group(1))
+            if p.is_file():imports.append(p);files.append(p)
+        evaluations[-1]['preprocessedSha256']=digest(pp)
+        evaluations[-1]['importedFiles']=inventory(imports)
+        files.append(ROOT/project)
+        ap=ROOT/Path(project).parent/'obj/project.assets.json'
+        if ap.exists():
+            a=json.loads(ap.read_text());files.append(ap)
+            assets.append(dict(project=project,path=ap.relative_to(ROOT).as_posix(),sha256=digest(ap),libraries=a.get('libraries',{}),projectReferences=a.get('project',{}).get('restore',{}).get('frameworks',{})))
+        obj=ROOT/Path(project).parent/'obj'/configuration/'net10.0'
+        if obj.exists():
+            files.extend(obj.glob('*.cs'));files.extend(obj.glob('*.editorconfig'))
+    files.extend(ROOT/p for p in ['global.json','Directory.Build.props','Directory.Build.targets','Directory.Packages.props','.editorconfig','.gitattributes','.gitmodules','tests/Directory.Build.props','tests/.editorconfig','NuGet.Config','nuget.config','references/Hexalith.Builds/Props/Directory.Packages.props'])
+    dependencies=[]
+    declarations=shell(['git','config','-f','.gitmodules','--get-regexp','submodule.*.path'])
+    for line in declarations.splitlines():
+        path=line.split(maxsplit=1)[1];d=ROOT/path
+        if not (d/'.git').exists():dependencies.append(dict(path=path,initialized=False));continue
+        head=subprocess.check_output(['git','-C',str(d),'rev-parse','HEAD'],text=True).strip()
+        status=subprocess.check_output(['git','-C',str(d),'status','--short','--untracked-files=all'],text=True)
+        dirty=subprocess.check_output(['git','-C',str(d),'ls-files','--modified','--others','--exclude-standard','-z']).decode().split('\0')
+        dep=dict(path=path,head=head,status=status,dirtyFiles=inventory([d/f for f in dirty if f]))
+        dependencies.append(dep)
+    snapshot=dict(recordedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat(),configuration=configuration,useHexalithProjectReferences=source,globalGenerateDocumentationFile=documentation,head=shell(['git','rev-parse','HEAD']).strip(),evaluations=evaluations,buildInputs=inventory(files),assets=assets,rootDeclaredDependencies=dependencies)
+    p=OUT/(name+'.json');p.write_text(json.dumps(snapshot,indent=2)+'\n')
+    print(name+': '+str(snapshot['buildInputs']['count'])+' build inputs bound; snapshot sha256 '+digest(p),flush=True)
+    return snapshot
+
+if __name__=='__main__':
+    action=sys.argv[1]
+    if action=='capture':capture(sys.argv[2],sys.argv[3] if len(sys.argv)>3 else 'Release',len(sys.argv)>4 and sys.argv[4]=='true')
+    elif action=='run':
+        env={};i=3
+        if sys.argv[i]=='--invariant':env={'DOTNET_SYSTEM_GLOBALIZATION_INVARIANT':'1'};i+=1
+        sys.exit(receipt(sys.argv[2],sys.argv[i:],env=env))

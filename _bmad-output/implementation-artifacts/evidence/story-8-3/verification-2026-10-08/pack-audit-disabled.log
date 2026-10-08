@@ -1,0 +1,12 @@
+dotnet pack src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj --configuration Release --output /tmp/eventstore-story-8-3-verification-20261008/packages -p:Version=999.0.0-ci-test -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+dotnet pack src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj --configuration Release --output /tmp/eventstore-story-8-3-verification-20261008/packages -p:Version=999.0.0-ci-test -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 229 ms).
+  1 of 2 projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll
+dotnet pack src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj --configuration Release --output /tmp/eventstore-story-8-3-verification-20261008/packages -p:Version=999.0.0-ci-test -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...

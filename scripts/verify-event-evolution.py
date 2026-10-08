@@ -5,9 +5,9 @@ The approved 6.5 verifier remains a separate historical-design check. This gate
 checks application dependency and mutation ownership at the current source, and
 tests each negative policy input in a fresh process with an explicit timeout.
 Functional, compatibility and live-component evidence remain separate gates.
-The obligation audit binds the historical approved inputs separately from both
-current amendments. It checks traceability and open gates, not qualification or
-completion of the twenty implementation obligations.
+The obligation audit binds the historical approved inputs separately from the
+current amendments and selected logical model. It checks traceability and open
+gates, not qualification or completion of the twenty implementation obligations.
 The source denylist recognizes selected database symbols, including factory
 creation; it is not complete semantic/static analysis or a runtime inventory.
 """
@@ -32,6 +32,12 @@ PERSISTER = SERVER / "Events/EventPersister.cs"
 LOGICAL_READER = SERVER / "Events/DaprLogicalEventReader.cs"
 AMENDMENT = pathlib.Path("_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md")
 TRUST_AMENDMENT = pathlib.Path("_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md")
+LOGICAL_AMENDMENT = pathlib.Path("_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md")
+LOGICAL_MODEL_INPUTS = [
+    pathlib.Path("_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md"),
+    pathlib.Path("scripts/verify-dapr-logical-model-vectors.py"),
+    pathlib.Path("_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json"),
+]
 HISTORICAL_SPEC = pathlib.Path("_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md")
 OBLIGATION_AUDIT = pathlib.Path("_bmad-output/implementation-artifacts/6-6-obligation-audit.json")
 HISTORICAL_APPROVAL_DIGEST = "bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050"
@@ -52,6 +58,12 @@ MUTATIONS = {
     "historical-reviewed-input": "historical-approval-binding",
     "missing-dapr-amendment": "current-amendment-binding",
     "changed-trusted-code-amendment": "current-amendment-binding",
+    "missing-logical-model-amendment": "current-amendment-binding",
+    "changed-logical-model-amendment": "current-amendment-binding",
+    "changed-logical-model": "selected-logical-model-binding",
+    "changed-logical-vector-verifier": "selected-logical-model-binding",
+    "changed-logical-vectors": "selected-logical-model-binding",
+    "logical-model-as-activation": "unqualified-activation-fence",
     "missing-obligation": "current-obligation-accounting",
     "duplicate-obligation": "current-obligation-accounting",
     "changed-obligation-source": "current-obligation-binding",
@@ -79,6 +91,13 @@ def read(path: pathlib.Path, mutation: str | None) -> str:
         raise BoundaryFailure("current-amendment-binding", f"{path}: required reviewed amendment is missing")
     elif path == TRUST_AMENDMENT and mutation == "changed-trusted-code-amendment":
         value += "\nUnreviewed loader assurance.\n"
+    elif path == LOGICAL_AMENDMENT and mutation == "missing-logical-model-amendment":
+        raise BoundaryFailure("current-amendment-binding", f"{path}: required reviewed amendment is missing")
+    elif path == LOGICAL_AMENDMENT and mutation == "changed-logical-model-amendment":
+        value += "\nUnreviewed logical assurance.\n"
+    elif (path, mutation) in zip(LOGICAL_MODEL_INPUTS,
+            ["changed-logical-model", "changed-logical-vector-verifier", "changed-logical-vectors"], strict=True):
+        value += "\nUnreviewed logical input.\n"
     elif path == OBLIGATION_AUDIT and mutation in MUTATIONS:
         audit = json.loads(value)
         if mutation == "historical-approval-pin":
@@ -97,6 +116,8 @@ def read(path: pathlib.Path, mutation: str | None) -> str:
             audit["obligations"][0]["status"] = "complete"
         elif mutation == "historical-approval-as-current":
             audit["activationAuthority"] = True
+        elif mutation == "logical-model-as-activation":
+            audit["selectedLogicalModel"]["activationAuthority"] = True
         value = json.dumps(audit)
     elif mutation == "application-sql" and path == LOGICAL_READER:
         value += "\nusing Npgsql;\n"
@@ -183,17 +204,36 @@ def verify_obligation_audit(mutation: str | None) -> dict:
         raise BoundaryFailure("historical-approval-binding", "historical reviewed bytes or approval digest changed")
 
     amendments = audit.get("currentAmendments", [])
-    expected_paths = [AMENDMENT.as_posix(), TRUST_AMENDMENT.as_posix()]
+    amendment_paths = [AMENDMENT, TRUST_AMENDMENT, LOGICAL_AMENDMENT]
+    expected_paths = [path.as_posix() for path in amendment_paths]
     if (not isinstance(amendments, list) or not all(isinstance(item, dict) for item in amendments)
             or [item.get("path") for item in amendments] != expected_paths):
-        raise BoundaryFailure("current-amendment-binding", "both current amendments must be bound exactly once")
-    for item, path in zip(amendments, [AMENDMENT, TRUST_AMENDMENT], strict=True):
+        raise BoundaryFailure("current-amendment-binding", "all current amendments must be bound exactly once")
+    for item, path in zip(amendments, amendment_paths, strict=True):
         try:
             actual = hashlib.sha256(read(path, mutation).encode("utf-8")).hexdigest()
         except OSError as error:
             raise BoundaryFailure("current-amendment-binding", f"{path}: required reviewed amendment is missing") from error
         if item.get("sha256") != actual:
             raise BoundaryFailure("current-amendment-binding", f"{path}: reviewed amendment bytes changed")
+
+    model = audit.get("selectedLogicalModel")
+    if (not isinstance(model, dict) or model.get("id") != "dapr-actor-logical-v1"
+            or model.get("selectionAuthority") != "owner-delegated-model-choice-only"):
+        raise BoundaryFailure("selected-logical-model-binding", "logical model identity or selection scope changed")
+    if model.get("activationAuthority") is not False or model.get("runtimeRegistered") is not False:
+        raise BoundaryFailure("unqualified-activation-fence", "model selection cannot grant registration or activation authority")
+    logical_inputs = model.get("inputs")
+    if (not isinstance(logical_inputs, list) or not all(isinstance(item, dict) for item in logical_inputs)
+            or [item.get("path") for item in logical_inputs] != [path.as_posix() for path in LOGICAL_MODEL_INPUTS]):
+        raise BoundaryFailure("selected-logical-model-binding", "all selected logical model inputs must be bound exactly once")
+    for item, path in zip(logical_inputs, LOGICAL_MODEL_INPUTS, strict=True):
+        try:
+            actual = hashlib.sha256(read(path, mutation).encode("utf-8")).hexdigest()
+        except OSError as error:
+            raise BoundaryFailure("selected-logical-model-binding", f"{path}: reviewed logical model input is missing") from error
+        if item.get("sha256") != actual:
+            raise BoundaryFailure("selected-logical-model-binding", f"{path}: reviewed logical model input bytes changed")
 
     section = normative.split("### 11.7 ", 1)[1].split("## 12.", 1)[0]
     historical_rows = re.findall(r"^\| (O-\d{2}) \| (.*)$", section, re.MULTILINE)
@@ -231,6 +271,12 @@ def verify_obligation_audit(mutation: str | None) -> dict:
         "historical_approval_sha256": HISTORICAL_APPROVAL_DIGEST,
         "audit_sha256": hashlib.sha256(read(OBLIGATION_AUDIT, mutation).encode("utf-8")).hexdigest(),
         "current_amendment_sha256": {item["path"]: item["sha256"] for item in amendments},
+        "selected_logical_model": {
+            "id": model["id"],
+            "input_sha256": {item["path"]: item["sha256"] for item in logical_inputs},
+            "activation_authority": False,
+            "runtime_registered": False,
+        },
         "open_obligations": expected_ids,
         "replaced_provider_requirements": sorted(replacements),
         "activation_authority": False,

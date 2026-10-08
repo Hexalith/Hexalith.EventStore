@@ -31,12 +31,21 @@ jobs:
           - lane: managed-artifacts
             script: scripts/verify-event-evolution-managed-artifacts.py
             options: --configuration Release --dependency-mode packages
+          - lane: runtime-options
+            script: scripts/verify-event-evolution-runtime-options.py
+            options: --configuration Release --dependency-mode packages
           - lane: detached-snapshot
             script: scripts/verify-event-evolution-detached-snapshots.py
             options: ''
           - lane: opaque-proof-framing
             script: scripts/verify-event-evolution-detached-snapshots.py
             options: --proof-framing
+          - lane: dapr-logical-model
+            script: scripts/verify-dapr-logical-model-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-reconstruction
+            script: scripts/verify-dapr-logical-reconstruction-guards.py
+            options: --configuration Release --dependency-mode packages
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -52,17 +61,29 @@ jobs:
           global-json-file: global.json
 
       - name: Warm source dependency restore before timed guard lanes
-        if: matrix.lane != 'managed-artifacts'
+        if: matrix.lane != 'managed-artifacts' && matrix.lane != 'runtime-options' && matrix.lane != 'dapr-logical-model' && matrix.lane != 'dapr-logical-reconstruction'
         run: |
           dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
           dotnet restore tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
 
-      - name: Warm package dependency restore before timed managed artifact guards
-        if: matrix.lane == 'managed-artifacts'
+      - name: Warm package dependency restore before timed managed artifact and options guards
+        if: matrix.lane == 'managed-artifacts' || matrix.lane == 'runtime-options'
         run: dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false
+
+      - name: Warm Dapr logical protocol dependencies
+        if: matrix.lane == 'dapr-logical-model' || matrix.lane == 'dapr-logical-reconstruction'
+        run: dotnet restore tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false
 
       # These lanes compile private source copies and run finite mutation controls.
       # Passing them grants no catalog, production, semantic-proof or activation authority.
+      - name: Verify independent Dapr logical vectors
+        if: matrix.lane == 'dapr-logical-model'
+        run: python3 scripts/verify-dapr-logical-model-vectors.py
+
+      - name: Verify independent canonical ledger vectors
+        if: matrix.lane == 'dapr-logical-reconstruction'
+        run: python3 scripts/verify-dapr-logical-reconstruction-vectors.py
+
       - name: Verify isolated local guard controls
         run: >-
           python3 ${{ matrix.script }} ${{ matrix.options }}

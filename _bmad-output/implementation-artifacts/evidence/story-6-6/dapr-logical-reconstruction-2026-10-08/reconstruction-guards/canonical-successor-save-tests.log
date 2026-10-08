@@ -1,0 +1,330 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(466,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(470,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal [FAIL]
+      System.NullReferenceException : Object reference not set to an instance of an object.
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(572,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(578,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage [FAIL]
+      Shouldly.ShouldAssertException : takeover.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(344,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(349,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits [FAIL]
+      Shouldly.ShouldAssertException : first.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(434,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(453,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(425,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(425,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "cancel") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(205,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(205,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(205,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "loss") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(205,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(544,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(545,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(pageSize: 1) [FAIL]
+      Shouldly.ShouldAssertException : await DaprAggregateStateReconstructor.ReconstructAddressedAsync(DaprLogicalReplayFixture.Identity,
+                  "r", fixture.Source.Source, binding, fixture.Source.Trust, fixture.Source.Key, fixture.Owner, "owner", "request", pageSize, CancellationToken.None);
+              // V1 units 1 -> delta 13, current V2 delta 14, V1 units 3 -> delta 33.
+              result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(37,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(46,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(pageSize: 3) [FAIL]
+      Shouldly.ShouldAssertException : await DaprAggregateStateReconstructor.ReconstructAddressedAsync(DaprLogicalReplayFixture.Identity,
+                  "r", fixture.Source.Source, binding, fixture.Source.Trust, fixture.Source.Key, fixture.Owner, "owner", "request", pageSize, CancellationToken.None);
+              // V1 units 1 -> delta 13, current V2 delta 14, V1 units 3 -> delta 33.
+              result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(37,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(46,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 0, target: 0, value: 0) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 0, value: 0) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 2, value: 2) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 3, value: 3) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(60,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(114,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(118,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(mode: "commit-throw", expected: "Proven") [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(177,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(189,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a773bc3e70fcc685545ef9456b5ec77999a8e9090dc6b8bcf70992cd6c1a4232')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 95, Errors: 0, Failed: 19, Skipped: 0, Not Run: 0, Time: 1.854s

@@ -3,7 +3,10 @@ using System.Security.Cryptography;
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Binds an explicit callable to exact implementation identity, file bytes and canonical declared options.</summary>
-/// <remarks>A bound runtime source is checked before callback use; sealed dependency graph and startup readiness remain separate requirements.</remarks>
+/// <remarks>
+/// Retained bindings admit both implementation and options callables to exact runtime image objects and one loss scope.
+/// File-only bindings remain local claims; complete dependency catalogs, framework execution and startup readiness are separate requirements.
+/// </remarks>
 internal sealed class EventImplementationBinding
 {
     private readonly string _implementationId;
@@ -12,12 +15,16 @@ internal sealed class EventImplementationBinding
     private readonly EventOptionRule[] _optionSchema;
     private readonly Func<ReadOnlyMemory<byte>>? _runtimeOptions;
     private readonly EventManagedArtifactExecutionBinding? _executionBinding;
+    private readonly EventManagedArtifactExecutionBinding? _runtimeOptionsExecutionBinding;
     private readonly System.Reflection.Assembly _implementationAssembly;
+    private readonly System.Reflection.Assembly? _runtimeOptionsAssembly;
+    private EventEvolutionCapabilityLoss? _capabilityLoss;
 
-    /// <summary>Computes direct file and expanded schema hashes before callable use.</summary>
+    /// <summary>Admits single callables, exact optional image bindings and expanded schema hashes before callback use.</summary>
     internal EventImplementationBinding(string implementationId, Delegate implementation, ReadOnlyMemory<byte> canonicalOptions,
         IReadOnlyList<EventOptionRule> optionSchema, Func<ReadOnlyMemory<byte>>? runtimeOptions = null,
-        EventManagedArtifactExecutionBinding? executionBinding = null)
+        EventManagedArtifactExecutionBinding? executionBinding = null,
+        EventManagedArtifactExecutionBinding? runtimeOptionsExecutionBinding = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(implementationId);
         ArgumentNullException.ThrowIfNull(implementation);
@@ -26,12 +33,25 @@ internal sealed class EventImplementationBinding
         {
             throw new ArgumentException("A registered implementation must be one explicit callable.", nameof(implementation));
         }
+        if (runtimeOptions is not null && runtimeOptions.GetInvocationList().Length != 1)
+        {
+            throw new ArgumentException("A runtime options source must be one explicit callable.", nameof(runtimeOptions));
+        }
+        if (runtimeOptions is null && runtimeOptionsExecutionBinding is not null)
+        {
+            throw new ArgumentException("An options execution binding requires its exact callable.", nameof(runtimeOptionsExecutionBinding));
+        }
         _implementationId = implementationId;
         _optionSchema = optionSchema.ToArray();
         _optionsHash = EventOptionsManifestCodec.ComputeHash(canonicalOptions, _optionSchema);
         _runtimeOptions = runtimeOptions;
         _implementationAssembly = implementation.Method.Module.Assembly;
         _executionBinding = executionBinding;
+        _runtimeOptionsAssembly = runtimeOptions?.Method.Module.Assembly;
+        // A retained implementation defaults to an options source from its same exact
+        // runtime image. A separately retained source needs an explicit binding.
+        _runtimeOptionsExecutionBinding = runtimeOptions is null ? null : runtimeOptionsExecutionBinding ?? executionBinding;
+        RequireCallableBindings();
         if (executionBinding is not null)
         {
             _assemblyHash = executionBinding.CopyHashForAssembly(_implementationAssembly);
@@ -49,18 +69,20 @@ internal sealed class EventImplementationBinding
     }
 
     /// <summary>Requires the exact adjacent ID, assembly and options fields from a decoded descriptor.</summary>
-    internal void RequireFields(EventRegistryRow descriptor, int implementationField)
+    internal void RequireFields(EventRegistryRow descriptor, int implementationField, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         RequireDeclaredFields(descriptor, implementationField);
-        if (_runtimeOptions is not null) { RequireRuntimeOptions(); }
+        if (_runtimeOptions is not null) { RequireRuntimeOptions(cancellationToken); }
         RequireDeclaredFields(descriptor, implementationField);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     /// <summary>Checks immutable descriptor fields without invoking the implementation's runtime options callback.</summary>
     internal void RequireDeclaredFields(EventRegistryRow descriptor, int implementationField)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        _executionBinding?.RequireBoundAssembly(_implementationAssembly);
+        RequireCallableBindings();
         if (!string.Equals(_implementationId, descriptor.GetTextField(implementationField), StringComparison.Ordinal)
             || !_assemblyHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 1))
             || !_optionsHash.AsSpan().SequenceEqual(descriptor.GetEncodedField(implementationField + 2)))
@@ -71,26 +93,58 @@ internal sealed class EventImplementationBinding
 
     /// <summary>Checks direct-image evidence shares the executing registry's sticky loss scope.</summary>
     internal void RequireCapabilityScope(EventEvolutionCapabilityLoss capabilityLoss)
-        => _executionBinding?.RequireCapabilityScope(capabilityLoss);
+    {
+        ArgumentNullException.ThrowIfNull(capabilityLoss);
+        capabilityLoss.RequireNoObservedLoss();
+        _executionBinding?.RequireCapabilityScope(capabilityLoss);
+        _runtimeOptionsExecutionBinding?.RequireCapabilityScope(capabilityLoss);
+        EventEvolutionCapabilityLoss? prior = Interlocked.CompareExchange(ref _capabilityLoss, capabilityLoss, null);
+        if (prior is not null && !ReferenceEquals(prior, capabilityLoss))
+        {
+            throw new InvalidOperationException("CapabilityMismatch: implementation options belong to another capability scope.");
+        }
+        RequireCallableBindings();
+    }
 
     /// <summary>Checks current implementation-owned settings against the expanded declared options.</summary>
-    internal void RequireRuntimeOptions()
+    internal void RequireRuntimeOptions() => RequireRuntimeOptions(CancellationToken.None);
+
+    /// <summary>Checks settings through the original cancellation and admitted callable boundaries.</summary>
+    internal void RequireRuntimeOptions(CancellationToken cancellationToken)
     {
-        _executionBinding?.RequireBoundAssembly(_implementationAssembly);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCallableBindings();
         if (_runtimeOptions is null)
         {
             throw new InvalidOperationException("CapabilityMismatch: no runtime settings source is bound to this implementation.");
         }
 
-        byte[] currentHash = EventOptionsManifestCodec.ComputeHash(_runtimeOptions(), _optionSchema);
+        ReadOnlyMemory<byte> options = _runtimeOptions();
+        // Refuse an uncommitted route immediately after application code returns,
+        // before hashing or parsing its potentially invalid returned options.
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCallableBindings();
+        byte[] currentHash = EventOptionsManifestCodec.ComputeHash(options, _optionSchema);
         try
         {
-            _executionBinding?.RequireBoundAssembly(_implementationAssembly);
+            cancellationToken.ThrowIfCancellationRequested();
+            RequireCallableBindings();
             if (!_optionsHash.AsSpan().SequenceEqual(currentHash))
             {
                 throw new InvalidOperationException("CapabilityMismatch: executing runtime settings disagree with the sealed options manifest.");
             }
         }
         finally { CryptographicOperations.ZeroMemory(currentHash); }
+    }
+
+    private void RequireCallableBindings()
+    {
+        _capabilityLoss?.RequireNoObservedLoss();
+        _executionBinding?.RequireBoundAssembly(_implementationAssembly);
+        if (_runtimeOptionsAssembly is not null)
+        {
+            _runtimeOptionsExecutionBinding?.RequireBoundAssembly(_runtimeOptionsAssembly);
+        }
+        _capabilityLoss?.RequireNoObservedLoss();
     }
 }

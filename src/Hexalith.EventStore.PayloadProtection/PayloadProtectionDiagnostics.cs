@@ -20,18 +20,32 @@ internal static class PayloadProtectionDiagnostics
     /// <summary>
     /// Starts a closed-name core activity without allowing a diagnostic listener to affect the operation.
     /// </summary>
-    internal static Activity? Start(PayloadProtectionOperation operation)
+    /// <param name="operation">The bounded core operation name.</param>
+    /// <param name="ambient">The prior ambient activity to restore when the owned activity is stopped.</param>
+    internal static Activity? Start(PayloadProtectionOperation operation, out Activity? ambient)
     {
+        ambient = Activity.Current;
+        Activity? activity = null;
         try
         {
-            return _activitySource.StartActivity(
+            // Parent identity preserves correlation without retaining a parent object or inheriting its baggage.
+            activity = _activitySource.CreateActivity(
                 operation == PayloadProtectionOperation.Protect
                     ? "EventStore.PayloadProtection.Protect"
-                    : "EventStore.PayloadProtection.Unprotect");
+                    : "EventStore.PayloadProtection.Unprotect",
+                ActivityKind.Internal,
+                parentId: ambient?.Id);
+            if (activity is not null)
+            {
+                _ = activity.Start();
+            }
+
+            return activity;
         }
         catch
         {
-            return null;
+            RestoreActivity(ambient);
+            return activity;
         }
     }
 
@@ -43,7 +57,8 @@ internal static class PayloadProtectionDiagnostics
     /// The bounded outcome. It sets <see cref="ActivityStatusCode"/> only: no description is attached, because
     /// normative section 15.2 forbids any cryptographic, provider, or payload detail on a trace status.
     /// </param>
-    internal static void Stop(Activity? activity, PayloadProtectionDiagnosticResult result)
+    /// <param name="ambient">The ambient activity captured before starting the owned activity.</param>
+    internal static void Stop(Activity? activity, PayloadProtectionDiagnosticResult result, Activity? ambient)
     {
         try
         {
@@ -56,6 +71,10 @@ internal static class PayloadProtectionDiagnostics
         {
             // Diagnostic listeners are untrusted observers of the operation outcome.
         }
+        finally
+        {
+            RestoreActivity(ambient);
+        }
     }
 
     /// <summary>
@@ -67,6 +86,7 @@ internal static class PayloadProtectionDiagnostics
         double durationMilliseconds,
         bool protectedFormat = true)
     {
+        Activity? ambient = Activity.Current;
         TagList tags = default;
         tags.Add("operation", operation == PayloadProtectionOperation.Protect ? "protect" : "unprotect");
         tags.Add("result", ResultToken(result));
@@ -79,6 +99,10 @@ internal static class PayloadProtectionDiagnostics
         {
             // Each metric is best effort and cannot suppress the other instrument or change operation outcomes.
         }
+        finally
+        {
+            RestoreActivity(ambient);
+        }
 
         try
         {
@@ -87,6 +111,22 @@ internal static class PayloadProtectionDiagnostics
         catch
         {
             // Each metric is best effort and cannot suppress the other instrument or change operation outcomes.
+        }
+        finally
+        {
+            RestoreActivity(ambient);
+        }
+    }
+
+    private static void RestoreActivity(Activity? activity)
+    {
+        try
+        {
+            Activity.Current = activity;
+        }
+        catch
+        {
+            // CurrentChanged observers run after assignment and cannot replace the cryptographic outcome.
         }
     }
 

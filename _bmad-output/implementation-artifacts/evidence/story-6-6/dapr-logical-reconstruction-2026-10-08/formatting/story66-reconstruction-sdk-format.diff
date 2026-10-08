@@ -1,0 +1,37 @@
+--- src/Hexalith.EventStore.Client/Events/EventEvolutionService.cs
++++ src/Hexalith.EventStore.Client/Events/EventEvolutionService.cs
+@@ -66,12 +66,19 @@
+     }
+ 
+     /// <summary>Gets the composed resolver for addressed Dapr page preparation and bounded effective resolution.</summary>
+-    internal EventLogicalViewResolver Resolver { get; }
++    internal EventLogicalViewResolver Resolver
++    {
++        get;
++    }
+ 
+     /// <summary>Gets the exact immutable registry identity shared by all composed evolution routes.</summary>
+     internal string RegistryFingerprint
+     {
+-        get { _registry.RequireActive(CancellationToken.None); return _registry.Fingerprint; }
++        get
++        {
++            _registry.RequireActive(CancellationToken.None);
++            return _registry.Fingerprint;
++        }
+     }
+ 
+     /// <summary>Gets the supplied event registry domain.</summary>
+@@ -91,7 +98,11 @@
+     /// <summary>Gets the shared observed-loss scope required by the logical source and trust composition.</summary>
+     internal EventEvolutionCapabilityLoss CapabilityLoss
+     {
+-        get { _registry.RequireActive(CancellationToken.None); return _registry.CapabilityLoss; }
++        get
++        {
++            _registry.RequireActive(CancellationToken.None);
++            return _registry.CapabilityLoss;
++        }
+     }
+ 
+     /// <summary>Checks the supplied registry instance and its shared capability before addressed source or callback admission.</summary>

@@ -974,11 +974,53 @@ public sealed class ReleasePackageManifestTests
     public void Payload_protection_workflow_preserves_the_complete_blocking_vector_lane()
     {
         string root = FindRepositoryRoot();
-        using var reader = new StreamReader(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
+        AssertPayloadProtectionWorkflow(File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml")));
+    }
+
+    [Theory]
+    [InlineData("remove-push")]
+    [InlineData("remove-pull-request")]
+    [InlineData("manual-only")]
+    [InlineData("push-without-main")]
+    public void Payload_protection_workflow_guard_rejects_missing_automatic_triggers(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        const string push = "  push:\n    branches: [main]\n";
+        const string pullRequest = "  pull_request:\n    branches: [main]\n";
+        string mutated = mutation switch
+        {
+            "remove-push" => workflow.Replace(push, string.Empty, StringComparison.Ordinal),
+            "remove-pull-request" => workflow.Replace(pullRequest, string.Empty, StringComparison.Ordinal),
+            "manual-only" => workflow.Replace(push + pullRequest, "  workflow_dispatch:\n", StringComparison.Ordinal),
+            "push-without-main" => workflow.Replace(push, "  push:\n    branches: [other]\n", StringComparison.Ordinal),
+            _ => throw new InvalidOperationException(),
+        };
+
+        mutated.ShouldNotBe(workflow);
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPayloadProtectionWorkflow(mutated));
+    }
+
+    private static void AssertPayloadProtectionWorkflow(string workflow)
+    {
+        using var reader = new StringReader(workflow);
         var yaml = new YamlStream();
         yaml.Load(reader);
 
         YamlMappingNode document = yaml.Documents.Single().RootNode.ShouldBeOfType<YamlMappingNode>();
+        document.Children.TryGetValue(new YamlScalarNode("on"), out YamlNode? triggerNode).ShouldBeTrue();
+        YamlMappingNode triggers = triggerNode.ShouldBeOfType<YamlMappingNode>();
+        foreach (string eventName in new[] { "push", "pull_request" })
+        {
+            triggers.Children.TryGetValue(new YamlScalarNode(eventName), out YamlNode? eventNode).ShouldBeTrue();
+            YamlMappingNode trigger = eventNode.ShouldBeOfType<YamlMappingNode>();
+            trigger.Children.TryGetValue(new YamlScalarNode("branches"), out YamlNode? branchNode).ShouldBeTrue();
+            YamlSequenceNode branches = branchNode.ShouldBeOfType<YamlSequenceNode>();
+            branches.Children.Select(static branch => branch.ShouldBeOfType<YamlScalarNode>().Value)
+                .ShouldBe(["main"]);
+        }
+
         YamlMappingNode jobs = document.Children[new YamlScalarNode("jobs")]
             .ShouldBeOfType<YamlMappingNode>();
         YamlMappingNode job = jobs.Children[new YamlScalarNode("payload-protection")]
@@ -1022,7 +1064,7 @@ public sealed class ReleasePackageManifestTests
         arguments[Array.IndexOf(arguments, "--project") + 1].ShouldBe(
             "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
         arguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
-        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("292");
+        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("306");
         arguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
         arguments[Array.IndexOf(arguments, "--fail-skips") + 1].ShouldBe("on");
 

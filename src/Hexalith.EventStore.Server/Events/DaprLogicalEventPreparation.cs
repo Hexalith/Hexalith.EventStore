@@ -14,7 +14,7 @@ internal sealed class DaprLogicalEventPreparation : IDisposable
 
     /// <summary>Takes exclusive ownership of readable bytes, their source hash and metadata reservation.</summary>
     internal DaprLogicalEventPreparation(EventEnvelope source, string readableFormat, ImmutablePayload readable,
-        byte[] storedHash, EventBufferReservation metadataReservation)
+        byte[] storedHash, EventBufferReservation metadataReservation, bool computeApplicationLogicalDigest = false)
     {
         Source = source;
         ReadableFormat = readableFormat;
@@ -22,6 +22,12 @@ internal sealed class DaprLogicalEventPreparation : IDisposable
         _readable = readable;
         _storedHash = storedHash;
         _metadataReservation = metadataReservation;
+        if (computeApplicationLogicalDigest)
+        {
+            byte[] payloadHash = readable.ComputeSha256();
+            try { ApplicationLogicalDigest = EventLogicalDigest.Compute(source, readableFormat, payloadHash); }
+            finally { CryptographicOperations.ZeroMemory(payloadHash); }
+        }
     }
 
     /// <summary>Gets the privately snapshotted metadata and unchanged actor payload.</summary>
@@ -32,6 +38,9 @@ internal sealed class DaprLogicalEventPreparation : IDisposable
 
     /// <summary>Gets the source readable size independently of any smaller upcast result.</summary>
     internal int ReadablePayloadLength { get; }
+
+    /// <summary>Gets opt-in recomputed evidence for bound logical source pages, including V1 values without a stored digest.</summary>
+    internal string? ApplicationLogicalDigest { get; }
 
     /// <summary>Refuses source mutation before catalog entry and before page ownership transfer.</summary>
     internal void RequireStoredUnchanged()

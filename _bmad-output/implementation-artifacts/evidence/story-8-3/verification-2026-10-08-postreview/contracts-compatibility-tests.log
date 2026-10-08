@@ -1,0 +1,13 @@
+Command arguments: ["dotnet", "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll", "-class", "Hexalith.EventStore.Contracts.Tests.Security.PayloadProtectionV2ContractTests", "-failSkips", "-noColor"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:26:39.578012+00:00
+
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Contracts.Tests
+  Discovered:  Hexalith.EventStore.Contracts.Tests
+  Starting:    Hexalith.EventStore.Contracts.Tests
+  Finished:    Hexalith.EventStore.Contracts.Tests (ID = '8e6c530ff7042b4b885ca2f39ec4fe4a2e92f08869b65fabe27974a4d11bb3bd')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Contracts.Tests  Total: 31, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.233s
+
+Exit code: 0

@@ -1,0 +1,37 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.PayloadProtection.Tests
+  Discovered:  Hexalith.EventStore.PayloadProtection.Tests
+  Starting:    Hexalith.EventStore.PayloadProtection.Tests
+    Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.PredictableProtectedOutputExpansion_IsRejectedBeforeMaterialCreation(boundary: "nodes") [FAIL]
+      Shouldly.ShouldAssertException : observer.Observed
+          should not contain
+      SensitiveBufferKind.SelectedPlaintext
+          but was actually
+      [SensitiveBufferKind.InputSnapshot, SensitiveBufferKind.SelectedPlaintext, SensitiveBufferKind.AuthenticatedData, SensitiveBufferKind.AuthenticatedData]
+      Stack Trace:
+        tests/Hexalith.EventStore.PayloadProtection.Tests/LimitsAndConcurrencyTests.cs(1167,0): at Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.PredictableProtectedOutputExpansion_IsRejectedBeforeMaterialCreation(String boundary)
+           at InvokeStub_LimitsAndConcurrencyTests.PredictableProtectedOutputExpansion_IsRejectedBeforeMaterialCreation(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+    Hexalith.EventStore.PayloadProtection.Tests.DiagnosticsTests.ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(callback: "started") [FAIL]
+      Shouldly.ShouldAssertException : restorationFaults
+          should be
+      1
+          but was
+      5
+      Stack Trace:
+        tests/Hexalith.EventStore.PayloadProtection.Tests/DiagnosticsTests.cs(155,0): at Hexalith.EventStore.PayloadProtection.Tests.DiagnosticsTests.ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(String callback)
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+    Hexalith.EventStore.PayloadProtection.Tests.DiagnosticsTests.ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(callback: "stopped") [FAIL]
+      Shouldly.ShouldAssertException : restorationFaults
+          should be
+      1
+          but was
+      3
+      Stack Trace:
+        tests/Hexalith.EventStore.PayloadProtection.Tests/DiagnosticsTests.cs(155,0): at Hexalith.EventStore.PayloadProtection.Tests.DiagnosticsTests.ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(String callback)
+           at InvokeStub_DiagnosticsTests.ThrowingAmbientRestorationCallbacks_DoNotChangeCoreOutcome(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.PayloadProtection.Tests (ID = '6be3a30c25bfce733cb9df03250c3baafe4807b7092a2741df13174ba966d468')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.PayloadProtection.Tests  Total: 147, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 3.719s

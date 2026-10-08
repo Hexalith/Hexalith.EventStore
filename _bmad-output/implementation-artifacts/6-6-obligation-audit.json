@@ -15,6 +15,10 @@
     {
       "path": "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
       "sha256": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md",
+      "sha256": "9ce0913f5b442db9a1070d6155c9a34fef4aff69a9df85953d9c2a14184a66f7"
     }
   ],
   "activationAuthority": false,
@@ -101,7 +105,7 @@
       "evidenceBoundary": "compatible-contract-and-separate-qualification",
       "owner": "Story 6.6 implementation and verification owner",
       "blockingGate": "preactivation-and-applicable-ad26-qualification",
-      "currentRequirement": "Bind actual reviewed source/model/verifier inputs and both controlling amendments. Missing or changed reviewed inputs refuse; historical approval is identified as historical and gives no current activation authority.",
+      "currentRequirement": "Bind actual reviewed source/model/verifier inputs, all three controlling amendments and the selected logical model inputs. Missing or changed reviewed inputs refuse; historical approval and the owner model choice are identified separately and give no current activation authority.",
       "requiredEvidence": [
         "Exact focused input/block hashes and verifier identities",
         "Missing/changed input refusal controls"
@@ -172,7 +176,7 @@
       "evidenceBoundary": "compatible-contract-and-separate-qualification",
       "owner": "Story 6.6 implementation and verification owner",
       "blockingGate": "preactivation-and-applicable-ad26-qualification",
-      "currentRequirement": "Limit bookkeeping to exact reviewed input/file/block hashes, verifier identities, historical approval and both current amendments. Preserve historical captures without requiring whole-repository ancestry or unchanged unrelated paths.",
+      "currentRequirement": "Limit bookkeeping to exact reviewed input/file/block hashes, verifier identities, historical approval, current amendments and the selected logical model. Preserve historical captures without requiring whole-repository ancestry or unchanged unrelated paths.",
       "requiredEvidence": [
         "Focused historical and current amendment binding",
         "Unrelated-change positive controls and preserved historical evidence"
@@ -310,5 +314,25 @@
         "Producer-disable/broker-reject, repeated resume and unchanged-byte failure matrices"
       ]
     }
-  ]
+  ],
+  "selectedLogicalModel": {
+    "id": "dapr-actor-logical-v1",
+    "selectionAuthority": "owner-delegated-model-choice-only",
+    "activationAuthority": false,
+    "runtimeRegistered": false,
+    "inputs": [
+      {
+        "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md",
+        "sha256": "969cfe58dcbd040587cbe22864007610634e812f8b57687bdaa3f4172d34d188"
+      },
+      {
+        "path": "scripts/verify-dapr-logical-model-vectors.py",
+        "sha256": "b6aed6517c6b4be1566e81c446b72b44ea1623a7443ed6b6c82e734eaa9b0457"
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json",
+        "sha256": "4209d24a1a175a951b43d60abd87725d1428a1f62069230abc819b638258a750"
+      }
+    ]
+  }
 }

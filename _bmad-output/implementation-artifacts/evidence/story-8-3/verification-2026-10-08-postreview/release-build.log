@@ -1,0 +1,15 @@
+Command arguments: ["dotnet", "build", "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj", "--no-restore", "--configuration", "Release", "-warnaserror", "-m:1", "-nodeReuse:false", "-p:UseHexalithProjectReferences=false", "-p:GenerateDocumentationFile=true"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:20:06.758376+00:00
+
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.PayloadProtection -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.dll
+  Hexalith.EventStore.PayloadProtection.Tests -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.41
+
+Exit code: 0

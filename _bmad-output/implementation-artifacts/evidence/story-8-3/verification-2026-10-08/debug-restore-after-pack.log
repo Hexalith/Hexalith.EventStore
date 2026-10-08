@@ -1,0 +1,4 @@
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj (in 141 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 141 ms).
+  2 of 4 projects are up-to-date for restore.

@@ -19,14 +19,15 @@ internal sealed class RegisteredCurrentEventDeserializer
         Func<IReadOnlyPayload, CancellationToken, object> deserialize, ReadOnlyMemory<byte> canonicalOptions,
         IReadOnlyList<EventOptionRule> optionSchema, Func<ReadOnlyMemory<byte>>? runtimeOptions = null,
         EventManagedArtifactExecutionBinding? serializerExecutionBinding = null,
-        EventManagedArtifactExecutionBinding? currentTypeExecutionBinding = null)
+        EventManagedArtifactExecutionBinding? currentTypeExecutionBinding = null,
+        EventManagedArtifactExecutionBinding? runtimeOptionsExecutionBinding = null)
     {
         ArgumentNullException.ThrowIfNull(currentType);
         ArgumentNullException.ThrowIfNull(deserialize);
         _currentType = currentType;
         _deserialize = deserialize;
         _serializer = new EventImplementationBinding(serializerId, deserialize, canonicalOptions, optionSchema, runtimeOptions,
-            serializerExecutionBinding);
+            serializerExecutionBinding, runtimeOptionsExecutionBinding);
         _typeExecutionBinding = currentTypeExecutionBinding;
         if (currentTypeExecutionBinding is not null)
         {
@@ -72,7 +73,7 @@ internal sealed class RegisteredCurrentEventDeserializer
     {
         ArgumentNullException.ThrowIfNull(effectivePayload);
         RequireDescriptor(registry, canonicalType, cancellationToken);
-        _serializer.RequireFields(registry.GetVersion(canonicalType, registry.GetCurrentVersion(canonicalType)), 4);
+        _serializer.RequireFields(registry.GetVersion(canonicalType, registry.GetCurrentVersion(canonicalType)), 4, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
         using var lease = new InvocationPayloadLease(effectivePayload, cancellationToken);

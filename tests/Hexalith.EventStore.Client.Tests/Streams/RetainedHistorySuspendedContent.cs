@@ -9,6 +9,12 @@ internal sealed class RetainedHistorySuspendedContent(bool suspendAcquisition, S
 {
     private readonly TaskCompletionSource<Stream> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Optional synchronous invocation or provider-cancellation hook, installed only by focused tests.</summary>
+    public Action<CancellationToken>? BeforeReturn { get; init; }
+
+    /// <summary>Optional blocking or failing provider disposal, installed only by focused tests.</summary>
+    public Action? BeforeDispose { get; init; }
+
     /// <summary>Signals that the SDK attempted to acquire the body.</summary>
     public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -29,6 +35,7 @@ internal sealed class RetainedHistorySuspendedContent(bool suspendAcquisition, S
     {
         AcquisitionCount++;
         Started.TrySetResult();
+        BeforeReturn?.Invoke(cancellationToken);
         return suspendAcquisition ? _completion.Task : Task.FromResult(stream);
     }
 
@@ -48,10 +55,14 @@ internal sealed class RetainedHistorySuspendedContent(bool suspendAcquisition, S
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        base.Dispose(disposing);
-        if (disposing)
+        try
         {
-            Disposed.TrySetResult();
+            if (disposing) { BeforeDispose?.Invoke(); }
+        }
+        finally
+        {
+            base.Dispose(disposing);
+            if (disposing) { Disposed.TrySetResult(); }
         }
     }
 }

@@ -1,0 +1,48 @@
+using System;
+using System.Diagnostics;
+using System.Text;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Hexalith.EventStore.PayloadProtection;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Security;
+class Probe {
+ static async Task Main() {
+  var parent = new Activity("parent").Start();
+  using(var listener = new ActivityListener {ShouldListenTo=s=>s.Name==PayloadProtectionDiagnostics.Name, Sample=(ref ActivityCreationOptions<ActivityContext> o)=>ActivitySamplingResult.AllData, ActivityStarted=a=>throw new Exception("started")}) {
+   ActivitySource.AddActivityListener(listener);
+   var result=PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
+   Console.WriteLine("start-return="+(result==null?"null":result.OperationName)+" current="+Activity.Current?.OperationName);
+   Activity.Current=parent;
+  }
+  using(var listener = new ActivityListener {ShouldListenTo=s=>s.Name==PayloadProtectionDiagnostics.Name, Sample=(ref ActivityCreationOptions<ActivityContext> o)=>ActivitySamplingResult.AllData, ActivityStopped=a=>throw new Exception("stopped")}) {
+   ActivitySource.AddActivityListener(listener);
+   var result=PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
+   PayloadProtectionDiagnostics.Stop(result,PayloadProtectionDiagnosticResult.Success);
+   Console.WriteLine("after-stop-current="+Activity.Current?.OperationName);
+   Activity.Current=parent;
+  }
+  parent.AddBaggage("payload-canary", "plaintext-canary");
+  using(var listener = new ActivityListener {ShouldListenTo=s=>s.Name==PayloadProtectionDiagnostics.Name, Sample=(ref ActivityCreationOptions<ActivityContext> o)=>ActivitySamplingResult.AllData}) {
+   ActivitySource.AddActivityListener(listener);
+   var child=PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
+   Console.WriteLine("child-baggage="+string.Join(",",child!.Baggage.Select(x=>x.Key+"="+x.Value)));
+   PayloadProtectionDiagnostics.Stop(child,PayloadProtectionDiagnosticResult.Success);
+  }
+  using(var cancelDispose = new CancellationTokenSource()) {
+   try { ProtectedPathManifestCodec.Create(CancelOnDispose(cancelDispose), cancellationToken:cancelDispose.Token); }
+   catch(Exception e) {Console.WriteLine("dispose-cancel="+e.GetType().Name+" cancelled="+cancelDispose.IsCancellationRequested);}
+  }
+  var context = new PayloadProtectionContext(new AggregateIdentity("tenant-a","parties","party-01"),"Type",PayloadProtectionPayloadKind.Event,1);
+  Func<PayloadProtectionMaterial> factory=()=>new PayloadProtectionMaterial("01J00000000000000000000000",1,new byte[32]);
+  string input="{\"a\":0,\"z\":["+string.Join(',',new string[65533].Select(_=>"0"))+"]}";
+  try {var result=new PayloadProtectionCore().ProtectEvent(Encoding.UTF8.GetBytes(input),new[]{"/a","/z"},context,factory);Console.WriteLine("node-protection=success");}catch(Exception e){Console.WriteLine("node-protection="+e.GetType().Name);}
+  var protectedResult=new PayloadProtectionCore().ProtectEvent(Encoding.UTF8.GetBytes("{\"a\":0}"),new[]{"/a"},context,factory);
+  using var cts=new CancellationTokenSource();
+  var unreadable=await new PayloadProtectionCore(new CancelObserver(cts)).TryUnprotectEventAsync(protectedResult.PayloadBytes,context,(_,_,_)=>ValueTask.FromResult<byte[]?>(new byte[32]{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}),cts.Token);
+  Console.WriteLine("auth-failure-return="+unreadable.UnreadableReason+" cancelled="+cts.IsCancellationRequested);
+ }
+ static System.Collections.Generic.IEnumerable<string> CancelOnDispose(CancellationTokenSource cts) {try {yield return "/~2";}finally{cts.Cancel();}}
+}
+class CancelObserver(CancellationTokenSource cts):ISensitiveBufferObserver { public void BufferCleared(SensitiveBufferKind kind, ReadOnlySpan<byte> data) { if(kind==SensitiveBufferKind.DecryptedPlaintext)cts.Cancel(); }}

@@ -1,0 +1,25 @@
+Command arguments: ["python3", "/tmp/eventstore-8-3-structural-check.py"]
+Environment overrides: {}
+Started UTC: 2026-10-08T14:23:57.390829+00:00
+
+{
+  "result": "PASS",
+  "cSharpCounts": {
+    "src/Hexalith.EventStore.PayloadProtection": 34,
+    "tests/Hexalith.EventStore.PayloadProtection.Tests": 10
+  },
+  "checks": [
+    "one type per file",
+    "Allman statement braces",
+    "LF/no BOM/final newline/no trailing whitespace",
+    "normative digest citations",
+    "no public core types",
+    "Contracts-only reference/no package reference",
+    "core AOT and trim analyzers enabled by project properties",
+    "non-packable",
+    "excluded from solution",
+    "unchanged 14-package inventory"
+  ]
+}
+
+Exit code: 0

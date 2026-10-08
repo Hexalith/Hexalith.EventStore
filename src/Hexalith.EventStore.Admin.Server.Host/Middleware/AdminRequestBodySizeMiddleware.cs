@@ -33,22 +33,24 @@ public sealed class AdminRequestBodySizeMiddleware(RequestDelegate next) {
 
         IHttpMaxRequestBodySizeFeature? feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
         if (feature is { IsReadOnly: false }) {
-            feature.MaxRequestBodySize = limit.Value;
+            // Kestrel counts chunk framing against this cap. Unknown-length bodies are
+            // bounded below by their decoded entity bytes instead.
+            feature.MaxRequestBodySize = context.Request.ContentLength.HasValue ? limit.Value : null;
         }
 
         Stream? originalBody = null;
         MemoryStream? bufferedBody = null;
-        if (!context.Request.ContentLength.HasValue) {
-            bufferedBody = await BufferUnknownLengthBodyAsync(context, limit.Value).ConfigureAwait(false);
-            if (bufferedBody is null) {
-                return;
+        try {
+            if (!context.Request.ContentLength.HasValue) {
+                bufferedBody = await BufferUnknownLengthBodyAsync(context, limit.Value).ConfigureAwait(false);
+                if (bufferedBody is null) {
+                    return;
+                }
+
+                originalBody = context.Request.Body;
+                context.Request.Body = bufferedBody;
             }
 
-            originalBody = context.Request.Body;
-            context.Request.Body = bufferedBody;
-        }
-
-        try {
             await next(context).ConfigureAwait(false);
         }
         catch (BadHttpRequestException exception) when (exception.StatusCode == StatusCodes.Status413PayloadTooLarge) {
@@ -103,10 +105,11 @@ public sealed class AdminRequestBodySizeMiddleware(RequestDelegate next) {
             throw new BadHttpRequestException("The request body is too large.", StatusCodes.Status413PayloadTooLarge);
         }
 
+        string correlationId = context.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
         context.Response.Clear();
         context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
         context.Response.ContentType = "application/problem+json";
-        string correlationId = context.Items["CorrelationId"]?.ToString() ?? "unknown";
+        context.Response.Headers[CorrelationIdMiddleware.HeaderName] = correlationId;
         var problem = new ProblemDetails {
             Status = StatusCodes.Status413PayloadTooLarge,
             Title = "Payload Too Large",

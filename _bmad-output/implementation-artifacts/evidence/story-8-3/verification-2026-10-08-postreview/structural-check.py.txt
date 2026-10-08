@@ -1,0 +1,31 @@
+from pathlib import Path
+import re,json,hashlib,subprocess
+root=Path('/home/administrator/projects/hexalith/eventstore')
+areas=['src/Hexalith.EventStore.PayloadProtection','tests/Hexalith.EventStore.PayloadProtection.Tests']
+counts={};errors=[]
+for area in areas:
+    files=[p for p in (root/area).rglob('*.cs') if not {'bin','obj'} & set(p.relative_to(root/area).parts)]
+    counts[area]=len(files)
+    for p in sorted(files):
+        data=p.read_bytes();s=data.decode('utf-8');name=str(p.relative_to(root))
+        if b'\r' in data or not data.endswith(b'\n') or data.startswith(b'\xef\xbb\xbf'):errors.append(name+': LF/final-newline/BOM rule')
+        if any(line.rstrip(' \t')!=line for line in s.splitlines()):errors.append(name+': trailing whitespace')
+        types=re.findall(r'^\s*(?:(?:public|internal|private|protected|sealed|static|readonly|abstract|partial)\s+)*(?:class|record|struct|interface|enum)\s+\w+',s,re.M)
+        if len(types)!=1:errors.append(name+': type count '+str(len(types)))
+        for line in s.splitlines():
+            if re.match(r'^\s*(?:if|else|for|foreach|while|switch|try|catch|finally)\b',line) and line.rstrip().endswith('{'):errors.append(name+': same-line block brace')
+        if area.startswith('src/'):
+            if 'de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e' not in s:errors.append(name+': missing authority digest')
+            if re.search(r'^public\s+(?:sealed\s+|static\s+|readonly\s+)?(?:class|record|struct|interface|enum)\b',s,re.M):errors.append(name+': public type')
+core=(root/areas[0]/'Hexalith.EventStore.PayloadProtection.csproj').read_text()
+assert '<IsPackable>false</IsPackable>' in core
+assert core.count('<ProjectReference ')==1 and 'Hexalith.EventStore.Contracts' in core
+assert '<PackageReference ' not in core
+assert '<EnableAotAnalyzer>true</EnableAotAnalyzer>' in core and '<EnableTrimAnalyzer>true</EnableTrimAnalyzer>' in core
+assert 'PayloadProtection' not in (root/'Hexalith.EventStore.slnx').read_text()
+manifest=json.loads((root/'tools/release-packages.json').read_text())
+entries=manifest['packages'] if isinstance(manifest,dict) else manifest
+assert len(entries)==14
+assert 'PayloadProtection' not in json.dumps(manifest)
+assert not errors, '\n'.join(errors)
+print(json.dumps(dict(result='PASS',cSharpCounts=counts,checks=['one type per file','Allman statement braces','LF/no BOM/final newline/no trailing whitespace','normative digest citations','no public core types','Contracts-only reference/no package reference','core AOT and trim analyzers enabled by project properties','non-packable','excluded from solution','unchanged 14-package inventory']),indent=2))

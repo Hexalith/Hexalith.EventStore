@@ -88,24 +88,37 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
             return false;
         }
 
-        string? roleClaim = authState.User.FindFirst(AdminClaimTypes.Role)?.Value;
-        if (roleClaim is nameof(AdminRole.ReadOnly)) {
-            role = AdminRole.ReadOnly;
-            return true;
-        }
+        System.Security.Claims.Claim[] explicitRoles = authState.User.FindAll(AdminClaimTypes.Role).ToArray();
+        if (explicitRoles.Length > 0) {
+            AdminRole? highestRole = null;
+            foreach (System.Security.Claims.Claim claim in explicitRoles) {
+                AdminRole? recognizedRole = claim.Value switch {
+                    nameof(AdminRole.ReadOnly) => AdminRole.ReadOnly,
+                    nameof(AdminRole.Operator) => AdminRole.Operator,
+                    nameof(AdminRole.Admin) => AdminRole.Admin,
+                    _ => null,
+                };
+                if (recognizedRole.HasValue && (!highestRole.HasValue || recognizedRole.Value > highestRole.Value)) {
+                    highestRole = recognizedRole;
+                }
+            }
 
-        if (roleClaim is nameof(AdminRole.Operator)) {
-            role = AdminRole.Operator;
-            return true;
-        }
-
-        if (roleClaim is nameof(AdminRole.Admin)) {
-            role = AdminRole.Admin;
-            return true;
+            role = highestRole.GetValueOrDefault();
+            return highestRole.HasValue;
         }
 
         if (IsGlobalAdministrator(authState.User)) {
             role = AdminRole.Admin;
+            return true;
+        }
+
+        if (authState.User.HasClaim("eventstore:permission", "command:replay")) {
+            role = AdminRole.Operator;
+            return true;
+        }
+
+        if (authState.User.HasClaim(claim => claim.Type == "eventstore:tenant" && !string.IsNullOrWhiteSpace(claim.Value))) {
+            role = AdminRole.ReadOnly;
             return true;
         }
 

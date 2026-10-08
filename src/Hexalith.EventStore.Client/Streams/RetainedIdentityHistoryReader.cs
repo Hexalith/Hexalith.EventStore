@@ -18,33 +18,65 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
     public async Task<RetainedIdentityHistoryReadResult> ReadAsync(AggregateIdentity identity, string purpose,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
-        if (purpose != RetainedIdentityHistoryReadRequest.AttributionPurpose)
+        try
         {
-            return new(null, "history-purpose-denied");
-        }
+            cancellationToken.ThrowIfCancellationRequested();
+            long startedAt = _clock.GetTimestamp();
+            ArgumentNullException.ThrowIfNull(identity);
+            ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
+            if (purpose != RetainedIdentityHistoryReadRequest.AttributionPurpose)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return new(null, "history-purpose-denied");
+            }
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), _clock);
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+            using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), _clock, cancellationToken, startedAt);
+            try
+            {
+                RetainedIdentityHistoryReadResult result;
+                try
+                {
+                    result = await ReadCoreAsync(new(identity, purpose), deadline).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or ArgumentException or IOException)
+                {
+                    result = new(null, "history-unavailable");
+                }
+
+                deadline.ThrowIfCancellationRequested();
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return new(null, deadline.IsExpired ? "history-time-bound-exceeded" : "history-unavailable");
+            }
+        }
+        catch (Exception)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+    }
+
+    private async Task<RetainedIdentityHistoryReadResult> ReadCoreAsync(RetainedIdentityHistoryReadRequest request,
+        AuthoritativeStreamReadDeadline deadline)
+    {
         HttpRequestMessage? message = null;
         HttpResponseMessage? response = null;
         Stream? body = null;
         Task? pendingOperation = null;
         try
         {
-            deadline.Token.ThrowIfCancellationRequested();
-            var request = new RetainedIdentityHistoryReadRequest(identity, purpose);
+            deadline.ThrowIfCancellationRequested();
             message = new HttpRequestMessage(HttpMethod.Post, "api/v1/identity-history/read")
             {
                 Content = JsonContent.Create(request),
             };
-            Task<HttpResponseMessage> sending = httpClient.SendAsync(message,
-                HttpCompletionOption.ResponseHeadersRead, deadline.Token);
-            pendingOperation = sending;
-            response = await sending.WaitAsync(deadline.Token).ConfigureAwait(false);
+            response = await deadline.ReadAsync(token => httpClient.SendAsync(message,
+                HttpCompletionOption.ResponseHeadersRead, token), operation => pendingOperation = operation).ConfigureAwait(false);
             pendingOperation = null;
-            deadline.Token.ThrowIfCancellationRequested();
+            deadline.ThrowIfCancellationRequested();
             if (!response.IsSuccessStatusCode)
             {
                 return new(null, "history-unavailable");
@@ -55,21 +87,19 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
                 return new(null, "history-response-bound-exceeded");
             }
 
-            Task<Stream> acquiring = response.Content.ReadAsStreamAsync(deadline.Token);
-            pendingOperation = acquiring;
-            body = await acquiring.WaitAsync(deadline.Token).ConfigureAwait(false);
+            body = await deadline.ReadAsync(token => response.Content.ReadAsStreamAsync(token),
+                operation => pendingOperation = operation).ConfigureAwait(false);
             pendingOperation = null;
-            deadline.Token.ThrowIfCancellationRequested();
+            deadline.ThrowIfCancellationRequested();
             using var buffer = new MemoryStream();
             var chunk = new byte[8192];
             while (true)
             {
-                deadline.Token.ThrowIfCancellationRequested();
-                Task<int> reading = body.ReadAsync(chunk.AsMemory(), deadline.Token).AsTask();
-                pendingOperation = reading;
-                int count = await reading.WaitAsync(deadline.Token).ConfigureAwait(false);
+                deadline.ThrowIfCancellationRequested();
+                int count = await deadline.ReadAsync(token => body.ReadAsync(chunk.AsMemory(), token).AsTask(),
+                    operation => pendingOperation = operation).ConfigureAwait(false);
                 pendingOperation = null;
-                deadline.Token.ThrowIfCancellationRequested();
+                deadline.ThrowIfCancellationRequested();
                 if (count == 0)
                 {
                     break;
@@ -87,44 +117,28 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
                 buffer.GetBuffer().AsSpan(0, checked((int)buffer.Length)), _jsonOptions);
             bool complete = result is { IsAuthoritative: true }
                 && RetainedIdentityHistoryValidator.IsComplete(request, result.Stream, _clock.GetUtcNow());
-            deadline.Token.ThrowIfCancellationRequested();
+            deadline.ThrowIfCancellationRequested();
             return complete ? result! : new(null, "history-incomplete-or-unavailable");
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return new(null, "history-time-bound-exceeded");
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or ArgumentException or IOException)
-        {
-            return new(null, "history-unavailable");
         }
         finally
         {
-            if (pendingOperation is not null)
-            {
-                // A noncooperative operation still owns its request/response/buffer. Observe its
-                // eventual completion only to dispose transport material; never resume this read.
-                _ = DisposeAfterCompletionAsync(pendingOperation, message, response, body);
-            }
-            else
-            {
-                body?.Dispose();
-                response?.Dispose();
-                message?.Dispose();
-            }
+            // Provider Dispose can block even when the tracked operation already completed.
+            // Keep both direct and late owned cleanup off the query continuation and observe faults.
+            Task cleanup = Task.Run(() => DisposeAfterCompletionAsync(pendingOperation, message, response, body));
+            _ = cleanup.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 
-    private static async Task DisposeAfterCompletionAsync(Task operation, HttpRequestMessage? message,
+    private static async Task DisposeAfterCompletionAsync(Task? operation, HttpRequestMessage? message,
         HttpResponseMessage? response, Stream? body)
     {
         try
         {
-            await operation.ConfigureAwait(false);
+            if (operation is not null)
+            {
+                await operation.ConfigureAwait(false);
+            }
             if (operation is Task<HttpResponseMessage> sending)
             {
                 response = sending.Result;
@@ -140,9 +154,21 @@ public sealed class RetainedIdentityHistoryReader(HttpClient httpClient, TimePro
         }
         finally
         {
-            body?.Dispose();
-            response?.Dispose();
-            message?.Dispose();
+            try
+            {
+                body?.Dispose();
+            }
+            finally
+            {
+                try
+                {
+                    response?.Dispose();
+                }
+                finally
+                {
+                    message?.Dispose();
+                }
+            }
         }
     }
 }

@@ -28,7 +28,13 @@ public sealed class EventEvolutionObligationAuditTests
             {
                 "_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md",
                 "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+                "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md",
             }.Order());
+        JsonElement logicalModel = audit.GetProperty("selected_logical_model");
+        logicalModel.GetProperty("id").GetString().ShouldBe("dapr-actor-logical-v1");
+        logicalModel.GetProperty("activation_authority").GetBoolean().ShouldBeFalse();
+        logicalModel.GetProperty("runtime_registered").GetBoolean().ShouldBeFalse();
+        logicalModel.GetProperty("input_sha256").EnumerateObject().Count().ShouldBe(3);
 
         JsonElement[] mutations = root.GetProperty("mutations").EnumerateArray().ToArray();
         mutations.Select(item => item.GetProperty("mutation").GetString()).ShouldBe(new[]
@@ -36,7 +42,9 @@ public sealed class EventEvolutionObligationAuditTests
             "application-sql", "application-sql-factory", "server-npgsql", "catalog-npgsql", "persister-save",
             "v2-admission", "v2-comment-spoof", "v2-block-comment-spoof", "v2-string-spoof",
             "v2-disabled-branch", "v2-preprocessor-spoof", "historical-approval-pin", "historical-reviewed-input",
-            "missing-dapr-amendment", "changed-trusted-code-amendment", "missing-obligation", "duplicate-obligation",
+            "missing-dapr-amendment", "changed-trusted-code-amendment", "missing-logical-model-amendment",
+            "changed-logical-model-amendment", "changed-logical-model", "changed-logical-vector-verifier",
+            "changed-logical-vectors", "logical-model-as-activation", "missing-obligation", "duplicate-obligation",
             "changed-obligation-source", "superseded-provider-assurance", "unavailable-proof-enabled",
             "premature-obligation-closure", "historical-approval-as-current",
         });
@@ -49,9 +57,18 @@ public sealed class EventEvolutionObligationAuditTests
 
     /// <summary>Proves missing or changed inputs refuse while unrelated files and Git metadata remain outside focused binding.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task FocusedInputBindingAllowsUnrelatedChangesAndRefusesMissingOrChangedAmendments(bool removeAmendment)
+    [InlineData(false, "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md", "current-amendment-binding")]
+    [InlineData(true, "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md", "current-amendment-binding")]
+    [InlineData(false, "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md", "current-amendment-binding")]
+    [InlineData(true, "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md", "current-amendment-binding")]
+    [InlineData(false, "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md", "selected-logical-model-binding")]
+    [InlineData(true, "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md", "selected-logical-model-binding")]
+    [InlineData(false, "scripts/verify-dapr-logical-model-vectors.py", "selected-logical-model-binding")]
+    [InlineData(true, "scripts/verify-dapr-logical-model-vectors.py", "selected-logical-model-binding")]
+    [InlineData(false, "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json", "selected-logical-model-binding")]
+    [InlineData(true, "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json", "selected-logical-model-binding")]
+    public async Task FocusedInputBindingAllowsUnrelatedChangesAndRefusesMissingOrChangedAmendments(
+        bool removeAmendment, string relativeInput, string expectedCheck)
     {
         string repository = FindRepositoryRoot();
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-evolution-audit-{Guid.NewGuid():N}");
@@ -65,7 +82,7 @@ public sealed class EventEvolutionObligationAuditTests
             using JsonDocument positive = await RunGateAsync(temporary);
             positive.RootElement.GetProperty("result").GetString().ShouldBe("passed");
 
-            string amendment = Path.Combine(temporary, "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md");
+            string amendment = Path.Combine(temporary, relativeInput);
             if (removeAmendment) { File.Delete(amendment); }
             else
             {
@@ -73,7 +90,7 @@ public sealed class EventEvolutionObligationAuditTests
                 await File.WriteAllTextAsync(amendment, source.Replace("\n", "\r\n", StringComparison.Ordinal));
             }
             using JsonDocument negative = await RunGateAsync(temporary, expectedExitCode: 2);
-            negative.RootElement.GetProperty("check").GetString().ShouldBe("current-amendment-binding");
+            negative.RootElement.GetProperty("check").GetString().ShouldBe(expectedCheck);
         }
         finally
         {
@@ -88,6 +105,13 @@ public sealed class EventEvolutionObligationAuditTests
     [InlineData("approval-array", "historical-approval-binding")]
     [InlineData("amendment-object", "current-amendment-binding")]
     [InlineData("amendment-null", "current-amendment-binding")]
+    [InlineData("model-null", "selected-logical-model-binding")]
+    [InlineData("model-id", "selected-logical-model-binding")]
+    [InlineData("model-selection-authority", "selected-logical-model-binding")]
+    [InlineData("model-inputs-object", "selected-logical-model-binding")]
+    [InlineData("model-input-null", "selected-logical-model-binding")]
+    [InlineData("model-input-duplicate", "selected-logical-model-binding")]
+    [InlineData("model-registration", "unqualified-activation-fence")]
     [InlineData("obligations-object", "current-obligation-accounting")]
     [InlineData("obligation-null", "current-obligation-accounting")]
     [InlineData("evidence-null", "current-obligation-disposition")]
@@ -106,6 +130,13 @@ public sealed class EventEvolutionObligationAuditTests
                 case "approval-array": audit["historicalApproval"] = new JsonArray(); break;
                 case "amendment-object": audit["currentAmendments"] = new JsonObject(); break;
                 case "amendment-null": audit["currentAmendments"]![0] = null; break;
+                case "model-null": audit["selectedLogicalModel"] = null; break;
+                case "model-id": audit["selectedLogicalModel"]!["id"] = "historical-provider"; break;
+                case "model-selection-authority": audit["selectedLogicalModel"]!["selectionAuthority"] = "production-key-issuer"; break;
+                case "model-inputs-object": audit["selectedLogicalModel"]!["inputs"] = new JsonObject(); break;
+                case "model-input-null": audit["selectedLogicalModel"]!["inputs"]![0] = null; break;
+                case "model-input-duplicate": audit["selectedLogicalModel"]!["inputs"]![1] = audit["selectedLogicalModel"]!["inputs"]![0]!.DeepClone(); break;
+                case "model-registration": audit["selectedLogicalModel"]!["runtimeRegistered"] = true; break;
                 case "obligations-object": audit["obligations"] = new JsonObject(); break;
                 case "obligation-null": audit["obligations"]![0] = null; break;
                 case "evidence-null": audit["obligations"]![0]!["requiredEvidence"] = null; break;
@@ -137,6 +168,10 @@ public sealed class EventEvolutionObligationAuditTests
             "_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md",
             "_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md",
             "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+            "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md",
+            "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model.md",
+            "scripts/verify-dapr-logical-model-vectors.py",
+            "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-model-2026-10-08/vectors.json",
         })
         {
             string target = Path.Combine(temporary, relative);
