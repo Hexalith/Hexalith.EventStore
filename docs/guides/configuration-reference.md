@@ -368,7 +368,7 @@ Configuration section: `EventStore:Reminders`
 |---------|------|---------|-------------|
 | `ActorTypeName` | string | none; required | Dapr actor type of the reminder actor. It must be unique to one application, because actor types are global under Dapr placement, and it scopes every persisted reminder key |
 | `StateStoreName` | string | `"statestore"` | State store for reminder witnesses, index, and dispositions |
-| `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions |
+| `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions. Set it explicitly to the submitting assertion's caller identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting |
 | `Purposes:{kind}` | string | none | Named delegated purpose for `works.date-resume.v1` or `works.expiry.v1`. A kind without a purpose is denied at callback admission |
 | `ReconciliationEnabled` | bool | `true` | Runs the periodic reconciler |
 | `ReconciliationInterval` | TimeSpan | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
