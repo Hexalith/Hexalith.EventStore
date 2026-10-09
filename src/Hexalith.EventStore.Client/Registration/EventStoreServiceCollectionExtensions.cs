@@ -7,6 +7,8 @@ using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Projections;
 
 using Microsoft.Extensions.Configuration;
@@ -112,7 +114,15 @@ public static class EventStoreServiceCollectionExtensions {
     public static IServiceCollection AddEventStoreClient<TProcessor>(this IServiceCollection services)
         where TProcessor : class, IDomainProcessor {
         ArgumentNullException.ThrowIfNull(services);
-        return services.AddScoped<IDomainProcessor, TProcessor>();
+        services.AddScoped<TProcessor>();
+        services.AddScoped<IDomainProcessor>(provider => provider.GetRequiredService<TProcessor>());
+        if (typeof(IAsyncDomainProcessor).IsAssignableFrom(typeof(TProcessor)))
+        {
+            string domain = NamingConventionEngine.GetDomainName(typeof(TProcessor));
+            services.AddKeyedScoped<IAsyncDomainProcessor>(domain,
+                (provider, _) => (IAsyncDomainProcessor)provider.GetRequiredService<TProcessor>());
+        }
+        return services;
     }
 
     /// <summary>
@@ -197,6 +207,15 @@ public static class EventStoreServiceCollectionExtensions {
 
         // Scan assemblies for domain types
         DiscoveryResult discoveryResult = AssemblyScanner.ScanForDomainTypes(assemblies);
+        EventPayloadEvolutionRegistration evolution = EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services);
+        foreach (Assembly assembly in assemblies) { evolution.AddAssembly(assembly); }
+        foreach (DiscoveredDomain domain in discoveryResult.Aggregates.Concat(discoveryResult.Projections))
+        {
+            foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(domain.StateType).ByType.Keys)
+            {
+                evolution.AddKnownType(eventType);
+            }
+        }
 
         // Register DiscoveryResult as singleton
         _ = services.AddSingleton(discoveryResult);
@@ -206,22 +225,34 @@ public static class EventStoreServiceCollectionExtensions {
 
         // Register each discovered aggregate as IDomainProcessor
         foreach (DiscoveredDomain aggregate in discoveryResult.Aggregates) {
+            _ = services.AddScoped(aggregate.Type, serviceProvider => {
+                object instance = ActivatorUtilities.CreateInstance(serviceProvider, aggregate.Type);
+                if (instance is IEventPayloadEvolutionAware aware)
+                {
+                    aware.EvolutionRegistry = serviceProvider.GetRequiredService<EventPayloadEvolutionRegistry>();
+                }
+                return instance;
+            });
             // Non-keyed: backward compat + enumeration of all processors
-            _ = services.AddScoped(typeof(IDomainProcessor), aggregate.Type);
+            _ = services.AddScoped(typeof(IDomainProcessor), serviceProvider => serviceProvider.GetRequiredService(aggregate.Type));
 
             // Keyed: domain-specific resolution (forward-looking for actor pipeline)
-            _ = services.AddKeyedScoped(typeof(IDomainProcessor), aggregate.DomainName, aggregate.Type);
+            _ = services.AddKeyedScoped(typeof(IDomainProcessor), aggregate.DomainName,
+                (serviceProvider, _) => serviceProvider.GetRequiredService(aggregate.Type));
 
             if (typeof(IAsyncDomainProcessor).IsAssignableFrom(aggregate.Type)) {
-                _ = services.AddKeyedScoped(typeof(IAsyncDomainProcessor), aggregate.DomainName, aggregate.Type);
+                _ = services.AddKeyedScoped(typeof(IAsyncDomainProcessor), aggregate.DomainName,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService(aggregate.Type));
             }
 
             if (typeof(IAsyncAggregateReplay).IsAssignableFrom(aggregate.Type)) {
-                _ = services.AddKeyedScoped(typeof(IAsyncAggregateReplay), aggregate.DomainName, aggregate.Type);
+                _ = services.AddKeyedScoped(typeof(IAsyncAggregateReplay), aggregate.DomainName,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService(aggregate.Type));
             }
 
             if (typeof(IAggregateReplay).IsAssignableFrom(aggregate.Type)) {
-                _ = services.AddKeyedScoped(typeof(IAggregateReplay), aggregate.DomainName, aggregate.Type);
+                _ = services.AddKeyedScoped(typeof(IAggregateReplay), aggregate.DomainName,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService(aggregate.Type));
             }
         }
 

@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Serialization;
 
@@ -35,6 +36,13 @@ public static class AggregateReplayer {
     /// <remarks>Synchronous Apply and serialization cannot be interrupted; cancellation is observed at their boundaries.</remarks>
     public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request, CancellationToken cancellationToken)
         where TState : class, new() {
+        return Replay<TState>(request, cancellationToken, null);
+    }
+
+    /// <summary>Replays through an explicitly configured immutable event evolution registry.</summary>
+    public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request,
+        CancellationToken cancellationToken, EventPayloadEvolutionRegistry? evolution)
+        where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         if (request.PagedContext is not null) {
@@ -42,16 +50,17 @@ public static class AggregateReplayer {
         }
 
         using LegacyReplayInput input = LegacyReplayInput.Capture(request, cancellationToken);
-        return ReplayAdmitted<TState>(request, input, cancellationToken);
+        return ReplayAdmitted<TState>(request, input, cancellationToken, evolution);
     }
 
     /// <summary>Replays under a router-owned private input without allocating another complete payload copy.</summary>
     /// <param name="request">The admitted legacy request.</param>
     /// <param name="input">The private input retained by the caller until replay completes.</param>
     /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <param name="evolution">The immutable registry; the state assembly convention is used when omitted.</param>
     /// <returns>The complete legacy reconstruction result.</returns>
     internal static AggregateReconstructionResult ReplayAdmitted<TState>(AggregateReconstructionRequest request,
-        LegacyReplayInput input, CancellationToken cancellationToken)
+        LegacyReplayInput input, CancellationToken cancellationToken, EventPayloadEvolutionRegistry? evolution = null)
         where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(input);
@@ -61,6 +70,7 @@ public static class AggregateReplayer {
         }
 
         ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
+        evolution ??= EventPayloadEvolutionRegistry.ForApplyState(typeof(TState));
         bool includeTimeline = request.IncludeTimeline;
         List<AggregateReconstructionTimelineEntry>? timeline = includeTimeline
             ? new List<AggregateReconstructionTimelineEntry>()
@@ -83,7 +93,7 @@ public static class AggregateReplayer {
         // Refuse the complete eligible batch before creating state or invoking Apply.
         // A legacy alias route cannot verify a canonical effective event carrier.
         ReplayEventEnvelope? versioned = eligible.FirstOrDefault(static item => item.MetadataVersion != 1
-            || item.StoredEventContractType is not null || item.StoredPayloadVersion is not null
+            || item.StoredEventContractType is not null || item.StoredPayloadVersion is < 1 or > 1024
             || item.StoredSerializationFormat is not null || item.StoredEventTypeName is not null
             || item.StoredDigest is not null || item.RegistryFingerprint is not null || item.IsAdapted is not null
             || item.EffectiveEventContractType is not null || item.EffectivePayloadVersion is not null
@@ -91,7 +101,7 @@ public static class AggregateReplayer {
         if (versioned is not null) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.UnsupportedVersion,
-                "RollbackReaderCapabilityHold: legacy replay cannot consume a versioned event.",
+                "RollbackReaderCapabilityHold: replay cannot consume unsupported event metadata.",
                 failedSequenceNumber: versioned.SequenceNumber,
                 failedEventType: versioned.EventTypeName);
         }
@@ -169,11 +179,24 @@ public static class AggregateReplayer {
                     lastAppliedSequenceNumber: lastApplied);
             }
 
+            ResolvedEventPayload effective;
+            try {
+                effective = evolution.Read(evt.EventTypeName, evt.StoredPayloadVersion, evt.Payload, evt.SequenceNumber);
+            }
+            catch (EventPayloadEvolutionException error) {
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnsupportedVersion,
+                    error.Message,
+                    failedSequenceNumber: evt.SequenceNumber,
+                    failedEventType: evt.EventTypeName,
+                    lastAppliedSequenceNumber: lastApplied);
+            }
+
             MethodInfo? applyMethod;
             try {
                 applyMethod = ApplyMethodResolver.TryResolve(
                     applyMethods,
-                    evt.EventTypeName,
+                    effective.EventTypeName,
                     evt.MessageId,
                     request.AggregateId);
             }
@@ -222,8 +245,8 @@ public static class AggregateReplayer {
             Type eventClrType = applyMethod.GetParameters()[0].ParameterType;
             object? deserialized;
             try {
-                using JsonDocument doc = evt.Payload is { Length: > 0 }
-                    ? JsonDocument.Parse(evt.Payload)
+                using JsonDocument doc = effective.Payload is { Length: > 0 }
+                    ? JsonDocument.Parse(effective.Payload)
                     : JsonDocument.Parse("{}");
                 deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, EventStorePayloadSerialization.Options);
             }

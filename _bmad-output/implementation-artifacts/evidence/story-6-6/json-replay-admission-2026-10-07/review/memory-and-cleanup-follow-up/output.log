@@ -1,8 +1,0 @@
-Token-table guard FIXED: admitted=156596650, after=268435370, parse-attempt allocations=2976, result=LegacyArrayLimit: legacy command-state envelope admission failed.
-Whitespace scratch FIXED: decoded=0, decode allocations=24
-Property-name decoding FIXED: 1000 ignored-name lookups allocations=0; escaped mixed-case alias matched
-Cleanup FIXED: refusal, retained buffers=2, zeroed=true, private documents disposed, caller source readable
-Cleanup FIXED: failure, retained buffers=2, zeroed=true, private documents disposed, caller source readable
-Cleanup FIXED: cancellation, retained buffers=2, zeroed=true, private documents disposed, caller source readable
-Aggregate readable guard VERIFIED independently: readable-so-far=42991641, next-readable=25165849, accounted-if-next-admitted=237006542, cap=268435456
-All final linked-source checks passed.

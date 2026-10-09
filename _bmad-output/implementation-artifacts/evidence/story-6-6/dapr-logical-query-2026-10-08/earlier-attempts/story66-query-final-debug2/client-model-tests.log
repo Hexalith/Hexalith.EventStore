@@ -1,7 +1,0 @@
-xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
-  Discovering: Hexalith.EventStore.Client.Tests
-  Discovered:  Hexalith.EventStore.Client.Tests
-  Starting:    Hexalith.EventStore.Client.Tests
-  Finished:    Hexalith.EventStore.Client.Tests (ID = '2dbb38b4f57399cd194d9f5aed2d1a26d7f2f3e04561b8ef6fd6e818c04e4589')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.180s

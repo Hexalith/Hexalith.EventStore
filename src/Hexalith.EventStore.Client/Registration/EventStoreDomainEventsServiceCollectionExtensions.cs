@@ -39,6 +39,7 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
         Action<EventStoreDomainEventsOptions>? configure = null) {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(eventContractsAssembly);
+        EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services).AddAssembly(eventContractsAssembly);
 
         OptionsBuilder<EventStoreDomainEventsOptions> optionsBuilder = services.AddOptions<EventStoreDomainEventsOptions>();
         if (configure is not null) {
@@ -53,7 +54,8 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
             registry,
             sp.GetRequiredService<IEventStoreDomainEventMarkerStore>(),
             sp.GetRequiredService<ILogger<EventStoreDomainEventProcessor>>(),
-            sp.GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value.PayloadAggregateIdPropertyName));
+            sp.GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value.PayloadAggregateIdPropertyName,
+            sp.GetRequiredService<Hexalith.EventStore.Client.Events.EventPayloadEvolutionRegistry>()));
 
         return services;
     }
@@ -70,6 +72,7 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
     /// </remarks>
     public static IServiceCollection AddDaprEventStoreDomainEventMarkerStore(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
+
         services.Replace(ServiceDescriptor.Singleton<IEventStoreDomainEventMarkerStore, DaprEventStoreDomainEventMarkerStore>());
         return services;
     }
@@ -85,6 +88,7 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
         where TEvent : IEventPayload
         where THandler : class, IEventStoreDomainEventHandler<TEvent> {
         ArgumentNullException.ThrowIfNull(services);
+        EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services).AddKnownType(typeof(TEvent));
 
         services.TryAddScoped<THandler>();
 

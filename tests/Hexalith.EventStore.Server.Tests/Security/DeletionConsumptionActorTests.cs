@@ -224,13 +224,65 @@ public sealed class DeletionConsumptionActorTests
         var reserved = await f.Actor.ReserveAndConsumeAsync(request);
         f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
             new DeletionManifestProviderResult("tenant-a", "batch-1", call.Arg<string>(), DeletionManifestProviderState.Unknown, []));
-        var unknown = await f.Actor.RegisterAsync(DeletionConsumptionFixture.Request("batch-2")); DeletionConsumptionIdentity.Digest(unknown).ShouldBe(DeletionConsumptionIdentity.Digest(reserved));
+        var unknown = await f.Actor.RegisterAsync(DeletionConsumptionFixture.Request("batch-2"));
+        unknown.Status.ShouldBe(DeletionConsumptionStatus.Unavailable); unknown.BatchId.ShouldBe("batch-2"); unknown.ReceiptId.ShouldBeNull();
         f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Count.ShouldBe(1);
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
         f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(f.Retained[reserved.ReceiptId!]);
         var recovered = await f.Actor.RegisterAsync(DeletionConsumptionFixture.Request("batch-2")); recovered.Status.ShouldBe(DeletionConsumptionStatus.AlreadyDestroyedByBatch);
         recovered.TargetReceipts.All(r => r.OriginalBatchId == "batch-1").ShouldBeTrue();
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A blocked admission releases the original turn at its entry deadline and cannot later register a batch.</summary>
+    [Fact]
+    public async Task SuspendedAdmissionReleasesWholeEntryWithoutLateRegistration()
+    {
+        var f = new DeletionConsumptionFixture(); var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Authority.AuthorizeOperationAsync("tenant-a", "batch-1", "RegisterDeletionBatch", Arg.Any<CancellationToken>()).Returns(_ =>
+        { entered.TrySetResult(); return release.Task; });
+        var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldNotBeNull();
+        string retained = JsonSerializer.Serialize(f.Backend.CommittedState);
+        release.SetResult(true);
+        JsonSerializer.Serialize(f.Backend.CommittedState).ShouldBe(retained);
+        await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A state task remains turn-owned after deadline release; later entries wait for its actual completion.</summary>
+    [Fact]
+    public async Task SuspendedStateReadExcludesLaterTurnUntilCompletion()
+    {
+        var f = new DeletionConsumptionFixture(); var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var manager = Substitute.For<IActorStateManager>();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); int clears = 0;
+        manager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (Interlocked.Increment(ref clears) == 1) { entered.TrySetResult(); return release.Task; }
+            return f.Backend.ClearCacheAsync(call.Arg<CancellationToken>());
+        });
+        manager.TryGetStateAsync<DeletionConsumptionLedger>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<DeletionConsumptionLedger>(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.TryGetStateAsync<AnchoredStateTransition>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<AnchoredStateTransition>(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<DeletionConsumptionLedger>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<DeletionConsumptionLedger>(), call.Arg<CancellationToken>()));
+        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<AnchoredStateTransition>(), call.Arg<CancellationToken>()));
+        manager.TryRemoveStateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryRemoveStateAsync(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.SaveStateAsync(Arg.Any<CancellationToken>()).Returns(call => f.Backend.SaveStateAsync(call.Arg<CancellationToken>()));
+        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider, clock);
+        var pending = actor.LookupAsync("tenant-a", "batch-1");
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldBeNull();
+        f.Backend.CommittedState.ShouldBeEmpty(); release.SetResult();
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldNotBeNull();
+        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Revocations.Count.ShouldBe(1);
     }
 
     /// <summary>Consumed/blocked receipts remain immutable while missing or withdrawn current exact private lookup credentials deny release.</summary>

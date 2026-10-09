@@ -241,7 +241,12 @@ internal static class AadCodec
         return checked(offset + PayloadProtectionWireFormat.AadFieldHeaderBytes + value.Length);
     }
 
-    private static void ValidateSnapshotTypeId(string? value)
+    /// <summary>
+    /// Validates one stable snapshot type identifier under the normative section 6.1 grammar.
+    /// </summary>
+    /// <param name="value">The candidate identifier or alias.</param>
+    /// <exception cref="PayloadProtectionFormatException">The identifier is outside the closed grammar.</exception>
+    internal static void ValidateSnapshotTypeId(string? value)
     {
         const string prefix = "hx-snapshot-v1:";
         int length = CanonicalText.GetByteCount(value, 16, 128);

@@ -696,8 +696,6 @@ public sealed partial class SecretsProtectionTests
 
     /// <summary>State-address and protocol fixtures require their exact reviewed source context.</summary>
     [Theory]
-    [InlineData("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs", 97)]
-    [InlineData("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementTests.cs", 106)]
     [InlineData("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", 42)]
     public void FixtureAssignmentRecognition_RequiresExactContext(string path, int lineNumber)
     {
@@ -1354,8 +1352,6 @@ public sealed partial class SecretsProtectionTests
         string lineHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(line))).ToLowerInvariant();
         return (path, assignment.Groups["name"].Value, lineHash) switch
         {
-            ("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs", "Owner.StorageKey", "221ccb0d705309751edf7e9d406aa58283cb845235ea6e3614b2d1a4b521078b") => true,
-            ("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementTests.cs", "StorageKey", "cb1f4ebbccf486c792ade38243bfdcd8895b85269a9681261393fa09531327ea") => true,
             ("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", "token", "f26481a946a1ce2f8b4dc68ded2466a055e5abf0466bea4ead8f5bb5c0a3cb03") => true,
             _ => false,
         };

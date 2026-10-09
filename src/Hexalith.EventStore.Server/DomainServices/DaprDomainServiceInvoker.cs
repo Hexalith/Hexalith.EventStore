@@ -193,13 +193,14 @@ public partial class DaprDomainServiceInvoker(
         // qualification exists here to authorize a negotiated V2 response.
         if (wireResult.WriterMode is not null || wireResult.RegistryFingerprint is not null
             || wireResult.Events.Any(static item => item.MetadataVersion is not (null or 1)
-                || item.EventContractType is not null || item.PayloadVersion is not null)) {
+                || item.EventContractType is not null || item.PayloadVersion is < 1 or > 1024
+                || (item.PayloadVersion is not null && !string.Equals(item.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase)))) {
             throw new DomainServiceException(command.TenantId, command.Domain,
                 "CapabilityMismatch: an implicit V1 invocation cannot admit a versioned writer response.");
         }
     }
 
-    private static DomainResult ToDomainResult(DomainServiceWireResult wireResult) {
+    internal static DomainResult ToDomainResult(DomainServiceWireResult wireResult) {
         ArgumentNullException.ThrowIfNull(wireResult);
 
         if (wireResult.Events.Count == 0) {

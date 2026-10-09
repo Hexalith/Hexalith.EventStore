@@ -92,6 +92,27 @@ public sealed class AuthoritativeStreamReadDeadline : IDisposable
         }
     }
 
+    /// <summary>Bounds an already invoked actor-turn state task without moving its invocation or later continuation to a worker.</summary>
+    internal async Task<T> WaitAsync<T>(Task<T> pending)
+    {
+        _ = pending.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        ThrowIfCancellationRequested();
+        T value = await pending.WaitAsync(_linkedSource.Token).ConfigureAwait(false);
+        ThrowIfCancellationRequested();
+        return value;
+    }
+
+    /// <summary>Bounds an already invoked actor-turn state task while leaving that task on the original actor turn.</summary>
+    internal async Task WaitAsync(Task pending)
+    {
+        _ = pending.ContinueWith(static task => { _ = task.Exception; }, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        ThrowIfCancellationRequested();
+        await pending.WaitAsync(_linkedSource.Token).ConfigureAwait(false);
+        ThrowIfCancellationRequested();
+    }
+
     private void CancelProvider()
     {
         if (_providerCancellation is not null)

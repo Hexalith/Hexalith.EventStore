@@ -1,3 +1,0 @@
-CSC : warning CS2002: Source file '/tmp/eventstore-6-6-metadata-name-probe-8_z9fhw1/LegacyCommandReplayInput.cs' specified multiple times [/tmp/eventstore-6-6-metadata-name-probe-8_z9fhw1/Probe.csproj]
-CSC : warning CS2002: Source file '/tmp/eventstore-6-6-metadata-name-probe-8_z9fhw1/LegacyCommandReplayJsonAdmission.cs' specified multiple times [/tmp/eventstore-6-6-metadata-name-probe-8_z9fhw1/Probe.csproj]
-unknown_name=400000; admitted_charge=815810; capture_allocations=15509528

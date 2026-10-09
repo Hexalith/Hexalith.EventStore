@@ -98,7 +98,11 @@ internal static class ProjectionEventWireBuilder {
                 envelope.CorrelationId,
                 envelope.MessageId,
                 envelope.UserId,
-                envelope.GlobalPosition);
+                envelope.GlobalPosition)
+            {
+                MetadataVersion = envelope.MetadataVersion,
+                StoredPayloadVersion = envelope.PayloadVersion,
+            };
         }
 
         return ProjectionEventReadabilityResult.Readable(projectionEvents);

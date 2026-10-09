@@ -1,5 +1,4 @@
 using Hexalith.EventStore.Contracts.Queries;
-using Hexalith.EventStore.DomainService.Queries;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,11 +27,6 @@ public static class DomainQueryDispatcher {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
-
-        PrivateLogicalQueryCatalog? logical = serviceProvider.GetService<PrivateLogicalQueryCatalog>();
-        if (logical is not null && logical.Routes.IsLogical(query.Domain, query.QueryType, cancellationToken)) {
-            return await logical.ExecuteAsync(serviceProvider, query, cancellationToken).ConfigureAwait(false);
-        }
 
         IDomainQueryHandler[] handlers = [.. serviceProvider
             .GetServices<IDomainQueryHandler>()

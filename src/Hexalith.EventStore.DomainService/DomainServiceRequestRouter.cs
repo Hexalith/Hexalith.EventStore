@@ -351,7 +351,7 @@ public static class DomainServiceRequestRouter {
 
     private static AggregateReconstructionResult? RefuseVersionedReplay(AggregateReconstructionRequest request) {
         ReplayEventEnvelope? versioned = request.Events.FirstOrDefault(item => item.SequenceNumber <= request.UpToSequence
-            && (item.MetadataVersion != 1 || item.StoredEventContractType is not null || item.StoredPayloadVersion is not null
+            && (item.MetadataVersion != 1 || item.StoredEventContractType is not null || item.StoredPayloadVersion is < 1 or > 1024
                 || item.StoredSerializationFormat is not null || item.StoredEventTypeName is not null
                 || item.StoredDigest is not null || item.RegistryFingerprint is not null || item.IsAdapted is not null
                 || item.EffectiveEventContractType is not null || item.EffectivePayloadVersion is not null

@@ -1,2 +1,0 @@
-["dotnet", "/tmp/story-6-6-intake-compiled-package/fixture/LegacyConsumer/bin/Release/net10.0/LegacyConsumer.dll"]
-Method not found: 'Void Hexalith.EventStore.Server.Actors.UnpublishedEventsRecord.Deconstruct(System.String ByRef, Int64 ByRef, Int64 ByRef, Int32 ByRef, System.String ByRef, Boolean ByRef, System.DateTimeOffset ByRef, Int32 ByRef, System.String ByRef, System.String ByRef, Boolean ByRef, System.Nullable`1<System.DateTimeOffset> ByRef)'.

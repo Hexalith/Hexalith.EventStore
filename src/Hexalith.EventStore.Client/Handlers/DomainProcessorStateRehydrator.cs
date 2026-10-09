@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Serialization;
@@ -21,9 +22,10 @@ internal static class DomainProcessorStateRehydrator {
         => ApplyMethodResolver.GetOrBuildTable(stateType);
 
     internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken = default,
-        DetachedStateCapture<TState>? snapshotCapture = null)
+        DetachedStateCapture<TState>? snapshotCapture = null, EventPayloadEvolutionRegistry? evolution = null)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
+        evolution ??= EventPayloadEvolutionRegistry.ForApplyState(typeof(TState));
         TState? rehydratedState;
         using var input = new LegacyCommandReplayInput(cancellationToken);
         try {
@@ -31,13 +33,13 @@ internal static class DomainProcessorStateRehydrator {
             rehydratedState = currentState switch {
                 null => null,
                 TState typed => typed,
-                DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods, cancellationToken, input),
+                DomainServiceCurrentState state => RehydrateFromDomainServiceCurrentState<TState>(state, applyMethods, cancellationToken, input, evolution),
                 JsonElement je when IsDomainServiceCurrentState(je) =>
-                    RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input),
+                    RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input, evolution),
                 JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
-                JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input),
+                JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input, evolution),
                 JsonElement je when je.ValueKind == JsonValueKind.Null => null,
-                System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input),
+                System.Collections.IEnumerable events when currentState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input, evolution),
                 _ => throw new InvalidOperationException(
                     $"Expected state type '{typeof(TState).Name}' but received '{currentState.GetType().Name}'."),
             };
@@ -171,25 +173,25 @@ internal static class DomainProcessorStateRehydrator {
     private static TState? RehydrateFromDomainServiceCurrentState<TState>(
         DomainServiceCurrentState currentState,
         ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         // Resolve and deserialize the entire tail before snapshot replay can invoke Apply.
         var prepared = currentState.Events.Select(envelope =>
-            PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input)).ToList();
+            PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input, evolution)).ToList();
         TState? state = currentState.SnapshotState switch {
             null when currentState.Events.Count == 0 => null,
             null => new TState(),
             TState typed => typed,
-            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods, cancellationToken, input),
+            DomainServiceCurrentState nestedState => RehydrateFromDomainServiceCurrentState<TState>(nestedState, applyMethods, cancellationToken, input, evolution),
             JsonElement je when IsDomainServiceCurrentState(je) =>
-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input),
+                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(je, input), applyMethods, cancellationToken, input, evolution),
             JsonElement je when je.ValueKind == JsonValueKind.Object => RehydrateFromJsonObject<TState>(je, cancellationToken),
-            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input),
+            JsonElement je when je.ValueKind == JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(je, applyMethods, cancellationToken, input, evolution),
             JsonElement je when je.ValueKind == JsonValueKind.Null && currentState.Events.Count == 0 => null,
             JsonElement je when je.ValueKind == JsonValueKind.Null => new TState(),
-            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input),
-            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods, cancellationToken, input),
+            System.Collections.IEnumerable events when currentState.SnapshotState is not string => ReplayEventsFromEnumerable<TState>(events, applyMethods, cancellationToken, input, evolution),
+            _ => RehydrateFromArbitrarySnapshot<TState>(currentState.SnapshotState, applyMethods, cancellationToken, input, evolution),
         };
 
         if (state is null) {
@@ -203,7 +205,7 @@ internal static class DomainProcessorStateRehydrator {
     private static TState? RehydrateFromArbitrarySnapshot<TState>(
         object? snapshotState,
         ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         if (snapshotState is null) {
@@ -214,9 +216,9 @@ internal static class DomainProcessorStateRehydrator {
         json = input.CaptureJson(json, reserveEvents: true);
         return json.ValueKind switch {
             JsonValueKind.Object when IsDomainServiceCurrentState(json) =>
-                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json, input), applyMethods, cancellationToken, input),
+                RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json, input), applyMethods, cancellationToken, input, evolution),
             JsonValueKind.Object => RehydrateFromJsonObject<TState>(json, cancellationToken),
-            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods, cancellationToken, input),
+            JsonValueKind.Array => ReplayEventsFromJsonArray<TState>(json, applyMethods, cancellationToken, input, evolution),
             JsonValueKind.Null => null,
             _ => throw new InvalidOperationException(
                 $"Expected state type '{typeof(TState).Name}' but received '{snapshotState.GetType().Name}'."),
@@ -255,7 +257,7 @@ internal static class DomainProcessorStateRehydrator {
     }
 
     private static TState ReplayEventsFromJsonArray<TState>(JsonElement jsonArray, ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         var prepared = new List<(MethodInfo Method, object Event)>();
@@ -288,7 +290,7 @@ internal static class DomainProcessorStateRehydrator {
                         typeof(TState).Name));
             }
 
-            prepared.Add(PrepareJsonEventByName<TState>(eventTypeName, eventElement, applyMethods, cancellationToken, input));
+            prepared.Add(PrepareJsonEventByName<TState>(eventTypeName, eventElement, applyMethods, cancellationToken, input, evolution));
         }
 
         var state = new TState();
@@ -297,7 +299,7 @@ internal static class DomainProcessorStateRehydrator {
     }
 
     private static TState ReplayEventsFromEnumerable<TState>(System.Collections.IEnumerable events, ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         var prepared = new List<(MethodInfo Method, object Event)>();
@@ -309,7 +311,7 @@ internal static class DomainProcessorStateRehydrator {
 
             switch (evt) {
                 case EventEnvelope envelope:
-                    prepared.Add(PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input));
+                    prepared.Add(PrepareContractEventEnvelope<TState>(envelope, applyMethods, cancellationToken, input, evolution));
                     continue;
                 case JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Object:
                     if (!jsonElement.TryGetProperty("eventTypeName", out JsonElement eventTypeElement)
@@ -321,7 +323,7 @@ internal static class DomainProcessorStateRehydrator {
                                 typeof(TState).Name));
                     }
 
-                    prepared.Add(PrepareJsonEventByName<TState>(eventTypeElement.GetString()!, jsonElement, applyMethods, cancellationToken, input));
+                    prepared.Add(PrepareJsonEventByName<TState>(eventTypeElement.GetString()!, jsonElement, applyMethods, cancellationToken, input, evolution));
                     continue;
             }
 
@@ -354,14 +356,16 @@ internal static class DomainProcessorStateRehydrator {
     private static (MethodInfo Method, object Event) PrepareContractEventEnvelope<TState>(
         EventEnvelope envelope,
         ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         RequireSupportedReplayMetadata(envelope.Metadata.MetadataVersion, envelope.Metadata.SerializationFormat,
             envelope.Metadata.EventContractType, envelope.Metadata.PayloadVersion);
+        ResolvedEventPayload effective = evolution.Read(envelope.Metadata.EventTypeName,
+            envelope.Metadata.PayloadVersion, envelope.Payload, envelope.Metadata.SequenceNumber);
         MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(
             applyMethods,
-            envelope.Metadata.EventTypeName,
+            effective.EventTypeName,
             envelope.Metadata.MessageId,
             envelope.Metadata.AggregateId) ?? throw new MissingApplyMethodException(
                 stateType: typeof(TState),
@@ -371,7 +375,7 @@ internal static class DomainProcessorStateRehydrator {
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
-            using JsonDocument payloadDoc = input.ParsePayload(envelope.Payload);
+            using JsonDocument payloadDoc = input.ParsePayload(effective.Payload);
             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
                 ?? throw new InvalidOperationException(
                     string.Format(
@@ -400,52 +404,33 @@ internal static class DomainProcessorStateRehydrator {
         string eventTypeName,
         JsonElement eventElement,
         ApplyMethodTable applyMethods,
-        CancellationToken cancellationToken, LegacyCommandReplayInput input)
+        CancellationToken cancellationToken, LegacyCommandReplayInput input, EventPayloadEvolutionRegistry evolution)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateJsonReplayMetadata(eventElement);
-        MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, eventTypeName) ?? throw new MissingApplyMethodException(
+        int? storedVersion = GetReplayProperty(eventElement, "payloadVersion") is { ValueKind: JsonValueKind.Number } versionField
+            ? versionField.GetInt32() : null;
+        long sequence = GetReplayProperty(eventElement, "sequenceNumber") is { ValueKind: JsonValueKind.Number } sequenceField
+            ? sequenceField.GetInt64() : 0;
+        JsonElement? payloadElement = eventElement.TryGetProperty("payload", out JsonElement exactPayload)
+            ? exactPayload
+            : null;
+        byte[] storedPayload = payloadElement is { ValueKind: JsonValueKind.String } encoded
+            ? input.DecodePayload(encoded)
+            : JsonSerializer.SerializeToUtf8Bytes(payloadElement ?? eventElement, EventStorePayloadSerialization.Options);
+        ResolvedEventPayload effective = evolution.Read(eventTypeName, storedVersion, storedPayload, sequence);
+        MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, effective.EventTypeName) ?? throw new MissingApplyMethodException(
                 stateType: typeof(TState),
                 eventTypeName: eventTypeName);
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
-            if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-                object? deserializedEvent;
-                if (payloadElement.ValueKind == JsonValueKind.String) {
-                    byte[] payloadBytes = input.DecodePayload(payloadElement);
-                    using JsonDocument payloadDoc = input.ParsePayload(payloadBytes);
-                    deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options);
-                }
-                else {
-                    deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType, EventStorePayloadSerialization.Options);
-                }
-
-                if (deserializedEvent is null) {
-                    throw new InvalidOperationException(
-                        string.Format(
-                            CultureInfo.InvariantCulture,
-                            "Unable to rehydrate aggregate state '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
-                            typeof(TState).Name,
-                            eventTypeName,
-                            eventType.Name));
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-                return (applyMethod, deserializedEvent);
-            }
-            else {
-                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, EventStorePayloadSerialization.Options)
-                    ?? throw new InvalidOperationException(
-                        string.Format(
-                            CultureInfo.InvariantCulture,
-                            "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
-                            typeof(TState).Name,
-                            eventTypeName,
-                            eventType.Name));
-                cancellationToken.ThrowIfCancellationRequested();
-                return (applyMethod, deserializedEvent);
-            }
+            using JsonDocument payloadDoc = input.ParsePayload(effective.Payload);
+            object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
+                ?? throw new EventPayloadEvolutionException(eventTypeName, storedVersion ?? 1, sequence,
+                    "current payload deserialized to null");
+            cancellationToken.ThrowIfCancellationRequested();
+            return (applyMethod, deserializedEvent);
         }
         catch (JsonException ex) {
             throw new InvalidOperationException(
@@ -463,7 +448,7 @@ internal static class DomainProcessorStateRehydrator {
         string? eventContractType = null, int? payloadVersion = null)
     {
         if (metadataVersion != 1 || !string.Equals(serializationFormat, "json", StringComparison.OrdinalIgnoreCase)
-            || eventContractType is not null || payloadVersion is not null)
+            || eventContractType is not null || payloadVersion is < 1 or > 1024)
         {
             throw new InvalidOperationException("CapabilityMismatch: replay requires supported application event metadata and JSON payloads.");
         }

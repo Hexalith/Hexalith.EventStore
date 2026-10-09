@@ -63,8 +63,10 @@ public static class GovernanceScopeGuardReducer
                     && value.OwnerRevision == facts.CapabilityOwnerRevision && value.SourceConversationId == facts.PermitSourceConversationId))) { return Denied(); }
                 var matching = state.Deletions.Where(value => Matches(value.Scope, facts)).ToArray();
                 if (matching.Any(value => Admission(facts.Kind) || Content(facts.Kind) && value.ContentBindings.Count > 0)) { return Denied(); }
+                var attributions = matching.OrderBy(value => value.RequestId, StringComparer.Ordinal)
+                    .Select(value => new GovernanceAdmissionAttribution(value.RequestId, value.Ordinal)).ToArray();
                 long acceptedOrdinal = matching.Select(value => value.Ordinal).DefaultIfEmpty(0).Max();
-                return Result(state, command, intentDigest, "Accepted", true, true, acceptedOrdinal, reference, evidence);
+                return Result(state, command, intentDigest, "Accepted", true, true, acceptedOrdinal, reference, evidence, attributions);
             case GovernanceGuardOperation.AuthorizeAdmissionFence:
                 if (!ValidScope(command.Scope, state.TenantId) || deletion is not null || !Unique(evidence.RequiredOwnerIds) || evidence.RequiredOwnerIds.Count == 0
                     || !Unique(evidence.ObligationIds) || state.Repair is not null || !Text(state.EpochId)) { return Denied(); }
@@ -74,7 +76,8 @@ public static class GovernanceScopeGuardReducer
                 if (!Authorized(GovernanceGuardOperation.CommitAdmissionFence) || deletion is not null || !ValidScope(command.Scope, state.TenantId)
                     || evidence.RequiredOwnerIds.Count == 0 || !Unique(evidence.RequiredOwnerIds) || !Unique(evidence.ObligationIds)) { return Denied(); }
                 var admitted = new GovernanceDeletionState(command.DeletionRequestId, command.Scope!, Hash(command.Scope), 1,
-                    evidence.RequiredOwnerIds.Order(StringComparer.Ordinal).ToArray(), evidence.ObligationIds.Order(StringComparer.Ordinal).ToArray(), [], [], [], "", [], false, false);
+                    evidence.RequiredOwnerIds.Order(StringComparer.Ordinal).ToArray(), evidence.ObligationIds.Order(StringComparer.Ordinal).ToArray(), [], [], [], "", [], false, false)
+                    { AdmissionFenceGuardRevision = next };
                 state = state with { Deletions = state.Deletions.Append(admitted).ToArray() }; reference = admitted.PredicateDigest;
                 break;
             case GovernanceGuardOperation.RecordViolation:
@@ -83,12 +86,14 @@ public static class GovernanceScopeGuardReducer
                     || ordinal.ViolationKind is not ("Admission" or "Content") || ordinal.AcceptedAtOrdinal < 0 || ordinal.AcceptedAtGuardHighWater <= 0
                     || ordinal.AcceptedAtGuardHighWater > state.Revision || !Text(ordinal.ResourceId) || !Unique(ordinal.InvalidatedArtifactIds)) { return Denied(); }
                 if (evidence.OriginalAcceptance is not { Status: "Accepted" } accepted || accepted.GuardHighWater != ordinal.AcceptedAtGuardHighWater
-                    || accepted.AcceptedAtAdmissionFenceOrdinal != ordinal.AcceptedAtOrdinal || !Text(accepted.ReceiptId)
+                    || !Text(accepted.ReceiptId)
                     || evidence.ViolationWriteFacts is null || !ValidFacts(evidence.ViolationWriteFacts, state.TenantId) || !Matches(deletion.Scope, evidence.ViolationWriteFacts)
                     || evidence.ViolationResourceId != ordinal.ResourceId
                     || (ordinal.ViolationKind == "Admission" ? !Admission(evidence.ViolationWriteFacts.Kind) : !Content(evidence.ViolationWriteFacts.Kind))
                     || accepted.OperationId != evidence.ViolationAcceptanceOperationId || !Text(evidence.ViolationAcceptanceOperationId)
                     || accepted.AcceptedWriteResourceId != ordinal.ResourceId || accepted.AcceptedWriteFacts is null
+                    || !OriginalAttribution(accepted, deletion, ordinal.AcceptedAtOrdinal)
+                    || deletion.Violations.Any(value => !Text(value.AcceptanceReceiptId) || value.AcceptanceReceiptId == accepted.ReceiptId)
                     || !Same(accepted.AcceptedWriteFacts, evidence.ViolationWriteFacts)
                     || !Hex(evidence.ViolationTargetMutationDigest) || accepted.AcceptedTargetMutationDigest != evidence.ViolationTargetMutationDigest
                     || !state.Receipts.Any(original => Same(original, accepted))) { return Denied(); }
@@ -104,7 +109,7 @@ public static class GovernanceScopeGuardReducer
                 long successor = sealedDeletion ? deletion.Ordinal : checked(deletion.Ordinal + 1);
                 var violation = new GovernanceViolation(ordinal.ViolationId, deletion.Ordinal, successor, ordinal.ViolationKind, ordinal.AcceptedAtOrdinal,
                     ordinal.AcceptedAtGuardHighWater, ordinal.ResourceId, ordinal.InvalidatedArtifactIds.ToArray(), ordinal.NoCutReceiptId, evidence.AuthorityReceiptId)
-                    { ProtectionTarget = sealedDeletion && ordinal.ViolationKind == "Content" ? evidence.ViolationProtectionTarget : null };
+                    { AcceptanceReceiptId = accepted.ReceiptId, ProtectionTarget = sealedDeletion && ordinal.ViolationKind == "Content" ? evidence.ViolationProtectionTarget : null };
                 ReplaceDeletion(deletion with { Ordinal = successor, ObligationIds = sealedDeletion ? deletion.ObligationIds : deletion.ObligationIds.Append(ordinal.ViolationId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
                     Violations = deletion.Violations.Append(violation).ToArray(), IntegrityCompromised = deletion.IntegrityCompromised || sealedDeletion && ordinal.ViolationKind == "Admission", Completed = false });
                 reference = ordinal.ViolationId;
@@ -319,14 +324,31 @@ public static class GovernanceScopeGuardReducer
         && (command.Write is null || ValidFacts(command.Write, command.TenantId))
         && (command.Hold is null || ValidScope(command.Hold.Scope, command.TenantId));
     private static GovernanceGuardReduction Result(TenantGovernanceGuardState state, GovernanceGuardTransition command, string digest, string status,
-        bool mutate, bool writes = false, long ordinal = 0, string reference = "", GovernanceGuardEvidence? acceptance = null)
+        bool mutate, bool writes = false, long ordinal = 0, string reference = "", GovernanceGuardEvidence? acceptance = null,
+        IReadOnlyList<GovernanceAdmissionAttribution>? attributions = null)
     {
         long revision = checked(state.Revision + (mutate ? 1 : 0));
         var receipt = new GovernanceProtocolReceipt(command.OperationId, digest, status, revision, ordinal, reference, ReceiptId(state, command, digest, status, revision))
-            { AcceptedWriteResourceId = acceptance?.AppendResourceId ?? "", AcceptedWriteFacts = acceptance is null ? null : command.Write,
+            { AdmissionAttributionsJson = JsonSerializer.Serialize(attributions ?? []), AcceptedWriteResourceId = acceptance?.AppendResourceId ?? "", AcceptedWriteFacts = acceptance is null ? null : command.Write,
                 AcceptedTargetMutationDigest = acceptance?.TargetMutationDigest ?? "", Capability = command.Batch?.Capability, SigningRequestId = command.Batch?.SigningRequestId ?? "",
                 DetachedJwsDigest = command.Batch?.DetachedJws is { Length: > 0 } jws ? Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(jws))) : "" };
         return new(mutate ? state with { Revision = revision, Receipts = state.Receipts.Append(receipt).ToArray() } : state, receipt, mutate, writes);
+    }
+    private static bool OriginalAttribution(GovernanceProtocolReceipt accepted, GovernanceDeletionState deletion, long ordinal)
+    {
+        if (deletion.AdmissionFenceGuardRevision <= 0 || accepted.AdmissionAttributionsJson is null
+            || accepted.AdmissionAttributionsJson.Length > 65536) { return false; }
+        GovernanceAdmissionAttribution[]? attributions;
+        try { attributions = JsonSerializer.Deserialize<GovernanceAdmissionAttribution[]>(accepted.AdmissionAttributionsJson); }
+        catch (JsonException) { return false; }
+        if (attributions is null || attributions.Length > 1000 || JsonSerializer.Serialize(attributions) != accepted.AdmissionAttributionsJson
+            || attributions.Any(value => value is null || !Text(value.DeletionRequestId) || value.Ordinal <= 0)
+            || attributions.Select(value => value.DeletionRequestId).Distinct(StringComparer.Ordinal).Count() != attributions.Length
+            || !attributions.SequenceEqual(attributions.OrderBy(value => value.DeletionRequestId, StringComparer.Ordinal))) { return false; }
+        var installed = attributions.SingleOrDefault(value => value.DeletionRequestId == deletion.RequestId);
+        return installed is null
+            ? accepted.GuardHighWater < deletion.AdmissionFenceGuardRevision && ordinal == 0
+            : accepted.GuardHighWater >= deletion.AdmissionFenceGuardRevision && installed.Ordinal == ordinal;
     }
     private static bool Ready(GovernanceDeletionState deletion, GovernanceGuardEvidence evidence) => evidence.ZeroOrdinal == deletion.Ordinal && Text(evidence.CurrentZeroReceiptId)
         && !deletion.Violations.Any(value => value.Ordinal == deletion.Ordinal && value.SuccessorOrdinal > value.Ordinal)

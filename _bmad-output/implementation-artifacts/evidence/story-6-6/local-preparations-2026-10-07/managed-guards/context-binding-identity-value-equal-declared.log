@@ -1,7 +1,0 @@
-Unhandled exception. System.InvalidOperationException: Fixture assertion failed: observer admission unexpectedly refused 'value-equal-declared'.
- ---> System.InvalidOperationException: CapabilityMismatch: managed assembly identity is ambiguous in its observed context.
-   at Hexalith.EventStore.Client.Events.EventEvolutionManagedLoadObserver..ctor(EventDomainRegistry registry, IReadOnlyList`1 resolvedGraph, IReadOnlyList`1 executedRoots, IReadOnlyList`1 loaderContexts, CancellationToken cancellationToken, IReadOnlyList`1 privateImages, Boolean requireAllManagedContexts) in /tmp/eventstore-process-managed-observation-c6rcwsr5/src/Hexalith.EventStore.Client/Events/EventEvolutionManagedLoadObserver.cs:line 110
-   at Hexalith.EventStore.Client.Tests.Program.Main(String[] args) in /tmp/eventstore-process-managed-observation-c6rcwsr5/probe/Program.cs:line 51
-   --- End of inner exception stack trace ---
-   at Hexalith.EventStore.Client.Tests.Program.Main(String[] args) in /tmp/eventstore-process-managed-observation-c6rcwsr5/probe/Program.cs:line 62
-   at Hexalith.EventStore.Client.Tests.Program.<Main>(String[] args)

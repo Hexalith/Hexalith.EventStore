@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
@@ -1091,7 +1092,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             EventEnvelope envelope = CreateEvent() with
             {
                 SequenceNumber = sequence,
-                MessageId = $"message-{sequence}",
+                MessageId = UniqueIdHelper.GenerateSortableUniqueStringId(),
                 Payload = [9, (byte)sequence],
             };
             byte[] plaintext = JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(sequence));

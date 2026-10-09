@@ -300,7 +300,7 @@ public static class EventStoreDomainServiceExtensions {
                 "/project",
                 (ProjectionRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
                     cancellationToken.ThrowIfCancellationRequested();
-                    ProjectionResponse? response = DomainProjectionDispatcher.Project(serviceProvider, request);
+                    ProjectionResponse? response = DomainProjectionDispatcher.Project(serviceProvider, request, cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                     return response is null ? Results.NotFound() : Results.Ok(response);
                 })

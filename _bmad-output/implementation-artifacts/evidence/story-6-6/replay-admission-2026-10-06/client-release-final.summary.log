@@ -1,4 +1,0 @@
-      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
-  Finished:    Hexalith.EventStore.Client.Tests (ID = 'bf4483a0659908a330d68961b927b26e8f334fc148cc190ee8ecd2474c0eebc7')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.Client.Tests  Total: 1056, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 4.032s

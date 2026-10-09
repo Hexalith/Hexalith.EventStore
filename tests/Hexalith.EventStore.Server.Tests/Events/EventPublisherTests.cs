@@ -110,6 +110,31 @@ public class EventPublisherTests {
     }
 
     [Fact]
+    public async Task PublishEventsAsync_MetadataV1WithPayloadVersionTwoReachesBrokerUnchanged()
+    {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope stored = CreateTestEnvelope() with { PayloadVersion = 2 };
+        stored = stored with
+        {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(stored, "json",
+                EventLogicalDigest.HashPayload(stored.Payload)),
+        };
+        EventEnvelope? published = null;
+        _ = daprClient.PublishEventAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Do<EventEnvelope>(value => published = value),
+                Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [stored], "corr-001");
+
+        result.Success.ShouldBeTrue();
+        published.ShouldNotBeNull().PayloadVersion.ShouldBe(2);
+        published.MetadataVersion.ShouldBe(1);
+        published.EventContractType.ShouldBeNull();
+        published.Payload.ShouldBe(stored.Payload);
+    }
+
+    [Fact]
     public async Task PublishEventsAsync_ChangedLogicalPayloadDoesNotReachBroker() {
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope original = CreateTestEnvelope();

@@ -3,8 +3,6 @@ using System.Text.Json;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Queries;
-using Hexalith.EventStore.Client.Queries;
-using System.Security.Cryptography;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.Extensions.Logging;
@@ -33,16 +31,6 @@ public abstract partial class CachingProjectionActor(
     private readonly Dictionary<CacheEntryKey, CacheEntry> _payloadCache = [];
     private string? _cachedETag;
     private string? _discoveredProjectionType;
-    private readonly LogicalQueryRouteTable? _logicalRoutes;
-    private readonly Func<QueryEnvelope, CancellationToken, Task<QueryResult>>? _logicalExecute;
-
-    /// <summary>Composes an explicit dormant frozen route table and private logical dispatcher.</summary>
-    internal CachingProjectionActor(ActorHost host, IETagService eTagService, ILogger logger,
-        LogicalQueryRouteTable routes, Func<QueryEnvelope, CancellationToken, Task<QueryResult>> logicalExecute)
-        : this(host, eTagService, logger) {
-        _logicalRoutes = routes;
-        _logicalExecute = logicalExecute;
-    }
 
     /// <inheritdoc/>
     public Task<QueryResult> QueryAsync(QueryEnvelope envelope) =>
@@ -57,24 +45,6 @@ public abstract partial class CachingProjectionActor(
     public async Task<QueryResult> QueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(envelope);
-
-        if (_logicalRoutes?.IsLogical(envelope.Domain, envelope.QueryType, cancellationToken) == true) {
-            if (_payloadCache.Keys.Any(key => string.Equals(key.QueryType, envelope.QueryType, StringComparison.OrdinalIgnoreCase))) {
-                throw new InvalidOperationException("ReadModelRouteContextRequired: historical cache buffer ownership must finish before logical activation.");
-            }
-            QueryResult? logical = null;
-            bool released = false;
-            try {
-                try { logical = await _logicalExecute!(envelope, cancellationToken).ConfigureAwait(false); }
-                finally { cancellationToken.ThrowIfCancellationRequested(); }
-                _ = _logicalRoutes.IsLogical(envelope.Domain, envelope.QueryType, cancellationToken);
-                released = true;
-                return logical;
-            }
-            finally {
-                if (!released && logical?.PayloadBytes is { } bytes) { CryptographicOperations.ZeroMemory(bytes); }
-            }
-        }
 
         // IETagService handles actor ID derivation, proxy timeout, and fail-open (returns null on error)
         string? currentETag = await eTagService

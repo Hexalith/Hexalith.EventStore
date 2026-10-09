@@ -64,16 +64,27 @@ public static class RecoverableAnchoredState
     {
         ArgumentNullException.ThrowIfNull(transition); ArgumentNullException.ThrowIfNull(authority);
         ArgumentNullException.ThrowIfNull(readPending); ArgumentNullException.ThrowIfNull(persistPending);
-        Validate(transition, transition.ScopeId);
+        // Keep the caller's mutable carrier outside the conditional transition protocol.
+        var owned = Copy(transition);
+        Validate(owned, owned.ScopeId);
         var original = await readPending().ConfigureAwait(false);
-        if (original is not null && !Exact(original, transition))
-        { throw new InvalidOperationException("A different original pending transition is retained."); }
-        // Preserve independently authenticated original permission even if primary staging or journal recording loses its response.
-        if (!await authority.AdmitTransitionAsync(transition).ConfigureAwait(false)) { return false; }
-        await persistPending(transition).ConfigureAwait(false);
+        Validate(owned, owned.ScopeId);
+        if (original is not null)
+        {
+            var capturedOriginal = Copy(original);
+            if (!Exact(capturedOriginal, owned))
+            { throw new InvalidOperationException("A different original pending transition is retained."); }
+        }
+        // Each provider borrows a separate snapshot. An adapter retaining it after its Task
+        // completes must first establish independent storage ownership.
+        if (!await authority.AdmitTransitionAsync(Copy(owned)).ConfigureAwait(false)) { return false; }
+        Validate(owned, owned.ScopeId);
+        await persistPending(Copy(owned)).ConfigureAwait(false);
+        Validate(owned, owned.ScopeId);
         var confirmed = await readPending().ConfigureAwait(false);
-        if (confirmed is null || !Exact(confirmed, transition)) { throw new InvalidOperationException("Pending transition was not confirmed durable."); }
-        return await authority.RecordTransitionAsync(transition).ConfigureAwait(false);
+        Validate(owned, owned.ScopeId);
+        if (confirmed is null || !Exact(Copy(confirmed), owned)) { throw new InvalidOperationException("Pending transition was not confirmed durable."); }
+        return await authority.RecordTransitionAsync(Copy(owned)).ConfigureAwait(false);
     }
 
     /// <summary>Computes the exact canonical state fingerprint used by the independently installed owner.</summary>
@@ -82,6 +93,7 @@ public static class RecoverableAnchoredState
         using var stream = new BoundedPendingStateStream(MaximumPendingBytes);
         JsonSerializer.Serialize(stream, value); return Convert.ToHexString(SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length))));
     }
+    private static AnchoredStateTransition Copy(AnchoredStateTransition value) => value with { TargetBytes = value.TargetBytes.ToArray() };
     private static bool Exact(AnchoredStateTransition a, AnchoredStateTransition b) => a.ScopeId == b.ScopeId && a.ExpectedRevision == b.ExpectedRevision
         && a.TargetRevision == b.TargetRevision && a.PredecessorDigest == b.PredecessorDigest && a.TargetDigest == b.TargetDigest && a.TargetBytes.AsSpan().SequenceEqual(b.TargetBytes);
     private static void Validate(AnchoredStateTransition transition, string scope)

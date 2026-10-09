@@ -13,6 +13,8 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="ReceiptId">Exact ReceiptId.</param>
 public sealed record GovernanceViolation(string ViolationId, long Ordinal, long SuccessorOrdinal, string Kind, long AcceptedAtOrdinal, long AcceptedAtGuardHighWater, string ResourceId, IReadOnlyList<string> InvalidatedArtifactIds, string NoCutReceiptId, string ReceiptId)
 {
+    /// <summary>Stable original accepted-write receipt; a changed caller violation ID cannot recut the same request again.</summary>
+    public string AcceptanceReceiptId { get; init; } = "";
     /// <summary>Exact independently authenticated post-seal content target, preserved for singleton coverage correlation.</summary>
     public GovernanceProtectionTarget? ProtectionTarget { get; init; }
 }

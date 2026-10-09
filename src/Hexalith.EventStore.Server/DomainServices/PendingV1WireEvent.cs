@@ -15,4 +15,6 @@ internal sealed class PendingV1WireEvent
     internal bool ContractPresent { get; set; }
     /// <summary>Gets or sets payload-version raw presence.</summary>
     internal bool VersionPresent { get; set; }
+    /// <summary>Gets or sets the standalone JSON payload version.</summary>
+    internal int? PayloadVersion { get; set; }
 }

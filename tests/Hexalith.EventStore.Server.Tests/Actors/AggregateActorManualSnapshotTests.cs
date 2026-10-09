@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Replay;
@@ -263,7 +264,7 @@ public class AggregateActorManualSnapshotTests {
         var identity = new AggregateIdentity("tenant", "d", "aggregate");
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         EventEnvelope stored = new(
-            MessageId: "message",
+            MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
             AggregateId: identity.AggregateId,
             AggregateType: "r",
             TenantId: identity.TenantId,
@@ -414,7 +415,7 @@ public class AggregateActorManualSnapshotTests {
 
     private static EventEnvelope CreateEvent(AggregateIdentity identity, int sequence)
         => new(
-            MessageId: $"msg-{sequence}",
+            MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
             AggregateId: identity.AggregateId,
             AggregateType: "OrderAggregate",
             TenantId: identity.TenantId,

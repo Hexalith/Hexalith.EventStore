@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed class BoundedJsonDocument : IDisposable
 {
     private static readonly byte[] _protectedMemberName = "$pdenc"u8.ToArray();
+    private static readonly byte[] _legacyProtectedMemberName = "$enc"u8.ToArray();
     private readonly byte[] _utf8Json;
     private readonly List<BoundedJsonNode> _nodes;
     private readonly Dictionary<BoundedJsonLookupKey, int> _children;
@@ -27,6 +28,7 @@ internal sealed class BoundedJsonDocument : IDisposable
         Dictionary<BoundedJsonLookupKey, int> children,
         Dictionary<BoundedJsonLookupKey, List<int>> hashCollisions,
         bool containsProtectedMember,
+        bool containsLegacyProtectedMember,
         int maximumDepth,
         bool ownsBuffer,
         ISensitiveBufferObserver? observer,
@@ -37,6 +39,7 @@ internal sealed class BoundedJsonDocument : IDisposable
         _children = children;
         _hashCollisions = hashCollisions;
         ContainsProtectedMember = containsProtectedMember;
+        ContainsLegacyProtectedMember = containsLegacyProtectedMember;
         MaximumDepth = maximumDepth;
         _ownsBuffer = ownsBuffer;
         _observer = observer;
@@ -51,6 +54,12 @@ internal sealed class BoundedJsonDocument : IDisposable
 
     /// <summary>Gets a value indicating whether any object contains the reserved <c>$pdenc</c> member.</summary>
     internal bool ContainsProtectedMember { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether any object contains the historical pdenc-v1 <c>$enc</c> marker member,
+    /// found under the same bounded parse as <see cref="ContainsProtectedMember"/> (normative section 12.2).
+    /// </summary>
+    internal bool ContainsLegacyProtectedMember { get; }
 
     /// <summary>Gets the root JSON node.</summary>
     internal BoundedJsonNode Root => _nodes[0];
@@ -504,6 +513,7 @@ internal sealed class BoundedJsonDocument : IDisposable
     {
         Stack<JsonContainerFrame>? containers = null;
         bool containsProtectedMember = false;
+        bool containsLegacyProtectedMember = false;
         int observedMaximumDepth = 0;
         bool success = false;
         try
@@ -540,6 +550,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                         }
 
                         containsProtectedMember |= reader.ValueTextEquals(_protectedMemberName);
+                        containsLegacyProtectedMember |= reader.ValueTextEquals(_legacyProtectedMemberName);
                         containers.Peek().SetProperty(
                             reader,
                             checked((int)reader.TokenStartIndex),
@@ -620,6 +631,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                 children,
                 hashCollisions,
                 containsProtectedMember,
+                containsLegacyProtectedMember,
                 observedMaximumDepth,
                 ownsBuffer,
                 observer,

@@ -1,8 +1,0 @@
-["dotnet", "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll", "-class", "Hexalith.EventStore.DomainService.Tests.BoundedV1DomainResultProducerTests", "-class", "Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests", "-class", "Hexalith.EventStore.DomainService.Tests.EventStoreDomainEventsEndpointExtensionsTests"]
-xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
-  Discovering: Hexalith.EventStore.DomainService.Tests
-  Discovered:  Hexalith.EventStore.DomainService.Tests
-  Starting:    Hexalith.EventStore.DomainService.Tests
-  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '77b650111d4de2b76e49edcd8caa99af54555db3d9490c233d3cb5a895692a92')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.DomainService.Tests  Total: 29, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.512s

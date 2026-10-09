@@ -1,4 +1,0 @@
-{"EventId":0,"LogLevel":"Information","Category":"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions","Message":"EventStore activated: 2 domains (widget [Aggregate: WidgetAggregate], gadget [Aggregate: GadgetAggregate])","State":{"DomainCount":2,"DomainDetails":"widget [Aggregate: WidgetAggregate], gadget [Aggregate: GadgetAggregate]","{OriginalFormat}":"EventStore activated: {DomainCount} domains ({DomainDetails})"}}
-  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '83e4fc61bf1809eb017df8365899fd3649bd90f9031fcaa841efe475a245f2c8')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.DomainService.Tests  Total: 427, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 2.101s

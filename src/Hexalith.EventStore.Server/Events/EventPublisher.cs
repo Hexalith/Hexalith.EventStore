@@ -283,8 +283,8 @@ public partial class EventPublisher(
 
             if (envelope.MetadataVersion != 1
                 || envelope.EventContractType is not null
-                || envelope.PayloadVersion is not null) {
-                throw new InvalidOperationException("CapabilityMismatch: versioned publication requires a qualified route proof.");
+                || envelope.PayloadVersion is < 1 or > 1024) {
+                throw new InvalidOperationException("CapabilityMismatch: publication requires supported V1 event metadata.");
             }
 
             previousSequence = envelope.SequenceNumber;

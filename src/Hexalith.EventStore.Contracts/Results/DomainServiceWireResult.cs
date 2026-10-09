@@ -33,9 +33,27 @@ public sealed record DomainServiceWireResult(
 
         var events = new List<DomainServiceWireEvent>(result.Events.Count);
         foreach (IEventPayload payload in result.Events) {
-            string eventTypeName = payload.GetType().FullName ?? payload.GetType().Name;
-            byte[] payloadBytes = JsonSerializer.SerializeToUtf8Bytes(payload, payload.GetType());
-            events.Add(new DomainServiceWireEvent(eventTypeName, payloadBytes, "json"));
+            Type payloadType = payload.GetType();
+            int version = EventPayloadVersionResolver.GetDeclaredVersion(payloadType);
+            if (payload is ISerializedEventPayload serialized && (serialized.PayloadVersion ?? 1) != version)
+            {
+                throw new InvalidOperationException($"Serialized event {payloadType.FullName} version {serialized.PayloadVersion ?? 1} differs from declared version {version}.");
+            }
+            string eventTypeName = payload is ISerializedEventPayload source
+                ? source.EventTypeName
+                : payloadType.FullName ?? payloadType.Name;
+            byte[] payloadBytes = payload is ISerializedEventPayload bytes
+                ? bytes.PayloadBytes
+                : JsonSerializer.SerializeToUtf8Bytes(payload, payloadType);
+            string format = payload is ISerializedEventPayload formatted ? formatted.SerializationFormat : "json";
+            if (version > 1 && !string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Versioned event {payloadType.FullName} must use JSON.");
+            }
+            events.Add(new DomainServiceWireEvent(eventTypeName, payloadBytes, format)
+            {
+                PayloadVersion = version == 1 ? null : version,
+            });
         }
 
         string? resultPayload = result.IsSuccess || result.IsNoOp ? result.ResultPayload : null;
