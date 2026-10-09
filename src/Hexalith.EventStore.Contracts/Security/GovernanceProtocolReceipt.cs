@@ -10,6 +10,8 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="ReceiptId">Exact ReceiptId.</param>
 public sealed record GovernanceProtocolReceipt(string OperationId, string IntentDigest, string Status, long GuardHighWater, long AcceptedAtAdmissionFenceOrdinal, string ReferenceId, string ReceiptId)
 {
+    /// <summary>Canonical bounded per-request installed scope ordinals at this write's own linearization; an empty vector can mean only a pre-installation write.</summary>
+    public string AdmissionAttributionsJson { get; init; } = "[]";
     /// <summary>Independently authenticated exact original resource, retained at its own joint append linearization; omission cannot prove a violation.</summary>
     public string AcceptedWriteResourceId { get; init; } = "";
     /// <summary>Immutable independently authenticated original write facts, never inferred from another accepted receipt.</summary>

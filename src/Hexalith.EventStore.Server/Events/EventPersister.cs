@@ -68,17 +68,50 @@ public partial class EventPersister(
                 : null;
             int? payloadVersion = eventPayload is ISerializedEventPayload versionedPayload
                 ? versionedPayload.PayloadVersion
-                : null;
+                : EventPayloadVersionResolver.GetDeclaredVersion(eventPayload.GetType()) is int declared and > 1
+                    ? declared
+                    : null;
             int metadataVersion = eventPayload is ISerializedEventPayload versionedMetadata
                 ? versionedMetadata.MetadataVersion ?? 1
                 : 1;
 
+            if (eventPayload is ISerializedEventPayload serializedVersioned
+                && eventPayload is not (SerializedDomainEventPayload or SerializedDomainRejectionEventPayload)
+                && (serializedVersioned.PayloadVersion ?? 1) != EventPayloadVersionResolver.GetDeclaredVersion(eventPayload.GetType()))
+            {
+                throw new InvalidOperationException($"Serialized event {eventPayload.GetType().FullName} has a payload version different from its declaration.");
+            }
+
             ValidateEventVersionMetadata(eventTypeName, metadataVersion, eventContractType, payloadVersion);
+            if (payloadVersion is not null)
+            {
+                if (!string.Equals(serializationFormat, "json", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"Versioned event {eventTypeName} must use JSON.");
+                }
+                if (eventPayload is ISerializedEventPayload serializedJson)
+                {
+                    try
+                    {
+                        using JsonDocument document = JsonDocument.Parse(serializedJson.PayloadBytes,
+                            new JsonDocumentOptions { MaxDepth = 64 });
+                        if (document.RootElement.ValueKind != JsonValueKind.Object)
+                        {
+                            throw new JsonException("Event payload must be a JSON object.");
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        throw new InvalidOperationException($"Versioned event {eventTypeName} has invalid JSON.");
+                    }
+                }
+            }
             if (metadataVersion == 2) {
                 throw new InvalidOperationException("CapabilityMismatch: V2 writes require qualified negotiated writer authority.");
             }
 
-            validatedPayloads.Add((eventPayload, eventTypeName, serializationFormat, eventContractType, payloadVersion, metadataVersion));
+            validatedPayloads.Add((eventPayload, eventTypeName, serializationFormat, eventContractType,
+                payloadVersion == 1 ? null : payloadVersion, metadataVersion));
         }
 
         // Load current metadata to get sequence number
@@ -101,6 +134,14 @@ public partial class EventPersister(
         long newSequence = checked(currentSequence + domainResult.Events.Count);
 
         string causationId = command.CausationId ?? command.CorrelationId;
+        var messageIds = new string[validatedPayloads.Count];
+        for (int index = 0; index < validatedPayloads.Count; index++)
+        {
+            messageIds[index] = UniqueIdHelper.GenerateSortableUniqueStringId();
+            EventIdentityValidator.ValidateForWrite(identity.TenantId, identity.Domain, identity.AggregateId,
+                aggregateType, validatedPayloads[index].EventTypeName, messageIds[index],
+                command.CorrelationId, causationId, checked(currentSequence + 1 + index));
+        }
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var preparedEvents = new List<(
             string EventTypeName,
@@ -168,7 +209,7 @@ public partial class EventPersister(
                     : 0;
 
                 var envelope = new EventEnvelope(
-                    MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
+                    MessageId: messageIds[i],
                     AggregateId: identity.AggregateId,
                     AggregateType: aggregateType,
                     TenantId: identity.TenantId,
@@ -228,8 +269,12 @@ public partial class EventPersister(
         string? eventContractType,
         int? payloadVersion) {
         if (metadataVersion == 1) {
-            if (eventContractType is not null || payloadVersion is not null) {
-                throw new ArgumentException("V1 event metadata cannot include EventContractType or PayloadVersion.", nameof(eventContractType));
+            if (eventContractType is not null) {
+                throw new ArgumentException("V1 event metadata cannot include EventContractType.", nameof(eventContractType));
+            }
+            if (payloadVersion is < 1 or > 1024) {
+                throw new ArgumentOutOfRangeException(nameof(payloadVersion), payloadVersion,
+                    "Payload version must be between 1 and 1024.");
             }
 
             return;

@@ -1,367 +1,71 @@
 [← Back to Hexalith.EventStore](../../README.md)
 
-# Event Versioning & Schema Evolution
+# Event payload versioning and upcasting
 
-Event versioning is the practice of managing changes to the structure of domain events over time — adding fields, renaming types, or splitting events — without breaking existing persisted data. Schema evolution is the broader strategy that governs how your system handles these changes safely. In an event-sourced system, events are immutable and stored forever, so every schema change must be backward-compatible: old events must remain readable by new code, indefinitely.
+An event is immutable after EventStore persists it. Declare a new payload version and provide JSON upcasters when current code needs a different shape. EventStore retains the original bytes and identity; the domain service transforms a copy before deserializing it for command rehydration, replay, projections, or subscriptions.
 
-This guide explains Hexalith.EventStore's approach to event versioning, the metadata that enables it, and the manual strategies you use today to evolve event schemas safely. It covers the error-first contract, safe and unsafe change classifications, upcasting patterns, and version routing.
-
-> **Prerequisites:**
->
-> - [Event Envelope & Metadata](event-envelope.md) — the 11 metadata fields and envelope structure
-> - [Command Lifecycle Deep Dive](command-lifecycle.md) — the processing pipeline that produces events
->
-> **Key Terms:**
->
-> - **Upcasting** — transforming an old event format to a new format during replay, so your current code can process events stored in an older shape
-> - **Downcasting** — handling newer events in older consumers that do not understand the new format
-> - **Rehydration** — rebuilding current aggregate state by replaying stored events from the beginning (or from a snapshot)
-> - **Aggregate state** — the current state of a domain object, derived from its complete event history
-
-## Why Error-First?
-
-Before learning how to evolve events, you need to understand _why_ Hexalith takes such a strict approach.
-
-When `EventStreamReader` replays events to rehydrate aggregate state, it processes every event in the stream in strict sequence order. If an event's `eventTypeName` cannot be deserialized — because the class was renamed, deleted, or moved to a different namespace — Hexalith throws an `UnknownEventException`:
-
-```text
-UnknownEvent during state rehydration: sequence 42, type
-'Hexalith.EventStore.Sample.Counter.Events.CounterIncremented',
-aggregate tenant-a:counter:counter-1.
-Domain service must maintain backward-compatible deserialization
-for all event types.
-```
-
-The alternative — silently skipping unknown events — would produce incorrect aggregate state. If event #42 incremented a counter and you skip it, the current count is wrong by one. Every subsequent command decision is based on corrupted state. This is Architecture Decision D3: **skipping unknown events produces incorrect aggregate state**.
-
-The recovery path is straightforward: redeploy the previous domain service version that can deserialize the event, or add a backward-compatible deserializer for the missing type.
-
-This error-first contract applies to **all** event consumers — not just domain service rehydration. Projections, read models, and integration event subscribers must also handle every event type they consume. If a projection skips an unknown event, its read model diverges from the source of truth.
-
-## The Versioning Metadata Foundation
-
-Three of the 11 event envelope metadata fields form the versioning foundation. Each is set automatically by EventStore when persisting events — your domain service only returns the payload.
-
-- **`domainServiceVersion`** — records which version of the domain service produced the event (e.g., `"v1"`, `"v2"`). This enables version-aware deserialization: consumers can detect which service version wrote the event and apply appropriate upcasting logic. Extracted from the command envelope's `domain-service-version` extension key; if the extension is absent, defaults to `"v1"`. The version format is `v{number}` (regex: `^v[0-9]+$`). See [Event Envelope — Versioning Fields](event-envelope.md) for the full field definition.
-
-- **`eventTypeName`** — the fully qualified .NET type name of the event (e.g., `"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented"`). This is the type identifier used for deserialization routing and the CloudEvents `type` attribute. **Once persisted, this value is immutable** — renaming a .NET class does not retroactively update stored type names. Event type names are scoped per-domain (two different domains can have `OrderCreated` without conflict), but within the same domain, type name uniqueness is the developer's responsibility. You can decouple the stored type name from the .NET class name using `ISerializedEventPayload.EventTypeName`. See [Event Envelope — Metadata Fields](event-envelope.md) for the full field definition.
-
-- **`serializationFormat`** — the payload encoding format, currently always `"json"` with the default `System.Text.Json` serializer. This field exists to enable future incremental format migration (e.g., JSON to Protobuf) without a big-bang conversion. When `serializationFormat` changes for new events, consumers can branch deserialization logic per event. The `ISerializedEventPayload` interface allows custom serializers that may set a different format value. The safe/unsafe classifications in this guide assume the default JSON serializer. See [Event Envelope — Metadata Fields](event-envelope.md) for the full field definition.
-
-## Common Schema Evolution Scenarios
-
-The following table classifies common event schema changes as safe or unsafe. These classifications assume the default `System.Text.Json` serializer — custom serializers via `ISerializedEventPayload` may behave differently.
-
-| Change                             | Safety             | Explanation                                                                                                                                  | Recommended Approach                                                                                          |
-| ---------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Add optional/nullable field        | **SAFE**           | `System.Text.Json` maps missing JSON properties to `default(T)` for value types, `null` for reference types                                  | Use nullable types or provide sensible defaults                                                               |
-| Add required field without default | **UNSAFE**         | Old events lack the property; deserialization produces unexpected defaults that may break domain invariants                                  | Always use default parameter values for new fields                                                            |
-| Remove a field                     | **SAFE**           | `System.Text.Json` ignores extra JSON properties by default                                                                                  | Old events with the removed field deserialize without error                                                   |
-| Rename a .NET event class          | **UNSAFE**         | The persisted `eventTypeName` stores the fully qualified type name — old events become `UnknownEventException`                               | Keep old class as alias, or use `ISerializedEventPayload.EventTypeName` to decouple type name from class name |
-| Move event to different namespace  | **UNSAFE**         | `eventTypeName` includes the full namespace — same breakage as a class rename                                                                | Same as rename: keep old class or decouple via `ISerializedEventPayload.EventTypeName`                        |
-| Delete an event class              | **UNSAFE**         | **Never do this.** The class must exist as long as events of that type exist in any stream                                                   | Mark `[Obsolete]` instead; move to a `Events/Legacy/` folder to keep active code clean                        |
-| Rename a field                     | **UNSAFE**         | Old JSON key will not map to the new property name                                                                                           | Use `[JsonPropertyName("oldName")]` attribute to preserve backward compatibility                              |
-| Change field type (widening)       | **SAFE**           | `int` → `long` is a silent, safe conversion                                                                                                  | Widening conversions are handled automatically                                                                |
-| Change field type (narrowing)      | **UNSAFE**         | `long` → `int` risks overflow                                                                                                                | Avoid narrowing; use widening only                                                                            |
-| Change field type (cross-type)     | **UNSAFE**         | `int` → `string` or vice versa throws `JsonException`                                                                                        | Treat as a new field; keep old field with `[Obsolete]`                                                        |
-| Add new enum member                | **SAFE** (caution) | Old events are fine, but new events with the unknown member may confuse older consumers depending on `System.Text.Json` enum handling config | Ensure consumers handle unknown enum values gracefully                                                        |
-| Split one event into two           | **UNSAFE**         | Old single events need upcasting logic to produce two new events                                                                             | Requires explicit upcasting in your domain service                                                            |
-| Merge two events into one          | **UNSAFE**         | Two old events need upcasting logic to merge                                                                                                 | Requires explicit upcasting in your domain service                                                            |
-
-**C# records caveat:** Records with constructor parameters require special attention. If a new field has no default value and no `[JsonConstructor]`-annotated parameterless path, deserialization of old events (which lack that JSON property) may throw. Best practice: **always use default parameter values for new record fields**.
+## Declare and write a version
 
 ```csharp
-// SAFE: default parameter value handles old events missing this field
-public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
+using Hexalith.EventStore.Contracts.Events;
 
-// UNSAFE: old events without "IncrementedBy" will fail to deserialize
+[EventPayloadVersion(2)]
 public sealed record CounterIncremented(int IncrementedBy) : IEventPayload;
 ```
 
-## Upcasting Strategies
+An event without the attribute, or with `[EventPayloadVersion(1)]`, remains version 1 and has no stored `PayloadVersion` field. A version 2 event is written with `PayloadVersion = 2` and metadata version 1. Valid declared versions are 1 through 1024. Versioned event payloads must be JSON objects. A custom `ISerializedEventPayload` must declare the same version as its event type and provide JSON bytes.
 
-Upcasting transforms old event payloads into a format your current code understands during deserialization or state replay. In Hexalith today, there is **no formal upcaster pipeline** (like EventStoreDB's `IEventUpcaster` or Marten's `IEventUpcaster`). The extension point is your domain service's state rehydration logic — the code that reads events and reconstructs aggregate state.
+The server stores and forwards the declared version without upcasting. Stream and admin views display stored events. Neither the original payload bytes nor its event identity change during a read.
 
-### The Simple Before/After
+## Write a pure upcaster
 
-Imagine `CounterIncremented` v1 is a marker event with no fields. In v2, you add an `IncrementedBy` field to support increment-by-N:
+Each `IEventPayloadUpcaster` transforms one version to the next. Register one step for every historical version up to the current declaration. The SDK discovers public and non-public upcasters with parameterless constructors from the assemblies it scans for aggregate and projection types or subscriber contracts. You can also register one explicitly with `AddEventPayloadUpcaster<T>()`. Discovery and explicit registration of the same type count once.
 
-**v1 (current):**
-
-```csharp
-public sealed record CounterIncremented : IEventPayload;
-```
-
-**v2 (evolved):**
+A projection handler that consumes `ProjectionEventDto` directly and has no typed `Apply` method can register its consumed event type with `AddKnownEventPayload<T>()`, so the registry validates and upcasts it before the handler runs.
 
 ```csharp
-public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
-```
+using System.Text.Json.Nodes;
+using Hexalith.EventStore.Client.Events;
 
-When old v1 events are replayed, the JSON payload is `{}` (empty object). `System.Text.Json` deserializes this to `CounterIncremented(IncrementedBy: 1)` because of the default parameter value. The state rehydration produces the correct count. No explicit upcasting code is needed — the safe schema change handles it automatically.
-
-### Explicit Compatibility via Typed State Application
-
-For unsafe changes (renaming types, splitting events), keep every persisted event type available and make the aggregate state understand both the legacy and current contracts. `EventStoreAggregate<TState>` discovers typed `Apply` methods; it does not require a hand-written `IDomainProcessor` or string-based event-name matching.
-
-```csharp
-[Obsolete("Retained for streams written by v1.")]
-public sealed record CounterIncrementedV1 : IEventPayload;
-
-public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
-
-public sealed class CounterState
+internal sealed class CounterIncrementedV1ToV2 : IEventPayloadUpcaster
 {
-    public int Count { get; private set; }
+    public string EventTypeName => typeof(CounterIncremented).FullName!;
+    public int FromVersion => 1;
 
-    public void Apply(CounterIncrementedV1 _) => Count++;
-    public void Apply(CounterIncremented e) => Count += e.IncrementedBy;
+    public JsonObject Upcast(JsonObject payload)
+    {
+        payload["IncrementedBy"] = 1;
+        return payload;
+    }
 }
 ```
 
-The legacy type must retain the persisted type identity expected by old streams. Test replay with serialized v1 payloads before deploying the new service. If a change cannot be represented safely by typed compatibility handlers, introduce an explicit adapter at the serialization boundary rather than guessing from a type-name suffix.
+An upcaster must be deterministic and use no clock, random values, I/O, or scoped service. It receives a JSON object with case-insensitive property lookup. A version 1 event needs a 1→2 step before a version 2 CLR type can read it; a version 3 type also needs a 2→3 step. Startup rejects duplicate, incomplete, invalid, or dangling chains. A bad stored version, malformed JSON, or failing upcaster produces a typed read error before a handler or checkpoint advances.
 
-### Upcasting Flow
+## Rename an event
 
-```mermaid
-sequenceDiagram
-    participant Store as State Store
-    participant Reader as EventStreamReader
-    participant DS as Domain Service
-    participant State as Aggregate State
-
-    Store->>Reader: Load events (seq 1..N)
-    Reader->>DS: Events + snapshot state
-    loop For each event
-        DS->>DS: Read eventTypeName
-        DS->>DS: Resolve Apply (exact FQN → exact short → longest anchored)
-        DS->>DS: Deserialize payload
-        alt Safe change (e.g., new optional field)
-            DS->>DS: System.Text.Json handles default
-        else Unsafe change (e.g., type rename)
-            DS->>DS: Manual upcasting logic
-        end
-        DS->>State: Apply event to state
-    end
-    State-->>DS: Rehydrated aggregate state
-```
-
-**The backward compatibility contract applies to all event consumers** — not just domain service rehydration, but also projections, read models, and integration subscribers. Every consumer that deserializes events must handle every event type it may encounter in the stream.
-
-### Apply Method Resolution
-
-Persisters record `Type.FullName`, so a stored event type name is matched against the state or read-model type's `public void Apply(TEvent)` declarations in this fixed order:
-
-1. **Exact full-name match.** Each event type is registered under its normalized `Type.FullName`. Assembly qualification is stripped at every bracket level first, so `Ns.OrderPlaced, MyAsm, Version=1.0.0.0` and a constructed generic's nested argument qualification never affect the match.
-2. **Exact short-name match.** Each event type is also registered under its CLR short name, so legacy streams that recorded only `OrderPlaced` keep replaying.
-3. **Longest boundary-anchored suffix match.** A candidate key `k` matches a stored name `n` only when `n` ends with `"." + k` or `"+" + k` — `.` separates namespace segments and `+` is how `Type.FullName` renders a nested type. Where several keys anchor, the longest one wins.
-
-Matching is never unanchored. `Billing.SubOrderPlaced` does **not** bind `Apply(OrderPlaced)`, because `SubOrderPlaced` does not sit on a name boundary.
-
-**Ambiguity is a hard failure, never a guess.** If a key is claimed by two or more event types — two `OrderPlaced` types in different namespaces, or a `new`-hiding `Apply` overload — resolution throws `AmbiguousApplyMethodException` naming the state type, the stored event type name, and every candidate full name, plus the message and aggregate identifiers when the call site has them. On the `/replay-state` path the same condition is returned as a categorized `UnknownEventType` reconstruction failure rather than an unhandled error.
-
-To remediate a reported ambiguity, do one of the following:
-
-- **Record the event under its full CLR type name.** Full names are matched exactly and before any short-name or suffix candidate, so an aggregate whose events collide only by short name keeps working when each event is addressed precisely.
-- **Remove the colliding `Apply` overload** — rename one of the event types, or drop a `new`-hiding override so exactly one declaration owns the name.
-
-Zero candidates is unchanged and still uses each path's existing not-found behaviour: rehydration throws `MissingApplyMethodException`, projection replay throws, and typed projection of a runtime instance skips the event.
-
-## Downcasting Considerations
-
-Downcasting is the mirror image of upcasting: an **older** consumer receives a **newer** event shape and tries to keep working. Hexalith does not provide a formal downcasting pipeline today. You must decide compatibility at each consumer boundary.
-
-For **correctness-critical consumers** — aggregate rehydration, projections that drive user-visible state, and compliance-sensitive read models — the recommendation is the same error-first stance used elsewhere in the platform: if the older consumer cannot interpret the newer event semantics correctly, it should fail fast, dead-letter the event, and alert an operator rather than silently guess.
-
-The Counter example shows why. Suppose v2 evolves the event to:
+Set `TargetEventTypeName` on the step that changes the name. The target must resolve to a registered Apply, projection, or subscriber event type. The step emits that name at `FromVersion + 1`:
 
 ```csharp
-public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
+public string EventTypeName => "Old.Contracts.CounterRaised";
+public int FromVersion => 1;
+public string TargetEventTypeName => typeof(CounterIncremented).FullName!;
 ```
 
-An older v1 consumer that assumes every `CounterIncremented` means `+1` can still deserialize the JSON, but it becomes **semantically wrong** as soon as v2 starts emitting `IncrementedBy = 5`. The issue is not deserialization — it is business meaning. Ignoring the extra field would under-count and corrupt the projection.
+A later step uses the target name. Keep historical names in the upcaster chain even if the old CLR type has been retired. The SDK resolves full, short, and anchored alias names and runs a registered rename before treating an old CLR type as terminal.
 
-Practical downcasting strategies today:
+## Deploy in order
 
-- **Prefer coordinated upgrades** — upgrade projections and subscribers before routing commands to the new domain service version.
-- **Keep old semantics stable** — additive fields are only safe for older consumers when the old interpretation remains true. A diagnostic field like `Reason` may be safe to ignore; a behavioral field like `IncrementedBy` is not.
-- **Use compatibility shims at the consumer edge** — if an older downstream system must remain online, translate the new event into the old contract in a dedicated subscriber or adapter service.
-- **Fail loudly on incompatible event types** — renamed, moved, split, or merged events should be treated as incompatible until the consumer is explicitly updated.
+1. Deploy the Story 6.6 EventStore server release to **every server replica**. Older replicas can discard a new `PayloadVersion` permanently or reject its write.
+2. Deploy the Story 6.6 SDK to **every consumer replica**: domain services, projections, and subscriber hosts.
+3. Deploy the new event declaration and complete upcaster chain. A consumer replica still on the previous release refuses a versioned event and retries until it is upgraded.
 
-For integration subscribers where eventual consistency is acceptable, you can be slightly more tolerant: record the incompatible event, skip processing only when that is an explicit business decision, and emit telemetry so the gap is visible. Silent best-effort processing is the dangerous option — it looks healthy while producing wrong data.
+A subscription that cannot upcast returns HTTP 503 and leaves the event uncompleted. Configure Dapr resiliency `maxRetries` and a dead-letter topic so a persistent incompatibility is visible and can be redelivered after correction. Do not acknowledge an unreadable known event as successful.
 
-## Domain Service Version Routing
+## Identity and compatibility
 
-The `domainServiceVersion` metadata field enables running multiple versions of the same domain service simultaneously. This is how you deploy a new version of your domain logic without downtime and with instant rollback capability.
+New writes must have valid tenant, domain, aggregate ID, aggregate type, event type name, ULID message ID, correlation ID, causation ID, and positive sequence. Reads enforce the same grammar, while also accepting historical 36-character GUID message IDs. Correlation and causation IDs contain 1–128 ASCII letters, digits, or hyphens. Invalid stored identity fails before application.
 
-Version-based service resolution is convention-first and only uses the DAPR configuration store when config-store routing is opt-in through `EventStore:DomainServices:ConfigStoreName`:
+Metadata version 2, `EventContractType`, and the first-attempt effective/proof fields remain unsupported. Existing version 1 envelopes remain unstamped and retain their original bytes.
 
-- **Version format:** `v{number}` (regex: `^v[0-9]+$`, default: `v1`)
-- **Version source:** extracted from the command envelope's `domain-service-version` extension key
-- **Canonical exact key:** `tenant:domain:version`
-- **Config-friendly exact key:** `tenant|domain|version`
-- **Pipe wildcard key:** `*|domain|version`
-- **Sanitized wildcard key:** `wildcard_{domain}_{version}`; safe while domains exclude `_` and versions match `^v[0-9]+$`
-
-Resolver precedence is a documented runtime contract:
-
-1. exact static registration keyed by `tenant:domain:version`
-2. exact static registration keyed by `tenant|domain|version`
-3. pipe wildcard static registration keyed by `*|domain|version`
-4. sanitized wildcard static registration keyed by `wildcard_{domain}_{version}`
-5. opt-in DAPR config-store lookup when `ConfigStoreName` is non-empty
-6. convention fallback: `AppId = domain`, `MethodName = "process"`
-
-The pipe exact form is recommended for JSON and environment-variable configuration because `:` is a hierarchy separator in .NET configuration sources. The pipe wildcard form, for example `*|party|v1`, and the sanitized wildcard form, for example `wildcard_party_v1`, both register one domain/version for all tenants; pipe wildcard wins if both are present. Static registrations beat DAPR config-store entries. If the config store is absent or unavailable, the resolver falls through to convention routing only after static registrations miss.
-
-### Deployment Checklist
-
-1. **Deploy new service version** - deploy the v2 domain service alongside v1 (both running simultaneously).
-2. **Choose the routing layer** - prefer static registration for local/dev/test or zero-config convention when the app-id is the domain; enable `ConfigStoreName` only when dynamic config-store routing is required.
-3. **Update the selected mapping** - for an opt-in config store, set `tenant-a:counter:v2` to point to the new service app-id; for appsettings, use `tenant-a|counter|v2` unless the source safely supports colons.
-4. **Verify routing with test command** - send a command with the `domain-service-version: v2` extension to confirm routing.
-5. **Monitor for `UnknownEventException` errors** - these indicate the new service cannot read events produced by the old version.
-6. **Rollback if needed** - update the selected static or config-store mapping back to v1, or remove the explicit mapping to return to convention routing.
-
-### Common Mistakes
-
-- **Deploying v2 but forgetting to update routing:** Commands still route to v1 or convention. The new service sits idle.
-- **Assuming config store is the default:** `ConfigStoreName` defaults to `null`; config-store routing is opt-in and the Aspire AppHost does not wire `configstore` by default.
-- **Treating static registrations as config-store fallback:** Static registrations are checked before the opt-in config store, not after it.
-- **Config store eventual consistency:** During propagation, some instances may route to v1 and others to v2. Design your domain services for this window - both versions must be backward-compatible with all existing events.
-- **Using colon keys in JSON/env configuration:** `tenant:domain:version` is canonical for the resolver, but `tenant|domain|version` is safer for configuration sources that treat `:` as hierarchy.
-
-See [Configuration Reference - Domain Services](../guides/configuration-reference.md#domain-services) for the same precedence order and registration key formats.
-
-## Counter Domain Versioning Example
-
-This end-to-end walkthrough shows how to evolve the Counter domain by adding an `IncrementedBy` field to `CounterIncremented`.
-
-### Step 1: The Current State
-
-The Counter domain currently has a simple marker event:
-
-```csharp
-// Current: samples/Hexalith.EventStore.Sample/Counter/Events/CounterIncremented.cs
-public sealed record CounterIncremented : IEventPayload;
-```
-
-State is tracked as a simple integer. The `CounterState` class applies events:
-
-```csharp
-// Current: samples/Hexalith.EventStore.Sample/Counter/State/CounterState.cs
-public sealed class CounterState
-{
-    public int Count { get; private set; }
-    public void Apply(CounterIncremented e) => Count++;
-    public void Apply(CounterDecremented e) => Count--;
-    public void Apply(CounterReset e) => Count = 0;
-}
-```
-
-Existing events in the store look like:
-
-```json
-{
-    "metadata": {
-        "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
-        "domainServiceVersion": "v1",
-        "serializationFormat": "json"
-    },
-    "payload": {}
-}
-```
-
-### Step 2: Evolve the Event
-
-Add the `IncrementedBy` field with a default value of `1` — this keeps old events backward-compatible:
-
-```csharp
-// Evolved: CounterIncremented with increment-by-N support
-public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
-```
-
-Old events with payload `{}` deserialize to `CounterIncremented(IncrementedBy: 1)` — the default handles the missing property.
-
-### Step 3: Update State Application
-
-```csharp
-public sealed class CounterState
-{
-    public int Count { get; private set; }
-    public void Apply(CounterIncremented e) => Count += e.IncrementedBy;
-    public void Apply(CounterDecremented e) => Count--;
-    public void Apply(CounterReset e) => Count = 0;
-}
-```
-
-Old events replay with `IncrementedBy = 1`, producing the same state as before. New events carry the actual increment value.
-
-### Step 4: Handle Snapshot State Evolution
-
-Snapshots contain serialized aggregate state. When the state shape changes, old snapshots must remain deserializable into the current state type. Prefer additive nullable properties or properties with safe defaults, and test backward compatibility by deserializing representative old-format snapshots and replaying the remaining events.
-
-### Step 5: Deploy the New Version
-
-1. Deploy the v2 Counter domain service
-2. Update the DAPR config store: `tenant-a:counter:v2 → { "AppId": "counter-service-v2", ... }`
-3. Send a test command with `domain-service-version: v2` extension
-4. Verify v2 can rehydrate state from v1 events (old `CounterIncremented` with empty payload → `IncrementedBy = 1`)
-5. Monitor for errors; rollback to v1 via config store if needed
-
-### Step 6: Verify Backward Compatibility
-
-Recommended testing strategy: replay synthetic old-format events and assert correct state reconstruction.
-
-```csharp
-[Fact]
-public void OldEventsRehydrateCorrectly()
-{
-    var state = new CounterState();
-
-    // Simulate old v1 event (no IncrementedBy field)
-    state.Apply(new CounterIncremented()); // IncrementedBy defaults to 1
-
-    state.Count.ShouldBe(1);
-}
-
-[Fact]
-public void NewEventsUseIncrementValue()
-{
-    var state = new CounterState();
-
-    state.Apply(new CounterIncremented(IncrementedBy: 5));
-
-    state.Count.ShouldBe(5);
-}
-```
-
-> **Note:** The Counter domain is intentionally simple. For complex domain models with nested objects, collections, or polymorphic types, the same patterns apply but pay extra attention to nested deserialization and `System.Text.Json` converter behavior.
-
-## What's Coming (v3 Roadmap)
-
-The following features are planned for v3 but **do not exist today**. This section is included for transparency about the project's direction — do not depend on these features for current implementations.
-
-**Planned v3 tooling:**
-
-- **Upcasting framework** — a formal `IEventUpcaster` pipeline for transforming old event formats to new ones automatically during replay
-- **Schema registry** — a centralized catalog of event schemas with version tracking and compatibility validation
-- **Migration tooling** — automated tools for batch event stream migration and schema evolution DSL
-- **Auto-versioning** — automatic version detection based on payload schema changes
-
-**What exists today:**
-
-- The three versioning metadata fields (`domainServiceVersion`, `eventTypeName`, `serializationFormat`)
-- Version-based domain service routing via static registrations, opt-in DAPR config store, and convention fallback
-- The error-first contract (`UnknownEventException`)
-- Manual upcasting via domain service state rehydration logic
-
-The manual approach works well for small-to-medium domains, but becomes harder to maintain past approximately 10 evolving event types. The v3 tooling addresses this real scaling limitation — not a theoretical one.
-
-**Envelope versioning note:** Changes to the event envelope schema between Hexalith major versions are treated as **major version bumps**. EventStore guarantees backward-compatible reading of all previously persisted envelopes within a major version line.
-
-## Next Steps
-
-- **Next:** [Event Envelope & Metadata](event-envelope.md) — the complete envelope structure and all 11 metadata fields
-- **Related:** [Identity Scheme](identity-scheme.md) — how tenant, domain, and aggregate IDs map to actors, streams, and topics
-- **Related:** [Your First Domain Service](../getting-started/first-domain-service.md) — step-by-step tutorial for building a domain service
+See [Event Envelope & Metadata](event-envelope.md) for the stored envelope and [Command Lifecycle](command-lifecycle.md) for state rehydration.

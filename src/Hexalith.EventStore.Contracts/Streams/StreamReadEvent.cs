@@ -27,4 +27,9 @@ public sealed record StreamReadEvent(
     string? CausationId,
     DateTimeOffset Timestamp,
     string? UserId,
-    EventStorePayloadProtectionMetadata? ProtectionMetadata = null);
+    EventStorePayloadProtectionMetadata? ProtectionMetadata = null)
+{
+    /// <summary>Gets the stored payload version; null denotes version one.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? PayloadVersion { get; init; }
+}

@@ -49,7 +49,10 @@ internal static class ProjectionStreamPageValidation
                 envelope.CorrelationId,
                 envelope.CausationId,
                 envelope.Timestamp,
-                envelope.UserId);
+                envelope.UserId)
+            {
+                PayloadVersion = envelope.PayloadVersion,
+            };
         }
 
         long latest = Math.Max(throughSequence, fromSequence);

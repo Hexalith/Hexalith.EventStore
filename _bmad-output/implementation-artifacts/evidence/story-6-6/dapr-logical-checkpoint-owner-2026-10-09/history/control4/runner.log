@@ -1,5 +1,0 @@
-checkpoint: {'total': 36, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
-client-model: {'total': 16, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
-reconstruction: {'total': 53, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
-source-operation: {'total': 39, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
-completed; root input set unchanged=True

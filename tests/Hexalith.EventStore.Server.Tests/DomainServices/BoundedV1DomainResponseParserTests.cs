@@ -43,8 +43,6 @@ public sealed class BoundedV1DomainResponseParserTests
     }
 
     [Theory]
-    [InlineData(",\"eventContractType\":null")]
-    [InlineData(",\"payloadVersion\":null")]
     [InlineData(",\"metadataVersion\":2")]
     [InlineData(",\"eventContractType\":\"canonical\",\"payloadVersion\":1")]
     public async Task RefusesPartialNullPairOrUnsolicitedV2AndClearsEarlierPayloadOwner(string extra)
@@ -56,6 +54,21 @@ public sealed class BoundedV1DomainResponseParserTests
         parser.Dispose();
         parser.LiveBytes.ShouldBe(0);
         parser.Dispose();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(1024)]
+    public async Task AdmitsStandalonePayloadVersionWithoutCanonicalType(int version)
+    {
+        using var stream = Input("{\"events\":[{\"eventTypeName\":\"Exact.Alias\",\"payload\":\"e30=\",\"payloadVersion\":" + version + "}]}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().PayloadVersion.ShouldBe(version);
+        result.Events[0].EventContractType.ShouldBeNull();
     }
 
     [Theory]

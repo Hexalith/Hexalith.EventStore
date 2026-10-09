@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 
-using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Serialization;
 
@@ -34,6 +34,7 @@ public class EventStoreDomainEventProcessor {
     private readonly IEventStoreDomainEventMarkerStore _markerStore;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly string? _payloadAggregateIdPropertyName;
+    private readonly EventPayloadEvolutionRegistry _evolution;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreDomainEventProcessor"/> class.
@@ -69,12 +70,14 @@ public class EventStoreDomainEventProcessor {
     /// Optional payload property name whose value must equal the envelope's
     /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check.
     /// </param>
+    /// <param name="evolution">The validated event evolution registry, when configured.</param>
     public EventStoreDomainEventProcessor(
         IServiceScopeFactory serviceScopeFactory,
         IReadOnlyDictionary<string, Type> eventTypeRegistry,
         IEventStoreDomainEventMarkerStore markerStore,
         ILogger<EventStoreDomainEventProcessor> logger,
-        string? payloadAggregateIdPropertyName = null) {
+        string? payloadAggregateIdPropertyName = null,
+        EventPayloadEvolutionRegistry? evolution = null) {
         ArgumentNullException.ThrowIfNull(serviceScopeFactory);
         ArgumentNullException.ThrowIfNull(eventTypeRegistry);
         ArgumentNullException.ThrowIfNull(markerStore);
@@ -86,6 +89,7 @@ public class EventStoreDomainEventProcessor {
         _payloadAggregateIdPropertyName = string.IsNullOrWhiteSpace(payloadAggregateIdPropertyName)
             ? null
             : payloadAggregateIdPropertyName;
+        _evolution = evolution ?? new EventPayloadEvolutionRegistry(eventTypeRegistry.Values, []);
     }
 
     /// <summary>
@@ -104,7 +108,7 @@ public class EventStoreDomainEventProcessor {
         // Metadata must be admitted before a completed marker can hide an incompatible
         // redelivery. This legacy route cannot verify an effective versioned view.
         if (envelope.MetadataVersion is not (null or 1)
-            || envelope.EventContractType is not null || envelope.PayloadVersion is not null
+            || envelope.EventContractType is not null || envelope.PayloadVersion is < 1 or > 1024
             || envelope.StoredEventContractType is not null || envelope.StoredPayloadVersion is not null
             || envelope.StoredSerializationFormat is not null || envelope.StoredEventTypeName is not null
             || envelope.StoredDigest is not null || envelope.RegistryFingerprint is not null || envelope.IsAdapted is not null
@@ -115,9 +119,21 @@ public class EventStoreDomainEventProcessor {
             return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
         }
 
-        if (!IsValidMessageId(envelope.MessageId)) {
-            _logger.LogWarning("Skipping invalid domain-event envelope with an invalid message ID.");
-            return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+        try
+        {
+            EventIdentityValidator.ValidateSubscription(envelope.TenantId, envelope.Domain, envelope.AggregateId,
+                envelope.AggregateType, envelope.EventTypeName, envelope.MessageId,
+                envelope.CorrelationId, envelope.CausationId, envelope.SequenceNumber);
+        }
+        catch (EventIdentityValidationException error)
+        {
+            _logger.LogWarning("Retrying domain event with invalid identity component {ComponentName}.", error.ComponentName);
+            return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
+        }
+
+        if (envelope.Payload is null)
+        {
+            return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
         }
 
         EventStoreDomainEventMarkerAcquisitionResult acquisition = await _markerStore
@@ -166,7 +182,22 @@ public class EventStoreDomainEventProcessor {
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
-            if (!_eventTypeRegistry.TryGetValue(envelope.EventTypeName, out Type? eventType)) {
+            ResolvedEventPayload resolved;
+            try
+            {
+                resolved = _evolution.Read(envelope.EventTypeName, envelope.PayloadVersion, envelope.Payload,
+                    envelope.SequenceNumber);
+            }
+            catch (EventPayloadEvolutionException error)
+            {
+                _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}; UpcasterType={UpcasterType}",
+                    error.EventTypeName, error.StoredVersion, error.SequenceNumber, error.UpcasterTypeName);
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
+            }
+
+            Type? eventType = resolved.EventType;
+            if (eventType is null && !_eventTypeRegistry.TryGetValue(envelope.EventTypeName, out eventType)) {
                 _logger.LogWarning("Unknown event type '{EventTypeName}' — skipping", envelope.EventTypeName);
                 await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedUnknownEventType;
@@ -174,7 +205,7 @@ public class EventStoreDomainEventProcessor {
 
             object? deserialized;
             try {
-                deserialized = JsonSerializer.Deserialize(envelope.Payload, eventType, EventStorePayloadSerialization.Options);
+                deserialized = JsonSerializer.Deserialize(resolved.Payload, eventType, EventStorePayloadSerialization.Options);
             }
             catch (JsonException exception) {
                 _logger.LogWarning(
@@ -182,8 +213,8 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
-                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
             catch (NotSupportedException exception) {
                 _logger.LogWarning(
@@ -191,14 +222,14 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
-                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
             if (deserialized is not IEventPayload @event) {
                 _logger.LogWarning("Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
-                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
 
             if (_payloadAggregateIdPropertyName is not null
@@ -269,24 +300,6 @@ public class EventStoreDomainEventProcessor {
         && !string.IsNullOrWhiteSpace(envelope.CorrelationId)
         && !string.IsNullOrWhiteSpace(envelope.SerializationFormat)
         && envelope.Payload is { Length: > 0 };
-
-    private static bool IsValidMessageId(string messageId)
-        => !string.IsNullOrWhiteSpace(messageId) && IsValidUniqueId(messageId);
-
-    private static bool IsValidUniqueId(string value) {
-        try {
-            _ = UniqueIdHelper.ToGuid(value);
-            return true;
-        }
-        catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException) {
-            // Match ProjectionRebuildCheckpointStore.IsValidOperationId (P17-8P): UniqueIdHelper.ToGuid
-            // performs fixed-width Crockford-base32 parsing whose overflow path can throw OverflowException
-            // for 26-char inputs that satisfy a shape check but exceed 128 bits. Treating all three as "not a
-            // ULID" acknowledges a malformed message id as invalid instead of letting it escape as a 500 that
-            // wedges the subscription in a poison-message loop.
-            return false;
-        }
-    }
 
     private static bool IsSupportedSerializationFormat(string serializationFormat)
         => string.Equals(serializationFormat, "json", StringComparison.OrdinalIgnoreCase);

@@ -1,5 +1,0 @@
-control: passed
-fold-read-borrow-lifetime: killed
-roundtrip-read-borrow-lifetime: killed
-synchronous-writer-borrow-lifetime: killed
-combined-working-admission: killed

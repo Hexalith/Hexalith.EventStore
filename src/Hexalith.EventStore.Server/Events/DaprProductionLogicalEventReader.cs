@@ -290,7 +290,7 @@ internal sealed class DaprProductionLogicalEventReader
         return view.Resolved.SourceVersion == view.Resolved.CurrentVersion
             && source.MetadataVersion == 1
             && source.EventContractType is null
-            && source.PayloadVersion is null;
+            && source.PayloadVersion is (null or >= 1 and <= 1024);
     }
 
     /// <summary>Copies the effective payload into a new envelope and leaves the stored actor value unchanged.</summary>

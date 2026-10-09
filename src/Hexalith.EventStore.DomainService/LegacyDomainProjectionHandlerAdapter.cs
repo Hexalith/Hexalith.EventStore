@@ -51,7 +51,7 @@ public sealed class LegacyDomainProjectionHandlerAdapter : IAsyncDomainProjectio
             return Task.FromResult(DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.UnsupportedRoute));
         }
 
-        ProjectionResponse response = _handler.Project(request);
+        ProjectionResponse response = _handler.Project(request, cancellationToken);
         DomainProjectionHandlerResult result = response is not null
             && string.Equals(response.ProjectionType, ProjectionType, StringComparison.Ordinal)
                 ? DomainProjectionHandlerResult.Completed(response.State.Clone())

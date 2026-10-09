@@ -14,4 +14,8 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="Batches">Exact Batches.</param>
 /// <param name="IntegrityCompromised">Exact IntegrityCompromised.</param>
 /// <param name="Completed">Exact Completed.</param>
-public sealed record GovernanceDeletionState(string RequestId, GovernanceScopeV1 Scope, string PredicateDigest, long Ordinal, IReadOnlyList<string> RequiredOwnerIds, IReadOnlyList<string> ObligationIds, IReadOnlyList<GovernanceOwnerCycle> OwnerCycles, IReadOnlyList<GovernanceViolation> Violations, IReadOnlyList<GovernanceContentBinding> ContentBindings, string SealId, IReadOnlyList<GovernanceBatchState> Batches, bool IntegrityCompromised, bool Completed);
+public sealed record GovernanceDeletionState(string RequestId, GovernanceScopeV1 Scope, string PredicateDigest, long Ordinal, IReadOnlyList<string> RequiredOwnerIds, IReadOnlyList<string> ObligationIds, IReadOnlyList<GovernanceOwnerCycle> OwnerCycles, IReadOnlyList<GovernanceViolation> Violations, IReadOnlyList<GovernanceContentBinding> ContentBindings, string SealId, IReadOnlyList<GovernanceBatchState> Batches, bool IntegrityCompromised, bool Completed)
+{
+    /// <summary>Guard revision that installed this request's first admission fence.</summary>
+    public long AdmissionFenceGuardRevision { get; init; }
+}

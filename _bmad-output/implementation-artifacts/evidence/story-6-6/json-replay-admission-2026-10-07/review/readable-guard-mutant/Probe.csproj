@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
-<ItemGroup>
-<Compile Include="/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Handlers/LegacyCommandReplayJsonAdmission.cs" Link="LegacyCommandReplayJsonAdmission.cs" />
-<Compile Include="/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs" Link="EventEnvelope.cs" />
-<Compile Include="/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Events/EventMetadata.cs" Link="EventMetadata.cs" />
-<Compile Include="/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Serialization/EventStorePayloadSerialization.cs" Link="EventStorePayloadSerialization.cs" />
-</ItemGroup>
-</Project>

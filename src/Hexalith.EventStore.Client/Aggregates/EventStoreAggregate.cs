@@ -7,6 +7,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -20,9 +21,15 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
-public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay, IAdmittedLegacyAggregateReplay
+public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay, IAsyncDomainProcessor, IAsyncAggregateReplay, IAdmittedLegacyAggregateReplay, IEventPayloadEvolutionAware
     where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateCommandDispatchMetadata> _metadataCache = new();
+
+    /// <inheritdoc/>
+    EventPayloadEvolutionRegistry? IEventPayloadEvolutionAware.EvolutionRegistry { get; set; }
+
+    private EventPayloadEvolutionRegistry? EvolutionRegistry
+        => ((IEventPayloadEvolutionAware)this).EvolutionRegistry;
 
     /// <summary>Gets an optional owner declaration that detaches known typed command snapshots.</summary>
     /// <remarks>Undeclared legacy state retains its existing typed-reference behavior.</remarks>
@@ -63,12 +70,12 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
 
     /// <inheritdoc/>
     public AggregateReconstructionResult Replay(AggregateReconstructionRequest request)
-        => AggregateReplayer.Replay<TState>(request);
+        => AggregateReplayer.Replay<TState>(request, CancellationToken.None, EvolutionRegistry);
 
     /// <inheritdoc/>
     /// <remarks>Synchronous Apply observes cancellation before and after each call.</remarks>
     public Task<AggregateReconstructionResult> ReplayAsync(AggregateReconstructionRequest request, CancellationToken cancellationToken)
-        => Task.FromResult(AggregateReplayer.Replay<TState>(request, cancellationToken));
+        => Task.FromResult(AggregateReplayer.Replay<TState>(request, cancellationToken, EvolutionRegistry));
 
     /// <inheritdoc/>
     bool IAdmittedLegacyAggregateReplay.CanReplayAdmitted(bool asynchronous) {
@@ -87,7 +94,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
     /// <inheritdoc/>
     AggregateReconstructionResult IAdmittedLegacyAggregateReplay.ReplayAdmitted(
         AggregateReconstructionRequest request, LegacyReplayInput input, CancellationToken cancellationToken)
-        => AggregateReplayer.ReplayAdmitted<TState>(request, input, cancellationToken);
+        => AggregateReplayer.ReplayAdmitted<TState>(request, input, cancellationToken, EvolutionRegistry);
 
     /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState)
@@ -107,7 +114,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             throw;
         }
         cancellationToken.ThrowIfCancellationRequested();
-        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken, snapshotCapture);
+        TState? state = DomainProcessorStateRehydrator.RehydrateState<TState>(currentState, metadata.ApplyMethods, cancellationToken, snapshotCapture, EvolutionRegistry);
 
         bool terminated = state is ITerminatable { IsTerminated: true };
         cancellationToken.ThrowIfCancellationRequested();
@@ -140,7 +147,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             }
 
             ParameterInfo[] parameters = method.GetParameters();
-            if (parameters.Length is < 2 or > 3) {
+            if (parameters.Length is < 2 or > 4) {
                 continue;
             }
 
@@ -153,10 +160,11 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
                 continue;
             }
 
-            // If 3 parameters, verify the third is CommandEnvelope
-            bool hasEnvelope = parameters.Length == 3
-                && parameters[2].ParameterType == typeof(CommandEnvelope);
-            if (parameters.Length == 3 && !hasEnvelope) {
+            bool hasEnvelope = parameters.Length >= 3 && parameters[2].ParameterType == typeof(CommandEnvelope);
+            bool hasCancellationToken = parameters[^1].ParameterType == typeof(CancellationToken)
+                && parameters.Length >= 3;
+            if ((parameters.Length == 3 && !hasEnvelope && !hasCancellationToken)
+                || (parameters.Length == 4 && (!hasEnvelope || !hasCancellationToken))) {
                 continue;
             }
 
@@ -169,13 +177,16 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             }
 
             string commandTypeName = commandType.Name;
-            if (methods.ContainsKey(commandTypeName)) {
-                throw new InvalidOperationException(
-                    $"Multiple Handle methods found for command type '{commandTypeName}' on aggregate '{aggregateType.Name}'. "
-                    + "Declare exactly one Handle overload per command type.");
+            if (methods.TryGetValue(commandTypeName, out AggregateCommandHandleMethod? existingHandle)) {
+                if (existingHandle.HasCancellationToken && !hasCancellationToken) { continue; }
+                if (existingHandle.HasCancellationToken == hasCancellationToken) {
+                    throw new InvalidOperationException(
+                        $"Multiple Handle methods found for command type '{commandTypeName}' on aggregate '{aggregateType.Name}'. "
+                        + "Declare one Handle overload per command type and cancellation shape.");
+                }
             }
 
-            var handleInfo = new AggregateCommandHandleMethod(method, commandType, isAsync, method.IsStatic, hasEnvelope);
+            var handleInfo = new AggregateCommandHandleMethod(method, commandType, isAsync, method.IsStatic, hasEnvelope, hasCancellationToken);
             methods[commandTypeName] = handleInfo;
 
             // Also register the kebab-case ICommandContract.CommandType discriminator (e.g. "increment-counter")
@@ -185,7 +196,8 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             if (TryGetContractCommandType(commandType, out string? contractCommandType)
                 && !string.Equals(contractCommandType, commandTypeName, StringComparison.Ordinal)) {
                 if (methods.TryGetValue(contractCommandType!, out AggregateCommandHandleMethod? existing)
-                    && !ReferenceEquals(existing, handleInfo)) {
+                    && !ReferenceEquals(existing, handleInfo)
+                    && (existing.CommandType != commandType || existing.HasCancellationToken == hasCancellationToken)) {
                     throw new InvalidOperationException(
                         $"Command contract type '{contractCommandType}' declared by '{commandTypeName}' collides with another "
                         + $"Handle method on aggregate '{aggregateType.Name}'. ICommandContract.CommandType values must be unique per aggregate.");
@@ -250,9 +262,12 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
             throw;
         }
 
-        object?[] args = handleInfo.HasEnvelope
-            ? [commandPayload, state, command]
-            : [commandPayload, state];
+        object?[] args = handleInfo switch {
+            { HasEnvelope: true, HasCancellationToken: true } => [commandPayload, state, command, cancellationToken],
+            { HasEnvelope: true } => [commandPayload, state, command],
+            { HasCancellationToken: true } => [commandPayload, state, cancellationToken],
+            _ => [commandPayload, state],
+        };
         cancellationToken.ThrowIfCancellationRequested();
         object? result;
         try {

@@ -105,7 +105,7 @@ internal sealed class GovernanceGuardFixture
         var evidence = new GovernanceGuardEvidence("tenant-a", digest, targetDigest, lookup ? "lookup-authority" : "effect-authority",
             lookup ? "private-original-lookup" : command.Hold?.ReleaseReceiptId is { Length: > 0 } release ? release : command.Batch?.ProtectionReceiptId is { Length: > 0 } receipt ? receipt : "independent-exact-authority",
             Backend.Now, Backend.Now.AddMinutes(1), ["directory", "interaction"], ["initial-obligation"], command.Repair?.Cohort ?? [], "writers-installed", "legacy-revoked",
-            "current-zero", snapshot.Deletions.SingleOrDefault()?.Ordinal ?? 1, lookup ? "" : Disposition, lookup ? "" : DispositionVersion,
+            "current-zero", snapshot.Deletions.FirstOrDefault(value => value.RequestId == command.DeletionRequestId)?.Ordinal ?? 1, lookup ? "" : Disposition, lookup ? "" : DispositionVersion,
             snapshot.Deletions.SelectMany(value => value.Batches).Where(value => value.ProtectionReceiptId != "").Select(value => value.ProtectionReceiptId).ToArray(), command.RevocationReceipt?.ReceiptId ?? "exact-protection-block")
             { AppendResourceId = AppendResource, OriginalAcceptance = acceptance, ViolationAcceptanceOperationId = acceptance?.OperationId ?? "",
                 ViolationTargetMutationDigest = acceptance?.AcceptedTargetMutationDigest ?? "", ViolationWriteFacts = acceptance?.AcceptedWriteFacts, ViolationResourceId = command.Ordinal?.ResourceId ?? "", ViolationProtectionTarget = ViolationTarget,

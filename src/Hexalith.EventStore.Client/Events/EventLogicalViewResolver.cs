@@ -154,7 +154,7 @@ internal sealed class EventLogicalViewResolver
         string canonicalType;
         int sourceVersion;
         string sourceFormat;
-        if (metadataVersion == 1 && eventContractType is null && payloadVersion is null)
+        if (metadataVersion == 1 && eventContractType is null && payloadVersion is (null or >= 1 and <= 1024))
         {
             (canonicalType, sourceVersion, sourceFormat) = _registry.ResolveAlias(eventTypeName);
         }
@@ -209,7 +209,7 @@ internal sealed class EventLogicalViewResolver
         }
 
         string canonicalType;
-        if (metadataVersion == 1 && eventContractType is null && payloadVersion is null)
+        if (metadataVersion == 1 && eventContractType is null && payloadVersion is (null or >= 1 and <= 1024))
         {
             (canonicalType, _, _) = _registry.ResolveAlias(eventTypeName);
         }

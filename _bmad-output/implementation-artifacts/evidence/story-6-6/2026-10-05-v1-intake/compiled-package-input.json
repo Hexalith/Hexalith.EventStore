@@ -1,6 +1,0 @@
-{
-  "package_name": "Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
-  "package_sha256": "3ba920221f2841bba536b84d9e74d1e12a10f28946d1de22099f3a6c6c848d57",
-  "entry": "lib/net10.0/Hexalith.EventStore.Server.dll",
-  "consumed_assembly_sha256": "5bc3ed0a97344f8c26330217c5c83445e53510fd1bd755ab2d0a6ba839c3501d"
-}

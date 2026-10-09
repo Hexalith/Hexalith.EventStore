@@ -1,9 +1,0 @@
-  Determining projects to restore...
-  Restored /tmp/story-6-6-loader-probe-0x3vc25a/fixture/Undeclared/Undeclared.csproj (in 43 ms).
-  Undeclared -> /tmp/story-6-6-loader-probe-0x3vc25a/fixture/Undeclared/bin/Release/net10.0/Probe.Undeclared.dll
-
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-
-Time Elapsed 00:00:00.86

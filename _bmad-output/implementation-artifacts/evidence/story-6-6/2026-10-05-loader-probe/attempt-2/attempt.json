@@ -1,7 +1,0 @@
-{
-  "result": "fixture-positive-control-failed",
-  "owned_temporary_directory": "/tmp/story-6-6-loader-probe-nw257blr",
-  "reason": "AssemblyName.GetAssemblyName loaded three host reflection-support assemblies after the audit baseline; all six scenarios were refused before callbacks",
-  "compiled_source_snapshot": "compiled-source",
-  "runner_consumed": "runner-consumed.py"
-}

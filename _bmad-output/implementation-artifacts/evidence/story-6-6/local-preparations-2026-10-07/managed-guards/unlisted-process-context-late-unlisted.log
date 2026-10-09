@@ -1,3 +1,0 @@
-Unhandled exception. System.InvalidOperationException: Fixture assertion failed: refusal=False, callbacks=1, liveBytes=0.
-   at Hexalith.EventStore.Client.Tests.Program.Main(String[] args) in /tmp/eventstore-process-managed-observation-c6rcwsr5/probe/Program.cs:line 112
-   at Hexalith.EventStore.Client.Tests.Program.<Main>(String[] args)

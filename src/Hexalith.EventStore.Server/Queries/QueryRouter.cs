@@ -10,9 +10,6 @@ using Google.Protobuf;
 using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Identity;
-using Hexalith.EventStore.Client.Queries;
-using Hexalith.EventStore.Client.Events;
-using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -34,16 +31,6 @@ public partial class QueryRouter : IQueryRouter {
     private readonly IProjectionActorInvoker _invoker;
     private readonly IProjectionLifecycleGateway? _lifecycleGateway;
     private readonly ILogger<QueryRouter> _logger;
-    private readonly LogicalQueryRouteTable? _logicalRoutes;
-    private readonly Func<QueryEnvelope, CancellationToken, Task<QueryResult>>? _logicalExecute;
-
-    /// <summary>Composes an explicit dormant classified route with the private logical dispatcher.</summary>
-    internal QueryRouter(IProjectionActorInvoker invoker, ILogger<QueryRouter> logger,
-        LogicalQueryRouteTable routes, Func<QueryEnvelope, CancellationToken, Task<QueryResult>> logicalExecute)
-        : this(invoker, logger) {
-        _logicalRoutes = routes;
-        _logicalExecute = logicalExecute;
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryRouter"/> class.
@@ -90,7 +77,6 @@ public partial class QueryRouter : IQueryRouter {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
-        bool logical = _logicalRoutes?.IsLogical(query.Domain, query.QueryType, cancellationToken) == true;
 
         string routingQueryType = string.IsNullOrWhiteSpace(query.ProjectionType)
             ? query.QueryType
@@ -126,25 +112,6 @@ public partial class QueryRouter : IQueryRouter {
             query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof };
 
         try {
-            if (logical) {
-                QueryResult? result = null;
-                try {
-                    try { result = await _logicalExecute!(envelope, cancellationToken).ConfigureAwait(false); }
-                    finally { cancellationToken.ThrowIfCancellationRequested(); }
-                    _ = _logicalRoutes!.IsLogical(query.Domain, query.QueryType, cancellationToken);
-                    if (!result.Success || result.PayloadBytes is not { Length: > 0 and <= 64 * 1024 * 1024 }) {
-                        throw new InvalidOperationException("ReadModelQueryLimit: invalid private logical response.");
-                    }
-                    using var budget = new EventBufferBudget();
-                    using EventBufferReservation response = budget.Reserve(checked(result.PayloadBytes.Length * 18 + 128 * 1024));
-                    JsonElement payload = result.GetPayload();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return new QueryRouterResult(true, payload, NotFound: false);
-                }
-                finally {
-                    if (result?.PayloadBytes is { } bytes) { CryptographicOperations.ZeroMemory(bytes); }
-                }
-            }
             string lifecycleProjectionType = routingQueryType;
             for (int attempt = 0; attempt < 2; attempt++) {
                 LifecycleObservation before = await ReadLifecycleAsync(

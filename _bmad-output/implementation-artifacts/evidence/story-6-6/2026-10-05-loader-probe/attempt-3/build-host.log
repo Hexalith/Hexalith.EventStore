@@ -1,9 +1,0 @@
-  Determining projects to restore...
-  Restored /tmp/story-6-6-loader-probe-ypaix5ll/fixture/Host/Host.csproj (in 66 ms).
-  Host -> /tmp/story-6-6-loader-probe-ypaix5ll/fixture/Host/bin/Release/net10.0/Probe.Host.dll
-
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-
-Time Elapsed 00:00:00.89

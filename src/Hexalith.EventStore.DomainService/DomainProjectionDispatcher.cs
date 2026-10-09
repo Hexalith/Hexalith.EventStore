@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 
@@ -16,6 +17,30 @@ namespace Hexalith.EventStore.DomainService;
 /// </summary>
 public static class DomainProjectionDispatcher {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+
+    private static ProjectionRequest UpcastRequest(IServiceProvider serviceProvider, ProjectionRequest request)
+    {
+        EventPayloadEvolutionRegistry? evolution = serviceProvider.GetService<EventPayloadEvolutionRegistry>();
+        if (evolution is null || request.Events.Length == 0)
+        {
+            return request;
+        }
+
+        var events = new ProjectionEventDto[request.Events.Length];
+        for (int index = 0; index < events.Length; index++)
+        {
+            ProjectionEventDto item = request.Events[index];
+            ResolvedEventPayload effective = evolution.Read(item.EventTypeName, item.StoredPayloadVersion,
+                item.Payload, item.SequenceNumber);
+            events[index] = item with
+            {
+                EventTypeName = effective.EventTypeName,
+                Payload = effective.Payload,
+            };
+        }
+
+        return request with { Events = events };
+    }
     /// <summary>
     /// Projects a request by dispatching it to the matching domain projection handler.
     /// </summary>
@@ -26,15 +51,21 @@ public static class DomainProjectionDispatcher {
     /// request's domain (the endpoint maps a <c>null</c> result to <c>404 Not Found</c>).
     /// </returns>
     public static ProjectionResponse? Project(IServiceProvider serviceProvider, ProjectionRequest request) {
+        return Project(serviceProvider, request, CancellationToken.None);
+    }
+
+    /// <summary>Dispatches a full replay request with its originating cancellation token.</summary>
+    public static ProjectionResponse? Project(IServiceProvider serviceProvider, ProjectionRequest request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
         DomainProjectionEvolutionAdmission.RequireLegacy(request);
 
         IDomainProjectionHandler? handler = DomainProjectionHandlerRouteValidator
             .MaterializeAndValidate(serviceProvider.GetServices<IDomainProjectionHandler>())
             .FirstOrDefault(h => string.Equals(h.Domain, request.Domain, StringComparison.OrdinalIgnoreCase));
 
-        return handler?.Project(request);
+        return handler?.Project(UpcastRequest(serviceProvider, request), cancellationToken);
     }
 
     /// <summary>Dispatches one v2 request to every exact admitted named projection handler.</summary>
@@ -116,6 +147,7 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
         var outcomes = new List<ProjectionDispatchOutcome>(handlers.Length);
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -130,7 +162,7 @@ public static class DomainProjectionDispatcher {
             else {
                 try {
                     DomainProjectionHandlerResult result = await reconciliationHandler
-                        .ReconcileAsync(dispatchRequest.Request, dispatchRequest.DispatchId, cancellationToken)
+                        .ReconcileAsync(effectiveRequest, dispatchRequest.DispatchId, cancellationToken)
                         .ConfigureAwait(false);
                     outcome = NormalizeOutcome(handler.ProjectionType, result, options);
                 }
@@ -433,6 +465,7 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
         var outcomes = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         var operations = new List<ReadModelBatchOperation>();
         string? storeName = null;
@@ -451,7 +484,7 @@ public static class DomainProjectionDispatcher {
             try {
                 DomainProjectionRebuildPlan plan = await rebuildHandler
                     .PrepareRebuildAsync(
-                        dispatchRequest.Request,
+                        effectiveRequest,
                         dispatchRequest.DispatchId,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -543,6 +576,8 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
+
         var outcomes = new List<ProjectionDispatchOutcome>(handlers.Length);
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -552,10 +587,10 @@ public static class DomainProjectionDispatcher {
                     ? await DispatchFencedSharedAsync(
                         serviceProvider,
                         epochHandler,
-                        dispatchRequest.Request,
+                        effectiveRequest,
                         cancellationToken).ConfigureAwait(false)
                     : await handler
-                        .ProjectAsync(dispatchRequest.Request, dispatchRequest.DispatchId, cancellationToken)
+                        .ProjectAsync(effectiveRequest, dispatchRequest.DispatchId, cancellationToken)
                         .ConfigureAwait(false);
                 outcome = NormalizeOutcome(handler.ProjectionType, result, options);
             }

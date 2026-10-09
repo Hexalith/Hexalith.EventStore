@@ -51,6 +51,20 @@ public sealed class ProjectionEventWireBuilderTests {
     }
 
     [Fact]
+    public async Task BuildAsync_MetadataV1CarriesStoredPayloadVersion()
+    {
+        EventEnvelope stored = CreateEnvelope(1, 101) with { PayloadVersion = 2 };
+
+        ProjectionEventReadabilityResult result = await ProjectionEventWireBuilder.BuildAsync(
+            new NoOpEventPayloadProtectionService(), s_identity, [stored], CancellationToken.None);
+
+        ProjectionEventDto projected = result.Events.ShouldNotBeNull().ShouldHaveSingleItem();
+        projected.MetadataVersion.ShouldBe(1);
+        projected.StoredPayloadVersion.ShouldBe(2);
+        projected.Payload.ShouldBe(stored.Payload);
+    }
+
+    [Fact]
     public async Task BuildAsync_ChangedLogicalPayloadRefusesProjectionWire() {
         EventEnvelope original = CreateEnvelope(1, 101);
         original = original with {
@@ -90,7 +104,7 @@ public sealed class ProjectionEventWireBuilderTests {
     }
 
     private static EventEnvelope CreateEnvelope(long sequenceNumber, long globalPosition) => new(
-        MessageId: $"message-{sequenceNumber}",
+        MessageId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         AggregateId: s_identity.AggregateId,
         AggregateType: "Order",
         TenantId: s_identity.TenantId,

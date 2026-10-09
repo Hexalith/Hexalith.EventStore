@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -75,7 +76,7 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
                     CheckMetadata();
                     _eventStart = null;
                     if (string.IsNullOrEmpty(item.TypeName) || item.Payload is null || string.IsNullOrEmpty(item.Format)
-                        || item.ContractPresent != item.VersionPresent || item.MetadataVersion is not (null or 1))
+                        || item.MetadataVersion is not (null or 1))
                     {
                         throw new InvalidOperationException("MalformedMetadata: missing/contradictory V1 event fields.");
                     }
@@ -104,7 +105,7 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
         if (await _reader.ReadAsync().ConfigureAwait(false)) { throw new JsonException("Trailing response token."); }
         _token.ThrowIfCancellationRequested();
         DomainServiceWireEvent[] events = _events.Select(static item => new DomainServiceWireEvent(item.TypeName!, item.Payload!, item.Format)
-        { MetadataVersion = item.MetadataVersion }).ToArray();
+        { MetadataVersion = item.MetadataVersion, PayloadVersion = item.PayloadVersion }).ToArray();
         var result = new DomainServiceWireResult(rejection, events, resultPayload);
         // Transfer the already charged decoded arrays; there is no second typed payload copy.
         _detached = true;
@@ -168,7 +169,20 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
         else if (name.Equals("payloadVersion", StringComparison.OrdinalIgnoreCase))
         {
             item.VersionPresent = true;
-            if (kind != JsonTokenType.Null) { throw new InvalidOperationException("CapabilityMismatch: unsolicited canonical pair."); }
+            if (kind == JsonTokenType.Number)
+            {
+                ReadOnlySpan<byte> raw = _reader.RawValue;
+                if (!Utf8Parser.TryParse(raw, out int version, out int consumed)
+                    || consumed != raw.Length || version is < 1 or > 1024)
+                {
+                    throw new InvalidOperationException("MalformedMetadata: payloadVersion must be an integer from 1 through 1024.");
+                }
+                item.PayloadVersion = version;
+            }
+            else if (kind != JsonTokenType.Null)
+            {
+                throw new InvalidOperationException("MalformedMetadata: payloadVersion must be an integer or null.");
+            }
         }
         else { await SkipAsync().ConfigureAwait(false); }
         CheckMetadata();

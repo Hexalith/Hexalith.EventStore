@@ -95,6 +95,7 @@ internal sealed class BoundedV1DomainResultProducer
         byte[]?[] serializedSources = new byte[]?[count];
         byte[]?[] privateSources = new byte[]?[count];
         BoundedV1EventSerialization[] declarations = new BoundedV1EventSerialization[count];
+        int?[] payloadVersions = new int?[count];
         long encoded = 128;
         long declaredPayloads = 0;
         long serializedSourceBytes = 0;
@@ -110,6 +111,8 @@ internal sealed class BoundedV1DomainResultProducer
         {
             cancellationToken.ThrowIfCancellationRequested();
             IEventPayload payload = payloads[i];
+            int declaredVersion = EventPayloadVersionResolver.GetDeclaredVersion(payload.GetType());
+            payloadVersions[i] = declaredVersion == 1 ? null : declaredVersion;
             if (!_serializers.TryGetValue(payload.GetType(), out BoundedV1EventSerialization? serializer))
             {
                 throw new InvalidOperationException("CapabilityMismatch: no explicitly bounded V1 serializer is declared for this payload.");
@@ -130,7 +133,10 @@ internal sealed class BoundedV1DomainResultProducer
                 string? contract = await ReadCallbackAsync(() => serialized.EventContractType).ConfigureAwait(false);
                 if (contract is not null) { throw new InvalidOperationException("CapabilityMismatch: serialized V1 contract identity changed."); }
                 int? version = await ReadCallbackAsync(() => serialized.PayloadVersion).ConfigureAwait(false);
-                if (version is not null) { throw new InvalidOperationException("CapabilityMismatch: serialized V1 payload version changed."); }
+                if ((version ?? 1) != declaredVersion)
+                {
+                    throw new InvalidOperationException($"CapabilityMismatch: serialized event {payload.GetType().FullName} version {version ?? 1} differs from declared version {declaredVersion}.");
+                }
                 byte[] bytes = await ReadCallbackAsync(() => serialized.PayloadBytes).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("CapabilityMismatch: null serialized payload.");
                 if (bytes.Length > serializer.MaximumPayloadBytes)
@@ -143,6 +149,10 @@ internal sealed class BoundedV1DomainResultProducer
 
             payloads[i] = payload;
             declarations[i] = serializer;
+            if (payloadVersions[i] is not null && !string.Equals(serializer.Format, "json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"CapabilityMismatch: versioned event {payload.GetType().FullName} must use JSON.");
+            }
             long maximum = Math.Min(serializer.MaximumPayloadBytes, _readableLimit);
             declaredPayloads = checked(declaredPayloads + maximum);
             largestPayload = Math.Max(largestPayload, maximum);
@@ -188,7 +198,10 @@ internal sealed class BoundedV1DomainResultProducer
                         finally { cancellationToken.ThrowIfCancellationRequested(); }
                     }
                     cancellationToken.ThrowIfCancellationRequested();
-                    events.Add(new DomainServiceWireEvent(serializer.ExactAlias, sink.SealAndCopy(), serializer.Format));
+                    events.Add(new DomainServiceWireEvent(serializer.ExactAlias, sink.SealAndCopy(), serializer.Format)
+                    {
+                        PayloadVersion = payloadVersions[i],
+                    });
                 }
                 finally
                 {

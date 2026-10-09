@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.AspNetCore.Http;
@@ -36,6 +39,16 @@ internal sealed class BoundedV1WireResultResponse(DomainServiceWireResult result
             await output.Base64Async(item.Payload).ConfigureAwait(false);
             await output.RawAsync("\",\"serializationFormat\":"u8.ToArray()).ConfigureAwait(false);
             await output.StringAsync(item.SerializationFormat).ConfigureAwait(false);
+            if (item.MetadataVersion is int metadataVersion)
+            {
+                await output.RawAsync(",\"metadataVersion\":"u8.ToArray()).ConfigureAwait(false);
+                await output.RawAsync(Encoding.UTF8.GetBytes(metadataVersion.ToString(CultureInfo.InvariantCulture))).ConfigureAwait(false);
+            }
+            if (item.PayloadVersion is int payloadVersion)
+            {
+                await output.RawAsync(",\"payloadVersion\":"u8.ToArray()).ConfigureAwait(false);
+                await output.RawAsync(Encoding.UTF8.GetBytes(payloadVersion.ToString(CultureInfo.InvariantCulture))).ConfigureAwait(false);
+            }
             await output.RawAsync("}"u8.ToArray()).ConfigureAwait(false);
         }
 

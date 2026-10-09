@@ -1,6 +1,0 @@
-  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
-  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
-  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
-  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '6e495a94ffda0ab2ecd2d6b323ddcacdf5012a2749853ffa4792c6cb9dfd5b64')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 13.894s

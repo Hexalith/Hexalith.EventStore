@@ -92,7 +92,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                         return Denied("history-source-gap-or-scope-mismatch");
                     }
 
-                    if (item.MetadataVersion != 1 || item.EventContractType is not null || item.PayloadVersion is not null
+                    if (item.MetadataVersion != 1 || item.EventContractType is not null || item.PayloadVersion is < 1 or > 1024
                         || item.SerializationFormat is not ("json" or "json+pdenc-v1" or "json+identity-history-v1"))
                     {
                         return Denied("history-source-metadata-unsupported");
@@ -170,7 +170,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                         _ownedPayloadObserved?.Invoke(closedPayload);
                         events.Add(new StreamReadEvent(item.SequenceNumber, item.EventTypeName, closedPayload,
                             readable.SerializationFormat, item.MetadataVersion, string.Empty, null, null, item.Timestamp, null,
-                            EventStorePayloadProtectionMetadata.Unprotected()));
+                            EventStorePayloadProtectionMetadata.Unprotected()) { PayloadVersion = item.PayloadVersion });
                     }
                     finally { CryptographicOperations.ZeroMemory(readable.PayloadBytes); }
                 }

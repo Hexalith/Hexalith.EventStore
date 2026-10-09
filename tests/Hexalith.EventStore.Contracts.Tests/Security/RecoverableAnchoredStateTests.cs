@@ -110,4 +110,34 @@ public sealed class RecoverableAnchoredStateTests : IAnchoredStateTransitionAuth
         Should.Throw<InvalidOperationException>(() => RecoverableAnchoredState.Prepare("scope", 0, 1, original, oversized));
         produced.ShouldBeLessThan(10000); produced.ShouldBeGreaterThan(0); _records.ShouldBe(0);
     }
+    /// <summary>Caller mutation after entry cannot change admitted or staged original transition bytes.</summary>
+    [Fact]
+    public async Task CommitOwnsExactBytesAcrossCallerMutation()
+    {
+        _recordAllowed = true;
+        var original = RecoverableAnchoredState.Prepare("scope", 0, 1, "before", "after");
+        byte[] expected = original.TargetBytes.ToArray();
+        AnchoredStateTransition? staged = null;
+        bool committed = await RecoverableAnchoredState.CommitAsync(original, this,
+            () => { original.TargetBytes[0] ^= 0x01; return Task.FromResult(staged); },
+            value => { staged = value; return Task.CompletedTask; });
+        committed.ShouldBeTrue();
+        staged.ShouldNotBeNull();
+        staged.TargetBytes.ShouldBe(expected);
+        _records.ShouldBe(1);
+    }
+
+    /// <summary>A stage provider mutating its borrowed bytes cannot turn an invalid carrier into an exact journal transition.</summary>
+    [Fact]
+    public async Task CommitRejectsMutatedStageBeforeJournal()
+    {
+        _recordAllowed = true;
+        var original = RecoverableAnchoredState.Prepare("scope", 0, 1, "before", "after");
+        AnchoredStateTransition? staged = null;
+        await Should.ThrowAsync<InvalidOperationException>(() => RecoverableAnchoredState.CommitAsync(original, this,
+            () => Task.FromResult(staged), value => { staged = value; staged.TargetBytes[0] ^= 0x01; return Task.CompletedTask; }));
+        _records.ShouldBe(0);
+        original.TargetBytes.ShouldBe(RecoverableAnchoredState.Prepare("scope", 0, 1, "before", "after").TargetBytes);
+    }
+
 }

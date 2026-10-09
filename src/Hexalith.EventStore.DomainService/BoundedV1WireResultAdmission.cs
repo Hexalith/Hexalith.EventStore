@@ -35,10 +35,15 @@ internal static class BoundedV1WireResultAdmission
             cancellationToken.ThrowIfCancellationRequested();
             DomainServiceWireEvent item = source[index]
                 ?? throw new InvalidOperationException("CapabilityMismatch: a V1 response contains a null event.");
-            if (item.MetadataVersion is not null || item.EventContractType is not null || item.PayloadVersion is not null
+            if (item.MetadataVersion is not (null or 1) || item.EventContractType is not null
+                || item.PayloadVersion is < 1 or > 1024
                 || item.Payload is null || string.IsNullOrEmpty(item.EventTypeName) || string.IsNullOrEmpty(item.SerializationFormat))
             {
-                throw new InvalidOperationException("CapabilityMismatch: the V1 renderer requires unversioned payloads with an exact alias and format.");
+                throw new InvalidOperationException("CapabilityMismatch: the V1 renderer requires supported metadata with an exact alias and format.");
+            }
+            if (item.PayloadVersion is not null && !string.Equals(item.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("CapabilityMismatch: a versioned payload must use JSON.");
             }
             if (item.Payload.Length > 64 * 1024 * 1024)
             {
@@ -47,7 +52,9 @@ internal static class BoundedV1WireResultAdmission
 
             long metadata = "{\"eventTypeName\":"u8.Length + StringLength(item.EventTypeName, cancellationToken)
                 + ",\"payload\":\""u8.Length + "\",\"serializationFormat\":"u8.Length
-                + StringLength(item.SerializationFormat, cancellationToken) + 1;
+                + StringLength(item.SerializationFormat, cancellationToken) + 1
+                + (item.MetadataVersion is null ? 0 : 20)
+                + (item.PayloadVersion is null ? 0 : 25);
             if (metadata > 512 * 1024)
             {
                 throw new InvalidOperationException("MetadataLimit: encoded V1 event metadata exceeds 512 KiB.");

@@ -15,6 +15,15 @@ internal static class PayloadProtectionWireFormat
     internal static string ProtectedSerializationFormat { get; } =
         Encoding.UTF8.GetString(ProtectedSerializationFormatUtf8);
 
+    /// <summary>Gets the redacted JSON serialization format that is read in place and never re-protected (normative section 12.2).</summary>
+    internal const string RedactedSerializationFormat = "json-redacted";
+
+    /// <summary>Gets the historical Parties pdenc-v1 serialization format owned by a registered legacy reader (normative section 12.2).</summary>
+    internal const string LegacyProtectedSerializationFormat = "json+pdenc-v1";
+
+    /// <summary>Gets the reserved protected-format prefix that is never treated as custom plaintext (normative section 12.2).</summary>
+    internal const string ReservedSerializationFormatPrefix = "json+pdenc-";
+
     /// <summary>Gets the canonical Crockford-base32 alphabet used by ULID key references.</summary>
     internal const string CrockfordBase32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 

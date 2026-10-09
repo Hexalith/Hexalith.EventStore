@@ -90,7 +90,7 @@ public sealed class GovernanceScopeGuardTests
         await fixture.EffectiveAsync(); var second = fixture.Ordinal(2, "cut-b", "token-b");
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeContentBinding, ordinal: second, authorization: "binding-b"))).Status.ShouldBe("Committed");
         var overtaken = fixture.Command(GovernanceGuardOperation.CommitContentBinding, ordinal: second, authorization: "binding-b");
-        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: fixture.Ordinal(2, violation: "violation-b", invalidated: [firstBinding.GlobalCutId, firstBinding.TokenId])))).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: fixture.Ordinal(2, violation: "violation-b", resource: "resource-a", invalidated: [firstBinding.GlobalCutId, firstBinding.TokenId])))).Status.ShouldBe("Committed");
         long beforeObsolete = fixture.State.Revision;
         var original = await fixture.Apply(overtaken); original.Status.ShouldBe("Obsolete"); fixture.State.Revision.ShouldBe(beforeObsolete);
         await fixture.EffectiveAsync(); await fixture.BindAsync("binding-c", "cut-c", "token-c");
@@ -414,6 +414,53 @@ public sealed class GovernanceScopeGuardTests
             : entry == "execute" ? await owner.ExecuteAsync(command, [], token) is null : await owner.ReadNoIssueAsync(payload, requestId, new string('D', 64), token) is null;
         var error = await Should.ThrowAsync<OperationCanceledException>(() => Run(caller.Token)); error.CancellationToken.ShouldBe(caller.Token);
         (await Run(CancellationToken.None)).ShouldBeTrue(); fixture.Backend.TransactionCalls.ShouldBe(0);
+    }
+
+    /// <summary>Changing caller violation identity cannot allocate another successor for the same original accepted write.</summary>
+    [Fact]
+    public async Task ReobservedAcceptedWriteKeepsOneViolationAndOneSuccessor()
+    {
+        var fixture = new GovernanceGuardFixture(); await fixture.PrepareBoundAsync();
+        var binding = fixture.State.Deletions.Single().ContentBindings.Single();
+        var first = fixture.Ordinal(violation: "first-observation", invalidated: [binding.GlobalCutId, binding.TokenId]);
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: first))).Status.ShouldBe("Committed");
+        string retained = JsonSerializer.Serialize(fixture.State);
+        var changedCaller = fixture.Ordinal(2, violation: "changed-observation", invalidated: [binding.GlobalCutId, binding.TokenId]);
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: changedCaller))).Status.ShouldBe("Blocked");
+        JsonSerializer.Serialize(fixture.State).ShouldBe(retained);
+        fixture.State.Deletions.Single().Violations.Single().AcceptanceReceiptId.ShouldBe(fixture.OriginalAcceptance!.ReceiptId);
+    }
+
+    /// <summary>Each overlapping request retains its own ordinal at one accepted write's joint linearization.</summary>
+    [Fact]
+    public async Task OverlappingScopesRetainIndependentOriginalOrdinals()
+    {
+        var fixture = new GovernanceGuardFixture();
+        fixture.OriginalAcceptance = await fixture.Apply(fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()),
+            [new("source-initial", 0, GuardedTransactionFixture.Hash([]), "initial"u8.ToArray())]);
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: fixture.Scope, authorization: "first-fence"))).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.CommitAdmissionFence, scope: fixture.Scope, authorization: "first-fence"))).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation,
+            ordinal: fixture.Ordinal(violation: "first-recut", noCut: "authenticated-no-cut")))).Status.ShouldBe("Committed");
+        var secondScope = new GovernanceScopeV1("tenant-a", "ExactInteraction", "interaction-b", "");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: secondScope, authorization: "second-fence")
+            with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.CommitAdmissionFence, scope: secondScope, authorization: "second-fence")
+            with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Committed");
+        fixture.AppendResource = "overlap-resource";
+        var accepted = await fixture.Apply(fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()),
+            [new("source-overlap", 0, GuardedTransactionFixture.Hash([]), "overlap"u8.ToArray())]);
+        accepted.Status.ShouldBe("Accepted");
+        var attributions = JsonSerializer.Deserialize<GovernanceAdmissionAttribution[]>(accepted.AdmissionAttributionsJson)!;
+        attributions.ShouldBe([new("deletion-a", 2), new("deletion-b", 1)]);
+        fixture.OriginalAcceptance = accepted;
+        var first = new GovernanceOrdinalCommand(2, "", "", "", "", "overlap-first", "Content", 2, accepted.GuardHighWater,
+            "overlap-resource", [], "authenticated-no-cut");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: first))).Status.ShouldBe("Committed");
+        var second = first with { Ordinal = 1, AcceptedAtOrdinal = 1, ViolationId = "overlap-second" };
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: second) with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Committed");
+        fixture.State.Deletions.Single(value => value.RequestId == "deletion-a").Violations.Single(value => value.ResourceId == "overlap-resource").AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);
+        fixture.State.Deletions.Single(value => value.RequestId == "deletion-b").Violations.Single().AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);
     }
 
 }

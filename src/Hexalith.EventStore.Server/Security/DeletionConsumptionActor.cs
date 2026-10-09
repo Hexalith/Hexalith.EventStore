@@ -15,12 +15,91 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     IAtomicDeletionManifestProvider? provider = null, TimeProvider? clock = null) : Actor(host), IDeletionConsumptionActor
 {
     private const string StateKey = "deletion-consumption-v23";
+    private readonly AsyncLocal<AuthoritativeStreamReadDeadline?> _entryBudget = new();
+    private sealed class EntryOutcomeHolder { internal DeletionConsumptionOutcome? Reservation; }
+    private readonly AsyncLocal<EntryOutcomeHolder?> _entryReservation = new();
+    private Task? _unfinishedStateIo;
+    private AuthoritativeStreamReadDeadline Budget => _entryBudget.Value ?? throw new InvalidOperationException("Deletion consumption entry budget is absent.");
+    private async Task<T> RunEntryAsync<T>(Func<Task<T>> operation, T unavailable)
+    {
+        var operationClock = clock ?? TimeProvider.System;
+        using var budget = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), operationClock, CancellationToken.None, operationClock.GetTimestamp());
+        var previous = _entryBudget.Value; var previousReservation = _entryReservation.Value;
+        _entryBudget.Value = budget; _entryReservation.Value = new EntryOutcomeHolder();
+        try
+        {
+            budget.ThrowIfCancellationRequested(); CheckStateIoReady();
+            T result = await operation().ConfigureAwait(false);
+            budget.ThrowIfCancellationRequested(); return result;
+        }
+        catch (TimeoutException) { return OriginalReservationOrUnavailable(unavailable); }
+        catch (OperationCanceledException) when (budget.IsExpired) { return OriginalReservationOrUnavailable(unavailable); }
+        finally { _entryBudget.Value = previous; _entryReservation.Value = previousReservation; }
+    }
+    private T OriginalReservationOrUnavailable<T>(T unavailable)
+    {
+        // A previously authenticated durable reservation is safe to report after its physical
+        // recovery times out. Never return another batch's covering reservation to this caller.
+        if (unavailable is DeletionConsumptionOutcome missing && _entryReservation.Value?.Reservation is { } original
+            && original.TenantId == missing.TenantId && original.BatchId == missing.BatchId)
+        { return (T)(object)original; }
+        return unavailable;
+    }
+    private void CheckStateIoReady()
+    {
+        if (_unfinishedStateIo is { IsCompleted: false }) { throw new TimeoutException("Previous deletion consumption state I/O is unfinished."); }
+        if (_unfinishedStateIo is not null) { _ = _unfinishedStateIo.Exception; _unfinishedStateIo = null; }
+    }
+    private async Task<T> StateIoAsync<T>(Func<Task<T>> operation)
+    {
+        Budget.ThrowIfCancellationRequested(); CheckStateIoReady();
+        Task<T> pending = operation(); _unfinishedStateIo = pending;
+        return await Budget.WaitAsync(pending).ConfigureAwait(false);
+    }
+    private async Task StateIoAsync(Func<Task> operation)
+    {
+        Budget.ThrowIfCancellationRequested(); CheckStateIoReady();
+        Task pending = operation(); _unfinishedStateIo = pending;
+        await Budget.WaitAsync(pending).ConfigureAwait(false);
+    }
+    private Task<T> CaptureAsync<T>(Func<T> capture) => Budget.ReadAsync(_ => Task.FromResult(capture()));
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> RegisterAsync(DeletionBatchConsumptionRequest request)
+    { ArgumentNullException.ThrowIfNull(request); return RunEntryAsync(() => RegisterEntryAsync(request), Unavailable(request.Capability.TenantId, request.Capability.BatchId)); }
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> ReserveAndConsumeAsync(DeletionBatchConsumptionRequest request)
+    { ArgumentNullException.ThrowIfNull(request); return RunEntryAsync(() => ReserveAndConsumeEntryAsync(request), Unavailable(request.Capability.TenantId, request.Capability.BatchId)); }
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> BlockAsync(DeletionBatchBlockRequest request)
+    { ArgumentNullException.ThrowIfNull(request); return RunEntryAsync(() => BlockEntryAsync(request), Unavailable(request.TenantId, request.BatchId)); }
+    /// <inheritdoc/>
+    public Task<DeletionCapabilityRevocationReceipt?> RegisterRevocationAsync(DeletionCapabilityRevocationEnvelope envelope)
+        => RunEntryAsync(() => RegisterRevocationEntryAsync(envelope), (DeletionCapabilityRevocationReceipt?)null);
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> ActivateAsync(DeletionReattestationActivation activation)
+    { ArgumentNullException.ThrowIfNull(activation); return RunEntryAsync(() => ActivateEntryAsync(activation), Unavailable(activation.Replacement.Capability.TenantId, activation.Replacement.Capability.BatchId)); }
+    /// <inheritdoc/>
+    public Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion)
+        => RunEntryAsync(() => ReadActivationComparisonEntryAsync(tenantId, batchId, replacementKeyVersion), (DeletionActivationComparison?)null);
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request)
+    { ArgumentNullException.ThrowIfNull(request); return RunEntryAsync(() => ReconcileBlockedReplacementEntryAsync(request), Unavailable(request.Capability.TenantId, request.Capability.BatchId)); }
+    /// <inheritdoc/>
+    public Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability)
+        => RunEntryAsync(() => ReadBlockedReplacementEntryAsync(capability), (DeletionBlockedReplacementResult?)null);
+    /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> LookupAsync(string tenantId, string batchId)
+        => RunEntryAsync(() => LookupEntryAsync(tenantId, batchId), Unavailable(tenantId, batchId));
+    /// <inheritdoc/>
+    public Task<DeletionCapabilityRevocationReceipt?> LookupRevocationAsync(DeletionCapabilityRevocationEnvelope envelope)
+        => RunEntryAsync(() => LookupRevocationEntryAsync(envelope), (DeletionCapabilityRevocationReceipt?)null);
+
     /// <summary>Gets the exact private actor registration name.</summary>
     public const string ActorTypeName = "DeletionConsumptionActor";
     /// <summary>Gets the exact same-tenant actor shared by reserve, block, revocation and activation.</summary>
     public static string GetActorId(string tenantId) => new AggregateIdentity(tenantId, "protection", "deletion-consumption-v23").ActorId;
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> RegisterAsync(DeletionBatchConsumptionRequest request)
+    private async Task<DeletionConsumptionOutcome> RegisterEntryAsync(DeletionBatchConsumptionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request); Check(request.Capability.TenantId);
         if (!(await AdmitAsync(request.Capability.TenantId, request.Capability.BatchId, "RegisterDeletionBatch").ConfigureAwait(false))) { return Unavailable(request.Capability.TenantId, request.Capability.BatchId); }
@@ -30,11 +109,11 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     }
     private async Task<DeletionConsumptionOutcome> RegisterAsyncCoreAsync(DeletionBatchConsumptionRequest request)
     {
-        var owned = DeletionConsumptionIdentity.Capture(request); string tenant = owned.Capability.TenantId; Check(tenant);
+        var owned = await CaptureAsync(() => DeletionConsumptionIdentity.Capture(request)).ConfigureAwait(false); string tenant = owned.Capability.TenantId; Check(tenant);
         if (!await AdmitAsync(tenant, owned.Capability.BatchId, "RegisterDeletionBatch").ConfigureAwait(false)) { return Unavailable(tenant, owned.Capability.BatchId); }
         var state = await ReadAsync(tenant, true).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
         if (batch is not null) { return DeletionConsumptionIdentity.Same(batch.Current, owned) ? batch.Outcome : Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
-        if (authority is null || provider is null || !await authority.VerifyDispatchAsync(owned).ConfigureAwait(false))
+        if (authority is null || provider is null || !await Budget.ReadAsync(_ => authority.VerifyDispatchAsync(owned)).ConfigureAwait(false))
         { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
         var reservation = FindCoveredReservation(state, owned);
         if (reservation is not null)
@@ -42,7 +121,8 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             var original = await RecoverAsync(state, reservation, false).ConfigureAwait(false);
             return original.Status == DeletionConsumptionStatus.Consumed
                 ? await RetainCoveredAsync(await ReadAsync(tenant).ConfigureAwait(false), owned,
-                    Array.AsReadOnly(original.TargetReceipts.Where(r => owned.Targets.Contains(r.Target)).ToArray())).ConfigureAwait(false) : original;
+                    Array.AsReadOnly(original.TargetReceipts.Where(r => owned.Targets.Contains(r.Target)).ToArray())).ConfigureAwait(false)
+                : Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable);
         }
         var prior = FindDestroyed(state, owned);
         if (prior is not null) { return await RetainCoveredAsync(state, owned, prior).ConfigureAwait(false); }
@@ -57,7 +137,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         await SaveAsync(next).ConfigureAwait(false); return outcome;
     }
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> ReserveAndConsumeAsync(DeletionBatchConsumptionRequest request)
+    private async Task<DeletionConsumptionOutcome> ReserveAndConsumeEntryAsync(DeletionBatchConsumptionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request); Check(request.Capability.TenantId);
         if (!(await AdmitAsync(request.Capability.TenantId, request.Capability.BatchId, "ReserveAndConsumeDeletionBatch").ConfigureAwait(false))) { return Unavailable(request.Capability.TenantId, request.Capability.BatchId); }
@@ -67,14 +147,14 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     }
     private async Task<DeletionConsumptionOutcome> ReserveAndConsumeAsyncCoreAsync(DeletionBatchConsumptionRequest request)
     {
-        var owned = DeletionConsumptionIdentity.Capture(request); string tenant = owned.Capability.TenantId; Check(tenant);
+        var owned = await CaptureAsync(() => DeletionConsumptionIdentity.Capture(request)).ConfigureAwait(false); string tenant = owned.Capability.TenantId; Check(tenant);
         if (!await AdmitAsync(tenant, owned.Capability.BatchId, "ReserveAndConsumeDeletionBatch").ConfigureAwait(false)) { return Unavailable(tenant, owned.Capability.BatchId); }
         var state = await ReadAsync(tenant, true).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
         if (batch is null) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
         if (!DeletionConsumptionIdentity.Same(batch.Current, owned)) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
         if (batch.Outcome.Status == DeletionConsumptionStatus.ConsumptionReserved) { return await RecoverAsync(state, batch, false).ConfigureAwait(false); }
         if (batch.Outcome.Status != DeletionConsumptionStatus.Unconsumed) { return batch.Outcome; }
-        if (authority is null || provider is null || !await authority.VerifyDispatchAsync(owned).ConfigureAwait(false))
+        if (authority is null || provider is null || !await Budget.ReadAsync(_ => authority.VerifyDispatchAsync(owned)).ConfigureAwait(false))
         { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
         var keyBlock = KeyBlock(state, owned.Capability.CapabilityKeyVersion);
         if (keyBlock is not null) { throw new InvalidOperationException("Registered unconsumed batch bypassed durable key block."); }
@@ -88,7 +168,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         return await RecoverAsync(next, reserved, true).ConfigureAwait(false);
     }
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> BlockAsync(DeletionBatchBlockRequest request)
+    private async Task<DeletionConsumptionOutcome> BlockEntryAsync(DeletionBatchBlockRequest request)
     {
         ArgumentNullException.ThrowIfNull(request); Check(request.TenantId);
         if (!(await AdmitAsync(request.TenantId, request.BatchId, "BlockDeletionBatchConsumption").ConfigureAwait(false))) { return Unavailable(request.TenantId, request.BatchId); }
@@ -106,7 +186,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (prior is not null) { return prior.RequestDigest == digest ? prior.Outcome : Result(state, request.BatchId, DeletionConsumptionStatus.Conflict); }
         if (state.Operations.Count >= 10000) { return Result(state, request.BatchId, DeletionConsumptionStatus.Unavailable); }
         var batch = Find(state, request.BatchId);
-        if (batch is null || authority is null || !await authority.VerifyAdmissionBlockAsync(request).ConfigureAwait(false))
+        if (batch is null || authority is null || !await Budget.ReadAsync(_ => authority.VerifyAdmissionBlockAsync(request)).ConfigureAwait(false))
         { return Result(state, request.BatchId, DeletionConsumptionStatus.Unavailable); }
         var next = state with { Revision = checked(state.Revision + 1) }; var outcome = batch.Outcome;
         if (outcome.Status == DeletionConsumptionStatus.Unconsumed
@@ -120,7 +200,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         await SaveAsync(next).ConfigureAwait(false); return outcome;
     }
     /// <inheritdoc/>
-    public async Task<DeletionCapabilityRevocationReceipt?> RegisterRevocationAsync(DeletionCapabilityRevocationEnvelope envelope)
+    private async Task<DeletionCapabilityRevocationReceipt?> RegisterRevocationEntryAsync(DeletionCapabilityRevocationEnvelope envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope); Check(envelope.TenantId);
         if (!(await AdmitAsync(envelope.TenantId, envelope.EventIdentity, "RegisterDeletionCapabilityRevocation").ConfigureAwait(false))) { return null; }
@@ -136,7 +216,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         var prior = state.Revocations.SingleOrDefault(r => r.Envelope.EventIdentity == envelope.EventIdentity);
         if (prior is not null) { if (prior.Envelope != envelope) { throw new ArgumentException("Changed revocation event identity.", nameof(envelope)); } return prior; }
         if (state.Revocations.Count >= 10000) { return null; }
-        if (authority is null || !await authority.VerifyRevocationAsync(envelope).ConfigureAwait(false)) { return null; }
+        if (authority is null || !await Budget.ReadAsync(_ => authority.VerifyRevocationAsync(envelope)).ConfigureAwait(false)) { return null; }
         var old = KeyBlock(state, envelope.KeyVersion);
         if (old is not null && envelope.RevocationRevision <= old.Envelope.RevocationRevision) { return null; }
         var affected = state.Batches.Where(b => b.Current.Capability.CapabilityKeyVersion == envelope.KeyVersion
@@ -151,7 +231,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         await SaveAsync(next).ConfigureAwait(false); return result;
     }
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> ActivateAsync(DeletionReattestationActivation activation)
+    private async Task<DeletionConsumptionOutcome> ActivateEntryAsync(DeletionReattestationActivation activation)
     {
         ArgumentNullException.ThrowIfNull(activation); var c = activation.Replacement.Capability; Check(c.TenantId);
         if (!(await AdmitAsync(c.TenantId, c.BatchId, "ActivateReattestedDeletionBatch").ConfigureAwait(false))) { return Unavailable(c.TenantId, c.BatchId); }
@@ -160,7 +240,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         return result;
     }
     /// <inheritdoc/>
-    public async Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion)
+    private async Task<DeletionActivationComparison?> ReadActivationComparisonEntryAsync(string tenantId, string batchId, string replacementKeyVersion)
     {
         Check(tenantId); DeletionConsumptionIdentity.Text(batchId); DeletionConsumptionIdentity.Text(replacementKeyVersion);
         if (!await AdmitAsync(tenantId, batchId, "ReadDeletionActivationComparison").ConfigureAwait(false)) { return null; }
@@ -180,9 +260,9 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             && await AdmitAsync(tenantId, batchId, "ReadDeletionActivationComparison").ConfigureAwait(false) ? comparison : null;
     }
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request)
+    private async Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementEntryAsync(DeletionBlockedReplacementReconciliation request)
     {
-        var owned = DeletionConsumptionIdentity.Capture(request); string tenant = owned.Capability.TenantId; string id = owned.Capability.BatchId; Check(tenant);
+        var owned = await CaptureAsync(() => DeletionConsumptionIdentity.Capture(request)).ConfigureAwait(false); string tenant = owned.Capability.TenantId; string id = owned.Capability.BatchId; Check(tenant);
         if (!await AdmitAsync(tenant, id, "ReconcileBlockedDeletionReplacement").ConfigureAwait(false)) { return Unavailable(tenant, id); }
         var state = await ReadAsync(tenant, true).ConfigureAwait(false); string digest = DeletionConsumptionIdentity.Digest(owned);
         var prior = state.Operations.SingleOrDefault(o => o.OperationId == owned.OperationId);
@@ -200,7 +280,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
                 || owned.Capability.CapabilityKeyVersion == (batch.BlockedReplacement?.Capability.CapabilityKeyVersion ?? batch.Current.Capability.CapabilityKeyVersion))
             || owned.ExpectedKeyBlockSetRevision != state.KeyBlockSetRevision || keyBlock is null || DeletionConsumptionIdentity.Digest(keyBlock) != DeletionConsumptionIdentity.Digest(owned.RevocationReceipt))
         { return Result(state, id, DeletionConsumptionStatus.Conflict); }
-        if (state.Operations.Count >= 10000 || authority is null || !await authority.VerifyBlockedReplacementAsync(owned).ConfigureAwait(false)) { return Unavailable(tenant, id); }
+        if (state.Operations.Count >= 10000 || authority is null || !await Budget.ReadAsync(_ => authority.VerifyBlockedReplacementAsync(owned)).ConfigureAwait(false)) { return Unavailable(tenant, id); }
         var next = state with { Revision = checked(state.Revision + 1) };
         var outcome = Result(next, id, DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise) with {
             ReceiptId = DeletionConsumptionIdentity.Digest(new[] { owned.OperationId, digest, "blocked-issued-replacement" }), BlockReason = DeletionConsumptionBlockReason.CapabilityKeyCompromise,
@@ -211,7 +291,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         return await AdmitAsync(tenant, id, "ReconcileBlockedDeletionReplacement").ConfigureAwait(false) ? outcome : Unavailable(tenant, id);
     }
     /// <inheritdoc/>
-    public async Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability)
+    private async Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementEntryAsync(DeletionBatchCapabilityV1 capability)
     {
         ArgumentNullException.ThrowIfNull(capability); Check(capability.TenantId); _ = DeletionBatchCapabilityIdentity.SigningRequestId(capability);
         if (!await AdmitAsync(capability.TenantId, capability.BatchId, "ReadBlockedDeletionReplacement").ConfigureAwait(false)) { return null; }
@@ -225,7 +305,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     }
     private async Task<DeletionConsumptionOutcome> ActivateAsyncCoreAsync(DeletionReattestationActivation activation)
     {
-        ArgumentNullException.ThrowIfNull(activation); var owned = activation with { Replacement = DeletionConsumptionIdentity.Capture(activation.Replacement) };
+        ArgumentNullException.ThrowIfNull(activation); var owned = activation with { Replacement = await CaptureAsync(() => DeletionConsumptionIdentity.Capture(activation.Replacement)).ConfigureAwait(false) };
         string tenant = owned.Replacement.Capability.TenantId; string id = owned.Replacement.Capability.BatchId; Check(tenant);
         foreach (string value in new[] { owned.OperationId, owned.CompromiseBlockReceiptId, owned.GuardReplacementReceiptId }) { DeletionConsumptionIdentity.Text(value); }
         if (owned.ExpectedKeyBlockSetRevision < 0) { throw new ArgumentException("Invalid activation compare.", nameof(activation)); }
@@ -241,7 +321,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             || owned.Replacement.Capability.AttestationOrdinal != checked((batch.BlockedReplacement?.Capability.AttestationOrdinal ?? batch.Current.Capability.AttestationOrdinal) + 1)
             || owned.Replacement.Capability.CapabilityKeyVersion == (batch.BlockedReplacement?.Capability.CapabilityKeyVersion ?? batch.Current.Capability.CapabilityKeyVersion))
         { return Result(state, id, DeletionConsumptionStatus.Conflict); }
-        if (authority is null || !await authority.VerifyActivationAsync(owned).ConfigureAwait(false)) { return Result(state, id, DeletionConsumptionStatus.Unavailable); }
+        if (authority is null || !await Budget.ReadAsync(_ => authority.VerifyActivationAsync(owned)).ConfigureAwait(false)) { return Result(state, id, DeletionConsumptionStatus.Unavailable); }
         var replacementBlock = KeyBlock(state, owned.Replacement.Capability.CapabilityKeyVersion);
         if (replacementBlock is null && owned.ExpectedKeyBlockSetRevision != state.KeyBlockSetRevision) { return Result(state, id, DeletionConsumptionStatus.Conflict); }
         var next = state with { Revision = checked(state.Revision + 1) };
@@ -255,7 +335,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         await SaveAsync(next).ConfigureAwait(false); return outcome;
     }
     /// <inheritdoc/>
-    public async Task<DeletionConsumptionOutcome> LookupAsync(string tenantId, string batchId)
+    private async Task<DeletionConsumptionOutcome> LookupEntryAsync(string tenantId, string batchId)
     {
         Check(tenantId);
         if (!(await AdmitAsync(tenantId, batchId, "LookupDeletionBatch").ConfigureAwait(false))) { return Unavailable(tenantId, batchId); }
@@ -272,7 +352,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             : batch.Outcome.Status == DeletionConsumptionStatus.ConsumptionReserved ? await RecoverAsync(state, batch, false).ConfigureAwait(false) : batch.Outcome;
     }
     /// <inheritdoc/>
-    public async Task<DeletionCapabilityRevocationReceipt?> LookupRevocationAsync(DeletionCapabilityRevocationEnvelope envelope)
+    private async Task<DeletionCapabilityRevocationReceipt?> LookupRevocationEntryAsync(DeletionCapabilityRevocationEnvelope envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope); Check(envelope.TenantId);
         if (!(await AdmitAsync(envelope.TenantId, envelope.EventIdentity, "LookupDeletionCapabilityRevocation").ConfigureAwait(false))) { return null; }
@@ -289,13 +369,13 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (receipt is not null && receipt.Envelope != envelope) { throw new ArgumentException("Changed revocation evidence.", nameof(envelope)); } return receipt;
     }
     private async Task<bool> AdmitAsync(string tenant, string identity, string operation) => authority is not null
-        && await authority.AuthorizeOperationAsync(tenant, identity, operation).ConfigureAwait(false);
+        && await Budget.ReadAsync(_ => authority.AuthorizeOperationAsync(tenant, identity, operation)).ConfigureAwait(false);
     private static DeletionConsumptionOutcome Unavailable(string tenant, string id) => new(tenant, id, DeletionConsumptionStatus.Unavailable, 0, 0, null, null, null, null, []);
     private async Task<DeletionConsumptionOutcome> RecoverAsync(DeletionConsumptionLedger state, DeletionConsumptionBatch batch, bool first)
     {
+        if (_entryReservation.Value is { } holder) { holder.Reservation = batch.Outcome; }
         if (provider is null) { return batch.Outcome; }
-        var operationClock = clock ?? TimeProvider.System;
-        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), operationClock, CancellationToken.None, operationClock.GetTimestamp());
+        var deadline = Budget;
         DeletionManifestProviderResult? result;
         try
         {
@@ -342,12 +422,13 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     { DeletionConsumptionIdentity.Text(tenant); if (Host.Id.GetId() != GetActorId(tenant)) { throw new ArgumentException("Protection tenant scope mismatch."); } }
     private async Task<DeletionConsumptionLedger> ReadAsync(string tenant, bool recoverAdmittedOriginal = false)
     {
-        await StateManager.ClearCacheAsync().ConfigureAwait(false);
-        var value = await StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.ClearCacheAsync()).ConfigureAwait(false);
+        var value = await StateIoAsync(() => StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey)).ConfigureAwait(false);
         var raw = value.HasValue ? value.Value : new DeletionConsumptionLedger(tenant, 0, 0, [], [], []);
         if (authority is null) { throw new InvalidOperationException("Independent protection authority is absent."); }
-        return await RecoverableAnchoredState.ReconcileAsync(PendingScope, CaptureLedger(raw, tenant), await ReadPendingAsync().ConfigureAwait(false),
-            next => CaptureLedger(next, tenant), next => authority.ValidateStateAsync(tenant, next.Revision, DeletionConsumptionIdentity.Digest(next)), authority,
+        var captured = await CaptureAsync(() => CaptureLedger(raw, tenant)).ConfigureAwait(false);
+        return await RecoverableAnchoredState.ReconcileAsync(PendingScope, captured, await ReadPendingAsync().ConfigureAwait(false),
+            next => CaptureLedger(next, tenant), next => Budget.ReadAsync(_ => authority.ValidateStateAsync(tenant, next.Revision, DeletionConsumptionIdentity.Digest(next))), new DeadlineDeletionConsumptionAuthority(authority, Budget),
             PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
     }
     private static DeletionConsumptionLedger CaptureLedger(DeletionConsumptionLedger state, string tenant)
@@ -445,9 +526,9 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (authority is null) { throw new InvalidOperationException("Independent protection authority is absent."); }
         var previous = await ReadAsync(state.TenantId).ConfigureAwait(false);
         if (previous.Revision != state.Revision - 1) { throw new InvalidOperationException("Protection comparison changed."); }
-        var owned = CaptureLedger(state, state.TenantId);
+        var owned = await CaptureAsync(() => CaptureLedger(state, state.TenantId)).ConfigureAwait(false);
         var pending = RecoverableAnchoredState.Prepare(PendingScope, previous.Revision, owned.Revision, previous, owned);
-        if (!await RecoverableAnchoredState.CommitAsync(pending, authority, ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false))
+        if (!await RecoverableAnchoredState.CommitAsync(pending, new DeadlineDeletionConsumptionAuthority(authority, Budget), ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false))
         { throw new InvalidOperationException("Independent protection transition compare failed."); }
         var persisted = await ReadAsync(state.TenantId).ConfigureAwait(false);
         if (DeletionConsumptionIdentity.Digest(persisted) != DeletionConsumptionIdentity.Digest(state)) { throw new InvalidOperationException("Protection outcome not confirmed durable."); }
@@ -457,22 +538,22 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     private const string PendingKey = StateKey + "-pending-transition-v1";
     private async Task<AnchoredStateTransition?> ReadPendingAsync()
     {
-        await StateManager.ClearCacheAsync().ConfigureAwait(false);
-        var pending = await StateManager.TryGetStateAsync<AnchoredStateTransition>(PendingKey).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.ClearCacheAsync()).ConfigureAwait(false);
+        var pending = await StateIoAsync(() => StateManager.TryGetStateAsync<AnchoredStateTransition>(PendingKey)).ConfigureAwait(false);
         return pending.HasValue ? pending.Value : null;
     }
     private async Task PersistPendingAsync(AnchoredStateTransition pending)
     {
-        await StateManager.SetStateAsync(PendingKey, pending).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.SetStateAsync(PendingKey, pending)).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.SaveStateAsync()).ConfigureAwait(false);
     }
     private async Task<DeletionConsumptionLedger> PersistTargetAsync(DeletionConsumptionLedger next)
     {
-        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false);
-        _ = await StateManager.TryRemoveStateAsync(PendingKey).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
-        await StateManager.ClearCacheAsync().ConfigureAwait(false);
-        var confirmed = await StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.SetStateAsync(StateKey, next)).ConfigureAwait(false);
+        _ = await StateIoAsync(() => StateManager.TryRemoveStateAsync(PendingKey)).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.SaveStateAsync()).ConfigureAwait(false);
+        await StateIoAsync(() => StateManager.ClearCacheAsync()).ConfigureAwait(false);
+        var confirmed = await StateIoAsync(() => StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey)).ConfigureAwait(false);
         return confirmed.HasValue ? confirmed.Value : throw new InvalidOperationException("Reconciled main state is missing.");
     }
     private async Task<DeletionConsumptionOutcome> RetainCoveredAsync(DeletionConsumptionLedger state, DeletionBatchConsumptionRequest request,

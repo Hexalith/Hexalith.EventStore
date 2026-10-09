@@ -27,4 +27,14 @@ public interface IDomainProjectionHandler {
     /// <param name="request">The projection request carrying the aggregate identity and full event sequence.</param>
     /// <returns>The rebuilt projection state.</returns>
     ProjectionResponse Project(ProjectionRequest request);
+
+    /// <summary>Projects events while receiving the caller's cancellation token.</summary>
+    /// <param name="request">The full replay request.</param>
+    /// <param name="cancellationToken">The originating request cancellation token.</param>
+    /// <returns>The rebuilt projection state.</returns>
+    ProjectionResponse Project(ProjectionRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Project(request);
+    }
 }
