@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -239,6 +239,40 @@ Scope: the fix delta `42813102` only (pass-3 and pass-4 fixes, 211 diff lines). 
   - v1 snapshot buffers are asserted zeroed directly.
 - BH11 (`false`): every plain format goes through one shared `TryInspectJson` call (classifier `:177`), so the new boundary row pins the node limit for all of them. Other tests pin the `Rejected` route for `BytesMetadataMismatch`.
 - BH12 (`false`): nested `$pdenc` detection is covered by `V116_EscapedOrNestedMarker_IsDetectedInJsonAsync` and the `nested-pdenc` snapshot row. The duplicated converter setup names no harm.
+
+#### Pass 7 (2026-10-09)
+
+Scope: the pass-5 fix delta `9ebccd38` only (152 diff lines); the owner chose delta-only. Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), acceptance auditor (AA). 13 raw findings: 0 decision, 4 patch, 0 defer, 6 rejected. VG reported no gaps. The auditor found no acceptance-criterion violation: Release build 0 warnings, 632/632 passing, zero skips. All four patches are test-only. Each was confirmed with a mutant that still passes all 632 tests.
+
+- [ ] [Review][Patch] Pin the in-loop stream prevalidation cancellation check (EC1, AA1, BH1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:164]
+  - The pass-5 empty-stream fix added a pre-loop check at `:161`. It throws first for any pre-cancelled token, so `V119_PrevalidationObservesCancellationAsync` never reaches the pass-4 line. Deleting `:164` passes every test, so pass-5 VG3 is checked off but not achieved.
+  - Fix: add a test-only `IReadOnlyList<CompatibilityEventRecord>`, in its own file, whose indexer cancels a supplied source when element 0 is read. Use `[V2Event(1), null]` with an uncancelled token. Assert `OperationCanceledException` (without `:164` the result is `ArgumentException`), zero resolver calls and zero reader calls.
+  - Keep `:164`. Pass-4 BH6 and pass-5 BH8 record mid-loop responsiveness as intended.
+- [ ] [Review][Patch] Make the `foreign-cancellation` row model a foreign cancellation (AA2, BH5) [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilitySnapshotRoutingTests.cs:164]
+  - The pass-5 VG2 fix specified an uncancelled caller token. Instead, the row throws a token-less `OperationCanceledException` and calls `ReadSnapshotAsync(record)` with `CancellationToken.None`.
+  - Two filter mutants at router `:479` pass every test: `!cancellationToken.CanBeCanceled`, and checking the exception's own token. Once Story 8.7 passes live request tokens, the first would report a converter's foreign cancellation as caller cancellation instead of `ConsistencyMismatch`.
+  - Fix: throw `new OperationCanceledException(foreign.Token)` from an already-cancelled foreign source, and call the router with `source.Token` left uncancelled. Keep asserting `ConsistencyMismatch` and one zeroed `DecryptedPlaintext` buffer.
+- [ ] [Review][Patch] Pin cancellation after an unreadable v2 event core result (BH3) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:365]
+  - Pass 2 added an `else { cancellationToken.ThrowIfCancellationRequested(); }` branch in `ReadSharedV2EventAsync`, and no test covers it. `V113_CancellationAfterCoreCompletion_ClearsOutputAsync` uses the correct key, so it reaches only the readable branch. Deleting the `else` block passes every test.
+  - This is the event-side twin of the pass-5 snapshot patch.
+  - Fix: add `V113_CancellationAfterUnreadableCoreCompletion_PropagatesAsync`, modelled on `V118_CancellationAfterUnreadableV2CoreCompletion_PropagatesAsync`: a resolver that returns a wrong 32-byte key, and a core observer that cancels when the `DataEncryptionKey` buffer is cleared. Assert `OperationCanceledException`, one resolver call, and an empty router observer (no `AbandonedOutput`).
+- [ ] [Review][Patch] Pin the typed snapshot metadata precedence at metadata version 2 (BH7) [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilitySnapshotRoutingTests.cs:461]
+  - The pass-5 version-2 rows cover only the raw event carrier. In the typed `ClassifyMetadata` path (classifier `:87-95`), swapping the undefined-state and over-version checks passes every test. After that swap, an undefined-state version-2 snapshot would report `UnknownMetadataVersion` while the matching event reports `MalformedMetadata`.
+  - Fix: add an `undefined-state-over-version` row to `V118_SnapshotMetadataFailure_IsRejectedWithoutCallsAsync`, using `v2 with { State = (PayloadProtectionState)7, MetadataVersion = 2 }` and expecting `MalformedMetadata`.
+
+##### Rejected (pass 7)
+
+- EC2, BH4 (`false`): `V118_CancellationAfterUnreadableV2CoreCompletion_PropagatesAsync` does not need to assert that it took the unreadable path. Its zero key differs from the frozen G-001 `TestFixture.Dek()` (bytes 0–31), so decryption cannot succeed. Deleting the router check at `:463` fails exactly this test.
+- EC3 (`low`): pass-5 VG3 is checked off although its target is unpinned, and the spec says `done` while sprint-status says `review`.
+  - The unpinned check is the first patch above.
+  - Both fixes would edit the spec under review, and this review's status sync settles the mismatch.
+- BH2 (`false`, carried from pass-5 BH8): stream cancellation ranks above element validation by design (pass-4 BH6). The delta only extends that rule to empty lists.
+- BH6 (`false`): the filter's caller-cancellation clause is an equivalent mutant, not a defect. Without the clause, `:484` still turns a swallowed caller cancellation into `OperationCanceledException`. The clause only preserves the original exception instance.
+- BH1, `:189` part (`false`): the stream loop's check duplicates `ReadEventAsync`'s own check at `:117`. It is redundant but harmless, and it predates the delta.
+- BH8 (`false`): the documentation claims do not hold.
+  - Neither the router nor the core documents `OperationCanceledException` or `OutOfMemoryException` on any method.
+  - The "one bounded unreadable reason" wording on `ReadSnapshotAsync` already covers `ConsistencyMismatch`.
+  - The summary of `V119_EmptyStream_IsReadableAsync` accurately describes its uncancelled scenario.
 
 ## Implementation Notes
 
