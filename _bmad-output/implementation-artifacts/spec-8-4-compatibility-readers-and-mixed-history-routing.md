@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -134,6 +134,57 @@ context:
 - VG-other (`low`): The augmented `Unprotected` metadata case repeats BH2 and the prior review's deliberate compatibility decision.
 - AA2 (`low`): The story explicitly treats blank carriers as legacy, including whitespace; changing the ceiling precedence needs an intent decision for a negligible case.
 - EC5 (`false`): Snapshot input intentionally uses typed `ProtectionMetadata`, as the story's implementation notes state; no raw snapshot carrier is promised.
+
+#### Pass 3 (2026-10-09)
+
+Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), acceptance auditor (AA). 33 raw findings: 3 patch, 2 defer, 16 rejected entries (25 raw findings). No decision is needed. The auditor confirmed all three acceptance criteria are met, with 618/618 tests passing.
+
+- [ ] [Review][Patch] Make snapshot plaintext zeroing observable and tested (VG1, BH7) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:493]
+  - Deleting `ZeroMemory(plaintext)` from the v2 snapshot `finally` passes every test, because no test can reach the buffer the core hands over.
+  - The v1 snapshot failure rows (`json-null`, `wrapper-no-enc`) never inspect their returned buffers.
+  - Fix:
+    - Call `_bufferObserver?.BufferCleared(SensitiveBufferKind.DecryptedPlaintext, plaintext)` after the v2 clear, the same way `ClearOwnedPayloads` does.
+    - Add a theory for the readable, deserialization-failure and cancellation outcomes that asserts a zeroed `DecryptedPlaintext` buffer was observed.
+    - Make the two v1 failure rows assert that their buffers are zeroed.
+- [ ] [Review][Patch] Pin that a v1 snapshot wrapper also carrying `$pdenc` never reaches the reader (VG2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:559]
+  - Removing `!hasV2Wrapper &&` sends a mixed-marker wrapper to the registered reader, and no test fails.
+  - Fix: add a `v1-wrapper-with-pdenc` shape under exact Parties v1 metadata to `V118_ProtectedMetadataShapeDisagreement_IsLocalDecisionAsync`. It should expect `BytesMetadataMismatch` and `SnapshotCalls == 0`.
+- [ ] [Review][Patch] Classify every over-version carrier as `UnknownMetadataVersion`, whatever its magnitude (AA3, EC2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:433]
+  - Today a version-2 carrier with an unknown member gives `MalformedMetadata`, because `Carrier.Read` reports `unknownField`. A version of 2^31 or more with the same member gives `UnknownMetadataVersion`.
+  - Authority §12.2 maps "schema above current version" to `UnknownMetadataVersion`, and a newer schema may add members.
+  - Fix:
+    - Change `version > int.MaxValue` to `version > EventStorePayloadProtectionMetadata.CurrentMetadataVersion` and update the comment.
+    - Add a version-2-plus-unknown-member row to `V115_OverVersionCarrier_IsUnknownMetadataVersionAsync`.
+    - Every existing V115 row keeps its expected reason.
+- [x] [Review][Defer] The 8.4 cases run only in the non-required `payload-protection` lane, and its floor of 324 cannot detect them disappearing [.github/workflows/payload-protection.yml:67] — deferred: pre-existing; this story's boundaries freeze the lane and its floor. The required-check half is already tracked by the Story 8.3 entry "Add `Payload Protection / payload-protection` to the protected branch's required status checks". The 357 cases that predate 8.4 already clear the floor.
+- [x] [Review][Defer] Legacy `json`/`json-redacted` events and legacy snapshots beyond the core JSON bounds become `BytesMetadataMismatch` (EC5, EC7) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:177] — deferred: this reconfirms pass 1's BH6/EC10/EC11. The stored-data scan in the existing Story 8.4 deferred-work entry settles it; no new work item is needed.
+
+##### Rejected (pass 3)
+
+- BH1, AA2, EC1, EC12 (`low`): A carrier with no `metadataVersion` member reports `UnknownMetadataVersion`. That is unlikely to occur, because `Carrier.Serialize` always writes the non-nullable integer. Both reasons are permanent, retain the record and call nothing, and the fix would add a presence guard.
+- BH2, EC10 (`low`): A respelled or v2-shaped object returned by the v1 snapshot reader would pass the router's output check.
+  - The reader is host-registered, and the Parties reader returns deserialized domain state.
+  - Reusing `TryInspectSnapshotState` there would also reject legitimate states.
+- BH3, AA4 (`false`): Authority §12.3 row 2 prescribes `ConsistencyMismatch`/`BytesMetadataMismatch` for missing or unprotected metadata over a protected wrapper shape. The Parties-v1-metadata subcase is unreadable and retained either way.
+- BH4, AA1, EC3, EC13 (`low`): The v2 snapshot read throws `PayloadProtectionCryptographicException` under invariant globalization.
+  - No EventStore deployment enables invariant globalization: no `InvariantGlobalization` setting or chiseled image in the csproj files, Builds props or workflows.
+  - In that mode, any `SnapshotTypeRegistry` with a registration already fails construction, so the throw is unreachable in a working configuration.
+  - The fix would add a catch arm.
+- EC4 (`low`): Under invariant globalization the registry constructor throws `PayloadProtectionCryptographicException`. That is a loud startup failure in an unsupported environment, consistent with V029's core write seams.
+- BH5 (`false`): Persisted snapshots load through `TryGetStateAsync<SnapshotRecord>`, so `State` is a `JsonElement`. The restriction to `JsonElement` and `ProtectedSnapshotPayloadV2` is a documented decision, and Story 8.7 owns the wiring.
+- BH6 (`low`): A custom-format record that fails the bounded parse passes through bytes that still hold ciphertext, so no plaintext leaks. That matches §12.2's "no detectable reserved wrapper" and the documented pass-through of unparseable custom formats. The fix would add a lenient scanner.
+- BH7 remainder (`low`): The observer kind names (`AbandonedOutput` vs `DecryptedPlaintext`) are test-seam cosmetics. The core never returns bytes together with a reason, because `CoreUnprotectionResult` builds results only through `Readable` and `Unreadable`.
+- BH8 (`low`): The registry accepts any `JsonTypeInfo`, and a misconfigured type reports `ConsistencyMismatch`. The type is developer-configured, and the fix would add validation surface.
+- BH9, EC11 (`low`): v1 wrapper member names are matched case-sensitively.
+  - Dapr actor state uses the default Web (camelCase) options, and `src` has no `ActorRuntimeOptions.JsonSerializerOptions` override. A stored Parties `ProtectedSnapshotState` is therefore camelCase.
+  - A PascalCase wrapper still fails closed: it is detected as protected and retained.
+- BH10 (`low`): Sequence 0 is accepted. Stored sequences start at 1, and pass-through only echoes the value; the fix would add a guard.
+- BH11 (`low`): `OwnsPayload` is derived from the route. The type is internal and the router never builds an inconsistent result; the fix would add API.
+- AA5 (`false`): Authority §12.2 row 1 defines missing metadata as `Legacy()`. Routing a stored `Legacy()` carrier like a missing one therefore matches "Missing legacy metadata plus `json+pdenc-v1` → same registered legacy reader", and the reader still authenticates.
+- EC6 (`low`, carried): This is the same finding pass 2 rejected as BH3. No domain state in eventstore, tenants, parties or memories declares an `Envelope` or `SnapshotTypeId` member.
+- EC8 (`low`, carried): This is the same finding pass 1 rejected as EC2.
+- EC9 (`false`): `CompatibilityEventRecord` and the persisted `EventEnvelope` both declare `SerializationFormat` and `EventTypeName` non-nullable. Failing loudly on a contract violation is correct.
+- VG3 (`low`): `ILegacyPayloadReader` returns a non-nullable `ValueTask<CoreUnprotectionResult>`, and the repo builds with `Nullable` and `TreatWarningsAsErrors`, so an in-repo reader cannot return `null`. The `(null, null)` fallback is a two-line defensive branch.
 
 ## Implementation Notes
 

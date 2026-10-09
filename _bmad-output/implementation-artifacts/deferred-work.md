@@ -5695,3 +5695,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
   summary: Before Story 8.7 Server wiring, inspect stored plain `json` and `json-redacted` history for ordinary fields named `$enc` that the compatibility router would classify as protected markers.
   evidence: Story 8.4 review pass 2 (BH2, medium, unverified). The approved format-and-shape matrix rejects a plain record containing `$enc` as `BytesMetadataMismatch`; whether such a field exists in retained history is unknown. A stored-data inventory would settle whether replay can encounter it.
+
+## Deferred from: code review of spec-8-4-compatibility-readers-and-mixed-history-routing.md (2026-10-09, pass 3)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
+  summary: When `Payload Protection / payload-protection` becomes a required check, also raise its `--minimum-expected-tests 324` floor so it covers the Story 8.4 compatibility cases.
+  evidence: Story 8.4 review pass 3 (VG4). The lane passes 618 tests, 261 of them in the three `Compatibility*Tests` classes, and the 357 cases that predate 8.4 already clear 324. If those classes stopped being discovered, the lane would stay green. This extends the existing Story 8.3 entry for the required check. Story 8.4's frozen boundaries forbid editing `payload-protection.yml`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
+  summary: Reconfirmed (EC5/EC7): legacy `json`/`json-redacted` events and legacy snapshots beyond the core JSON bounds become `BytesMetadataMismatch`.
+  evidence: Story 8.4 review pass 3 reproduced the stop with a 70,000-element legacy array. The existing pass-1 entry above (stored legacy-history bounds scan before Story 8.7) covers it, so no new work is needed.
