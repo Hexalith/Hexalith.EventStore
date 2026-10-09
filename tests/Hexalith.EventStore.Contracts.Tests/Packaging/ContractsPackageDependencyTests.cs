@@ -11,6 +11,8 @@ public sealed class ContractsPackageDependencyTests
     private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(8);
     private const string PublishedPackageObservation =
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/";
+    private const string P1rPublishedRun =
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/";
     private static readonly (string FileName, string Sha256)[] _sealedPackageObservations =
     [
         ("Directory.Packages.props", "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28"),
@@ -36,6 +38,14 @@ public sealed class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj",
         PublishedPackageObservation + "Directory.Packages.props",
         PublishedPackageObservation + "Identity.csproj",
+        P1rPublishedRun + "correction-smokes-safe/p1r-containment-evolution-smoke-05/consumers/candidate/Directory.Packages.props",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-aligned-build-01/consumers/source/Directory.Packages.props",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-01/consumers/source/Directory.Packages.props",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-02/consumers/source/Directory.Packages.props",
+        P1rPublishedRun + "execution-325e3c9327df4810941981b5882e3a70/source-consumers/Directory.Packages.props",
+        P1rPublishedRun + "execution-b944559fd0f3413696db48bcfc585f52/source-consumers/Directory.Packages.props",
+        P1rPublishedRun + "execution-c497b88cb2e5436ebddb37e33f1fcb64/source-consumers/Directory.Packages.props",
+        "tools/p1r-published-consumers/Directory.Packages.props",
     ];
 
     [Fact]
