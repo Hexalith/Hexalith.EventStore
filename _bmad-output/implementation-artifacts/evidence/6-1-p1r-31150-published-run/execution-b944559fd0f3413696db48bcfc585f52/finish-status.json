@@ -1,0 +1,12 @@
+[
+  {
+    "argv": [
+      "python3",
+      "/tmp/p1r-correction-full-iteration4-control/prepare.py"
+    ],
+    "started_utc": "2026-10-07T14:45:30.832283+00:00",
+    "finished_utc": "2026-10-07T14:45:42.028042+00:00",
+    "exit_code": 1,
+    "output_sha256": "1922643cf33e4097cfaa376b2d5b1706b1247ef45b851f9e7a143acd0e121b29"
+  }
+]

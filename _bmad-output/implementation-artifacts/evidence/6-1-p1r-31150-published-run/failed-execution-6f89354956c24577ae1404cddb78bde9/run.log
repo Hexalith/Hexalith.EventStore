@@ -1,0 +1,14 @@
+{"lane": "provenance", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 33, "passed": 33, "failed": 0}}
+{"lane": "legacy-metadata", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 24, "passed": 22, "failed": 2}}
+{"lane": "metadata-read", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 48, "passed": 44, "failed": 4}}
+{"lane": "metadata-write", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 312, "passed": 310, "failed": 2}}
+{"lane": "full-replay", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "snapshot-tail", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "retained-covered", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "retained-uncovered", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 540, "passed": 540, "failed": 0}}
+{"lane": "missing-event", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 540, "passed": 540, "failed": 0}}
+{"lane": "invalid-evidence", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 570, "passed": 564, "failed": 6}}
+{"lane": "query-wire", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 420, "passed": 360, "failed": 60}}
+{"lane": "projection-wire", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 78, "passed": 74, "failed": 4}}
+{"lane": "mixed-api", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 956, "passed": 927, "failed": 29}}
+{"error": "published invocation interrupted; partial case retained", "p1r_usable": false}

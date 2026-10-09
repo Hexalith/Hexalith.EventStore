@@ -1,0 +1,40 @@
+{
+  "conformance": {
+    "baseline": null,
+    "reference": null,
+    "status": "pending"
+  },
+  "decisions": [
+    {
+      "date": null,
+      "decision": "pending",
+      "owner": null,
+      "reference": null,
+      "role": "eventstore-owner"
+    },
+    {
+      "date": null,
+      "decision": "pending",
+      "owner": null,
+      "reference": null,
+      "role": "builds-owner"
+    },
+    {
+      "date": null,
+      "decision": "pending",
+      "owner": null,
+      "reference": null,
+      "role": "solution-owner"
+    },
+    {
+      "date": null,
+      "decision": "pending",
+      "owner": null,
+      "reference": null,
+      "role": "test-owner"
+    }
+  ],
+  "fixture": null,
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "schema": "hexalith.p1r.owner-decisions.v1"
+}

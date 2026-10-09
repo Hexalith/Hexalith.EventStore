@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-executor.py",
+    "run",
+    "--out",
+    "/tmp/p1r-31150-live-20261007-06",
+    "--inputs",
+    "/tmp/p1r-31150-observe-20261007-03/owner-inputs.json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "exit_code": 0,
+  "exit_status_observation": "Actual exec session73994 completion",
+  "finished_utc": "2026-10-07T12:10:05.277727+00:00",
+  "started_utc": "2026-10-07T11:52:13.741503+00:00",
+  "stdout_summary": {
+    "errors": [],
+    "out": "/tmp/p1r-31150-live-20261007-06",
+    "p1r_usable": false
+  }
+}

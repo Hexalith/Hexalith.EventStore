@@ -1,0 +1,23 @@
+{
+  "errors": [
+    "snapshot-tail/3.70.1-to-3.110.0: ",
+    "interrupted",
+    "KeyboardInterrupt"
+  ],
+  "executor_source_sha256": "3759b37b490e45476af04301544d2190d2ca0161ccc03533d7c1beffa5daf0ef",
+  "finished_utc": "2026-10-07T11:43:32.249849+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "8776db77a0ab459fb2ac36b9848623ba",
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31150-live-20261007-04/receipts/db4ee9b0a005405d8d22130b50f2a0fa.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/afbeb2a7f61f4ffd92c1537d475264f2.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/da75884641ba4969a79d8934b0d8e319.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/2a12b8c36d604d18a33d95c88c282cde.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/d0119dddeb484c9fa936d32c6b0237c7.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/07aa761f18034746a72a6c664388f1b0.json",
+    "/tmp/p1r-31150-live-20261007-04/receipts/0b2e9f33131d4b66b2fe7164cd374a52.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T11:40:28.366980+00:00"
+}

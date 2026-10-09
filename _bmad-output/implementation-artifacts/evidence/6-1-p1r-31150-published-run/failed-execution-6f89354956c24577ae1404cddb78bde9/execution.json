@@ -1,0 +1,65 @@
+{
+  "errors": [
+    "distinct Debug/source consumer: owned command cleanup failed",
+    "checkout/current-build: 'source'",
+    "checkout/legacy-metadata: 'source'",
+    "checkout/query-wire: 'source'",
+    "checkout/projection-wire: 'source'",
+    "checkout/full-replay: 'source'",
+    "checkout/snapshot-tail: 'source'",
+    "checkout/retained-covered: 'source'",
+    "checkout/retained-uncovered: ",
+    "interrupted",
+    "KeyboardInterrupt"
+  ],
+  "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+  "finished_utc": "2026-10-07T13:49:21.311480+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "6f89354956c24577ae1404cddb78bde9",
+  "owned_containers": {
+    "0af15adee96a3db739895d8e8984124b43e9b7a4ff4b71fb69c90948c038a88d": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-6f89354956c24577ae1404cddb78bde9-placement-6fd63bd6",
+      "port": 13593,
+      "role": "placement"
+    },
+    "0f703460c84ee59a8977332db5c569a9ad390ed3a26ee4b4b88abb09145d40f5": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-6f89354956c24577ae1404cddb78bde9-source-dbfc3f0a",
+      "port": 21940,
+      "role": "source"
+    },
+    "97da048bb51b29a76b9fe3edb8caa79d1f5b7af996dbe3f8f8ced93ed175049e": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-6f89354956c24577ae1404cddb78bde9-pubsub-3861f55c",
+      "port": 28504,
+      "role": "pubsub"
+    },
+    "a13c9aedfeab968bc4000e403ed315b0a194170b45a41a37afbb84aed174a9bc": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-6f89354956c24577ae1404cddb78bde9-scheduler-d8dab403",
+      "port": 23574,
+      "role": "scheduler"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/44e763da4c7a45e9859cd3fd1d3fe10c.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/f25b0a0268084884877007ec2025f029.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/fa7752e1efcc426b973e839f6c79ee06.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/9f38445e1c324b27a1975612dd0374ba.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/e226634811874547a0a7777662f3dd64.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/1e07435c96ca41ce81e17a7c006ab25d.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/045dc68fd1aa4a0492caf9a4e4b3eea5.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/6e6475d920534cdaacdb348cf36e1cff.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/f09c16824d0b4a22bada19af5932a1f1.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/c2bf38cb25db4be19968d43cd62fb330.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/6a963d3ab6134c4c84c0878c1769f219.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/b6d2c11e2616430ea018d088c7f04e89.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/d98955d35f694711a3c9db76503b547c.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/b7ea3afceb15491da851713e9d17ba06.json",
+    "/tmp/p1r-correction-full-iteration1-execution/receipts/d12d670cac134343b31e59ef62beec7a.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T13:31:04.375127+00:00"
+}

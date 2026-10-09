@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-qualification.py",
+    "validate",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/execution-325e3c9327df4810941981b5882e3a70/packet"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T12:11:34.994305+00:00",
+  "output_sha256": "52dbb1cf15362b5387f1bd5a9f1d706698f69fae017dc1f8d8204f10807ecacb",
+  "started_utc": "2026-10-07T12:11:34.068189+00:00"
+}

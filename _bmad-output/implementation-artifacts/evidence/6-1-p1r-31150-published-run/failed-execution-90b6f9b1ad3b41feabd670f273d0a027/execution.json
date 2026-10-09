@@ -1,0 +1,14 @@
+{
+  "consumer_cleanup": "/tmp/p1r-correction-full-iteration3-execution/receipts/334968c5aa604ab7a10d65651a6020d1.json",
+  "errors": [
+    "owned command cleanup failed"
+  ],
+  "executor_source_sha256": "f859cc779815e3aca6b9a90dc326be8b24cbe37f7d130e669b978fe1c63d51cc",
+  "finished_utc": "2026-10-07T14:15:39.596907+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "90b6f9b1ad3b41feabd670f273d0a027",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T14:15:15.049605+00:00"
+}

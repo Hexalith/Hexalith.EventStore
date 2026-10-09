@@ -1,0 +1,45 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "-I",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "inventory",
+    "--container",
+    "194b84da0b8d4ad4fd8b002bd3c0c14dd985d011c9cd1342ffaf5e90e87bfb89",
+    "--invocation",
+    "ad19b44dd4d44796b09e2f62c9388046"
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 35613,
+          "pid": 35613,
+          "session": 35613,
+          "start_ticks": 11681276
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "command": 1528,
+  "errno": 3,
+  "exception_type": "ProcessLookupError",
+  "owned_processes": [
+    {
+      "pgid": 35613,
+      "pid": 35613,
+      "session": 35613,
+      "start_ticks": 11681276
+    }
+  ],
+  "qualification_authority": false,
+  "recorded_exit_code": 127,
+  "retained_output_tail": "adf69cc8af0c\",\"tenant\":\"tenant-b\"}]ProcessLookupError: [Errno 3] No such process"
+}

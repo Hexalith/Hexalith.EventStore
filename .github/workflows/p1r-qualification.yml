@@ -30,3 +30,6 @@ jobs:
       # scope and can never satisfy a published-package or operational qualification lane.
       - name: Verify P1R published qualification harness contracts
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_published_qualification.py'
+
+      - name: Verify P1R published executor regressions
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_published_executor.py'

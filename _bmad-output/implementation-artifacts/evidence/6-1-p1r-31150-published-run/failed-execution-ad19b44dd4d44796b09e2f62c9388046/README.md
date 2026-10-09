@@ -1,0 +1,3 @@
+# Failed corrected execution ad19b44dd4d44796b09e2f62c9388046
+
+Command 1528 retained valid inventory JSON followed by ProcessLookupError (errno 3) from ownership observation, with command exit 127 and two empty/error-free cleanup attempts. This is the demonstrated disappearing-process race; generic/permission errors remain refusals. The invocation was interrupted and final repeated owned cleanup passed 7/7, with shared resources preserved. Completed lane receipts, every failed check, raw commands/configurations and original source closure remain unchanged. This diagnostic is not imported into a later qualification packet. The earlier invocation's original generic OSError errno remains unknown.

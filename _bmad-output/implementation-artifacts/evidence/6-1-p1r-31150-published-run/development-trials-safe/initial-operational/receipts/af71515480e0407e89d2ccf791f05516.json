@@ -1,0 +1,992 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "run",
+    "--lane",
+    "provenance"
+  ],
+  "assertions": {
+    "attempted": 33,
+    "failed": 0,
+    "passed": 33
+  },
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "checks": [
+        {
+          "id": "probe:physical-identity-observed",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:signature",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0",
+      "inventory": {
+        "after_sha256": "143e73ae5ff97158ca034770d419eed3a522fd38f6c729273ab8bedee310c426",
+        "before_sha256": "143e73ae5ff97158ca034770d419eed3a522fd38f6c729273ab8bedee310c426"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "checks": [
+        {
+          "id": "probe:physical-identity-observed",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:signature",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1",
+      "inventory": {
+        "after_sha256": "36438ef452ee9385f43bfa3516be3fa631e5305fabb59f95629306ca327a5fde",
+        "before_sha256": "36438ef452ee9385f43bfa3516be3fa631e5305fabb59f95629306ca327a5fde"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "checks": [
+        {
+          "id": "probe:physical-identity-observed",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Client:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Contracts:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.Server:signature",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:archive-sha256",
+          "passed": true
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults:signature",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0",
+      "inventory": {
+        "after_sha256": "48da3bdde54296cad3ce4cf614f1ff3060ffdebafc113677bc6314281b16795b",
+        "before_sha256": "48da3bdde54296cad3ce4cf614f1ff3060ffdebafc113677bc6314281b16795b"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    }
+  ],
+  "compatibility": "compatible",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "execution": "passed",
+  "execution_evidence": {
+    "cases": [
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "identity"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:06.588914+00:00",
+            "id": 71,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}]}}\n",
+            "output_sha256": "0389277763d8f25c5b000070657abe5972e928f1b8b4ab1917fca597ddf52805",
+            "started_utc": "2026-10-07T10:33:06.468767+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/packages/hexalith.eventstore.client/3.110.0/hexalith.eventstore.client.3.110.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:06.907025+00:00",
+            "id": 72,
+            "output": "\nVerifying Hexalith.EventStore.Client.3.110.0\nContent hash: OSjRL4VNdN7U40CQKxVWeboQV4Go4mnXm5a6zuKsyMOz/1/qmq/g6VRbGyEN1wN9R6nDElv2RHeV754BlQvjjg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "a6501eac629446d67da6c75efa1b8da3ca3443d4006e1175856edf0f4bbd7608",
+            "started_utc": "2026-10-07T10:33:06.589937+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/packages/hexalith.eventstore.contracts/3.110.0/hexalith.eventstore.contracts.3.110.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:07.220957+00:00",
+            "id": 73,
+            "output": "\nVerifying Hexalith.EventStore.Contracts.3.110.0\nContent hash: baYsmElIPNyTHly6B18qIldqyV3IQ10znHmYON+AKeuL3xyvacz2Jrn9xFMY8b2C/Ow874JYCkq0o6x/NbcUsQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "bf7f207d60e8c4b34180617f0d4b51a47d6814be6f96d346aa7abcad205561b5",
+            "started_utc": "2026-10-07T10:33:06.908167+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/packages/hexalith.eventstore.domainservice/3.110.0/hexalith.eventstore.domainservice.3.110.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:07.538249+00:00",
+            "id": 74,
+            "output": "\nVerifying Hexalith.EventStore.DomainService.3.110.0\nContent hash: HWvcNBAfLqxjZ2w7aOABVaZv2WXn7W3aox1GHjq5zFQe1UjXW3en/aiPazsa8ccXCUfXE+WqrA+Q1YNABKSmHw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "420562227b0bda2d6b156f9e1f8ecfd1cd7bb205f206a124964956fd448d6b3c",
+            "started_utc": "2026-10-07T10:33:07.221796+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/packages/hexalith.eventstore.server/3.110.0/hexalith.eventstore.server.3.110.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:07.844197+00:00",
+            "id": 75,
+            "output": "\nVerifying Hexalith.EventStore.Server.3.110.0\nContent hash: ag4Svmfv94X4DxxTRAiyJPQZM0IXxrH40JaOtTx5RTCfh2ASaKHf9aIwWJGSOL4pWHGqd5w3apvu4or1PYzoxg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "3434116cd1acfc022674d649312220c5d3887deed682171c93a4090ef3644397",
+            "started_utc": "2026-10-07T10:33:07.539628+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/packages/hexalith.eventstore.servicedefaults/3.110.0/hexalith.eventstore.servicedefaults.3.110.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:08.184373+00:00",
+            "id": 76,
+            "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.110.0\nContent hash: oz8knL5wa0XjWO1FcvTASXgpew08t+pEN21lqn7dC6rvIYls9CeQ72KeRgQndEhN4DSGbupWBkGAIhLa9yd7Mg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "b8e2de486f3a36e5ba80c214ab502f071d041459a71624faefeb815b0f41de94",
+            "started_utc": "2026-10-07T10:33:07.845003+00:00"
+          }
+        ],
+        "id": "3.110.0",
+        "observations": {
+          "assemblies": [
+            {
+              "name": "Hexalith.EventStore.Client",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+              "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+              "version": "3.110.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Contracts",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+              "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+              "version": "3.110.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Server",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+              "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+              "version": "3.110.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.DomainService",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+              "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+              "version": "3.110.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.ServiceDefaults",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+              "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+              "version": "3.110.0.0"
+            }
+          ]
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "identity"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:08.282372+00:00",
+            "id": 77,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022\"}]}}\n",
+            "output_sha256": "83b4466c5a112418e97a5c270ad883421b3ec8114924e2177b9205fe401b19b4",
+            "started_utc": "2026-10-07T10:33:08.185237+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/packages/hexalith.eventstore.client/3.70.1/hexalith.eventstore.client.3.70.1.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:08.584303+00:00",
+            "id": 78,
+            "output": "\nVerifying Hexalith.EventStore.Client.3.70.1\nContent hash: UjVLImHNmOZkgc0VkzeFyWFLnCrqYZ967RH4PF1caD/xgsrMsRwtLtd6+d6JQs8f5eLTJyAvYinnguRqg+zYiw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "6a8fff3465085b04cb910a65603ff76d161d765eb2eae46b22ce2b80b29f0f1b",
+            "started_utc": "2026-10-07T10:33:08.283377+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/packages/hexalith.eventstore.contracts/3.70.1/hexalith.eventstore.contracts.3.70.1.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:08.899042+00:00",
+            "id": 79,
+            "output": "\nVerifying Hexalith.EventStore.Contracts.3.70.1\nContent hash: D46Ujom2BaRA9dliNQEDkddSI+aETQX56bfK6RnHSGOTJnrK5MdUvvg4txZJLc/8OvhMEuRhxwHbS96O+gKo0A==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "f54510014fd87dc8df604b6732f38b03eb6f12dfc440fa30148b56ba5974e5e8",
+            "started_utc": "2026-10-07T10:33:08.585298+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/packages/hexalith.eventstore.domainservice/3.70.1/hexalith.eventstore.domainservice.3.70.1.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:09.211869+00:00",
+            "id": 80,
+            "output": "\nVerifying Hexalith.EventStore.DomainService.3.70.1\nContent hash: M0SprdUzSyPnfvFAIMHq2BT7HfxnR7G77DT26JnPxIFhBR3ysov7hkuaCUGVi+i5TfMLieEng+++UjdoaxNIjQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "0dec56d44955a8774932151d4d5007db56957323bb549c74de7123a77d361fbd",
+            "started_utc": "2026-10-07T10:33:08.900160+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/packages/hexalith.eventstore.server/3.70.1/hexalith.eventstore.server.3.70.1.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:09.532425+00:00",
+            "id": 81,
+            "output": "\nVerifying Hexalith.EventStore.Server.3.70.1\nContent hash: dDmVa7LxtzWyEsDYeyqfYaHAu7r0twGmagaCjVM+n9kFFMpAC5v7rWaIOi+CEiQUEkT/6kC5sXgHP0kYIy7tFg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "f4b83419ceb987b3ca30bbd086ac38c343557fd1cad7d676b5fcaa81b9119d1a",
+            "started_utc": "2026-10-07T10:33:09.212940+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/packages/hexalith.eventstore.servicedefaults/3.70.1/hexalith.eventstore.servicedefaults.3.70.1.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:09.868881+00:00",
+            "id": 82,
+            "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.70.1\nContent hash: 8SwIg3ok4Tb+rQnVJziGGZV0OSDRrHEinn5TUXX8zu2KdyWFAmZkdWb9nwjQ+xTvn/G9qznYBKH+O0oMupQGVQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "acfe403672132d17d805ddbe90ee257c27f6be7be5b79204fa07731b03fb76ec",
+            "started_utc": "2026-10-07T10:33:09.533264+00:00"
+          }
+        ],
+        "id": "3.70.1",
+        "observations": {
+          "assemblies": [
+            {
+              "name": "Hexalith.EventStore.Client",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+              "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+              "version": "3.70.1.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Contracts",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+              "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+              "version": "3.70.1.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Server",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+              "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+              "version": "3.70.1.0"
+            },
+            {
+              "name": "Hexalith.EventStore.DomainService",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+              "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+              "version": "3.70.1.0"
+            },
+            {
+              "name": "Hexalith.EventStore.ServiceDefaults",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+              "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+              "version": "3.70.1.0"
+            }
+          ]
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "identity"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:09.979402+00:00",
+            "id": 83,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660\"}]}}\n",
+            "output_sha256": "967fcb0aa4858a56ea5a3563dc304e7d7b9e0e38c742c6103c42111469097a58",
+            "started_utc": "2026-10-07T10:33:09.869821+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/packages/hexalith.eventstore.client/3.115.0/hexalith.eventstore.client.3.115.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:10.288652+00:00",
+            "id": 84,
+            "output": "\nVerifying Hexalith.EventStore.Client.3.115.0\nContent hash: 6oSVMtK90Wiig9ukZrCM/MGxGMNpFqowuXVUpN8pha0Wgb6JJsdR8h1iiCkXVWLGgYL3I0wUd1bFzoS+RQZhsg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "e7fc23c2dcd448c136bd7eb57af6ba3c83b7e85af5e4eb49d4be2485de115f19",
+            "started_utc": "2026-10-07T10:33:09.980515+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/packages/hexalith.eventstore.contracts/3.115.0/hexalith.eventstore.contracts.3.115.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:10.601690+00:00",
+            "id": 85,
+            "output": "\nVerifying Hexalith.EventStore.Contracts.3.115.0\nContent hash: abhaYH3cngCNWll16UiL59s9Edxef1iYkPmjn9oUzQR/jgoRUhLhhz6EGyKrzGoGdDk5k+6zBKVPyFPLRO32uA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "16dd661532cc88b41c73bdc649105b9c00d3dbeaf9323ec4c4a1b1bb64523446",
+            "started_utc": "2026-10-07T10:33:10.290115+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/packages/hexalith.eventstore.domainservice/3.115.0/hexalith.eventstore.domainservice.3.115.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:10.916006+00:00",
+            "id": 86,
+            "output": "\nVerifying Hexalith.EventStore.DomainService.3.115.0\nContent hash: fFVCm+45FbrCfVzhimRUuJ7hzKKBMUdVWiGZbeU/Ov8csJUQi1J/y/idp6aFgQ9lgmPQ0p88NIai2573ReJdOA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "ae1dea469246bd47b609570559d0b0006d80e0d1a5d30f82b3750f58dfeb356b",
+            "started_utc": "2026-10-07T10:33:10.602906+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/packages/hexalith.eventstore.server/3.115.0/hexalith.eventstore.server.3.115.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:11.232205+00:00",
+            "id": 87,
+            "output": "\nVerifying Hexalith.EventStore.Server.3.115.0\nContent hash: oq9vNRMMYOjh+2oS4zeU2XgU3+1rEbPkdJEGl596ybA2S8kHb83gJUxPfRwOtMI1z8MPhh3Vo2onApTGK0bGuA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "89a383b13723c15fd7a51cd42fdb88442fa1a044e99ba33db7903aa10b71c3ad",
+            "started_utc": "2026-10-07T10:33:10.917340+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "nuget",
+              "verify",
+              "--all",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/packages/hexalith.eventstore.servicedefaults/3.115.0/hexalith.eventstore.servicedefaults.3.115.0.nupkg",
+              "--verbosity",
+              "minimal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:11.539343+00:00",
+            "id": 88,
+            "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.115.0\nContent hash: rlPzDS8kaa6u5AFRd8WSZBDqbPj1VjunYTW76kSQlZSFJeRRENGPR1jMpIm81njb+FeCVbjET/AWfFH/f8fgpQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+            "output_sha256": "1b3a917edaed9f18da5311e73413da6cf133483b12945271061ce83a43e31f87",
+            "started_utc": "2026-10-07T10:33:11.233081+00:00"
+          }
+        ],
+        "id": "3.115.0",
+        "observations": {
+          "assemblies": [
+            {
+              "name": "Hexalith.EventStore.Client",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+              "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+              "version": "3.115.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Contracts",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+              "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+              "version": "3.115.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.Server",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+              "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+              "version": "3.115.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.DomainService",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+              "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+              "version": "3.115.0.0"
+            },
+            {
+              "name": "Hexalith.EventStore.ServiceDefaults",
+              "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+              "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+              "version": "3.115.0.0"
+            }
+          ]
+        }
+      }
+    ],
+    "executor_source_sha256": "638cced50d059e06d149eee560be49531d52d9fae4da332a54fd494efd65c983",
+    "mechanism": "p1r-executed-checks-v1"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T10:33:11.540520+00:00",
+  "fixture": {
+    "id": "p1r-51499ac27da84c22b3ad3790b2d33859",
+    "synthetic": false
+  },
+  "id": "af71515480e0407e89d2ccf791f05516",
+  "identities": {
+    "configuration": "Release",
+    "loaded_assemblies": [
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      }
+    ],
+    "packages": [
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4"
+      }
+    ]
+  },
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "instrumentation": "p1r-executed-checks-v1",
+  "lane": "provenance",
+  "output_sha256": "84e7487efdd0f728c058893bb884cb739769239a051c7cc6198f252510c90bfa",
+  "profile": null,
+  "schema": "hexalith.p1r.lane-receipt.v1",
+  "scope": "published-package",
+  "started_utc": "2026-10-07T10:33:06.468696+00:00"
+}

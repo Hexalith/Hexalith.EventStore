@@ -1,0 +1,13 @@
+{
+  "errors": [],
+  "executor_source_sha256": "c859282b85c330ec3d8874fc9629fce6830faca3840867b796dffc1d25beeaef",
+  "finished_utc": "2026-10-07T10:59:51.048509+00:00",
+  "inputs_sha256": "c4970b8bb71dfb07f3dc5c7e2524a28f998d8f7f45674b455cfbc7f00b69beb0",
+  "invocation": "df19ea9136774a51a545ac1dcc5a03d5",
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31150-correction-smoke-03/receipts/ee5c9108ec334db289b978009f34712f.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T10:58:30.195003+00:00"
+}

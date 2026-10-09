@@ -1,0 +1,3 @@
+# Failed corrected execution 6f89354956c24577ae1404cddb78bde9
+
+This invocation was interrupted after a real Debug/source restore cleanup failure. The restore exited 0; its first cleanup retained OSError with no remaining processes, and its second cleanup retained no errors or remaining processes. The unavailable source cases and owned interruption remain nonpassing. Thirteen completed canonical package/runtime lanes, raw commands, configurations, retained witnesses and cleanup observations are preserved unchanged. This failed diagnostic is not the completed qualification invocation and is not imported into the final packet. Invocation-owned resources were cleaned; shared resources were preserved.

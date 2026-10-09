@@ -1,0 +1,737 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "run",
+    "--lane",
+    "legacy-metadata"
+  ],
+  "assertions": {
+    "attempted": 24,
+    "failed": 2,
+    "passed": 22
+  },
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-pascal-floor-None",
+      "inventory": {
+        "after_sha256": "af890a653ba01ae982bb7bea9adcd44e9ba97811189aaf6cb45260e3efa06c8f",
+        "before_sha256": "af890a653ba01ae982bb7bea9adcd44e9ba97811189aaf6cb45260e3efa06c8f"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-web-floor-None",
+      "inventory": {
+        "after_sha256": "af6eca1949c99b02af263902137b04f9ada48c89cf99ecafdbc92c3353bb5df5",
+        "before_sha256": "af6eca1949c99b02af263902137b04f9ada48c89cf99ecafdbc92c3353bb5df5"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 1,
+        "passed": 3
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-pascal-floor-None",
+      "inventory": {
+        "after_sha256": "69f352570a088aa64efddbbd58116f8c4fc20f78775e750804646b52f5a7bca5",
+        "before_sha256": "69f352570a088aa64efddbbd58116f8c4fc20f78775e750804646b52f5a7bca5"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 1,
+        "passed": 3
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-web-floor-None",
+      "inventory": {
+        "after_sha256": "64e091efb05fb115e28e7afa6204dd50138c6f45fc53a718761d6c7405c51a39",
+        "before_sha256": "64e091efb05fb115e28e7afa6204dd50138c6f45fc53a718761d6c7405c51a39"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-pascal-floor-None",
+      "inventory": {
+        "after_sha256": "af890a653ba01ae982bb7bea9adcd44e9ba97811189aaf6cb45260e3efa06c8f",
+        "before_sha256": "af890a653ba01ae982bb7bea9adcd44e9ba97811189aaf6cb45260e3efa06c8f"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "checks": [
+        {
+          "id": "probe:sequence-twelve",
+          "passed": true
+        },
+        {
+          "id": "probe:etag-preserved",
+          "passed": true
+        },
+        {
+          "id": "probe:last-modified-preserved",
+          "passed": true
+        },
+        {
+          "id": "retained-floor-read",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-web-floor-None",
+      "inventory": {
+        "after_sha256": "af6eca1949c99b02af263902137b04f9ada48c89cf99ecafdbc92c3353bb5df5",
+        "before_sha256": "af6eca1949c99b02af263902137b04f9ada48c89cf99ecafdbc92c3353bb5df5"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    }
+  ],
+  "compatibility": "incompatible",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "execution": "failed",
+  "execution_evidence": {
+    "cases": [
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/dce0bbf090244830b528ab1ab79fa235.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/d4153035ed924c7381a9e7ceb4035ba1.json",
+              "pascal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:11.673103+00:00",
+            "id": 89,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":1,\"output_sha256\":\"2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323\"}}\n",
+            "output_sha256": "e6695ce163516f591e339688ebc4ffb3c5bae6b7e264de144e05e36ec95d771a",
+            "started_utc": "2026-10-07T10:33:11.541703+00:00"
+          }
+        ],
+        "id": "3.110.0-pascal-floor-None",
+        "observations": {
+          "input_sha256": "772611083a0812e454b93055e4c51f123deb3bbc7dbf2a56e3331c002a765b64",
+          "output_sha256": "2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/42793722188748c39b923e125d501640.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/300ced065f3a458d9ca075af1947bc97.json",
+              "web"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:11.788938+00:00",
+            "id": 90,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":1,\"output_sha256\":\"6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf\"}}\n",
+            "output_sha256": "882a7b8e6840470ff126d22d944cddcd0da243067c1a5e34580fb397537f6736",
+            "started_utc": "2026-10-07T10:33:11.674133+00:00"
+          }
+        ],
+        "id": "3.110.0-web-floor-None",
+        "observations": {
+          "input_sha256": "c98d3b3b01b322858d9ec0070827cf60fda4d74ff84401a10cf8c4568e287fb8",
+          "output_sha256": "6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0c75df62168b470fbd8f8e6bc6108386.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/144a158c4f7f4e209ce3b94589e3299c.json",
+              "pascal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:11.911946+00:00",
+            "id": 91,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":null,\"output_sha256\":\"ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c\"}}\n",
+            "output_sha256": "5b5a4859da667282f62b002893cff0af92e4c30623a35837064c7baf7ebbfad4",
+            "started_utc": "2026-10-07T10:33:11.789943+00:00"
+          }
+        ],
+        "id": "3.70.1-pascal-floor-None",
+        "observations": {
+          "input_sha256": "772611083a0812e454b93055e4c51f123deb3bbc7dbf2a56e3331c002a765b64",
+          "output_sha256": "ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0b3348bd6cdd44ca851d647f632b89d1.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b1d80eda7fe143e6b058872c5aacec3d.json",
+              "web"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:12.038986+00:00",
+            "id": 92,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":null,\"output_sha256\":\"0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a\"}}\n",
+            "output_sha256": "f60f8d6b0eb5c4fb132208507757dbc4017f50c4e4a7acf0d943f7293a35eff9",
+            "started_utc": "2026-10-07T10:33:11.913005+00:00"
+          }
+        ],
+        "id": "3.70.1-web-floor-None",
+        "observations": {
+          "input_sha256": "c98d3b3b01b322858d9ec0070827cf60fda4d74ff84401a10cf8c4568e287fb8",
+          "output_sha256": "0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5971f4e7d2b540a48ee90ae4ced77557.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/d75a41d643ed4f3ea0140d396e89504a.json",
+              "pascal"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:12.187082+00:00",
+            "id": 93,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":1,\"output_sha256\":\"2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323\"}}\n",
+            "output_sha256": "e6695ce163516f591e339688ebc4ffb3c5bae6b7e264de144e05e36ec95d771a",
+            "started_utc": "2026-10-07T10:33:12.040209+00:00"
+          }
+        ],
+        "id": "3.115.0-pascal-floor-None",
+        "observations": {
+          "input_sha256": "772611083a0812e454b93055e4c51f123deb3bbc7dbf2a56e3331c002a765b64",
+          "output_sha256": "2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "metadata",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2e2c86608d0a4dfe846a1cc501f5d6c7.json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/cd595afe44d44257aae8a2fa8b45d895.json",
+              "web"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:33:12.317004+00:00",
+            "id": 94,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"sequence-twelve\",\"passed\":true},{\"id\":\"etag-preserved\",\"passed\":true},{\"id\":\"last-modified-preserved\",\"passed\":true}],\"assertions\":{\"attempted\":3,\"passed\":3,\"failed\":0}},\"observation\":{\"sequence\":12,\"floor\":1,\"output_sha256\":\"6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf\"}}\n",
+            "output_sha256": "882a7b8e6840470ff126d22d944cddcd0da243067c1a5e34580fb397537f6736",
+            "started_utc": "2026-10-07T10:33:12.188376+00:00"
+          }
+        ],
+        "id": "3.115.0-web-floor-None",
+        "observations": {
+          "input_sha256": "c98d3b3b01b322858d9ec0070827cf60fda4d74ff84401a10cf8c4568e287fb8",
+          "output_sha256": "6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf"
+        }
+      }
+    ],
+    "executor_source_sha256": "638cced50d059e06d149eee560be49531d52d9fae4da332a54fd494efd65c983",
+    "mechanism": "p1r-executed-checks-v1"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T10:33:12.318286+00:00",
+  "fixture": {
+    "id": "p1r-51499ac27da84c22b3ad3790b2d33859",
+    "synthetic": false
+  },
+  "id": "7f39f125f41c41c6b113a10b8d2423f5",
+  "identities": {
+    "configuration": "Release",
+    "loaded_assemblies": [
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      }
+    ],
+    "packages": [
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4"
+      }
+    ]
+  },
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "instrumentation": "p1r-executed-checks-v1",
+  "lane": "legacy-metadata",
+  "output_sha256": "4bdc548e8abe4bf578b75bad8ad803979921ddc471a0137168f27625179c3080",
+  "profile": null,
+  "schema": "hexalith.p1r.lane-receipt.v1",
+  "scope": "published-package",
+  "started_utc": "2026-10-07T10:33:11.541579+00:00"
+}

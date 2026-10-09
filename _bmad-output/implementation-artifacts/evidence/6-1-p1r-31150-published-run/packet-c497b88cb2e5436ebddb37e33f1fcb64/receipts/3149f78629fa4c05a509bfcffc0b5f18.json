@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 65095,
+          "pid": 65095,
+          "session": 65095,
+          "start_ticks": 12134787
+        },
+        {
+          "pgid": 65096,
+          "pid": 65096,
+          "session": 65096,
+          "start_ticks": 12134788
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "repeated-cleanup",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/packet-c497b88cb2e5436ebddb37e33f1fcb64",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-07T15:26:53.222276+00:00",
+  "id": "3149f78629fa4c05a509bfcffc0b5f18",
+  "invocation": "c7b2853f96a84389b8dddf7c59bc3b09",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/3149f78629fa4c05a509bfcffc0b5f18.txt",
+    "sha256": "16907c6c32efd021821866b1d7763c76b4808f7b2ed7a72565769e71939915a9"
+  },
+  "owned_processes": [
+    {
+      "pgid": 65095,
+      "pid": 65095,
+      "session": 65095,
+      "start_ticks": 12134787
+    },
+    {
+      "pgid": 65096,
+      "pid": 65096,
+      "session": 65096,
+      "start_ticks": 12134788
+    }
+  ],
+  "root_process": {
+    "pgid": 65095,
+    "pid": 65095,
+    "session": 65095,
+    "start_ticks": 12134787
+  },
+  "started_utc": "2026-10-07T15:26:52.727587+00:00",
+  "timed_out": true
+}

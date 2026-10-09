@@ -1,0 +1,20 @@
+{"lane": "provenance", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 33, "passed": 33, "failed": 0}}
+{"lane": "legacy-metadata", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 24, "passed": 22, "failed": 2}}
+{"lane": "metadata-read", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 48, "passed": 44, "failed": 4}}
+{"lane": "metadata-write", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 312, "passed": 310, "failed": 2}}
+{"lane": "full-replay", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "snapshot-tail", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "retained-covered", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "retained-uncovered", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 540, "passed": 540, "failed": 0}}
+{"lane": "missing-event", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 540, "passed": 540, "failed": 0}}
+{"lane": "invalid-evidence", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 570, "passed": 564, "failed": 6}}
+{"lane": "query-wire", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 420, "passed": 360, "failed": 60}}
+{"lane": "projection-wire", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 78, "passed": 74, "failed": 4}}
+{"lane": "mixed-api", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 956, "passed": 927, "failed": 29}}
+{"lane": "checkout", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 704, "passed": 704, "failed": 0}}
+{"lane": "post-upgrade-restore", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 47, "passed": 47, "failed": 0}}
+{"lane": "pre-upgrade-restore", "execution": "passed", "compatibility": "incompatible", "assertions": {"attempted": 44, "passed": 44, "failed": 0}}
+{"lane": "failure-cleanup", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 115, "passed": 115, "failed": 0}}
+{"lane": "reminder-recovery", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 131, "passed": 131, "failed": 0}}
+{"lane": "logical-event-evolution", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 150, "passed": 147, "failed": 3}}
+{"errors": [], "out": "/tmp/p1r-correction-full-iteration5-execution", "p1r_usable": false}

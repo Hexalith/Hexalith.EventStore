@@ -1,0 +1,8 @@
+{"lane": "provenance", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 33, "passed": 33, "failed": 0}}
+{"lane": "legacy-metadata", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 24, "passed": 22, "failed": 2}}
+{"lane": "metadata-read", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 48, "passed": 44, "failed": 4}}
+{"lane": "metadata-write", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 312, "passed": 310, "failed": 2}}
+{"lane": "full-replay", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "snapshot-tail", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"lane": "retained-covered", "execution": "passed", "compatibility": "compatible", "assertions": {"attempted": 270, "passed": 270, "failed": 0}}
+{"error": "published invocation interrupted; partial case retained", "p1r_usable": false}

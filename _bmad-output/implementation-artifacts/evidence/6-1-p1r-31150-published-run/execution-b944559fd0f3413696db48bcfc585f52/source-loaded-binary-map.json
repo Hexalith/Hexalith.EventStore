@@ -1,0 +1,77 @@
+[
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+    "retained_path": "source-consumers/host/loaded-binaries/Hexalith.EventStore.Client.dll",
+    "sha256": "c71302d6a7ed47e000037bfdbb5bf4612b19bf9d31a14b49a6ddbd4e163d7397"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+    "retained_path": "source-consumers/host/loaded-binaries/Hexalith.EventStore.Contracts.dll",
+    "sha256": "b1211e709eb5ac1f81762db899036ea1b8b663f121f64f3dcc5800feee96fa90"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+    "retained_path": "source-consumers/host/loaded-binaries/Hexalith.EventStore.Server.dll",
+    "sha256": "707a991157b0473635810fb9fbf56bd74e371916c3b07712e4bbba3805d56991"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+    "retained_path": "source-consumers/host/loaded-binaries/Hexalith.EventStore.DomainService.dll",
+    "sha256": "af3dd17b742b61fedfd8a4ef93943cc5ac0faf017dc952275fc806c8095db990"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+    "retained_path": "source-consumers/host/loaded-binaries/Hexalith.EventStore.ServiceDefaults.dll",
+    "sha256": "0ba92d2a60ac3d90fb51e48fddcf8c4f2469248ddbf6962345d97a68a2f69c56"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+    "retained_path": "source-consumers/domain/loaded-binaries/Hexalith.EventStore.Client.dll",
+    "sha256": "c71302d6a7ed47e000037bfdbb5bf4612b19bf9d31a14b49a6ddbd4e163d7397"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+    "retained_path": "source-consumers/domain/loaded-binaries/Hexalith.EventStore.Contracts.dll",
+    "sha256": "b1211e709eb5ac1f81762db899036ea1b8b663f121f64f3dcc5800feee96fa90"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+    "retained_path": "source-consumers/domain/loaded-binaries/Hexalith.EventStore.Server.dll",
+    "sha256": "707a991157b0473635810fb9fbf56bd74e371916c3b07712e4bbba3805d56991"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+    "retained_path": "source-consumers/domain/loaded-binaries/Hexalith.EventStore.DomainService.dll",
+    "sha256": "af3dd17b742b61fedfd8a4ef93943cc5ac0faf017dc952275fc806c8095db990"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+    "retained_path": "source-consumers/domain/loaded-binaries/Hexalith.EventStore.ServiceDefaults.dll",
+    "sha256": "0ba92d2a60ac3d90fb51e48fddcf8c4f2469248ddbf6962345d97a68a2f69c56"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+    "retained_path": "source-consumers/probe/loaded-binaries/Hexalith.EventStore.Client.dll",
+    "sha256": "c71302d6a7ed47e000037bfdbb5bf4612b19bf9d31a14b49a6ddbd4e163d7397"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+    "retained_path": "source-consumers/probe/loaded-binaries/Hexalith.EventStore.Contracts.dll",
+    "sha256": "b1211e709eb5ac1f81762db899036ea1b8b663f121f64f3dcc5800feee96fa90"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+    "retained_path": "source-consumers/probe/loaded-binaries/Hexalith.EventStore.Server.dll",
+    "sha256": "707a991157b0473635810fb9fbf56bd74e371916c3b07712e4bbba3805d56991"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+    "retained_path": "source-consumers/probe/loaded-binaries/Hexalith.EventStore.DomainService.dll",
+    "sha256": "af3dd17b742b61fedfd8a4ef93943cc5ac0faf017dc952275fc806c8095db990"
+  },
+  {
+    "actual_loaded_path": "/tmp/p1r-correction-full-iteration4-execution/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+    "retained_path": "source-consumers/probe/loaded-binaries/Hexalith.EventStore.ServiceDefaults.dll",
+    "sha256": "0ba92d2a60ac3d90fb51e48fddcf8c4f2469248ddbf6962345d97a68a2f69c56"
+  }
+]

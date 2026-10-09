@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-q"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T14:19:17.930542+00:00",
+  "finished_utc": "2026-10-07T14:19:44.743032+00:00",
+  "exit_code": 0,
+  "output_sha256": "cd94e1727c71e9226a6386f747966fb1022542eb950b7a1ff51a6720bc3762b6",
+  "tests": 114
+}

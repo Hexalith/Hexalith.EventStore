@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-qualification.py",
+    "validate",
+    "/tmp/p1r-correction-full-iteration5-control/packet"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T15:21:18.893103+00:00",
+  "finished_utc": "2026-10-07T15:21:23.690965+00:00",
+  "exit_code": 0,
+  "output_sha256": "52dbb1cf15362b5387f1bd5a9f1d706698f69fae017dc1f8d8204f10807ecacb"
+}

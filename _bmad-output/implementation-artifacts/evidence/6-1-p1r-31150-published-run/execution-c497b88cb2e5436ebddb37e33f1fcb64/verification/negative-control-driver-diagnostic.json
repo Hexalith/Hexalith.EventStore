@@ -1,0 +1,31 @@
+{
+  "scope": "tooling-synthetic",
+  "qualification_authority": false,
+  "first_attempt": {
+    "argv": [
+      "python3",
+      "/tmp/p1r-correction-full-iteration5-control/negative.py"
+    ],
+    "started_utc": "2026-10-07T15:21:23.696946+00:00",
+    "finished_utc": "2026-10-07T15:21:23.814831+00:00",
+    "exit_code": 1,
+    "output_sha256": "6332a0fe9ab1ec71c62adc0079b88b94ffafca404984bb0d6cb64612849d9253"
+  },
+  "first_error": "AttributeError: module p1r_published_qualification has no attribute canonical",
+  "correction": "The private driver calls p1r_qualification.canonical. Persistent source and the sealed packet were unchanged.",
+  "successful_retry": {
+    "argv": [
+      "python3",
+      "/tmp/p1r-correction-full-iteration5-control/negative.py"
+    ],
+    "exit_code": 0,
+    "driver_sha256": "81e1a3e30aa57feee466bb23340c5a9d90d5eb54234bd291ca7ba42ff1b232cc",
+    "check_summary_sha256": "36101cc70f9f0e35051ac8dc7b79bcf261545efecea7e5323ee2daf292291923",
+    "assertions": {
+      "attempted": 11,
+      "failed": 0,
+      "passed": 11
+    },
+    "final_packet_revalidated": true
+  }
+}

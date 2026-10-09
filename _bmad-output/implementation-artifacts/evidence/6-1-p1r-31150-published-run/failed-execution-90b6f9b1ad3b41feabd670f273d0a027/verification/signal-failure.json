@@ -1,0 +1,63 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "/tmp/p1r-correction-full-iteration3-execution/consumers/comparison-3.70.1/probe/Probe.csproj",
+    "--no-restore",
+    "-c",
+    "Release",
+    "-m:1",
+    "-p:EventStoreVersion=3.70.1",
+    "-p:NuGetAudit=false"
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 69101,
+          "pid": 69305,
+          "session": 69101,
+          "start_ticks": 11707195
+        }
+      ],
+      "errors": [
+        "OSError"
+      ],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "cleanup_error_diagnostics": [
+    {
+      "errno": 22,
+      "operation": "signal-owned",
+      "owned": {
+        "pgid": 69101,
+        "pid": 69101,
+        "session": 69101,
+        "start_ticks": 11707124
+      },
+      "type": "OSError"
+    }
+  ],
+  "exit_code": 0,
+  "id": 41,
+  "owned_processes": [
+    {
+      "pgid": 69101,
+      "pid": 69101,
+      "session": 69101,
+      "start_ticks": 11707124
+    },
+    {
+      "pgid": 69101,
+      "pid": 69305,
+      "session": 69101,
+      "start_ticks": 11707195
+    }
+  ]
+}

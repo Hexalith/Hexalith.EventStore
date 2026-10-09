@@ -1,0 +1,32 @@
+{
+  "backend_image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+  "dotnet_polling_file_watcher": true,
+  "dotnet_reload_config_on_change": false,
+  "files": [
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: \"/tmp/p1r-published-c497b88cb2e5436ebddb37e33f1fcb64-kg395e_9/discovery.sqlite\"\n",
+      "name": "discovery.yaml",
+      "path": "/tmp/p1r-published-c497b88cb2e5436ebddb37e33f1fcb64-kg395e_9/discovery.yaml",
+      "sha256": "ae4a50e733be6692272356d1ff8020bea5e748fcc425055e30c8e05dc10509d4"
+    },
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"127.0.0.1:26709\"\n    - name: actorStateStore\n      value: \"true\"\nscopes:\n  - eventstore\n",
+      "name": "state.yaml",
+      "path": "/tmp/p1r-published-c497b88cb2e5436ebddb37e33f1fcb64-kg395e_9/resources/state.yaml",
+      "sha256": "a39695f81a280657eb65d473b8bae2b9bc8b960be6ba793e4f8f9d3ac6a2e791"
+    },
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"127.0.0.1:21605\"\nscopes:\n  - eventstore\n",
+      "name": "pubsub.yaml",
+      "path": "/tmp/p1r-published-c497b88cb2e5436ebddb37e33f1fcb64-kg395e_9/resources/pubsub.yaml",
+      "sha256": "780276e09d243232471902b166ff05b223b8bd9167069f1166de9f8512e470af"
+    }
+  ],
+  "id": "9042b65ab68a499bb7818ff5f11ca882",
+  "observed_utc": "2026-10-07T15:18:26.393949+00:00",
+  "redis_container": "0341fe26f57584eba01e7d547fde815906024ff5eaef88bdfb4617695e2cb1e9",
+  "runtime_version": "1.18.4",
+  "snapshot_interval": 1000,
+  "source_workload_authority": null,
+  "version": "3.70.1"
+}

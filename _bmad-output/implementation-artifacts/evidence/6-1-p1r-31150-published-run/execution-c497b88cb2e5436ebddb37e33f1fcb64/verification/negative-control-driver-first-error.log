@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/tmp/p1r-correction-full-iteration5-control/negative.py", line 64, in <module>
+    name,receipt=find(lane);mutate(receipt);recompute(receipt)
+                                            ~~~~~~~~~^^^^^^^^^
+  File "/tmp/p1r-correction-full-iteration5-control/negative.py", line 53, in recompute
+    receipt['output_sha256']=q.digest(q.canonical(receipt['execution_evidence']))
+                                      ^^^^^^^^^^^
+AttributeError: module 'p1r_published_qualification' has no attribute 'canonical'

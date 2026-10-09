@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DefineConstants Condition="'$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_SOURCE</DefineConstants>
+    <DefineConstants Condition="'$(EventStoreVersion)' == '3.110.0' or '$(EventStoreVersion)' == '3.115.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CAPABILITIES</DefineConstants>
+    <DefineConstants Condition="'$(EventStoreVersion)' == '3.115.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CANDIDATE</DefineConstants>
+  </PropertyGroup>
+</Project>

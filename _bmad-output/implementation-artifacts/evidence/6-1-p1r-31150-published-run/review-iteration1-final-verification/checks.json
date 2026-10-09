@@ -1,0 +1,98 @@
+{
+  "canonical-final-validate": {
+    "argv": [
+      "python3",
+      "tools/p1r-published-qualification.py",
+      "validate",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/packet-c497b88cb2e5436ebddb37e33f1fcb64"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T15:31:29.111888+00:00",
+    "output_sha256": "52dbb1cf15362b5387f1bd5a9f1d706698f69fae017dc1f8d8204f10807ecacb",
+    "started_utc": "2026-10-07T15:31:23.765988+00:00"
+  },
+  "canonical_evaluation": {
+    "capable_rollback_qualified": false,
+    "decisions_complete": false,
+    "evidence_scopes": [
+      "operational",
+      "published-package"
+    ],
+    "p1r_usable": false,
+    "package_assertions": 267,
+    "process_assertions": 38,
+    "process_scope": "local-process-control",
+    "qualified": false,
+    "recovery": "mutation-freeze-and-forward-recovery",
+    "refusals": [
+      "capable rollback not selected; mutation freeze and forward recovery retained",
+      "eventstore-owner decision pending",
+      "builds-owner decision pending",
+      "solution-owner decision pending",
+      "test-owner decision pending",
+      "same-baseline conformance pending"
+    ],
+    "technically_qualified": false,
+    "unsatisfied": [
+      "scenarios/legacy-metadata",
+      "scenarios/metadata-read",
+      "scenarios/metadata-write",
+      "scenarios/invalid-evidence",
+      "scenarios/query-wire",
+      "scenarios/projection-wire",
+      "scenarios/mixed-api",
+      "scenarios/pre-upgrade-restore",
+      "families/metadata-read",
+      "families/metadata-write",
+      "families/invalid-evidence",
+      "families/query-wire",
+      "families/projection-wire",
+      "families/mixed-api",
+      "additions/logical-event-evolution"
+    ],
+    "valid": true
+  },
+  "canonical_packet": {
+    "index_sha256": "dc4cc1296649e5a92c35d87485dd8009fb36f0a1600bd4855a09045844e7bce7",
+    "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/packet-c497b88cb2e5436ebddb37e33f1fcb64",
+    "sealed_files": 85
+  },
+  "diff-check": {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T15:31:29.125519+00:00",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-07T15:31:29.112086+00:00"
+  },
+  "execution": {
+    "index_sha256": "1ec5a2a1b7e70523b8653be12c704395a9189dea2dc6298ce7c2159820bba1ba",
+    "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/execution-c497b88cb2e5436ebddb37e33f1fcb64",
+    "sealed_files": 470
+  },
+  "executor_invocation": "c497b88cb2e5436ebddb37e33f1fcb64",
+  "executor_source_sha256": "04ca7c61e729ff7154472bd1a6a9fcdc4b4073b940db2aa3f4530abd6f1e6a38",
+  "finished_utc": "2026-10-07T15:31:29.125950+00:00",
+  "focused_tests": 115,
+  "frozen_intent_sha256": "50bfec719faa7cb61c04a6e6ae549a9e917d99d83fb0a3ff2dae193bb9ad7d09",
+  "negative_controls": {
+    "attempted": 11,
+    "failed": 0,
+    "passed": 11
+  },
+  "qualification_authority": false,
+  "relocated_packet_copy": {
+    "canonical": false,
+    "index_sha256": "9905e94bbdc92d1dcedc89b72112b0a5c3e7de649e0ec31cdf469cf06250d199",
+    "sealed_files": 85,
+    "validation_refusal": "receipt working directory differs"
+  },
+  "scope": "implementation-verification-only",
+  "source_closure_unchanged": true,
+  "source_file_count": 3155
+}

@@ -1,0 +1,105 @@
+{
+  "assertions": {
+    "attempted": 11,
+    "failed": 0,
+    "passed": 11
+  },
+  "checks": [
+    {
+      "id": "flipped-failed-metadata-check",
+      "import_refusal": "case check contradicts retained predicate operands",
+      "independent_validation_refusal": "case check contradicts retained predicate operands",
+      "passed": true,
+      "resealed_trial_index_sha256": "a3d4be4d36f2bfd718b61c17e784420678c046ef629a4032fda84d24b9bbfe49",
+      "substituted_receipt_sha256": "8a5d1772104bb043bc90e2cf3534d5de099a8dbd4a0dc3821a36b71f2685e6c7"
+    },
+    {
+      "id": "flipped-metadata-check-and-operands",
+      "import_refusal": "metadata-read check contradicts retained floor observation",
+      "independent_validation_refusal": "metadata-read check contradicts retained floor observation",
+      "passed": true,
+      "resealed_trial_index_sha256": "e03813664ba3098793bb34be19ef40183369e336cffb4dda18e90c0efc7104e5",
+      "substituted_receipt_sha256": "a9044f99dcde81e51b21ee56049aa54a87548ea7b870cf48c738ecc5784a585b"
+    },
+    {
+      "id": "invented-equal-inventory-hashes",
+      "import_refusal": "invented persisted inventory hashes",
+      "independent_validation_refusal": "invented persisted inventory hashes",
+      "passed": true,
+      "resealed_trial_index_sha256": "e43854bdde7a7efefe6eb58a2bcb97722962880efe9160922f45981087a62462",
+      "substituted_receipt_sha256": "3736067873ea0e77d7bda0c8d812e8e9bc3045d995f7c9ec13cc7879818db581"
+    },
+    {
+      "id": "removed-runtime-configurations",
+      "import_refusal": "runtime case omits required rendered configuration",
+      "independent_validation_refusal": "runtime case omits required rendered configuration",
+      "passed": true,
+      "resealed_trial_index_sha256": "cbdf0112686c82cfa75ca6a7e335d0abdbc4e0741ff55a7252b31f5a6081cea8",
+      "substituted_receipt_sha256": "c5f800a23e4d1546b3ebcbf8b9fe2750d6394afa22ad8aa4eddc2545d6e6d4d4"
+    },
+    {
+      "id": "substituted-executor-source-recomputed-hash",
+      "import_refusal": "executor checkout differs from the independently bound source closure",
+      "independent_validation_refusal": "executor checkout differs from the independently bound source closure",
+      "passed": true,
+      "resealed_trial_index_sha256": "6c2891a45fd05b12147063bc0ef7f388f05869b8bdfbaf670c30e9ab38650bcc",
+      "substituted_receipt_sha256": "a479226e21d6078f7b87696e2842d40d17ddb9eab8fadb11d37da8387360f683"
+    },
+    {
+      "id": "substituted-executor-file-hash",
+      "import_refusal": "executor source file hash differs from the independently bound closure",
+      "independent_validation_refusal": "executor source file hash differs from the independently bound closure",
+      "passed": true,
+      "resealed_trial_index_sha256": "cab083500c2f3f84c2802045342fe8937ad1cc7f55ba591db03b5b7b2483a31a",
+      "substituted_receipt_sha256": "87278f2c17611275a15f051e480ba92063f2ee81f0ad74488c4cb4a4e041fd6b"
+    },
+    {
+      "id": "substituted-rendered-config-bytes-recomputed-file-hash",
+      "import_refusal": "sidecar command configuration content binding differs",
+      "independent_validation_refusal": "sidecar command configuration content binding differs",
+      "passed": true,
+      "resealed_trial_index_sha256": "cbeb7d7286ec7826395851bce4aafc751749fc7ffd6392dd4bb4dc7938ed2590",
+      "substituted_receipt_sha256": "6f8e3bf9823df06e1a85408719d0b8ec218dca194f0abb1b575a78548284eeac"
+    },
+    {
+      "id": "omitted-required-direction",
+      "import_refusal": "executed case inventory omits or substitutes a required direction or operation",
+      "independent_validation_refusal": "executed case inventory omits or substitutes a required direction or operation",
+      "passed": true,
+      "resealed_trial_index_sha256": "6267014939c4360304871e2ef2a2b3274938a86accdd6de50127a2e2faece376",
+      "substituted_receipt_sha256": "ffbde39d5745badc41b542c933f5388dbb47469a402178556590eb0a49357d74"
+    },
+    {
+      "id": "flipped-query-proof-and-operands",
+      "import_refusal": "wire preservation check contradicts independently derived reader field",
+      "independent_validation_refusal": "wire preservation check contradicts independently derived reader field",
+      "passed": true,
+      "resealed_trial_index_sha256": "0bcbdb9fa78b6354fc1c3a4b3ee5a3fd1adbc0b6e7d0d9ee71c937cda7c261cb",
+      "substituted_receipt_sha256": "c8806d576f30afc296b3bb98831305b557b28ff88090ded36e00db75ed423511"
+    },
+    {
+      "id": "flipped-projection-position-and-operands",
+      "import_refusal": "wire preservation check contradicts independently derived reader field",
+      "independent_validation_refusal": "wire preservation check contradicts independently derived reader field",
+      "passed": true,
+      "resealed_trial_index_sha256": "34983f6596b7c18f87bff1f739ddf8b2e3d526cc6b251b3183265d5249a42911",
+      "substituted_receipt_sha256": "934be8a171edbd670f3edbfaba96d4c68f3f298144bacef962fdf0f6bf1dcfbf"
+    },
+    {
+      "id": "forged-logical-registration-and-operands",
+      "import_refusal": "logical evolution registration contradicts retained Domain readiness response",
+      "independent_validation_refusal": "logical evolution registration contradicts retained Domain readiness response",
+      "passed": true,
+      "resealed_trial_index_sha256": "be63bdb8e02b41f8c626766081913857821303094c756837bd0ea6091ad1e465",
+      "substituted_receipt_sha256": "d7a9e0ad32f011cabd16b1974f189aa9ddfc11a90dfd1da928dbb37d0b75b064"
+    }
+  ],
+  "executor_source_sha256": "04ca7c61e729ff7154472bd1a6a9fcdc4b4073b940db2aa3f4530abd6f1e6a38",
+  "final_packet_revalidated": true,
+  "finished_utc": "2026-10-07T15:28:28.357452+00:00",
+  "fixture": "hexalith-p1r-synthetic-fixture",
+  "qualification_authority": false,
+  "schema": "hexalith.p1r.tooling-negative-controls.v1",
+  "scope": "tooling-synthetic",
+  "started_utc": "2026-10-07T15:28:07.404241+00:00"
+}

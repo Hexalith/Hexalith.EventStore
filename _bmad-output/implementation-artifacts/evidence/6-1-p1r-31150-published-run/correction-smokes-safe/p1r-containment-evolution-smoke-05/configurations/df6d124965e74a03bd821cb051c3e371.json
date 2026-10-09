@@ -1,0 +1,28 @@
+{
+  "backend_image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+  "dotnet_polling_file_watcher": true,
+  "dotnet_reload_config_on_change": false,
+  "files": [
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: \"/tmp/p1r-published-a2e688eef873423fb4c9fc3849d3d3cb-fzjev1zt/discovery.sqlite\"\n",
+      "name": "discovery.yaml",
+      "sha256": "86f524b2dedc6a46328d6b7a46fad1bb16a14cc1c33e0d6541170965de08ccb8"
+    },
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"127.0.0.1:28972\"\n    - name: actorStateStore\n      value: \"true\"\nscopes:\n  - eventstore\n",
+      "name": "state.yaml",
+      "sha256": "fff987e1437d7a73a9f8ddd213cb5a4c9efe44453d2dabb7f75f797b3cbac584"
+    },
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"127.0.0.1:15045\"\nscopes:\n  - eventstore\n",
+      "name": "pubsub.yaml",
+      "sha256": "4d044782b421020483b300302a8b6658d301d2b25fe5ce710ebec814d602857d"
+    }
+  ],
+  "observed_utc": "2026-10-07T11:39:42.093679+00:00",
+  "redis_container": "688d8954747811cfb7aede4e8d95bdcf2b97f4733e680d53dd3c1d9937cc927b",
+  "runtime_version": "1.18.4",
+  "snapshot_interval": 1000,
+  "source_workload_authority": null,
+  "version": "3.115.0"
+}

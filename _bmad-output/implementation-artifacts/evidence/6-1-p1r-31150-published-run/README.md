@@ -1,10 +1,59 @@
 # EventStore 3.115.0 published P1R qualification run
 
-Status: **approved and stopped on 2026-10-07; spec ready for development**.
-The [owner-inputs document](owner-inputs.json) records the accepted candidate,
-Builds, rollback, Redis/Dapr profile, additions and Test-owner instrumentation.
-No qualification packet or owner acceptance has been created. P1R usability
-remains false.
+Review iteration 1 is executed and its [permanently retained packet](packet-c497b88cb2e5436ebddb37e33f1fcb64/packet.json)
+is independently valid. The [corrected execution](execution-c497b88cb2e5436ebddb37e33f1fcb64/README.md)
+records 163 cases, 5,522 checks, 5,412 passed and 110 failed across all seventeen
+scenarios/seven families and both additions. Technical qualification, the four
+owner decisions, same-baseline conformance and P1R usability remain false/pending.
+
+[Retained-path preparation](review-iteration1-final-verification/prepare.json)
+and [separate independent validation](review-iteration1-final-verification/validate.json)
+both exit 0. Package checks pass 267/267; the eleven paired Debug/source cases
+pass 704/704; strict restore passes 12/12; repeated owned cleanup passes 7/7;
+Reminder checks pass 131/131. [Focused verification](execution-c497b88cb2e5436ebddb37e33f1fcb64/verification/focused-tests.json)
+passes 115 tests. [Eleven negative controls](review-iteration1-final-verification/negative-controls.json)
+are refused at both import and independent validation, with matching refusal
+reasons. The actual security errors, wire losses, historical incompatibilities
+and missing registered logical evolution remain nonpassing.
+
+The complete execution's sealed packet copy retains its original preparation
+receipts and validation result. Its process-control receipts bind the original
+working directory, so validation of that relocated copy correctly refuses
+[the changed location](review-iteration1-final-verification/relocated-copy-validate.json).
+The authoritative packet linked above was prepared directly at its permanent
+path, importing only the unchanged receipts from the successful fresh execution.
+No source binding or existing seal was rewritten. [Final review verification](review-iteration1-final-verification/README.md)
+records the retention correction and exact artifact hashes.
+
+The source closure is `04ca7c61e729ff7154472bd1a6a9fcdc4b4073b940db2aa3f4530abd6f1e6a38`.
+Candidate/comparison/runtime/Builds selections, rollback=null, Projects AD-17
+mutation freeze/forward recovery and all independent downstream gates remain
+unchanged. Three failed invocations and the complete execution with refused
+preparation remain separately sealed historical diagnostics; none supplies
+receipts to the corrected execution.
+
+## Historical execution before review iteration 1
+
+Status: **executed on 2026-10-07; fresh packet valid; technical qualification false**.
+The [final execution index](execution-325e3c9327df4810941981b5882e3a70/README.md) records all seventeen canonical
+scenarios/seven families and both selected additions: 163 cases, 4,909 checks,
+4,819 passed and 90 failed. [Independent validation](execution-325e3c9327df4810941981b5882e3a70/validate.log) exits 0
+and recomputes `valid=true`; technical qualification, all owner acceptance,
+same-baseline conformance and P1R usability remain false/pending.
+
+The [final inputs](execution-325e3c9327df4810941981b5882e3a70/owner-inputs.json),
+[actual planning/package observations](execution-325e3c9327df4810941981b5882e3a70/planning-observations.json) and
+[sealed packet](execution-325e3c9327df4810941981b5882e3a70/packet/packet.json) bind actual candidate 3.115.0 plus
+comparison-only 3.70.1/3.110.0. Real package evidence passed 267/267; the distinct
+Debug/source comparison passed 329/329, strict restore 12/12, cleanup 7/7,
+natural Reminder delivery 125/125, and focused Python verification 92 tests.
+Historical incompatibilities, pre-upgrade containment loss and the missing
+registered logical alias/evolution path remain nonpassing. Rollback is null;
+Projects AD-17 mutation freeze/forward recovery and all independent downstream
+gates remain unchanged.
+
+The planning/preflight documents below retain their earlier observations.
+They do not substitute for the new source-bound execution evidence.
 
 The [approved run spec](../../spec-6-1-p1r-31150-published-run.md) describes the executor
 and the settled selections. Historical sealed packets and the completed
@@ -23,7 +72,7 @@ harness spec are unchanged.
 | [Preparation receipt](preflight/preparation/prepare.json), [validation receipt](preflight/preparation/validate.json) and [failed packet](preflight/preparation/packet/packet.json) | Fresh `python3 tools/p1r-qualification.py prepare --out /tmp/p1r-31150-preparation-h2jvlo7x/packet` and `python3 tools/p1r-qualification.py validate /tmp/p1r-31150-preparation-h2jvlo7x/packet` both exit 2, reporting `preparation observation incomplete`. Packet error: `required Builds input unavailable`. |
 | [Shared container observations](preflight/shared-containers.json) | IDs, image IDs, start times and running state captured for the four pre-existing Dapr/Redis/Zipkin containers. No qualification containers started. |
 
-The executor/source checkout is `98da5a04e6df33ba026cbaae46d1777acdca7a21`,
+The retained preflight executor/source checkout was `98da5a04e6df33ba026cbaae46d1777acdca7a21`,
 which contains the sealed remediation capture secrets-scan exemption. This is
 different from both the published candidate source and the prompt's `af2892e8`
 checkout. No missing exemption commit was cherry-picked.
@@ -57,11 +106,11 @@ The user accepted all six recommendations on 2026-10-07: the five observed
 3.115.0 packages from nuget.org; candidate Builds at untagged `ba4ca78`; no
 capable rollback and AD-17 freeze/forward recovery; invocation-owned Redis/Dapr
 1.18.4; both additions with `p1r-executed-checks-v1`; and narrowly bound 3.70.1
-and 3.110.0 comparison-only packages. Comparison archive identities and their
-receipts still require real downloads/execution; the comparison selection does
-not authorize either version as rollback. The user selected **Approve and stop**:
-the implementation spec is `ready-for-dev`, its approved intent is frozen, and
-implementation/qualification execution awaits a fresh build session.
+and 3.110.0 comparison-only packages. At that handoff, comparison archive identities and receipts still required
+real downloads/execution. The fresh execution above now records them; neither
+version is authorized as rollback. The original **Approve and stop** planning
+choice produced the frozen ready-for-development spec; the later implementation
+session executed that approved scope without changing its frozen intent.
 
 ## Acceptance decisions still required after execution
 
@@ -74,3 +123,28 @@ These are acceptance decisions, distinct from planning authorization to run
 tests. Their absence must keep `decisions_complete=false` and `qualified=false`.
 The separate coordinated Projects acceptance/pin/guards/sprint transition and
 independent readiness gates remain pending.
+
+## Development evidence and safe retention
+
+These earlier trials are diagnostics and are never imported into the final
+packet. Original sealed bytes and invocation artifacts remain in private
+storage outside the repository with directory 0700/file 0600 permissions
+(executable files 0700). New safe derived copies exclude broad Docker inspection
+output, retain original file/output hashes and explain altered outer bindings.
+The final executor selects only public preservation fields and its ownership
+label before capture. No credentials or database dumps are retained here.
+
+| Safe derived evidence | Purpose |
+| --- | --- |
+| [Development trials](development-trials-safe/RETENTION-NOTE.md) | Initial full and interrupted executions, fixture/ownership corrections and refreshed input observations. |
+| [Source graph trial](source-graph-trial-safe/RETENTION-NOTE.md) | Complete intermediate run with the distinct Debug dependency-graph defect. |
+| [Correction smokes](correction-smokes-safe/RETENTION-NOTE.md) | Real source route/authentication corrections, all selected operations, restore and failure drills. |
+| [Scheduler trial](scheduler-coverage-trial-safe/RETENTION-NOTE.md) | Owned interruption before adding completed natural Scheduler observation. |
+| [Natural Reminder smoke](natural-reminder-smoke-safe/RETENTION-NOTE.md) | Completed natural sequence 13 before injected duplicate/stale callback in all three cases. |
+| [Intermediate capture](execution-627a9059adee4dcfa35d15afaabd9346-safe/RETENTION-NOTE.md) | Abandoned pre-final capture after broad discovery output was found. |
+| [Privacy discovery trial](privacy-discovery-trial-safe/README.md) | Owned interruption, repeated cleanup, safe derived receipts and original hashes. |
+
+The final [source/configuration/direction negative controls](execution-325e3c9327df4810941981b5882e3a70/negative-controls.json)
+refuse substitutions at both import and independent validation. Each newly
+retained directory has its own SHA256SUMS; historical originals were preserved
+without rewriting their seals.

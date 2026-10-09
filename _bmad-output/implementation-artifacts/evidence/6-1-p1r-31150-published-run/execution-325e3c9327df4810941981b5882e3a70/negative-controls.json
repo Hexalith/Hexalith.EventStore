@@ -1,0 +1,49 @@
+{
+  "assertions": {
+    "attempted": 4,
+    "failed": 0,
+    "passed": 4
+  },
+  "checks": [
+    {
+      "id": "stale-executor-closure",
+      "import_refusal": "executor checkout differs from the independently bound source closure",
+      "independent_validation_refusal": "executor checkout differs from the independently bound source closure",
+      "passed": true,
+      "resealed_trial_index_sha256": "c78643a30bb4811ad604fd64278dca7645031a5d751754bcd6afbd9631fd7345",
+      "substituted_receipt_sha256": "52062891e35d702e3077e26ff78515df67d1754f2d821f6e677c5bdc159e428a"
+    },
+    {
+      "id": "substituted-executor-file-hash",
+      "import_refusal": "executor source file hash differs from the independently bound closure",
+      "independent_validation_refusal": "executor source file hash differs from the independently bound closure",
+      "passed": true,
+      "resealed_trial_index_sha256": "a98889486170de5938d3afe4fb0c78f29774c599b95644a929efb4e14d7e0ce6",
+      "substituted_receipt_sha256": "3a5799d8a8756093fe8beeed2346445744d0f7aeddde1fe47760c77fa70fc786"
+    },
+    {
+      "id": "substituted-configuration-content",
+      "import_refusal": "executed configuration content differs from its hash",
+      "independent_validation_refusal": "executed configuration content differs from its hash",
+      "passed": true,
+      "resealed_trial_index_sha256": "5d14eb9831cd5a5e31b185df4ea122be07583d3fa746c26333eae570a6e575ed",
+      "substituted_receipt_sha256": "540b1339a7621171a52f75a8ac97d1cf86ca5770fa95023300e12f5b2a469361"
+    },
+    {
+      "id": "omitted-required-direction",
+      "import_refusal": "executed case inventory omits or substitutes a required direction or operation",
+      "independent_validation_refusal": "executed case inventory omits or substitutes a required direction or operation",
+      "passed": true,
+      "resealed_trial_index_sha256": "79e1376d57c160e409175be5c19df95d887a5e91e137e5b1eb9961bfd637558a",
+      "substituted_receipt_sha256": "4cafcf1f695da4d08670a65738de144dc1ff32b23a1f41f9914e39db49737acc"
+    }
+  ],
+  "executor_source_sha256": "1479ffeb2b1949bcc7e18c91f681cbb7dd6bceb0302f3f652a7ce33a532a527d",
+  "final_packet_revalidated": true,
+  "finished_utc": "2026-10-07T12:13:32.464986+00:00",
+  "fixture": "hexalith-p1r-synthetic-fixture",
+  "qualification_authority": false,
+  "schema": "hexalith.p1r.tooling-negative-controls.v1",
+  "scope": "tooling-synthetic",
+  "started_utc": "2026-10-07T12:13:28.890412+00:00"
+}

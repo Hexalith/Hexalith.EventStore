@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 52574,
+          "pid": 52574,
+          "session": 52574,
+          "start_ticks": 12100713
+        },
+        {
+          "pgid": 52575,
+          "pid": 52575,
+          "session": 52575,
+          "start_ticks": 12100714
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "descendants",
+  "cwd": "/tmp/p1r-correction-full-iteration5-control/packet",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-07T15:21:12.513725+00:00",
+  "id": "e16a4a60de264a49b29933772bcf28dd",
+  "invocation": "6d0385b3de204071ac5d8c8747a96e8a",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/e16a4a60de264a49b29933772bcf28dd.txt",
+    "sha256": "d5c5ddc19d724589d259e24da40a30162c3c6f8e56bb02668e8c7b0aa50a22ee"
+  },
+  "owned_processes": [
+    {
+      "pgid": 52574,
+      "pid": 52574,
+      "session": 52574,
+      "start_ticks": 12100713
+    },
+    {
+      "pgid": 52575,
+      "pid": 52575,
+      "session": 52575,
+      "start_ticks": 12100714
+    }
+  ],
+  "root_process": {
+    "pgid": 52574,
+    "pid": 52574,
+    "session": 52574,
+    "start_ticks": 12100713
+  },
+  "started_utc": "2026-10-07T15:21:12.001578+00:00",
+  "timed_out": true
+}

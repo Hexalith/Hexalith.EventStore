@@ -1,0 +1,12 @@
+{
+  "consumer_cleanup": "/tmp/p1r-source-complete-smoke-01/receipts/4fd279e1cc884ce7bd58294d424ec7af.json",
+  "errors": [],
+  "executor_source_sha256": "e86ed46a3f9241ea4e286e1f27503a744ad7831396011d9d92e2de51e09174d6",
+  "finished_utc": "2026-10-07T11:26:45.501981+00:00",
+  "inputs_sha256": "c4970b8bb71dfb07f3dc5c7e2524a28f998d8f7f45674b455cfbc7f00b69beb0",
+  "invocation": "2414213b648c4cd2b6b68c2bddfb8ea1",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T11:26:34.460283+00:00"
+}

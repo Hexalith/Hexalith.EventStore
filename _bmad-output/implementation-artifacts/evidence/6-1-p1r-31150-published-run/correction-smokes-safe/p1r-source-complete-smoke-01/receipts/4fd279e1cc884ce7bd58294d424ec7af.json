@@ -1,0 +1,154 @@
+{
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "attempts": [
+    {
+      "errors": [],
+      "finished_utc": "2026-10-07T11:26:45.328071+00:00",
+      "remaining": [],
+      "removed": [
+        "process:9429:10693582",
+        "process:9660:10693925",
+        "/tmp/p1r-published-2414213b648c4cd2b6b68c2bddfb8ea1-j0nqjggj"
+      ],
+      "started_utc": "2026-10-07T11:26:45.280986+00:00",
+      "targeted": [
+        "process:9429:10693582",
+        "process:9660:10693925",
+        "/tmp/p1r-published-2414213b648c4cd2b6b68c2bddfb8ea1-j0nqjggj"
+      ]
+    },
+    {
+      "errors": [],
+      "finished_utc": "2026-10-07T11:26:45.377132+00:00",
+      "remaining": [],
+      "removed": [
+        "process:9429:10693582",
+        "process:9660:10693925",
+        "/tmp/p1r-published-2414213b648c4cd2b6b68c2bddfb8ea1-j0nqjggj"
+      ],
+      "started_utc": "2026-10-07T11:26:45.328092+00:00",
+      "targeted": [
+        "process:9429:10693582",
+        "process:9660:10693925",
+        "/tmp/p1r-published-2414213b648c4cd2b6b68c2bddfb8ea1-j0nqjggj"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "first-attempt-targets-every-owned",
+      "passed": true
+    },
+    {
+      "id": "repeated-cleanup",
+      "passed": true
+    },
+    {
+      "id": "later-attempts-continue",
+      "passed": true
+    },
+    {
+      "id": "no-owned-remaining",
+      "passed": true
+    },
+    {
+      "id": "no-cleanup-errors",
+      "passed": true
+    },
+    {
+      "id": "shared-discovery-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-preserved",
+      "passed": true
+    }
+  ],
+  "compatibility": "unverified",
+  "execution": "passed",
+  "fixture": {
+    "id": "p1r-2414213b648c4cd2b6b68c2bddfb8ea1",
+    "synthetic": false
+  },
+  "id": "4fd279e1cc884ce7bd58294d424ec7af",
+  "inputs_sha256": "c4970b8bb71dfb07f3dc5c7e2524a28f998d8f7f45674b455cfbc7f00b69beb0",
+  "invocation": "2414213b648c4cd2b6b68c2bddfb8ea1",
+  "owned": [
+    {
+      "id": "process:9429:10693582",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=2414213b648c4cd2b6b68c2bddfb8ea1"
+    },
+    {
+      "id": "process:9660:10693925",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=2414213b648c4cd2b6b68c2bddfb8ea1"
+    },
+    {
+      "id": "/tmp/p1r-published-2414213b648c4cd2b6b68c2bddfb8ea1-j0nqjggj",
+      "kind": "scratch",
+      "label": "hexalith.p1r.invocation=2414213b648c4cd2b6b68c2bddfb8ea1"
+    }
+  ],
+  "profile": {
+    "backend": "state.redis",
+    "backend_image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31150-published-run.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.4",
+    "selected_by": "user"
+  },
+  "schema": "hexalith.p1r.consumer-cleanup.v1",
+  "scope": "local-process-control",
+  "shared": {
+    "after": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-07T04:41:06.431759203Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-07T04:41:06.397649945Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-07T04:41:06.40484467Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-07T04:41:06.421753641Z"
+      }
+    },
+    "before": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-07T04:41:06.431759203Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-07T04:41:06.397649945Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-07T04:41:06.40484467Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-07T04:41:06.421753641Z"
+      }
+    },
+    "complete": true
+  }
+}

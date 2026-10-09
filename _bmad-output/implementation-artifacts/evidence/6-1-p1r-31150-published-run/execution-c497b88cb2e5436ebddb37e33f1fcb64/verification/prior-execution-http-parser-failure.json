@@ -1,0 +1,3116 @@
+{
+  "scope": "tooling-diagnostic-only",
+  "invocation": "b944559fd0f3413696db48bcfc585f52",
+  "preparation_exit_code": 2,
+  "preparation_errors": [
+    "JSONDecodeError"
+  ],
+  "failed_parser_cases": [
+    {
+      "lane": "logical-event-evolution",
+      "case": "logical-alias-replay",
+      "parser": "logical-domain-ready",
+      "failed_gets": [
+        {
+          "id": 4916,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:15100/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4917,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:15100/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4919,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24966/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4920,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24966/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4921,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14190/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4922,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14190/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4924,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:23346/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4925,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:23346/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4934,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11007/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4935,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11007/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4937,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25164/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4938,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25164/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4939,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29255/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4940,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29255/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4942,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4943,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 4918,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:15100/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4923,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14190/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4936,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11007/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4941,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29255/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4944,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11007/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4946,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A1",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "75e6b9cf7e7351517ef17bea38aa6b5737d40cf3b57c680f25a9b11478307c60",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4947,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A2",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "36fa34d6454394a0bd825921fbbd7b3c8d73aadbf89f7737fea47f73858043c8",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4948,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A3",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "783f2b8a185acd2f63a040fee4488b5c1c6b08831cc38bfb93aaa7a86bc1fb70",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4949,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A4",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "87a659580e8d6f4add1ca3ffef879f1d748d283b468dc2bb6c703e0376180d00",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4950,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A5",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "c2bfefba4235fa72d4871d529a7c9e8cc6f7a0f6bb33b8c1368d106d52ee1c89",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4951,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A6",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "7d4d0c98e54035107632130f381186a2ed0f0b3b4a844b1b518638d87c48578a",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4952,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A7",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "f581142dbb20d1c89b6f771620cb625581c3440614fbd77c7af75631c58068f7",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4953,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A8",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b758a6b5fdba394253258eda5252eb76733ee0a93b7566a8c911a48288f42ee6",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4954,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A9",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "dafec11cf49845a7fb13ff5a6418ad02b4fffdcf54b0fa92dbed7094a1d779f4",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4955,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A10",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "11b7a6bb827331745ef03b558b368ce9b3a78b580dfe8ab24ce93bde88c37ffd",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4956,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A11",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "bb8ba7a790f6fd229604bff28037b72928b6a08a6a59a75e9cd96533f9c8539e",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4957,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27995/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A12",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b16d864d4b1d783eaa7b3b644d0cb85202e0e8c8411cf48aa0c1213ba882e326",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    },
+    {
+      "lane": "logical-event-evolution",
+      "case": "unknown-version-refusal",
+      "parser": "logical-domain-ready",
+      "failed_gets": [
+        {
+          "id": 4964,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:20392/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4965,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:20392/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4967,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19176/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4968,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19176/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4969,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18644/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4970,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18644/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4972,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:15976/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4973,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:15976/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4984,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25877/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4985,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25877/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4986,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25877/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4988,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:21498/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4989,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:21498/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 4990,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:26216/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4991,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:26216/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4993,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 4994,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 4966,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:20392/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4971,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18644/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4987,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25877/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4992,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:26216/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4995,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25877/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 4997,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A1",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "2d7d59c32f803aceee8939cf031a5fc2ded7c85c5dfe187213df8254877c02a6",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4998,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A2",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "4e32c6ccf1033bda0ec624bf8014b2b9f3f7eae30bc9d00ae64cc01ef535cef9",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 4999,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A3",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "3f1346fe168bfe9add9423491cd50b4178417d18b823be10fc9cee5a5d9bd4d3",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5000,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A4",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "ecabb0f4d52d792add732ba87c366b54a36cf620249f6333bd80e35ed36f5f3d",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5001,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A5",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "2fce93a1e8401b9b16eec852ff7fdbcd9dccf37ccc63b3f0ce48b039a961d5b5",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5002,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A6",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "9253c9f62678ef115d09159984e42af94b93ee92d6e79fcb00b6a9e73dcebab4",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5003,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A7",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "9ddd9d953c5cecf38d10edb285d180080a85954adb9b29a4032bb21a8cb1b9ca",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5004,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A8",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "f19fa19b5c4739dfabdbd47f3956bae42e4ff85b88a6a85b98e8cb7059759b5d",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5005,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A9",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "ae8bd2d67fd4ce95135a19e7d521dbf5d18f44282cca7c13551775b737c73fce",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5006,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A10",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "0f3d6d2b79ca81e135b59011d616402e46f57268b2cc68d45d6c8cf283a4390d",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5007,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A11",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "fe816b52b959cd3cbd44156745f5292fc8c048a090dbd39846caf991e952a236",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5008,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:24853/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A12",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "1321f59f036e65b0cc300a58b967a5c1cd98a36569acfd75520ec68cd6101d20",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    },
+    {
+      "lane": "logical-event-evolution",
+      "case": "original-envelope-preserved",
+      "parser": "logical-domain-ready",
+      "failed_gets": [
+        {
+          "id": 5015,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29446/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5016,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29446/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5018,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19239/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5019,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19239/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 5020,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11544/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5021,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11544/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5023,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14130/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5024,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14130/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 5033,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19844/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5034,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19844/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5036,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:20632/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5037,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:20632/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 5038,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27566/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5039,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27566/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5041,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 5042,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 5017,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29446/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 5022,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11544/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5035,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19844/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 5040,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27566/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5043,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19844/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 5045,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A1",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "6440fee4d75da082500267b1c54f285b6651e2236c26f6581e48b0226fad5d6f",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5046,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A2",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "3c93b2d3d5816588a7136e47a20b428a7b94fa3dcdc7b86a0f7996f568e018a7",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5047,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A3",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "f8f68c3216a1132436989b21ec8d7ee4d12a6289653ff0e39fb44b4ceae5ebf4",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5048,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A4",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "7f18adaa8b61ab36a5c35d944374199bda8e76d043278c73b68a3389a14fdc8c",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5049,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A5",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "36cb5ea8d7cd77ee1720969193c04e0d6ac228461284181f9df8a97ab21f2aeb",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5050,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A6",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "019ecb128385b51e34545e866afe9856afc1438b1c736ec813f6f14973c2ab02",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5051,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A7",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "3ede588944d5eeea0f07d752f0e54ec6db16e5246c163c0081d2480bc545d2fa",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5052,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A8",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b8ff49da54f2e17082961e1d15545b7ac3a999ec7af6c92c823b01d67323a055",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5053,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A9",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "bd145870a5325d059f789dca7c8dd9b26342d772036f99422a3a20c4d8b6dd71",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5054,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A10",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a02a107c5aa9b2be28345f062bf359487276fe3967478839ded903f219572a3c",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5055,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A11",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "7629d08516b41b9e80010a915e7280da0f0e096f15033206cf229545dfb1a62a",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 5056,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12039/v1.0/actors/AggregateActor/tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A12",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "620ff58f0fd79d85b85138d8f08ae1bc3708b26afbb69602ea70f9ec336488e9",
+          "json_keys": [
+            "aggregateId",
+            "aggregateType",
+            "applicationPayloadDigest",
+            "causationId",
+            "correlationId",
+            "domain",
+            "domainServiceVersion",
+            "eventTypeName",
+            "extensions",
+            "globalPosition",
+            "identity",
+            "messageId",
+            "metadataVersion",
+            "payload",
+            "sequenceNumber",
+            "serializationFormat",
+            "tenantId",
+            "timestamp",
+            "userId"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-status",
+      "parser": "status-readback",
+      "failed_gets": [
+        {
+          "id": 3235,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18740/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3236,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18740/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3238,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13868/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3239,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13868/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3240,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28824/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3241,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28824/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3243,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13730/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3244,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13730/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3253,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14645/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3254,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14645/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3255,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14645/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3257,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28472/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3258,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28472/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3259,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3260,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3262,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28080/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3263,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28080/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 3237,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:18740/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3242,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28824/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3256,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14645/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3261,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3265,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/status/tenant-a/fixture-status-null",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "e6ea80f86a58ac40538562c252946c966fcba30717194c3377532fefa9bfb431",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3267,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/status/tenant-a/fixture-status-false",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "ae959c470c2c09c52fbccad4451dd684ccfa8bd481261d865d347d222045120a",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3269,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:25660/status/tenant-a/fixture-status-true",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "58146f33b2e64d03ca2930ee8cfd3cbdc7891d9f30d2f7a6e7189326d2b90543",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-status",
+      "parser": "status-readback",
+      "failed_gets": [
+        {
+          "id": 3468,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:23712/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3469,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:23712/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3471,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12791/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3472,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12791/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3473,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27110/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3474,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27110/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3476,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28541/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3477,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:28541/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3486,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12378/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3487,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12378/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3488,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12378/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3490,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:10454/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3491,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:10454/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3492,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3493,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3495,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11646/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3496,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:11646/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 3470,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:23712/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3475,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:27110/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3489,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:12378/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3494,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3498,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/status/tenant-a/fixture-status-null",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "24a54cf55adf9237a26626e03c64bf5c86736c7b3269589f424369897fff0956",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "rejectionEventType",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3500,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/status/tenant-a/fixture-status-false",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "f2e0eda9e684451f54250d1eb93fedde6ad549973a5303120036b7a54b1b46cd",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "rejectionEventType",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3502,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29084/status/tenant-a/fixture-status-true",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "d12e437de055abf00ceb4aa305e3fe528ee608b493c3303bfa187187321232a9",
+          "json_keys": [
+            "aggregateId",
+            "correlationId",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "rejectionEventType",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-status",
+      "parser": "status-readback",
+      "failed_gets": [
+        {
+          "id": 3619,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16697/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3620,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16697/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3621,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16697/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3623,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13197/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3624,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:13197/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3625,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29870/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3626,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29870/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3628,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16964/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3629,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16964/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3638,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14862/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3639,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14862/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3640,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14862/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3642,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:26012/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3643,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:26012/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": 3644,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3645,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3647,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19447/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 124,
+          "output": "URLError",
+          "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd"
+        },
+        {
+          "id": 3648,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:19447/v1.0/healthz/outbound",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output": "",
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "successful_json_gets": [
+        {
+          "id": 3622,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:16697/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3627,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29870/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3641,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:14862/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+          "json_keys": [
+            "evolution_registration",
+            "ready"
+          ],
+          "manifest_registered": false
+        },
+        {
+          "id": 3646,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/ready",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+          "json_keys": [
+            "ready"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3650,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/status/tenant-a/fixture-status-null",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "e84b69d0d7883ec101618997e0c927f8983834153aaf75fb5e79c96868cc3e9b",
+          "json_keys": [
+            "aggregateId",
+            "committedEventSequence",
+            "correlationId",
+            "domain",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3652,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/status/tenant-a/fixture-status-false",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "bd81c9d4162abcfefe6164eba29e01670c4524187054f8279bef0b0482a53ec6",
+          "json_keys": [
+            "aggregateId",
+            "committedEventSequence",
+            "correlationId",
+            "domain",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        },
+        {
+          "id": 3654,
+          "argv": [
+            "HTTP",
+            "GET",
+            "http://127.0.0.1:29479/status/tenant-a/fixture-status-true",
+            "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "exit_code": 0,
+          "output_sha256": "9efc2d0ae7a52bae3c4a7cec652ed78d4655bb2ca1f37bd5d1828c2ccb6df7de",
+          "json_keys": [
+            "aggregateId",
+            "committedEventSequence",
+            "correlationId",
+            "domain",
+            "drainAttemptCount",
+            "eventCount",
+            "failureReason",
+            "messageId",
+            "recoveryReasonCode",
+            "rejectionEventType",
+            "retryable",
+            "status",
+            "timeoutDuration",
+            "timestamp"
+          ],
+          "manifest_registered": null
+        }
+      ]
+    }
+  ],
+  "original_source_binding_unchanged": true
+}

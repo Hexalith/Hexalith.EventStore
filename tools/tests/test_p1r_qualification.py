@@ -338,6 +338,111 @@ class PacketTests(unittest.TestCase):
 
 
 class SourceAndProcessTests(unittest.TestCase):
+    def testPidfdErrorsAreSkippedOnlyForDisappearedOrReusedOwnedIdentity(self):
+        owned={'pid':12345,'start_ticks':10,'pgid':12345,'session':12345}
+        live={**owned,'ppid':1,'state':'S'}
+        reused={**live,'start_ticks':20}
+        for observed in (None,reused):
+            with self.subTest(preliminary=observed),mock.patch.object(p,'process_state',return_value=observed), \
+                    mock.patch.object(p.os,'pidfd_open') as opened:
+                p.signal_owned(owned,signal.SIGTERM)
+                opened.assert_not_called()
+            with self.subTest(raced=observed),mock.patch.object(p,'process_state',side_effect=[live,observed]), \
+                    mock.patch.object(p.os,'pidfd_open',side_effect=OSError(22,'bounded invalid pidfd')), \
+                    mock.patch.object(p.signal,'pidfd_send_signal') as sent:
+                p.signal_owned(owned,signal.SIGTERM)
+                sent.assert_not_called()
+        for error in (OSError(22,'matching live pidfd failure'),PermissionError(13,'denied'),OSError(5,'read failure')):
+            with self.subTest(error=error.errno),mock.patch.object(p,'process_state',return_value=live), \
+                    mock.patch.object(p.os,'pidfd_open',side_effect=error):
+                with self.assertRaises(type(error)):
+                    p.signal_owned(owned,signal.SIGTERM)
+        with mock.patch.object(p,'process_state',side_effect=[live,reused]), \
+                mock.patch.object(p.os,'pidfd_open',return_value=42),mock.patch.object(p.os,'close') as closed, \
+                mock.patch.object(p.signal,'pidfd_send_signal') as sent:
+            p.signal_owned(owned,signal.SIGTERM)
+            sent.assert_not_called()
+            closed.assert_called_once_with(42)
+
+    def testDisappearingProcStatIsAbsentButOtherReadErrorsRemainFailures(self):
+        for error in (FileNotFoundError(2,'gone'),ProcessLookupError(3,'gone')):
+            with self.subTest(type=type(error).__name__),mock.patch.object(Path,'read_text',side_effect=error):
+                self.assertIsNone(p.process_state(12345))
+                with mock.patch.object(Path,'iterdir',return_value=[Path('/proc/12345')]):
+                    self.assertEqual(p.process_inventory(),[])
+        for error in (PermissionError(13,'denied'),OSError(5,'read failure')):
+            with self.subTest(type=type(error).__name__),mock.patch.object(Path,'read_text',side_effect=error):
+                with self.assertRaises(type(error)):
+                    p.process_state(12345)
+
+    def disposable_workspace(self, scratch, nested=False):
+        workspace = Path(scratch) / "workspace"
+        real_workspace = p.ROOT
+        subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(real_workspace), str(workspace)], check=True)
+        subprocess.run(["git", "read-tree", "HEAD"], cwd=workspace, check=True)
+        owner = workspace / "references/Hexalith.Tenants"
+        owner.parent.mkdir(exist_ok=True)
+        subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(p.ROOT), str(owner)], check=True)
+        subprocess.run(["git", "read-tree", "HEAD"], cwd=owner, check=True)
+        # The superproject recognition comes from real absorbed gitdirs; no
+        # monkeypatch supplies the trust-boundary observation being tested.
+        modules = '[submodule "EventStore"]\n path = references/Hexalith.Tenants\n url = local-owner\n[submodule "Builds"]\n path = references/Hexalith.Builds\n url = local-builds\n'
+        (workspace / ".gitmodules").write_text(modules)
+        subprocess.run(["git", "submodule", "absorbgitdirs", "references/Hexalith.Tenants"], cwd=workspace, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (owner / ".gitmodules").write_bytes(p.git(p.ROOT, "show", "HEAD:.gitmodules"))
+        (owner / "README.md").write_bytes(p.git(p.ROOT, "show", "HEAD:README.md"))
+        builds_source = p.ROOT / "references/Hexalith.Builds"
+        if not (builds_source / ".git").exists():
+            builds_source = p.ROOT.parent / "Hexalith.Builds"
+        builds = (owner if nested else workspace) / "references/Hexalith.Builds"
+        builds.parent.mkdir(exist_ok=True)
+        subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(builds_source), str(builds)], check=True)
+        subprocess.run(["git", "read-tree", "HEAD"], cwd=builds, check=True)
+        (builds / "README.md").write_bytes(p.git(builds_source, "show", "HEAD:README.md"))
+        if not nested:
+            subprocess.run(["git", "submodule", "absorbgitdirs", "references/Hexalith.Builds"], cwd=workspace, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return workspace, owner, builds
+
+    def testWorkspaceRootBuildsIsObservedWithoutNestedInitialization(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            workspace, owner, builds = self.disposable_workspace(scratch)
+            with mock.patch.object(p, "relevant", side_effect=lambda name: name == "README.md"), mock.patch.object(p, "retained_inputs", return_value=[]):
+                binding = p.source_binding(owner)
+            observed = binding["workspace_builds"]
+            self.assertEqual(Path(observed["workspace"]), workspace)
+            self.assertEqual(Path(observed["path"]), builds)
+            self.assertEqual(observed["binding"]["head"], p.git(builds, "rev-parse", "HEAD").decode().strip())
+            self.assertFalse((owner / "references/Hexalith.Builds/.git").exists())
+
+    def testNestedBuildsObservationKeepsOwningRepositoryRoute(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            _, owner, builds = self.disposable_workspace(scratch, nested=True)
+            with mock.patch.object(p, "relevant", side_effect=lambda name: name == "README.md"), mock.patch.object(p, "retained_inputs", return_value=[]):
+                binding = p.source_binding(owner)
+            self.assertNotIn("workspace_builds", binding)
+            observed = next(item for item in binding["dependencies"] if item["path"] == "references/Hexalith.Builds")
+            self.assertTrue(observed["initialized"])
+            self.assertEqual(observed["binding"]["head"], p.git(builds, "rev-parse", "HEAD").decode().strip())
+
+    def testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            workspace, owner, builds = self.disposable_workspace(scratch)
+            real_git, real_declarations = p.git, p.declared_dependencies
+            def substituted(root, *arguments):
+                if root == builds and arguments == ("rev-parse", "--show-toplevel"):
+                    return b"/unrelated/Builds\n"
+                return real_git(root, *arguments)
+            def undeclared(root):
+                rows = real_declarations(root)
+                return rows if root == owner else [row for row in rows if row != "references/Hexalith.Builds"]
+            with mock.patch.object(p, "relevant", side_effect=lambda name: name == "README.md"), mock.patch.object(p, "retained_inputs", return_value=[]):
+                with mock.patch.object(p, "git", side_effect=substituted):
+                    with self.assertRaisesRegex(p.InvalidPacket, "repository substituted"):
+                        p.source_binding(owner)
+                with mock.patch.object(p, "declared_dependencies", side_effect=undeclared):
+                    with self.assertRaisesRegex(p.InvalidPacket, "not root declared"):
+                        p.source_binding(owner)
+
     def testDirtyUntrackedAndStagedNewSourcesHaveIndependentBindings(self):
         with tempfile.TemporaryDirectory(prefix="p1r-source-test-") as scratch:
             root = Path(scratch)

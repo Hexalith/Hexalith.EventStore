@@ -1,0 +1,33 @@
+{
+  "errors": [],
+  "executor_source_sha256": "1479ffeb2b1949bcc7e18c91f681cbb7dd6bceb0302f3f652a7ce33a532a527d",
+  "finished_utc": "2026-10-07T12:10:05.277727+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "325e3c9327df4810941981b5882e3a70",
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31150-live-20261007-06/receipts/5d59f5655d314120a729aa6765e6881c.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/195f7674bae149ab9bd1854296ea13b7.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/4fa1b28f7e7f44268b21c3ac96759908.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/c66fb9e123e343e082a6a82f693d51ba.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/1cdb1acff4e44048a74897410f9827f0.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/da3e0c3d86de4e8180d5a0971b6d98c6.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/10c49b8c0d3d4e99b49d95d8024fb666.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/7425586f98c94f578485cf616ca7f4f0.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/9f243ee9ce124225ab7bf17d47c08a4a.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/50f4f995c112444888f48702cdabce9c.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/c1e8a46385a44a3f9a0733948a2a21b7.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/f17b54101b054989ba03526e6ed93d26.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/103e55d82a8d4b51b6773b617541c284.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/dc6b0e71b77c46e09a9312a5a0f24d87.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/a3e68871e3924aa0ad8a07378bc46c4a.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/ee47a9797f0c4b0eb7713d917e84057d.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/b079b08a6d234ad4a75c9b5eae36fdd9.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/c44882f6f3aa48689656e78f93a6d890.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/0f880e174c3c4758bf278b3b873f71e4.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/d4739f6d55ea4296ba53f342580beaf5.json",
+    "/tmp/p1r-31150-live-20261007-06/receipts/6c6ca85b97d0498f8a019143b62059b7.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T11:52:13.741503+00:00"
+}

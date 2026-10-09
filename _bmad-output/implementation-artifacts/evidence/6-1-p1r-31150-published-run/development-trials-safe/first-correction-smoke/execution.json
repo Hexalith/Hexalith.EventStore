@@ -1,0 +1,16 @@
+{
+  "errors": [
+    "mixed-api/3.115.0-fenced-effect: HTTP request refused: 500",
+    "post-upgrade-restore/fresh-backup-restore-append-restart: command failed: docker start 1f40c90c25abc4cfe917edd68ee541612b5ebeb0da46bb7e1a976d21551bdcb1; exit=1"
+  ],
+  "executor_source_sha256": "25e6eff4fa5fa0fe44e1060766951f8a77bc12abefee563efdfcf464abddf8b1",
+  "finished_utc": "2026-10-07T10:57:18.937187+00:00",
+  "inputs_sha256": "c4970b8bb71dfb07f3dc5c7e2524a28f998d8f7f45674b455cfbc7f00b69beb0",
+  "invocation": "e4f30c98d7c74ad49e8c5553b87b324b",
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31150-correction-smoke-02/receipts/b40c1008477a4cfb9c9b23f406c85f30.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T10:54:28.096581+00:00"
+}

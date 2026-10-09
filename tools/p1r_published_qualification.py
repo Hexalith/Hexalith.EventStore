@@ -29,6 +29,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
+import p1r_check_witnesses as check_witnesses
 import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
 import release_package_contract as release
@@ -79,6 +80,7 @@ PACKET_KEYS = ("schema", "invocation", "started_utc", "finished_utc", "source_bi
 ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts", "reason")
 INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
               "assertion_instrumentation", "selected_additions")
+COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
 SELECTION_KEYS = ("version", "tag", "tag_commit", "builds", "feed", "packages")
 SELECTED_PACKAGE_KEYS = ("id", "archive_sha256", "content_hash", "repository_commit")
 DECISION_KEYS = ("schema", "fixture", "inputs_sha256", "decisions", "conformance")
@@ -153,7 +155,8 @@ def validate_selection(value, role):
 
 def validate_inputs(value):
     """Validate owner execution inputs; returns their scope. Synthetic fixtures select no published tuple."""
-    members(value, INPUT_KEYS, "owner input members differ from contract")
+    members(value, INPUT_KEYS + (("comparisons",) if "comparisons" in value else ()),
+            "owner input members differ from contract")
     require(value["schema"] == INPUTS_SCHEMA, "unsupported owner input contract")
     require(value["fixture"] in (None, SYNTHETIC), "unknown fixture marker")
     members(value["authority"], ("owner", "reference", "date"), "invalid execution authority")
@@ -165,6 +168,14 @@ def validate_inputs(value):
     if value["rollback"] is not None:
         validate_selection(value["rollback"], "rollback")
         require(value["rollback"]["version"] != value["candidate"]["version"], "rollback must differ from the candidate")
+    comparisons = value.get("comparisons", [])
+    require(isinstance(comparisons, list) and (not comparisons or [row.get("version") for row in comparisons
+            if isinstance(row, dict)] == list(COMPARISON_VERSIONS)), "comparison policy requires exact historical directions")
+    for row in comparisons:
+        validate_selection(row, "comparison")
+        require(row["version"] != value["candidate"]["version"], "comparison must differ from candidate")
+        require(value["rollback"] is None or row["version"] != value["rollback"]["version"],
+                "comparison selection cannot substitute for rollback")
     if value["operational_profile"] is not None:
         runtime.validate_profile(value["operational_profile"])
     if value["assertion_instrumentation"] is not None:
@@ -267,7 +278,58 @@ def unavailable_row(group, name, selection):
 
 
 def initial_lanes(selection):
-    return {group: [unavailable_row(group, name, selection) for name in names] for group, names in INVENTORIES.items()}
+    return {group: [unavailable_row(group, name, selection) for name in names]
+            for group, names in lane_inventory(selection).items()}
+
+
+def package_roles(selection):
+    return ROLES + tuple("comparison-" + row["version"] for row in (selection or {}).get("comparisons", []))
+
+
+def lane_inventory(selection):
+    return {**INVENTORIES, "packages": tuple(role + "-packages" for role in package_roles(selection))}
+
+
+def executed_case_inventory(selection):
+    """Finite execution contract for the selected measured executor, including historical directions."""
+    versions = ("3.110.0", "3.70.1", selection["candidate"]["version"])
+    directions = tuple((writer, reader) for writer in versions for reader in versions if writer != reader)
+    result = {
+        "provenance": tuple(versions),
+        "legacy-metadata": tuple(f"{version}-{style}-floor-None" for version in versions for style in ("pascal", "web")),
+        "metadata-read": tuple(f"{version}-{style}-floor-{floor}" for version in versions
+                               for style in ("pascal", "web") for floor in (1, 5)),
+        "metadata-write": tuple(f"{writer}-to-{reader}" for writer, reader in directions),
+        "invalid-evidence": tuple(f"{version}-{mutation}" for version in versions for mutation in
+                                   ("invalid-floor", "unreadable", "protected", "unknown-type", "unknown-version")),
+        "query-wire": tuple(f"{writer}-{reader}-{format_name}-{shape}" for writer, reader in directions
+                             for format_name in ("json", "xml") for shape in ("legacy", "dual")),
+        "projection-wire": tuple(f"{writer}-{reader}-json-positive" for writer, reader in directions),
+        "mixed-api": tuple(f"{writer}-client-{reader}-host" for writer, reader in directions)
+                     + tuple(f"{version}-{operation}" for version in versions for operation in
+                              ("status", "cursor-scope", "fenced-effect", "stale-fence", "trusted-effect", "unauthorized-effect", "retained-floor")),
+        "checkout": ("current-build", "legacy-metadata", "query-wire", "projection-wire", "full-replay", "snapshot-tail",
+                     "retained-covered", "retained-uncovered", "missing-event", "metadata-write", "invalid-evidence"),
+        "post-upgrade-restore": ("fresh-backup-restore-append-restart",),
+        "pre-upgrade-restore": ("containment-only-backup-restore",),
+        "failure-cleanup": ("startup-failure", "timeout", "cancellation"),
+        "reminder-recovery": ("scheduled-restart-effect", "stale-generation-refusal", "tenant-preservation"),
+        "logical-event-evolution": ("logical-alias-replay", "unknown-version-refusal", "original-envelope-preserved"),
+    }
+    for lane in ("full-replay", "snapshot-tail", "retained-covered"):
+        result[lane] = tuple(f"{writer}-to-{reader}" for writer, reader in directions)
+    for lane, variants in (("retained-uncovered", ("absent", "non-covering")), ("missing-event", ("interior", "tail"))):
+        result[lane] = tuple(f"{writer}-to-{reader}-{variant}" for writer, reader in directions for variant in variants)
+    return result
+
+
+def role_selection(selection, role):
+    if role in ROLES:
+        return selection[role]
+    require(role.startswith("comparison-"), "unknown package role")
+    rows = [row for row in selection.get("comparisons", []) if role == "comparison-" + row["version"]]
+    require(len(rows) == 1, "comparison lacks owner-selected historical input")
+    return rows[0]
 
 
 def mirror_families(lanes):
@@ -279,6 +341,7 @@ def required_lanes(selection):
     required = [("scenarios", name) for name in SCENARIOS] + [("families", name) for name in FAMILIES]
     required += [("additions", name) for name in ADDITIONS if selection is None or name in selection["selected_additions"]]
     required += [("packages", "candidate-packages"), ("recovery", "candidate-restore"), ("recovery", "container-cleanup")]
+    required += [("packages", role + "-packages") for role in package_roles(selection) if role not in ROLES]
     if selection is None or selection["rollback"] is not None:
         required += [("packages", "rollback-packages"), ("recovery", "rollback-restore")]
     return required
@@ -669,7 +732,7 @@ def verified_identities(receipt, outcome):
 
 
 def execute_package_lane(directory, invocation, role, evidence, inputs, verifier):
-    selection = inputs["value"][role]
+    selection = role_selection(inputs["value"], role)
     receipt_id = uuid.uuid4().hex
     receipt = {"schema": PACKAGE_RECEIPT_SCHEMA, "id": receipt_id, "invocation": invocation, "role": role,
                "started_utc": stamp(), "finished_utc": None, "observation": None, "checks": [], "assertions": None,
@@ -692,7 +755,7 @@ def validate_package_receipt(directory, invocation, role, path, inputs, start, e
     try:
         observation = receipt["observation"]
         retained = {bind_evidence_copy(directory, observation, role)}
-        checks, outcome = package_outcome(directory, receipt, inputs["value"][role], inputs)
+        checks, outcome = package_outcome(directory, receipt, role_selection(inputs["value"], role), inputs)
         retained |= {project[key]["path"] for project in observation["projects"] for key in ("assets", "lock", "loaded")}
         retained |= {package["signature"]["output"]["path"] for package in observation["packages"] if package["signature"]}
         prefix = f"receipts/{receipt['id']}/"
@@ -708,7 +771,8 @@ def validate_package_receipt(directory, invocation, role, path, inputs, start, e
 
 def lane_outcome(receipt):
     """Validate one scenario/addition lane receipt contract and derive its outcome from its cases."""
-    members(receipt, LANE_KEYS, "lane receipt members differ from contract")
+    members(receipt, LANE_KEYS + (("execution_evidence",) if "execution_evidence" in receipt else ()),
+            "lane receipt members differ from contract")
     require(receipt["schema"] == LANE_RECEIPT_SCHEMA, "unsupported receipt contract")
     pattern(receipt["id"], HEX32, "invalid receipt identity")
     require(receipt["lane"] in SCENARIOS + ADDITIONS, "unknown qualification lane")
@@ -726,6 +790,9 @@ def lane_outcome(receipt):
     validate_times(receipt)
     require(type(receipt["exit_code"]) is int, "missing exit status")
     pattern(receipt["output_sha256"], HEX64, "missing output hash")
+    if "execution_evidence" in receipt:
+        require(receipt["output_sha256"] == digest(preparation.canonical(receipt["execution_evidence"])),
+                "executed evidence output hash differs")
     identities = receipt["identities"]
     members(identities, ("configuration", "packages", "loaded_assemblies"), "invalid lane identities")
     require(identities["configuration"] in ("Release", "Debug"), "invalid lane identities")
@@ -801,6 +868,52 @@ def bind_lane(receipt, outcome, context):
     instrumentation = selection["assertion_instrumentation"]
     require(instrumentation is not None and receipt["instrumentation"] == instrumentation["mechanism"],
             "lane assertions lack the accepted instrumentation")
+    if instrumentation["mechanism"] == "p1r-executed-checks-v1":
+        evidence = receipt.get("execution_evidence")
+        require(isinstance(evidence, dict) and evidence.get("mechanism") == instrumentation["mechanism"]
+                and isinstance(evidence.get("cases"), list)
+                and [case.get("id") for case in evidence["cases"]] == [case["id"] for case in receipt["cases"]],
+                "measured executor lacks retained per-case command evidence")
+        require(evidence.get("executor_source") == context.get("source_binding"),
+                "executor checkout differs from the independently bound source closure")
+        expected_source_bytes = json.dumps(context["source_binding"], indent=2, sort_keys=True, allow_nan=False).encode() + b"\n"
+        require(evidence.get("executor_source_sha256") == digest(expected_source_bytes),
+                "executor source file hash differs from the independently bound closure")
+        require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
+                "measured executor lacks the selected historical directions")
+        require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),
+                "executed case inventory omits or substitutes a required direction or operation")
+        for row, case in zip(receipt["cases"], evidence["cases"]):
+            configurations = case.get("configurations", [])
+            require(isinstance(configurations, list), "malformed executed configuration evidence")
+            for configuration in configurations:
+                require(isinstance(configuration, dict)
+                        and configuration.get("backend_image") == selection["operational_profile"]["backend_image"]
+                        and configuration.get("runtime_version") == selection["operational_profile"]["runtime_version"]
+                        and isinstance(configuration.get("files"), list) and bool(configuration["files"]),
+                        "executed configuration differs from selected runtime profile")
+                for file in configuration["files"]:
+                    require(isinstance(file, dict) and isinstance(file.get("content"), str)
+                            and digest(file["content"].encode()) == file.get("sha256"),
+                            "executed configuration content differs from its hash")
+            require(isinstance(case.get("commands"), list) and bool(case["commands"]),
+                    "executed case lacks literal command evidence")
+            for command in case["commands"]:
+                require(isinstance(command, dict) and isinstance(command.get("argv"), list) and bool(command["argv"])
+                        and all(isinstance(arg, str) and arg for arg in command["argv"])
+                        and type(command.get("exit_code")) is int and isinstance(command.get("cwd"), str),
+                        "malformed executed command evidence")
+                validate_times(command)
+                pattern(command.get("output_sha256"), HEX64, "missing executed command output hash")
+                if command.get("output") is not None:
+                    require(isinstance(command["output"], str)
+                            and digest(command["output"].encode()) == command["output_sha256"],
+                            "retained executed command output differs")
+            check_witnesses.validate_case(row, case, context["source_binding"], receipt["lane"], evidence.get("predicate_sources"))
+        require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
+                "measured executor lacks the selected historical directions")
+        require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),
+                "executed case inventory omits or substitutes a required direction or operation")
     identities = receipt["identities"]
     candidate = context["verified"].get("candidate")
     archives = {(k, v) for verified in context["verified"].values() for k, v in verified["archives"].items()}
@@ -811,6 +924,13 @@ def bind_lane(receipt, outcome, context):
     require(candidate is not None and identities["configuration"] == "Release" and packages <= archives
             and set(candidate["archives"].items()) <= packages, "lane lacks verified published package binding")
     require(loaded and loaded <= dlls and loaded & candidate["dlls"], "lane loaded assemblies differ from verified archives")
+    if instrumentation["mechanism"] == "p1r-executed-checks-v1":
+        for role in package_roles(selection):
+            if role in ROLES:
+                continue
+            comparison = context["verified"].get(role)
+            require(comparison is not None and set(comparison["archives"].items()) <= packages
+                    and bool(loaded & comparison["dlls"]), "lane lacks independently verified comparison binaries")
     if outcome["scope"] == "operational":
         require(selection["operational_profile"] is not None and receipt["profile"] == selection["operational_profile"],
                 "operational evidence lacks the selected profile")
@@ -830,6 +950,9 @@ def bind_recovery(receipt, outcome, lane, context):
         require(verified is not None and receipt["packages"]
                 and set(receipt["packages"].items()) <= set(verified["archives"].items()),
                 "restore writer lacks verified published package binding")
+    else:
+        require(any(row["kind"] == "container" for row in receipt["owned"]),
+                "container cleanup lacks actual owned container evidence")
 
 
 def receipt_outcome(receipt, context):
@@ -877,7 +1000,7 @@ def public(record):
 
 
 def create_packet(directory, inputs=None, decisions=None, candidate_evidence=None, rollback_evidence=None, receipts=(),
-                  process_controls=False, root=ROOT, verifier=None):
+                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=()):
     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
     directory = Path(directory).absolute()
     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
@@ -892,7 +1015,7 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
     write_json(directory / "packet.json", packet)  # Survives interruption before any observation.
     inputs_record = decisions_record = None
     try:
-        dependent = (candidate_evidence, rollback_evidence, decisions, *receipts)
+        dependent = (candidate_evidence, rollback_evidence, decisions, *receipts, *comparison_evidence)
         require(inputs is not None or all(value is None for value in dependent),
                 "dependent execution refused: " + R_INPUTS)
         binding = preparation.source_binding(root)
@@ -909,8 +1032,16 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
             packet["decisions"] = public(decisions_record)
         require(rollback_evidence is None or inputs_record["value"]["rollback"] is not None,
                 "rollback execution refused: " + R_NO_ROLLBACK)
-        context = {"inputs": inputs_record, "verified": {}}
-        for role, evidence in zip(ROLES, (candidate_evidence, rollback_evidence)):
+        context = {"inputs": inputs_record, "verified": {}, "source_binding": binding}
+        supplied = dict(zip(ROLES, (candidate_evidence, rollback_evidence)))
+        for evidence in comparison_evidence:
+            manifest = parse_json(regular(Path(evidence).absolute() / "evidence.json"))
+            role = manifest.get("role")
+            require(role in package_roles(inputs_record["value"]) and role not in ROLES and role not in supplied,
+                    "comparison evidence is missing, duplicate or unselected")
+            supplied[role] = evidence
+        for role in package_roles(inputs_record["value"] if inputs_record else None):
+            evidence = supplied.get(role)
             if evidence is None:
                 continue
             preparation.check_current_source(binding)
@@ -918,7 +1049,7 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
             # mismatches and graph defects are retained below as failed checks.
             row, verified = execute_package_lane(directory, packet["invocation"], role, evidence, inputs_record,
                                                  verifier or default_verifier)
-            lanes["packages"][ROLES.index(role)] = row
+            lanes["packages"][package_roles(inputs_record["value"]).index(role)] = row
             if verified is not None:
                 context["verified"][role] = verified
             write_json(directory / "packet.json", packet)
@@ -1002,7 +1133,7 @@ def validate_packet(directory):
     selection = inputs["value"] if inputs is not None else None
     lanes = packet["lanes"]
     require(isinstance(lanes, dict) and set(lanes) == set(INVENTORIES), "lane groups differ from contract")
-    for group, names in INVENTORIES.items():
+    for group, names in lane_inventory(selection).items():
         ordered_rows(lanes[group], names)
         for row in lanes[group]:
             members(row, ROW_KEYS, "lane row members differ from contract")
@@ -1011,12 +1142,12 @@ def validate_packet(directory):
     require(lanes["families"] == [by_id[name] for name in FAMILIES], "family dispositions differ from their scenarios")
     require(inputs is not None or not any(row["receipts"] for group in INVENTORIES for row in lanes[group]),
             "dependent evidence lacks owner execution inputs")
-    context = {"inputs": inputs, "verified": {}}
-    for role, row in zip(ROLES, lanes["packages"]):
+    context = {"inputs": inputs, "verified": {}, "source_binding": binding}
+    for role, row in zip(package_roles(selection), lanes["packages"]):
         if not row["receipts"]:
             validate_unexecuted("packages", row, selection)
             continue
-        require(selection is not None and (role == "candidate" or selection["rollback"] is not None),
+        require(selection is not None and role_selection(selection, role) is not None,
                 "package evidence lacks its selection")
         receipt, outcome, retained = validate_package_receipt(directory, packet["invocation"], role, row["receipts"][0],
                                                               inputs, start, end)

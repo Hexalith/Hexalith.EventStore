@@ -1,0 +1,21 @@
+{
+  "errors": [
+    "metadata-write/3.115.0-to-3.70.1: ",
+    "interrupted",
+    "KeyboardInterrupt"
+  ],
+  "executor_source_sha256": "bfe9491a355bbc6a1ea17649a21f6b7dbe0082b7172b1d18fe85c44e90483deb",
+  "finished_utc": "2026-10-07T11:02:43.362763+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "73b7e109666645d4a8a8730ce6a9a6d1",
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31150-live-20261007-02/receipts/629d791c53954032bb99d58d6ac24a6c.json",
+    "/tmp/p1r-31150-live-20261007-02/receipts/8ea7dc7a6f4448bc9960b58f68f28672.json",
+    "/tmp/p1r-31150-live-20261007-02/receipts/74e06d8ef8f54d9c9da3f505232200f8.json",
+    "/tmp/p1r-31150-live-20261007-02/receipts/c8d87ce29449417c9af176915645980b.json",
+    "/tmp/p1r-31150-live-20261007-02/receipts/72a9295878f449f9bb8d5c0442736bfd.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T11:01:01.198573+00:00"
+}

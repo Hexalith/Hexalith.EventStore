@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "aspire",
+    "run",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--detach"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T12:39:51.849000+00:00",
+  "finished_utc": "2026-10-07T12:39:59.949000+00:00",
+  "exit_code": 2,
+  "apphost_exit_code": 134,
+  "build_warnings": 0,
+  "build_errors": 0,
+  "output_sha256": "1917a94204bf87ce0820b6d10c1814b97c9000891425bb7b03717b7aa24bb2bd",
+  "original_cli_log": "/home/administrator/.aspire/logs/cli_20261007T123951_26599bc0.log",
+  "original_cli_log_sha256": "dbc7654bc69d6fd0eff99507ab8cd7b90d1123c63eeb29b49bbd6b1549440a90",
+  "retention": "Bounded original command, build and AppHost diagnostic excerpts; no environment observations.",
+  "blocker": "Plain local Aspire run requires both absent nested Hexalith.Tenants host projects before any resources can start.",
+  "nested_initialization_performed": false
+}

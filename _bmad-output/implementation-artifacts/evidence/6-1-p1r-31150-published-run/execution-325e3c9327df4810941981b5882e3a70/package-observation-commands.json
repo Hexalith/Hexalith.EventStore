@@ -1,0 +1,1238 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:01.506857+00:00",
+    "id": 1,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "started_utc": "2026-10-07T11:51:01.454871+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:01.555884+00:00",
+    "id": 2,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.397649945Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.40484467Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.431759203Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.421753641Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "e7b9bab350686670beac91ece263a74bd037b45ef223e69caf20646140f42ed1",
+    "started_utc": "2026-10-07T11:51:01.507135+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/Host.csproj",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:03.680878+00:00",
+    "id": 3,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/Host.csproj (in 1.44 sec).\n",
+    "output_sha256": "b397cfe7f922f3a8d75eb001d3a27320658f583e3663d6130af2c4f050274f22",
+    "started_utc": "2026-10-07T11:51:01.557118+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:04.642707+00:00",
+    "id": 4,
+    "output": "  Host -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Host.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.72\n",
+    "output_sha256": "f59760215acb613d928f21a5057ac48d385d8329cfd260ec187ae9f402f93655",
+    "started_utc": "2026-10-07T11:51:03.681179+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18016/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:04.648982+00:00",
+    "id": 5,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:04.643921+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18016/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:04.798326+00:00",
+    "id": 6,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:04.797985+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18016/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:05.062614+00:00",
+    "id": 7,
+    "output": "{\"ready\":true}",
+    "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+    "started_utc": "2026-10-07T11:51:04.948780+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18016/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:05.073890+00:00",
+    "id": 8,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}]}",
+    "output_sha256": "fbbd168573a398459d2d0f6a4c5a2835b9d860c6dd5f9b292e9116ba538dba34",
+    "started_utc": "2026-10-07T11:51:05.063008+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/host/bin/Release/net10.0/Host.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:05.126741+00:00",
+    "id": 9,
+    "output": "info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1120]\n      Projection discovery: no domain service registrations found in EventStore:DomainServices:Registrations. Projections will activate on first domain service resolution at runtime.\ninfo: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]\n      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted\ninfo: Microsoft.Hosting.Lifetime[14]\n      Now listening on: http://127.0.0.1:18016\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application started. Press Ctrl+C to shut down.\ninfo: Microsoft.Hosting.Lifetime[0]\n      Hosting environment: Development\ninfo: Microsoft.Hosting.Lifetime[0]\n      Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:18016/ready - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType0`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:18016/ready - 200 - application/json;+charset=utf-8 92.9292ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:18016/identity - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType7`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:18016/identity - 200 - application/json;+charset=utf-8 9.2787ms\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application is shutting down...\n",
+    "output_sha256": "3e4aff1d8fb698878237d758229872795642255ccf81ba3ba940c241684ab269",
+    "process": {
+      "pgid": 31915,
+      "pid": 31915,
+      "session": 31915,
+      "start_ticks": 10839915
+    },
+    "started_utc": "2026-10-07T11:51:04.643166+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/Domain.csproj",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:05.970547+00:00",
+    "id": 10,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/Domain.csproj (in 183 ms).\n",
+    "output_sha256": "6809d2fe614b0facc12ff22f6495a9766c5d2e150118cdebaa9a01611575cc38",
+    "started_utc": "2026-10-07T11:51:05.127102+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/Domain.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:06.839350+00:00",
+    "id": 11,
+    "output": "  Domain -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Domain.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.62\n",
+    "output_sha256": "dfbb525e66049f399a7a778841576ab26213cf4555e034d9a50d4379e60625ea",
+    "started_utc": "2026-10-07T11:51:05.970941+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:23115/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:06.840691+00:00",
+    "id": 12,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:06.840433+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:23115/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:06.991365+00:00",
+    "id": 13,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:06.991052+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:23115/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:07.142129+00:00",
+    "id": 14,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:07.141829+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:23115/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:07.350164+00:00",
+    "id": 15,
+    "output": "{\"ready\":true,\"evolution_registration\":{\"manifest_registered\":false,\"bounded_v1_serializer_registered\":false,\"write_alias\":\"P1R.Counter.CounterIncremented\"}}",
+    "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+    "started_utc": "2026-10-07T11:51:07.292582+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:23115/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:07.358941+00:00",
+    "id": 16,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}]}",
+    "output_sha256": "d9875b095ca5c6893eab5d20eee8aaf08a246b2c3fd93406701be4a6091e0b25",
+    "started_utc": "2026-10-07T11:51:07.350553+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Domain.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:07.410725+00:00",
+    "id": 17,
+    "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:23115\",\"State\":{\"address\":\"http://127.0.0.1:23115\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:23115/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:23115\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType1\\u00602\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType1\\u00602\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:23115/ready - 200 - application/json;\\u002Bcharset=utf-8 37.3844ms\",\"State\":{\"ElapsedMilliseconds\":37.3844,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:23115\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:23115/identity - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:23115\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType2\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType2\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:23115/identity - 200 - application/json;\\u002Bcharset=utf-8 5.7718ms\",\"State\":{\"ElapsedMilliseconds\":5.7718,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:23115\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+    "output_sha256": "1aeba5fe0b7ef499ce410b5771bcf10b680330af34dfe2d681b5f3d32e4a0865",
+    "process": {
+      "pgid": 32105,
+      "pid": 32105,
+      "session": 32105,
+      "start_ticks": 10840135
+    },
+    "started_utc": "2026-10-07T11:51:06.839812+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/Probe.csproj",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:08.558986+00:00",
+    "id": 18,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/Probe.csproj (in 508 ms).\n",
+    "output_sha256": "0b2049668bacd22238d6b16ae1fac0644f29da590f4272d3887459cc0775f337",
+    "started_utc": "2026-10-07T11:51:07.411147+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/Probe.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:09.300379+00:00",
+    "id": 19,
+    "output": "  Probe -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.52\n",
+    "output_sha256": "872648fb517f3d283d4f75e5653616f56f48f5d22295b597fb0a200efc3c4cf5",
+    "started_utc": "2026-10-07T11:51:08.559350+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+      "identity"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:09.418372+00:00",
+    "id": 20,
+    "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.110.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa\"}]}}\n",
+    "output_sha256": "9801c6cd434198a0112745ab2400103d20600301e376fbf07ee89f37818dd80a",
+    "started_utc": "2026-10-07T11:51:09.300920+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/packages/hexalith.eventstore.client/3.110.0/hexalith.eventstore.client.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:09.765414+00:00",
+    "id": 21,
+    "output": "\nVerifying Hexalith.EventStore.Client.3.110.0\nContent hash: OSjRL4VNdN7U40CQKxVWeboQV4Go4mnXm5a6zuKsyMOz/1/qmq/g6VRbGyEN1wN9R6nDElv2RHeV754BlQvjjg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "a6501eac629446d67da6c75efa1b8da3ca3443d4006e1175856edf0f4bbd7608",
+    "started_utc": "2026-10-07T11:51:09.486181+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/packages/hexalith.eventstore.contracts/3.110.0/hexalith.eventstore.contracts.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:10.046250+00:00",
+    "id": 22,
+    "output": "\nVerifying Hexalith.EventStore.Contracts.3.110.0\nContent hash: baYsmElIPNyTHly6B18qIldqyV3IQ10znHmYON+AKeuL3xyvacz2Jrn9xFMY8b2C/Ow874JYCkq0o6x/NbcUsQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "bf7f207d60e8c4b34180617f0d4b51a47d6814be6f96d346aa7abcad205561b5",
+    "started_utc": "2026-10-07T11:51:09.767615+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/packages/hexalith.eventstore.domainservice/3.110.0/hexalith.eventstore.domainservice.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:10.321797+00:00",
+    "id": 23,
+    "output": "\nVerifying Hexalith.EventStore.DomainService.3.110.0\nContent hash: HWvcNBAfLqxjZ2w7aOABVaZv2WXn7W3aox1GHjq5zFQe1UjXW3en/aiPazsa8ccXCUfXE+WqrA+Q1YNABKSmHw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "420562227b0bda2d6b156f9e1f8ecfd1cd7bb205f206a124964956fd448d6b3c",
+    "started_utc": "2026-10-07T11:51:10.048309+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/packages/hexalith.eventstore.server/3.110.0/hexalith.eventstore.server.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:10.605542+00:00",
+    "id": 24,
+    "output": "\nVerifying Hexalith.EventStore.Server.3.110.0\nContent hash: ag4Svmfv94X4DxxTRAiyJPQZM0IXxrH40JaOtTx5RTCfh2ASaKHf9aIwWJGSOL4pWHGqd5w3apvu4or1PYzoxg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "3434116cd1acfc022674d649312220c5d3887deed682171c93a4090ef3644397",
+    "started_utc": "2026-10-07T11:51:10.328326+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0/packages/hexalith.eventstore.servicedefaults/3.110.0/hexalith.eventstore.servicedefaults.3.110.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:10.897209+00:00",
+    "id": 25,
+    "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.110.0\nContent hash: oz8knL5wa0XjWO1FcvTASXgpew08t+pEN21lqn7dC6rvIYls9CeQ72KeRgQndEhN4DSGbupWBkGAIhLa9yd7Mg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "b8e2de486f3a36e5ba80c214ab502f071d041459a71624faefeb815b0f41de94",
+    "started_utc": "2026-10-07T11:51:10.607295+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/Host.csproj",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:12.026251+00:00",
+    "id": 26,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/Host.csproj (in 458 ms).\n",
+    "output_sha256": "a06eed217e4db3b9b5470ddfa1ae2fccefb63860bf0cbeb5e925221a4f4f6d76",
+    "started_utc": "2026-10-07T11:51:10.898443+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:12.910145+00:00",
+    "id": 27,
+    "output": "  Host -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Host.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.66\n",
+    "output_sha256": "a96e7b59f4d6923083238422794535240c0021350078d2f40ed84128c2bfaadf",
+    "started_utc": "2026-10-07T11:51:12.026748+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17987/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:12.911559+00:00",
+    "id": 28,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:12.911326+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17987/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:13.062288+00:00",
+    "id": 29,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:13.061964+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17987/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:13.309192+00:00",
+    "id": 30,
+    "output": "{\"ready\":true}",
+    "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+    "started_utc": "2026-10-07T11:51:13.212826+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17987/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:13.318638+00:00",
+    "id": 31,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022\"}]}",
+    "output_sha256": "1553728150d959edb04ed8fa3dda316819db7c9b43070e185f4727203a4fd17e",
+    "started_utc": "2026-10-07T11:51:13.309612+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/host/bin/Release/net10.0/Host.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:13.373342+00:00",
+    "id": 32,
+    "output": "info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1120]\n      Projection discovery: no domain service registrations found in EventStore:DomainServices:Registrations. Projections will activate on first domain service resolution at runtime.\ninfo: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]\n      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted\ninfo: Microsoft.Hosting.Lifetime[14]\n      Now listening on: http://127.0.0.1:17987\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application started. Press Ctrl+C to shut down.\ninfo: Microsoft.Hosting.Lifetime[0]\n      Hosting environment: Development\ninfo: Microsoft.Hosting.Lifetime[0]\n      Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:17987/ready - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType0`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:17987/ready - 200 - application/json;+charset=utf-8 77.1142ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:17987/identity - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType3`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:17987/identity - 200 - application/json;+charset=utf-8 7.8296ms\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application is shutting down...\n",
+    "output_sha256": "cd69def2b111973bcd8060f774a7158b427946ec51b6f5e8e41597a9b4a9d994",
+    "process": {
+      "pgid": 32869,
+      "pid": 32869,
+      "session": 32869,
+      "start_ticks": 10840742
+    },
+    "started_utc": "2026-10-07T11:51:12.910718+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/Domain.csproj",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:14.210750+00:00",
+    "id": 33,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/Domain.csproj (in 174 ms).\n",
+    "output_sha256": "91bf28a10413899accd94a7b93c6c18f533779eb46aadcbd66eec2d712e1c784",
+    "started_utc": "2026-10-07T11:51:13.373869+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/Domain.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:15.077204+00:00",
+    "id": 34,
+    "output": "  Domain -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Domain.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.63\n",
+    "output_sha256": "64409c53787b0e565b5d4bedea5e42c4aaa504d037903afbd223800ff55bed50",
+    "started_utc": "2026-10-07T11:51:14.211239+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:27080/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:15.078569+00:00",
+    "id": 35,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:15.078346+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:27080/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:15.229318+00:00",
+    "id": 36,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:15.228986+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:27080/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:15.380189+00:00",
+    "id": 37,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:15.379891+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:27080/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:15.591869+00:00",
+    "id": 38,
+    "output": "{\"ready\":true,\"evolution_registration\":{\"manifest_registered\":false,\"bounded_v1_serializer_registered\":false,\"write_alias\":\"P1R.Counter.CounterIncremented\"}}",
+    "output_sha256": "23ca8696e010eb691878bd7566ef92f1c5ffc58d8568b0d3f729c01ed5fa51be",
+    "started_utc": "2026-10-07T11:51:15.530721+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:27080/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:15.603364+00:00",
+    "id": 39,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022\"}]}",
+    "output_sha256": "50e2a3271d7c44ee6b3e399a02c7fcd7f9d025463ef30eb0f647e1a89fc87c0f",
+    "started_utc": "2026-10-07T11:51:15.592453+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Domain.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:15.661656+00:00",
+    "id": 40,
+    "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:27080\",\"State\":{\"address\":\"http://127.0.0.1:27080\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:27080/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:27080\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType1\\u00602\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType1\\u00602\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:27080/ready - 200 - application/json;\\u002Bcharset=utf-8 39.5851ms\",\"State\":{\"ElapsedMilliseconds\":39.5851,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:27080\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:27080/identity - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:27080\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType2\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType2\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:27080/identity - 200 - application/json;\\u002Bcharset=utf-8 7.6844ms\",\"State\":{\"ElapsedMilliseconds\":7.6844,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:27080\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+    "output_sha256": "7e3119986f9f48fe21f58a38548a09227f09f4c46c33f4e7d2cba08845965a8d",
+    "process": {
+      "pgid": 33044,
+      "pid": 33044,
+      "session": 33044,
+      "start_ticks": 10840958
+    },
+    "started_utc": "2026-10-07T11:51:15.077737+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/Probe.csproj",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:16.844555+00:00",
+    "id": 41,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/Probe.csproj (in 484 ms).\n",
+    "output_sha256": "5e9dcf3a2dc8253ca6a20d2b3f66255dd0a04bc694ce9091679ec3d0257a019c",
+    "started_utc": "2026-10-07T11:51:15.662247+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/Probe.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.70.1",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:17.595111+00:00",
+    "id": 42,
+    "output": "  Probe -> /tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.50\n",
+    "output_sha256": "020c2f1b582d67e31c0dfe858386aabaa3a770b8af4d8e60122692bd56acd539",
+    "started_utc": "2026-10-07T11:51:16.845383+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+      "identity"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:17.690746+00:00",
+    "id": 43,
+    "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.70.1.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022\"}]}}\n",
+    "output_sha256": "6cd34c319e1d5bb0fe61e9d33f265592660300d1afcf6cf725208c5a8231ed44",
+    "started_utc": "2026-10-07T11:51:17.595570+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/packages/hexalith.eventstore.client/3.70.1/hexalith.eventstore.client.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:17.979311+00:00",
+    "id": 44,
+    "output": "\nVerifying Hexalith.EventStore.Client.3.70.1\nContent hash: UjVLImHNmOZkgc0VkzeFyWFLnCrqYZ967RH4PF1caD/xgsrMsRwtLtd6+d6JQs8f5eLTJyAvYinnguRqg+zYiw==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "6a8fff3465085b04cb910a65603ff76d161d765eb2eae46b22ce2b80b29f0f1b",
+    "started_utc": "2026-10-07T11:51:17.702353+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/packages/hexalith.eventstore.contracts/3.70.1/hexalith.eventstore.contracts.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:18.260457+00:00",
+    "id": 45,
+    "output": "\nVerifying Hexalith.EventStore.Contracts.3.70.1\nContent hash: D46Ujom2BaRA9dliNQEDkddSI+aETQX56bfK6RnHSGOTJnrK5MdUvvg4txZJLc/8OvhMEuRhxwHbS96O+gKo0A==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "f54510014fd87dc8df604b6732f38b03eb6f12dfc440fa30148b56ba5974e5e8",
+    "started_utc": "2026-10-07T11:51:17.981420+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/packages/hexalith.eventstore.domainservice/3.70.1/hexalith.eventstore.domainservice.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:18.551268+00:00",
+    "id": 46,
+    "output": "\nVerifying Hexalith.EventStore.DomainService.3.70.1\nContent hash: M0SprdUzSyPnfvFAIMHq2BT7HfxnR7G77DT26JnPxIFhBR3ysov7hkuaCUGVi+i5TfMLieEng+++UjdoaxNIjQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "0dec56d44955a8774932151d4d5007db56957323bb549c74de7123a77d361fbd",
+    "started_utc": "2026-10-07T11:51:18.262310+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/packages/hexalith.eventstore.server/3.70.1/hexalith.eventstore.server.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:18.827140+00:00",
+    "id": 47,
+    "output": "\nVerifying Hexalith.EventStore.Server.3.70.1\nContent hash: dDmVa7LxtzWyEsDYeyqfYaHAu7r0twGmagaCjVM+n9kFFMpAC5v7rWaIOi+CEiQUEkT/6kC5sXgHP0kYIy7tFg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "f4b83419ceb987b3ca30bbd086ac38c343557fd1cad7d676b5fcaa81b9119d1a",
+    "started_utc": "2026-10-07T11:51:18.555690+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1/packages/hexalith.eventstore.servicedefaults/3.70.1/hexalith.eventstore.servicedefaults.3.70.1.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/comparison-3.70.1",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:19.118780+00:00",
+    "id": 48,
+    "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.70.1\nContent hash: 8SwIg3ok4Tb+rQnVJziGGZV0OSDRrHEinn5TUXX8zu2KdyWFAmZkdWb9nwjQ+xTvn/G9qznYBKH+O0oMupQGVQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "acfe403672132d17d805ddbe90ee257c27f6be7be5b79204fa07731b03fb76ec",
+    "started_utc": "2026-10-07T11:51:18.828713+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/Host.csproj",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:20.288438+00:00",
+    "id": 49,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/Host.csproj (in 483 ms).\n",
+    "output_sha256": "4ddcf8c7507ae4c1880414d878112a6e0b7ae4089be9fba56a3fa2fa68f778dd",
+    "started_utc": "2026-10-07T11:51:19.120068+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:21.272099+00:00",
+    "id": 50,
+    "output": "  Host -> /tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Host.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.76\n",
+    "output_sha256": "21795f4b52f17cccc12f12085fc0a473c2b3262ccd661982296d0c4b78a4d44d",
+    "started_utc": "2026-10-07T11:51:20.289072+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18190/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:21.273829+00:00",
+    "id": 51,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:21.273506+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18190/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:21.425079+00:00",
+    "id": 52,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:21.424606+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18190/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:21.576287+00:00",
+    "id": 53,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:21.575950+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18190/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:21.793993+00:00",
+    "id": 54,
+    "output": "{\"ready\":true}",
+    "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+    "started_utc": "2026-10-07T11:51:21.727019+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:18190/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:21.806146+00:00",
+    "id": 55,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660\"}]}",
+    "output_sha256": "93d0f84a49389614be35b2fc16eb707847e518d50d677ee3443163d6913a024f",
+    "started_utc": "2026-10-07T11:51:21.794568+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/host/bin/Release/net10.0/Host.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:21.858343+00:00",
+    "id": 56,
+    "output": "info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1120]\n      Projection discovery: no domain service registrations found in EventStore:DomainServices:Registrations. Projections will activate on first domain service resolution at runtime.\ninfo: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]\n      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted\nwarn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]\n      Reminder reconciliation is disabled; readiness stays degraded\ninfo: Microsoft.Hosting.Lifetime[14]\n      Now listening on: http://127.0.0.1:18190\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application started. Press Ctrl+C to shut down.\ninfo: Microsoft.Hosting.Lifetime[0]\n      Hosting environment: Development\ninfo: Microsoft.Hosting.Lifetime[0]\n      Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:18190/ready - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType0`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:18190/ready - 200 - application/json;+charset=utf-8 45.1732ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:18190/identity - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType8`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /identity'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:18190/identity - 200 - application/json;+charset=utf-8 10.3537ms\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application is shutting down...\n",
+    "output_sha256": "8c27bc07d7164c21f8c43076c8c986f5fbd0d0838ba0ad1634a48c3c323bfe65",
+    "process": {
+      "pgid": 33874,
+      "pid": 33874,
+      "session": 33874,
+      "start_ticks": 10841578
+    },
+    "started_utc": "2026-10-07T11:51:21.272916+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/Domain.csproj",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:22.713783+00:00",
+    "id": 57,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/Domain.csproj (in 175 ms).\n",
+    "output_sha256": "dc7dbca3535e6c94f7da9d1db04ed3ccf3a22a248b7ec814181372745a59c1b5",
+    "started_utc": "2026-10-07T11:51:21.859014+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/Domain.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:23.583856+00:00",
+    "id": 58,
+    "output": "  Domain -> /tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Domain.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.65\n",
+    "output_sha256": "736d325784c370ce89ec3c05c88ef7bb63ab72e9061f62dc234cbe5d5605b606",
+    "started_utc": "2026-10-07T11:51:22.714347+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15951/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:23.585278+00:00",
+    "id": 59,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:23.585067+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15951/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:23.736087+00:00",
+    "id": 60,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:23.735732+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15951/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 124,
+    "finished_utc": "2026-10-07T11:51:23.887016+00:00",
+    "id": 61,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-07T11:51:23.886700+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15951/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:24.093135+00:00",
+    "id": 62,
+    "output": "{\"ready\":true,\"evolution_registration\":{\"manifest_registered\":false,\"bounded_v1_serializer_registered\":true,\"write_alias\":\"P1R.Counter.CounterIncremented\"}}",
+    "output_sha256": "a181e4e0843e2f1f86fa101e6f6febf19c6fdfbfeaf682b7c00e87e1e2c5a8a3",
+    "started_utc": "2026-10-07T11:51:24.037776+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15951/identity",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:24.101758+00:00",
+    "id": 63,
+    "output": "{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660\"}]}",
+    "output_sha256": "3592e3b412d9fadeffafb95957c67c23383744b64bf93dcab08d27892832483b",
+    "started_utc": "2026-10-07T11:51:24.093635+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/domain/bin/Release/net10.0/Domain.dll"
+    ],
+    "cwd": "/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:24.150311+00:00",
+    "id": 64,
+    "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:15951\",\"State\":{\"address\":\"http://127.0.0.1:15951\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-c6ab34c3308b43318f775dc7130ecc11-06jolfho\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:15951/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15951\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType1\\u00602\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType1\\u00602\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:15951/ready - 200 - application/json;\\u002Bcharset=utf-8 34.9202ms\",\"State\":{\"ElapsedMilliseconds\":34.9202,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15951\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:15951/identity - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15951\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType2\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType2\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /identity\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /identity\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:15951/identity - 200 - application/json;\\u002Bcharset=utf-8 6.0556ms\",\"State\":{\"ElapsedMilliseconds\":6.0556,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15951\",\"PathBase\":\"\",\"Path\":\"/identity\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+    "output_sha256": "7f35e5bca4970aecf2987d7be85c123e34caceef24f8842506ab7a44fdfd375c",
+    "process": {
+      "pgid": 34111,
+      "pid": 34111,
+      "session": 34111,
+      "start_ticks": 10841809
+    },
+    "started_utc": "2026-10-07T11:51:23.584458+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/Probe.csproj",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:25.192163+00:00",
+    "id": 65,
+    "output": "  Determining projects to restore...\n  Restored /tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/Probe.csproj (in 436 ms).\n",
+    "output_sha256": "489dee35a713c6b94a514ba96deaa7ea10aef347f0f38e201531bf4b1c6de071",
+    "started_utc": "2026-10-07T11:51:24.151251+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/Probe.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.115.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:25.943469+00:00",
+    "id": 66,
+    "output": "  Probe -> /tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Probe.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:00.53\n",
+    "output_sha256": "7dfcd050c8df3262f24e610ee48d44a8053bc6e6b260d67a720196e67c3a7d9a",
+    "started_utc": "2026-10-07T11:51:25.192754+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+      "identity"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:26.048259+00:00",
+    "id": 67,
+    "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"physical-identity-observed\",\"passed\":true}],\"assertions\":{\"attempted\":1,\"passed\":1,\"failed\":0}},\"observation\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.115.0.0\",\"path\":\"/tmp/p1r-31150-observe-20261007-03/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660\"}]}}\n",
+    "output_sha256": "ef013217a9cca05be3e93d9f4e577ea64adf823a01554674a19a77cb3db0afa7",
+    "started_utc": "2026-10-07T11:51:25.944133+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/packages/hexalith.eventstore.client/3.115.0/hexalith.eventstore.client.3.115.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:26.366277+00:00",
+    "id": 68,
+    "output": "\nVerifying Hexalith.EventStore.Client.3.115.0\nContent hash: 6oSVMtK90Wiig9ukZrCM/MGxGMNpFqowuXVUpN8pha0Wgb6JJsdR8h1iiCkXVWLGgYL3I0wUd1bFzoS+RQZhsg==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "e7fc23c2dcd448c136bd7eb57af6ba3c83b7e85af5e4eb49d4be2485de115f19",
+    "started_utc": "2026-10-07T11:51:26.054120+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/packages/hexalith.eventstore.contracts/3.115.0/hexalith.eventstore.contracts.3.115.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:26.673237+00:00",
+    "id": 69,
+    "output": "\nVerifying Hexalith.EventStore.Contracts.3.115.0\nContent hash: abhaYH3cngCNWll16UiL59s9Edxef1iYkPmjn9oUzQR/jgoRUhLhhz6EGyKrzGoGdDk5k+6zBKVPyFPLRO32uA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "16dd661532cc88b41c73bdc649105b9c00d3dbeaf9323ec4c4a1b1bb64523446",
+    "started_utc": "2026-10-07T11:51:26.368958+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/packages/hexalith.eventstore.domainservice/3.115.0/hexalith.eventstore.domainservice.3.115.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:26.948692+00:00",
+    "id": 70,
+    "output": "\nVerifying Hexalith.EventStore.DomainService.3.115.0\nContent hash: fFVCm+45FbrCfVzhimRUuJ7hzKKBMUdVWiGZbeU/Ov8csJUQi1J/y/idp6aFgQ9lgmPQ0p88NIai2573ReJdOA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "ae1dea469246bd47b609570559d0b0006d80e0d1a5d30f82b3750f58dfeb356b",
+    "started_utc": "2026-10-07T11:51:26.676498+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/packages/hexalith.eventstore.server/3.115.0/hexalith.eventstore.server.3.115.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:27.231483+00:00",
+    "id": 71,
+    "output": "\nVerifying Hexalith.EventStore.Server.3.115.0\nContent hash: oq9vNRMMYOjh+2oS4zeU2XgU3+1rEbPkdJEGl596ybA2S8kHb83gJUxPfRwOtMI1z8MPhh3Vo2onApTGK0bGuA==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "89a383b13723c15fd7a51cd42fdb88442fa1a044e99ba33db7903aa10b71c3ad",
+    "started_utc": "2026-10-07T11:51:26.955230+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "nuget",
+      "verify",
+      "--all",
+      "/tmp/p1r-31150-observe-20261007-03/consumers/candidate/packages/hexalith.eventstore.servicedefaults/3.115.0/hexalith.eventstore.servicedefaults.3.115.0.nupkg",
+      "--verbosity",
+      "minimal"
+    ],
+    "cwd": "/tmp/p1r-31150-observe-20261007-03/consumers/candidate",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:27.514164+00:00",
+    "id": 72,
+    "output": "\nVerifying Hexalith.EventStore.ServiceDefaults.3.115.0\nContent hash: rlPzDS8kaa6u5AFRd8WSZBDqbPj1VjunYTW76kSQlZSFJeRRENGPR1jMpIm81njb+FeCVbjET/AWfFH/f8fgpQ==\n\nSignature type: Repository\n  Subject Name: CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US\n  SHA256 hash: 1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D\n  Valid from: 02/23/2024 01:00:00 to 05/19/2027 01:59:59\n",
+    "output_sha256": "1b3a917edaed9f18da5311e73413da6cf133483b12945271061ce83a43e31f87",
+    "started_utc": "2026-10-07T11:51:27.233366+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:27.849929+00:00",
+    "id": 73,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "started_utc": "2026-10-07T11:51:27.780911+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-07T11:51:27.920149+00:00",
+    "id": 74,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.397649945Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.40484467Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.431759203Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-07T04:41:06.421753641Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "e7b9bab350686670beac91ece263a74bd037b45ef223e69caf20646140f42ed1",
+    "started_utc": "2026-10-07T11:51:27.851081+00:00"
+  }
+]

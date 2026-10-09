@@ -1,0 +1,7 @@
+/usr/lib/python3.14/pathlib/__init__.py:772: ResourceWarning: unclosed file <_io.FileIO name='/proc/33426/environ' mode='rb' closefd=True>
+  return io.open(self, mode, buffering, encoding, errors, newline)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+----------------------------------------------------------------------
+Ran 91 tests in 20.541s
+
+OK

@@ -1,0 +1,1821 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "run",
+    "--lane",
+    "snapshot-tail"
+  ],
+  "assertions": {
+    "attempted": 6,
+    "failed": 6,
+    "passed": 0
+  },
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-to-3.70.1",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-to-3.115.0",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-to-3.110.0",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-to-3.115.0",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-to-3.110.0",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "assertions": {
+        "attempted": 1,
+        "failed": 1,
+        "passed": 0
+      },
+      "checks": [
+        {
+          "id": "execution-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-to-3.70.1",
+      "inventory": {
+        "after_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f",
+        "before_sha256": "bd46f26745f2dcbb4bf06def932be3811fbd423d9aa05cda4807cd9c8504419f"
+      },
+      "operation": "supported",
+      "outcome": "error"
+    }
+  ],
+  "compatibility": "unverified",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "execution": "failed",
+  "execution_evidence": {
+    "cases": [
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:31.239972+00:00",
+            "id": 415,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:31.154729+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53589/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:31.244775+00:00",
+            "id": 416,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:31.244477+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53589/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:31.398906+00:00",
+            "id": 417,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:31.398540+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53589/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:31.553046+00:00",
+            "id": 418,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:31.552726+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53589/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:31.773875+00:00",
+            "id": 419,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:31.707132+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:42827/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:31.778731+00:00",
+            "id": 420,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:31.778436+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:42827/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:31.933255+00:00",
+            "id": 421,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:31.932322+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:50769/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:31.938138+00:00",
+            "id": 422,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:31.937930+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:50769/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:32.091811+00:00",
+            "id": 423,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:32.091493+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:32.266627+00:00",
+            "id": 424,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/Program.cs:line 41\n",
+            "output_sha256": "8bd3de4dace8533e52d7fa43984c360d041b3ffa384b84922dd3a611c4c9a9c2",
+            "started_utc": "2026-10-07T10:36:31.937226+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "53589",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "42827",
+              "--dapr-grpc-port",
+              "47567",
+              "--dapr-internal-grpc-port",
+              "34879",
+              "--metrics-port",
+              "35135",
+              "--profile-port",
+              "48741",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:32.311867+00:00",
+            "id": 425,
+            "output": "time=\"2026-10-07T12:36:31.828561998+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:31.829196239+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:31.83431152+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:31.834952984+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:32.291714081+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "11a78ab808c368e4d46d5cd14711dd619da9a11f5e7b90ccdeabd75a747564f6",
+            "started_utc": "2026-10-07T10:36:31.777842+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:32.372618+00:00",
+            "id": 426,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:53589\",\"State\":{\"address\":\"http://127.0.0.1:53589\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:53589/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:53589\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:53589/ready - 200 - application/json;\\u002Bcharset=utf-8 42.4907ms\",\"State\":{\"ElapsedMilliseconds\":42.4907,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:53589\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:53589/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:53589\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:53589/dapr/config - 404 0 - 1.3028ms\",\"State\":{\"ElapsedMilliseconds\":1.3028,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:53589\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:53589/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:53589\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "da82c67acac04805d76e9fbda5795ecf8c9933b560645ca3fd845bbafb2b2a73",
+            "started_utc": "2026-10-07T10:36:31.243874+00:00"
+          }
+        ],
+        "id": "3.110.0-to-3.70.1",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:32.456609+00:00",
+            "id": 427,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:32.376436+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:34643/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:32.461712+00:00",
+            "id": 428,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:32.461466+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:34643/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:32.616220+00:00",
+            "id": 429,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:32.615861+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:34643/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:32.771000+00:00",
+            "id": 430,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:32.770623+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:34643/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:32.989166+00:00",
+            "id": 431,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:32.925035+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45707/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:32.993658+00:00",
+            "id": 432,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:32.993418+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45707/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:33.148186+00:00",
+            "id": 433,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:33.147093+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:47209/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:33.153307+00:00",
+            "id": 434,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:33.153105+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:47209/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:33.307184+00:00",
+            "id": 435,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:33.306789+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:33.480724+00:00",
+            "id": 436,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/Program.cs:line 41\n",
+            "output_sha256": "8bd3de4dace8533e52d7fa43984c360d041b3ffa384b84922dd3a611c4c9a9c2",
+            "started_utc": "2026-10-07T10:36:33.152464+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "34643",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "45707",
+              "--dapr-grpc-port",
+              "33563",
+              "--dapr-internal-grpc-port",
+              "45605",
+              "--metrics-port",
+              "39623",
+              "--profile-port",
+              "50945",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:33.524471+00:00",
+            "id": 437,
+            "output": "time=\"2026-10-07T12:36:33.041812217+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:33.042496416+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:33.049063065+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:33.049544488+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:33.504137184+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "d676fe85f2dc07da37c7c1fb449953ae90e23626685d1c4ec5cfe96e83cc2f4c",
+            "started_utc": "2026-10-07T10:36:32.992954+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:33.578913+00:00",
+            "id": 438,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:34643\",\"State\":{\"address\":\"http://127.0.0.1:34643\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:34643/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:34643\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:34643/ready - 200 - application/json;\\u002Bcharset=utf-8 41.6044ms\",\"State\":{\"ElapsedMilliseconds\":41.6044,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:34643\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:34643/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:34643\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:34643/dapr/config - 404 0 - 1.2930ms\",\"State\":{\"ElapsedMilliseconds\":1.293,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:34643\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:34643/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:34643\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "0237ba9fc1a6d032102130fbb898ba79170b2c86b380e8828466054ae3f28994",
+            "started_utc": "2026-10-07T10:36:32.460806+00:00"
+          }
+        ],
+        "id": "3.110.0-to-3.115.0",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:33.660921+00:00",
+            "id": 439,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:33.582593+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:46575/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:33.665606+00:00",
+            "id": 440,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:33.665387+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:46575/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:33.819265+00:00",
+            "id": 441,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:33.818951+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:46575/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:33.973865+00:00",
+            "id": 442,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:33.973503+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:46575/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:34.190879+00:00",
+            "id": 443,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:34.127682+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:41597/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:34.195688+00:00",
+            "id": 444,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:34.195408+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:41597/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:34.350817+00:00",
+            "id": 445,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:34.349738+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53915/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:34.355713+00:00",
+            "id": 446,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:34.355475+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:53915/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:34.508715+00:00",
+            "id": 447,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:34.508351+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:34.683606+00:00",
+            "id": 448,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_5(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_5(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/Program.cs:line 41\n",
+            "output_sha256": "123cd77b294e08826d6868c9c1e0aa302b490b27392d7c958a4fac578a89f38d",
+            "started_utc": "2026-10-07T10:36:34.354749+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "46575",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "41597",
+              "--dapr-grpc-port",
+              "39751",
+              "--dapr-internal-grpc-port",
+              "55107",
+              "--metrics-port",
+              "39047",
+              "--profile-port",
+              "45735",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:34.730707+00:00",
+            "id": 449,
+            "output": "time=\"2026-10-07T12:36:34.243481341+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:34.244082399+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:34.250709234+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:34.25115265+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:34.710537259+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "c61489066c16093e18268aabf5aaf326c39c0330b2094ab9112a24984d068d37",
+            "started_utc": "2026-10-07T10:36:34.194667+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:34.787051+00:00",
+            "id": 450,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:46575\",\"State\":{\"address\":\"http://127.0.0.1:46575\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:46575/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:46575\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:46575/ready - 200 - application/json;\\u002Bcharset=utf-8 40.9965ms\",\"State\":{\"ElapsedMilliseconds\":40.9965,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:46575\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:46575/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:46575\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:46575/dapr/config - 404 0 - 1.3983ms\",\"State\":{\"ElapsedMilliseconds\":1.3983,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:46575\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:46575/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:46575\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "37bb03309de58adc3a7af989dd70237475e6134231d93f3d1fb9b1d25f5edc64",
+            "started_utc": "2026-10-07T10:36:33.664858+00:00"
+          }
+        ],
+        "id": "3.70.1-to-3.110.0",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:34.873406+00:00",
+            "id": 451,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:34.790783+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40803/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:34.878632+00:00",
+            "id": 452,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:34.878381+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40803/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:35.033478+00:00",
+            "id": 453,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:35.033059+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40803/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:35.188304+00:00",
+            "id": 454,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:35.187962+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40803/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:35.407677+00:00",
+            "id": 455,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:35.342359+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:55161/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:35.412601+00:00",
+            "id": 456,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:35.412389+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:55161/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:35.567577+00:00",
+            "id": 457,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:35.566614+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40519/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:35.572507+00:00",
+            "id": 458,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:35.572298+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:40519/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:35.726601+00:00",
+            "id": 459,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:35.726257+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:35.900688+00:00",
+            "id": 460,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_5(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_5(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/Program.cs:line 41\n",
+            "output_sha256": "123cd77b294e08826d6868c9c1e0aa302b490b27392d7c958a4fac578a89f38d",
+            "started_utc": "2026-10-07T10:36:35.571620+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "40803",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "55161",
+              "--dapr-grpc-port",
+              "42361",
+              "--dapr-internal-grpc-port",
+              "35313",
+              "--metrics-port",
+              "52047",
+              "--profile-port",
+              "35009",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:35.946024+00:00",
+            "id": 461,
+            "output": "time=\"2026-10-07T12:36:35.462886462+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:35.463732986+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:35.470615578+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:35.471183245+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:35.9257968+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "d6ad93177307ec0550edfbc49df3d8a2cf2c27e8e2cb43d3ffb5033a8479e7bd",
+            "started_utc": "2026-10-07T10:36:35.411813+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:36.003143+00:00",
+            "id": 462,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:40803\",\"State\":{\"address\":\"http://127.0.0.1:40803\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:40803/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:40803\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:40803/ready - 200 - application/json;\\u002Bcharset=utf-8 42.4177ms\",\"State\":{\"ElapsedMilliseconds\":42.4177,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:40803\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:40803/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:40803\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:40803/dapr/config - 404 0 - 1.4892ms\",\"State\":{\"ElapsedMilliseconds\":1.4892,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:40803\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:40803/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:40803\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "dfd27913d6d5eee581b943ad0bedfc60fa996e42b59a5e82151ca6f46289999d",
+            "started_utc": "2026-10-07T10:36:34.877616+00:00"
+          }
+        ],
+        "id": "3.70.1-to-3.115.0",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:36.096256+00:00",
+            "id": 463,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:36.007090+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:43521/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.101291+00:00",
+            "id": 464,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.101051+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:43521/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.255300+00:00",
+            "id": 465,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.254975+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:43521/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.409717+00:00",
+            "id": 466,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.409301+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:43521/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:36.632987+00:00",
+            "id": 467,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:36.563866+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:57825/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.637567+00:00",
+            "id": 468,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.637326+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:57825/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:36.791980+00:00",
+            "id": 469,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:36.790950+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:54111/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.796807+00:00",
+            "id": 470,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.796578+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:54111/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:36.950751+00:00",
+            "id": 471,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:36.950453+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:54111/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:37.105059+00:00",
+            "id": 472,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:37.104715+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:37.281087+00:00",
+            "id": 473,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/candidate/host/Program.cs:line 41\n",
+            "output_sha256": "b461c3a11a76e55f778a58827f7fb44dc2b0a001e52fbdeb44242d75fcd81e0f",
+            "started_utc": "2026-10-07T10:36:36.795894+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "43521",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "57825",
+              "--dapr-grpc-port",
+              "57511",
+              "--dapr-internal-grpc-port",
+              "37267",
+              "--metrics-port",
+              "49609",
+              "--profile-port",
+              "53757",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:37.319204+00:00",
+            "id": 474,
+            "output": "time=\"2026-10-07T12:36:36.687525683+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:36.688148272+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:36.69382062+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:36.694491599+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:37.309328731+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "e13f7a4d3d43baa0de236a72b49c06c7371c2386c1730648a96af710b5818064",
+            "started_utc": "2026-10-07T10:36:36.636876+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:37.375982+00:00",
+            "id": 475,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:43521\",\"State\":{\"address\":\"http://127.0.0.1:43521\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:43521/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:43521\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:43521/ready - 200 - application/json;\\u002Bcharset=utf-8 44.1386ms\",\"State\":{\"ElapsedMilliseconds\":44.1386,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:43521\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:43521/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:43521\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:43521/dapr/config - 404 0 - 1.4632ms\",\"State\":{\"ElapsedMilliseconds\":1.4632,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:43521\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:43521/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:43521\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "fdd1ea37ac7ab08c0bbfded4f1bd0e9c46f28e658b87ad1da8b5ec69a0a86cca",
+            "started_utc": "2026-10-07T10:36:36.100378+00:00"
+          }
+        ],
+        "id": "3.115.0-to-3.110.0",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "exec",
+              "83323c85728cd0bdd8599c32e4472b95792240ea33d4619d747d9655899b88a1",
+              "redis-cli",
+              "--raw",
+              "FLUSHALL"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:37.463535+00:00",
+            "id": 476,
+            "output": "OK\n",
+            "output_sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+            "started_utc": "2026-10-07T10:36:37.379895+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45373/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:37.468582+00:00",
+            "id": 477,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:37.468338+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45373/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:37.622698+00:00",
+            "id": 478,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:37.622377+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45373/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:37.777341+00:00",
+            "id": 479,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:37.777024+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45373/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:37.932004+00:00",
+            "id": 480,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:37.931607+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45373/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:38.166238+00:00",
+            "id": 481,
+            "output": "{\"ready\":true}",
+            "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+            "started_utc": "2026-10-07T10:36:38.086297+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45965/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:38.171510+00:00",
+            "id": 482,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:38.171255+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:45965/v1.0/healthz/outbound",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:38.327200+00:00",
+            "id": 483,
+            "output": "",
+            "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "started_utc": "2026-10-07T10:36:38.326225+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:42665/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:38.332178+00:00",
+            "id": 484,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:38.331965+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:42665/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:38.486017+00:00",
+            "id": 485,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:38.485719+00:00"
+          },
+          {
+            "argv": [
+              "HTTP",
+              "GET",
+              "http://127.0.0.1:42665/ready",
+              "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 124,
+            "finished_utc": "2026-10-07T10:36:38.640450+00:00",
+            "id": 486,
+            "output": "URLError",
+            "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+            "started_utc": "2026-10-07T10:36:38.640094+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Host.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": -6,
+            "finished_utc": "2026-10-07T10:36:38.815481+00:00",
+            "id": 487,
+            "output": "fail: Microsoft.Extensions.Hosting.Internal.Host[11]\n      Hosting failed to start\n      System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n         at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n         at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n         at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n         at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n         at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n         at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n         at System.Lazy`1.CreateValue()\n         at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n         at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n         at Microsoft.Extensions.Options.StartupValidator.Validate()\n         at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\nUnhandled exception. System.InvalidOperationException: Snapshot DefaultInterval must be >= 10. Got 9.\n   at Hexalith.EventStore.Server.Configuration.SnapshotOptions.Validate()\n   at Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions.<>c.<AddEventStoreServer>b__0_10(SnapshotOptions o)\n   at Microsoft.Extensions.Options.ValidateOptions`1.Validate(String name, TOptions options)\n   at Microsoft.Extensions.Options.OptionsFactory`1.Create(String name)\n   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)\n   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)\n   at System.Lazy`1.CreateValue()\n   at Microsoft.Extensions.Options.OptionsCache`1.GetOrAdd[TArg](String name, Func`3 createOptions, TArg factoryArgument)\n   at Microsoft.Extensions.DependencyInjection.OptionsBuilderExtensions.<>c__DisplayClass0_1`1.<ValidateOnStart>b__1()\n   at Microsoft.Extensions.Options.StartupValidator.Validate()\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.Internal.Host.StartAsync(CancellationToken cancellationToken)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.RunAsync(IHost host, CancellationToken token)\n   at Microsoft.Extensions.Hosting.HostingAbstractionsHostExtensions.Run(IHost host)\n   at Program.<Main>$(String[] args) in /tmp/p1r-31150-live-20261007-01/consumers/candidate/host/Program.cs:line 41\n",
+            "output_sha256": "b461c3a11a76e55f778a58827f7fb44dc2b0a001e52fbdeb44242d75fcd81e0f",
+            "started_utc": "2026-10-07T10:36:38.331337+00:00"
+          },
+          {
+            "argv": [
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/daprd",
+              "--app-id",
+              "counter",
+              "--app-port",
+              "45373",
+              "--app-channel-address",
+              "127.0.0.1",
+              "--dapr-http-port",
+              "45965",
+              "--dapr-grpc-port",
+              "44657",
+              "--dapr-internal-grpc-port",
+              "55269",
+              "--metrics-port",
+              "44923",
+              "--profile-port",
+              "41065",
+              "--resources-path",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/resources",
+              "--config",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/discovery.yaml",
+              "--placement-host-address",
+              "127.0.0.1:37635",
+              "--scheduler-host-address",
+              "127.0.0.1:38097",
+              "--log-level",
+              "warn"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:38.849648+00:00",
+            "id": 488,
+            "output": "time=\"2026-10-07T12:36:38.223984519+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.4\ntime=\"2026-10-07T12:36:38.224592476+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.4\ntime=\"2026-10-07T12:36:38.232604031+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.4\ntime=\"2026-10-07T12:36:38.233286077+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.4\ntime=\"2026-10-07T12:36:38.839562381+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.4\n",
+            "output_sha256": "7d3421880ccb49189ca259d5dfb96f2e3862257ce3d908017a106f853b76ce7c",
+            "started_utc": "2026-10-07T10:36:38.170619+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Domain.dll"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:36:38.918253+00:00",
+            "id": 489,
+            "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:45373\",\"State\":{\"address\":\"http://127.0.0.1:45373\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:45373/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:45373\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType0\\u00601\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType0\\u00601\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:45373/ready - 200 - application/json;\\u002Bcharset=utf-8 51.1204ms\",\"State\":{\"ElapsedMilliseconds\":51.1204,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:45373\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:45373/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:45373\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:45373/dapr/config - 404 0 - 1.6629ms\",\"State\":{\"ElapsedMilliseconds\":1.6629,\"StatusCode\":404,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:45373\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":16,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:45373/dapr/config, Response status code: 404\",\"State\":{\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:45373\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"StatusCode\":404,\"{OriginalFormat}\":\"Request reached the end of the middleware pipeline without being handled by application code. Request path: {Method} {Scheme}://{Host}{PathBase}{Path}, Response status code: {StatusCode}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+            "output_sha256": "bfeb2a1d8646681017f4768c0bd84d6116d6659d5f01f9953d4d577755b8c1ed",
+            "started_utc": "2026-10-07T10:36:37.467680+00:00"
+          }
+        ],
+        "id": "3.115.0-to-3.70.1",
+        "observations": {
+          "error": "InvalidPacket",
+          "reason": "owned application exited during startup"
+        }
+      }
+    ],
+    "executor_source_sha256": "638cced50d059e06d149eee560be49531d52d9fae4da332a54fd494efd65c983",
+    "mechanism": "p1r-executed-checks-v1"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T10:36:38.922106+00:00",
+  "fixture": {
+    "id": "p1r-51499ac27da84c22b3ad3790b2d33859",
+    "synthetic": false
+  },
+  "id": "27c63a5a6c7b47428a06755ed06ac718",
+  "identities": {
+    "configuration": "Release",
+    "loaded_assemblies": [
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      }
+    ],
+    "packages": [
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4"
+      }
+    ]
+  },
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "instrumentation": "p1r-executed-checks-v1",
+  "lane": "snapshot-tail",
+  "output_sha256": "4730f53197a4b9c0ae490dd23a7291d8cdf1232ebc3f4bc3bb611932a486c6ed",
+  "profile": {
+    "backend": "state.redis",
+    "backend_image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31150-published-run.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.4",
+    "selected_by": "user"
+  },
+  "schema": "hexalith.p1r.lane-receipt.v1",
+  "scope": "operational",
+  "started_utc": "2026-10-07T10:36:31.154620+00:00"
+}

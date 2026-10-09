@@ -1,0 +1,12 @@
+{
+  "consumer_cleanup": "/tmp/p1r-source-aligned-build-01/receipts/990804481fcf4be985b6b79becf8273a.json",
+  "errors": [],
+  "executor_source_sha256": "f455214ffba5ee50b817c062c56506b9599dabcd7dc6c024227ae99569c0bc1b",
+  "finished_utc": "2026-10-07T11:23:50.829899+00:00",
+  "inputs_sha256": null,
+  "invocation": "5f3b3e3482f04649983058e3c1581ba5",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T11:23:09.549990+00:00"
+}

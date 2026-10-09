@@ -1,0 +1,573 @@
+{
+  "assertions": {
+    "attempted": 5522,
+    "failed": 110,
+    "passed": 5412
+  },
+  "cases": [
+    {
+      "case": "3.70.1-pascal-floor-None",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "legacy-metadata",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-web-floor-None",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "legacy-metadata",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-pascal-floor-1",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "metadata-read",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-pascal-floor-5",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "metadata-read",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-web-floor-1",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "metadata-read",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-web-floor-5",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-read"
+      ],
+      "lane": "metadata-read",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-to-3.70.1",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-five-preserved"
+      ],
+      "lane": "metadata-write",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-to-3.70.1",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "retained-floor-five-preserved"
+      ],
+      "lane": "metadata-write",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-invalid-floor",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-protected",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-unknown-version",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-invalid-floor",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-protected",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-unknown-version",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "invalid-evidence-refused"
+      ],
+      "lane": "invalid-evidence",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-3.70.1-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-3.70.1-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-3.115.0-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-3.115.0-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.110.0-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.110.0-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.115.0-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.115.0-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-3.110.0-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-3.110.0-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-3.70.1-json-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-3.70.1-xml-dual",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:originalActorId",
+        "preserved:authenticatedWorkloadId",
+        "preserved:isDelegated",
+        "preserved:delegationId",
+        "preserved:scopes",
+        "preserved:audience",
+        "preserved:identityAdmissionProof"
+      ],
+      "lane": "query-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-3.70.1-json-positive",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:globalPosition"
+      ],
+      "lane": "projection-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.110.0-json-positive",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:globalPosition"
+      ],
+      "lane": "projection-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-3.115.0-json-positive",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:globalPosition"
+      ],
+      "lane": "projection-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.115.0-3.70.1-json-positive",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "preserved:globalPosition"
+      ],
+      "lane": "projection-wire",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-status",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "status:null:domain",
+        "status:null:committedEventSequence",
+        "status:false:domain",
+        "status:false:committedEventSequence",
+        "status:true:domain",
+        "status:true:committedEventSequence"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.110.0-stale-fence",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "stale-context-refused",
+        "execution-completed"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "case": "3.110.0-unauthorized-effect",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "unauthorized-proof-refused",
+        "execution-completed"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "case": "3.70.1-status",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "status:null:retryable",
+        "status:null:recoveryReasonCode",
+        "status:null:drainAttemptCount",
+        "status:null:domain",
+        "status:null:committedEventSequence",
+        "status:false:retryable",
+        "status:false:recoveryReasonCode",
+        "status:false:drainAttemptCount",
+        "status:false:domain",
+        "status:false:committedEventSequence",
+        "status:true:retryable",
+        "status:true:recoveryReasonCode",
+        "status:true:drainAttemptCount",
+        "status:true:domain",
+        "status:true:committedEventSequence"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "3.70.1-cursor-scope",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.70.1-fenced-effect",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.70.1-stale-fence",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.70.1-trusted-effect",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.70.1-unauthorized-effect",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.70.1-retained-floor",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [],
+      "lane": "mixed-api",
+      "operation": "unsupported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "3.115.0-stale-fence",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "stale-context-refused",
+        "execution-completed"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "case": "3.115.0-unauthorized-effect",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "unauthorized-proof-refused",
+        "execution-completed"
+      ],
+      "lane": "mixed-api",
+      "operation": "supported",
+      "outcome": "error"
+    },
+    {
+      "case": "containment-only-backup-restore",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [],
+      "lane": "pre-upgrade-restore",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "logical-alias-replay",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "registered-logical-alias-evolution-executed"
+      ],
+      "lane": "logical-event-evolution",
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "case": "unknown-version-refusal",
+      "disposition": "incompatible",
+      "expected": "refusal",
+      "failed_checks": [
+        "registered-logical-alias-evolution-executed"
+      ],
+      "lane": "logical-event-evolution",
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "case": "original-envelope-preserved",
+      "disposition": "incompatible",
+      "expected": "effect",
+      "failed_checks": [
+        "registered-logical-alias-evolution-executed"
+      ],
+      "lane": "logical-event-evolution",
+      "operation": "supported",
+      "outcome": "effect"
+    }
+  ],
+  "scenario_case_count": 163
+}

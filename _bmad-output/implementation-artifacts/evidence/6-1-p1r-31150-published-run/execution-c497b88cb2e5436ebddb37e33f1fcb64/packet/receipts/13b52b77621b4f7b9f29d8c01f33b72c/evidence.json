@@ -1,0 +1,30 @@
+{
+  "configuration": "Release",
+  "fixture": null,
+  "packages_root": "packages",
+  "projects": [
+    {
+      "assets": "host/obj/project.assets.json",
+      "loaded": "loaded/Host.json",
+      "lock": "host/packages.lock.json",
+      "name": "Host",
+      "output": "host/bin/Release/net10.0"
+    },
+    {
+      "assets": "domain/obj/project.assets.json",
+      "loaded": "loaded/Domain.json",
+      "lock": "domain/packages.lock.json",
+      "name": "Domain",
+      "output": "domain/bin/Release/net10.0"
+    },
+    {
+      "assets": "probe/obj/project.assets.json",
+      "loaded": "loaded/Probe.json",
+      "lock": "probe/packages.lock.json",
+      "name": "Probe",
+      "output": "probe/bin/Release/net10.0"
+    }
+  ],
+  "role": "comparison-3.110.0",
+  "schema": "hexalith.p1r.package-evidence.v1"
+}

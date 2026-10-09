@@ -1,0 +1,178 @@
+{
+  "scope": "tooling-diagnostic",
+  "qualification_authority": false,
+  "original_failure": {
+    "invocation": "6f89354956c24577ae1404cddb78bde9",
+    "command": 3802,
+    "exit_code": 0,
+    "first_cleanup_errors": [
+      "OSError"
+    ],
+    "first_remaining": [],
+    "second_cleanup_errors": [],
+    "second_remaining": [],
+    "original_errno_established": false
+  },
+  "actual_diagnostic_trials": [
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-1",
+      "invocation": "4e042db928844f8f97d6e53127f5469a",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "07fb617018573dc3630bc0eb526972a4c9d925f54683c844a0c22e17817406ab",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-2",
+      "invocation": "a540658d5dd2482c9919bf30f6af0a1b",
+      "command_count": 24,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "1a3cb9b567bfe721e4d8bd5da043702423b11a802fecc5a78faa0682e20a6ebe",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-3",
+      "invocation": "8fc73ee79d7a4648898d5b73096db774",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "2391bcf07886e819f36032d58cf6afb661efa57d573d25046b2e105b71861677",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-4",
+      "invocation": "432160437c0f4973a499d5b7034a3f4b",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "6e1a3ac972dddca162417dc1e0468cf13594fc539f45b0c57cb8a252b4373e83",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-5",
+      "invocation": "0bec3cc13d324619be84d565dec7a26c",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "784a496b4688d70956a5fd158d99bd7ff4ba51a57bb6dd0970a41ee87409f96a",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-6",
+      "invocation": "e814151d737e4120adb11bbb441070cb",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "d55449f2f0456391607bf33de0550ca2c292738d1554e932cfd330862e2d7d58",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-7",
+      "invocation": "063d53608b0046d0a2e8adf215a62a87",
+      "command_count": 23,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "87936c649260857e9f8f8a04aae102bf12afb03ee9b13ba9ecd81205016a153d",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-diagnostic-8",
+      "invocation": "d5b6217a278e42459e862d71ffd56b85",
+      "command_count": 24,
+      "restore_commands": 3,
+      "build_commands": 3,
+      "commands_sha256": "9a715b111ffc520c29e1f5a524a6aaa88ea1889713446469ec1abca1fb14ddd6",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-restore-loop",
+      "invocation": "550d9824f7974672b109325aeb6df4b3",
+      "command_count": 103,
+      "restore_commands": 83,
+      "build_commands": 3,
+      "commands_sha256": "31772485e39e6dbacc2c13c7dc5e12a8212b1b8ccde2e21f9af831a9eb34836d",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-stress",
+      "invocation": "52f9b58d4d454711a379c7d6c7fe3631",
+      "command_count": 64,
+      "restore_commands": 0,
+      "build_commands": 0,
+      "commands_sha256": "ab5e4e1abcca948edabf380d91f003875df02e991f4d1cb1e3e9d984c63e2633",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    },
+    {
+      "output": "/tmp/p1r-correction-ownership-exec-stress",
+      "invocation": "d993acd5ee2e47d78cb00ee2ebbc74e7",
+      "command_count": 54,
+      "restore_commands": 0,
+      "build_commands": 0,
+      "commands_sha256": "87ecabdbf5bed9fd513c0b7d8aeff70c531ea6d3954b5092299cb68970e81e85",
+      "executor_source_sha256": "af33d98056a1aecc8b38ba544be98e24a67b57f4ce75ae90b9fd0501af9443dc",
+      "executor_errors": [],
+      "cleanup_refusals": 0
+    }
+  ],
+  "bounded_procfs_diagnostics": [
+    {
+      "source": "/tmp/p1r-correction-full-iteration1-control/ownership-diagnostic-events.json",
+      "sha256": "d1ceb1bbed05c8480d46780763f780cd32f1a92c7155fe206e082622fa8f69e9",
+      "exception_counts": {
+        "FileNotFoundError": 2525,
+        "PermissionError": 142379
+      },
+      "generic_oserror_observed": false
+    },
+    {
+      "source": "/tmp/p1r-correction-full-iteration1-control/ownership-stress-events.json",
+      "sha256": "710dbcb469f34a2557efa6ce6567632234fb0ab69da4d8f4ce21d7d407b4fa83",
+      "exception_counts": {
+        "FileNotFoundError": 1475,
+        "PermissionError": 21886
+      },
+      "generic_oserror_observed": false
+    },
+    {
+      "source": "/tmp/p1r-correction-full-iteration1-control/ownership-exec-stress-events.json",
+      "sha256": "885fe835e58030dff65604aedd583a35bbb3083c7ec64a08bfb1d4e4c6bd7aab",
+      "exception_counts": {
+        "FileNotFoundError": 3536,
+        "PermissionError": 31283
+      },
+      "generic_oserror_observed": false
+    },
+    {
+      "source": "/tmp/p1r-correction-full-iteration1-control/ownership-restore-events.json",
+      "sha256": "0af9a832e40cc76bce9487cddf471f2c79b1096ec13aba419f1500042783692b",
+      "exception_counts": {
+        "FileNotFoundError": 1876,
+        "PermissionError": 134502
+      },
+      "generic_oserror_observed": false
+    }
+  ],
+  "diagnostic_change": "Retain operation/type/errno and exact owned signal/reap identity in the existing error list. Every nonempty error remains a refusal, including recovered later cleanup."
+}

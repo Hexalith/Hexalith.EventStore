@@ -1,0 +1,39 @@
+{
+  "errors": [],
+  "executor_source_sha256": "44bacb55a8d85b871feb59c157fa5fc9550dfbd6469cfc327cfedd21dbdf19a0",
+  "finished_utc": "2026-10-07T13:26:07.093136+00:00",
+  "inputs_sha256": "c4970b8bb71dfb07f3dc5c7e2524a28f998d8f7f45674b455cfbc7f00b69beb0",
+  "invocation": "853ff2d27d3a4adb822a0aab1f7a32e7",
+  "owned_containers": {
+    "3eb0478e92063db2f6e00871d71e85632122686e3715b195c8b91f0962631953": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-853ff2d27d3a4adb822a0aab1f7a32e7-pubsub-9063045b",
+      "port": 28608,
+      "role": "pubsub"
+    },
+    "43c82a2e45e293d2ea0d76e1a103f7a036cc736d527b0291f0e642309c7a2e90": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-853ff2d27d3a4adb822a0aab1f7a32e7-placement-81970db2",
+      "port": 21581,
+      "role": "placement"
+    },
+    "4eccfe30951b989ee47d7b5e76a4baff7c9c3023d1e9cc2a25b2e4a6556ce74c": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-853ff2d27d3a4adb822a0aab1f7a32e7-source-ce36d3a2",
+      "port": 25580,
+      "role": "source"
+    },
+    "abf75a8ca5adbaa04d57f51a039623a559deb89e94328c91d118693e89596663": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-853ff2d27d3a4adb822a0aab1f7a32e7-scheduler-9ade4cbc",
+      "port": 10120,
+      "role": "scheduler"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-correction-final-smoke-iteration1-final/receipts/b21e8f8f2ba541859b781120fdd08b49.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T13:22:15.313791+00:00"
+}

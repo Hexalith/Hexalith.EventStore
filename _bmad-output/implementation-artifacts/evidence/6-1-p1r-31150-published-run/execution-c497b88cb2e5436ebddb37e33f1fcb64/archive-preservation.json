@@ -1,0 +1,245 @@
+{
+  "all_copies_reinspected": true,
+  "archives": [
+    {
+      "archive": "package-archives/candidate/hexalith.eventstore.client.3.115.0.nupkg",
+      "archive_bytes": 290475,
+      "archive_sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Client.dll": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b"
+      },
+      "id": "Hexalith.EventStore.Client",
+      "metadata": "package-archives/candidate/hexalith.eventstore.client.3.115.0.nupkg.metadata",
+      "metadata_sha256": "9271cae741124f81ca041701d7f81690749879c359c03579c072e93ead4de441",
+      "repository_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "role": "candidate",
+      "signature_observation": "packet/receipts/3ca5a0bf5e6c4b0784f9b969aea09e5c/signature-0.txt",
+      "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "version": "3.115.0"
+    },
+    {
+      "archive": "package-archives/candidate/hexalith.eventstore.contracts.3.115.0.nupkg",
+      "archive_bytes": 216934,
+      "archive_sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Contracts.dll": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd"
+      },
+      "id": "Hexalith.EventStore.Contracts",
+      "metadata": "package-archives/candidate/hexalith.eventstore.contracts.3.115.0.nupkg.metadata",
+      "metadata_sha256": "1cc81276948bfad3d8080d5d0ceee679c61f3b7441a1722393b0d92eb5a9236e",
+      "repository_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "role": "candidate",
+      "signature_observation": "packet/receipts/3ca5a0bf5e6c4b0784f9b969aea09e5c/signature-1.txt",
+      "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "version": "3.115.0"
+    },
+    {
+      "archive": "package-archives/candidate/hexalith.eventstore.domainservice.3.115.0.nupkg",
+      "archive_bytes": 155272,
+      "archive_sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.DomainService.dll": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574"
+      },
+      "id": "Hexalith.EventStore.DomainService",
+      "metadata": "package-archives/candidate/hexalith.eventstore.domainservice.3.115.0.nupkg.metadata",
+      "metadata_sha256": "8e2ead3fbc17afa8aa16c8b6735698df45e3658fe1826c3ff9373a2fa97c5b93",
+      "repository_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "role": "candidate",
+      "signature_observation": "packet/receipts/3ca5a0bf5e6c4b0784f9b969aea09e5c/signature-2.txt",
+      "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "version": "3.115.0"
+    },
+    {
+      "archive": "package-archives/candidate/hexalith.eventstore.server.3.115.0.nupkg",
+      "archive_bytes": 577614,
+      "archive_sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Server.dll": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a"
+      },
+      "id": "Hexalith.EventStore.Server",
+      "metadata": "package-archives/candidate/hexalith.eventstore.server.3.115.0.nupkg.metadata",
+      "metadata_sha256": "8272ea71bad9736c13559b910996860d8abca75bda1b3ba6cf20c37f4ffe5f58",
+      "repository_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "role": "candidate",
+      "signature_observation": "packet/receipts/3ca5a0bf5e6c4b0784f9b969aea09e5c/signature-3.txt",
+      "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "version": "3.115.0"
+    },
+    {
+      "archive": "package-archives/candidate/hexalith.eventstore.servicedefaults.3.115.0.nupkg",
+      "archive_bytes": 38226,
+      "archive_sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660"
+      },
+      "id": "Hexalith.EventStore.ServiceDefaults",
+      "metadata": "package-archives/candidate/hexalith.eventstore.servicedefaults.3.115.0.nupkg.metadata",
+      "metadata_sha256": "e0d7b6df7cc34f79ed1ccada7cb75f3cbf0e55db27e3352d6df8b58be9b8f875",
+      "repository_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "role": "candidate",
+      "signature_observation": "packet/receipts/3ca5a0bf5e6c4b0784f9b969aea09e5c/signature-4.txt",
+      "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
+      "version": "3.115.0"
+    },
+    {
+      "archive": "package-archives/comparison-3.70.1/hexalith.eventstore.client.3.70.1.nupkg",
+      "archive_bytes": 159320,
+      "archive_sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Client.dll": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c"
+      },
+      "id": "Hexalith.EventStore.Client",
+      "metadata": "package-archives/comparison-3.70.1/hexalith.eventstore.client.3.70.1.nupkg.metadata",
+      "metadata_sha256": "4c3e71f7ce74cca187285f2926a02712fceddfeded18096678c5f9eba66404c0",
+      "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "role": "comparison-3.70.1",
+      "signature_observation": "packet/receipts/a483edf5a47f483684199ac7cae6b47c/signature-0.txt",
+      "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "version": "3.70.1"
+    },
+    {
+      "archive": "package-archives/comparison-3.70.1/hexalith.eventstore.contracts.3.70.1.nupkg",
+      "archive_bytes": 153349,
+      "archive_sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Contracts.dll": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d"
+      },
+      "id": "Hexalith.EventStore.Contracts",
+      "metadata": "package-archives/comparison-3.70.1/hexalith.eventstore.contracts.3.70.1.nupkg.metadata",
+      "metadata_sha256": "2ae9c4b67c9a99b9e015c8345edf6f2023e187f91628e7b53c56cf8cf74662c2",
+      "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "role": "comparison-3.70.1",
+      "signature_observation": "packet/receipts/a483edf5a47f483684199ac7cae6b47c/signature-1.txt",
+      "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "version": "3.70.1"
+    },
+    {
+      "archive": "package-archives/comparison-3.70.1/hexalith.eventstore.domainservice.3.70.1.nupkg",
+      "archive_bytes": 64901,
+      "archive_sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.DomainService.dll": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0"
+      },
+      "id": "Hexalith.EventStore.DomainService",
+      "metadata": "package-archives/comparison-3.70.1/hexalith.eventstore.domainservice.3.70.1.nupkg.metadata",
+      "metadata_sha256": "e52d5fafe2d789093c785e9674c7070a56e7e635128697c37ac5108869b4346a",
+      "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "role": "comparison-3.70.1",
+      "signature_observation": "packet/receipts/a483edf5a47f483684199ac7cae6b47c/signature-2.txt",
+      "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "version": "3.70.1"
+    },
+    {
+      "archive": "package-archives/comparison-3.70.1/hexalith.eventstore.server.3.70.1.nupkg",
+      "archive_bytes": 338785,
+      "archive_sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Server.dll": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da"
+      },
+      "id": "Hexalith.EventStore.Server",
+      "metadata": "package-archives/comparison-3.70.1/hexalith.eventstore.server.3.70.1.nupkg.metadata",
+      "metadata_sha256": "65b929a70e7ed1a8df89ef808a675a51bfc6dd032229eb0f856a5b8fc90ce42c",
+      "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "role": "comparison-3.70.1",
+      "signature_observation": "packet/receipts/a483edf5a47f483684199ac7cae6b47c/signature-3.txt",
+      "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "version": "3.70.1"
+    },
+    {
+      "archive": "package-archives/comparison-3.70.1/hexalith.eventstore.servicedefaults.3.70.1.nupkg",
+      "archive_bytes": 29295,
+      "archive_sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022"
+      },
+      "id": "Hexalith.EventStore.ServiceDefaults",
+      "metadata": "package-archives/comparison-3.70.1/hexalith.eventstore.servicedefaults.3.70.1.nupkg.metadata",
+      "metadata_sha256": "2ec9c4679f569e304659a8d90ad8adda4b2b78eba93b7521313b48e53605fdc5",
+      "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
+      "role": "comparison-3.70.1",
+      "signature_observation": "packet/receipts/a483edf5a47f483684199ac7cae6b47c/signature-4.txt",
+      "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+      "version": "3.70.1"
+    },
+    {
+      "archive": "package-archives/comparison-3.110.0/hexalith.eventstore.client.3.110.0.nupkg",
+      "archive_bytes": 224671,
+      "archive_sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Client.dll": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a"
+      },
+      "id": "Hexalith.EventStore.Client",
+      "metadata": "package-archives/comparison-3.110.0/hexalith.eventstore.client.3.110.0.nupkg.metadata",
+      "metadata_sha256": "1cab5e05849119d87377e4506f8a9072096b3fd2967148343c8a92f645349964",
+      "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "role": "comparison-3.110.0",
+      "signature_observation": "packet/receipts/13b52b77621b4f7b9f29d8c01f33b72c/signature-0.txt",
+      "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "version": "3.110.0"
+    },
+    {
+      "archive": "package-archives/comparison-3.110.0/hexalith.eventstore.contracts.3.110.0.nupkg",
+      "archive_bytes": 181653,
+      "archive_sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Contracts.dll": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b"
+      },
+      "id": "Hexalith.EventStore.Contracts",
+      "metadata": "package-archives/comparison-3.110.0/hexalith.eventstore.contracts.3.110.0.nupkg.metadata",
+      "metadata_sha256": "f9fd96a6e36bd218a68bb67ccb6abbd8d2e124de3e812d9c134466310fb820cc",
+      "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "role": "comparison-3.110.0",
+      "signature_observation": "packet/receipts/13b52b77621b4f7b9f29d8c01f33b72c/signature-1.txt",
+      "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "version": "3.110.0"
+    },
+    {
+      "archive": "package-archives/comparison-3.110.0/hexalith.eventstore.domainservice.3.110.0.nupkg",
+      "archive_bytes": 91786,
+      "archive_sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.DomainService.dll": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b"
+      },
+      "id": "Hexalith.EventStore.DomainService",
+      "metadata": "package-archives/comparison-3.110.0/hexalith.eventstore.domainservice.3.110.0.nupkg.metadata",
+      "metadata_sha256": "425d12cefabe0f79df14a3b436a75d719d6e90620530aa46335866fd531272cf",
+      "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "role": "comparison-3.110.0",
+      "signature_observation": "packet/receipts/13b52b77621b4f7b9f29d8c01f33b72c/signature-2.txt",
+      "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "version": "3.110.0"
+    },
+    {
+      "archive": "package-archives/comparison-3.110.0/hexalith.eventstore.server.3.110.0.nupkg",
+      "archive_bytes": 531471,
+      "archive_sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.Server.dll": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca"
+      },
+      "id": "Hexalith.EventStore.Server",
+      "metadata": "package-archives/comparison-3.110.0/hexalith.eventstore.server.3.110.0.nupkg.metadata",
+      "metadata_sha256": "84acd499771f10f34f92b173b21ab926589837bf1389b7cc729ed1fb3c9bb1b7",
+      "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "role": "comparison-3.110.0",
+      "signature_observation": "packet/receipts/13b52b77621b4f7b9f29d8c01f33b72c/signature-3.txt",
+      "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "version": "3.110.0"
+    },
+    {
+      "archive": "package-archives/comparison-3.110.0/hexalith.eventstore.servicedefaults.3.110.0.nupkg",
+      "archive_bytes": 38226,
+      "archive_sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4",
+      "dlls": {
+        "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
+      },
+      "id": "Hexalith.EventStore.ServiceDefaults",
+      "metadata": "package-archives/comparison-3.110.0/hexalith.eventstore.servicedefaults.3.110.0.nupkg.metadata",
+      "metadata_sha256": "5c820fb3de97c95e99173f08429409f8817e42a51cc8cebe4921183ec21c238a",
+      "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "role": "comparison-3.110.0",
+      "signature_observation": "packet/receipts/13b52b77621b4f7b9f29d8c01f33b72c/signature-4.txt",
+      "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+      "version": "3.110.0"
+    }
+  ]
+}

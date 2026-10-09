@@ -1,0 +1,71 @@
+{
+  "errors": [],
+  "executor_source_sha256": "04ca7c61e729ff7154472bd1a6a9fcdc4b4073b940db2aa3f4530abd6f1e6a38",
+  "finished_utc": "2026-10-07T15:20:55.687657+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "c497b88cb2e5436ebddb37e33f1fcb64",
+  "owned_containers": {
+    "0341fe26f57584eba01e7d547fde815906024ff5eaef88bdfb4617695e2cb1e9": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-containment-f664d717",
+      "port": 26709,
+      "role": "containment"
+    },
+    "495beec1ccdc1a7c5a41a6e60266038e6d22b2c68473bd41e92d8b2ae8bf3f5a": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-pubsub-664b950f",
+      "port": 21605,
+      "role": "pubsub"
+    },
+    "519972da0f4739076d79e73e101765aee852ce410e51e148caeb064cc85a70d9": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-restored-e1ca63ed",
+      "port": 12792,
+      "role": "restored"
+    },
+    "6cdc9464d7cfb723a13621ad91d5eee2aef5faeac6720449c2f1c0b807431a3d": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-source-02b4c897",
+      "port": 28309,
+      "role": "source"
+    },
+    "e6dea75e68f75828b7d5419df833d3a13a65bbd3f7280c55b763d06bbf8ce008": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-placement-db7695cc",
+      "port": 20487,
+      "role": "placement"
+    },
+    "f3afd0442d625199c449393fadb717978af7413e85ea7994f1f19ab8942089a9": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-c497b88cb2e5436ebddb37e33f1fcb64-scheduler-70e097be",
+      "port": 12087,
+      "role": "scheduler"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/986507bc939446a592afe9000a0dad27.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/524416a51e9b401aa7b033912e9ee9b3.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/6d5a41bcc59748fab6c4bf07c180f9e2.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/0258cb11efe84362a984f096ee68ebba.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/31564f98abc04d8d9413ab8e93dc1b5d.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/d989f182ac9e4f67aba361495d612dd8.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/b3739e2b5e384e6ea8b483b15b0f48ab.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/6654462f4d624530ab1a70dbc9a7570d.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/cb87880c7502440681602e9ae6b7296d.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/793ade3593124c21bdc9da6ff3838ac1.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/d757663e68e240b3a32839c59dc6711c.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/754c5e1892b34a19955f48b6e166da0d.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/3ffcdf25af7e4bc7bdba32cfb43f4ce9.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/4356e2ad951e4cc1bfae8081e136b85f.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/f3670a2d05b3419180bed0d5bd4b608e.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/479c51778ee646f5a84b8110775e9e5b.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/8adc1dd9693a48e2a1d44694f155f7ea.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/6422379669f148f8bb58688b92b21f07.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/f801269c301f43698a96a1e2552bfb12.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/882acac959ce4ce3925adda5060e12a8.json",
+    "/tmp/p1r-correction-full-iteration5-execution/receipts/1a218296dcf3407c999632a63b5379d2.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T14:58:00.142567+00:00"
+}

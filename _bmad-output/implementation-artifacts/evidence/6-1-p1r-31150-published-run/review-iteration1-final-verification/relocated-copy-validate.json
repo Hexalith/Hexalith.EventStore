@@ -1,0 +1,15 @@
+{
+  "scope": "tooling-diagnostic-only",
+  "argv": [
+    "python3",
+    "tools/p1r-published-qualification.py",
+    "validate",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/execution-c497b88cb2e5436ebddb37e33f1fcb64/packet"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T15:27:51.534057+00:00",
+  "finished_utc": "2026-10-07T15:27:56.233258+00:00",
+  "exit_code": 2,
+  "output_sha256": "5dc22fdfaf99a8c2d09d43a5454ea81de4790a07f1f50103d742417d558e1446",
+  "action": "Preserve this copy and prepare a new packet directly at its retained path without modifying source or original receipts."
+}

@@ -1,0 +1,70 @@
+{
+  "dapr_version": "1.18.4",
+  "daprd_sha256": "cf6320ebdf7729e10b18c2dcd4c610995c9e2048263dac8ecf734a095cf9567c",
+  "images": [
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "73b7e109666645d4a8a8730ce6a9a6d1"
+        }
+      },
+      "Id": "8d27c9d4490c030d3ce25dbfa16c7140a962785ce702322b21bff477c86ed6d6",
+      "Image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "Name": "/p1r-73b7e109666645d4a8a8730ce6a9a6d1-placement-692b0489",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-07T11:01:29.729474279Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "73b7e109666645d4a8a8730ce6a9a6d1"
+        }
+      },
+      "Id": "1dc001c517cd56c205e1ff252b8f818a5e3d0d5c591503d7a1b0cf10403c3ef1",
+      "Image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "Name": "/p1r-73b7e109666645d4a8a8730ce6a9a6d1-scheduler-52401781",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-07T11:01:30.218515512Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "73b7e109666645d4a8a8730ce6a9a6d1"
+        }
+      },
+      "Id": "2a142e5201b165ecd94b526630e210bc9bfc4d942f4b6ca3a0958af1cb406edc",
+      "Image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "Name": "/p1r-73b7e109666645d4a8a8730ce6a9a6d1-pubsub-b3d16ac8",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-07T11:01:30.762082724Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "73b7e109666645d4a8a8730ce6a9a6d1"
+        }
+      },
+      "Id": "9607de071be0915a91cab3d740e150e8dff73e934922f0f07baf60918d73f18b",
+      "Image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "Name": "/p1r-73b7e109666645d4a8a8730ce6a9a6d1-source-d4cdaade",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-07T11:01:31.354732742Z"
+      }
+    }
+  ],
+  "profile": {
+    "backend": "state.redis",
+    "backend_image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31150-published-run.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.4",
+    "selected_by": "user"
+  }
+}

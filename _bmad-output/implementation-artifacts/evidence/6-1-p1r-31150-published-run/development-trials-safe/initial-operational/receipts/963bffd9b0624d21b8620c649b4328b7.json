@@ -1,0 +1,1387 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "run",
+    "--lane",
+    "projection-wire"
+  ],
+  "assertions": {
+    "attempted": 102,
+    "failed": 28,
+    "passed": 74
+  },
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 5,
+        "passed": 12
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": false
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.70.1-json-positive",
+      "inventory": {
+        "after_sha256": "ed88dbaa59c398581fc667f774cdbd85f70ec997312bfc714281b21f7008b815",
+        "before_sha256": "ed88dbaa59c398581fc667f774cdbd85f70ec997312bfc714281b21f7008b815"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 4,
+        "passed": 13
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": true
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.115.0-json-positive",
+      "inventory": {
+        "after_sha256": "0917ade1fb70968535a346e9a1d4853367f4daff10b3114e6f0886c89dd5c640",
+        "before_sha256": "0917ade1fb70968535a346e9a1d4853367f4daff10b3114e6f0886c89dd5c640"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 5,
+        "passed": 12
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": false
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.110.0-json-positive",
+      "inventory": {
+        "after_sha256": "30bfbf05d9e190d8039b625fcf2880792be79f3b08e2e3d61470f0b419023f15",
+        "before_sha256": "30bfbf05d9e190d8039b625fcf2880792be79f3b08e2e3d61470f0b419023f15"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 5,
+        "passed": 12
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": false
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.115.0-json-positive",
+      "inventory": {
+        "after_sha256": "604fdb0fffb524089e6ca0dbb35e2ccdb5224ae2489332683736e852eb206bdb",
+        "before_sha256": "604fdb0fffb524089e6ca0dbb35e2ccdb5224ae2489332683736e852eb206bdb"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 4,
+        "passed": 13
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": true
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.110.0-json-positive",
+      "inventory": {
+        "after_sha256": "5d50686603535c2a75b2b4971dcd508445cdd65b7c3609a606a00add17dad3a7",
+        "before_sha256": "5d50686603535c2a75b2b4971dcd508445cdd65b7c3609a606a00add17dad3a7"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 17,
+        "failed": 5,
+        "passed": 12
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": false
+        },
+        {
+          "id": "preserved:domain",
+          "passed": false
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": false
+        },
+        {
+          "id": "preserved:sequenceNumber",
+          "passed": true
+        },
+        {
+          "id": "preserved:globalPosition",
+          "passed": false
+        },
+        {
+          "id": "preserved:eventTypeName",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:serializationFormat",
+          "passed": true
+        },
+        {
+          "id": "preserved:timestamp",
+          "passed": false
+        },
+        {
+          "id": "preserved:messageId",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:causationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.70.1-json-positive",
+      "inventory": {
+        "after_sha256": "337098d1750a35c498de9eea47b50f93171bee38cb8b733354d54850ab574170",
+        "before_sha256": "337098d1750a35c498de9eea47b50f93171bee38cb8b733354d54850ab574170"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    }
+  ],
+  "compatibility": "incompatible",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "execution": "failed",
+  "execution_evidence": {
+    "cases": [
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/7fc9ba23563a4685a68403a931153201.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a47a3b15b95b4e00a444d182d46b83b2.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:07.926618+00:00",
+            "id": 4060,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "a2485312059f42e89c4c402cca612c8abed179af95a667b662109d5847801002",
+            "started_utc": "2026-10-07T10:44:07.829425+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a47a3b15b95b4e00a444d182d46b83b2.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/68e87841c9594a0a9457c0739de91a5c.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.090054+00:00",
+            "id": 4061,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"},\"output_sha256\":\"ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9\"}}\n",
+            "output_sha256": "03b7c428ca0f64d2340c56cd9a79a586a0ed2e72a01b540c98ffeaaf9de0ad49",
+            "started_utc": "2026-10-07T10:44:07.955520+00:00"
+          }
+        ],
+        "id": "3.110.0-3.70.1-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a8710c8e465d483b85e31a31407b1d37.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/1506767af6fc46bb85c61a7b50b22dc8.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.259416+00:00",
+            "id": 4062,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "a2485312059f42e89c4c402cca612c8abed179af95a667b662109d5847801002",
+            "started_utc": "2026-10-07T10:44:08.121243+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/1506767af6fc46bb85c61a7b50b22dc8.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/c04b92f9e1704a64ba7287dc6ae8aa0c.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.412810+00:00",
+            "id": 4063,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"MetadataVersion\":null,\"StoredEventContractType\":null,\"StoredPayloadVersion\":null,\"StoredSerializationFormat\":null,\"EffectiveEventContractType\":null,\"EffectivePayloadVersion\":null,\"EffectiveSerializationFormat\":null,\"EffectivePayload\":null,\"StoredEventTypeName\":null,\"StoredDigest\":null,\"RegistryFingerprint\":null,\"IsAdapted\":null,\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "9d5c7d29530414315f418c773c70b2e15bc9423f5e38b82750afc3ab5addc9f3",
+            "started_utc": "2026-10-07T10:44:08.294676+00:00"
+          }
+        ],
+        "id": "3.110.0-3.115.0-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EffectiveEventContractType": null,
+              "EffectivePayload": null,
+              "EffectivePayloadVersion": null,
+              "EffectiveSerializationFormat": null,
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "IsAdapted": null,
+              "MessageId": "fixture-message",
+              "MetadataVersion": null,
+              "Payload": "e30=",
+              "RegistryFingerprint": null,
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "StoredDigest": null,
+              "StoredEventContractType": null,
+              "StoredEventTypeName": null,
+              "StoredPayloadVersion": null,
+              "StoredSerializationFormat": null,
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a0384cdd72284c67a8a40bbe044d9884.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5f3d94dd3046420192761773fa91d77a.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.568345+00:00",
+            "id": 4064,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"},\"output_sha256\":\"ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9\"}}\n",
+            "output_sha256": "03b7c428ca0f64d2340c56cd9a79a586a0ed2e72a01b540c98ffeaaf9de0ad49",
+            "started_utc": "2026-10-07T10:44:08.446491+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5f3d94dd3046420192761773fa91d77a.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/17d9b9f7ec39467da75b10e4fe865986.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.743689+00:00",
+            "id": 4065,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":0},\"output_sha256\":\"8945538a9111eb73fc3a94c5c3f30f5d365a8df99957be6cb92ecf40a7300c2b\"}}\n",
+            "output_sha256": "bbae36649656c906ce880c5db8322e60b196c00b0c6d0b6f1571388cf5963f56",
+            "started_utc": "2026-10-07T10:44:08.605800+00:00"
+          }
+        ],
+        "id": "3.70.1-3.110.0-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 0,
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "8945538a9111eb73fc3a94c5c3f30f5d365a8df99957be6cb92ecf40a7300c2b",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/e47c9ef622b045e9b6f2d28c57f9003c.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/247e14a635d6495abedc291490d47d1c.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:08.922605+00:00",
+            "id": 4066,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"},\"output_sha256\":\"ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9\"}}\n",
+            "output_sha256": "03b7c428ca0f64d2340c56cd9a79a586a0ed2e72a01b540c98ffeaaf9de0ad49",
+            "started_utc": "2026-10-07T10:44:08.779055+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/247e14a635d6495abedc291490d47d1c.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2797283d9783413293c90109be2e0244.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:09.090289+00:00",
+            "id": 4067,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"MetadataVersion\":null,\"StoredEventContractType\":null,\"StoredPayloadVersion\":null,\"StoredSerializationFormat\":null,\"EffectiveEventContractType\":null,\"EffectivePayloadVersion\":null,\"EffectiveSerializationFormat\":null,\"EffectivePayload\":null,\"StoredEventTypeName\":null,\"StoredDigest\":null,\"RegistryFingerprint\":null,\"IsAdapted\":null,\"GlobalPosition\":0},\"output_sha256\":\"8945538a9111eb73fc3a94c5c3f30f5d365a8df99957be6cb92ecf40a7300c2b\"}}\n",
+            "output_sha256": "43279ad1527b822f6a38068cb80e34bdfebc248b47aab87662e53bcf62dd48f4",
+            "started_utc": "2026-10-07T10:44:08.953325+00:00"
+          }
+        ],
+        "id": "3.70.1-3.115.0-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EffectiveEventContractType": null,
+              "EffectivePayload": null,
+              "EffectivePayloadVersion": null,
+              "EffectiveSerializationFormat": null,
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 0,
+              "IsAdapted": null,
+              "MessageId": "fixture-message",
+              "MetadataVersion": null,
+              "Payload": "e30=",
+              "RegistryFingerprint": null,
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "StoredDigest": null,
+              "StoredEventContractType": null,
+              "StoredEventTypeName": null,
+              "StoredPayloadVersion": null,
+              "StoredSerializationFormat": null,
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "8945538a9111eb73fc3a94c5c3f30f5d365a8df99957be6cb92ecf40a7300c2b",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/86869862f0674b35981a657e9a29da51.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b4daf887d830447d818470f4b6ff44c7.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:09.256978+00:00",
+            "id": 4068,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"MetadataVersion\":null,\"StoredEventContractType\":null,\"StoredPayloadVersion\":null,\"StoredSerializationFormat\":null,\"EffectiveEventContractType\":null,\"EffectivePayloadVersion\":null,\"EffectiveSerializationFormat\":null,\"EffectivePayload\":null,\"StoredEventTypeName\":null,\"StoredDigest\":null,\"RegistryFingerprint\":null,\"IsAdapted\":null,\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "9d5c7d29530414315f418c773c70b2e15bc9423f5e38b82750afc3ab5addc9f3",
+            "started_utc": "2026-10-07T10:44:09.136604+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b4daf887d830447d818470f4b6ff44c7.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b7cf3bab212e49ed98d2480aff50ccfa.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:09.410942+00:00",
+            "id": 4069,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "a2485312059f42e89c4c402cca612c8abed179af95a667b662109d5847801002",
+            "started_utc": "2026-10-07T10:44:09.294226+00:00"
+          }
+        ],
+        "id": "3.115.0-3.110.0-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EffectiveEventContractType": null,
+              "EffectivePayload": null,
+              "EffectivePayloadVersion": null,
+              "EffectiveSerializationFormat": null,
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "IsAdapted": null,
+              "MessageId": "fixture-message",
+              "MetadataVersion": null,
+              "Payload": "e30=",
+              "RegistryFingerprint": null,
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "StoredDigest": null,
+              "StoredEventContractType": null,
+              "StoredEventTypeName": null,
+              "StoredPayloadVersion": null,
+              "StoredSerializationFormat": null,
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/62e18c9d79c34341966bc4e82da469c2.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/eae9f9d436844a24869a99ef90b870fd.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:09.555637+00:00",
+            "id": 4070,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\",\"MetadataVersion\":null,\"StoredEventContractType\":null,\"StoredPayloadVersion\":null,\"StoredSerializationFormat\":null,\"EffectiveEventContractType\":null,\"EffectivePayloadVersion\":null,\"EffectiveSerializationFormat\":null,\"EffectivePayload\":null,\"StoredEventTypeName\":null,\"StoredDigest\":null,\"RegistryFingerprint\":null,\"IsAdapted\":null,\"GlobalPosition\":987},\"output_sha256\":\"d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19\"}}\n",
+            "output_sha256": "9d5c7d29530414315f418c773c70b2e15bc9423f5e38b82750afc3ab5addc9f3",
+            "started_utc": "2026-10-07T10:44:09.440124+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "projection",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/eae9f9d436844a24869a99ef90b870fd.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/cdd99be6b7ca419ea011960f88003313.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:09.707116+00:00",
+            "id": 4071,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Projections.ProjectionEventDto\",\"fields\":{\"EventTypeName\":\"P1R.Counter.CounterIncremented\",\"Payload\":\"e30=\",\"SerializationFormat\":\"json\",\"SequenceNumber\":12,\"Timestamp\":\"2026-01-01T00:00:00+00:00\",\"CorrelationId\":\"fixture-correlation\",\"MessageId\":\"fixture-message\",\"UserId\":\"fixture-user\"},\"output_sha256\":\"ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9\"}}\n",
+            "output_sha256": "03b7c428ca0f64d2340c56cd9a79a586a0ed2e72a01b540c98ffeaaf9de0ad49",
+            "started_utc": "2026-10-07T10:44:09.589218+00:00"
+          }
+        ],
+        "id": "3.115.0-3.70.1-json-positive",
+        "observations": {
+          "reader": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "MessageId": "fixture-message",
+              "Payload": "e30=",
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "ea54ca634e7ad4fbf00bed2e948b71a5985e29c74d1f96c99bb4b8d9eb82d5b9",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          },
+          "writer": {
+            "fields": {
+              "CorrelationId": "fixture-correlation",
+              "EffectiveEventContractType": null,
+              "EffectivePayload": null,
+              "EffectivePayloadVersion": null,
+              "EffectiveSerializationFormat": null,
+              "EventTypeName": "P1R.Counter.CounterIncremented",
+              "GlobalPosition": 987,
+              "IsAdapted": null,
+              "MessageId": "fixture-message",
+              "MetadataVersion": null,
+              "Payload": "e30=",
+              "RegistryFingerprint": null,
+              "SequenceNumber": 12,
+              "SerializationFormat": "json",
+              "StoredDigest": null,
+              "StoredEventContractType": null,
+              "StoredEventTypeName": null,
+              "StoredPayloadVersion": null,
+              "StoredSerializationFormat": null,
+              "Timestamp": "2026-01-01T00:00:00+00:00",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "d2a33e9c417f1cb7c4a6f8e1f0b9a703361bd70f13e083b69ca9372d1e8fec19",
+            "type": "Hexalith.EventStore.Contracts.Projections.ProjectionEventDto"
+          }
+        }
+      }
+    ],
+    "executor_source_sha256": "638cced50d059e06d149eee560be49531d52d9fae4da332a54fd494efd65c983",
+    "mechanism": "p1r-executed-checks-v1"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T10:44:09.737249+00:00",
+  "fixture": {
+    "id": "p1r-51499ac27da84c22b3ad3790b2d33859",
+    "synthetic": false
+  },
+  "id": "963bffd9b0624d21b8620c649b4328b7",
+  "identities": {
+    "configuration": "Release",
+    "loaded_assemblies": [
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      }
+    ],
+    "packages": [
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4"
+      }
+    ]
+  },
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "instrumentation": "p1r-executed-checks-v1",
+  "lane": "projection-wire",
+  "output_sha256": "a85e9488ffd775642cb93112487573a54956ad51729d2b39f005d4c9cdff25c7",
+  "profile": null,
+  "schema": "hexalith.p1r.lane-receipt.v1",
+  "scope": "published-package",
+  "started_utc": "2026-10-07T10:44:07.829216+00:00"
+}

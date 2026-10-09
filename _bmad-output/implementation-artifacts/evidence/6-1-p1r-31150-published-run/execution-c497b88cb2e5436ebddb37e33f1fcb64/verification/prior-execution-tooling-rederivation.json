@@ -1,0 +1,827 @@
+{
+  "scope": "tooling-only-not-operational-qualification",
+  "invocation": "b944559fd0f3413696db48bcfc585f52",
+  "retained_executor_source_sha256": "b89088dc6393350cda65186d32c05affafe834d637d6dc3aa4009e4837f080a4",
+  "corrected_validator_sha256": "c7632f1534b4897267bbb83f6132da684d789b071c470faec9037266e5a57bea",
+  "original_receipts_unchanged": true,
+  "cases": [
+    {
+      "lane": "full-replay",
+      "case": "3.110.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "full-replay",
+      "case": "3.110.0-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "full-replay",
+      "case": "3.70.1-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "full-replay",
+      "case": "3.70.1-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "full-replay",
+      "case": "3.115.0-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "full-replay",
+      "case": "3.115.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "current-build",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "query-wire",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "projection-wire",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "full-replay",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "snapshot-tail",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "retained-covered",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "missing-event",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "metadata-write",
+      "validated": true
+    },
+    {
+      "lane": "checkout",
+      "case": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "lane": "logical-event-evolution",
+      "case": "logical-alias-replay",
+      "validated": true
+    },
+    {
+      "lane": "logical-event-evolution",
+      "case": "unknown-version-refusal",
+      "validated": true
+    },
+    {
+      "lane": "logical-event-evolution",
+      "case": "original-envelope-preserved",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.110.0-invalid-floor",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.110.0-unreadable",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.110.0-protected",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.110.0-unknown-type",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.110.0-unknown-version",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.70.1-invalid-floor",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.70.1-unreadable",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.70.1-protected",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.70.1-unknown-type",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.70.1-unknown-version",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.115.0-invalid-floor",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.115.0-unreadable",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.115.0-protected",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.115.0-unknown-type",
+      "validated": true
+    },
+    {
+      "lane": "invalid-evidence",
+      "case": "3.115.0-unknown-version",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-client-3.70.1-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-client-3.115.0-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-client-3.110.0-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-client-3.115.0-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-client-3.110.0-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-client-3.70.1-host",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-status",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-cursor-scope",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-fenced-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-stale-fence",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-trusted-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-unauthorized-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.110.0-retained-floor",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-status",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-cursor-scope",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-fenced-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-stale-fence",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-trusted-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-unauthorized-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.70.1-retained-floor",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-status",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-cursor-scope",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-fenced-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-stale-fence",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-trusted-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-unauthorized-effect",
+      "validated": true
+    },
+    {
+      "lane": "mixed-api",
+      "case": "3.115.0-retained-floor",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.110.0-to-3.70.1-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.110.0-to-3.70.1-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.110.0-to-3.115.0-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.110.0-to-3.115.0-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.70.1-to-3.110.0-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.70.1-to-3.110.0-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.70.1-to-3.115.0-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.70.1-to-3.115.0-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.115.0-to-3.110.0-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.115.0-to-3.110.0-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.115.0-to-3.70.1-absent",
+      "validated": true
+    },
+    {
+      "lane": "retained-uncovered",
+      "case": "3.115.0-to-3.70.1-non-covering",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.110.0-pascal-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.110.0-pascal-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.110.0-web-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.110.0-web-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.70.1-pascal-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.70.1-pascal-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.70.1-web-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.70.1-web-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.115.0-pascal-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.115.0-pascal-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.115.0-web-floor-1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-read",
+      "case": "3.115.0-web-floor-5",
+      "validated": true
+    },
+    {
+      "lane": "post-upgrade-restore",
+      "case": "fresh-backup-restore-append-restart",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.110.0-pascal-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.110.0-web-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.70.1-pascal-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.70.1-web-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.115.0-pascal-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "legacy-metadata",
+      "case": "3.115.0-web-floor-None",
+      "validated": true
+    },
+    {
+      "lane": "reminder-recovery",
+      "case": "scheduled-restart-effect",
+      "validated": true
+    },
+    {
+      "lane": "reminder-recovery",
+      "case": "stale-generation-refusal",
+      "validated": true
+    },
+    {
+      "lane": "reminder-recovery",
+      "case": "tenant-preservation",
+      "validated": true
+    },
+    {
+      "lane": "provenance",
+      "case": "3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "provenance",
+      "case": "3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "provenance",
+      "case": "3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "pre-upgrade-restore",
+      "case": "containment-only-backup-restore",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.110.0-to-3.70.1-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.110.0-to-3.70.1-tail",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.110.0-to-3.115.0-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.110.0-to-3.115.0-tail",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.70.1-to-3.110.0-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.70.1-to-3.110.0-tail",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.70.1-to-3.115.0-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.70.1-to-3.115.0-tail",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.115.0-to-3.110.0-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.115.0-to-3.110.0-tail",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.115.0-to-3.70.1-interior",
+      "validated": true
+    },
+    {
+      "lane": "missing-event",
+      "case": "3.115.0-to-3.70.1-tail",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.110.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.110.0-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.70.1-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.70.1-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.115.0-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "snapshot-tail",
+      "case": "3.115.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.70.1-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.70.1-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.70.1-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.70.1-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.115.0-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.115.0-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.115.0-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.110.0-3.115.0-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.110.0-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.110.0-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.110.0-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.110.0-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.115.0-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.115.0-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.115.0-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.70.1-3.115.0-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.110.0-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.110.0-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.110.0-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.110.0-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.70.1-json-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.70.1-json-dual",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.70.1-xml-legacy",
+      "validated": true
+    },
+    {
+      "lane": "query-wire",
+      "case": "3.115.0-3.70.1-xml-dual",
+      "validated": true
+    },
+    {
+      "lane": "failure-cleanup",
+      "case": "startup-failure",
+      "validated": true
+    },
+    {
+      "lane": "failure-cleanup",
+      "case": "timeout",
+      "validated": true
+    },
+    {
+      "lane": "failure-cleanup",
+      "case": "cancellation",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.110.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.110.0-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.70.1-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.70.1-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.115.0-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "metadata-write",
+      "case": "3.115.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.110.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.110.0-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.70.1-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.70.1-to-3.115.0",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.115.0-to-3.110.0",
+      "validated": true
+    },
+    {
+      "lane": "retained-covered",
+      "case": "3.115.0-to-3.70.1",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.110.0-3.70.1-json-positive",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.110.0-3.115.0-json-positive",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.70.1-3.110.0-json-positive",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.70.1-3.115.0-json-positive",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.115.0-3.110.0-json-positive",
+      "validated": true
+    },
+    {
+      "lane": "projection-wire",
+      "case": "3.115.0-3.70.1-json-positive",
+      "validated": true
+    }
+  ],
+  "case_count": 163,
+  "all_validated": true,
+  "finished_utc": "2026-10-07T14:55:55.164558+00:00"
+}

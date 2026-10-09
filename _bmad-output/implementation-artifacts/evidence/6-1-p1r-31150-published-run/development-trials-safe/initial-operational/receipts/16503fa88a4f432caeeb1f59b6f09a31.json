@@ -1,0 +1,3843 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+    "run",
+    "--lane",
+    "query-wire"
+  ],
+  "assertions": {
+    "attempted": 264,
+    "failed": 32,
+    "passed": 232
+  },
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-3.70.1-json-legacy",
+      "inventory": {
+        "after_sha256": "cfb6ba4ae244eba49728e3c97de39f5ac91564ccd167f2b2ae15ac2b9b089fa4",
+        "before_sha256": "cfb6ba4ae244eba49728e3c97de39f5ac91564ccd167f2b2ae15ac2b9b089fa4"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.70.1-json-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-3.70.1-xml-legacy",
+      "inventory": {
+        "after_sha256": "1d8c65e238e9aeae945128062a7dbc069818c0314f98c4b0d09b1615445df951",
+        "before_sha256": "1d8c65e238e9aeae945128062a7dbc069818c0314f98c4b0d09b1615445df951"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.70.1-xml-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-3.115.0-json-legacy",
+      "inventory": {
+        "after_sha256": "58d9105f2bfd3dda1fc5e939d775daa6300b56663fad00f2a1695e8af92169c3",
+        "before_sha256": "58d9105f2bfd3dda1fc5e939d775daa6300b56663fad00f2a1695e8af92169c3"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.115.0-json-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.110.0-3.115.0-xml-legacy",
+      "inventory": {
+        "after_sha256": "40053bf35bd0a03c668fa2506e0cba5725429c74c43ee22b74ce03aec938d2bf",
+        "before_sha256": "40053bf35bd0a03c668fa2506e0cba5725429c74c43ee22b74ce03aec938d2bf"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.110.0-3.115.0-xml-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-3.110.0-json-legacy",
+      "inventory": {
+        "after_sha256": "72d369a18df92f36d4cab676e284899d03f1a87fcaa7f0e2a6d880719c4004ef",
+        "before_sha256": "72d369a18df92f36d4cab676e284899d03f1a87fcaa7f0e2a6d880719c4004ef"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 20,
+        "failed": 6,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        },
+        {
+          "id": "preserved:originalActorId",
+          "passed": false
+        },
+        {
+          "id": "preserved:authenticatedWorkloadId",
+          "passed": false
+        },
+        {
+          "id": "preserved:isDelegated",
+          "passed": false
+        },
+        {
+          "id": "preserved:delegationId",
+          "passed": false
+        },
+        {
+          "id": "preserved:scopes",
+          "passed": false
+        },
+        {
+          "id": "preserved:audience",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.110.0-json-dual",
+      "inventory": {
+        "after_sha256": "72d369a18df92f36d4cab676e284899d03f1a87fcaa7f0e2a6d880719c4004ef",
+        "before_sha256": "72d369a18df92f36d4cab676e284899d03f1a87fcaa7f0e2a6d880719c4004ef"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-3.110.0-xml-legacy",
+      "inventory": {
+        "after_sha256": "fbfbe30450b50d85a54f2ac607b5b949f2a57fa823c5a275a8a92b48e2e8ce27",
+        "before_sha256": "fbfbe30450b50d85a54f2ac607b5b949f2a57fa823c5a275a8a92b48e2e8ce27"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 20,
+        "failed": 6,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        },
+        {
+          "id": "preserved:originalActorId",
+          "passed": false
+        },
+        {
+          "id": "preserved:authenticatedWorkloadId",
+          "passed": false
+        },
+        {
+          "id": "preserved:isDelegated",
+          "passed": false
+        },
+        {
+          "id": "preserved:delegationId",
+          "passed": false
+        },
+        {
+          "id": "preserved:scopes",
+          "passed": false
+        },
+        {
+          "id": "preserved:audience",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.110.0-xml-dual",
+      "inventory": {
+        "after_sha256": "fbfbe30450b50d85a54f2ac607b5b949f2a57fa823c5a275a8a92b48e2e8ce27",
+        "before_sha256": "fbfbe30450b50d85a54f2ac607b5b949f2a57fa823c5a275a8a92b48e2e8ce27"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-3.115.0-json-legacy",
+      "inventory": {
+        "after_sha256": "a0d1e57c7fda2ab0ed072f5b56c2ec94a71adbb87c8feec9c1784b38928db5c3",
+        "before_sha256": "a0d1e57c7fda2ab0ed072f5b56c2ec94a71adbb87c8feec9c1784b38928db5c3"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 20,
+        "failed": 6,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        },
+        {
+          "id": "preserved:originalActorId",
+          "passed": false
+        },
+        {
+          "id": "preserved:authenticatedWorkloadId",
+          "passed": false
+        },
+        {
+          "id": "preserved:isDelegated",
+          "passed": false
+        },
+        {
+          "id": "preserved:delegationId",
+          "passed": false
+        },
+        {
+          "id": "preserved:scopes",
+          "passed": false
+        },
+        {
+          "id": "preserved:audience",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.115.0-json-dual",
+      "inventory": {
+        "after_sha256": "a0d1e57c7fda2ab0ed072f5b56c2ec94a71adbb87c8feec9c1784b38928db5c3",
+        "before_sha256": "a0d1e57c7fda2ab0ed072f5b56c2ec94a71adbb87c8feec9c1784b38928db5c3"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.70.1-3.115.0-xml-legacy",
+      "inventory": {
+        "after_sha256": "8135514fba90772a978c4dd17b262b1c09bded086244350f951be30b3c7a8fe1",
+        "before_sha256": "8135514fba90772a978c4dd17b262b1c09bded086244350f951be30b3c7a8fe1"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 20,
+        "failed": 6,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        },
+        {
+          "id": "preserved:originalActorId",
+          "passed": false
+        },
+        {
+          "id": "preserved:authenticatedWorkloadId",
+          "passed": false
+        },
+        {
+          "id": "preserved:isDelegated",
+          "passed": false
+        },
+        {
+          "id": "preserved:delegationId",
+          "passed": false
+        },
+        {
+          "id": "preserved:scopes",
+          "passed": false
+        },
+        {
+          "id": "preserved:audience",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.70.1-3.115.0-xml-dual",
+      "inventory": {
+        "after_sha256": "8135514fba90772a978c4dd17b262b1c09bded086244350f951be30b3c7a8fe1",
+        "before_sha256": "8135514fba90772a978c4dd17b262b1c09bded086244350f951be30b3c7a8fe1"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-3.110.0-json-legacy",
+      "inventory": {
+        "after_sha256": "3d8aa743374f2521b9e27ee9a50b35418c55011208bda1ecdacdf946f0411588",
+        "before_sha256": "3d8aa743374f2521b9e27ee9a50b35418c55011208bda1ecdacdf946f0411588"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.110.0-json-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-3.110.0-xml-legacy",
+      "inventory": {
+        "after_sha256": "23a9de2fb82effa3a1440cd865c7a0e93ac16e34cb60c5cf8d47c230926d9d57",
+        "before_sha256": "23a9de2fb82effa3a1440cd865c7a0e93ac16e34cb60c5cf8d47c230926d9d57"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.110.0-xml-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-3.70.1-json-legacy",
+      "inventory": {
+        "after_sha256": "69f3a2c4dd70f99a03d0969bff0a3c3662167bb3a794602bbe6492cd68d8ff0d",
+        "before_sha256": "69f3a2c4dd70f99a03d0969bff0a3c3662167bb3a794602bbe6492cd68d8ff0d"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.70.1-json-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "reader:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "reader:wire-output-nonempty",
+          "passed": true
+        },
+        {
+          "id": "preserved:tenantId",
+          "passed": true
+        },
+        {
+          "id": "preserved:domain",
+          "passed": true
+        },
+        {
+          "id": "preserved:aggregateId",
+          "passed": true
+        },
+        {
+          "id": "preserved:queryType",
+          "passed": true
+        },
+        {
+          "id": "preserved:payload",
+          "passed": true
+        },
+        {
+          "id": "preserved:correlationId",
+          "passed": true
+        },
+        {
+          "id": "preserved:userId",
+          "passed": true
+        },
+        {
+          "id": "preserved:entityId",
+          "passed": true
+        },
+        {
+          "id": "preserved:isGlobalAdmin",
+          "passed": true
+        },
+        {
+          "id": "preserved:paging",
+          "passed": true
+        }
+      ],
+      "disposition": "compatible",
+      "expected": "effect",
+      "id": "3.115.0-3.70.1-xml-legacy",
+      "inventory": {
+        "after_sha256": "9844985a617f030c4c719c0347be2fa772d45f1ec0be98a1f17969870ca0c50d",
+        "before_sha256": "9844985a617f030c4c719c0347be2fa772d45f1ec0be98a1f17969870ca0c50d"
+      },
+      "operation": "supported",
+      "outcome": "effect"
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 1,
+        "passed": 1
+      },
+      "checks": [
+        {
+          "id": "writer:contract-type-present",
+          "passed": true
+        },
+        {
+          "id": "writer:operation-completed",
+          "passed": false
+        }
+      ],
+      "disposition": "incompatible",
+      "expected": "effect",
+      "id": "3.115.0-3.70.1-xml-dual",
+      "inventory": {
+        "after_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e",
+        "before_sha256": "73aae2a6a005e17cf5b125f2da682fd5fdf7dfedba6e83f66c3ad26ac2cab81e"
+      },
+      "operation": "supported",
+      "outcome": "refusal"
+    }
+  ],
+  "compatibility": "incompatible",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "execution": "failed",
+  "execution_evidence": {
+    "cases": [
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/dee0686f3918495f96a107e10fe7d975.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a59cc74a6a6a4e218d536007d25b3894.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:01.633348+00:00",
+            "id": 4020,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f\"}}\n",
+            "output_sha256": "e0f8fd17ec370923ad0e00cefcafaa25901f9bb713c085605b0480f54b0c2219",
+            "started_utc": "2026-10-07T10:44:01.498226+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a59cc74a6a6a4e218d536007d25b3894.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2aef8da27b094950b2741befc8c6b89d.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:01.795231+00:00",
+            "id": 4021,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:01.669438+00:00"
+          }
+        ],
+        "id": "3.110.0-3.70.1-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/c9cf515016d44df582b82e56a4e5d728.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/70665498cdbe441ea6db871ad9526d8b.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:01.974159+00:00",
+            "id": 4022,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:01.828646+00:00"
+          }
+        ],
+        "id": "3.110.0-3.70.1-json-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/dfd499b599a34759b56a279789b75ce0.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/3229aa1c259a40ad9d91e4aa18953cf2.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:02.147503+00:00",
+            "id": 4023,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec\"}}\n",
+            "output_sha256": "6a6a7137b043760cf9c2a189b07bef4325abdc3f2d965d624bbf6bbd2224d7a8",
+            "started_utc": "2026-10-07T10:44:02.007407+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/3229aa1c259a40ad9d91e4aa18953cf2.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/603dfa3cf1c6422a9eb56194763a6071.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:02.311946+00:00",
+            "id": 4024,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:02.178715+00:00"
+          }
+        ],
+        "id": "3.110.0-3.70.1-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/8d71e208dc8740d69c7672b8b0d1b0f0.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/ba1543a881df4312b4aa5799aee4a242.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:02.441315+00:00",
+            "id": 4025,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:02.344051+00:00"
+          }
+        ],
+        "id": "3.110.0-3.70.1-xml-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/6ec80a73a2c34aee81cc70bfdd373b8f.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/6843a2f99363441494cc9f878f1a3f8f.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:02.599693+00:00",
+            "id": 4026,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f\"}}\n",
+            "output_sha256": "e0f8fd17ec370923ad0e00cefcafaa25901f9bb713c085605b0480f54b0c2219",
+            "started_utc": "2026-10-07T10:44:02.470236+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/6843a2f99363441494cc9f878f1a3f8f.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/cf20cbecebd4443b829858a72e7e5cfe.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:02.772057+00:00",
+            "id": 4027,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a\"}}\n",
+            "output_sha256": "e51782045ba0ca40ff65eb7a626f907cef5d480955c8f20f3a5e06cb4521b266",
+            "started_utc": "2026-10-07T10:44:02.641609+00:00"
+          }
+        ],
+        "id": "3.110.0-3.115.0-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/691295a887bf43bd9e9ea2e5e8b1df4d.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/f946866bc2e748679cfa6c6aa38a705c.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:02.905665+00:00",
+            "id": 4028,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:02.804885+00:00"
+          }
+        ],
+        "id": "3.110.0-3.115.0-json-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/6d8d0214c3b14b73aa71a7dce573efff.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/4b0599c64a384ecea40c541362c02c6f.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:03.071069+00:00",
+            "id": 4029,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec\"}}\n",
+            "output_sha256": "6a6a7137b043760cf9c2a189b07bef4325abdc3f2d965d624bbf6bbd2224d7a8",
+            "started_utc": "2026-10-07T10:44:02.938101+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/4b0599c64a384ecea40c541362c02c6f.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5adec95f720e46479adec5433d8698d6.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:03.251025+00:00",
+            "id": 4030,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec\"}}\n",
+            "output_sha256": "68dafa58a647ba26fbc7594fccd2be6b648ff6500fdc661bcc6a6c89444a90ba",
+            "started_utc": "2026-10-07T10:44:03.104301+00:00"
+          }
+        ],
+        "id": "3.110.0-3.115.0-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0172a1aebff748d08f2aca819e30b139.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/a424a0ebaa17422c997f42f9c0bf413a.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:03.372096+00:00",
+            "id": 4031,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:03.283961+00:00"
+          }
+        ],
+        "id": "3.110.0-3.115.0-xml-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/43ee45529daa479db891929e1a44659f.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/57e1c6b814414a268e1cd9945ef68508.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:03.517308+00:00",
+            "id": 4032,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:03.403832+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/57e1c6b814414a268e1cd9945ef68508.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/217e6ded82bc4a419bbe2ec704342a2f.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:03.677989+00:00",
+            "id": 4033,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f\"}}\n",
+            "output_sha256": "e0f8fd17ec370923ad0e00cefcafaa25901f9bb713c085605b0480f54b0c2219",
+            "started_utc": "2026-10-07T10:44:03.549205+00:00"
+          }
+        ],
+        "id": "3.70.1-3.110.0-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2078cb217b05407b93c1ba1c2cc571ad.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/8d8671d0d1a04c498033066d69a82b78.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:03.854998+00:00",
+            "id": 4034,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:03.712548+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/8d8671d0d1a04c498033066d69a82b78.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/33a6f1aad53a4ea9bdd50d7bdc1c5aa1.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.023418+00:00",
+            "id": 4035,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f\"}}\n",
+            "output_sha256": "e0f8fd17ec370923ad0e00cefcafaa25901f9bb713c085605b0480f54b0c2219",
+            "started_utc": "2026-10-07T10:44:03.885905+00:00"
+          }
+        ],
+        "id": "3.70.1-3.110.0-json-dual",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/f81a0c0f285446c08522d1b138ef4204.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/118383188a854c2ebf552a8e087a1566.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.176651+00:00",
+            "id": 4036,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:04.054578+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/118383188a854c2ebf552a8e087a1566.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/8cb8623e54fb4a7fa014b2645a5e4e4a.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.349281+00:00",
+            "id": 4037,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec\"}}\n",
+            "output_sha256": "6a6a7137b043760cf9c2a189b07bef4325abdc3f2d965d624bbf6bbd2224d7a8",
+            "started_utc": "2026-10-07T10:44:04.208581+00:00"
+          }
+        ],
+        "id": "3.70.1-3.110.0-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/bf84634e83944672ba3fa3478ad8c014.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/45646a44d5d1464fb491b6c818f3582c.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.509981+00:00",
+            "id": 4038,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:04.381780+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/45646a44d5d1464fb491b6c818f3582c.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/ae9a03ddbbd74beb918d4aaead422742.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.664522+00:00",
+            "id": 4039,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec\"}}\n",
+            "output_sha256": "6a6a7137b043760cf9c2a189b07bef4325abdc3f2d965d624bbf6bbd2224d7a8",
+            "started_utc": "2026-10-07T10:44:04.544585+00:00"
+          }
+        ],
+        "id": "3.70.1-3.110.0-xml-dual",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/3f1c60b741d842a4adb2987c61497fa3.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b760667a8d4946c29790fb6c4ad8982f.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.813565+00:00",
+            "id": 4040,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:04.692937+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b760667a8d4946c29790fb6c4ad8982f.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/df44760b68d543b0aff4290ad14a1c38.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:04.974471+00:00",
+            "id": 4041,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a\"}}\n",
+            "output_sha256": "e51782045ba0ca40ff65eb7a626f907cef5d480955c8f20f3a5e06cb4521b266",
+            "started_utc": "2026-10-07T10:44:04.843550+00:00"
+          }
+        ],
+        "id": "3.70.1-3.115.0-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2ef8ce6d35f94140b676b2467ee03457.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/932c2ceb81784e139abd4f1062226f01.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.124256+00:00",
+            "id": 4042,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:05.006208+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/932c2ceb81784e139abd4f1062226f01.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/081fbc997fff419fb61f7df9917e2746.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.282390+00:00",
+            "id": 4043,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a\"}}\n",
+            "output_sha256": "e51782045ba0ca40ff65eb7a626f907cef5d480955c8f20f3a5e06cb4521b266",
+            "started_utc": "2026-10-07T10:44:05.156478+00:00"
+          }
+        ],
+        "id": "3.70.1-3.115.0-json-dual",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/7048fce685df42bd8625cfa27730ea44.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/f6aa8453d396446abb46e511e195e0b9.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.474670+00:00",
+            "id": 4044,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:05.317884+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/f6aa8453d396446abb46e511e195e0b9.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/90d84355e3764c97a0514104ab5c76dc.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.644036+00:00",
+            "id": 4045,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec\"}}\n",
+            "output_sha256": "68dafa58a647ba26fbc7594fccd2be6b648ff6500fdc661bcc6a6c89444a90ba",
+            "started_utc": "2026-10-07T10:44:05.503683+00:00"
+          }
+        ],
+        "id": "3.70.1-3.115.0-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/76a17beb7807467398a883e35af58076.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0967f93fb20b402a986c742ab32a97ae.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.807042+00:00",
+            "id": 4046,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:05.674984+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0967f93fb20b402a986c742ab32a97ae.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2be667279bef4900a4c6407c63c3789d.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:05.973445+00:00",
+            "id": 4047,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec\"}}\n",
+            "output_sha256": "68dafa58a647ba26fbc7594fccd2be6b648ff6500fdc661bcc6a6c89444a90ba",
+            "started_utc": "2026-10-07T10:44:05.836944+00:00"
+          }
+        ],
+        "id": "3.70.1-3.115.0-xml-dual",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/0415b7915acb4f73801c6f646a543cb7.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/97cceb5a28e04b129a9998da5367eb88.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:06.130864+00:00",
+            "id": 4048,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a\"}}\n",
+            "output_sha256": "e51782045ba0ca40ff65eb7a626f907cef5d480955c8f20f3a5e06cb4521b266",
+            "started_utc": "2026-10-07T10:44:06.007913+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/97cceb5a28e04b129a9998da5367eb88.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/fb02cea9602242a591c4d2611dbe142a.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:06.300103+00:00",
+            "id": 4049,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f\"}}\n",
+            "output_sha256": "e0f8fd17ec370923ad0e00cefcafaa25901f9bb713c085605b0480f54b0c2219",
+            "started_utc": "2026-10-07T10:44:06.160631+00:00"
+          }
+        ],
+        "id": "3.115.0-3.110.0-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "0d06c5864b6318f15695fd3819e44fa80bc9c351d33d3dfe9b88f81fbca57c0f",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/16252b42168b492f8948ae8bc5fdd585.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/807aab6e28d54f4880b03eb3d2f138fb.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:06.428981+00:00",
+            "id": 4050,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:06.330143+00:00"
+          }
+        ],
+        "id": "3.115.0-3.110.0-json-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/b75ada26d6784bf3be3e75c8647d1c6c.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/942901581c9544dc88cea73491b40f4d.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:06.592626+00:00",
+            "id": 4051,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec\"}}\n",
+            "output_sha256": "68dafa58a647ba26fbc7594fccd2be6b648ff6500fdc661bcc6a6c89444a90ba",
+            "started_utc": "2026-10-07T10:44:06.459924+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/942901581c9544dc88cea73491b40f4d.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/81b7096231434060bc6ac2982d8181c1.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:06.747335+00:00",
+            "id": 4052,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec\"}}\n",
+            "output_sha256": "6a6a7137b043760cf9c2a189b07bef4325abdc3f2d965d624bbf6bbd2224d7a8",
+            "started_utc": "2026-10-07T10:44:06.626250+00:00"
+          }
+        ],
+        "id": "3.115.0-3.110.0-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "53ee3b5d175b136b75eff1f37602725e6f45477dde2d931f6373d31b16e1d6ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5deb80fc38f342fdb935bc3678479561.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/6a25cc0e4d5e49a58972d392a1cd2d57.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:06.882550+00:00",
+            "id": 4053,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:06.776093+00:00"
+          }
+        ],
+        "id": "3.115.0-3.110.0-xml-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/f7145fd4c6f94af2b5d18153637e9513.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/225d79754c43490badd0115dca9f2454.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:07.037601+00:00",
+            "id": 4054,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a\"}}\n",
+            "output_sha256": "e51782045ba0ca40ff65eb7a626f907cef5d480955c8f20f3a5e06cb4521b266",
+            "started_utc": "2026-10-07T10:44:06.912455+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/225d79754c43490badd0115dca9f2454.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/15f857c3fd16458fa51fab2164afde97.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:07.180663+00:00",
+            "id": 4055,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3\"}}\n",
+            "output_sha256": "43a607cd32270fd4557cc3d82d18e4f1b8101ca223fe204193f257ff95f469dd",
+            "started_utc": "2026-10-07T10:44:07.070478+00:00"
+          }
+        ],
+        "id": "3.115.0-3.70.1-json-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "4af1de73e34b552aac24b29de9ba82cdc15e4174fc34cb3cf82e7162f86a2fe3",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6270f76cce8a2d46d0a8a4f7b6540feb35fdd8d731d3886db4eea83db8724e2a",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "json",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/98570411497241849c4bb19863955b47.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/7391976375df48cdb999d7fd198ccb38.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:07.320894+00:00",
+            "id": 4056,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:07.212862+00:00"
+          }
+        ],
+        "id": "3.115.0-3.70.1-json-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/84d3f96cedf1417f80d53baa106babae.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5e62832caed24c04ac484cb31329e0fc.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:07.476289+00:00",
+            "id": 4057,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"OriginalActorId\":null,\"AuthenticatedWorkloadId\":null,\"IsDelegated\":false,\"IdentityAdmissionProof\":null,\"Scopes\":null,\"Audience\":null,\"DelegationId\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec\"}}\n",
+            "output_sha256": "68dafa58a647ba26fbc7594fccd2be6b648ff6500fdc661bcc6a6c89444a90ba",
+            "started_utc": "2026-10-07T10:44:07.351786+00:00"
+          },
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/5e62832caed24c04ac484cb31329e0fc.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/3ceca91481ff46999d2ca96d0e5d789f.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 0,
+            "finished_utc": "2026-10-07T10:44:07.637517+00:00",
+            "id": 4058,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"wire-output-nonempty\",\"passed\":true}],\"assertions\":{\"attempted\":2,\"passed\":2,\"failed\":0}},\"observation\":{\"handling\":\"executed\",\"type\":\"Hexalith.EventStore.Contracts.Queries.QueryEnvelope\",\"fields\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"QueryType\":\"FixtureQuery\",\"Payload\":\"e30=\",\"CorrelationId\":\"fixture-correlation\",\"UserId\":\"fixture-user\",\"EntityId\":\"fixture\",\"IsGlobalAdmin\":false,\"Paging\":null,\"AggregateIdentity\":{\"TenantId\":\"tenant-a\",\"Domain\":\"counter\",\"AggregateId\":\"fixture\",\"ActorId\":\"tenant-a:counter:fixture\",\"EventStreamKeyPrefix\":\"tenant-a:counter:fixture:events:\",\"MetadataKey\":\"tenant-a:counter:fixture:metadata\",\"SnapshotKey\":\"tenant-a:counter:fixture:snapshot\",\"PipelineKeyPrefix\":\"tenant-a:counter:fixture:pipeline:\",\"PubSubTopic\":\"tenant-a.counter.events\",\"QueueSession\":\"tenant-a:counter:fixture\"}},\"output_sha256\":\"893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0\"}}\n",
+            "output_sha256": "794bce9c9ae9fec3b5abb6c35bcffe14365d2bc501f57e58f8571a06cab8fa31",
+            "started_utc": "2026-10-07T10:44:07.507667+00:00"
+          }
+        ],
+        "id": "3.115.0-3.70.1-xml-legacy",
+        "observations": {
+          "reader": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "CorrelationId": "fixture-correlation",
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IsGlobalAdmin": false,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "893a1c7e8ac81bcfe9eab4188801e5c1d70186625a2b70e659385edbfa7789d0",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          },
+          "writer": {
+            "fields": {
+              "AggregateId": "fixture",
+              "AggregateIdentity": {
+                "ActorId": "tenant-a:counter:fixture",
+                "AggregateId": "fixture",
+                "Domain": "counter",
+                "EventStreamKeyPrefix": "tenant-a:counter:fixture:events:",
+                "MetadataKey": "tenant-a:counter:fixture:metadata",
+                "PipelineKeyPrefix": "tenant-a:counter:fixture:pipeline:",
+                "PubSubTopic": "tenant-a.counter.events",
+                "QueueSession": "tenant-a:counter:fixture",
+                "SnapshotKey": "tenant-a:counter:fixture:snapshot",
+                "TenantId": "tenant-a"
+              },
+              "Audience": null,
+              "AuthenticatedWorkloadId": null,
+              "CorrelationId": "fixture-correlation",
+              "DelegationId": null,
+              "Domain": "counter",
+              "EntityId": "fixture",
+              "IdentityAdmissionProof": null,
+              "IsDelegated": false,
+              "IsGlobalAdmin": false,
+              "OriginalActorId": null,
+              "Paging": null,
+              "Payload": "e30=",
+              "QueryType": "FixtureQuery",
+              "Scopes": null,
+              "TenantId": "tenant-a",
+              "UserId": "fixture-user"
+            },
+            "handling": "executed",
+            "output_sha256": "6fbae43a594656e2c46a494d9d8fd82f16e6509ed6029e9ef3f97e5ea82503ec",
+            "type": "Hexalith.EventStore.Contracts.Queries.QueryEnvelope"
+          }
+        }
+      },
+      {
+        "commands": [
+          {
+            "argv": [
+              "dotnet",
+              "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+              "wire",
+              "query",
+              "to-xml",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/2f347390072e4aac984137d9f6898aed.wire",
+              "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv/04b022d4f22748229a227d2fb80adba8.wire"
+            ],
+            "cwd": "/tmp/p1r-published-51499ac27da84c22b3ad3790b2d33859-b_y08glv",
+            "exit_code": 1,
+            "finished_utc": "2026-10-07T10:44:07.765479+00:00",
+            "id": 4059,
+            "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"contract-type-present\",\"passed\":true},{\"id\":\"operation-completed\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":1,\"failed\":1}},\"observation\":{\"error\":\"JsonException\",\"detail\":\"The JSON value could not be converted to System.Collections.Generic.IReadOnlyList\\u00601[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.\"}}\n",
+            "output_sha256": "a6530af806684d66a728dcf7694a827b7cb4cae6d8c484037c91cba7ff61c374",
+            "started_utc": "2026-10-07T10:44:07.667648+00:00"
+          }
+        ],
+        "id": "3.115.0-3.70.1-xml-dual",
+        "observations": {
+          "writer": {
+            "detail": "The JSON value could not be converted to System.Collections.Generic.IReadOnlyList`1[System.String]. Path: $.audience | LineNumber: 0 | BytePositionInLine: 54.",
+            "error": "JsonException"
+          }
+        }
+      }
+    ],
+    "executor_source_sha256": "638cced50d059e06d149eee560be49531d52d9fae4da332a54fd494efd65c983",
+    "mechanism": "p1r-executed-checks-v1"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T10:44:07.796350+00:00",
+  "fixture": {
+    "id": "p1r-51499ac27da84c22b3ad3790b2d33859",
+    "synthetic": false
+  },
+  "id": "16503fa88a4f432caeeb1f59b6f09a31",
+  "identities": {
+    "configuration": "Release",
+    "loaded_assemblies": [
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/host/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "sha256": "58c04954ef23aa8363b3d26ae4e08efba3bc7075784a9a5de0f74c87ebbbe00b",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "sha256": "9c71e5b0c601a7ccffcddcfafe06e8d79e0347d00dd04e495e04a67eed29f1fd",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Server",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "sha256": "fa7b97e6a5436d0fce45849cd46a9c23975af2c8bd677848ccf5ac384387589a",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+        "sha256": "49c662528f872d27b165ac7eaf53d9288102f0659a11c4e94d391d827564e574",
+        "version": "3.115.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "path": "/tmp/p1r-31150-live-20261007-01/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+        "sha256": "7519617eb0e23bc7b5e1e4670adc23001d3a4569ba32b033488d94fd3f44c660",
+        "version": "3.115.0.0"
+      }
+    ],
+    "packages": [
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "3458f17f19a1369ec1dc2661cde89833594082e9975d4e6ebf66317c6bcc9d55"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "fbb68c5686c59efed2d506885e904052424a0ab801c25ca5ae3ade2706d1dc6f"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "c3821b9099dcaee1df2887e1f4cb26ecaf38d11f87a381c2b5b899948c2a48f9"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "3c51f0744a66a7f99383accb8439c0701d4957ae6b806923521f005cf21d8469"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3b80ce3b5032f7e3531591ca5f2e5f832d923f892d25d0e3ebf1a16674953841"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6"
+      },
+      {
+        "id": "Hexalith.EventStore.Client",
+        "sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1"
+      },
+      {
+        "id": "Hexalith.EventStore.Contracts",
+        "sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2"
+      },
+      {
+        "id": "Hexalith.EventStore.DomainService",
+        "sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93"
+      },
+      {
+        "id": "Hexalith.EventStore.Server",
+        "sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a"
+      },
+      {
+        "id": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4"
+      }
+    ]
+  },
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "instrumentation": "p1r-executed-checks-v1",
+  "lane": "query-wire",
+  "output_sha256": "b41c6656bf00e228d270096d35b152010224255667c8ee5ec7edd903ccd9f91b",
+  "profile": null,
+  "schema": "hexalith.p1r.lane-receipt.v1",
+  "scope": "published-package",
+  "started_utc": "2026-10-07T10:44:01.497948+00:00"
+}

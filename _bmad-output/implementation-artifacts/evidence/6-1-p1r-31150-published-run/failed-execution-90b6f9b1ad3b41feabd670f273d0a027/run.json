@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "tools/p1r-published-executor.py",
+    "run",
+    "--out",
+    "/tmp/p1r-correction-full-iteration3-execution",
+    "--inputs",
+    "/tmp/p1r-correction-full-iteration3-control/owner-inputs.json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "started_utc": "2026-10-07T14:15:14.897965+00:00",
+  "finished_utc": "2026-10-07T14:15:39.618968+00:00",
+  "exit_code": 2,
+  "output_sha256": "2fc5872122ce9f0c5172737d97ad99708b8e976a7cf3b44ee3fda8dfb938bfeb"
+}

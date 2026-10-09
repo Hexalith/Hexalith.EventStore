@@ -214,13 +214,44 @@ def source_binding(root=ROOT):
         initialized = (path / ".git").exists()
         dependencies.append({"path": name, "initialized": initialized,
                              "binding": repository_binding(path) if initialized else None})
-    require(next(row for row in dependencies if row["path"] == "references/Hexalith.Builds")["initialized"],
-            "required Builds input unavailable")
-    return {"repository": str(root), "main": main, "dependencies": dependencies,
+    builds = next(row for row in dependencies if row["path"] == "references/Hexalith.Builds")
+    workspace_builds = None
+    if not builds["initialized"]:
+        workspace_name = git(root, "rev-parse", "--show-superproject-working-tree").decode().strip()
+        require(workspace_name, "required Builds input unavailable")
+        workspace = Path(workspace_name)
+        require(workspace.is_absolute() and workspace == workspace.resolve(), "workspace path substituted")
+        require(git(workspace, "rev-parse", "--show-toplevel").decode().strip() == str(workspace),
+                "workspace repository substituted")
+        owner_path = root.relative_to(workspace).as_posix()
+        declared_workspace = declared_dependencies(workspace)
+        require(owner_path in declared_workspace and "references/Hexalith.Builds" in declared_workspace,
+                "workspace Builds input is not root declared")
+        workspace_tree = git(workspace, "ls-tree", "HEAD", "--", owner_path, "references/Hexalith.Builds").decode()
+        gitlinks = {}
+        for row in workspace_tree.splitlines():
+            info, name = row.split("\t", 1)
+            mode, kind, commit = info.split()
+            require(mode == "160000" and kind == "commit", "workspace dependency is not a gitlink")
+            gitlinks[name] = commit
+        require(set(gitlinks) == {owner_path, "references/Hexalith.Builds"}, "workspace gitlink binding missing")
+        path = workspace / "references/Hexalith.Builds"
+        require((path / ".git").is_file() or (path / ".git").is_dir(), "required Builds input unavailable")
+        require(git(path, "rev-parse", "--show-toplevel").decode().strip() == str(path),
+                "workspace Builds repository substituted")
+        require(git(path, "rev-parse", "--show-superproject-working-tree").decode().strip() == str(workspace),
+                "workspace Builds is not owned by the declared superproject")
+        workspace_builds = {"workspace": str(workspace), "workspace_head": git(workspace, "rev-parse", "HEAD").decode().strip(),
+                            "declarations_sha256": digest(regular(workspace / ".gitmodules")), "owner_path": owner_path,
+                            "gitlinks": gitlinks, "path": str(path), "binding": repository_binding(path)}
+    result = {"repository": str(root), "main": main, "dependencies": dependencies,
             "retained_inputs": retained_inputs(root),
             "python": {"path": str(Path(sys.executable).resolve()),
                        "sha256": digest(regular(Path(sys.executable).resolve())),
                        "version": list(sys.version_info[:3])}}
+    if workspace_builds is not None:
+        result["workspace_builds"] = workspace_builds
+    return result
 
 
 def check_current_source(binding):
@@ -248,7 +279,7 @@ def unavailable(name):
 def process_state(pid):
     try:
         data = Path(f"/proc/{pid}/stat").read_text()
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return None
     fields = data[data.rindex(")") + 2:].split()
     return {"pid": pid, "start_ticks": int(fields[19]), "ppid": int(fields[1]),
@@ -269,12 +300,18 @@ def same_process(value, observed):
 
 
 def signal_owned(value, sig):
-    # Bind the signal to a kernel handle before checking the start identity so
-    # PID reuse between observation and signalling cannot target another process.
+    # An absent or reused PID needs no signal. The kernel-handle recheck below
+    # still prevents reuse between this preliminary observation and signalling.
+    if not same_process(value, process_state(value["pid"])):
+        return
     try:
         descriptor = os.pidfd_open(value["pid"])
     except ProcessLookupError:
         return
+    except OSError as error:
+        if error.errno == errno.EINVAL and not same_process(value, process_state(value["pid"])):
+            return
+        raise
     try:
         if same_process(value, process_state(value["pid"])):
             signal.pidfd_send_signal(descriptor, sig)
@@ -301,6 +338,7 @@ class OwnedProcesses:
         self.owned = {}
         self.root = None
         self.nonce = uuid.uuid4().hex
+        self.cleanup_diagnostics = []
 
     def environment(self):
         return {"PATH": os.defpath, "LANG": "C.UTF-8", "HEXALITH_P1R_CONTROL_NONCE": self.nonce}
@@ -342,11 +380,17 @@ class OwnedProcesses:
     def cleanup(self):
         errors = []
         before = []
+        def record_error(operation, error, owned=None):
+            errors.append(type(error).__name__)
+            detail = {"operation": operation, "type": type(error).__name__, "errno": getattr(error, "errno", None)}
+            if owned is not None:
+                detail["owned"] = dict(owned)
+            self.cleanup_diagnostics.append(detail)
         try:
             self.discover()
             before = self.remaining()
         except (OSError, ValueError) as error:
-            errors.append(type(error).__name__)
+            record_error("discover-owned", error)
         for sig in (signal.SIGTERM, signal.SIGKILL):
             for item in list(self.owned.values()):
                 try:
@@ -354,7 +398,7 @@ class OwnedProcesses:
                 except ProcessLookupError:
                     pass
                 except (OSError, ValueError) as error:
-                    errors.append(type(error).__name__)
+                    record_error("signal-owned", error, item)
             deadline = time.monotonic() + .5
             while time.monotonic() < deadline:
                 if self.process is not None:
@@ -367,18 +411,18 @@ class OwnedProcesses:
                     except ChildProcessError:
                         pass
                     except OSError as error:
-                        errors.append(type(error).__name__)
+                        record_error("reap-owned", error, self.owned[pid])
                 try:
                     if not self.remaining():
                         break
                 except (OSError, ValueError) as error:
-                    errors.append(type(error).__name__)
+                    record_error("observe-remaining", error)
                     break
                 time.sleep(.01)
         try:
             remaining = self.remaining()
         except (OSError, ValueError) as error:
-            errors.append(type(error).__name__)
+            record_error("observe-final-remaining", error)
             remaining = None
         return {"before": before, "remaining": remaining, "errors": errors}
 

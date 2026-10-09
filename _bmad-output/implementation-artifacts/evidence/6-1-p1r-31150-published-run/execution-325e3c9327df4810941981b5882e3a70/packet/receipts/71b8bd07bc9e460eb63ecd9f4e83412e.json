@@ -1,0 +1,81 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import time; print('p1r-control-ready', flush=True); print('p1r-control-success', flush=True)"
+  ],
+  "assertions": {
+    "attempted": 6,
+    "failed": 0,
+    "passed": 6
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "success",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/execution-325e3c9327df4810941981b5882e3a70/packet",
+  "execution": "passed",
+  "exit_code": 0,
+  "finished_utc": "2026-10-07T12:11:13.744433+00:00",
+  "id": "71b8bd07bc9e460eb63ecd9f4e83412e",
+  "invocation": "639aef172d0840fba21c55da9d676ead",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/71b8bd07bc9e460eb63ecd9f4e83412e.txt",
+    "sha256": "02035cc75378a23346ac68519f65690d489da94966ca431629ac00ca1ad68ed3"
+  },
+  "owned_processes": [
+    {
+      "pgid": 16229,
+      "pid": 16229,
+      "session": 16229,
+      "start_ticks": 10960824
+    }
+  ],
+  "root_process": {
+    "pgid": 16229,
+    "pid": 16229,
+    "session": 16229,
+    "start_ticks": 10960824
+  },
+  "started_utc": "2026-10-07T12:11:13.680436+00:00",
+  "timed_out": false
+}

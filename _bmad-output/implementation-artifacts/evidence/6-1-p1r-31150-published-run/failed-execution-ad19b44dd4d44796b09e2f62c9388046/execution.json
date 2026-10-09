@@ -1,0 +1,52 @@
+{
+  "errors": [
+    "retained-uncovered/3.110.0-to-3.115.0-non-covering: command failed: /usr/bin/python3 -I /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py inventory --container 194b84da0b8d4ad4fd8b002bd3c0c14dd985d011c9cd1342ffaf5e90e87bfb89 --invocation ad19b44dd4d44796b09e2f62c9388046; exit=127",
+    "retained-uncovered/3.115.0-to-3.70.1-absent: ",
+    "interrupted",
+    "KeyboardInterrupt"
+  ],
+  "executor_source_sha256": "ffaed47e4d5235ee85b86ff38d86fe29313bdfa210a2f83ca656adb7ecea836a",
+  "finished_utc": "2026-10-07T14:13:02.248544+00:00",
+  "inputs_sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0",
+  "invocation": "ad19b44dd4d44796b09e2f62c9388046",
+  "owned_containers": {
+    "194b84da0b8d4ad4fd8b002bd3c0c14dd985d011c9cd1342ffaf5e90e87bfb89": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-ad19b44dd4d44796b09e2f62c9388046-source-edcdb96d",
+      "port": 27539,
+      "role": "source"
+    },
+    "20140f481879aa3cbada5880b02270ab163c9c59350b6533e5c71ffb87c8fb1a": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-ad19b44dd4d44796b09e2f62c9388046-scheduler-8a336751",
+      "port": 27822,
+      "role": "scheduler"
+    },
+    "b46905cf9b15de7d99b1805843253d372264c92fb6538a8d5836ec10935533dc": {
+      "image": "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+      "name": "p1r-ad19b44dd4d44796b09e2f62c9388046-placement-5dcd82ae",
+      "port": 22018,
+      "role": "placement"
+    },
+    "c9d7c75fdb3282a8f12976ae5e81bfe9b54cea7d10dbc5acb0413f54e8d667fa": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-ad19b44dd4d44796b09e2f62c9388046-pubsub-2048c946",
+      "port": 11478,
+      "role": "pubsub"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/e9cdc7cbf70c4168a4b58b64df74085e.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/e2daef11954044ffb5ab1717dd4ffb92.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/90b4f617799145b88a8df41414325540.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/15b2da5e85004000b8f371f0b9501ed2.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/a341fc8609a94f39b8c2d79cd703b411.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/fd9519aef5c941a897c15ea0912e95eb.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/eb361c5736c94a01a6d6bb2677e69a02.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/d7d4f50d8e3c4e16b82877ec278b307d.json",
+    "/tmp/p1r-correction-full-iteration2-execution/receipts/0f35c22f0a394f84926907f59698e201.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-07T14:04:09.673957+00:00"
+}

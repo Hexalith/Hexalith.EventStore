@@ -24,6 +24,8 @@ def main(arguments=None):
     prepare.add_argument("--decisions", type=Path, help="owner decisions and same-baseline conformance")
     prepare.add_argument("--candidate-evidence", type=Path, help="isolated Release package evidence for the candidate")
     prepare.add_argument("--rollback-evidence", type=Path, help="isolated Release package evidence for a selected rollback")
+    prepare.add_argument("--comparison-evidence", type=Path, action="append", default=[],
+                         help="independently verified historical comparison evidence (repeatable; never rollback)")
     prepare.add_argument("--receipt", type=Path, action="append", default=[],
                          help="lane, restore or cleanup receipt from a separately selected executor (repeatable)")
     prepare.add_argument("--process-controls", action="store_true",
@@ -36,7 +38,8 @@ def main(arguments=None):
         else:
             packet = create_packet(args.out, inputs=args.inputs, decisions=args.decisions,
                                    candidate_evidence=args.candidate_evidence, rollback_evidence=args.rollback_evidence,
-                                   receipts=tuple(args.receipt), process_controls=args.process_controls)
+                                   receipts=tuple(args.receipt), process_controls=args.process_controls,
+                                   comparison_evidence=tuple(args.comparison_evidence))
             if packet["errors"]:
                 # The sealed packet retains the refusal; report its exact errors and refusals instead of validating.
                 print(json.dumps({"valid": False, "qualified": False, "p1r_usable": False,
