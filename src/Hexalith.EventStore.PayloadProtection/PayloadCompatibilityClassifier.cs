@@ -428,9 +428,9 @@ internal static class PayloadCompatibilityClassifier
                         return false;
                     }
 
-                    // The existing carrier can deserialize only Int32 versions. Recognize larger positive
-                    // integer versions here so its parse-error fallback cannot hide an upgrade requirement.
-                    futureVersion = version > int.MaxValue;
+                    // A future schema may add carrier members unknown to the current reader. Classify
+                    // its version before that reader treats those members as malformed.
+                    futureVersion = version > EventStorePayloadProtectionMetadata.CurrentMetadataVersion;
                 }
 
                 if (property.NameEquals("compatibilityFlags")

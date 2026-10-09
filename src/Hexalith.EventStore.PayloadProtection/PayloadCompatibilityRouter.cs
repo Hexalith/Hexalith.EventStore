@@ -160,6 +160,7 @@ internal sealed class PayloadCompatibilityRouter
         ArgumentNullException.ThrowIfNull(records);
         for (int index = 0; index < records.Count; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             CompatibilityEventRecord? record = records[index];
             if (record is null)
             {
@@ -458,6 +459,7 @@ internal sealed class PayloadCompatibilityRouter
             .ConfigureAwait(false);
         if (!result.IsReadable)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return CompatibilitySnapshotReadResult.Unreadable(
                 CompatibilityReadRoute.SharedV2,
                 result.UnreadableReason ?? UnreadableProtectedDataReason.ProviderUnavailable);
@@ -472,7 +474,8 @@ internal sealed class PayloadCompatibilityRouter
             {
                 state = JsonSerializer.Deserialize(plaintext, registration.TypeInfo);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            catch (Exception exception) when (exception is not OutOfMemoryException
+                && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
             {
                 state = null;
             }
@@ -491,6 +494,7 @@ internal sealed class PayloadCompatibilityRouter
         finally
         {
             CryptographicOperations.ZeroMemory(plaintext);
+            _bufferObserver?.BufferCleared(SensitiveBufferKind.DecryptedPlaintext, plaintext);
         }
     }
 

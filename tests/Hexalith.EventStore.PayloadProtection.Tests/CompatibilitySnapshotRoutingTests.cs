@@ -155,6 +155,56 @@ public sealed class CompatibilitySnapshotRoutingTests
         resolver.Calls.ShouldBe(1);
     }
 
+    /// <summary>Every v2 snapshot outcome clears the authenticated plaintext before returning or propagating cancellation.</summary>
+    [Theory]
+    [InlineData("readable")]
+    [InlineData("deserialization-failure")]
+    [InlineData("cancellation")]
+    public async Task V118_V2SnapshotPlaintext_IsZeroedForEveryOutcomeAsync(string outcome)
+    {
+        using var source = new CancellationTokenSource();
+        var observer = new RecordingBufferObserver();
+        var resolver = new CountingKeyResolver();
+        SnapshotTypeRegistry registry = CompatibilityTestData.Registry();
+        if (outcome == "cancellation")
+        {
+            var options = new JsonSerializerOptions { TypeInfoResolver = CompatibilityTestJsonContext.Default };
+            options.Converters.Add(new CancellingSnapshotConverter(source));
+            registry = new SnapshotTypeRegistry(
+                [new SnapshotTypeRegistration(CompatibilityTestData.SnapshotTypeId, options.GetTypeInfo(typeof(PartySnapshotState)))]);
+        }
+
+        var router = new PayloadCompatibilityRouter(
+            resolver.ResolveAsync,
+            snapshotTypes: registry,
+            bufferObserver: observer);
+        ProtectedSnapshotPayloadV2 carrier = outcome == "deserialization-failure"
+            ? CompatibilityTestData.ProtectSnapshot(plaintext: "[1,2]"u8.ToArray())
+            : CompatibilityTestData.ProtectSnapshot();
+        CompatibilitySnapshotRecord record = CompatibilityTestData.Snapshot(carrier, CompatibilityTestData.V2Metadata());
+
+        if (outcome == "cancellation")
+        {
+            await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadSnapshotAsync(record, source.Token));
+        }
+        else
+        {
+            CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(record);
+            if (outcome == "readable")
+            {
+                result.State.ShouldBe(new PartySnapshotState("Alice", 3));
+            }
+            else
+            {
+                result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+                result.State.ShouldBeNull();
+            }
+        }
+
+        resolver.Calls.ShouldBe(1);
+        observer.Observed.ShouldBe([SensitiveBufferKind.DecryptedPlaintext]);
+    }
+
     /// <summary>The registry resolves exact current identifiers and aliases only.</summary>
     [Fact]
     public void V117_Registry_ResolvesCurrentIdentifierAndAliasOnly()
@@ -350,6 +400,7 @@ public sealed class CompatibilitySnapshotRoutingTests
     [InlineData("v1", "v1-empty-type", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v1", "v1-missing-payload", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v1", "v1-null-payload", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-wrapper-with-pdenc", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     public async Task V118_ProtectedMetadataShapeDisagreement_IsLocalDecisionAsync(
         string metadata,
         string shape,
@@ -457,15 +508,19 @@ public sealed class CompatibilitySnapshotRoutingTests
     public async Task V118_UnreadableV1Snapshot_ReturnsNoStateAsync(string failure, UnreadableProtectedDataReason expected)
     {
         var resolver = new CountingKeyResolver();
+        byte[]? readerPayload = failure switch
+        {
+            "wrapper-no-enc" => "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"plain\",\"serializationFormat\":\"json+pdenc-v1\"}"u8.ToArray(),
+            "json-null" => "null"u8.ToArray(),
+            _ => null,
+        };
         var reader = new FakeLegacyPayloadReader
         {
             OnSnapshot = failure switch
             {
                 "missing-key" => static (_, _) => CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey),
                 "fault" => static (_, _) => throw new InvalidOperationException(CompatibilityTestData.Sentinel),
-                "wrapper-no-enc" => static (_, _) => CoreUnprotectionResult.Readable(
-                    "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"plain\",\"serializationFormat\":\"json+pdenc-v1\"}"u8.ToArray()),
-                "json-null" => static (_, _) => CoreUnprotectionResult.Readable("null"u8.ToArray()),
+                "wrapper-no-enc" or "json-null" => (_, _) => CoreUnprotectionResult.Readable(readerPayload!),
                 _ => static (_, _) => CoreUnprotectionResult.Readable(
                     Encoding.UTF8.GetBytes("{\"marker\":\"$protectedSnapshot\",\"payload\":{\"$enc\":1}}")),
             },
@@ -483,6 +538,7 @@ public sealed class CompatibilitySnapshotRoutingTests
         result.State.ShouldBeNull();
         result.AllowsCorruptLegacyDeletion.ShouldBeFalse();
         CompatibilityTestData.ShouldNotLeak(result);
+        readerPayload?.ShouldAllBe(static value => value == 0);
     }
 
     /// <summary>A reader cannot escape the bounded reason taxonomy, even when its result is unreadable.</summary>
@@ -602,6 +658,8 @@ public sealed class CompatibilitySnapshotRoutingTests
                 "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\"}"),
             "v1-object-payload" => CompatibilityTestData.Json(
                 "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":{\"email\":{\"$enc\":{}}},\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-wrapper-with-pdenc" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\",\"$pdenc\":\"AAAA\"}"),
             "v1-wrong-format" => CompatibilityTestData.Json(
                 "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v2\"}"),
             "v1-missing-marker" => CompatibilityTestData.Json(

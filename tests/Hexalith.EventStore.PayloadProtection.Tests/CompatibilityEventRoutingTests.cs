@@ -44,6 +44,34 @@ public sealed class CompatibilityEventRoutingTests
         result.Route.ShouldBe(CompatibilityReadRoute.LegacyUnprotected);
     }
 
+    /// <summary>Legacy JSON passes at the 65,536-node bound and fails closed one node above it.</summary>
+    [Theory]
+    [InlineData(65_536, true)]
+    [InlineData(65_537, false)]
+    public async Task V107_LegacyJsonNodeLimit_IsEnforcedByRouterAsync(int nodeCount, bool readable)
+    {
+        (PayloadCompatibilityRouter router, CountingKeyResolver resolver, FakeLegacyPayloadReader reader) = CreateRouter();
+        byte[] payload = Encoding.UTF8.GetBytes("[" + string.Join(",", Enumerable.Repeat("0", nodeCount - 1)) + "]");
+
+        CompatibilityEventReadResult result = await router.ReadEventAsync(
+            CompatibilityTestData.Event(1, payload, "json", null));
+
+        result.IsReadable.ShouldBe(readable);
+        if (readable)
+        {
+            result.PayloadBytes.ShouldBeSameAs(payload);
+            result.Route.ShouldBe(CompatibilityReadRoute.LegacyUnprotected);
+        }
+        else
+        {
+            result.PayloadBytes.ShouldBeNull();
+            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        }
+
+        resolver.Calls.ShouldBe(0);
+        reader.EventCalls.ShouldBe(0);
+    }
+
     /// <summary>An exact unprotected carrier over plain JSON passes through with unprotected metadata.</summary>
     [Fact]
     public async Task V108_UnprotectedCarrier_PassesBytesThroughAsync()
@@ -504,6 +532,7 @@ public sealed class CompatibilityEventRoutingTests
     /// <summary>An over-version carrier is unknown-version metadata with no calls.</summary>
     [Theory]
     [InlineData("{\"state\":\"Protected\",\"metadataVersion\":2,\"scheme\":\"hexalith-pdenc-v2\"}")]
+    [InlineData("{\"state\":\"Protected\",\"metadataVersion\":2,\"scheme\":\"hexalith-pdenc-v2\",\"futureMember\":\"futureValue\"}")]
     [InlineData("{\"state\":\"Protected\",\"metadataVersion\":2147483648,\"scheme\":\"hexalith-pdenc-v2\"}")]
     [InlineData("{\"state\":\"Protected\",\"metadataVersion\":9223372036854775808,\"scheme\":\"hexalith-pdenc-v2\"}")]
     [InlineData("{\"state\":\"ProviderOpaque\",\"metadataVersion\":1,\"compatibilityFlags\":{\"reason\":\"unknownVersion\"}}")]

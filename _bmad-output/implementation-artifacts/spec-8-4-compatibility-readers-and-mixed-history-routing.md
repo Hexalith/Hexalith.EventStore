@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -139,17 +139,17 @@ context:
 
 Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), acceptance auditor (AA). 33 raw findings: 3 patch, 2 defer, 16 rejected entries (25 raw findings). No decision is needed. The auditor confirmed all three acceptance criteria are met, with 618/618 tests passing.
 
-- [ ] [Review][Patch] Make snapshot plaintext zeroing observable and tested (VG1, BH7) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:493]
+- [x] [Review][Patch] Make snapshot plaintext zeroing observable and tested (VG1, BH7) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:493]
   - Deleting `ZeroMemory(plaintext)` from the v2 snapshot `finally` passes every test, because no test can reach the buffer the core hands over.
   - The v1 snapshot failure rows (`json-null`, `wrapper-no-enc`) never inspect their returned buffers.
   - Fix:
     - Call `_bufferObserver?.BufferCleared(SensitiveBufferKind.DecryptedPlaintext, plaintext)` after the v2 clear, the same way `ClearOwnedPayloads` does.
     - Add a theory for the readable, deserialization-failure and cancellation outcomes that asserts a zeroed `DecryptedPlaintext` buffer was observed.
     - Make the two v1 failure rows assert that their buffers are zeroed.
-- [ ] [Review][Patch] Pin that a v1 snapshot wrapper also carrying `$pdenc` never reaches the reader (VG2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:559]
+- [x] [Review][Patch] Pin that a v1 snapshot wrapper also carrying `$pdenc` never reaches the reader (VG2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:559]
   - Removing `!hasV2Wrapper &&` sends a mixed-marker wrapper to the registered reader, and no test fails.
   - Fix: add a `v1-wrapper-with-pdenc` shape under exact Parties v1 metadata to `V118_ProtectedMetadataShapeDisagreement_IsLocalDecisionAsync`. It should expect `BytesMetadataMismatch` and `SnapshotCalls == 0`.
-- [ ] [Review][Patch] Classify every over-version carrier as `UnknownMetadataVersion`, whatever its magnitude (AA3, EC2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:433]
+- [x] [Review][Patch] Classify every over-version carrier as `UnknownMetadataVersion`, whatever its magnitude (AA3, EC2) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:433]
   - Today a version-2 carrier with an unknown member gives `MalformedMetadata`, because `Carrier.Read` reports `unknownField`. A version of 2^31 or more with the same member gives `UnknownMetadataVersion`.
   - Authority §12.2 maps "schema above current version" to `UnknownMetadataVersion`, and a newer schema may add members.
   - Fix:
@@ -222,6 +222,8 @@ Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), accepta
 - 2026-10-09 review fixes: case-insensitive v2 snapshot member names; contiguous stream sequences; only caller cancellation escapes snapshot deserialization; registry exceptions name `registrations`; stronger oversized-carrier, classification-order, cancellation-zeroing and `OwnsPayload` tests; corrected DW-519 and DW-544 text. Focused run of the three compatibility test classes: 232 passed, 0 failed, 0 skipped. Full-suite verification is run by the coordinator.
 - 2026-10-09 follow-up review fixes: incomplete v2 snapshot carrier members and incomplete v1 wrapper fields fail locally; large positive integer carrier versions report `UnknownMetadataVersion`; legacy-reader results preserve the bounded reason taxonomy and caller cancellation; snapshot materialization rechecks cancellation. The router uses the core's cleared-buffer observer contract for abandoned stream output, including v2. Release build: 0 warnings, 0 errors. Payload-protection assembly: 609 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - 2026-10-09 review pass 2 fixes: writer-produced v2 events with an unrelated `$enc` property authenticate; malformed v2 snapshot IDs return `BytesMetadataMismatch`; v1 snapshot reader output cannot be an undecrypted wrapper or JSON null; v2 event output is cleared when cancellation arrives during core cleanup; registry aliases are frozen. The cancellation test converter lives in its own C# file. Final Release build: 0 warnings, 0 errors. Payload-protection assembly: 618 passed, 0 failed, 0 skipped. Invariant-globalization V029: 1 passed. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
+- 2026-10-09 review pass 3 fixes: v2 snapshot plaintext clear is observed after readable, deserialization-failure, and caller-cancellation outcomes; both v1 snapshot failure buffers are asserted zeroed; a v1 wrapper also carrying `$pdenc` is rejected locally; and future carrier versions take precedence over unknown schema members. Release build: 0 warnings, 0 errors. Payload-protection assembly: 623 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
+- 2026-10-09 review pass 4 fixes: stream prevalidation checks cancellation; failed v2 snapshot reads recheck cancellation after core cleanup; snapshot deserialization propagates `OutOfMemoryException`; and the legacy event router test covers the 65,536/65,537-node boundary. Release builds: 0 warnings, 0 errors. Payload-protection assembly: 625 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - Verification (before the review fixes): Release build with `-warnaserror` and the AOT/trim analyzers: 0 warnings, 0 errors. Test assembly: 575 passed, 0 failed, 0 skipped (357 prior plus 218 new). `ReleasePackageManifestTests.Payload_protection*`: 13/13 passed. The invariant-globalization V029 lane: 1/1 passed. Mutation checks: 18 mutants, each failed at least one new test.
 
 ## Spec Change Log
@@ -276,6 +278,26 @@ Pass 2 (2026-10-09). The verification-gap layer found no gaps. The findings belo
 | EC1 | A v2 event read can return plaintext after cancellation lands in the core's finalizer. | medium | The core checks cancellation before its finalizer, then clears buffers and returns; the router does not recheck the token before returning the result. The observer seam can reproduce that timing. | patch |
 | EC2 | A v1 reader can return its undecrypted snapshot wrapper as readable state. | medium | The event path rejects returned `$enc`, but the historical snapshot wrapper has a `marker` and opaque payload string with no `$enc`; `ReadRegisteredV1SnapshotAsync` currently clones and returns it. | patch |
 | EC3 | A v1 reader can return JSON `null` as a readable snapshot. | medium | `JsonElement.Null` is a non-null boxed object, so `CompatibilitySnapshotReadResult.IsReadable` becomes true despite there being no state. | patch |
+
+### Pass 4 review triage (2026-10-09)
+
+The blind hunter (BH), edge-case hunter (EC), and verification-gap reviewer (VG) reviewed the Story 8.4 diff. Each claim was checked against the classifier, router, tests, authority, and prior triage.
+
+| ID | Verdict | Evidence | Route |
+|---|---|---|---|
+| BH1 | low | An extra `Envelope` or `SnapshotTypeId` can accompany a valid v1 wrapper, but the registered Parties reader owns v1 wrapper details. This repeats pass 1 BH9 and pass 2 BH7; rejecting extensions would add an unapproved shape rule. | reject (carried) |
+| BH2 | low | A v1 snapshot wrapper with `json+pdenc-v3` receives `BytesMetadataMismatch` under exact v1 metadata. It remains unreadable and retained without a reader call; distinguishing future snapshot formats would add a new classification branch. | reject |
+| BH3 | medium | The core can return an unreadable v2 snapshot after caller cancellation during its final cleanup, and the router returns the reason without a token check. | patch |
+| BH4 | low | A trusted event reader can return a snapshot wrapper lacking `$enc` or `$pdenc`, but rejecting a snapshot-named field in event plaintext could reject legitimate domain JSON. The registered reader's authenticated-output contract owns this case. | reject |
+| BH5 | low | A trusted v1 snapshot reader can return a v2-shaped object without the v1 marker. Pass 3 BH2/EC10 already considered this host-reader contract and rejected a broader state scan. | reject (carried) |
+| BH6 | low | Stream shape prevalidation loops over a caller list without checking cancellation. A direct token check makes a large validation loop responsive. | patch |
+| BH7 | medium | `JsonSerializer.Deserialize` can throw `OutOfMemoryException`, which the broad catch maps to a corrupt-state `ConsistencyMismatch`. The exception should propagate as a resource failure. | patch |
+| BH8 | low | The second v1 snapshot parse does not accept a token, but the input is bounded and cancellation is checked after materialization. Avoiding the parse requires changing the validation and clone path. | reject |
+| BH9 | low | Custom formats are pass-through but not listed individually in the finite capability list. Pass 1 BH14/EC12 already rejected a wildcard capability; the API documentation states this behavior. | reject (carried) |
+| BH10 | false | Bounded JSON parsing checks the token repeatedly and near completion, so cancellation during the costly scan propagates. A cancellation racing after the final check cannot be guaranteed by an extra return-site check. | reject |
+| EC1 | low | A mutable caller list can be changed across awaits, but this is the same internal caller-mutation defect rejected in pass 1 EC2. No Server consumer exists yet; the caller must keep the input stable. | reject (carried) |
+| VG1 | low | Direct parser tests cover the 65,537-node boundary, but no router test would catch dropping the node limit from event classification. | patch |
+| VG-other | medium | The failed v2 snapshot read returns without rechecking caller cancellation after core cleanup. This shares BH3's root cause. | patch (with BH3) |
 
 ## Design Notes
 
