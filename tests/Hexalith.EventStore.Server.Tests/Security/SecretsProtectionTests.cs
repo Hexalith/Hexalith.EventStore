@@ -66,6 +66,18 @@ public sealed partial class SecretsProtectionTests
             .ShouldNotBeEmpty();
     }
 
+    [Fact]
+    public void CaptureVerifierHeaderName_DoesNotExemptAHeaderValue()
+    {
+        const string path = "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verify-capture-remediation.py";
+        string line = File.ReadLines(Path.Combine(RepoRoot, path)).ElementAt(13).Trim();
+        FindViolations(path, line).ShouldBeEmpty();
+        string headerName = "x-otlp-api-" + "key=";
+        FindViolations(path, line.Replace(headerName, headerName + RandomSecret(), StringComparison.Ordinal))
+            .ShouldNotBeEmpty();
+        FindViolations(path, File.ReadAllText(Path.Combine(RepoRoot, path))).ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("SigningKey=${JWT_SIGNING_KEY}")]
     [InlineData("password={env:POSTGRES_PASSWORD}")]
@@ -1389,7 +1401,7 @@ public sealed partial class SecretsProtectionTests
         return (path, assignment.Groups["name"].Value, lineHash) switch
         {
             ("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", "token", "f26481a946a1ce2f8b4dc68ded2466a055e5abf0466bea4ead8f5bb5c0a3cb03") => true,
-            ("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verify-capture-remediation.py", "key", "fd4e2d904eb97a1506217c532153b3c9bb7af829ced5ff1e2075d91c15c3eb47") => true,
+            ("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verify-capture-remediation.py", "x-otlp-api-key", "fd4e2d904eb97a1506217c532153b3c9bb7af829ced5ff1e2075d91c15c3eb47") => true,
             _ => false,
         };
     }

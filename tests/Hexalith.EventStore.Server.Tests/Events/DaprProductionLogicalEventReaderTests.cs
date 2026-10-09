@@ -4,7 +4,6 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
-using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
