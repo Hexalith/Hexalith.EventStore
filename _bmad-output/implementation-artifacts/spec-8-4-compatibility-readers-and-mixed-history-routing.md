@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
