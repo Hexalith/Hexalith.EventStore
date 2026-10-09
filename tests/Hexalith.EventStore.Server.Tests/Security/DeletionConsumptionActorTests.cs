@@ -234,6 +234,31 @@ public sealed class DeletionConsumptionActorTests
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Timeout while checking another batch's original reservation never returns that reservation as this caller's outcome.</summary>
+    [Fact]
+    public async Task OtherBatchRecoveryTimeoutReturnsOnlyItsOwnUnavailableIdentity()
+    {
+        var f = new DeletionConsumptionFixture { LoseResponse = true };
+        var first = DeletionConsumptionFixture.Request(); await f.Actor.RegisterAsync(first);
+        var reserved = await f.Actor.ReserveAndConsumeAsync(first);
+        reserved.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved);
+        var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<DeletionManifestProviderResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        { entered.TrySetResult(); return release.Task; });
+        var second = DeletionConsumptionFixture.Request("batch-2");
+        var pending = actor.RegisterAsync(second);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        var result = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        result.Status.ShouldBe(DeletionConsumptionStatus.Unavailable); result.BatchId.ShouldBe("batch-2"); result.ReceiptId.ShouldBeNull();
+        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome.ShouldBe(reserved);
+        release.SetResult(new("tenant-a", "batch-1", reserved.ReceiptId!, DeletionManifestProviderState.Unknown, []));
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
+    }
+
     /// <summary>A blocked admission releases the original turn at its entry deadline and cannot later register a batch.</summary>
     [Fact]
     public async Task SuspendedAdmissionReleasesWholeEntryWithoutLateRegistration()
@@ -242,17 +267,57 @@ public sealed class DeletionConsumptionActorTests
         var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken supplied = default;
         f.Authority.AuthorizeOperationAsync("tenant-a", "batch-1", "RegisterDeletionBatch", Arg.Any<CancellationToken>()).Returns(_ =>
-        { entered.TrySetResult(); return release.Task; });
+        { supplied = _.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
+        async Task<bool> CompleteAsync() { bool result = await release.Task; completed.TrySetResult(); return result; }
         var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        supplied.CanBeCanceled.ShouldBeTrue();
         clock.Advance(TimeSpan.FromSeconds(30));
         (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        supplied.IsCancellationRequested.ShouldBeTrue();
         (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldNotBeNull();
         string retained = JsonSerializer.Serialize(f.Backend.CommittedState);
         release.SetResult(true);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         JsonSerializer.Serialize(f.Backend.CommittedState).ShouldBe(retained);
         await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Dispatch and state validation receive the same cancellable actor entry deadline and cannot resume a late outcome.</summary>
+    [Theory]
+    [InlineData("dispatch")][InlineData("validate")]
+    public async Task SuspendedIndependentVerificationReceivesEntryDeadline(string phase)
+    {
+        var f = new DeletionConsumptionFixture(); var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken supplied = default;
+        if (phase == "dispatch")
+        {
+            f.Authority.VerifyDispatchAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
+        }
+        else
+        {
+            f.Authority.ValidateStateAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
+        }
+        async Task<bool> CompleteAsync() { bool result = await release.Task; completed.TrySetResult(); return result; }
+        var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        supplied.CanBeCanceled.ShouldBeTrue();
+        clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        supplied.IsCancellationRequested.ShouldBeTrue();
+        string retained = JsonSerializer.Serialize(f.Backend.CommittedState);
+        release.SetResult(true);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        JsonSerializer.Serialize(f.Backend.CommittedState).ShouldBe(retained);
     }
 
     /// <summary>Stalled independent admission and journal record calls receive the private deadline token and cannot apply a late actor state effect.</summary>
@@ -264,17 +329,19 @@ public sealed class DeletionConsumptionActorTests
         var actor = DeletionConsumptionFixture.Create(fixture.Backend, fixture.Authority, fixture.Provider, clock);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken supplied = default;
         if (record)
         {
             fixture.Authority.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
-            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return release.Task; });
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
         }
         else
         {
             fixture.Authority.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
-            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return release.Task; });
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
         }
+        async Task<bool> CompleteAsync() { bool result = await release.Task; completed.TrySetResult(); return result; }
         var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         supplied.CanBeCanceled.ShouldBeTrue();
@@ -283,7 +350,7 @@ public sealed class DeletionConsumptionActorTests
         supplied.IsCancellationRequested.ShouldBeTrue();
         string retained = JsonSerializer.Serialize(fixture.Backend.CommittedState);
         release.SetResult(true);
-        await Task.Yield();
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         JsonSerializer.Serialize(fixture.Backend.CommittedState).ShouldBe(retained);
         await fixture.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }

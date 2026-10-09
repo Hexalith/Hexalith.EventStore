@@ -118,10 +118,13 @@ public sealed class RecoverableAnchoredStateTests : IAnchoredStateTransitionAuth
         var original = RecoverableAnchoredState.Prepare("scope", 0, 1, "before", "after");
         byte[] expected = original.TargetBytes.ToArray();
         AnchoredStateTransition? staged = null;
+        int reads = 0;
         bool committed = await RecoverableAnchoredState.CommitAsync(original, this,
-            () => { original.TargetBytes[0] ^= 0x01; return Task.FromResult(staged); },
+            () => { if (reads++ == 0) { original.TargetBytes[0] ^= 0x01; } return Task.FromResult(staged); },
             value => { staged = value; return Task.CompletedTask; });
         committed.ShouldBeTrue();
+        original.TargetBytes.ShouldNotBe(expected);
+        _admissions[original.TargetDigest].TargetBytes.ShouldBe(expected);
         staged.ShouldNotBeNull();
         staged.TargetBytes.ShouldBe(expected);
         _records.ShouldBe(1);

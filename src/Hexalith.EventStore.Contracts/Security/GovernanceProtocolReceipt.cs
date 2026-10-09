@@ -1,11 +1,11 @@
 namespace Hexalith.EventStore.Contracts.Security;
 
-/// <summary>Original content-free authenticated protocol outcome. Actual committed high water and accepted ordinal are assigned at the joint write linearization.</summary>
+/// <summary>Original content-free authenticated protocol outcome. Actual committed high water and maximum matching accepted ordinal are assigned at the joint write linearization; per-request ordinals are in AdmissionAttributionsJson.</summary>
 /// <param name="OperationId">Exact OperationId.</param>
 /// <param name="IntentDigest">Exact IntentDigest.</param>
 /// <param name="Status">Exact Status.</param>
 /// <param name="GuardHighWater">Exact GuardHighWater.</param>
-/// <param name="AcceptedAtAdmissionFenceOrdinal">Exact AcceptedAtAdmissionFenceOrdinal.</param>
+/// <param name="AcceptedAtAdmissionFenceOrdinal">Maximum ordinal over matching installed deletion requests; a violation reporter reads its exact request's ordinal from AdmissionAttributionsJson.</param>
 /// <param name="ReferenceId">Exact ReferenceId.</param>
 /// <param name="ReceiptId">Exact ReceiptId.</param>
 public sealed record GovernanceProtocolReceipt(string OperationId, string IntentDigest, string Status, long GuardHighWater, long AcceptedAtAdmissionFenceOrdinal, string ReferenceId, string ReceiptId)

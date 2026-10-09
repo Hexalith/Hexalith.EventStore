@@ -470,6 +470,18 @@ public sealed class GovernanceScopeGuardTests
         fixture.State.Deletions.Single().Violations.Single().AcceptanceReceiptId.ShouldBe(fixture.OriginalAcceptance!.ReceiptId);
     }
 
+    /// <summary>A pre-install accepted original has ordinal zero; a later caller cannot substitute a positive ordinal.</summary>
+    [Fact]
+    public async Task PreInstallOriginalRejectsInventedAcceptedOrdinal()
+    {
+        var fixture = new GovernanceGuardFixture(); await fixture.PrepareBoundAsync();
+        var binding = fixture.State.Deletions.Single().ContentBindings.Single();
+        var wrong = fixture.Ordinal(violation: "invented-ordinal", invalidated: [binding.GlobalCutId, binding.TokenId]) with { AcceptedAtOrdinal = 1 };
+        string before = JsonSerializer.Serialize(fixture.State);
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: wrong))).Status.ShouldBe("Blocked");
+        JsonSerializer.Serialize(fixture.State).ShouldBe(before);
+    }
+
     /// <summary>Each overlapping request retains its own ordinal at one accepted write's joint linearization.</summary>
     [Fact]
     public async Task OverlappingScopesRetainIndependentOriginalOrdinals()
@@ -497,6 +509,10 @@ public sealed class GovernanceScopeGuardTests
             "overlap-resource", [], "authenticated-no-cut");
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: first))).Status.ShouldBe("Committed");
         var second = first with { Ordinal = 1, AcceptedAtOrdinal = 1, ViolationId = "overlap-second" };
+        var wrongSecond = second with { AcceptedAtOrdinal = accepted.AcceptedAtAdmissionFenceOrdinal, ViolationId = "overlap-wrong-maximum" };
+        string beforeWrong = JsonSerializer.Serialize(fixture.State);
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: wrongSecond) with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Blocked");
+        JsonSerializer.Serialize(fixture.State).ShouldBe(beforeWrong);
         (await fixture.Apply(fixture.Command(GovernanceGuardOperation.RecordViolation, ordinal: second) with { DeletionRequestId = "deletion-b" })).Status.ShouldBe("Committed");
         fixture.State.Deletions.Single(value => value.RequestId == "deletion-a").Violations.Single(value => value.ResourceId == "overlap-resource").AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);
         fixture.State.Deletions.Single(value => value.RequestId == "deletion-b").Violations.Single().AcceptanceReceiptId.ShouldBe(accepted.ReceiptId);

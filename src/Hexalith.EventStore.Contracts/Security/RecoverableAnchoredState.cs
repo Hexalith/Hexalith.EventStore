@@ -68,22 +68,17 @@ public static class RecoverableAnchoredState
         var owned = Copy(transition);
         Validate(owned, owned.ScopeId);
         var original = await readPending().ConfigureAwait(false);
-        Validate(owned, owned.ScopeId);
         if (original is not null)
         {
-            var capturedOriginal = Copy(original);
-            if (!Exact(capturedOriginal, owned))
+            if (!Exact(original, owned))
             { throw new InvalidOperationException("A different original pending transition is retained."); }
         }
         // Each provider borrows a separate snapshot. An adapter retaining it after its Task
         // completes must first establish independent storage ownership.
         if (!await authority.AdmitTransitionAsync(Copy(owned)).ConfigureAwait(false)) { return false; }
-        Validate(owned, owned.ScopeId);
         await persistPending(Copy(owned)).ConfigureAwait(false);
-        Validate(owned, owned.ScopeId);
         var confirmed = await readPending().ConfigureAwait(false);
-        Validate(owned, owned.ScopeId);
-        if (confirmed is null || !Exact(Copy(confirmed), owned)) { throw new InvalidOperationException("Pending transition was not confirmed durable."); }
+        if (confirmed is null || !Exact(confirmed, owned)) { throw new InvalidOperationException("Pending transition was not confirmed durable."); }
         return await authority.RecordTransitionAsync(Copy(owned)).ConfigureAwait(false);
     }
 
