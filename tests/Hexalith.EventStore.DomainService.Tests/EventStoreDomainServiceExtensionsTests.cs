@@ -98,7 +98,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         using ServiceProvider provider = builder.Services.BuildServiceProvider();
         EventStoreDomainDiagnosticsRegistry registry = provider.GetRequiredService<EventStoreDomainDiagnosticsRegistry>();
 
-        registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["catalog", "gadget", "widget"]);
+        registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["catalog", "counter", "gadget", "widget"]);
         registry.GetDiagnostics("widget")!.ActivitySource.Name.ShouldBe(EventStoreDomainTelemetry.ActivitySourceName("widget"));
         registry.GetDiagnostics("gadget")!.Meter.Name.ShouldBe(EventStoreDomainTelemetry.MeterName("gadget"));
         registry.GetDiagnostics("catalog")!.Domain.ShouldBe("catalog");
