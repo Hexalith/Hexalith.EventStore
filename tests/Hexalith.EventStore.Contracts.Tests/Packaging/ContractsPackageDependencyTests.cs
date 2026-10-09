@@ -19,6 +19,28 @@ public sealed class ContractsPackageDependencyTests
         ("Identity.csproj", "28bf83cef929e65c35ab501f1b8495c40de3590c318172473a3970a6262ad95c"),
     ];
 
+    private static readonly string[] _p1rStandaloneProbeRoots =
+    [
+        P1rPublishedRun + "correction-smokes-safe/p1r-containment-evolution-smoke-05/consumers/candidate/",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-aligned-build-01/consumers/source/",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-01/consumers/source/",
+        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-02/consumers/source/",
+        P1rPublishedRun + "execution-325e3c9327df4810941981b5882e3a70/source-consumers/",
+        P1rPublishedRun + "execution-b944559fd0f3413696db48bcfc585f52/source-consumers/",
+        P1rPublishedRun + "execution-c497b88cb2e5436ebddb37e33f1fcb64/source-consumers/",
+        "tools/p1r-published-consumers/",
+    ];
+
+    private static readonly string[] _p1rStandaloneProbeFiles =
+    [
+        "Directory.Build.props",
+        "Directory.Build.targets",
+        "Directory.Packages.props",
+        "domain/Domain.csproj",
+        "host/Host.csproj",
+        "probe/Probe.csproj",
+    ];
+
     // Hash-bound standalone consumers and the recorded verification harness restore published
     // release and rollback packages outside the live build graph. Exclusions name exact files.
     private static readonly string[] _standaloneEvidenceProbeProjects =
@@ -38,14 +60,7 @@ public sealed class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj",
         PublishedPackageObservation + "Directory.Packages.props",
         PublishedPackageObservation + "Identity.csproj",
-        P1rPublishedRun + "correction-smokes-safe/p1r-containment-evolution-smoke-05/consumers/candidate/Directory.Packages.props",
-        P1rPublishedRun + "correction-smokes-safe/p1r-source-aligned-build-01/consumers/source/Directory.Packages.props",
-        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-01/consumers/source/Directory.Packages.props",
-        P1rPublishedRun + "correction-smokes-safe/p1r-source-complete-smoke-02/consumers/source/Directory.Packages.props",
-        P1rPublishedRun + "execution-325e3c9327df4810941981b5882e3a70/source-consumers/Directory.Packages.props",
-        P1rPublishedRun + "execution-b944559fd0f3413696db48bcfc585f52/source-consumers/Directory.Packages.props",
-        P1rPublishedRun + "execution-c497b88cb2e5436ebddb37e33f1fcb64/source-consumers/Directory.Packages.props",
-        "tools/p1r-published-consumers/Directory.Packages.props",
+        .. _p1rStandaloneProbeRoots.SelectMany(root => _p1rStandaloneProbeFiles.Select(file => root + file)),
     ];
 
     [Fact]
