@@ -86,8 +86,10 @@ public sealed class GovernanceScopeGuardTests
         fixture.Backend.Stored[fixture.Backend.Key(fixture.Backend.Target.GuardCellId)] = JsonSerializer.SerializeToUtf8Bytes(
             new GuardedStateCell("tenant-a", fixture.Backend.Target.InstallationId, fixture.Backend.Target.GuardCellId, state.Revision, JsonSerializer.SerializeToUtf8Bytes(state)));
         (await fixture.Owner.ReadAsync("tenant-a", TestContext.Current.CancellationToken)).ShouldBeNull();
+        fixture.Backend.Authority.ClearReceivedCalls();
         var mutation = new GuardedStateMutation("legacy-source", 0, GuardedTransactionFixture.Hash([]), "sealed-content"u8.ToArray());
         (await fixture.Owner.ExecuteAsync(fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()), [mutation], TestContext.Current.CancellationToken)).ShouldBeNull();
+        await fixture.Backend.Authority.DidNotReceiveWithAnyArgs().AuthorizeLookupAsync(default!, default!, default!, default);
         fixture.Backend.Stored.ContainsKey(fixture.Backend.Key(mutation.CellId)).ShouldBeFalse();
         GovernanceScopeGuardReducer.Reduce(state, fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()),
             new GovernanceGuardEvidence("tenant-a", "intent", "target", "authority", "receipt", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(1), [], [], [], "writer", "revocation", "zero", 1, "Open", "", [], ""), "intent").Receipt.Status.ShouldBe("Unavailable");
