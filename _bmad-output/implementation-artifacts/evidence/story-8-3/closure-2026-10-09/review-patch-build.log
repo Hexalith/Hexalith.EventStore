@@ -1,0 +1,15 @@
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.PayloadProtection -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Release/net10.0/Hexalith.EventStore.PayloadProtection.dll
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(90,69): error CS1661: Cannot convert lambda expression to type 'SampleActivity<ActivityContext>' because the parameter types do not match the delegate parameter types [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(90,66): error CS1678: Parameter 1 is declared as type 'ref System.Diagnostics.ActivityCreationOptions<string>' but should be 'ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext>' [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(134,70): error CS0117: 'UnreadableProtectedDataReason' does not contain a definition for 'AuthenticatedDecryptionMismatch' [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+
+Build FAILED.
+
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(90,69): error CS1661: Cannot convert lambda expression to type 'SampleActivity<ActivityContext>' because the parameter types do not match the delegate parameter types [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(90,66): error CS1678: Parameter 1 is declared as type 'ref System.Diagnostics.ActivityCreationOptions<string>' but should be 'ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext>' [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs(134,70): error CS0117: 'UnreadableProtectedDataReason' does not contain a definition for 'AuthenticatedDecryptionMismatch' [/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj]
+    0 Warning(s)
+    3 Error(s)
+
+Time Elapsed 00:00:01.57

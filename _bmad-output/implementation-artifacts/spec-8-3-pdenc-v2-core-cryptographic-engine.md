@@ -318,6 +318,17 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 
 | ID | Verdict | Route | Evidence |
 | --- | --- | --- | --- |
+| RESUME-BH-01 | false | reject | Carried owner decision: the 2026-09-16 approval chooses the separate unsealed workflow and its required Contracts configuration guard. This core remains excluded from release; release execution/provenance is 8.8-owned. This run does not claim remote required-check enforcement. |
+| RESUME-BH-02 | medium | patch | The YAML guard checks branches but accepts `paths` and `paths-ignore`, so valid branch triggers can be suppressed. Reject extra trigger keys and mutation-test both events. |
+| RESUME-BH-03 | medium | patch | The command guard rejects `;` and `||` but accepts `& true`, allowing the vector command to run in the background. Reject shell control operators in both guarded commands and mutation-test them. |
+| RESUME-BH-04 | medium | patch | Discovery enumerates traits on methods without verifying Fact/Theory registration. Restrict vector discovery to executable test methods; bind actual TRX rows separately. |
+| RESUME-BH-05 | low | patch | Snapshot positive/tag tests and shared AAD code exist, but explicit full-reader scope substitutions are missing. Add tenant/domain/aggregate/sequence regressions with cleanup assertions. |
+| RESUME-BH-06 | low | patch | The snapshot configured-ceiling test proves a 1,024-byte boundary only. Add immutable 1 MiB round-trip and first-over-limit zero-material assertions. |
+| RESUME-BH-07 | low | patch | Shared parser exact bounds run through events, while snapshot full-reader exact depth/node boundaries lack dedicated cases. Add maximum snapshot round-trips and over-bound writer rejection. |
+| RESUME-BH-08 | low | patch | Both readers reject reserved markers and invalid UTF-8; authenticated duplicate members and trailing values lack direct reader assertions. Add both malformed plaintext shapes for both readers, including cleanup. |
+| RESUME-BH-09 | low | patch | V138 overlaps hostile reads but its cancellation subloop is sequential. Add in-core simultaneous cancellation assertions with no resolver work and owned-buffer cleanup. |
+| RESUME-BH-10 | low | patch | Writer periodic work is exercised at helper seams; add wide core-writer cancellation at 512/768 with zero material calls. |
+| RESUME-EC-01 | medium | patch | Isolated initial-listener probes reproduce permanently missing subsequent operation measurements after listener removal (zero samples, expected one). Static fields initialize within the Start catch, poisoning the type despite preserved operation outcomes. Make observer-dependent initialization retryable without changing crypto APIs. |
 | BH-01 | medium | defer | `references/Hexalith.FrontComposer` advanced from `6e064785` to `4e6ce047` in externally authored commit `7bbe24d0`; it is outside Story 8.3 and cannot be silently removed. |
 | BH-02 | medium | bad_spec | `CryptographicPayloadProtectionEntropy` compiles against `Hexalith.Commons.UniqueIds` only through Contracts' transitive assets, so a Contracts dependency cleanup would break this core despite its Contracts-only project declaration. |
 | BH-03 | high | bad_spec | Story 8.3's epic acceptance explicitly covers a selected snapshot value, but only event orchestration is implemented and no snapshot crypto path runs. |

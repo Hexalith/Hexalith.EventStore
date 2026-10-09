@@ -155,6 +155,10 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
             RequiredOutcomeReceiptIds = List(value.RequiredOutcomeReceiptIds),
             ProtectionOriginalRequest = value.ProtectionOriginalRequest is null ? null : value.ProtectionOriginalRequest with { Targets = List(value.ProtectionOriginalRequest.Targets) },
             ProtectionTerminalOutcome = value.ProtectionTerminalOutcome is null ? null : value.ProtectionTerminalOutcome with { TargetReceipts = List(value.ProtectionTerminalOutcome.TargetReceipts) },
+            ProtectionBlockedReplacement = value.ProtectionBlockedReplacement is null ? null : value.ProtectionBlockedReplacement with {
+                Original = value.ProtectionBlockedReplacement.Original with { Targets = List(value.ProtectionBlockedReplacement.Original.Targets),
+                    RevocationReceipt = value.ProtectionBlockedReplacement.Original.RevocationReceipt with { AffectedBatchIds = List(value.ProtectionBlockedReplacement.Original.RevocationReceipt.AffectedBatchIds) } },
+                Outcome = value.ProtectionBlockedReplacement.Outcome with { TargetReceipts = List(value.ProtectionBlockedReplacement.Outcome.TargetReceipts) } },
             ProtectionActivationRequest = value.ProtectionActivationRequest is null ? null : value.ProtectionActivationRequest with { Replacement = value.ProtectionActivationRequest.Replacement with { Targets = List(value.ProtectionActivationRequest.Replacement.Targets) } },
             ProtectionActivationOutcome = value.ProtectionActivationOutcome is null ? null : value.ProtectionActivationOutcome with { TargetReceipts = List(value.ProtectionActivationOutcome.TargetReceipts) }, RevocationReceipt = value.RevocationReceipt is null ? null : value.RevocationReceipt with { AffectedBatchIds = List(value.RevocationReceipt.AffectedBatchIds) } }));
     private static IReadOnlyList<T> List<T>(IReadOnlyList<T> values)

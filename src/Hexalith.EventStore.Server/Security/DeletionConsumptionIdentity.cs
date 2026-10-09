@@ -53,6 +53,35 @@ internal static class DeletionConsumptionIdentity
             && x.DestructionSealId == y.DestructionSealId && x.BatchKind == y.BatchKind && x.BatchOrdinal == y.BatchOrdinal
             && x.BatchId == y.BatchId && x.ManifestDigest == y.ManifestDigest && x.GuardStreamId == y.GuardStreamId && a.Targets.SequenceEqual(b.Targets);
     }
+    internal static DeletionBlockedReplacementReconciliation Capture(DeletionBlockedReplacementReconciliation request)
+    {
+        ArgumentNullException.ThrowIfNull(request); var c = request.Capability;
+        if (request.SigningRequestId != DeletionBatchCapabilityIdentity.SigningRequestId(c) || request.DetachedJws is not { Length: > 0 and <= 16384 }
+            || request.CommittedIssuedGuardRevision <= 0 || request.ExpectedKeyBlockSetRevision <= 0 || request.Targets is null || request.Targets.Count is < 1 or > 1000)
+        { throw new ArgumentException("Malformed blocked replacement."); }
+        foreach (string text in new[] { request.OperationId, request.CompromiseBlockReceiptId, request.GuardReplacementReceiptId }) { Text(text); }
+        var targets = new List<ProtectionTarget>();
+        foreach (var target in request.Targets)
+        {
+            if (targets.Count >= 1000 || target is null || target.TenantId != c.TenantId) { throw new ArgumentException("Malformed blocked replacement target."); }
+            Text(target.TenantId); Text(target.AgentInteractionId); Text(target.TargetProtectionKeyAlias); targets.Add(target);
+        }
+        if (TargetDigest(targets) != c.ManifestDigest) { throw new ArgumentException("Changed blocked replacement manifest."); }
+        Revocation(request.RevocationReceipt.Envelope);
+        var revocation = request.RevocationReceipt;
+        if (revocation.Envelope.TenantId != c.TenantId || revocation.Envelope.KeyVersion != c.CapabilityKeyVersion
+            || revocation.ReceiptId != Digest(revocation.Envelope) || revocation.KeyBlockSetRevision <= 0 || revocation.OwnerRevision <= 0
+            || revocation.KeyBlockSetRevision > request.ExpectedKeyBlockSetRevision || revocation.AffectedBatchIds.Count > 1000)
+        { throw new ArgumentException("Changed blocked replacement revocation."); }
+        return request with { Targets = targets.AsReadOnly(), RevocationReceipt = revocation with { AffectedBatchIds = Array.AsReadOnly(revocation.AffectedBatchIds.ToArray()) } };
+    }
+    internal static bool SameBatch(DeletionBatchConsumptionRequest original, DeletionBlockedReplacementReconciliation replacement)
+    {
+        var x = original.Capability; var y = replacement.Capability;
+        return x.TenantId == y.TenantId && x.Issuer == y.Issuer && x.Audience == y.Audience && x.DeletionRequestId == y.DeletionRequestId
+            && x.DestructionSealId == y.DestructionSealId && x.BatchKind == y.BatchKind && x.BatchOrdinal == y.BatchOrdinal
+            && x.BatchId == y.BatchId && x.ManifestDigest == y.ManifestDigest && x.GuardStreamId == y.GuardStreamId && original.Targets.SequenceEqual(replacement.Targets);
+    }
     internal static void Revocation(DeletionCapabilityRevocationEnvelope e)
     {
         ArgumentNullException.ThrowIfNull(e);

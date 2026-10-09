@@ -1,0 +1,17 @@
+warning: in the working copy of 'src/Hexalith.EventStore.Client/Streams/DirectoryAtomicAppendClient.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Client/Streams/IAtomicDirectoryAppendOwner.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Client/Streams/IDirectoryAtomicAppendAuthority.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Contracts/Security/DeletionActivationComparison.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionBatch.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionIdentity.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/IDeletionConsumptionActor.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/IDeletionConsumptionAuthority.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/RetainedIdentityHistorySourceReader.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.EventStore.Client.Tests/Streams/DirectoryAtomicAppendTests.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.EventStore.Server.Tests/Security/RetainedIdentityHistorySourceReaderTests.cs', CRLF will be replaced by LF the next time Git touches it

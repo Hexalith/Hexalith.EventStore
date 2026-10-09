@@ -1,0 +1,11 @@
+{
+  "command": [
+    "node",
+    "scripts/payload-protection/verify-golden-vectors.mjs"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:34:24.545466+00:00",
+  "endUtc": "2026-10-09T06:34:24.583563+00:00",
+  "exitCode": 0,
+  "logSha256": "5a7a6449cf82ef4e741294c120141b8fee4536bb062ee9a68934b3e3bf56115d"
+}

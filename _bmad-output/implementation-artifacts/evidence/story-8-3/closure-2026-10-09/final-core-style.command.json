@@ -1,0 +1,19 @@
+{
+  "command": [
+    "dotnet",
+    "format",
+    "style",
+    "src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj",
+    "--verify-no-changes",
+    "--no-restore",
+    "--severity",
+    "info",
+    "--include",
+    "src/Hexalith.EventStore.PayloadProtection/PayloadProtectionDiagnostics.cs"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:50:23.479028+00:00",
+  "endUtc": "2026-10-09T06:50:27.336892+00:00",
+  "exitCode": 0,
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

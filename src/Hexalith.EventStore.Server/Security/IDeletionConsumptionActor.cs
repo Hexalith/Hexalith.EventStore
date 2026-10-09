@@ -16,6 +16,10 @@ public interface IDeletionConsumptionActor : IActor
     Task<DeletionCapabilityRevocationReceipt?> RegisterRevocationAsync(DeletionCapabilityRevocationEnvelope envelope);
     /// <summary>Atomically activates exact same-batch re-attestation or records its replacement-key compromise.</summary>
     Task<DeletionConsumptionOutcome> ActivateAsync(DeletionReattestationActivation activation);
+    /// <summary>Reconciles an independently authenticated exact issued-and-blocked successor without any dispatch or reservation.</summary>
+    Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request);
+    /// <summary>Reads the exact retained original no-effect reconciliation and outcome.</summary>
+    Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability);
     /// <summary>Reads current independently anchored same-batch/global-key comparison without any effect.</summary>
     Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion);
     /// <summary>Reads exact durable batch outcome; reserved recovery only completes the original reservation.</summary>

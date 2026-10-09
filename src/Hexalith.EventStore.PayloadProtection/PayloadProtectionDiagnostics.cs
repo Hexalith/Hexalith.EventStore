@@ -12,10 +12,11 @@ internal static class PayloadProtectionDiagnostics
     /// <summary>Gets the shared activity-source and meter name.</summary>
     internal const string Name = "Hexalith.EventStore.PayloadProtection";
 
-    private static readonly ActivitySource _activitySource = new(Name);
-    private static readonly Meter _meter = new(Name);
-    private static readonly Counter<long> _operations = _meter.CreateCounter<long>("eventstore.payload_protection.operations");
-    private static readonly Histogram<double> _duration = _meter.CreateHistogram<double>("eventstore.payload_protection.duration", "ms");
+    private static int _initializationInProgress;
+    private static ActivitySource? _activitySource;
+    private static Meter? _meter;
+    private static Counter<long>? _operations;
+    private static Histogram<double>? _duration;
 
     /// <summary>
     /// Starts a closed-name core activity without allowing a diagnostic listener to affect the operation.
@@ -28,8 +29,9 @@ internal static class PayloadProtectionDiagnostics
         Activity? activity = null;
         try
         {
+            InitializeDiagnostics();
             // Parent identity preserves correlation without retaining a parent object or inheriting its baggage.
-            activity = _activitySource.CreateActivity(
+            activity = _activitySource?.CreateActivity(
                 operation == PayloadProtectionOperation.Protect
                     ? "EventStore.PayloadProtection.Protect"
                     : "EventStore.PayloadProtection.Unprotect",
@@ -87,13 +89,14 @@ internal static class PayloadProtectionDiagnostics
         bool protectedFormat = true)
     {
         Activity? ambient = Activity.Current;
+        InitializeDiagnostics();
         TagList tags = default;
         tags.Add("operation", operation == PayloadProtectionOperation.Protect ? "protect" : "unprotect");
         tags.Add("result", ResultToken(result));
         tags.Add("format_version", protectedFormat ? "v2" : "none");
         try
         {
-            _operations.Add(1, tags);
+            _operations?.Add(1, tags);
         }
         catch
         {
@@ -106,7 +109,7 @@ internal static class PayloadProtectionDiagnostics
 
         try
         {
-            _duration.Record(durationMilliseconds, tags);
+            _duration?.Record(durationMilliseconds, tags);
         }
         catch
         {
@@ -115,6 +118,41 @@ internal static class PayloadProtectionDiagnostics
         finally
         {
             RestoreActivity(ambient);
+        }
+    }
+
+    private static void InitializeDiagnostics()
+    {
+        if (Interlocked.CompareExchange(ref _initializationInProgress, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            try
+            {
+                _activitySource ??= new ActivitySource(Name);
+            }
+            catch
+            {
+                // Source publication callbacks cannot poison static initialization; later calls retry.
+            }
+
+            try
+            {
+                _meter ??= new Meter(Name);
+                _operations ??= _meter.CreateCounter<long>("eventstore.payload_protection.operations");
+                _duration ??= _meter.CreateHistogram<double>("eventstore.payload_protection.duration", "ms");
+            }
+            catch
+            {
+                // Preserve successful instruments and retry missing ones after an observer fault.
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _initializationInProgress, 0);
         }
     }
 

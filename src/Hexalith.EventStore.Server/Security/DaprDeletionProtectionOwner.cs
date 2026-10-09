@@ -18,6 +18,19 @@ public sealed class DaprDeletionProtectionOwner(string tenantId, IActorProxyFact
     public Task<DeletionConsumptionOutcome> ActivateAsync(DeletionReattestationActivation activation, CancellationToken cancellationToken = default)
     { ArgumentNullException.ThrowIfNull(activation); return InvokeAsync(activation.Replacement.Capability.TenantId, actor => actor.ActivateAsync(activation), cancellationToken); }
     /// <inheritdoc/>
+    public Task<DeletionConsumptionOutcome> ReconcileBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request, CancellationToken cancellationToken = default)
+        { ArgumentNullException.ThrowIfNull(request); return InvokeAsync(request.Capability.TenantId, actor => actor.ReconcileBlockedReplacementAsync(request), cancellationToken); }
+    /// <inheritdoc/>
+    public async Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(capability);
+        if (capability.TenantId != tenantId) { throw new ArgumentException("Private protection tenant mismatch."); }
+        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
+        var result = await deadline.ReadAsync(_ => proxies.CreateActorProxy<IDeletionConsumptionActor>(new(DeletionConsumptionActor.GetActorId(tenantId)), DeletionConsumptionActor.ActorTypeName)
+            .ReadBlockedReplacementAsync(capability)).ConfigureAwait(false);
+        deadline.ThrowIfCancellationRequested(); return result;
+    }
+    /// <inheritdoc/>
     public Task<DeletionConsumptionOutcome> LookupAsync(string requestedTenant, string batchId, CancellationToken cancellationToken = default)
         => InvokeAsync(requestedTenant, actor => actor.LookupAsync(requestedTenant, batchId), cancellationToken);
     /// <inheritdoc/>

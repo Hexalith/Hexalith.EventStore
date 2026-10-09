@@ -1,0 +1,12 @@
+{
+  "command": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:56:35.082727+00:00",
+  "endUtc": "2026-10-09T06:56:35.117754+00:00",
+  "exitCode": 0,
+  "logSha256": "c3094315c5f440243219a449cc99753b8d1b2a875c75f6beddbc492ff5fc33fc"
+}

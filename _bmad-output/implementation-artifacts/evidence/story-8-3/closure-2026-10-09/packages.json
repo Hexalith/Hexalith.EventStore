@@ -1,0 +1,76 @@
+{
+  "version": "1.0.0",
+  "purpose": "local validation only, not published",
+  "archives": [
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Admin.Abstractions.1.0.0.nupkg",
+      "sha256": "6ecc57542c8919d5c3bf798bd1e09911418983fd96176cab7076a732b160c438",
+      "bytes": 117179
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Admin.Cli.1.0.0.nupkg",
+      "sha256": "8f098ff94063dbe273f60791786e7b181a8c303d0b1023bad57e68bb0c5359da",
+      "bytes": 845171
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Admin.Server.1.0.0.nupkg",
+      "sha256": "bfa91eeecb3092f49ed9224f5ffcdd6e24469c0f71098d2a2205481c575c5306",
+      "bytes": 178807
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Aspire.1.0.0.nupkg",
+      "sha256": "79b6a83ebdd93c7ee4872956499ed22b4ddaa634288be22aac50611be5912113",
+      "bytes": 31331
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Client.1.0.0.nupkg",
+      "sha256": "9859af18079b5ba38ac280c0018e8d6db73a1d0a1876a00be0623d82fb868dd9",
+      "bytes": 423396
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Contracts.1.0.0.nupkg",
+      "sha256": "e30651712c58b7d37a024912b616649ec1652b5523dbc10bb59dd7964b2f6970",
+      "bytes": 301450
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.DomainService.1.0.0.nupkg",
+      "sha256": "9c565ce8d0c546dd98c923386569ed22ed7ed934d6c0e51ab35bafb8e6a66dbe",
+      "bytes": 175406
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Gateway.1.0.0.nupkg",
+      "sha256": "ef8c4af33672b1d190fc7c04f8aead3b36754966dc6c3da1d26f5e4ff49ea4f1",
+      "bytes": 244116
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.RestApi.Generators.1.0.0.nupkg",
+      "sha256": "4bfaece4f142df5bee18b9da9593ab74271baf3d37297062e6b3d65a23abd04e",
+      "bytes": 36921
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Server.1.0.0.nupkg",
+      "sha256": "ffafe72376e30fcc35b353b7398ba6b2fcf8d29d4b821a76886ce5a3f3db6b3c",
+      "bytes": 766313
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.ServiceDefaults.1.0.0.nupkg",
+      "sha256": "14d88259fcff91043f102112942c4c861960561771cfbde336f2941167555cd9",
+      "bytes": 48469
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.SignalR.1.0.0.nupkg",
+      "sha256": "2e9d8f0c6972792ee9fb3e2a2e0e69622ca34d33e97aea6ab4a3e80c9b99e7db",
+      "bytes": 21087
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Testing.1.0.0.nupkg",
+      "sha256": "83657c3fab74a942045777cfc7cfd6bafbf79f3d6b6bc405c4379a62477106f1",
+      "bytes": 55080
+    },
+    {
+      "path": "/tmp/story83-normal-pack-20261009/Hexalith.EventStore.Testing.Integration.1.0.0.nupkg",
+      "sha256": "9a990bf6ae73a436b0e51cfbef5ce38c7781a0b8929f2b9c347a913e3e857f63",
+      "bytes": 64173
+    }
+  ]
+}

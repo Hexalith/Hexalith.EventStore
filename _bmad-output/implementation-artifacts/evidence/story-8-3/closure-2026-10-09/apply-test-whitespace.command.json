@@ -1,0 +1,16 @@
+{
+  "command": [
+    "dotnet",
+    "format",
+    "whitespace",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "--no-restore",
+    "--include",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/ClosureRegressionTests.cs"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:47:48.345547+00:00",
+  "endUtc": "2026-10-09T06:47:50.528130+00:00",
+  "exitCode": 0,
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

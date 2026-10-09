@@ -1,0 +1,18 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "--configuration",
+    "Release",
+    "-warnaserror",
+    "-m:1",
+    "-nodeReuse:false",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:52:15.601072+00:00",
+  "endUtc": "2026-10-09T06:52:17.234559+00:00",
+  "exitCode": 1,
+  "logSha256": "9a5393baa4178590ac942a3a1b88b67571c058b1ce6becc17f4b93f35bd367f4"
+}

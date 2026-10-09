@@ -6,4 +6,8 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// <param name="ReplacementKeyVersion">Exact prospective replacement key.</param><param name="ReplacementKeyBlocked">Whether that exact version is permanently blocked.</param>
 /// <param name="OwnerRevision">Current independently anchored owner revision.</param>
 public sealed record DeletionActivationComparison(string TenantId, string BatchId, string CompromiseBlockReceiptId, long KeyBlockSetRevision,
-    string ReplacementKeyVersion, bool ReplacementKeyBlocked, long OwnerRevision);
+    string ReplacementKeyVersion, bool ReplacementKeyBlocked, long OwnerRevision)
+{
+    /// <summary>Exact independently retained blocked-key event at this current comparison; absence grants no reconciliation.</summary>
+    public DeletionCapabilityRevocationReceipt? ReplacementKeyRevocation { get; init; }
+}

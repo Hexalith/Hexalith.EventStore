@@ -1,0 +1,15 @@
+{
+  "command": [
+    "dotnet",
+    "run",
+    "--project",
+    "/tmp/story83-init-probe/probe.csproj",
+    "--",
+    "activity"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:41:26.028762+00:00",
+  "endUtc": "2026-10-09T06:41:27.339892+00:00",
+  "exitCode": 1,
+  "logSha256": "3a1c34e32a3fb62a0900206db613f3553c3bcd085cb5836ccebfa44dd9373d1e"
+}

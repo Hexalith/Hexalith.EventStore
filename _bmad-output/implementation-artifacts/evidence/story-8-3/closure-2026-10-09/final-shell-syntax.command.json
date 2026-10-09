@@ -1,0 +1,12 @@
+{
+  "command": [
+    "bash",
+    "-n",
+    "scripts/ci-local.sh"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:56:35.050577+00:00",
+  "endUtc": "2026-10-09T06:56:35.052566+00:00",
+  "exitCode": 0,
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -25,4 +25,7 @@ public interface IDeletionConsumptionAuthority : IAnchoredStateTransitionAuthori
     Task<bool> VerifyRevocationAsync(DeletionCapabilityRevocationEnvelope envelope, CancellationToken cancellationToken = default);
     /// <summary>Verifies exact previous compromise block, same-batch sole-active replacement and successor guard dispatch receipts.</summary>
     Task<bool> VerifyActivationAsync(DeletionReattestationActivation activation, CancellationToken cancellationToken = default);
+    /// <summary>Authenticates the exact retained original batch block, canonical signed issued successor/manifest/actual issue receipt and current independently retained successor-key revocation. No dispatch or physical grant is inferred.</summary>
+    Task<bool> VerifyBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request, CancellationToken cancellationToken = default)
+        => Task.FromResult(false);
 }

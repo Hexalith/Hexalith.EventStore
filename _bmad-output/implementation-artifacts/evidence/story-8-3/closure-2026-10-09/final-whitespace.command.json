@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/format-check.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:51:03.527071+00:00",
+  "endUtc": "2026-10-09T06:51:11.546967+00:00",
+  "exitCode": 0,
+  "logSha256": "5cedb03459c9b0d6b8c6a8714d0cbce2f3a8a61386fed62b10acccc9215f27c9"
+}

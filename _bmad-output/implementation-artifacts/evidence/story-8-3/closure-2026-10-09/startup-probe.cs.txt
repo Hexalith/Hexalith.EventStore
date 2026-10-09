@@ -1,0 +1,25 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Hexalith.EventStore.PayloadProtection;
+if (args[0] == "activity")
+{
+    using var listener = new ActivityListener { ShouldListenTo = source => source.Name == PayloadProtectionDiagnostics.Name ? throw new InvalidOperationException("observer") : false };
+    ActivitySource.AddActivityListener(listener);
+    try { typeof(PayloadProtectionOperation).Assembly.GetType("Hexalith.EventStore.PayloadProtection.PayloadProtectionDiagnostics")!.GetMethod("Start", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, new object[] { PayloadProtectionOperation.Protect, null! }); Console.WriteLine("PASS"); }
+    catch (Exception ex) { Console.WriteLine(ex.GetType().Name); Environment.ExitCode = 1; }
+}
+else
+{
+    using var listener = new MeterListener { InstrumentPublished = (instrument, _) => { if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name) throw new InvalidOperationException("observer"); } };
+    listener.Start();
+    try { typeof(PayloadProtectionOperation).Assembly.GetType("Hexalith.EventStore.PayloadProtection.PayloadProtectionDiagnostics")!.GetMethod("Start", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, new object[] { PayloadProtectionOperation.Protect, null! }); Console.WriteLine("PASS"); }
+    catch (Exception ex) { Console.WriteLine(ex.GetType().Name); Environment.ExitCode = 1; }
+}
+
+int samples = 0;
+using var healthy = new MeterListener { InstrumentPublished = (instrument, listener) => { if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name) listener.EnableMeasurementEvents(instrument); } };
+healthy.SetMeasurementEventCallback<long>((_, value, _, _) => samples += (int)value);
+healthy.Start();
+PayloadProtectionDiagnostics.Record(PayloadProtectionOperation.Protect, PayloadProtectionDiagnosticResult.Success, 1);
+Console.WriteLine($"Recovered operation samples: {samples}");
+Environment.ExitCode = samples == 1 ? 0 : 1;

@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/scripts/payload-protection/verify-golden-vectors.py", line 17, in <module>
+    import cryptography
+ModuleNotFoundError: No module named 'cryptography'

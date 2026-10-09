@@ -1002,6 +1002,51 @@ public sealed class ReleasePackageManifestTests
         _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPayloadProtectionWorkflow(mutated));
     }
 
+    /// <summary>Path restrictions must not suppress automatic execution of the complete core suite.</summary>
+    [Theory]
+    [InlineData("push", "paths")]
+    [InlineData("push", "paths-ignore")]
+    [InlineData("pull_request", "paths")]
+    [InlineData("pull_request", "paths-ignore")]
+    public void Payload_protection_workflow_guard_rejects_path_restrictions(string eventName, string key)
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        string trigger = $"  {eventName}:\n    branches: [main]\n";
+        string mutated = workflow.Replace(trigger, trigger + $"    {key}: [ignored/**]\n", StringComparison.Ordinal);
+        mutated.ShouldNotBe(workflow);
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPayloadProtectionWorkflow(mutated));
+    }
+
+    /// <summary>Neither vector command may use shell operators to mask failures or run tests in the background.</summary>
+    [Theory]
+    [InlineData(false, "& true")]
+    [InlineData(true, "& true")]
+    [InlineData(false, "| true")]
+    [InlineData(true, "| true")]
+    public void Payload_protection_workflow_guard_rejects_shell_operators(bool invariant, string suffix)
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
+        using var reader = new StringReader(workflow);
+        var yaml = new YamlStream();
+        yaml.Load(reader);
+        var document = (YamlMappingNode)yaml.Documents.Single().RootNode;
+        var jobs = (YamlMappingNode)document.Children[new YamlScalarNode("jobs")];
+        var job = (YamlMappingNode)jobs.Children[new YamlScalarNode("payload-protection")];
+        var steps = (YamlSequenceNode)job.Children[new YamlScalarNode("steps")];
+        string name = invariant ? "Verify invariant-globalization fail closed" : "Run PayloadProtection vectors";
+        var step = steps.Children.Cast<YamlMappingNode>()
+            .Single(node => node.Children.TryGetValue(new YamlScalarNode("name"), out YamlNode? value)
+                && value is YamlScalarNode { Value: var actual } && actual == name);
+        var run = (YamlScalarNode)step.Children[new YamlScalarNode("run")];
+        step.Children[new YamlScalarNode("run")] = new YamlScalarNode(run.Value!.TrimEnd() + " " + suffix);
+        using var writer = new StringWriter();
+        yaml.Save(writer, assignAnchors: false);
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertPayloadProtectionWorkflow(writer.ToString()));
+    }
+
     private static void AssertPayloadProtectionWorkflow(string workflow)
     {
         using var reader = new StringReader(workflow);
@@ -1015,6 +1060,7 @@ public sealed class ReleasePackageManifestTests
         {
             triggers.Children.TryGetValue(new YamlScalarNode(eventName), out YamlNode? eventNode).ShouldBeTrue();
             YamlMappingNode trigger = eventNode.ShouldBeOfType<YamlMappingNode>();
+            trigger.Children.Keys.ShouldBe([new YamlScalarNode("branches")]);
             trigger.Children.TryGetValue(new YamlScalarNode("branches"), out YamlNode? branchNode).ShouldBeTrue();
             YamlSequenceNode branches = branchNode.ShouldBeOfType<YamlSequenceNode>();
             branches.Children.Select(static branch => branch.ShouldBeOfType<YamlScalarNode>().Value)
@@ -1056,7 +1102,10 @@ public sealed class ReleasePackageManifestTests
             .ShouldBe(new YamlScalarNode("1"));
         command.ShouldNotContain("#");
         command.ShouldNotContain(";");
-        command.ShouldNotContain("||");
+        foreach (string shellOperator in new[] { "&", "|", "<", ">", "`", "$", "\\", "(", ")" })
+        {
+            command.ShouldNotContain(shellOperator);
+        }
         string[] arguments = Regex.Split(command.Trim(), @"\s+");
         arguments[0].ShouldBe("dotnet");
         arguments[1].ShouldBe("test");
@@ -1064,13 +1113,16 @@ public sealed class ReleasePackageManifestTests
         arguments[Array.IndexOf(arguments, "--project") + 1].ShouldBe(
             "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
         arguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
-        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("306");
+        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("324");
         arguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
         arguments[Array.IndexOf(arguments, "--fail-skips") + 1].ShouldBe("on");
 
         invariantCommand.ShouldNotContain("#");
         invariantCommand.ShouldNotContain(";");
-        invariantCommand.ShouldNotContain("||");
+        foreach (string shellOperator in new[] { "&", "|", "<", ">", "`", "$", "\\", "(", ")" })
+        {
+            invariantCommand.ShouldNotContain(shellOperator);
+        }
         string[] invariantArguments = Regex.Split(invariantCommand.Trim(), @"\s+");
         invariantArguments[0].ShouldBe("dotnet");
         invariantArguments[1].ShouldBe("test");

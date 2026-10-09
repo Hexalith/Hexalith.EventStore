@@ -54,4 +54,6 @@ public sealed record GovernanceGuardEvidence(string TenantId, string IntentDiges
     public DeletionReattestationActivation? ProtectionActivationRequest { get; init; }
     /// <summary>Independently authenticated original activation outcome at the exact request comparison; no absent revocation mirror is inferred.</summary>
     public DeletionConsumptionOutcome? ProtectionActivationOutcome { get; init; }
+    /// <summary>Independently authenticated exact retained no-dispatch blocked replacement and original owner outcome.</summary>
+    public DeletionBlockedReplacementResult? ProtectionBlockedReplacement { get; init; }
 }

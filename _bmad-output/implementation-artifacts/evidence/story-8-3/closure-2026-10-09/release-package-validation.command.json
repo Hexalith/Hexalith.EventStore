@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "tools/validate-release-packages.py",
+    "/tmp/story83-normal-pack-20261009",
+    "1.0.0"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:36:11.113793+00:00",
+  "endUtc": "2026-10-09T06:36:11.162587+00:00",
+  "exitCode": 0,
+  "logSha256": "105817c8a0ce6b55f1885c65877aae972e250c118e962e50dbe4c38f3a784c75"
+}

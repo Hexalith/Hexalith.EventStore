@@ -1,0 +1,20 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+failed Hexalith.EventStore.Contracts.Tests.Packaging.PackagedReminderApiTests.PackagedReminderApiRunsWithoutWorksTypes (0ms)
+  from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: FAIL_SKIP : EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+failed Hexalith.EventStore.Contracts.Tests.Packaging.TrustedEffectPackageContractTests.NamedPackagesExposeTrustedEffectContracts (0ms)
+  from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+  Xunit.MicrosoftTestingPlatform.XunitException: FAIL_SKIP : EVENTSTORE_PACKAGE_CONTRACT_DIR is not set; no release package inventory was supplied.
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64) failed with 2 error(s) (4m 21s 693ms)
+Exit code: 2
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/contracts-results.trx.xml
+
+Test run summary: Failed!
+  total: 2319
+  failed: 2
+  succeeded: 2317
+  skipped: 0
+  duration: 4m 21s 864ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

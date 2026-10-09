@@ -632,6 +632,7 @@ public sealed class DiagnosticsTests
         string[] expected = [.. inherited.Concat(frozenOwned).OrderBy(ParseVectorNumber)];
         string[] discovered = [.. typeof(DiagnosticsTests).Assembly.GetTypes()
             .SelectMany(static type => type.GetMethods())
+            .Where(static method => method.IsDefined(typeof(FactAttribute), inherit: true))
             .SelectMany(static method => method.CustomAttributes)
             .Where(static attribute => attribute.AttributeType.Name == "TraitAttribute"
                 && attribute.ConstructorArguments.Count == 2

@@ -206,7 +206,7 @@ public static class GovernanceScopeGuardReducer
                     || state.Revocations.Any(prior => prior.Envelope.EventIdentity == revocation.Envelope.EventIdentity
                         || prior.Envelope.KeyVersion == revocation.Envelope.KeyVersion && prior.Envelope.RevocationRevision == revocation.Envelope.RevocationRevision)) { return Denied(); }
                 state = state with { CompromisedKeyVersions = state.CompromisedKeyVersions.Append(command.Batch.CapabilityKeyVersion).Distinct(StringComparer.Ordinal).ToArray(), Revocations = state.Revocations.Append(revocation).ToArray(), Deletions = state.Deletions.Select(value => value with
-                { Batches = value.Batches.Select(item => item.CapabilityKeyVersion == command.Batch.CapabilityKeyVersion && !Terminal(item) && item.ProtectionOutcome != "ConsumptionBlocked:CapabilityKeyCompromise"
+                { Batches = value.Batches.Select(item => item.CapabilityKeyVersion == command.Batch.CapabilityKeyVersion && !Terminal(item) && item.ProtectionOutcome is not ("ConsumptionBlocked:CapabilityKeyCompromise" or "ReplacementAwaitingActivation")
                     ? item with { ProtectionOutcome = "ConsumptionBlocked:CapabilityKeyCompromise", ProtectionReceiptId = revocation.AffectedBatchIds.Contains(item.BatchId, StringComparer.Ordinal) ? Hash(new[] { revocation.ReceiptId, item.BatchId }) : "",
                         BlockSetRevision = command.Batch.BlockSetRevision } : item).ToArray() }).ToArray() };
                 break;
@@ -232,7 +232,8 @@ public static class GovernanceScopeGuardReducer
                 }
                 else if (command.Batch.ProtectionOutcome == "ActivationBlockedByReplacementKeyCompromise")
                 {
-                    if (batch.ProtectionOutcome != "ReplacementAwaitingActivation" || command.Batch.BlockSetRevision <= batch.BlockSetRevision) { return Denied(); }
+                    if (batch.ProtectionOutcome != "ReplacementAwaitingActivation" || command.Batch.BlockSetRevision <= batch.BlockSetRevision
+                        || !BlockedReplacementProof(state, batch, command.Batch, evidence)) { return Denied(); }
                     state = state with { CompromisedKeyVersions = state.CompromisedKeyVersions.Append(batch.CapabilityKeyVersion).Distinct(StringComparer.Ordinal).ToArray() };
                     ReplaceBatch(batch with { ProtectionOutcome = "ConsumptionBlocked:CapabilityKeyCompromise", ProtectionReceiptId = command.Batch.ProtectionReceiptId,
                         BlockSetRevision = command.Batch.BlockSetRevision, DispatchReceiptId = "" });
@@ -384,6 +385,20 @@ public static class GovernanceScopeGuardReducer
             && outcome.TenantId == batch.Capability?.TenantId && outcome.BatchId == batch.BatchId && outcome.Status == DeletionConsumptionStatus.Unconsumed
             && outcome.ReceiptId == command.ProtectionReceiptId && outcome.KeyBlockSetRevision == command.BlockSetRevision && outcome.OwnerRevision > 0
             && request.Targets.SequenceEqual(batch.Targets.Select(t => new ProtectionTarget(t.TenantId, t.AgentInteractionId, t.TargetProtectionKeyAlias)));
+    }
+    private static bool BlockedReplacementProof(TenantGovernanceGuardState state, GovernanceBatchState batch, GovernanceBatchCommand command, GovernanceGuardEvidence evidence)
+    {
+        var retained = evidence.ProtectionBlockedReplacement; var phase = retained?.Original; var outcome = retained?.Outcome;
+        return phase is not null && outcome is not null && phase.CompromiseBlockReceiptId == batch.ProtectionReceiptId
+            && phase.GuardReplacementReceiptId == batch.IssueReceiptId && phase.Capability == batch.Capability && phase.DetachedJws == batch.DetachedJws
+            && phase.SigningRequestId == batch.SigningRequestId && phase.CommittedIssuedGuardRevision == batch.IssuedGuardRevision
+            && phase.ExpectedKeyBlockSetRevision == command.BlockSetRevision && phase.Targets.SequenceEqual(batch.Targets.Select(t => new ProtectionTarget(t.TenantId, t.AgentInteractionId, t.TargetProtectionKeyAlias)))
+            && phase.RevocationReceipt.Envelope.TenantId == state.TenantId && phase.RevocationReceipt.Envelope.KeyVersion == batch.CapabilityKeyVersion
+            && phase.RevocationReceipt.KeyBlockSetRevision <= phase.ExpectedKeyBlockSetRevision && state.Revocations.Any(r => Hash(r) == Hash(phase.RevocationReceipt))
+            && outcome.TenantId == state.TenantId && outcome.BatchId == batch.BatchId && outcome.Status == DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise
+            && outcome.OwnerRevision > 0 && outcome.KeyBlockSetRevision == phase.ExpectedKeyBlockSetRevision && outcome.ReceiptId == command.ProtectionReceiptId
+            && outcome.BlockReason == DeletionConsumptionBlockReason.CapabilityKeyCompromise && outcome.BlockedKeyVersion == batch.CapabilityKeyVersion
+            && outcome.RevocationRevision == phase.RevocationReceipt.Envelope.RevocationRevision && outcome.TargetReceipts.Count == 0;
     }
     private static bool OriginalTerminalProof(GovernanceBatchState batch, GovernanceBatchCommand command, GovernanceGuardEvidence evidence)
     {

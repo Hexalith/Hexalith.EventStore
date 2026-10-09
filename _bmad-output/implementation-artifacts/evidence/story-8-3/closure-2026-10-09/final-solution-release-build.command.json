@@ -1,0 +1,17 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "Hexalith.EventStore.slnx",
+    "--configuration",
+    "Release",
+    "-m:1",
+    "-nodeReuse:false",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:46:53.638929+00:00",
+  "endUtc": "2026-10-09T06:47:18.827185+00:00",
+  "exitCode": 0,
+  "logSha256": "deb1b2b2b7c9d472ae1ea9968026974d8cba3c7566ca20825aad281595e5c26e"
+}

@@ -22,6 +22,12 @@ namespace Hexalith.EventStore.Server.Security;
 public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actors, IRetainedIdentityHistoryAdmission admission,
     IIdentityHistoryCustody custody, TimeProvider clock)
 {
+    private readonly Action<byte[]>? _ownedPayloadObserved;
+
+    internal RetainedIdentityHistorySourceReader(IActorProxyFactory actors, IRetainedIdentityHistoryAdmission admission,
+        IIdentityHistoryCustody custody, TimeProvider clock, Action<byte[]> ownedPayloadObserved)
+        : this(actors, admission, custody, clock) => _ownedPayloadObserved = ownedPayloadObserved;
+
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
@@ -34,6 +40,8 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(request);
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
+        var ownedClosedPayloads = new List<byte[]>();
+        bool transferred = false;
         try
         {
             deadline.ThrowIfCancellationRequested();
@@ -151,6 +159,8 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
     
                         retainedEvidence.Add(evidence);
                         byte[] closedPayload = JsonSerializer.SerializeToUtf8Bytes(value, type, _jsonOptions);
+                        ownedClosedPayloads.Add(closedPayload);
+                        _ownedPayloadObserved?.Invoke(closedPayload);
                         events.Add(new StreamReadEvent(item.SequenceNumber, item.EventTypeName, closedPayload,
                             readable.SerializationFormat, item.MetadataVersion, string.Empty, null, null, item.Timestamp, null,
                             EventStorePayloadProtectionMetadata.Unprotected()));
@@ -209,10 +219,22 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
             };
             var result = new RetainedIdentityHistoryReadResult(stream, null);
             bool complete = RetainedIdentityHistoryValidator.IsComplete(request, stream, clock.GetUtcNow());
-            bool bounded = complete && JsonSerializer.SerializeToUtf8Bytes(result, _jsonOptions).Length <= RetainedIdentityHistoryLimits.MaxResponseBytes;
+            bool bounded = false;
+            if (complete)
+            {
+                byte[] probe = JsonSerializer.SerializeToUtf8Bytes(result, _jsonOptions);
+                try
+                {
+                    _ownedPayloadObserved?.Invoke(probe);
+                    bounded = probe.Length <= RetainedIdentityHistoryLimits.MaxResponseBytes;
+                }
+                finally { CryptographicOperations.ZeroMemory(probe); }
+            }
             bool valid = bounded && validUntil > clock.GetUtcNow();
             deadline.ThrowIfCancellationRequested();
-            return valid ? result : new(null, "history-source-incomplete-or-expired");
+            if (!valid) { return new(null, "history-source-incomplete-or-expired"); }
+            transferred = true;
+            return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -220,12 +242,20 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
         }
         catch (OperationCanceledException)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
         catch (Exception)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return new(null, "history-unavailable");
+        }
+        finally
+        {
+            if (!transferred)
+            {
+                foreach (byte[] payload in ownedClosedPayloads) { CryptographicOperations.ZeroMemory(payload); }
+            }
         }
     }
 

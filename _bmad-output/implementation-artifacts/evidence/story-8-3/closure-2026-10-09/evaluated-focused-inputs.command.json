@@ -1,0 +1,17 @@
+{
+  "command": [
+    "dotnet",
+    "msbuild",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "-p:Configuration=Release",
+    "-p:UseHexalithProjectReferences=false",
+    "-target:ResolveReferences",
+    "-getProperty:MSBuildAllProjects,TargetFramework,Configuration,UseHexalithProjectReferences,IsPackable",
+    "-getItem:Compile,ProjectReference,PackageReference,ReferencePath,Analyzer"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:36:37.017034+00:00",
+  "endUtc": "2026-10-09T06:36:37.910202+00:00",
+  "exitCode": 0,
+  "logSha256": "72a3ad0bb5537ea92183da3dfd1b6a4d7988ad53a20474dbe462fced54137879"
+}

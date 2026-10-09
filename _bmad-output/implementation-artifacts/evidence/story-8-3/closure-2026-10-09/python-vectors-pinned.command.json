@@ -1,0 +1,16 @@
+{
+  "command": [
+    "uv",
+    "run",
+    "--no-project",
+    "--with-requirements",
+    "scripts/payload-protection/requirements.txt",
+    "python",
+    "scripts/payload-protection/verify-golden-vectors.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:35:17.906739+00:00",
+  "endUtc": "2026-10-09T06:35:18.295544+00:00",
+  "exitCode": 0,
+  "logSha256": "f70470cfe4134b6149167a68d22eb94a02fca956ee9c1a81e938a402ddca3cfc"
+}

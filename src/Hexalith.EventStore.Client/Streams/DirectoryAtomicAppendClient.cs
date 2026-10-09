@@ -18,22 +18,23 @@ public sealed class DirectoryAtomicAppendClient(TimeProvider clock, IAtomicDirec
     {
         caller.ThrowIfCancellationRequested();
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, caller, clock.GetTimestamp());
-        var owned = Capture(request, deadline); string id = owned.Command.MessageId; string digest = RequestDigest(owned);
+        using var lifetime = new DirectoryAtomicAppendPayloadLifetime();
+        var owned = Capture(request, deadline, lifetime); string id = owned.Command.MessageId; string digest = RequestDigest(owned);
         var unavailable = new DirectoryAtomicAppendOutcome(id, digest, DirectoryAtomicAppendState.Unavailable, 0, 0, 0, null);
         try
         {
             if (owner is null || authority is null) { deadline.ThrowIfCancellationRequested(); return unavailable; }
             string method = lookup ? "LookupDirectoryAtomicAppend" : "CommitDirectoryAtomicAppend";
-            if (!await deadline.ReadAsync(token => authority.AuthorizeAsync(owned, method, digest, token)).ConfigureAwait(false)) { deadline.ThrowIfCancellationRequested(); return unavailable; }
-            var outcome = await deadline.ReadAsync(token => lookup ? owner.LookupAsync(owned, digest, token) : owner.TryAppendAsync(owned, digest, token)).ConfigureAwait(false);
+            if (!await deadline.ReadAsync(token => authority.AuthorizeAsync(owned, method, digest, token), lifetime.BorrowUntil).ConfigureAwait(false)) { deadline.ThrowIfCancellationRequested(); return unavailable; }
+            var outcome = await deadline.ReadAsync(token => lookup ? owner.LookupAsync(owned, digest, token) : owner.TryAppendAsync(owned, digest, token), lifetime.BorrowUntil).ConfigureAwait(false);
             deadline.ThrowIfCancellationRequested();
             if (outcome is null || outcome.OperationId != id || outcome.RequestDigest != digest || !Enum.IsDefined(outcome.State)
                 || outcome.State == DirectoryAtomicAppendState.Accepted && (outcome.CommittedTargetRevision <= owned.ExpectedStreamRevision
                     || outcome.AcceptedAtAdmissionFenceOrdinal < 0 || outcome.AcceptedAtGuardHighWater <= 0)
                 || outcome.State != DirectoryAtomicAppendState.Accepted && (outcome.CommittedTargetRevision != 0 || outcome.AcceptedAtAdmissionFenceOrdinal != 0 || outcome.AcceptedAtGuardHighWater != 0)
                 || outcome.State is DirectoryAtomicAppendState.Accepted or DirectoryAtomicAppendState.Rejected && !ValidText(outcome.AuthenticatedReceiptId)) { return unavailable; }
-            if (!await deadline.ReadAsync(token => authority.VerifyOutcomeAsync(owned, digest, outcome, token)).ConfigureAwait(false)
-                || !await deadline.ReadAsync(token => authority.AuthorizeAsync(owned, method, digest, token)).ConfigureAwait(false)) { deadline.ThrowIfCancellationRequested(); return unavailable; }
+            if (!await deadline.ReadAsync(token => authority.VerifyOutcomeAsync(owned, digest, outcome, token), lifetime.BorrowUntil).ConfigureAwait(false)
+                || !await deadline.ReadAsync(token => authority.AuthorizeAsync(owned, method, digest, token), lifetime.BorrowUntil).ConfigureAwait(false)) { deadline.ThrowIfCancellationRequested(); return unavailable; }
             deadline.ThrowIfCancellationRequested(); return outcome;
         }
         catch (OperationCanceledException) { caller.ThrowIfCancellationRequested(); return unavailable; }
@@ -50,16 +51,17 @@ public sealed class DirectoryAtomicAppendClient(TimeProvider clock, IAtomicDirec
         request.EpochId, request.Kind, request.ExpectedStreamRevision, request.PermitOwner, request.SourceConversationId, request.PermitId,
         request.DirectoryCapabilityId, request.CapabilityOwnerRevision, request.ContentIntentHmac, request.DigestKeyVersion })));
     }
-    private static DirectoryAtomicAppendRequest Capture(DirectoryAtomicAppendRequest request, AuthoritativeStreamReadDeadline deadline)
+    internal static DirectoryAtomicAppendRequest Capture(DirectoryAtomicAppendRequest request, AuthoritativeStreamReadDeadline deadline, DirectoryAtomicAppendPayloadLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(request); ArgumentNullException.ThrowIfNull(request.Command); ArgumentNullException.ThrowIfNull(request.PermitOwner);
         var command = request.Command;
         foreach (var field in new[] { command.MessageId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, command.CorrelationId, command.UserId,
             request.EpochId, request.SourceConversationId, request.PermitId, request.DirectoryCapabilityId, request.DigestKeyVersion }) { if (!ValidText(field)) { throw new ArgumentException("Malformed private directory append identity."); } }
+        if (command.CausationId is not null && !ValidText(command.CausationId)) { throw new ArgumentException("Malformed private directory append causation."); }
         if (request.ExpectedStreamRevision < 0 || request.CapabilityOwnerRevision <= 0 || request.PermitOwner.TenantId != command.TenantId || !Enum.IsDefined(request.Kind)
             || request.ContentIntentHmac is not { Length: 64 } || request.ContentIntentHmac.Any(c => c is not (>= '0' and <= '9' or >= 'A' and <= 'F'))
             || command.Payload is null || command.Payload.Length > 8 * 1024 * 1024 || command.Extensions?.Count > 64) { throw new ArgumentException("Malformed private directory append."); }
-        byte[] payload = command.Payload.ToArray(); deadline.ThrowIfCancellationRequested(); Dictionary<string, string>? extensions = null;
+        byte[] payload = lifetime.Capture(command.Payload); deadline.ThrowIfCancellationRequested(); Dictionary<string, string>? extensions = null;
         if (command.Extensions is not null)
         {
             extensions = new(StringComparer.Ordinal);
