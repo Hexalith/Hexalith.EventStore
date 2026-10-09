@@ -13,8 +13,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <remarks>
 /// <list type="bullet">
 /// <item><description>Only probes and explicitly marked literal public endpoints may carry anonymous metadata.</description></item>
-/// <item><description>Every effective canonical operational route, including a host override, must carry its exact
-/// catalog policy (<see cref="EventStoreDomainServiceRoutes"/>) and no anonymous metadata.</description></item>
+/// <item><description>Every effective POST-capable canonical operational route, including a host override, must carry
+/// its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>). No canonical route may be public.</description></item>
 /// <item><description>Every sidecar-originated route — <c>dapr/subscribe</c>, every pub/sub subscription, and every
 /// Dapr actor route — must carry <see cref="EventStoreDomainServicePolicies.SidecarChannel"/>, including one a host
 /// mapped itself before the SDK.</description></item>
@@ -76,9 +76,14 @@ public static class EventStoreDomainServiceEndpointInventory
                     violations.Add($"{route}: a canonical route cannot be public.");
                 }
 
-                if (!authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
+                if (SupportsPost(endpoint)
+                    && !authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
                 {
                     violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
+                }
+                else if (!fallbackProtects && authorizeData.Count == 0)
+                {
+                    violations.Add($"{route}: the endpoint has no authorization metadata and no fallback policy that denies anonymous callers protects it.");
                 }
 
                 continue;
@@ -144,5 +149,11 @@ public static class EventStoreDomainServiceEndpointInventory
         return methods?.HttpMethods.Count == 1
             && (string.Equals(methods.HttpMethods[0], HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(methods.HttpMethods[0], HttpMethods.Post, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool SupportsPost(RouteEndpoint endpoint)
+    {
+        IHttpMethodMetadata? methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
+        return methods is null || methods.HttpMethods.Contains(HttpMethods.Post, StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -1047,6 +1047,36 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         }
     }
 
+    /// <summary>A GET-only canonical route may rely on a denying fallback but cannot be made public.</summary>
+    /// <param name="publicConfiguration">The public metadata applied to the GET route.</param>
+    [Theory]
+    [InlineData("none")]
+    [InlineData("anonymous")]
+    [InlineData("marker")]
+    public void EndpointInventory_GetOnlyCanonicalRouteRequiresPrivateAccess(string publicConfiguration) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        RouteHandlerBuilder route = app.MapGet("/project", () => "diagnostic view");
+        if (publicConfiguration == "anonymous") {
+            _ = route.AllowAnonymous();
+        }
+        else if (publicConfiguration == "marker") {
+            _ = route.AllowEventStorePublicEndpoint("/project");
+        }
+
+        _ = app.UseEventStoreDomainService();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions
+            .CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme);
+        IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallback);
+        if (publicConfiguration == "none") {
+            violations.ShouldBeEmpty();
+        }
+        else {
+            violations.ShouldHaveSingleItem().ShouldContain("/project: a canonical route cannot be public.");
+        }
+    }
+
     /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
     /// <param name="route">The literal public route.</param>
     /// <param name="method">Its single HTTP method.</param>
