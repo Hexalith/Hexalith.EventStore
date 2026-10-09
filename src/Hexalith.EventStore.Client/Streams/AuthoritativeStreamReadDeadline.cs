@@ -50,7 +50,7 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
     }
 
     /// <summary>Bounds both synchronous provider invocation and its noncooperative returned task.</summary>
-    public async Task<T> ReadAsync<T>(Func<CancellationToken, Task<T>> read, Action<Task<T>>? operationStarted = null)
+    public async Task<T> ReadAsync<T>(Func<CancellationToken, Task<T>> read, Action<Task<T>>? operationStarted = null, Action<T>? abandonedResultCleanup = null)
     {
         ThrowIfCancellationRequested();
         CancellationToken token = _providerSource.Token;
@@ -67,6 +67,20 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
             T result = await pending.WaitAsync(_linkedSource.Token).ConfigureAwait(false);
             ThrowIfCancellationRequested();
             return result;
+        }
+        catch
+        {
+            if (abandonedResultCleanup is not null)
+            {
+                // Ownership transfers only when the provider terminates. One continuation also covers
+                // completion followed by a failed terminal deadline check; no result was returned.
+                _ = pending.ContinueWith(task =>
+                {
+                    try { if (task.IsCompletedSuccessfully) { abandonedResultCleanup(task.Result); } }
+                    catch (Exception) { /* Cleanup cannot resume or release abandoned evidence. */ }
+                }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            }
+            throw;
         }
         finally
         {

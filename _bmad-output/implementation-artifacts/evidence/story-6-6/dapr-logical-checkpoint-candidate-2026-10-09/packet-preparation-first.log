@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/tmp/story66-checkpoint-candidate-packet.py", line 104, in <module>
+    assert not re.search(r'(?:\b(?:if|for|foreach|while|catch|switch)\s*\([^\n]*\)|\b(?:try|finally|else))\s*\{',text),name
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: src/Hexalith.EventStore.Server/Actors/DaprLogicalCheckpointActor.cs

@@ -20,22 +20,41 @@ internal sealed class DaprLogicalReplayFixture : IDisposable
     internal DaprLogicalReplayFixture(int events = 1, int payloadBytes = 2, bool mixedHistory = false)
     {
         Registry = CreateRegistry(mixedHistory); Key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        EventVersionValidator validate = (_, _, _, _, _, token) => { ValidationCalls++; OnValidation?.Invoke(token); };
-        var validation = new RegisteredEventVersionValidation(Registry, "test-schema", validate, "{}\n"u8.ToArray(), [],
-            "test-identity", validate, "{}\n"u8.ToArray(), []);
+        EventVersionValidator schema = (_, _, version, _, payload, token) =>
+        {
+            ValidationCalls++; Borrowed.Add(payload); Callbacks.Add($"schema-{version}");
+            CallbackHook?.Invoke($"schema-{version}", token); OnValidation?.Invoke(token);
+        };
+        EventVersionValidator identity = (_, _, version, _, payload, token) =>
+        {
+            ValidationCalls++; Borrowed.Add(payload); Callbacks.Add($"identity-{version}");
+            CallbackHook?.Invoke($"identity-{version}", token); OnValidation?.Invoke(token);
+        };
+        ReadOnlyMemory<byte> Options(string name)
+        {
+            Callbacks.Add(name); CallbackHook?.Invoke(name, CallbackToken);
+            return OptionsHook?.Invoke(name) ?? "{}\n"u8.ToArray();
+        }
+        var validation = new RegisteredEventVersionValidation(Registry, "test-schema", schema, "{}\n"u8.ToArray(), [],
+            "test-identity", identity, "{}\n"u8.ToArray(), [], () => Options("schema-options"), () => Options("identity-options"));
         var validations = new Dictionary<(string, int), RegisteredEventVersionValidation> { [("evt", 1)] = validation };
         if (mixedHistory) { validations[("evt", 2)] = validation; }
         var upcasters = new Dictionary<(string, int), RegisteredEventUpcaster>();
-        if (mixedHistory) { upcasters[("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", new DaprLogicalReconstructionUpcaster(), new byte[32]); }
+        if (mixedHistory) { upcasters[("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", new DaprLogicalReconstructionUpcaster((payload, writer, scratch, token) =>
+            {
+                Borrowed.Add(payload); BorrowedWriters.Add(writer); BorrowedScratch.Add(scratch);
+                Callbacks.Add("upcast"); CallbackHook?.Invoke("upcast", token);
+            }), new byte[32]); }
         Service = new EventEvolutionService(Registry, validations, upcasters, new Dictionary<string, RegisteredCurrentEventDeserializer> { ["evt"] = new(typeof(DaprLogicalReplayTestValue), "test-serializer", (payload, token) =>
             {
-                DeserializationCalls++; OnDeserialization?.Invoke(token);
+                DeserializationCalls++; Borrowed.Add(payload); Callbacks.Add("deserialize");
+                CallbackHook?.Invoke("deserialize", token); OnDeserialization?.Invoke(token);
                 if (!mixedHistory) { return new DaprLogicalReplayTestValue(); }
                 Span<byte> image = stackalloc byte[64]; payload.CopyTo(0, image[..payload.Length]);
                 var reader = new Utf8JsonReader(image[..payload.Length]); reader.Read(); reader.Read();
                 if (!reader.ValueTextEquals("delta")) { throw new JsonException("current event requires delta"); }
                 reader.Read(); return new DaprLogicalReplayTestValue { Delta = reader.GetInt32() };
-            }, "{}\n"u8.ToArray(), []) });
+            }, "{}\n"u8.ToArray(), [], () => Options("deserialize-options")) });
         SourceState = Substitute.For<IActorStateManager>();
         Metadata = new AggregateMetadata(events, Timestamp, "etag");
         _ = SourceState.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>()).Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return new ConditionalValue<AggregateMetadata>(Metadata is not null, Metadata!); });
@@ -95,6 +114,21 @@ internal sealed class DaprLogicalReplayFixture : IDisposable
     internal int EventReads { get; private set; }
     /// <summary>Gets or sets a boundary hook with the original callback token.</summary>
     internal Action<CancellationToken>? OnValidation { get; set; }
+
+    /// <summary>Gets the observed individually invoked application callbacks.</summary>
+    internal List<string> Callbacks { get; } = [];
+    /// <summary>Gets or sets a boundary hook for composed authority-loss controls.</summary>
+    internal Action<string, CancellationToken>? CallbackHook { get; set; }
+    /// <summary>Gets or sets options output used to prove refusal precedes parsing.</summary>
+    internal Func<string, ReadOnlyMemory<byte>>? OptionsHook { get; set; }
+    /// <summary>Gets or sets the original token associated with parameterless options getters.</summary>
+    internal CancellationToken CallbackToken { get; set; }
+    /// <summary>Gets borrowed application payload facades.</summary>
+    internal List<IReadOnlyPayload> Borrowed { get; } = [];
+    /// <summary>Gets borrowed upcaster writer facades.</summary>
+    internal List<IBoundedPayloadWriter> BorrowedWriters { get; } = [];
+    /// <summary>Gets borrowed upcaster scratch facades.</summary>
+    internal List<IBoundedScratchAllocator> BorrowedScratch { get; } = [];
 
     /// <summary>Creates a deliberately explicit model/domain/key/registry/loss-scope test trust.</summary>
     internal DaprLogicalClaimTrust NewTrust(string domain = "d", byte[]? registry = null, EventEvolutionCapabilityLoss? loss = null, string keyId = "local-key", TimeProvider? time = null)

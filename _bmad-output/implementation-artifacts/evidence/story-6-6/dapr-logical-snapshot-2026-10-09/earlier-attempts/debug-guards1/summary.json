@@ -1,0 +1,90 @@
+{
+  "configuration": "Debug",
+  "dependencyMode": "source",
+  "controls": {
+    "snapshot": {
+      "total": 57,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "clientModel": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "reconstruction": {
+      "total": 53,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    }
+  },
+  "excludedExternalPaths": [
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+    "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+    "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+    "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+  ],
+  "rootInputSetUnchanged": false,
+  "fullWorkspaceQualified": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "rootDrift": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/DeletionConsumptionActorTests.cs",
+      "before": "e89874fafe1b709bd4daa421ed6975493fd2af0dedebea7a220885b39b1cb774",
+      "after": "90dd2d77f71197b4cc887b8f150a28bf63f03f647dd2c2a219c9fb5e60b2d4c3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/DirectoryMigrationBoundaryTests.cs",
+      "before": "3c218efbe2f439fcb6ae69cb4bd0cde8b03344ea91f64c0c87aa4daea90efc7d",
+      "after": "0da9300a173d88172e832380a489e70a2789c3647180a02df82a73bf2ca852f9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/InteractionOccurrenceRegistryActorTests.cs",
+      "before": "347b75a713ce18362f930611bff44efe34d74beaf06f5afda65487b0a720cee2",
+      "after": "2fafe52b2a3ebec575f87ec46edb7652ab66747deba4790ea7bf1a1eb49e07b6"
+    }
+  ],
+  "mutantsKilled": 13,
+  "commands": 32,
+  "dynamicPrivateHelperDllSealsAllUnchanged": true
+}

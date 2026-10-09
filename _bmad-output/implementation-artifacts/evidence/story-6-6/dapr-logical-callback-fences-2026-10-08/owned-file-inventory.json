@@ -1,0 +1,42 @@
+{
+  "scope": "owned callback implementation; unrelated concurrent files preserved",
+  "ownedFilesSha256": {
+    ".github/workflows/event-evolution-local-guards.yml": "fec2434ec50a0bb0d2a4d5999625759d60edcd736e77663e4fe5230eba75c3eb",
+    "scripts/verify-dapr-logical-callback-guards.py": "6d2b3de056d13d7abf57965e580889a26c1d92900f377807e7535fadfcc85c22",
+    "scripts/verify-event-evolution-runtime-options.py": "f16b5ff24da6c28301dcceabc7525793085b3045dccbf14ada27e216951d3fa9",
+    "src/Hexalith.EventStore.Client/Events/EventCallbackFence.cs": "091259291acdb3638c5b54791bf2ecfb906eceb9bff39dab337ecbe08ce54035",
+    "src/Hexalith.EventStore.Client/Events/EventVersionValidatorAsync.cs": "241f94cb67bfc5bc6d572511b753988e6c4e14ce7dc688db82a0858b8ede5e49",
+    "src/Hexalith.EventStore.Client/Events/EventEvolutionService.cs": "d78c462e558a89058ac99d484b52d5a32d606589f70c7521fdef637245aafcb8",
+    "src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs": "e6694f0abc6b1e25ef6e6fb29c0e670a4d28ff0294011f35df280316d95151a4",
+    "src/Hexalith.EventStore.Client/Events/EventLogicalViewResolver.cs": "26220b36697e85b7585bf864f9e1f4e7f8a857b36e36338967b26c9db4fbb298",
+    "src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs": "abdc8b29d1dfac5b64fa5ed55b0b320fc66acbf812f4e2eeb91f23ab07117443",
+    "src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs": "e8736e727ae4c7ffd42ade72883da93489005e1bea26d3949615b8c54726de72",
+    "src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs": "9524f4a7a799f31de577818812502864b2a19e52d16301258192793a956efe53",
+    "src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs": "eee90a55c472b0feb77fb9a88274aed6d80cda94c88d184cd1c69330e9bc0a55",
+    "src/Hexalith.EventStore.Server/Events/DaprLogicalReplaySource.cs": "c2bd5d27e381aa3d37ce8d260ffd5f2442d33c23c828ec65ee1a72f8c901334c",
+    "src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs": "69dd587fde90850b27df88ecb720f44134ffc216409a91a9de88ce1f08327687",
+    "tests/Hexalith.EventStore.Client.Tests/Events/EventEvolutionServiceTests.cs": "83085f4b071de61667bfea6cc826b4da2c674cae60bf3c17d6db85f6b962ea6e",
+    "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs": "b808f4ad09f24cf2679a1c313f8bb564ac5f830893448ab3f7effb683d664f73",
+    "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalEventReaderTests.cs": "71768f56e317a8930a11e95eb182825c92cf28185ccef464c5578ce84a39b423",
+    "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionUpcaster.cs": "7a26213fa8ffa28e2c67f2d39d94e6bcb8885286e10abaa17b77047ded65ac87",
+    "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayFixture.cs": "5c3cf67b4b5cbf79eb4dda7ea17c97b3ad1aa5cfe2e7bfa15704f3a72679b39a",
+    "tests/Hexalith.EventStore.Server.Tests/Events/DaprProductionLogicalEventReaderTests.cs": "7d055b0e9a8f9677c04da4b5d353c01fc993f3bdf5cde125940ffc34da120f90"
+  },
+  "externalChangedOrUntrackedFilesSha256": {
+    "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryStream.cs": "1204cfbdb699f6c7a652651ce4827cb9b905442d461351a62f8a8a175bbeb82f",
+    "src/Hexalith.EventStore.Contracts/Streams/RetainedIdentityHistoryValidator.cs": "b8c9bef0e113be4eaee6023c3695a723e3e90d3c6a5befbbc0dc084e077b0ac8",
+    "src/Hexalith.EventStore.Server/Security/RetainedIdentityHistorySourceReader.cs": "cbfc204157546599102cf33f917bbab4855a68c22f1826b69f9b3ef216072942",
+    "tests/Hexalith.EventStore.Server.Tests/Security/RetainedHistoryTimeProvider.cs": "c5b16d38823229e69e8284f69904b2d2a646bdd5c0281c94f079de589d221f46",
+    "tests/Hexalith.EventStore.Server.Tests/Security/RetainedIdentityHistorySourceReaderTests.cs": "18839c01288119ba0e641edce21fb8a2c0921ff5ab1075b3f40492b3b5beee50",
+    "src/Hexalith.EventStore.Client/Streams/SourceNamespaceSnapshotReader.cs": "f5fb4dcca54eab5666f48518a7f74c41540f3cdcd7558c1c6786265fca6ae01a",
+    "src/Hexalith.EventStore.Contracts/Security/ExpiredIdentityHistoryCertificate.cs": "f01b9d7a9ce8f34b36f929eb34c13ba109f7e47421375d3bb2c2ab5fa91a769e",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionCapabilityCompromiseRegistrar.cs": "4f6dd67e9086fba42c64075347b062b2aa796c4f8b44555241ef1dd9a10a171a",
+    "src/Hexalith.EventStore.Contracts/Security/IExpiredIdentityHistoryCustody.cs": "1c2270bcf337d77c06cb09fbd513e402d57523133bc36359bacf2ba4134406d6",
+    "src/Hexalith.EventStore.Contracts/Streams/SourceNamespaceSnapshot.cs": "6a17ff048491fc25619a88b12fca044687a73e2b422f10a42b547eceac3154f2",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs": "97dde58b7e56ed383118a322c898f1af0f5b32f0edaac698851ef7a47dcd4c25",
+    "tests/Hexalith.EventStore.Client.Tests/Streams/SourceNamespaceSnapshotReaderTests.cs": "009326dbded5c3353fa5941ccfe1824d15ec64547633ddd90845f6182acfac2f",
+    "tests/Hexalith.EventStore.Server.Tests/Security/ExpiredIdentityHistorySourceTests.cs": "37dc9b020f8bbf2008fd64ef18cef95bc97aab0625aa5ad530fbe5008bbfcced"
+  },
+  "externalInputsAreNotOwned": true,
+  "noStagingCommitPushOrDependencyUpdates": true
+}

@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Contracts.Streams;
 
@@ -24,4 +25,8 @@ public sealed record RetainedIdentityHistoryStream(
 
     /// <summary>Gets the exclusive earliest authority or retained-event expiry; transit never extends it.</summary>
     public DateTimeOffset ValidUntil { get; init; }
+
+    /// <summary>Gets authenticated actor-free expired-transition proofs, disjoint from readable events and profile exclusions.</summary>
+    /// <remarks>Legacy certificates omit this collection and retain strict missing-predecessor denial.</remarks>
+    public IReadOnlyList<ExpiredIdentityHistoryCertificate> ExpiredEvents { get; init; } = [];
 }

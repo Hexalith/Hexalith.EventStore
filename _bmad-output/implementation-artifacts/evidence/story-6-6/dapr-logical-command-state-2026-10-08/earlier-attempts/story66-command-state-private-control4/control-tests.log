@@ -1,0 +1,908 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(409,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(421,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MalformedSuccessorLedgerBlocksTakeoverBeforeCallbacksOrSave [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(375,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MalformedSuccessorLedgerBlocksTakeoverBeforeCallbacksOrSave()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(386,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MalformedSuccessorLedgerBlocksTakeoverBeforeCallbacksOrSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.EmptyOperationCommitsFinalCountZeroPageAndBeginCannotInventCompletionAfterFinalDeletion [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(289,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.EmptyOperationCommitsFinalCountZeroPageAndBeginCannotInventCompletionAfterFinalDeletion()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(296,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.EmptyOperationCommitsFinalCountZeroPageAndBeginCannotInventCompletionAfterFinalDeletion()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "pointer") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "ledger") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "null-pointer-field") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "null-ledger-field") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(corruption: "null-ledger") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(351,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MalformedCommittedRangeRefusesBeforeNewSourceEffects(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(342,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(349,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.TakeoverRetainsCurrentCanonicalStateAfterCommittedPage()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.TakeoverFencesOldGenerationWithoutRepeatingCommittedPages [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(209,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.TakeoverFencesOldGenerationWithoutRepeatingCommittedPages()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(215,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.TakeoverFencesOldGenerationWithoutRepeatingCommittedPages()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MultiPageLostAckRestartAndExactRetryPreserveCompletePersistedResult [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(163,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MultiPageLostAckRestartAndExactRetryPreserveCompletePersistedResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(176,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.MultiPageLostAckRestartAndExactRetryPreserveCompletePersistedResult()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(loss: "capability") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(253,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(255,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(loss: "source") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(253,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(255,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(loss: "expiry") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(253,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(255,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PostSaveLossPreservesCommittedTruthAndWithholdsStaleResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.UnavailableReadbackRecoversTheSamePinnedRequestWithoutCallbacksOrAnotherSave [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(385,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.UnavailableReadbackRecoversTheSamePinnedRequestWithoutCallbacksOrAnotherSave()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(398,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.UnavailableReadbackRecoversTheSamePinnedRequestWithoutCallbacksOrAnotherSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(pageSize: 1) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(40,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(46,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(pageSize: 3) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(40,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(46,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MixedHistoryNontrivialUpcastEqualsIndependentCanonicalBaseline(Int32 pageSize)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(mode: "commit-throw", expected: "Proven") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(176,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(190,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(mode: "no-commit", expected: "NoCommit") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(176,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(190,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(mode: "partial", expected: "Indeterminate") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(176,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(190,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.SaveClassificationAdmitsAllCanonicalParticipants(String mode, String expected)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Proven
+          but was
+      DaprReplayCommitOutcome.Indeterminate
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(583,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.State(DaprReplayOperationResult result)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(447,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(453,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CompleteReconstructionCapacityShrinksBeforeAnyApplyAndSingleEventFits()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(424,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(425,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "read", loss: "cancel") [FAIL]
+      Shouldly.ShouldAssertException : Task `Execute(fixture, binding, 1, 3, cancellation.Token)`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(260,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "read", loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "read", loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "apply", loss: "cancel") [FAIL]
+      Shouldly.ShouldAssertException : Task `Execute(fixture, binding, 1, 3, cancellation.Token)`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(260,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "apply", loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "apply", loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged [FAIL]
+      System.InvalidOperationException : ProofLimit: a single complete logical page cannot fit its composed admitted capacity.
+      ---- System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(971,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(695,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(321,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(57,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.CreatePartition(Int32 capacity)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(942,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.CurrentKeyRotationRefusesRetainedProofWithoutCallbackOrSave [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(307,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.CurrentKeyRotationRefusesRetainedProofWithoutCallbackOrSave()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(310,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.CurrentKeyRotationRefusesRetainedProofWithoutCallbackOrSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "apply", loss: "loss") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ChangedExactRetryIdentityRefusesBeforeCallbacksOrSave [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(432,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ChangedExactRetryIdentityRefusesBeforeCallbacksOrSave()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(436,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ChangedExactRetryIdentityRefusesBeforeCallbacksOrSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PendingOwnerDeactivationRetainsChargesUntilCacheReleaseAndNeverClearsActorOwnedCopies [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(363,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PendingOwnerDeactivationRetainsChargesUntilCacheReleaseAndNeverClearsActorOwnedCopies()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PreCommitOriginalCancellationLeavesNoMutationAndPostCommitCancellationPreservesTruthWithoutProof [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(231,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PreCommitOriginalCancellationLeavesNoMutationAndPostCommitCancellationPreservesTruthWithoutProof()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(233,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PreCommitOriginalCancellationLeavesNoMutationAndPostCommitCancellationPreservesTruthWithoutProof()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(corruption: "blob") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(270,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(278,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(corruption: "final") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(270,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(278,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(corruption: "all") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(270,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(278,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.OrphanAtomicParticipantsRefuseBeforeCallbacksSaveOrOverwrite(String corruption)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(mode: "no-commit", expectedValue: 1) [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(191,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(String mode, Int32 expectedValue)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(198,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(String mode, Int32 expectedValue)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(mode: "partial", expectedValue: 2) [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(191,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(String mode, Int32 expectedValue)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(198,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.SaveFailureClassifiesActualParticipantReadbackAndKeepsLastGoodState(String mode, Int32 expectedValue)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(boundary: "write", loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : lost
+          should be
+      True
+          but was
+      False
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(267,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(271,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.CallbackLossStopsBeforeAnyLaterCallbackOrTransition(String boundary, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 0, target: 0, value: 0) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 0, value: 0) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 2, value: 2) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(events: 3, target: 3, value: 3) [FAIL]
+      Shouldly.ShouldAssertException : result.Status
+          should be
+      AggregateReconstructionStatus.Succeeded
+          but was
+      AggregateReconstructionStatus.Failed
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(132,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(140,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedReconstructorReturnsOnlyExactFinalState(Int32 events, Int64 target, Int32 value)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedApplyFailureReturnsExactSignedDiagnosticIdentityWithoutState [FAIL]
+      Shouldly.ShouldAssertException : result.ErrorCategory
+          should be
+      AggregateReconstructionErrorCategory.ApplyFailed
+          but was
+      AggregateReconstructionErrorCategory.Limit
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(559,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedApplyFailureReturnsExactSignedDiagnosticIdentityWithoutState()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(564,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.AddressedApplyFailureReturnsExactSignedDiagnosticIdentityWithoutState()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(59,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MultiPageCanonicalStateAndExactRetriesShareCommittedAuthority()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "cancel") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(204,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "source") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(204,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "trust") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(204,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(loss: "loss") [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(204,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(210,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PostSaveLossPreservesProvenCanonicalTruthAndWithholdsResponse(String loss)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(572,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(578,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(113,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(118,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimTrust.cs(173,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimTrust.Verify(Byte purpose, ReadOnlySpan`1 claim, String keyId, ReadOnlySpan`1 signature, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimTrust.cs(110,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimTrust.VerifyRoute(ReadOnlySpan`1 claim, String keyId, ReadOnlySpan`1 signature, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(50,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(465,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(470,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.ProofHeavySingleEventFitsConservativeIntakePartitionBeforeCallbacks()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition [FAIL]
+      Shouldly.ShouldAssertException : fixture.Applies
+          should be
+      2
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(153,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(163,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: False, loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: False, loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: False, loss: "loss") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: True, loss: "source") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: True, loss: "trust") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "stage", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : if (refusal == "cancel") { error
+          should be of type
+      System.OperationCanceledException
+          but was
+      System.Threading.Tasks.TaskCanceledException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(239,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(243,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(deserialize: True, loss: "loss") [FAIL]
+      Shouldly.ShouldAssertException : calls
+          should be
+      1
+          but was
+      0
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(507,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(511,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.EventCallbackLossStopsBeforeAnyLaterCandidateApplyOrTransition(Boolean deserialize, String loss)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply [FAIL]
+      System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalClaimCodec.cs(20,0): at Hexalith.EventStore.Client.Events.DaprLogicalClaimCodec.ComputeSourceBindingHash(DaprLogicalSourceBinding source, EventBufferBudget budget)
+        src/Hexalith.EventStore.Client/Aggregates/PrivateLogicalReplayResponseVerifier.cs(36,0): at Hexalith.EventStore.Client.Aggregates.PrivateLogicalReplayResponseVerifier.Verify(ReadOnlySpan`1 response, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, EventBufferBudget budget, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/DaprLogicalReplayCommitmentCodec.cs(29,0): at Hexalith.EventStore.Client.Events.DaprLogicalReplayCommitmentCodec.EffectiveSuccessor(ReadOnlySpan`1 response, DaprLogicalSourceBinding source, DaprLogicalClaimTrust trust, ReadOnlyMemory`1 previousAccumulator, ReadOnlyMemory`1 previousEffective, Nullable`1 binding, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(701,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(539,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(545,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PageUncertainReadbackRetainsCandidateAndRetriesWithoutApply()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "sync", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : if (refusal == "cancel") { error
+          should be of type
+      System.OperationCanceledException
+          but was
+      System.Threading.Tasks.TaskCanceledException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(239,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(243,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "async", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : if (refusal == "cancel") { error
+          should be of type
+      System.OperationCanceledException
+          but was
+      System.Threading.Tasks.TaskCanceledException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(239,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(243,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "producer", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : if (refusal == "cancel") { error
+          should be of type
+      System.OperationCanceledException
+          but was
+      System.Threading.Tasks.TaskCanceledException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(239,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(243,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '90be1ca83c47283eb5bab10cc1706b7d85642d9f94a1e43402b52df654f24c79')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 132, Errors: 0, Failed: 65, Skipped: 0, Not Run: 0, Time: 5.499s

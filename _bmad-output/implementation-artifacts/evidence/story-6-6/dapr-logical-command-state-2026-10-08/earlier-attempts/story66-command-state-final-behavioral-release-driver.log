@@ -1,0 +1,4 @@
+control: passed
+client-model-control: passed
+domain-compatibility-control: passed
+post-await-private-command-pin: killed

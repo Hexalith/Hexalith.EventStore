@@ -41,13 +41,18 @@ public sealed class DaprSourcePublicationWriterRegistration : ISourcePublication
                 {
                     var state = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
                     if (state is null) { throw new InvalidOperationException("Namespace is not installed."); }
-                    state = SourcePublicationNamespaceActor.Capture(state);
+                    state = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(state))).ConfigureAwait(false);
                     var authorized = await deadline.ReadAsync(token => _authority.AuthorizeAsync(state, token)).ConfigureAwait(false);
                     if (state.Scope != scope || authorized is null || string.IsNullOrWhiteSpace(authorized.AuthorityRevision)
                         || authorized.ValidUntil <= _clock.GetUtcNow()) { throw new InvalidOperationException("Namespace writer qualification unavailable."); }
                     if (!await deadline.ReadAsync(_ => actor.RegisterAsync(scope, state.Revision, identity)).ConfigureAwait(false)) { continue; }
                     var persisted = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
-                    if (persisted is not null && persisted.Scope == scope && persisted.AuthorityRevision == state.AuthorityRevision
+                    if (persisted is null) { throw new InvalidOperationException("Namespace registration outcome unknown."); }
+                    persisted = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(persisted))).ConfigureAwait(false);
+                    var finalAuthorization = await deadline.ReadAsync(token => _authority.AuthorizeAsync(persisted, token)).ConfigureAwait(false);
+                    deadline.ThrowIfCancellationRequested();
+                    if (finalAuthorization is not null && finalAuthorization.AuthorityRevision == authorized.AuthorityRevision
+                        && finalAuthorization.ValidUntil > _clock.GetUtcNow() && persisted.Scope == scope && persisted.AuthorityRevision == state.AuthorityRevision
                         && persisted.LegacyCoverageReceipt == state.LegacyCoverageReceipt && persisted.WriterEnforcementReceipt == state.WriterEnforcementReceipt
                         && persisted.Sources.Contains(identity)) { registered = true; break; }
                     throw new InvalidOperationException("Namespace registration outcome unknown.");

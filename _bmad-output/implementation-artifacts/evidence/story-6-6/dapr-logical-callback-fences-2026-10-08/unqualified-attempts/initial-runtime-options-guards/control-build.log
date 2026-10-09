@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  Restored /tmp/eventstore-runtime-options-guards-ahguazm8/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 180 ms).
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 180 ms).
+  Restored /tmp/eventstore-runtime-options-guards-ahguazm8/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 186 ms).
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Client -> /tmp/eventstore-runtime-options-guards-ahguazm8/src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.Client.Tests -> /tmp/eventstore-runtime-options-guards-ahguazm8/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.01

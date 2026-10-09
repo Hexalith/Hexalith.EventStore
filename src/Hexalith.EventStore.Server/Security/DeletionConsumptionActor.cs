@@ -1,4 +1,5 @@
 using Dapr.Actors.Runtime;
+using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -9,8 +10,9 @@ namespace Hexalith.EventStore.Server.Security;
 /// <param name="host">Exact private tenant actor.</param>
 /// <param name="authority">Independently authenticated signature/online guard and registrar verifier.</param>
 /// <param name="provider">Qualified physical all-or-none exact reservation backend.</param>
+/// <param name="clock">Whole physical recovery deadline clock; omission uses the system operational clock.</param>
 public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptionAuthority? authority = null,
-    IAtomicDeletionManifestProvider? provider = null) : Actor(host), IDeletionConsumptionActor
+    IAtomicDeletionManifestProvider? provider = null, TimeProvider? clock = null) : Actor(host), IDeletionConsumptionActor
 {
     private const string StateKey = "deletion-consumption-v23";
     /// <summary>Gets the exact private actor registration name.</summary>
@@ -30,7 +32,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     {
         var owned = DeletionConsumptionIdentity.Capture(request); string tenant = owned.Capability.TenantId; Check(tenant);
         if (!await AdmitAsync(tenant, owned.Capability.BatchId, "RegisterDeletionBatch").ConfigureAwait(false)) { return Unavailable(tenant, owned.Capability.BatchId); }
-        var state = await ReadAsync(tenant).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
+        var state = await ReadAsync(tenant, true).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
         if (batch is not null) { return DeletionConsumptionIdentity.Same(batch.Current, owned) ? batch.Outcome : Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
         if (authority is null || provider is null || !await authority.VerifyDispatchAsync(owned).ConfigureAwait(false))
         { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
@@ -38,11 +40,12 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (reservation is not null)
         {
             var original = await RecoverAsync(state, reservation, false).ConfigureAwait(false);
-            return original.Status == DeletionConsumptionStatus.Consumed ? Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.AlreadyDestroyedByBatch)
-                with { OwnerRevision = original.OwnerRevision, TargetReceipts = Array.AsReadOnly(original.TargetReceipts.Where(r => owned.Targets.Contains(r.Target)).ToArray()) } : original;
+            return original.Status == DeletionConsumptionStatus.Consumed
+                ? await RetainCoveredAsync(await ReadAsync(tenant).ConfigureAwait(false), owned,
+                    Array.AsReadOnly(original.TargetReceipts.Where(r => owned.Targets.Contains(r.Target)).ToArray())).ConfigureAwait(false) : original;
         }
         var prior = FindDestroyed(state, owned);
-        if (prior is not null) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.AlreadyDestroyedByBatch) with { TargetReceipts = prior }; }
+        if (prior is not null) { return await RetainCoveredAsync(state, owned, prior).ConfigureAwait(false); }
         if (OverlapsCoveredOrReserved(state, owned)) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
         if (state.Batches.Count >= 1000) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
         var compromised = KeyBlock(state, owned.Capability.CapabilityKeyVersion);
@@ -66,7 +69,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     {
         var owned = DeletionConsumptionIdentity.Capture(request); string tenant = owned.Capability.TenantId; Check(tenant);
         if (!await AdmitAsync(tenant, owned.Capability.BatchId, "ReserveAndConsumeDeletionBatch").ConfigureAwait(false)) { return Unavailable(tenant, owned.Capability.BatchId); }
-        var state = await ReadAsync(tenant).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
+        var state = await ReadAsync(tenant, true).ConfigureAwait(false); var batch = Find(state, owned.Capability.BatchId);
         if (batch is null) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
         if (!DeletionConsumptionIdentity.Same(batch.Current, owned)) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
         if (batch.Outcome.Status == DeletionConsumptionStatus.ConsumptionReserved) { return await RecoverAsync(state, batch, false).ConfigureAwait(false); }
@@ -76,7 +79,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         var keyBlock = KeyBlock(state, owned.Capability.CapabilityKeyVersion);
         if (keyBlock is not null) { throw new InvalidOperationException("Registered unconsumed batch bypassed durable key block."); }
         var covered = FindDestroyed(state, owned);
-        if (covered is not null) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.AlreadyDestroyedByBatch) with { TargetReceipts = covered }; }
+        if (covered is not null) { return await RetainCoveredAsync(state, owned, covered).ConfigureAwait(false); }
         if (OverlapsCoveredOrReserved(state, owned)) { return Result(state, owned.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
         var next = state with { Revision = checked(state.Revision + 1) };
         var reserved = batch with { Outcome = Result(next, owned.Capability.BatchId, DeletionConsumptionStatus.ConsumptionReserved)
@@ -98,7 +101,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         ArgumentNullException.ThrowIfNull(request); Check(request.TenantId); DeletionConsumptionIdentity.Text(request.BatchId);
         DeletionConsumptionIdentity.Text(request.OperationId); DeletionConsumptionIdentity.Text(request.AdmissionEvidenceId);
         if (!await AdmitAsync(request.TenantId, request.BatchId, "BlockDeletionBatchConsumption").ConfigureAwait(false)) { return Unavailable(request.TenantId, request.BatchId); }
-        var state = await ReadAsync(request.TenantId).ConfigureAwait(false); string digest = DeletionConsumptionIdentity.Digest(request);
+        var state = await ReadAsync(request.TenantId, true).ConfigureAwait(false); string digest = DeletionConsumptionIdentity.Digest(request);
         var prior = state.Operations.SingleOrDefault(o => o.OperationId == request.OperationId);
         if (prior is not null) { return prior.RequestDigest == digest ? prior.Outcome : Result(state, request.BatchId, DeletionConsumptionStatus.Conflict); }
         if (state.Operations.Count >= 10000) { return Result(state, request.BatchId, DeletionConsumptionStatus.Unavailable); }
@@ -129,7 +132,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     {
         DeletionConsumptionIdentity.Revocation(envelope); Check(envelope.TenantId);
         if (!await AdmitAsync(envelope.TenantId, envelope.EventIdentity, "RegisterDeletionCapabilityRevocation").ConfigureAwait(false)) { return null; }
-        var state = await ReadAsync(envelope.TenantId).ConfigureAwait(false);
+        var state = await ReadAsync(envelope.TenantId, true).ConfigureAwait(false);
         var prior = state.Revocations.SingleOrDefault(r => r.Envelope.EventIdentity == envelope.EventIdentity);
         if (prior is not null) { if (prior.Envelope != envelope) { throw new ArgumentException("Changed revocation event identity.", nameof(envelope)); } return prior; }
         if (state.Revocations.Count >= 10000) { return null; }
@@ -156,6 +159,20 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (!(await AdmitAsync(c.TenantId, c.BatchId, "ActivateReattestedDeletionBatch").ConfigureAwait(false))) { return Unavailable(c.TenantId, c.BatchId); }
         return result;
     }
+    /// <inheritdoc/>
+    public async Task<DeletionActivationComparison?> ReadActivationComparisonAsync(string tenantId, string batchId, string replacementKeyVersion)
+    {
+        Check(tenantId); DeletionConsumptionIdentity.Text(batchId); DeletionConsumptionIdentity.Text(replacementKeyVersion);
+        if (!await AdmitAsync(tenantId, batchId, "ReadDeletionActivationComparison").ConfigureAwait(false)) { return null; }
+        var state = await ReadAsync(tenantId).ConfigureAwait(false); var batch = Find(state, batchId);
+        if (batch?.Outcome.Status != DeletionConsumptionStatus.ConsumptionBlocked || batch.Outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise
+            || string.IsNullOrWhiteSpace(batch.Outcome.ReceiptId)) { return null; }
+        var comparison = new DeletionActivationComparison(tenantId, batchId, batch.Outcome.ReceiptId, state.KeyBlockSetRevision,
+            replacementKeyVersion, KeyBlock(state, replacementKeyVersion) is not null, state.Revision);
+        var final = await ReadAsync(tenantId).ConfigureAwait(false);
+        return DeletionConsumptionIdentity.Digest(final) == DeletionConsumptionIdentity.Digest(state)
+            && await AdmitAsync(tenantId, batchId, "ReadDeletionActivationComparison").ConfigureAwait(false) ? comparison : null;
+    }
     private async Task<DeletionConsumptionOutcome> ActivateAsyncCoreAsync(DeletionReattestationActivation activation)
     {
         ArgumentNullException.ThrowIfNull(activation); var owned = activation with { Replacement = DeletionConsumptionIdentity.Capture(activation.Replacement) };
@@ -163,7 +180,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         foreach (string value in new[] { owned.OperationId, owned.CompromiseBlockReceiptId, owned.GuardReplacementReceiptId }) { DeletionConsumptionIdentity.Text(value); }
         if (owned.ExpectedKeyBlockSetRevision < 0) { throw new ArgumentException("Invalid activation compare.", nameof(activation)); }
         if (!await AdmitAsync(tenant, id, "ActivateReattestedDeletionBatch").ConfigureAwait(false)) { return Unavailable(tenant, id); }
-        var state = await ReadAsync(tenant).ConfigureAwait(false); string digest = DeletionConsumptionIdentity.Digest(owned);
+        var state = await ReadAsync(tenant, true).ConfigureAwait(false); string digest = DeletionConsumptionIdentity.Digest(owned);
         var prior = state.Operations.SingleOrDefault(o => o.OperationId == owned.OperationId);
         if (prior is not null) { return prior.RequestDigest == digest ? prior.Outcome : Result(state, id, DeletionConsumptionStatus.Conflict); }
         if (state.Operations.Count >= 10000) { return Result(state, id, DeletionConsumptionStatus.Unavailable); }
@@ -227,29 +244,45 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     private async Task<DeletionConsumptionOutcome> RecoverAsync(DeletionConsumptionLedger state, DeletionConsumptionBatch batch, bool first)
     {
         if (provider is null) { return batch.Outcome; }
-        DeletionManifestProviderResult result;
+        var operationClock = clock ?? TimeProvider.System;
+        using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), operationClock, CancellationToken.None, operationClock.GetTimestamp());
+        DeletionManifestProviderResult? result;
         try
         {
-            result = first ? await provider.ConsumeAsync(batch.Current, batch.Outcome.ReceiptId!).ConfigureAwait(false)
-                : await provider.LookupAsync(batch.Current, batch.Outcome.ReceiptId!).ConfigureAwait(false);
-            if (!first && ExactProvider(batch, result) && result.State == DeletionManifestProviderState.NotStarted && result.TargetReceipts is { Count: 0 })
-            { result = await provider.ConsumeAsync(batch.Current, batch.Outcome.ReceiptId!).ConfigureAwait(false); }
+            result = await ReadPhysicalAsync(first).ConfigureAwait(false);
+            if (!first && result?.State == DeletionManifestProviderState.NotStarted)
+            { result = await ReadPhysicalAsync(true).ConfigureAwait(false); }
         }
         catch (Exception) { return batch.Outcome; }
-        if (!ExactProvider(batch, result) || result.State != DeletionManifestProviderState.Consumed || result.TargetReceipts is null
-            || result.TargetReceipts.Count != batch.Current.Targets.Count) { return batch.Outcome; }
-        var receipts = new List<DeletionTargetReceipt>();
-        foreach (var receipt in result.TargetReceipts)
+        if (result?.State != DeletionManifestProviderState.Consumed) { return batch.Outcome; }
+        var receipts = result.TargetReceipts;
+        Task<DeletionManifestProviderResult?> ReadPhysicalAsync(bool consume) => deadline.ReadAsync(async token =>
         {
-            if (receipts.Count >= batch.Current.Targets.Count || receipt is null || receipt.Target != batch.Current.Targets[receipts.Count]
-                || receipt.OriginalBatchId != batch.Current.Capability.BatchId) { return batch.Outcome; }
-            try { DeletionConsumptionIdentity.Text(receipt.ReceiptId); } catch (ArgumentException) { return batch.Outcome; }
-            receipts.Add(receipt);
-        }
-        if (receipts.Count != batch.Current.Targets.Count) { return batch.Outcome; }
+            var supplied = await (consume ? provider.ConsumeAsync(batch.Current, batch.Outcome.ReceiptId!, token)
+                : provider.LookupAsync(batch.Current, batch.Outcome.ReceiptId!, token)).ConfigureAwait(false);
+            // Provider-owned Count/traversal is part of the same physical deadline. Abandoned capture touches local material only.
+            deadline.ThrowIfCancellationRequested();
+            if (!ExactProvider(batch, supplied) || supplied.TargetReceipts is null) { return null; }
+            int count = supplied.TargetReceipts.Count;
+            if (supplied.State == DeletionManifestProviderState.NotStarted)
+            { deadline.ThrowIfCancellationRequested(); return count == 0 ? supplied with { TargetReceipts = Array.Empty<DeletionTargetReceipt>() } : null; }
+            if (supplied.State != DeletionManifestProviderState.Consumed || count != batch.Current.Targets.Count) { return null; }
+            var owned = new List<DeletionTargetReceipt>(); var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var receipt in supplied.TargetReceipts)
+            {
+                deadline.ThrowIfCancellationRequested();
+                if (owned.Count >= batch.Current.Targets.Count || receipt is null || receipt.Target != batch.Current.Targets[owned.Count]
+                    || receipt.OriginalBatchId != batch.Current.Capability.BatchId) { return null; }
+                try { DeletionConsumptionIdentity.Text(receipt.ReceiptId); } catch (ArgumentException) { return null; }
+                if (!ids.Add(receipt.ReceiptId)) { return null; }
+                owned.Add(receipt);
+            }
+            deadline.ThrowIfCancellationRequested();
+            return owned.Count == batch.Current.Targets.Count ? supplied with { TargetReceipts = owned.AsReadOnly() } : null;
+        });
         var next = state with { Revision = checked(state.Revision + 1) };
         var consumed = batch with { Outcome = Result(next, batch.Current.Capability.BatchId, DeletionConsumptionStatus.Consumed)
-            with { ReceiptId = batch.Outcome.ReceiptId, TargetReceipts = Array.AsReadOnly(receipts.ToArray()) } };
+            with { ReceiptId = batch.Outcome.ReceiptId, TargetReceipts = receipts } };
         await SaveAsync(Replace(next, consumed)).ConfigureAwait(false); return consumed.Outcome;
     }
     private static bool ExactProvider(DeletionConsumptionBatch batch, DeletionManifestProviderResult? result) => result is not null
@@ -257,18 +290,19 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         && result.ReservationReceiptId == batch.Outcome.ReceiptId;
     private void Check(string tenant)
     { DeletionConsumptionIdentity.Text(tenant); if (Host.Id.GetId() != GetActorId(tenant)) { throw new ArgumentException("Protection tenant scope mismatch."); } }
-    private async Task<DeletionConsumptionLedger> ReadAsync(string tenant)
+    private async Task<DeletionConsumptionLedger> ReadAsync(string tenant, bool recoverAdmittedOriginal = false)
     {
         await StateManager.ClearCacheAsync().ConfigureAwait(false);
         var value = await StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey).ConfigureAwait(false);
-        if (!value.HasValue)
-        {
-            var initial = new DeletionConsumptionLedger(tenant, 0, 0, [], [], []);
-            if (authority is null || !await authority.ValidateStateAsync(tenant, 0, DeletionConsumptionIdentity.Digest(initial)).ConfigureAwait(false))
-            { throw new InvalidOperationException("Independent protection state anchor is absent or stale."); }
-            return initial;
-        }
-        var state = value.Value;
+        var raw = value.HasValue ? value.Value : new DeletionConsumptionLedger(tenant, 0, 0, [], [], []);
+        if (authority is null) { throw new InvalidOperationException("Independent protection authority is absent."); }
+        return await RecoverableAnchoredState.ReconcileAsync(PendingScope, CaptureLedger(raw, tenant), await ReadPendingAsync().ConfigureAwait(false),
+            next => CaptureLedger(next, tenant), next => authority.ValidateStateAsync(tenant, next.Revision, DeletionConsumptionIdentity.Digest(next)), authority,
+            PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
+    }
+    private static DeletionConsumptionLedger CaptureLedger(DeletionConsumptionLedger state, string tenant)
+    {
+        if (state.TenantId == tenant && state.Revision == 0 && state.KeyBlockSetRevision == 0 && state.Batches.Count == 0 && state.Revocations.Count == 0 && state.Operations.Count == 0) { return state; }
         if (state.TenantId != tenant || state.Revision <= 0 || state.KeyBlockSetRevision < 0 || state.Batches is null || state.Revocations is null || state.Operations is null || state.Batches.Count > 1000 || state.Revocations.Count > 10000 || state.Operations.Count > 10000
             || state.KeyBlockSetRevision != state.Revocations.Count)
         { throw new InvalidOperationException("Malformed durable protection ledger."); }
@@ -279,16 +313,19 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
                 || b.Outcome.TenantId != tenant || b.Outcome.BatchId != b.Current.Capability.BatchId
                 || b.Outcome.OwnerRevision > state.Revision || b.Outcome.KeyBlockSetRevision > state.KeyBlockSetRevision
                 || b.Outcome.Status is not (DeletionConsumptionStatus.Unconsumed or DeletionConsumptionStatus.ConsumptionReserved
-                    or DeletionConsumptionStatus.ConsumptionBlocked or DeletionConsumptionStatus.Consumed) || string.IsNullOrWhiteSpace(b.Outcome.ReceiptId)))
+                    or DeletionConsumptionStatus.ConsumptionBlocked or DeletionConsumptionStatus.Consumed or DeletionConsumptionStatus.AlreadyDestroyedByBatch) || string.IsNullOrWhiteSpace(b.Outcome.ReceiptId)))
         { throw new InvalidOperationException("Malformed durable protection batch."); }
         foreach (var b in batches)
         {
             var outcome = b.Outcome; DeletionConsumptionIdentity.Text(outcome.ReceiptId!);
             if (outcome.OwnerRevision <= 0 || outcome.KeyBlockSetRevision < 0 || b.Current.Capability.AttestationOrdinal < b.Original.Capability.AttestationOrdinal
-                || outcome.Status == DeletionConsumptionStatus.Consumed && (outcome.TargetReceipts.Count != b.Current.Targets.Count
-                    || outcome.TargetReceipts.Where((r, i) => r is null || r.Target != b.Current.Targets[i] || r.OriginalBatchId != b.Current.Capability.BatchId
+                || outcome.Status is DeletionConsumptionStatus.Consumed or DeletionConsumptionStatus.AlreadyDestroyedByBatch && (outcome.TargetReceipts.Count != b.Current.Targets.Count
+                    || outcome.TargetReceipts.Select(r => r.ReceiptId).Distinct(StringComparer.Ordinal).Count() != outcome.TargetReceipts.Count
+                    || outcome.TargetReceipts.Where((r, i) => r is null || r.Target != b.Current.Targets[i] || (outcome.Status == DeletionConsumptionStatus.Consumed ? r.OriginalBatchId != b.Current.Capability.BatchId
+                            : !batches.Any(original => original.Outcome.Status == DeletionConsumptionStatus.Consumed && original.Current.Capability.BatchId == r.OriginalBatchId
+                                && original.Outcome.TargetReceipts.Contains(r)))
                         || string.IsNullOrWhiteSpace(r.ReceiptId)).Any())
-                || outcome.Status != DeletionConsumptionStatus.Consumed && outcome.TargetReceipts.Count != 0
+                || outcome.Status is not (DeletionConsumptionStatus.Consumed or DeletionConsumptionStatus.AlreadyDestroyedByBatch) && outcome.TargetReceipts.Count != 0
                 || outcome.Status != DeletionConsumptionStatus.ConsumptionBlocked && (outcome.BlockReason is not null || outcome.BlockedKeyVersion is not null || outcome.RevocationRevision is not null)
                 || outcome.Status == DeletionConsumptionStatus.ConsumptionBlocked && (outcome.BlockReason is not
                     (DeletionConsumptionBlockReason.AdmissionIntegrity or DeletionConsumptionBlockReason.CapabilityKeyCompromise)
@@ -315,19 +352,62 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         { throw new InvalidOperationException("Malformed durable protection operation."); }
         var owned = state with { Batches = Array.AsReadOnly(batches), Revocations = Array.AsReadOnly(state.Revocations.Select(r => r with {
             AffectedBatchIds = Array.AsReadOnly(r.AffectedBatchIds.ToArray()) }).ToArray()), Operations = Array.AsReadOnly(state.Operations.ToArray()) };
-        if (authority is null || !await authority.ValidateStateAsync(tenant, owned.Revision, DeletionConsumptionIdentity.Digest(owned)).ConfigureAwait(false))
-        { throw new InvalidOperationException("Independent protection state anchor is absent or stale."); }
         return owned;
     }
     private async Task SaveAsync(DeletionConsumptionLedger state)
     {
         // Defensive write bound as well as per-operation denial: never persist a state the reader cannot release.
         if (state.Batches.Count > 1000 || state.Operations.Count > 10000 || state.Revocations.Count > 10000) { throw new InvalidOperationException("Protection ledger write bound exceeded."); }
-        if (authority is null || !await authority.RecordRevisionAsync(state.TenantId, state.Revision - 1, state.Revision, DeletionConsumptionIdentity.Digest(state)).ConfigureAwait(false))
-        { throw new InvalidOperationException("Independent protection state anchor compare failed."); }
-        await StateManager.SetStateAsync(StateKey, state).ConfigureAwait(false); await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (authority is null) { throw new InvalidOperationException("Independent protection authority is absent."); }
+        var previous = await ReadAsync(state.TenantId).ConfigureAwait(false);
+        if (previous.Revision != state.Revision - 1) { throw new InvalidOperationException("Protection comparison changed."); }
+        var owned = CaptureLedger(state, state.TenantId);
+        var pending = RecoverableAnchoredState.Prepare(PendingScope, previous.Revision, owned.Revision, previous, owned);
+        if (!await RecoverableAnchoredState.CommitAsync(pending, authority, ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false))
+        { throw new InvalidOperationException("Independent protection transition compare failed."); }
         var persisted = await ReadAsync(state.TenantId).ConfigureAwait(false);
         if (DeletionConsumptionIdentity.Digest(persisted) != DeletionConsumptionIdentity.Digest(state)) { throw new InvalidOperationException("Protection outcome not confirmed durable."); }
+    }
+
+    private string PendingScope => Host.Id.GetId() + "|" + StateKey;
+    private const string PendingKey = StateKey + "-pending-transition-v1";
+    private async Task<AnchoredStateTransition?> ReadPendingAsync()
+    {
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var pending = await StateManager.TryGetStateAsync<AnchoredStateTransition>(PendingKey).ConfigureAwait(false);
+        return pending.HasValue ? pending.Value : null;
+    }
+    private async Task PersistPendingAsync(AnchoredStateTransition pending)
+    {
+        await StateManager.SetStateAsync(PendingKey, pending).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+    private async Task<DeletionConsumptionLedger> PersistTargetAsync(DeletionConsumptionLedger next)
+    {
+        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(PendingKey).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var confirmed = await StateManager.TryGetStateAsync<DeletionConsumptionLedger>(StateKey).ConfigureAwait(false);
+        return confirmed.HasValue ? confirmed.Value : throw new InvalidOperationException("Reconciled main state is missing.");
+    }
+    private async Task<DeletionConsumptionOutcome> RetainCoveredAsync(DeletionConsumptionLedger state, DeletionBatchConsumptionRequest request,
+        IReadOnlyList<DeletionTargetReceipt> originals)
+    {
+        var existing = Find(state, request.Capability.BatchId);
+        if (existing is not null && !DeletionConsumptionIdentity.Same(existing.Current, request)) { return Result(state, request.Capability.BatchId, DeletionConsumptionStatus.Conflict); }
+        if (existing?.Outcome.Status == DeletionConsumptionStatus.AlreadyDestroyedByBatch) { return existing.Outcome; }
+        if (existing is null && state.Batches.Count >= 1000) { return Result(state, request.Capability.BatchId, DeletionConsumptionStatus.Unavailable); }
+        if (originals.Count != request.Targets.Count || !originals.Select(r => r.Target).SequenceEqual(request.Targets)
+            || originals.Select(r => r.ReceiptId).Distinct(StringComparer.Ordinal).Count() != originals.Count)
+        { throw new InvalidOperationException("Incomplete exact original destruction coverage."); }
+        var next = state with { Revision = checked(state.Revision + 1) };
+        var result = Result(next, request.Capability.BatchId, DeletionConsumptionStatus.AlreadyDestroyedByBatch) with {
+            ReceiptId = DeletionConsumptionIdentity.Digest(new object[] { "already-destroyed", request, originals, next.Revision }),
+            TargetReceipts = Array.AsReadOnly(originals.ToArray()) };
+        var retained = new DeletionConsumptionBatch(existing?.Original ?? request, request, result);
+        next = existing is null ? next with { Batches = next.Batches.Append(retained).ToArray() } : Replace(next, retained);
+        await SaveAsync(next).ConfigureAwait(false); return result;
     }
     private static DeletionConsumptionBatch? Find(DeletionConsumptionLedger state, string id) => state.Batches.SingleOrDefault(b => b.Current.Capability.BatchId == id);
     private static DeletionCapabilityRevocationReceipt? KeyBlock(DeletionConsumptionLedger state, string key) => state.Revocations

@@ -78,6 +78,33 @@ internal sealed class EventImplementationBinding
         cancellationToken.ThrowIfCancellationRequested();
     }
 
+    /// <summary>Fences the runtime-options getter independently before parsing any returned settings.</summary>
+    internal async ValueTask RequireFieldsAsync(EventRegistryRow descriptor, int implementationField,
+        Func<CancellationToken, Task> sourceFence, CancellationToken token, Action? requireCurrent = null)
+    {
+        token.ThrowIfCancellationRequested();
+        RequireDeclaredFields(descriptor, implementationField);
+        if (_runtimeOptions is not null)
+        {
+            await sourceFence(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            RequireDeclaredFields(descriptor, implementationField);
+            ReadOnlyMemory<byte> options;
+            try { options = _runtimeOptions(); }
+            finally { token.ThrowIfCancellationRequested(); }
+            token.ThrowIfCancellationRequested();
+            requireCurrent?.Invoke();
+            RequireDeclaredFields(descriptor, implementationField);
+            await sourceFence(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            RequireDeclaredFields(descriptor, implementationField);
+            RequireOptionsHash(options, token);
+        }
+
+        token.ThrowIfCancellationRequested();
+        RequireDeclaredFields(descriptor, implementationField);
+    }
+
     /// <summary>Checks immutable descriptor fields without invoking the implementation's runtime options callback.</summary>
     internal void RequireDeclaredFields(EventRegistryRow descriptor, int implementationField)
     {
@@ -124,6 +151,11 @@ internal sealed class EventImplementationBinding
         // before hashing or parsing its potentially invalid returned options.
         cancellationToken.ThrowIfCancellationRequested();
         RequireCallableBindings();
+        RequireOptionsHash(options, cancellationToken);
+    }
+
+    private void RequireOptionsHash(ReadOnlyMemory<byte> options, CancellationToken cancellationToken)
+    {
         byte[] currentHash = EventOptionsManifestCodec.ComputeHash(options, _optionSchema);
         try
         {

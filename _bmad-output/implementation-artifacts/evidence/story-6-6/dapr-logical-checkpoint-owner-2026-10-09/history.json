@@ -1,0 +1,27 @@
+[
+  {
+    "attempt": "control1",
+    "path": "history/control1",
+    "qualification": "Runtime build passed; two new test API references did not compile. No controls qualify."
+  },
+  {
+    "attempt": "control2",
+    "path": "history/control2",
+    "qualification": "Dedicated actor lacked an empty IActor marker; 27 fixture controls failed before checkpoint code. Unqualified."
+  },
+  {
+    "attempt": "control3",
+    "path": "history/control3",
+    "qualification": "26/27 controls passed; one assertion incorrectly assumed origin readback rereads events. Corrected based on actual EventReads observation. Unqualified."
+  },
+  {
+    "attempt": "control4",
+    "path": "history/control4",
+    "qualification": "36 checkpoint plus108 established controls passed with stable recorded input sets at earlier test/runtime bytes; control-only historical scope."
+  },
+  {
+    "attempt": "debug1",
+    "path": "history/debug1",
+    "qualification": "40 checkpoint plus108 established controls passed; eight compiling mutants killed, then ambiguous stage-loop source anchor stopped qualification. Incomplete."
+  }
+]

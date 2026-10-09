@@ -1,0 +1,22 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.TerminalSaveRequiresEveryPriorParticipantAndExactAtomicProof(mode: "normal", expectedProven: False) [FAIL]
+      Shouldly.ShouldAssertException : result.Outcome
+          should be
+      DaprReplayCommitOutcome.Indeterminate
+          but was
+      DaprReplayCommitOutcome.Proven
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(266,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.TerminalSaveRequiresEveryPriorParticipantAndExactAtomicProof(String mode, Boolean expectedProven)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(273,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.TerminalSaveRequiresEveryPriorParticipantAndExactAtomicProof(String mode, Boolean expectedProven)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '4f3b091b5e416bbfee955df0282d16ed5eaf00806dd14beb050e1e62ec68ca7d')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 63, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 10.751s

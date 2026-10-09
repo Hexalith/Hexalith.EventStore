@@ -1,0 +1,170 @@
+[
+  {
+    "source": "/tmp/story66-rewitness-control2/attempt.json",
+    "sourceBytes": 2714684,
+    "sourceSha256": "59863c5f5a5ebbdb25a6729562579926922645b0d2fdb9e8783ddd85a42a6ad1",
+    "archive": "attempt.json.xz",
+    "archiveBytes": 643188,
+    "archiveSha256": "d4efe4b0cec3f5b441099d81cc38fd582e4c7a45985689c8488a9a691cc82bd1"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/commands.json",
+    "sourceBytes": 17786106,
+    "sourceSha256": "181a2a158bc7d4e24d6e519a41951d9431afce4cb6dc09b76b86a4dc5adb4772",
+    "archive": "commands.json.xz",
+    "archiveBytes": 126396,
+    "archiveSha256": "307c80762eb25e1dbc2abd63811483ca0a9eb0a293794a977802d4bfd7c7b4d2"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-build.log",
+    "sourceBytes": 2622,
+    "sourceSha256": "cb2711fdb5ab9a6b7331afc3deb0aef9cfa0fe4b50e384fb6c009f243b2a2df8",
+    "archive": "rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-build.log.xz",
+    "archiveBytes": 528,
+    "archiveSha256": "a4d3f6eecb7e6738913758db2f220852df4ce99bce2a5901dbb2bae75e40fac7"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "1f3ec74003f4334d8ca1c937a86179306519bddf897e4c10dd29169aa7e61a40",
+    "archive": "rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "750847983bf02411e853c490f13a7e8bcc0e4b8c62d9f8df2bc5d1788b9eea5d"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CanonicalCancellationStopsLaterCallbacks-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "ee7e3d1d25cc5f1df90de63605416cc628a97d4befc2eda0846a47bf5680c3e6",
+    "archive": "rewitness-control-CanonicalCancellationStopsLaterCallbacks-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "7eaa1d0f351c24fae8b75a219e78b6864f4abaa317e83a3cfc3f21bf74ac27d3"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CanonicalCancellationStopsLaterCallbacks-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "4d676ea713481e53de65c9a0b8b5af3327745111987c82b80ba5d0aebc9764b0",
+    "archive": "rewitness-control-CanonicalCancellationStopsLaterCallbacks-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "093eddd856972f1557bf2609ea38de475b3c4fec8d1f2ee9d27d4f26a03d848c"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "86abf7632d786a05e17952659f6ebe923b1b363f53e316c3bea0239006a2cc71",
+    "archive": "rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "2e70336b3378f540b6dac91f02c11200c6cbb0dcf6d4cbc8ed8d6d3486f60fb5"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "b2383ead3880b333b952a9e8fccafffa2f308f5192b0f987cdee9a3c80dec742",
+    "archive": "rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "a9a58713e4e36607b973c4219996a05dde9c16b0b3905008c2da46a75e866516"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CurrentPrefixStateMustEqualObservedHint-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "1dfd047ae9e775e77c42f963368fe020b902b5bee9c4a585a47dc48dd95628cf",
+    "archive": "rewitness-control-CurrentPrefixStateMustEqualObservedHint-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "40385073f76e919364ab4c0b08f83f8811a51aa79760174cb060b409d2357963"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-CurrentPrefixStateMustEqualObservedHint-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "d32b606c02e629a233dd36f1aef26d7b5d0f9937457b5a1b4cc21efdb38505e4",
+    "archive": "rewitness-control-CurrentPrefixStateMustEqualObservedHint-tests.log.xz",
+    "archiveBytes": 356,
+    "archiveSha256": "b18b18540dd4d112ffb8b82b5548098e885d677e8730ab7bdd67906f7f76d42b"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "b147c2a193f1cef2840de8137aca3bc9a4ea4a9fd0e62c244d8eba22607c9f53",
+    "archive": "rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "321d4b0779a639f60f37a3ae24f432029e90e4635bfdba9b5ec092731d1c7840"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "bb4e393f6f9e4345421a64ac8a9a3de48dad9ea0a1dd27b929f6660fd0507b53",
+    "archive": "rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "7e17f8bf894e870f0cfc4acefc80a403a4a54451aa5627e60bea8e02d40b2027"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ForgedHistoricalOperationIsOnlyAHint-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "7dbac5bf905319f53f0d4bf21e4c51814bb41a46ad4ed90b1221349ad1cc65c8",
+    "archive": "rewitness-control-ForgedHistoricalOperationIsOnlyAHint-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "836da66822e1009b8e81992caaf57f533fbb734aa5ed2cf3f1de45d60869cf00"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-ForgedHistoricalOperationIsOnlyAHint-tests.log",
+    "sourceBytes": 474,
+    "sourceSha256": "30d7a6ea57909b77ffef5a2c24d5d23f3e3e9e0935efdb1196345bd8df6f138c",
+    "archive": "rewitness-control-ForgedHistoricalOperationIsOnlyAHint-tests.log.xz",
+    "archiveBytes": 356,
+    "archiveSha256": "8464d0127ea42aa7e74c2b234b202b99de936507ef25fa0ff0a5d4676beb8be4"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-IncompatibleHintNeverStagesOrSaves-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "11746e05dc90af3adb972835896b93ed7120d7a85f0aa29937e8fc6c933bebac",
+    "archive": "rewitness-control-IncompatibleHintNeverStagesOrSaves-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "d1aa0d3b15ba1146fc57357434fee92cd6321fcc759dde8c3eb6f4a525cbddcf"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-IncompatibleHintNeverStagesOrSaves-tests.log",
+    "sourceBytes": 475,
+    "sourceSha256": "91d13d60b9931dc4fb58e94596510bfd249f09ea7d5bdc6e1a8b88a4fbe9b086",
+    "archive": "rewitness-control-IncompatibleHintNeverStagesOrSaves-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "456dab46a9f97fa4e405394488cd144e80ed5eccb38d93abb2d3d7a6525d30ca"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "8f6b75c59f453c2725a8507ff76ae6f02e94215eab1762d789f603bf35cef095",
+    "archive": "rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "f5535612ca1a208d459cf1e0e655db361bbacd536d72010993f696caf942b768"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-tests.log",
+    "sourceBytes": 2081,
+    "sourceSha256": "009ffcf4600077262af1d7eacba82cfdcab7c8fe1d9cf560b8eda44c786d4860",
+    "archive": "rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-tests.log.xz",
+    "archiveBytes": 772,
+    "archiveSha256": "215cd066357b465c00fe6d1ffa7f689c36ee50f90d9a6a1d62bd61a84ce58f1a"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-UnsupportedBindingRefusesBeforeOwner-build.log",
+    "sourceBytes": 1314,
+    "sourceSha256": "86abf7632d786a05e17952659f6ebe923b1b363f53e316c3bea0239006a2cc71",
+    "archive": "rewitness-control-UnsupportedBindingRefusesBeforeOwner-build.log.xz",
+    "archiveBytes": 420,
+    "archiveSha256": "2e70336b3378f540b6dac91f02c11200c6cbb0dcf6d4cbc8ed8d6d3486f60fb5"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2/rewitness-control-UnsupportedBindingRefusesBeforeOwner-tests.log",
+    "sourceBytes": 475,
+    "sourceSha256": "cd84022828212ea894a31a3dc337919b358d53774abbf72cf8803b3e80c48b4d",
+    "archive": "rewitness-control-UnsupportedBindingRefusesBeforeOwner-tests.log.xz",
+    "archiveBytes": 360,
+    "archiveSha256": "4d692442ca4851e8dd307ca383fbc1b2e96734bc49aa908f642f3e30a73e048a"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control2-run.log",
+    "sourceBytes": 545,
+    "sourceSha256": "5124a7708f978495ceee5808d773cadd9a301d0dc8d0ea7602cb9dcf463af542",
+    "archive": "runner.log.xz",
+    "archiveBytes": 372,
+    "archiveSha256": "e4598fcef43b437e82ab184a29831439b1bcf278cbe15b67af7d46dc5e008a3b"
+  }
+]

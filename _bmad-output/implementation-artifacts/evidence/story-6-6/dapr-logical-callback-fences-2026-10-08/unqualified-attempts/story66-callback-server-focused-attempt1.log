@@ -1,0 +1,94 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "schema-options", authority: "registry", scope: "source") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "identity-options", authority: "registry", scope: "source") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "schema-options", authority: "registry", scope: "output") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "identity-options", authority: "registry", scope: "output") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "schema-options", authority: "registry", scope: "current") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(stage: "identity-options", authority: "registry", scope: "current") [FAIL]
+      Shouldly.ShouldAssertException : else if (authority == "registry") { failure
+          should be of type
+      System.ObjectDisposedException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(91,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)

@@ -83,8 +83,15 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                 var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
                     cursor, head, PageSize: PageSize);
                 StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
-                StreamReadPage page = CapturePage(supplied, request.PageSize, deadline, ref bytes);
-                long next = StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
+                long priorBytes = bytes;
+                (StreamReadPage page, long capturedBytes, long next) = await deadline.ReadAsync(_ =>
+                {
+                    long ownedBytes = priorBytes;
+                    StreamReadPage ownedPage = CapturePage(supplied, request.PageSize, deadline, ref ownedBytes);
+                    long ownedNext = StreamReadPageValidator.ValidateAndGetNextSequence(request, ownedPage);
+                    return Task.FromResult((ownedPage, ownedBytes, ownedNext));
+                }).ConfigureAwait(false);
+                bytes = capturedBytes;
                 if (page.Metadata.LatestSequence != head)
                 {
                     changed = true;
@@ -129,15 +136,18 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
         var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
             ToSequence: 0, PageSize: 1);
         StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
-        long bytes = 0;
-        StreamReadPage page = CapturePage(supplied, request.PageSize, deadline, ref bytes);
-        _ = StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
-        if (page.Events.Count != 0 || page.Metadata.IsTruncated)
+        return await deadline.ReadAsync(_ =>
         {
-            throw new InvalidOperationException("Invalid head observation.");
-        }
+            long bytes = 0;
+            StreamReadPage page = CapturePage(supplied, request.PageSize, deadline, ref bytes);
+            StreamReadPageValidator.ValidateAndGetNextSequence(request, page);
+            if (page.Events.Count != 0 || page.Metadata.IsTruncated)
+            {
+                throw new InvalidOperationException("Invalid head observation.");
+            }
 
-        return page.Metadata.LatestSequence;
+            return Task.FromResult(page.Metadata.LatestSequence);
+        }).ConfigureAwait(false);
     }
 
     private static StreamReadPage CapturePage(StreamReadPage supplied, int limit, AuthoritativeStreamReadDeadline deadline, ref long bytes)

@@ -3,23 +3,34 @@ using Hexalith.EventStore.Contracts.Streams;
 namespace Hexalith.EventStore.Client.Streams;
 
 /// <summary>Ordered reconnect/backfill runtime glue using the immutable index and authenticated persisted per-publication source acknowledgements as its durable checkpoint.</summary>
-/// <remarks>Each pass starts at zero and proves a consecutive prefix. No process memory, target rollover or wake-up can skip an unknown/quarantined publication.
+/// <remarks>Each pass resumes only an independently authenticated durable consecutive original prefix for its exact complete cut and current delivery binding; unavailable proof starts at zero. No process memory, target rollover or wake-up can skip an unknown/quarantined publication.
 /// Physical host installation, namespace coverage, receiver/current private credentials and backend qualification remain separate requirements.</remarks>
 public sealed class SourcePublicationDispatcher(SourcePublicationFeed feed, TimeProvider clock, ISourcePublicationDelivery? delivery = null)
 {
-    /// <summary>Reconstructs up to the caller's bounded pass size; completion releases only after every original in the observed cut is acknowledged.</summary>
+    /// <summary>Independently resumes or reconstructs the consecutive acknowledged prefix, retaining bounded verified progress while attempting at most the bounded number of new deliveries.</summary>
     public async Task<SourcePublicationDispatchResult> DispatchAsync(SourcePublicationScope scope, int maximumCount = 10000, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested(); ArgumentNullException.ThrowIfNull(scope);
         if (maximumCount is < 1 or > 10000) { throw new ArgumentOutOfRangeException(nameof(maximumCount)); }
         if (delivery is null) { return new(0, false, "publication-delivery-unavailable"); }
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
-        long prefix = 0;
+        long prefix = 0; int newWork = 0;
         try
         {
+            var initial = await deadline.ReadAsync(token => feed.ReadAsync(scope, 0, 100, token)).ConfigureAwait(false);
+            if (initial.Page is not { } initialPage) { return new(0, false, initial.FailureReason ?? "publication-feed-unavailable"); }
+            var cut = initialPage.Checkpoint;
+            var retained = await deadline.ReadAsync(token => feed.ReadDispatchProgressAsync(cut, token)).ConfigureAwait(false);
+            deadline.ThrowIfCancellationRequested();
+            if (retained is not null)
+            {
+                if (retained.Scope != scope || retained.AcknowledgedPrefix < 0 || retained.AcknowledgedPrefix > cut.LastOffset
+                    || retained.SourceAuthorityRevision != cut.AuthorityRevision || retained.LastOffset != cut.LastOffset) { return new(0, false, "publication-progress-invalid"); }
+                prefix = retained.AcknowledgedPrefix;
+            }
             while (true)
             {
-                var read = await deadline.ReadAsync(token => feed.ReadAsync(scope, prefix, Math.Min(100, maximumCount - (int)prefix), token)).ConfigureAwait(false);
+                var read = await deadline.ReadAsync(token => feed.ReadIndexedPageAsync(cut, prefix, token)).ConfigureAwait(false);
                 deadline.ThrowIfCancellationRequested();
                 if (read.Page is not { } page) { return new(prefix, false, read.FailureReason ?? "publication-feed-unavailable"); }
                 // Own the bounded page before any receiver effect. The concrete feed enforces immutable references and current complete source cuts.
@@ -39,14 +50,25 @@ public sealed class SourcePublicationDispatcher(SourcePublicationFeed feed, Time
                 { return new(prefix, false, "publication-page-gap"); }
                 foreach (var entry in owned)
                 {
-                    var outcome = await deadline.ReadAsync(token => delivery.DeliverAsync(entry, token)).ConfigureAwait(false);
+                    var outcome = await deadline.ReadAsync(token => delivery.LookupAcknowledgementAsync(entry, token)).ConfigureAwait(false);
+                    deadline.ThrowIfCancellationRequested();
+                    if (outcome == SourcePublicationDeliveryStatus.Pending)
+                    {
+                        if (newWork >= maximumCount) { return new(prefix, false, "publication-pass-bound"); }
+                        newWork++;
+                        outcome = await deadline.ReadAsync(token => delivery.DeliverAsync(entry, token)).ConfigureAwait(false);
+                    }
                     deadline.ThrowIfCancellationRequested();
                     if (outcome != SourcePublicationDeliveryStatus.Acknowledged)
                     { return new(prefix, false, outcome == SourcePublicationDeliveryStatus.Quarantined ? "publication-delivery-quarantined" : "publication-delivery-unavailable"); }
-                    prefix = entry.Offset;
+                    long predecessor = prefix; prefix = entry.Offset;
+                    var progress = await deadline.ReadAsync(token => feed.AdvanceDispatchProgressAsync(new(page.Checkpoint, predecessor, [entry]), token)).ConfigureAwait(false);
+                    deadline.ThrowIfCancellationRequested();
+                    if (progress is not null && (progress.Scope != scope || progress.AcknowledgedPrefix != prefix || progress.SourceAuthorityRevision != cut.AuthorityRevision || progress.LastOffset != cut.LastOffset))
+                    { return new(predecessor, false, "publication-progress-invalid"); }
                 }
-                if (!page.HasMore) { deadline.ThrowIfCancellationRequested(); return new(prefix, true, null); }
-                if (prefix >= maximumCount) { return new(prefix, false, "publication-pass-bound"); }
+                if (owned.Count == 0) { deadline.ThrowIfCancellationRequested(); return new(prefix, true, null); }
+
             }
         }
         catch (OperationCanceledException)

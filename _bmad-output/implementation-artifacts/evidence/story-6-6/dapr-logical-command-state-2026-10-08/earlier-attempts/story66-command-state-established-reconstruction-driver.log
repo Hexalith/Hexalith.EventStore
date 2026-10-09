@@ -1,0 +1,14 @@
+control: passed
+fold-read-borrow-lifetime: killed
+Traceback (most recent call last):
+  File "/tmp/story66-established-guard-wrapper.py", line 50, in <module>
+    ns['main']();status='passed'
+    ~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-reconstruction-guards.py", line 158, in main
+    result, elapsed = BASE.execute(work, output, name, TESTS, args.timeout)
+                      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-model-guards.py", line 118, in execute
+    result = run(["dotnet", str(assembly)], work, output / f"{label}-tests.log", remaining)
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-reconstruction-guards.py", line 135, in stable_run
+    raise RuntimeError("Pinned inputs changed during a timed command")
+RuntimeError: Pinned inputs changed during a timed command

@@ -27,7 +27,7 @@ internal sealed class PrivateLogicalReplayPage : IDisposable
     /// <summary>Copies, verifies and admits all routes before returning a callable page.</summary>
     internal static PrivateLogicalReplayPage Capture(ReadOnlySpan<byte> response, DaprLogicalSourceBinding source,
         DaprLogicalClaimTrust trust, ReadOnlyMemory<byte> predecessor, EventEvolutionService evolution,
-        EventBufferBudget budget, CancellationToken token)
+        EventBufferBudget budget, CancellationToken token, DaprLogicalAnchoredIntake? anchored = null)
     {
         token.ThrowIfCancellationRequested();
         if (response.Length > 64 * 1024 * 1024)
@@ -48,14 +48,14 @@ internal sealed class PrivateLogicalReplayPage : IDisposable
         EventBufferReservation? metadata = null;
         try
         {
-            prefix = PrivateLogicalReplayResponseVerifier.Verify(image, source, trust, predecessor, budget, token);
+            prefix = PrivateLogicalReplayResponseVerifier.Verify(image, source, trust, predecessor, budget, token, anchored);
             // Strings can expand to UTF-16, and event/owner/list capacity remains charged until page disposal.
             metadata = budget.Reserve(checked(image.Length * 2 + 4096));
             page = new PrivateLogicalReplayPage(prefix, metadata);
             prefix = null;
             metadata = null;
             var reader = new EventEvolutionBinaryReader(image);
-            _ = reader.ReadRaw("HX-EV-DAPR-REPLAY-PAGE-1\0"u8.Length);
+            _ = reader.ReadRaw(anchored is null ? "HX-EV-DAPR-REPLAY-PAGE-1\0"u8.Length : "HX-EV-DAPR-ANCHORED-PAGE-1\0"u8.Length);
             _ = reader.ReadByte();
             _ = reader.ReadBytes(2 * 1024 * 1024);
             int count = checked((int)reader.ReadUInt32());
@@ -92,6 +92,7 @@ internal sealed class PrivateLogicalReplayPage : IDisposable
 
             reader.RequireEnd();
             trust.RequireCurrent(token);
+            anchored?.Trust.RequireCurrent(trust, token);
             evolution.RequireActive(token);
             return page;
         }

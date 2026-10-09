@@ -50,6 +50,7 @@ internal sealed class RegisteredCurrentEventDeserializer
     {
         ArgumentNullException.ThrowIfNull(registry);
         cancellationToken.ThrowIfCancellationRequested();
+        registry.RequireActive(cancellationToken);
         registry.CapabilityLoss.RequireNoObservedLoss();
         _serializer.RequireCapabilityScope(registry.CapabilityLoss);
         _typeExecutionBinding?.RequireCapabilityScope(registry.CapabilityLoss);
@@ -80,6 +81,33 @@ internal sealed class RegisteredCurrentEventDeserializer
         object value = _deserialize(lease, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
+        if (value is null || value.GetType() != _currentType)
+        {
+            throw new InvalidOperationException("UpcasterContractViolation: serializer returned a different current CLR type.");
+        }
+
+        return value;
+    }
+
+    /// <summary>Fences the options getter and serializer separately, expiring the borrowed view before source readback.</summary>
+    internal async ValueTask<object> DeserializeAsync(EventDomainRegistry registry, string canonicalType,
+        IReadOnlyPayload effectivePayload, Func<CancellationToken, Task>? sourceFence, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(effectivePayload);
+        Task FenceAsync(CancellationToken cancellation) => EventCallbackFence.RequireAsync(registry, sourceFence, cancellation,
+            () => RequireDescriptor(registry, canonicalType, cancellation)).AsTask();
+        await FenceAsync(token).ConfigureAwait(false);
+        await _serializer.RequireFieldsAsync(registry.GetVersion(canonicalType, registry.GetCurrentVersion(canonicalType)),
+            4, FenceAsync, token, () => RequireDescriptor(registry, canonicalType, token)).ConfigureAwait(false);
+        await FenceAsync(token).ConfigureAwait(false);
+        object value;
+        using (var lease = new InvocationPayloadLease(effectivePayload, token))
+        {
+            try { value = _deserialize(lease, token); }
+            finally { token.ThrowIfCancellationRequested(); }
+        }
+
+        await FenceAsync(token).ConfigureAwait(false);
         if (value is null || value.GetType() != _currentType)
         {
             throw new InvalidOperationException("UpcasterContractViolation: serializer returned a different current CLR type.");

@@ -1,0 +1,24 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ActualPureFoldIssuesThreeRowsAndReadbackRetryDoesNotSave [FAIL]
+      Shouldly.ShouldAssertException : fixture.Replay.Source.EventReads
+          should be greater than
+      2
+          but was
+      2
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(42,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ActualPureFoldIssuesThreeRowsAndReadbackRetryDoesNotSave()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(49,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ActualPureFoldIssuesThreeRowsAndReadbackRetryDoesNotSave()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '90076dafe1b91160b5e78850c4d739aec02db89e5afac1d3f8cc6fd490af896c')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 27, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 14.380s

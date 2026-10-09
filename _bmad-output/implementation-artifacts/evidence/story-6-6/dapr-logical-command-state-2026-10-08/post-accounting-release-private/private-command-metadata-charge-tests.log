@@ -1,0 +1,41 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.CommandExtensionCeilingKeepsConservativeDictionaryCharge [FAIL]
+      Shouldly.ShouldAssertException : completed.Budget.LiveBytes
+          should be greater than or equal to
+      4194306
+          but was
+      22845
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(109,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.CommandExtensionCeilingKeepsConservativeDictionaryCharge()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(112,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.CommandExtensionCeilingKeepsConservativeDictionaryCharge()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.MaximumCommandPayloadUsesActualPartitionCapacity(maximumMiB: 96, fits: True) [FAIL]
+      Shouldly.ShouldAssertException : completed.Budget.LiveBytes
+          should be greater than or equal to
+      20971520
+          but was
+      16800059
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(59,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.MaximumCommandPayloadUsesActualPartitionCapacity(Int32 maximumMiB, Boolean fits)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.MaximumCommandPayloadUsesActualPartitionCapacity(Int32 maximumMiB, Boolean fits)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'b7bdf18d8b823845c87fd953079220d40dc4917c12b9bc4e645ed4c4a1905f88')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 69, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 12.244s

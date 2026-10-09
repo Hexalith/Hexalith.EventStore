@@ -1,0 +1,14 @@
+control: passed
+fold-read-borrow-lifetime: killed
+roundtrip-read-borrow-lifetime: killed
+synchronous-writer-borrow-lifetime: killed
+Traceback (most recent call last):
+  File "/tmp/story66-established-guard-wrapper.py", line 57, in <module>
+    ns['main']();status='passed'
+    ~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-reconstruction-guards.py", line 158, in main
+    result, elapsed = BASE.execute(work, output, name, TESTS, args.timeout)
+                      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-model-guards.py", line 113, in execute
+    raise RuntimeError(f"Lane did not compile for {label}; see {output / f'{label}-build.log'}")
+RuntimeError: Lane did not compile for combined-working-admission; see /tmp/story66-command-state-established-reconstruction2/combined-working-admission-build.log

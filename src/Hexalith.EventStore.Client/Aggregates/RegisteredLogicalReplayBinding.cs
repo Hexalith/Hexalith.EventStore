@@ -47,6 +47,7 @@ internal sealed class RegisteredLogicalReplayBinding
             throw new ArgumentOutOfRangeException(nameof(maximumStateBytes));
         }
 
+        SerializerId = serializerId;
         _stateType = stateType;
         Evolution = evolution;
         _create = create;
@@ -92,6 +93,9 @@ internal sealed class RegisteredLogicalReplayBinding
         RequireCurrent(CancellationToken.None);
     }
 
+    /// <summary>Gets the exact supplied serializer identity included in the reconstruction pin.</summary>
+    internal string SerializerId { get; }
+
     /// <summary>Gets the exact local binding pin retained by the operation owner.</summary>
     internal ReadOnlyMemory<byte> Fingerprint
     {
@@ -114,6 +118,58 @@ internal sealed class RegisteredLogicalReplayBinding
         }
 
         return checked((int)capacity);
+    }
+
+    /// <summary>Admits all private completed-state bytes, proof decoding and simultaneous processor graphs.</summary>
+    internal int GetCommandCapacity(int stateBytes, int proofBytes, int commandBytes)
+        => checked(_workingGraphBytes + 14 * _maximumStateBytes + 4 * stateBytes + 12 * proofBytes + commandBytes + 12 * 1024 * 1024);
+
+    /// <summary>Reserves reviewed graph capacity for the entire completed command invocation.</summary>
+    internal EventBufferReservation ReserveCommandGraphs(EventBufferBudget budget)
+        => budget.Reserve(checked(_workingGraphBytes + 2 * _maximumStateBytes));
+
+    /// <summary>Decodes only private canonical state; its input lease expires before the actual owner fence yields.</summary>
+    internal async Task<object> ReadCommandStateAsync(IReadOnlyPayload canonical, EventBufferBudget budget,
+        Func<CancellationToken, Task> actualOwnerFence, CancellationToken token)
+    {
+        await RequireBoundaryAsync(actualOwnerFence, token).ConfigureAwait(false);
+        object state;
+        try
+        {
+            using var lease = new InvocationPayloadLease(canonical, token);
+            state = _read(lease, token);
+        }
+        finally { token.ThrowIfCancellationRequested(); }
+        await RequireBoundaryAsync(actualOwnerFence, token).ConfigureAwait(false);
+        RequireType(state);
+        ImmutablePayload produced;
+        try { produced = await SerializeAsync(state, budget, actualOwnerFence, token).ConfigureAwait(false); }
+        finally { token.ThrowIfCancellationRequested(); }
+        using ImmutablePayload roundtrip = produced;
+        if (canonical.Length != roundtrip.Length || !PayloadHash(canonical, budget, token).AsSpan().SequenceEqual(roundtrip.ComputeSha256()))
+        { throw new LogicalReplayCanonicalMismatchException("ProofMismatch: completed state is not canonical under the pinned codec."); }
+        await RequireBoundaryAsync(actualOwnerFence, token).ConfigureAwait(false);
+        return state;
+    }
+
+    /// <summary>Refuses a mutable admission-stage graph that differs from the privately proven canonical state.</summary>
+    internal async Task RequireCommandGraphAsync(object state, IReadOnlyPayload canonical, EventBufferBudget budget,
+        Func<CancellationToken, Task> fence, CancellationToken token)
+    {
+        RequireType(state);
+        ImmutablePayload produced;
+        try { produced = await SerializeAsync(state, budget, fence, token).ConfigureAwait(false); }
+        finally { token.ThrowIfCancellationRequested(); }
+        using ImmutablePayload encoded = produced;
+        if (canonical.Length != encoded.Length || !PayloadHash(canonical, budget, token).AsSpan().SequenceEqual(encoded.ComputeSha256()))
+        { throw new InvalidOperationException("ProofMismatch: admission stage changed the proven canonical state."); }
+        await RequireBoundaryAsync(fence, token).ConfigureAwait(false);
+    }
+
+    private static byte[] PayloadHash(IReadOnlyPayload payload, EventBufferBudget budget, CancellationToken token)
+    {
+        using ImmutablePayload copy = ImmutablePayload.CopyFrom(payload, budget, token);
+        return copy.ComputeSha256();
     }
 
     /// <summary>Checks all supplied callable images before invoking any one of them.</summary>
@@ -164,7 +220,9 @@ internal sealed class RegisteredLogicalReplayBinding
         RequireCurrent(token);
         using EventBufferReservation graphs = budget.Reserve(checked(_workingGraphBytes + 2 * _maximumStateBytes));
         await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
-        object state = _create(token);
+        object state;
+        try { state = _create(token); }
+        finally { token.ThrowIfCancellationRequested(); }
         await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
         RequireType(state);
         return await SerializeAsync(state, budget, sourceFence, token).ConfigureAwait(false);
@@ -178,7 +236,7 @@ internal sealed class RegisteredLogicalReplayBinding
         await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
         using EventBufferReservation graphs = budget.Reserve(checked(_workingGraphBytes + 2 * _maximumStateBytes));
         ImmutablePayload? lastGood = ImmutablePayload.CopyFrom(prior, budget, token);
-        long sequence = page.Prefix.StartSequence - 1;
+        long sequence = page.Events.Count == 0 ? page.Prefix.EndSequence : page.Prefix.StartSequence - 1;
         try
         {
             foreach (PrivateLogicalReplayEvent item in page.Events)
@@ -187,7 +245,8 @@ internal sealed class RegisteredLogicalReplayBinding
                 object state;
                 using (var lease = new InvocationPayloadLease(lastGood, token))
                 {
-                    state = _read(lease, token);
+                    try { state = _read(lease, token); }
+                    finally { token.ThrowIfCancellationRequested(); }
                 }
                 await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
                 RequireType(state);
@@ -205,6 +264,7 @@ internal sealed class RegisteredLogicalReplayBinding
                     lastGood = null;
                     return failed;
                 }
+                finally { token.ThrowIfCancellationRequested(); }
 
                 await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
                 RequireType(state);
@@ -236,14 +296,15 @@ internal sealed class RegisteredLogicalReplayBinding
             object decoded;
             using (var lease = new InvocationPayloadLease(canonical, token))
             {
-                decoded = _read(lease, token);
+                try { decoded = _read(lease, token); }
+                finally { token.ThrowIfCancellationRequested(); }
             }
             await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
             RequireType(decoded);
             using ImmutablePayload roundtrip = await SerializeUncheckedAsync(decoded, budget, sourceFence, token).ConfigureAwait(false);
             if (canonical.Length != roundtrip.Length || !canonical.ComputeSha256().AsSpan().SequenceEqual(roundtrip.ComputeSha256()))
             {
-                throw new InvalidOperationException("ReplayRestartRequired: supplied state bytes are not canonical under their sealed codec.");
+                throw new LogicalReplayCanonicalMismatchException("ReplayRestartRequired: supplied state bytes are not canonical under their sealed codec.");
             }
 
             await RequireBoundaryAsync(sourceFence, token).ConfigureAwait(false);
@@ -262,7 +323,8 @@ internal sealed class RegisteredLogicalReplayBinding
         ImmutablePayload canonical;
         using (BoundedPayloadWriter writer = BoundedPayloadWriter.CreateLegacy(_maximumStateBytes, token, budget))
         {
-            _write(state, writer, token);
+            try { _write(state, writer, token); }
+            finally { token.ThrowIfCancellationRequested(); }
             canonical = writer.TakeCompletedPayload();
         }
 

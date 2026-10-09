@@ -1,0 +1,24 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition [FAIL]
+      Shouldly.ShouldAssertException : fixture.Owner.LastGoodDiagnosticSequence
+          should be
+      1L
+          but was
+      0L
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(154,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(163,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.MutatingApplyFailureRetainsPrivateWithinPageLastGoodWithoutAnyTransition()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'd58db6aef6b28ce4ead05d1dbdb92773160c6f2eecca56ed616270cc7f0be283')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 95, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 4.053s

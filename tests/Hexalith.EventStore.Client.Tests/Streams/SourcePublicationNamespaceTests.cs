@@ -161,4 +161,80 @@ public sealed class SourcePublicationNamespaceTests
         (await new SourcePublicationNamespaceActor(host).ReadAsync(Scope)).ShouldBeNull();
         var persisted = backend.CommittedState.Single().Value.ShouldBeOfType<SourcePublicationNamespaceState>(); persisted.Revision.ShouldBe(1); persisted.Sources.ShouldNotContain(Created);
     }
+
+    /// <summary>Provider-owned initial and final roster capture cannot retain the caller beyond its original budget or release a late cut.</summary>
+    [Theory]
+    [InlineData("initial-count", true)]
+    [InlineData("initial-count", false)]
+    [InlineData("initial-items", true)]
+    [InlineData("initial-items", false)]
+    [InlineData("initial-installation-items", true)]
+    [InlineData("initial-installation-items", false)]
+    [InlineData("final-count", true)]
+    [InlineData("final-count", false)]
+    [InlineData("final-items", true)]
+    [InlineData("final-items", false)]
+    [InlineData("final-installation-items", true)]
+    [InlineData("final-installation-items", false)]
+    public async Task SuspendedRosterCaptureReleasesCallerWithoutLateCut(string vector, bool cancelCaller)
+    {
+        ArgumentNullException.ThrowIfNull(vector);
+        var backend = new InMemoryStateManager(); var actual = Actor(backend);
+        (await actual.InstallAsync(Installation())).ShouldBeTrue();
+        byte[] original = JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value);
+        var clock = new AuthoritativeReadTimeProvider();
+        using var cancellation = new CancellationTokenSource();
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var detachedReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var supplied = Substitute.For<IReadOnlyList<AggregateIdentity>>();
+        void Suspend()
+        {
+            entered.TrySetResult(); release.Wait(); detachedReturned.TrySetResult();
+        }
+        supplied.Count.Returns(_ => { if (vector.EndsWith("-count", StringComparison.Ordinal)) { Suspend(); } return 1; });
+        supplied.GetEnumerator().Returns(_ =>
+        {
+            if (vector.EndsWith("-items", StringComparison.Ordinal)) { Suspend(); }
+            return ((IEnumerable<AggregateIdentity>)new[] { Existing }).GetEnumerator();
+        });
+        var proxy = Substitute.For<ISourcePublicationNamespaceActor>(); int reads = 0;
+        proxy.ReadAsync(Scope).Returns(async _ =>
+        {
+            var owned = (await actual.ReadAsync(Scope))!; int ordinal = Interlocked.Increment(ref reads);
+            if (ordinal != (vector.StartsWith("initial", StringComparison.Ordinal) ? 1 : 2)) { return (SourcePublicationNamespaceState?)owned; }
+            return vector.Contains("installation", StringComparison.Ordinal)
+                ? owned with { InitialSources = supplied } : owned with { Sources = supplied };
+        });
+        var source = Substitute.For<IAggregateActor>(); source.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 1));
+        var authority = Substitute.For<ISourcePublicationNamespaceAuthority>(); int authorizations = 0;
+        authority.AuthorizeAsync(Arg.Any<SourcePublicationNamespaceState>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            Interlocked.Increment(ref authorizations);
+            return new SourcePublicationNamespaceAuthorization("current-qualified-installation", DateTimeOffset.UnixEpoch.AddHours(1));
+        });
+        var operation = Task.Run(() => new DaprSourcePublicationNamespaceSource(Proxies(proxy, source), authority, clock)
+            .ReadAsync(Scope, cancellation.Token), CancellationToken.None);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            if (cancelCaller)
+            {
+                cancellation.Cancel();
+                var error = await Should.ThrowAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(2)));
+                error.CancellationToken.ShouldBe(cancellation.Token);
+            }
+            else
+            {
+                clock.Advance(TimeSpan.FromSeconds(30));
+                (await operation.WaitAsync(TimeSpan.FromSeconds(2))).ShouldBeNull();
+            }
+            int finalAuthorizations = Volatile.Read(ref authorizations); int finalReads = Volatile.Read(ref reads);
+            release.Set(); await detachedReturned.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Volatile.Read(ref authorizations).ShouldBe(finalAuthorizations); Volatile.Read(ref reads).ShouldBe(finalReads);
+            JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value).ShouldBe(original);
+            backend.CommittedState.Single().Value.ShouldBeOfType<SourcePublicationNamespaceState>().Revision.ShouldBe(1);
+        }
+        finally { release.Set(); }
+    }
 }

@@ -1,0 +1,282 @@
+[
+  {
+    "source": "/tmp/story66-snapshot-final-release/attempt.json",
+    "retained": "earlier-attempts/release-before-pair-cleanup/attempt.json.xz",
+    "rawSha256": "6f7627622c03fb7ff33b503c264adbbece290a4d208e6feea2ae36e678545851",
+    "retainedSha256": "859bf733954fc6405bbf3e92ac6e9cc2c7c27ca4cbf56a92deb674d8093dda0a",
+    "rawBytes": 2711618
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/below-head-zero-tail-refusal-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/below-head-zero-tail-refusal-build.log.xz",
+    "rawSha256": "dc9fa148b76273233c2529c0c089efd9e4a04b8e8303e297cad93c1350a17434",
+    "retainedSha256": "184ebbd936d333f1da1b3baf7d242db7855856c4c53807f6ae00b327a749637c",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/below-head-zero-tail-refusal-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/below-head-zero-tail-refusal-tests.log.xz",
+    "rawSha256": "e2ff75facd6e2caaa2c7d06daed65add14deca7aee8a2b694ee5727890d58d65",
+    "retainedSha256": "46e5f055b0e5f43130e097f2e345b5c41a5b48b6909ed9a4b645d85eaf59955e",
+    "rawBytes": 2081
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/canonical-mismatch-fallback-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/canonical-mismatch-fallback-build.log.xz",
+    "rawSha256": "a8f2f6f9ea9901466c0f2bb904bb0f0825d4c38099e55410cc450e51657baf96",
+    "retainedSha256": "2238fabf7b961ea5bd513e7ad0c366cdec763f41eb03869533ee438c26b788ce",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/canonical-mismatch-fallback-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/canonical-mismatch-fallback-tests.log.xz",
+    "rawSha256": "f7c3f28324aaf0133bb4d74a68db397de7618b81072aeb2f50bc1b2a6b237e51",
+    "retainedSha256": "274734f27a3928430225ac7f6403620218c154e53d9bef78dcc2e4c7068c58a6",
+    "rawBytes": 2996
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/client-model-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/client-model-build.log.xz",
+    "rawSha256": "1ffd523e717150e12412ab001e1e1ec214a72e3e8f294c489a6dc933e820e10c",
+    "retainedSha256": "c8e16f5596a85cb52273791e880d14e3a20b89bcd27508eaec0cab526de1af37",
+    "rawBytes": 797
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/client-model-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/client-model-tests.log.xz",
+    "rawSha256": "c8fb855866dd730fa6525d6ec92cc97c9a539edfae7389b39e7164b4c0dda343",
+    "retainedSha256": "1819ee81c1da04923f5646b8adb11c4c7f2a792e294b7f08e4d3bcf4a45b9190",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/commands.json",
+    "retained": "earlier-attempts/release-before-pair-cleanup/commands.json.xz",
+    "rawSha256": "57279ac50caeb6638959ef3fd36e27c442a5c284895ce9aef743174da478a67c",
+    "retainedSha256": "40ebcf39ac20c56e1f3e64cbc3397c60164c5650888b7a321f795003524db6fa",
+    "rawBytes": 34643045
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/completed-owner-decision-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/completed-owner-decision-build.log.xz",
+    "rawSha256": "6defb6d54beeaa74c82758ad2dd527c270f88fba93e4cf13d3fd2b7273862ee0",
+    "retainedSha256": "35b95efae7d7e2788994c360341c992ec0933f749c0814ddbd67ef8b89a5d987",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/completed-owner-decision-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/completed-owner-decision-tests.log.xz",
+    "rawSha256": "7cf1bdc7f1fffe64e24fdd50306090097d98826ef86a389451035e7079624208",
+    "retainedSha256": "ee1c9695524a7f6d9727e9e6a0653e5fdea46b8933ab8146e3552d8958f4ffb1",
+    "rawBytes": 3238
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/control-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/control-build.log.xz",
+    "rawSha256": "091acde16e69b4fe6f9bda345033de915e5a27f519b17e478ae2e1294174b1fc",
+    "retainedSha256": "f2cddeac487e42704be8e82064f8b393f011822041112eb3ed64b3fb71c2e49e",
+    "rawBytes": 1952
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/control-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/control-tests.log.xz",
+    "rawSha256": "91a163ed4ed255423616dd9248678526b06b15af87a4aba2032205a9520fded8",
+    "retainedSha256": "21042685fa9b1c53df0b12b2f296d12c01eeea86f4d16d7f0677b6be7305cea8",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/explicit-model-selection-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/explicit-model-selection-build.log.xz",
+    "rawSha256": "a3532b8cb5e9b3794ed7e5ba951329fa95cde97b86cecb061d86d6e8937e6fc0",
+    "retainedSha256": "66c5a138c9d2debddeec648aa109be16422b031d8bbc4524fa68885eb4613036",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/explicit-model-selection-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/explicit-model-selection-tests.log.xz",
+    "rawSha256": "c6b32d56429ddfdcdd61c9445b3142724ced0765d73deefa6a805ab24630c7cc",
+    "retainedSha256": "0dd76aeea8098582bce70a8023e4f02276e78cdc6405b6c0df1dfccfc94bbe5a",
+    "rawBytes": 1963
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/final-exact-paired-witness-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/final-exact-paired-witness-build.log.xz",
+    "rawSha256": "5de9ee8e5c569fdbf73828dcce531ebdc326cf477745f62b79588f810cf358ef",
+    "retainedSha256": "dc6a8d0df5ca0bdbacbec69e4c5ba8347e8385bc496f11f87c9487ee99ac5b6b",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/final-exact-paired-witness-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/final-exact-paired-witness-tests.log.xz",
+    "rawSha256": "1ec9bbbef62bf8e51199583d4fa89895e294537743a07cab3d46586646e4e3a3",
+    "retainedSha256": "a1cba24390317671181fe4be254829e555ce6b52b2e8257a3a7c980f8bcfe90b",
+    "rawBytes": 1986
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/fresh-completed-origin-chain-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/fresh-completed-origin-chain-build.log.xz",
+    "rawSha256": "3923aa6cda40adc5acc50fff36942a3389fc2a72adadbd371eb23cbc9185488b",
+    "retainedSha256": "4cba7962536e7bd4758bef7abdbc047724848de6037a735758e426a0bc694919",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/fresh-completed-origin-chain-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/fresh-completed-origin-chain-tests.log.xz",
+    "rawSha256": "5f5f2bb21823df85ef8050fabc022909529bb2bb3ff2f0e3b566bd3e4c360c7c",
+    "retainedSha256": "58382e3db49982807c4b7775f1cfb3ae8388d52e0c1c73b0be6ae3458bd56374",
+    "rawBytes": 1988
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/mutations.json",
+    "retained": "earlier-attempts/release-before-pair-cleanup/mutations.json.xz",
+    "rawSha256": "e617bec39004db86ff4a923981bc6a14756d996b97d8c4cd79572a828a6846cd",
+    "retainedSha256": "97388d131420147800a4e79c69aef61a10d7b4dba785d50dcb7edfaa98a97911",
+    "rawBytes": 27025
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/origin-final-return-cleanup-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/origin-final-return-cleanup-build.log.xz",
+    "rawSha256": "cd6e7ddf7b5a25213b1462a5969916884ca00d5963413b73bdc17d8014d40b6d",
+    "retainedSha256": "44bce98cb876a8584a419d33ff682e1c4041e9d832c342a51068829d602fb13e",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/origin-final-return-cleanup-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/origin-final-return-cleanup-tests.log.xz",
+    "rawSha256": "11c44102a38efb9951a4c313f0e41260bc8086342804112a309668b17f1a329e",
+    "retainedSha256": "5f1e1e5e77b68977a413c97591b778d3c4bd7f800ffbddf5e68e77181f2a1f7f",
+    "rawBytes": 3436
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/private-state-clearing-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/private-state-clearing-build.log.xz",
+    "rawSha256": "43f31af46e7a5f9d0ebbdb5a7763d9dabd9931406c2cfeccdf2fa4fb234f5db5",
+    "retainedSha256": "d654efb7e5fb330161c64f03adb98966624a676eb4ec856c2dc909130102c332",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/private-state-clearing-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/private-state-clearing-tests.log.xz",
+    "rawSha256": "b1f6f4cba0d83c7a8310c9e455d71ee8d077a894371133556899bbdd9c63c2f2",
+    "retainedSha256": "635a2291caef87a9ed21b78cb73ffb600a4b0c50f485eb02302031ce5f69d671",
+    "rawBytes": 12451
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/reconstruction-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/reconstruction-build.log.xz",
+    "rawSha256": "df93fce708b46c8213be7eeda30b2de557e63a567da57029746de2d29c11ac03",
+    "retainedSha256": "c882c924f1c43998838486ad693d188fc21e56b4dbdd3cadaf9c8c75bb860f01",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/reconstruction-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/reconstruction-tests.log.xz",
+    "rawSha256": "088d70681ba119369ff6ad7b30e6f2ae7de569ff5dfe83dee929299cc876c4c3",
+    "retainedSha256": "da683e46316cc757fce5ecf624326219bf536088ef910aa47808da89c8843c81",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/result.json",
+    "retained": "earlier-attempts/release-before-pair-cleanup/result.json.xz",
+    "rawSha256": "599a7236ce9fccc22d97a6b72b427261b341fe5d91b85e6778caaf844e00bfd5",
+    "retainedSha256": "f2e41c9736afa0aa63c15ebbcd4705d62fba2fade412abedc88ec663dddce184",
+    "rawBytes": 40495067
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/retained-actual-owner-fence-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/retained-actual-owner-fence-build.log.xz",
+    "rawSha256": "b852f98cc3942c394dfcbe996f323dcf341df7a6b68718e53ace9c1058498fe8",
+    "retainedSha256": "25dc862c5e1e01cbb4b0467228d495ff86d537048dd3430119b28ef51c1fc4f6",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/retained-actual-owner-fence-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/retained-actual-owner-fence-tests.log.xz",
+    "rawSha256": "42aaaa13994436681f0843b2d99794f0c1574977a4604da2e83f6194eecd3510",
+    "retainedSha256": "09a7952ca4a95a965b7d20f00f7bb41867b0d9f798f1b170db74176828d4d8b2",
+    "rawBytes": 3086
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/retained-witness-decoding-charge-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/retained-witness-decoding-charge-build.log.xz",
+    "rawSha256": "b852f98cc3942c394dfcbe996f323dcf341df7a6b68718e53ace9c1058498fe8",
+    "retainedSha256": "25dc862c5e1e01cbb4b0467228d495ff86d537048dd3430119b28ef51c1fc4f6",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/retained-witness-decoding-charge-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/retained-witness-decoding-charge-tests.log.xz",
+    "rawSha256": "770394b196ddb897fc4285ad6016d609291c533556ff09d8ea36a58140e41a42",
+    "retainedSha256": "5639f07a755618c7616f9d005bd87157b0dc0520f0fea23349b96fc5bd250b9b",
+    "rawBytes": 2063
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/same-actual-owner-manager-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/same-actual-owner-manager-build.log.xz",
+    "rawSha256": "e75826e92f54035155eeba764f376483fd4f0e72310c7ef56c50fab74419444e",
+    "retainedSha256": "05683f933609dca2666c4ef888555906159ad37592f4b64cbc1cd3b561d82fd4",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/same-actual-owner-manager-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/same-actual-owner-manager-tests.log.xz",
+    "rawSha256": "e7476359a58b051322a253b4f64ce1578f2f9295ef1f210458e314f0514a06d7",
+    "retainedSha256": "bcda6e6ac1c97740479126244899003f06a9ada4abe5bd081406ca4faf702ed5",
+    "rawBytes": 1964
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/snapshot-final-return-cleanup-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/snapshot-final-return-cleanup-build.log.xz",
+    "rawSha256": "c8aa6093641cb5433eecb00390a71aa2d2e0536888eadc7a29c29517c97f16e2",
+    "retainedSha256": "bf4a257cafcd29eeb01256ccd540021081689053ebf0473102ca5d1f2a1a5b10",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/snapshot-final-return-cleanup-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/snapshot-final-return-cleanup-tests.log.xz",
+    "rawSha256": "c344826bfd21d8d04fd277a62f161832957ade14478315f56fddbe91f7d87906",
+    "retainedSha256": "df1937e8a224f41eefba683bb8d1f6cd41a0f4f729b4df5b0b76241f321f27e6",
+    "rawBytes": 3620
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/source-binding-before-origin-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/source-binding-before-origin-build.log.xz",
+    "rawSha256": "91f4db0a88922a89727e90beec453e6e8dbbbac26435f8962cce127eef8e2b9d",
+    "retainedSha256": "83df26ee5cbef1395a7a6ebf1406207f31b7366a0ee44386e96379ff9cf43dcc",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/source-binding-before-origin-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/source-binding-before-origin-tests.log.xz",
+    "rawSha256": "1fd008898cdd6e3343276b06d06d4be5d030ad1f69ca5b2ecd99687c49624325",
+    "retainedSha256": "0b7be6508d9ffa70d1f94bc697786d5bdc97ffce6e2269d92780e984327d14f4",
+    "rawBytes": 1984
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/storage-hash-before-origin-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/storage-hash-before-origin-build.log.xz",
+    "rawSha256": "3690fbbb94853d6a73349265d7d77ccedda776920838627eedfb54053f441b1f",
+    "retainedSha256": "d874a8a1cabe93c8fcf7701f1b1234753d70502be33b25c254938e435c4a28d8",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/storage-hash-before-origin-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/storage-hash-before-origin-tests.log.xz",
+    "rawSha256": "d472eb4d9a3df49800d2193611a1ab5945f6dc9d2e4acacef06c6bd7fdad88f2",
+    "retainedSha256": "c18e1e640740329f493e142e0d559156594adc54c6cfc3e2369cf4331ee4999b",
+    "rawBytes": 1981
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/timeline-restarts-one-build.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/timeline-restarts-one-build.log.xz",
+    "rawSha256": "d84552b6fc8f36405350adfb97d6cc13f21d4a4ea10211634f6eadc31a659ca1",
+    "retainedSha256": "f6c7175fcc6f7e0dd5741837f74828f1d4c71ad7451a174ca397143f40bdf91e",
+    "rawBytes": 1163
+  },
+  {
+    "source": "/tmp/story66-snapshot-final-release/timeline-restarts-one-tests.log",
+    "retained": "earlier-attempts/release-before-pair-cleanup/timeline-restarts-one-tests.log.xz",
+    "rawSha256": "d406f495be7b3a8c1beb45826e43d6d56e33d127d54add68effdfca72abc5d3b",
+    "retainedSha256": "369d82337286259150e9f04ad8e6150247025c578c6449a66c923d04799f71d7",
+    "rawBytes": 2080
+  }
+]

@@ -1,0 +1,377 @@
+{
+  "scope": "dormant individual logical callback fences",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "control": "passed",
+  "mutations": [
+    {
+      "mutation": "addressed-callable-fence",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else { failure",
+        "          should be of type",
+        "      System.InvalidOperationException",
+        "          but was",
+        "      System.Text.Json.JsonReaderException",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(110,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 5.754
+    },
+    {
+      "mutation": "source-independent-validators",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else { failure",
+        "          should be of type",
+        "      System.InvalidOperationException",
+        "          but was",
+        "      System.Text.Json.JsonReaderException",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(110,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 3.623
+    },
+    {
+      "mutation": "source-current-trust-forwarding",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else if (authority == \"key\") { (failure is ObjectDisposedException || failure is InvalidOperationException && failure.Message.Contains(\"CapabilityMismatch\", StringComparison.Ordinal))",
+        "          should be",
+        "      True",
+        "          but was",
+        "      False",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(90,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(111,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 5.063
+    },
+    {
+      "mutation": "operation-state-binding-forwarding",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else { failure",
+        "          should be of type",
+        "      System.InvalidOperationException",
+        "          but was",
+        "      System.Text.Json.JsonReaderException",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(114,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 4.503
+    },
+    {
+      "mutation": "post-getter-addressed-fence",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else { failure",
+        "          should be of type",
+        "      System.InvalidOperationException",
+        "          but was",
+        "      System.Text.Json.JsonReaderException",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(110,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 5.534
+    },
+    {
+      "mutation": "schema-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]",
+        "      Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      ---- Shouldly.ShouldAssertException : `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      Stack Trace:",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(505,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadMetadataAsync(AggregateIdentity identity, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(421,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.RequireStableMetadataAsync(AggregateIdentity identity, ConditionalValue`1 before, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(375,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.<>c__DisplayClass11_0.<<ReadPageAsync>g__RequirePreparedPageAsync|0>d.MoveNext()",
+        "        --- End of stack trace from previous location ---"
+      ],
+      "elapsedSeconds": 6.306
+    },
+    {
+      "mutation": "identity-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]",
+        "      Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      ---- Shouldly.ShouldAssertException : `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      Stack Trace:",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(505,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadMetadataAsync(AggregateIdentity identity, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(421,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.RequireStableMetadataAsync(AggregateIdentity identity, ConditionalValue`1 before, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(375,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.<>c__DisplayClass11_0.<<ReadPageAsync>g__RequirePreparedPageAsync|0>d.MoveNext()",
+        "        --- End of stack trace from previous location ---"
+      ],
+      "elapsedSeconds": 6.151
+    },
+    {
+      "mutation": "deserializer-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]",
+        "      Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      ---- Shouldly.ShouldAssertException : `payload.CopyTo(0, new byte[1])`",
+        "          should throw",
+        "      System.ObjectDisposedException",
+        "          but did not",
+        "      Stack Trace:",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(505,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadMetadataAsync(AggregateIdentity identity, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(438,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.RequireSourceBindingAsync(DaprLogicalSourceBinding binding, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalReplaySource.cs(63,0): at Hexalith.EventStore.Server.Events.DaprLogicalReplaySource.RequireCurrentAsync(DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, CancellationToken cancellationToken)",
+        "        src/Hexalith.EventStore.Client/Aggregates/RegisteredLogicalReplayBinding.cs(284,0): at Hexalith.EventStore.Client.Aggregates.RegisteredLogicalReplayBinding.RequireBoundaryAsync(Func`2 sourceFence, CancellationToken token)"
+      ],
+      "elapsedSeconds": 6.493
+    },
+    {
+      "mutation": "current-deserializer-individual-fence",
+      "result": "killed",
+      "killingTest": "RepresentativeCallbackAuthorityLossControls",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]",
+        "      Shouldly.ShouldAssertException : else { failure",
+        "          should be of type",
+        "      System.InvalidOperationException",
+        "          but was",
+        "      System.Text.Json.JsonReaderException",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(113,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()"
+      ],
+      "elapsedSeconds": 6.91
+    },
+    {
+      "mutation": "successor-version-validation",
+      "result": "killed",
+      "killingTest": "YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.Source.Callbacks",
+        "          should be",
+        "      [\"schema-options\", \"schema-1\", \"identity-options\", \"identity-1\", \"upcast\", \"schema-options\", \"schema-2\", \"identity-options\", \"identity-2\", \"schema-options\", \"schema-2\", \"identity-options\", \"identity-2\", \"deserialize-options\", \"deserialize\"]",
+        "          but was (case sensitive comparison)",
+        "      [\"schema-options\", \"schema-1\", \"identity-options\", \"identity-1\", \"upcast\", \"schema-options\", \"schema-2\", \"identity-options\", \"identity-2\", \"deserialize-options\", \"deserialize\"]",
+        "          difference",
+        "      [\"schema-options\", \"schema-1\", \"identity-options\", \"identity-1\", \"upcast\", \"schema-options\", \"schema-2\", \"identity-options\", \"identity-2\", *\"deserialize-options\"*, *\"deserialize\"*, *, *, *, *]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(150,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(155,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ],
+      "elapsedSeconds": 6.508
+    },
+    {
+      "mutation": "private-payload-clearing",
+      "result": "killed",
+      "killingTest": "YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState",
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]",
+        "      Shouldly.ShouldAssertException : privateArrays.ForEach(bytes => bytes",
+        "          should satisfy the condition",
+        "      (value == 0)",
+        "          but",
+        "      [123, 34, 117, 110, 105, 116, 115, 34, 58, 49, 125]",
+        "          do not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(155,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.<>c.<YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState>b__3_2(Byte[] bytes)",
+        "           at System.Collections.Generic.List`1.ForEach(Action`1 action)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(155,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(155,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ],
+      "elapsedSeconds": 6.198
+    }
+  ],
+  "timeoutSecondsPerLane": 60,
+  "actualCrossActorInvocation": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "recordedCommands": 24,
+  "commandInputChecks": [
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    },
+    {
+      "laneInputsUnchanged": true,
+      "importedHelpersUnchanged": true,
+      "executedDllsUnchanged": true
+    }
+  ]
+}

@@ -278,7 +278,7 @@ public sealed class EventEvolutionServiceTests
         {
             (await Should.ThrowAsync<OperationCanceledException>(async () => await pending)).CancellationToken.ShouldBe(cancellation.Token);
         }
-        string[] expected = ["schema-options", "identity-options", "schema", "identity", "deserialize-options", "deserialize"];
+        string[] expected = ["schema-options", "schema", "identity-options", "identity", "deserialize-options", "deserialize"];
         calls.ShouldBe(expected.Take(Array.IndexOf(expected, stage) + 1));
         budget.LiveBytes.ShouldBe(0);
         source.ShouldBe([1, 2]);

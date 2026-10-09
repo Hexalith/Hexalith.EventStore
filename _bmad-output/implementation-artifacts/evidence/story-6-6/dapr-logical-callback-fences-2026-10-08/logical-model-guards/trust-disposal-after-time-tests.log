@@ -1,0 +1,16 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.DaprLogicalClaimCodecTests.FinalDecodeBoundaryTrustDisposalRefusesAndReleasesCapacity [FAIL]
+      Shouldly.ShouldAssertException : `verification.VerifyRoute(signed.Claim.Span, signed.KeyId, signed.Signature.Span, budget, CancellationToken.None)`
+          should throw
+      System.ObjectDisposedException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Events/DaprLogicalClaimCodecTests.cs(171,0): at Hexalith.EventStore.Client.Tests.Events.DaprLogicalClaimCodecTests.FinalDecodeBoundaryTrustDisposalRefusesAndReleasesCapacity()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'a0288e88658432e714171b559350d8a5cf75178569bdfb397b7701fde50b39be')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 16, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.228s

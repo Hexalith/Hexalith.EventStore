@@ -1,0 +1,93 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal [FAIL]
+      Shouldly.ShouldAssertException : state.Array!
+          should satisfy the condition
+      (value == 0)
+          but
+      [123, 34, 118, 97, 108, 117, 101, 34, 58, 49, 125]
+          do not
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(576,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(578,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.PrivateResponseAndCanonicalBuffersClearAfterDisposal()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PendingOwnerDeactivationRetainsChargesUntilCacheReleaseAndNeverClearsActorOwnedCopies [FAIL]
+      Shouldly.ShouldAssertException : pending.Prepared.Budget.LiveBytes.ShouldBe(0); privateImage.Array!
+          should satisfy the condition
+      (value == 0)
+          but
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 80, 65, 71, 69, 45, 49, 1, 3, 15, 72, 88, 45, 69, 86, 45, 80, 82, 79, 79, 70, 45, 49, 1, 1, 1, 72, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 79, 85, 84, 69, 45, 49, 1, 20, 1, 254, 8, 7, 247, 2, 233, 122, 149, 252, 41, 16, 152, 69, 52, 248, 66, 114, 65, 120, 195, 162, 223, 251, 122, 198, 119, 47, 156, 162, 160, 222, 9, 2, 6, 116, 101, 110, 97, 110, 116, 3, 1, 100, 4, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 5, 1, 114, 6, 1, 7, 7, 109, 101, 115, 115, 97, 103, 101, 8, 12, 76, 101, 103, 97, 99, 121, 46, 69, 118, 101, 110, 116, 9, 1, 10, 11, 12, 4, 106, 115, 111, 110, 13, 3, 101, 118, 116, 14, 1, 15, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 16, 68, 19, 111, 163, 85, 179, 103, 138, 17, 70, 173, 22, 247, 232, 100, 158, 148, 251, 79, 194, 31, 231, 126, 131, 16, 192, 96, 246, 28, 170, 255, 138, 17, 4, 106, 115, 111, 110, 18, 137, 152, 248, 128, 188, 17, 164, 162, 115, 104, 157, 117, 186, 154, 151, 241, 101, 169, 244, 186, 83, 172, 132, 241, 130, 202, 208, 12, 60, 233, 202, 109, 19, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 20, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 157, 238, 146, 196, 125, 250, 63, 250, 25, 107, 195, 87, 116, 179, 106, 67, 237, 106, 160, 204, 20, 250, 99, 205, 171, 122, 20, 87, 47, 95, 116, 251, 235, 47, 186, 233, 76, 50, 239, 211, 96, 136, 202, 129, 201, 162, 48, 68, 111, 171, 176, 247, 20, 19, 189, 39, 126, 70, 174, 70, 61, 185, 155, 208, 1, 9, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 82, 69, 70, 73, 88, 45, 49, 1, 17, 1, 6, 116, 101, 110, 97, 110, 116, 2, 1, 100, 3, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 4, 1, 114, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1, 10, 234, 136, 182, 42, 154, 236, 65, 59, 88, 67, 240, 95, 231, 98, 183, 120, 233, 185, 45, 253, 99, 123, 140, 35, 16, 24, 134, 156, 177, 119, 77, 210, 11, 132, 202, 204, 208, 45, 71, 245, 211, 169, 2, 138, 140, 177, 104, 93, 43, 112, 132, 129, 37, 178, 65, 104, 60, 155, 167, 216, 51, 172, 105, 149, 213, 12, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 13, 14, 15, 16, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 17, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 130, 220, 4, 86, 120, 101, 206, 21, 61, 207, 109, 161, 217, 139, 104, 186, 55, 209, 129, 238, 69, 112, 143, 180, 96, 37, 38, 45, 119, 246, 120, 173, 133, 19, 39, 154, 60, 52, 155, 228, 30, 38, 33, 224, 107, 191, 47, 166, 233, 219, 157, 30, 43, 49, 190, 242, 77, 12, 82, 123, 19, 131, 198, 168, 1, 1, 3, 101, 118, 116, 1, 4, 106, 115, 111, 110, 2, 123, 125]
+          do not
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(372,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.PendingOwnerDeactivationRetainsChargesUntilCacheReleaseAndNeverClearsActorOwnedCopies()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry [FAIL]
+      Shouldly.ShouldAssertException : recovered.Outcome.ShouldBe(DaprReplayCommitOutcome.Proven); quarantine.ShouldBeEmpty(); privateImage.Array!
+          should satisfy the condition
+      (value == 0)
+          but
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 80, 65, 71, 69, 45, 49, 1, 3, 15, 72, 88, 45, 69, 86, 45, 80, 82, 79, 79, 70, 45, 49, 1, 1, 1, 72, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 79, 85, 84, 69, 45, 49, 1, 20, 1, 254, 8, 7, 247, 2, 233, 122, 149, 252, 41, 16, 152, 69, 52, 248, 66, 114, 65, 120, 195, 162, 223, 251, 122, 198, 119, 47, 156, 162, 160, 222, 9, 2, 6, 116, 101, 110, 97, 110, 116, 3, 1, 100, 4, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 5, 1, 114, 6, 1, 7, 7, 109, 101, 115, 115, 97, 103, 101, 8, 12, 76, 101, 103, 97, 99, 121, 46, 69, 118, 101, 110, 116, 9, 1, 10, 11, 12, 4, 106, 115, 111, 110, 13, 3, 101, 118, 116, 14, 1, 15, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 16, 68, 19, 111, 163, 85, 179, 103, 138, 17, 70, 173, 22, 247, 232, 100, 158, 148, 251, 79, 194, 31, 231, 126, 131, 16, 192, 96, 246, 28, 170, 255, 138, 17, 4, 106, 115, 111, 110, 18, 137, 152, 248, 128, 188, 17, 164, 162, 115, 104, 157, 117, 186, 154, 151, 241, 101, 169, 244, 186, 83, 172, 132, 241, 130, 202, 208, 12, 60, 233, 202, 109, 19, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 20, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 164, 44, 191, 230, 117, 2, 38, 51, 84, 146, 82, 141, 40, 255, 38, 11, 133, 53, 184, 99, 112, 54, 16, 244, 73, 83, 70, 118, 129, 35, 181, 159, 234, 167, 147, 192, 179, 142, 139, 80, 20, 139, 166, 13, 27, 123, 211, 239, 152, 90, 16, 209, 157, 214, 29, 182, 110, 252, 140, 78, 224, 84, 1, 9, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 82, 69, 70, 73, 88, 45, 49, 1, 17, 1, 6, 116, 101, 110, 97, 110, 116, 2, 1, 100, 3, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 4, 1, 114, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1, 10, 234, 136, 182, 42, 154, 236, 65, 59, 88, 67, 240, 95, 231, 98, 183, 120, 233, 185, 45, 253, 99, 123, 140, 35, 16, 24, 134, 156, 177, 119, 77, 210, 11, 132, 202, 204, 208, 45, 71, 245, 211, 169, 2, 138, 140, 177, 104, 93, 43, 112, 132, 129, 37, 178, 65, 104, 60, 155, 167, 216, 51, 172, 105, 149, 213, 12, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 13, 14, 15, 16, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 17, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 89, 98, 104, 15, 12, 239, 86, 244, 241, 48, 45, 93, 26, 96, 76, 213, 167, 195, 19, 197, 206, 28, 194, 193, 103, 243, 55, 13, 192, 196, 68, 211, 50, 202, 75, 61, 19, 71, 64, 239, 250, 204, 92, 161, 25, 20, 136, 42, 219, 172, 232, 123, 195, 254, 218, 229, 116, 50, 53, 57, 76, 64, 142, 20, 1, 1, 3, 101, 118, 116, 1, 4, 106, 115, 111, 110, 2, 123, 125]
+          do not
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(420,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(421,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.FailedReadbackCacheDetachmentQuarantinesPrivateCapacityUntilAHealthyRetry()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.AddressedSourceMatchesIndependentApplicationConsumedMetadataAndProofFields [FAIL]
+      Shouldly.ShouldAssertException : image.Array!
+          should satisfy the condition
+      (b == 0)
+          but
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 80, 65, 71, 69, 45, 49, 1, 3, 15, 72, 88, 45, 69, 86, 45, 80, 82, 79, 79, 70, 45, 49, 1, 1, 1, 72, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 79, 85, 84, 69, 45, 49, 1, 20, 1, 254, 8, 7, 247, 2, 233, 122, 149, 252, 41, 16, 152, 69, 52, 248, 66, 114, 65, 120, 195, 162, 223, 251, 122, 198, 119, 47, 156, 162, 160, 222, 9, 2, 6, 116, 101, 110, 97, 110, 116, 3, 1, 100, 4, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 5, 1, 114, 6, 1, 7, 7, 109, 101, 115, 115, 97, 103, 101, 8, 12, 76, 101, 103, 97, 99, 121, 46, 69, 118, 101, 110, 116, 9, 1, 10, 11, 12, 4, 106, 115, 111, 110, 13, 3, 101, 118, 116, 14, 1, 15, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 16, 68, 19, 111, 163, 85, 179, 103, 138, 17, 70, 173, 22, 247, 232, 100, 158, 148, 251, 79, 194, 31, 231, 126, 131, 16, 192, 96, 246, 28, 170, 255, 138, 17, 4, 106, 115, 111, 110, 18, 137, 152, 248, 128, 188, 17, 164, 162, 115, 104, 157, 117, 186, 154, 151, 241, 101, 169, 244, 186, 83, 172, 132, 241, 130, 202, 208, 12, 60, 233, 202, 109, 19, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 20, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 57, 84, 249, 168, 118, 14, 73, 215, 125, 164, 232, 234, 96, 80, 80, 68, 154, 60, 2, 33, 112, 9, 82, 164, 184, 80, 140, 63, 42, 160, 69, 81, 155, 152, 232, 28, 217, 196, 224, 160, 46, 152, 242, 156, 91, 87, 61, 227, 177, 82, 253, 39, 135, 45, 40, 38, 70, 59, 124, 221, 32, 85, 58, 45, 1, 9, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 82, 69, 70, 73, 88, 45, 49, 1, 17, 1, 6, 116, 101, 110, 97, 110, 116, 2, 1, 100, 3, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 4, 1, 114, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1, 10, 234, 136, 182, 42, 154, 236, 65, 59, 88, 67, 240, 95, 231, 98, 183, 120, 233, 185, 45, 253, 99, 123, 140, 35, 16, 24, 134, 156, 177, 119, 77, 210, 11, 132, 202, 204, 208, 45, 71, 245, 211, 169, 2, 138, 140, 177, 104, 93, 43, 112, 132, 129, 37, 178, 65, 104, 60, 155, 167, 216, 51, 172, 105, 149, 213, 12, 166, 233, 210, 125, 212, 220, 47, 179, 41, 61, 51, 138, 97, 30, 164, 229, 91, 176, 109, 149, 28, 114, 26, 202, 65, 213, 137, 21, 70, 6, 155, 80, 13, 14, 15, 16, 151, 92, 188, 199, 234, 71, 249, 85, 97, 46, 41, 51, 163, 179, 61, 141, 7, 76, 7, 144, 147, 152, 236, 111, 104, 188, 20, 251, 21, 48, 117, 202, 17, 21, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 118, 49, 9, 108, 111, 99, 97, 108, 45, 107, 101, 121, 64, 240, 50, 191, 5, 215, 102, 169, 97, 77, 247, 160, 30, 192, 191, 210, 38, 222, 153, 10, 196, 77, 193, 232, 102, 189, 115, 224, 157, 126, 183, 90, 40, 23, 57, 198, 231, 164, 159, 201, 243, 154, 91, 204, 33, 161, 60, 83, 180, 188, 183, 149, 184, 195, 206, 10, 134, 254, 59, 175, 15, 102, 169, 91, 55, 1, 1, 3, 101, 118, 116, 1, 4, 106, 115, 111, 110, 2, 123, 125]
+          do not
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(102,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.AddressedSourceMatchesIndependentApplicationConsumedMetadataAndProofFields()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks [FAIL]
+      Shouldly.ShouldAssertException : image.Array!
+          should satisfy the condition
+      (value == 0)
+          but
+      [123, 34, 118, 97, 108, 117, 101, 34, 58, 48, 125]
+          do not
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(422,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionTests.cs(425,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests.BeginUncertainReadbackRetainsInitialBytesAndRetriesWithoutCallbacks()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'd58db6aef6b28ce4ead05d1dbdb92773160c6f2eecca56ed616270cc7f0be283')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 95, Errors: 0, Failed: 5, Skipped: 0, Not Run: 0, Time: 3.498s

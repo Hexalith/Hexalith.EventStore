@@ -26,8 +26,9 @@ public sealed class DaprLogicalEventReaderTests
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         AggregateMetadata metadata = new(2, DateTimeOffset.UnixEpoch, null);
+        int metadataReads = 0;
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+            .Returns(_ => { metadataReads++; return new ConditionalValue<AggregateMetadata>(true, metadata); });
         EventEnvelope first = CreateEvent();
         EventEnvelope second = first with { SequenceNumber = 2, MessageId = "message-2" };
         _ = stateManager.TryGetStateAsync<EventEnvelope>(
@@ -49,8 +50,8 @@ public sealed class DaprLogicalEventReaderTests
         page.StartSequence.ShouldBe(1);
         page.ActorHead.ShouldBe(2);
         page.Events.Select(static view => view.SequenceNumber).ShouldBe([1L, 2L]);
-        _ = await stateManager.Received(3).TryGetStateAsync<AggregateMetadata>(
-            Identity.MetadataKey, Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        // Three page observations plus bounded before/after callable observations.
+        metadataReads.ShouldBeInRange(3 + 2 * page.Events.Count, 3 + 4 * page.Events.Count);
     }
 
     [Fact]
@@ -669,6 +670,8 @@ public sealed class DaprLogicalEventReaderTests
         using EventDomainRegistry registry = CreateRegistry(upcasting: true);
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var initial = new AggregateMetadata(1, DateTimeOffset.UnixEpoch, "etag");
+        AggregateMetadata current = initial;
+        int metadataReads = 0;
         AggregateMetadata final = change switch
         {
             "head" => initial with { CurrentSequence = 2 },
@@ -676,9 +679,7 @@ public sealed class DaprLogicalEventReaderTests
             _ => initial with { ETag = "changed" },
         };
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<AggregateMetadata>(true, initial),
-                new ConditionalValue<AggregateMetadata>(true, initial),
-                new ConditionalValue<AggregateMetadata>(true, final));
+            .Returns(_ => { metadataReads++; return new ConditionalValue<AggregateMetadata>(true, current); });
         EventEnvelope stored = CreateEvent();
         _ = stateManager.TryGetStateAsync<EventEnvelope>($"{Identity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(true, stored));
@@ -688,7 +689,7 @@ public sealed class DaprLogicalEventReaderTests
             new Dictionary<(string, int), RegisteredEventUpcaster>
             {
                 [("evt", 1)] = new RegisteredEventUpcaster("test-upcaster", upcaster, new byte[32]),
-            }, (_, _, _, _, _, _) => validators++);
+            }, (_, _, _, _, _, _) => { if (++validators == 2) { current = final; } });
         var reader = new DaprLogicalEventReader(stateManager, new NoOpEventPayloadProtectionService(),
             new EventLogicalViewResolver(registry, executor));
         var budget = new EventBufferBudget();
@@ -701,8 +702,7 @@ public sealed class DaprLogicalEventReaderTests
         upcaster.Calls.ShouldBe(1);
         stored.Payload.ShouldBe([1, 2]);
         budget.LiveBytes.ShouldBe(0);
-        _ = await stateManager.Received(3).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
-            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        metadataReads.ShouldBeInRange(2 + 2 * (validators + upcaster.Calls), 3 + 4 * (validators + upcaster.Calls));
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 

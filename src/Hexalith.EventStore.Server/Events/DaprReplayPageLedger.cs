@@ -19,4 +19,16 @@ internal sealed record DaprReplayPageLedger(long PageOrdinal, long Generation, b
     public byte[]? PriorStateHash { get; init; }
     /// <summary>Gets the canonical successor persisted with this response and ledger.</summary>
     public byte[]? CanonicalStateHash { get; init; }
+    /// <summary>Gets the operation-owned prior effective chain.</summary>
+    public byte[]? PreviousEffectiveChainHash { get; init; }
+    /// <summary>Gets the complete successor effective chain.</summary>
+    public byte[]? EffectiveChainHash { get; init; }
+    /// <summary>Gets the exact prior page transcript.</summary>
+    public byte[]? PreviousTranscriptHash { get; init; }
+    /// <summary>Gets the complete successor page transcript.</summary>
+    public byte[]? TranscriptHash { get; init; }
+    /// <summary>Gets the exact terminal command proof digest, absent before completion or without a command route.</summary>
+    public byte[]? CommandProofHash { get; init; }
+    /// <summary>Gets the exact distinct anchor selection hash, absent on ordinary ledgers.</summary>
+    public byte[]? AnchorSelectionHash { get; init; }
 }

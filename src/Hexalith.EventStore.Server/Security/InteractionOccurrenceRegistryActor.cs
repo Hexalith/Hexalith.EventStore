@@ -23,7 +23,7 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
         ArgumentNullException.ThrowIfNull(request); Check(request.Identity); Text(request.DigestKeyVersion); Reference(request.ProposedKeyReference);
         if (request.ReservationAttemptOrdinal <= 0 || request.ContentIntentHmac is not { Length: 64 } || request.ContentIntentHmac.Any(c => !char.IsAsciiHexDigit(c))) { throw new ArgumentException("Invalid keyed fingerprint.", nameof(request)); }
         if (!await AdmitAsync(request.Identity, "Reserve").ConfigureAwait(false)) { return Unavailable(); }
-        var state = await ReadAsync(request.Identity.Target.TenantId).ConfigureAwait(false);
+        var state = await ReadAsync(request.Identity.Target.TenantId, true).ConfigureAwait(false);
         if (state is null) { return Unavailable(); }
         var existing = Find(state, request.Identity);
         if (existing is not null)
@@ -48,7 +48,7 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
     {
         Check(identity); ArgumentNullException.ThrowIfNull(sealedResult);
         if (!await AdmitAsync(identity, "RetainSealed").ConfigureAwait(false)) { return Unavailable(); }
-        var state = await ReadAsync(identity.Target.TenantId).ConfigureAwait(false); if (state is null) { return Unavailable(); }
+        var state = await ReadAsync(identity.Target.TenantId, true).ConfigureAwait(false); if (state is null) { return Unavailable(); }
         var record = Find(state, identity); if (record is null || record.Request.Identity != identity || record.WriterState == InteractionOccurrenceWriterState.Aborted) { return Unavailable(); }
         var owned = CaptureSealed(sealedResult);
         if (owned.KeyReference != record.KeyReference) { return new(InteractionOccurrenceReservationStatus.Conflict, null); }
@@ -62,7 +62,7 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
     public async Task<InteractionOccurrenceReservationResult> CompleteWriterAsync(InteractionOccurrenceIdentity identity, string keyReference, string proofId, bool persisted)
     {
         Check(identity); Reference(keyReference); Text(proofId); if (!await AdmitAsync(identity, "CompleteWriter").ConfigureAwait(false)) { return Unavailable(); }
-        var state = await ReadAsync(identity.Target.TenantId).ConfigureAwait(false); if (state is null) { return Unavailable(); }
+        var state = await ReadAsync(identity.Target.TenantId, true).ConfigureAwait(false); if (state is null) { return Unavailable(); }
         var record = Find(state, identity); if (record is null || record.Request.Identity != identity || record.KeyReference != keyReference) { return Unavailable(); }
         if (record.WriterState is InteractionOccurrenceWriterState.Active or InteractionOccurrenceWriterState.Aborted)
         { return record.WriterProofId == proofId && (record.WriterState == InteractionOccurrenceWriterState.Active) == persisted ? await ReleaseAsync(identity, "CompleteWriter", record).ConfigureAwait(false) : new(InteractionOccurrenceReservationStatus.Conflict, null); }
@@ -87,29 +87,61 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
     }
     private async Task<bool> AdmitAsync(InteractionOccurrenceIdentity identity, string method) => authority is not null
         && await authority.AuthorizeOperationAsync(identity, method).ConfigureAwait(false);
-    private async Task<InteractionOccurrenceRegistrySnapshot?> ReadAsync(string tenant)
+    private async Task<InteractionOccurrenceRegistrySnapshot?> ReadAsync(string tenant, bool recoverAdmittedOriginal = false)
     {
         await StateManager.ClearCacheAsync().ConfigureAwait(false); var stored = await StateManager.TryGetStateAsync<InteractionOccurrenceRegistrySnapshot>(StateKey).ConfigureAwait(false);
         if (authority is null) { return null; }
         string? epoch = stored.HasValue ? stored.Value.EpochId : await authority.GetInstalledEpochAsync(tenant).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(epoch)) { return null; } Text(epoch);
         var state = stored.HasValue ? CaptureState(stored.Value) : new(tenant, epoch, 0, []);
-        if (state.TenantId != tenant || !await authority.ValidateStateAsync(tenant, epoch, state.Revision, Digest(state)).ConfigureAwait(false)) { return null; }
-        return state;
+        if (state.TenantId != tenant) { return null; }
+        try
+        {
+        return await RecoverableAnchoredState.ReconcileAsync(PendingScope, state, await ReadPendingAsync().ConfigureAwait(false), CaptureState,
+            value => authority.ValidateStateAsync(tenant, epoch, value.Revision, Digest(value)), authority, PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException) { return null; }
     }
     private async Task SaveAsync(InteractionOccurrenceRegistrySnapshot next, long expected)
     {
         _ = CaptureState(next); // Validate before advancing the independent anchor or staging provider state.
-        if (authority is null || !await authority.RecordRevisionAsync(next.TenantId, next.EpochId, expected, next.Revision, Digest(next)).ConfigureAwait(false))
-        { throw new InvalidOperationException("Independent registry anchor is unavailable or stale."); }
-        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false); await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (authority is null) { throw new InvalidOperationException("Independent registry authority is unavailable."); }
+        var previous = await ReadAsync(next.TenantId).ConfigureAwait(false);
+        if (previous is null || previous.Revision != expected) { throw new InvalidOperationException("Registry comparison changed."); }
+        var pending = RecoverableAnchoredState.Prepare(PendingScope, expected, next.Revision, previous, next);
+        if (!await RecoverableAnchoredState.CommitAsync(pending, authority, ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false))
+        { throw new InvalidOperationException("Independent registry transition is unavailable or stale."); }
         var observed = await ReadAsync(next.TenantId).ConfigureAwait(false);
         if (observed is null || Digest(observed) != Digest(next)) { throw new InvalidOperationException("Occurrence registry result is not confirmed durable."); }
+    }
+
+    private string PendingScope => Host.Id.GetId() + "|" + StateKey;
+    private const string PendingKey = StateKey + "-pending-transition-v1";
+    private async Task<AnchoredStateTransition?> ReadPendingAsync()
+    {
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var pending = await StateManager.TryGetStateAsync<AnchoredStateTransition>(PendingKey).ConfigureAwait(false);
+        return pending.HasValue ? pending.Value : null;
+    }
+    private async Task PersistPendingAsync(AnchoredStateTransition pending)
+    {
+        await StateManager.SetStateAsync(PendingKey, pending).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+    private async Task<InteractionOccurrenceRegistrySnapshot> PersistTargetAsync(InteractionOccurrenceRegistrySnapshot next)
+    {
+        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(PendingKey).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var confirmed = await StateManager.TryGetStateAsync<InteractionOccurrenceRegistrySnapshot>(StateKey).ConfigureAwait(false);
+        return confirmed.HasValue ? confirmed.Value : throw new InvalidOperationException("Reconciled main state is missing.");
     }
     private InteractionOccurrenceRegistrySnapshot CaptureState(InteractionOccurrenceRegistrySnapshot state)
     {
         if (state.Revision <= 0 || state.Records is null || state.Records.Count > 10000) { throw new InvalidOperationException("Malformed candidate registry."); }
         var records = new List<InteractionOccurrenceRecord>();
+        long sealedBytes = 0;
         foreach (var record in state.Records)
         {
             if (records.Count >= 10000 || record is null) { throw new InvalidOperationException("Malformed candidate registry."); }
@@ -121,6 +153,14 @@ public sealed class InteractionOccurrenceRegistryActor(ActorHost host, IInteract
                 || record.WriterState is InteractionOccurrenceWriterState.Active or InteractionOccurrenceWriterState.Aborted && string.IsNullOrWhiteSpace(record.WriterProofId)
                 || record.WriterState is InteractionOccurrenceWriterState.Reserved or InteractionOccurrenceWriterState.SealedPending && record.WriterProofId is not null)
             { throw new InvalidOperationException("Malformed candidate occurrence."); }
+            if (record.Sealed is { } carrier)
+            {
+                // The existing admitted pending carrier also bounds aggregate transient ciphertext copies.
+                // Check before taking another detached copy, including restored states lacking an anchor.
+                sealedBytes = checked(sealedBytes + (carrier.PayloadBytes?.LongLength ?? 0));
+                if (sealedBytes > RecoverableAnchoredState.MaximumPendingBytes)
+                { throw new InvalidOperationException("Candidate registry aggregate ciphertext bound exceeded."); }
+            }
             records.Add(record with { Sealed = record.Sealed is null ? null : CaptureSealed(record.Sealed) });
         }
         if (records.Select(r => r.KeyReference).Distinct(StringComparer.Ordinal).Count() != records.Count

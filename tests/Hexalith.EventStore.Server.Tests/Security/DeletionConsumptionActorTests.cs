@@ -11,6 +11,25 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Actual durable tenant actor with synthetic guard/atomic backend; explicit serialized operation orders, no live race or physical qualification claim.</summary>
 public sealed class DeletionConsumptionActorTests
 {
+    /// <summary>A different authorized mutation resolves the independently admitted staged original after restart, while read-only lookup cannot advance it or repeat a physical effect.</summary>
+    [Fact]
+    public async Task LaterMutationRecoversPreJournalOriginalWithoutItsCaller()
+    {
+        var f = new DeletionConsumptionFixture { JournalAvailable = false }; var original = DeletionConsumptionFixture.Request();
+        await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.RegisterAsync(original));
+        var retained = System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<AnchoredStateTransition>());
+        f.Authority.ClearReceivedCalls(); var restarted = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider);
+        (await restarted.LookupAsync("tenant-a", "batch-1")).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        await f.Authority.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+        f.Anchor.ShouldBe(0); System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value).ShouldBe(retained);
+        f.JournalAvailable = true;
+        (await restarted.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation())).ShouldNotBeNull();
+        var saved = f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>();
+        saved.Revision.ShouldBe(2); DeletionConsumptionIdentity.Digest(saved.Batches.Single().Original).ShouldBe(DeletionConsumptionIdentity.Digest(original)); saved.Revocations.Count.ShouldBe(1);
+        (await restarted.LookupAsync("tenant-a", "batch-1")).Status.ShouldBe(DeletionConsumptionStatus.ConsumptionBlocked);
+        await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     /// <summary>Authenticated block commits before reserve; no physical call occurs and exact retries retain the original receipt.</summary>
     [Fact]
     public async Task AdmissionBlockBeforeReservePersistsAndPreventsEffect()
@@ -20,7 +39,7 @@ public sealed class DeletionConsumptionActorTests
         var outcome = await f.Actor.BlockAsync(block); outcome.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionBlocked);
         DeletionConsumptionIdentity.Digest(await f.Actor.ReserveAndConsumeAsync(request)).ShouldBe(DeletionConsumptionIdentity.Digest(outcome)); DeletionConsumptionIdentity.Digest(await f.Actor.BlockAsync(block)).ShouldBe(DeletionConsumptionIdentity.Digest(outcome));
         await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome.ShouldBeEquivalentTo(outcome);
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome).ShouldBe(JsonSerializer.Serialize(outcome));
         (await f.Actor.BlockAsync(block with { AdmissionEvidenceId = "changed" })).Status.ShouldBe(DeletionConsumptionStatus.Conflict);
     }
     /// <summary>Reservation wins; a lost response and subsequent admission cannot cancel it or authorize another physical batch.</summary>
@@ -33,7 +52,7 @@ public sealed class DeletionConsumptionActorTests
         var consumed = await f.Actor.LookupAsync("tenant-a", "batch-1"); consumed.Status.ShouldBe(DeletionConsumptionStatus.Consumed);
         consumed.ReceiptId.ShouldBe(reserved.ReceiptId); consumed.TargetReceipts.Select(r => r.Target).ShouldBe(request.Targets);
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
-        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome.ShouldBeEquivalentTo(consumed);
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome).ShouldBe(JsonSerializer.Serialize(consumed));
     }
     /// <summary>Compromise before registration/reserve blocks; after reservation/consumption preserves the original irreversible vector.</summary>
     [Theory]
@@ -63,13 +82,14 @@ public sealed class DeletionConsumptionActorTests
     [InlineData("order")]
     [InlineData("batch")]
     [InlineData("reservation")]
+    [InlineData("duplicate-id")]
     public async Task MalformedPhysicalVectorCannotBecomeConsumed(string vector)
     {
         var f = new DeletionConsumptionFixture(); f.AlterResult = result => vector switch {
             "partial" => result with { TargetReceipts = result.TargetReceipts.Take(1).ToArray() },
             "target" => result with { TargetReceipts = result.TargetReceipts.Select(r => r with { Target = r.Target with { TargetProtectionKeyAlias = "substitution" } }).ToArray() },
             "order" => result with { TargetReceipts = result.TargetReceipts.Reverse().ToArray() },
-            "batch" => result with { BatchId = "wrong" }, _ => result with { ReservationReceiptId = "wrong" }
+            "batch" => result with { BatchId = "wrong" }, "duplicate-id" => result with { TargetReceipts = result.TargetReceipts.Select(r => r with { ReceiptId = "same-receipt" }).ToArray() }, _ => result with { ReservationReceiptId = "wrong" }
         };
         var request = DeletionConsumptionFixture.Request(); await f.Actor.RegisterAsync(request);
         (await f.Actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved);
@@ -84,7 +104,7 @@ public sealed class DeletionConsumptionActorTests
         await f.Actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("key-v2"));
         var activation = DeletionConsumptionFixture.Activation(old, DeletionConsumptionFixture.Request(version: "key-v2", attestation: 2));
         var blocked = await f.Actor.ActivateAsync(activation); blocked.Status.ShouldBe(DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise);
-        blocked.BlockedKeyVersion.ShouldBe("key-v2"); blocked.RevocationRevision.ShouldBe(1); (await f.Actor.ActivateAsync(activation)).ShouldBe(blocked);
+        blocked.BlockedKeyVersion.ShouldBe("key-v2"); blocked.RevocationRevision.ShouldBe(1); JsonSerializer.Serialize(await f.Actor.ActivateAsync(activation)).ShouldBe(JsonSerializer.Serialize(blocked));
         var persisted = await f.Actor.LookupAsync("tenant-a", "batch-1"); persisted.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionBlocked); persisted.ReceiptId.ShouldBe(blocked.ReceiptId);
         var third = DeletionConsumptionFixture.Activation(persisted, DeletionConsumptionFixture.Request(version: "key-v3", attestation: 3), "activate-2");
         (await f.Actor.ActivateAsync(third)).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
@@ -157,25 +177,25 @@ public sealed class DeletionConsumptionActorTests
     }
     /// <summary>Precommit failure or committed lost acknowledgement never sends destruction from unconfirmed staged cache.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ReservationSaveFailureUsesPersistedStateOnly(bool commitBeforeFault)
+    [InlineData(1, false)][InlineData(1, true)][InlineData(2, false)][InlineData(2, true)]
+    public async Task ReservationSaveFailureUsesPersistedStateOnly(int failSave, bool committed)
     {
         var f = new DeletionConsumptionFixture(); var request = DeletionConsumptionFixture.Request(); await f.Actor.RegisterAsync(request);
-        var manager = Substitute.For<IActorStateManager>();
-        manager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(call => f.Backend.ClearCacheAsync(call.Arg<CancellationToken>()));
-        manager.TryGetStateAsync<DeletionConsumptionLedger>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<DeletionConsumptionLedger>(call.Arg<string>(), call.Arg<CancellationToken>()));
-        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<DeletionConsumptionLedger>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<DeletionConsumptionLedger>(), call.Arg<CancellationToken>()));
-        manager.SaveStateAsync(Arg.Any<CancellationToken>()).Returns(async call => {
-            if (commitBeforeFault) { await f.Backend.SaveStateAsync(call.Arg<CancellationToken>()).ConfigureAwait(false); } throw new HttpRequestException("Controlled reservation save failure.");
-        });
+        var manager = DeletionConsumptionFixture.Faulting<DeletionConsumptionLedger>(f.Backend, failSave, committed);
         await Should.ThrowAsync<HttpRequestException>(() => DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider).ReserveAndConsumeAsync(request));
-        var persisted = f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single();
-        persisted.Outcome.Status.ShouldBe(commitBeforeFault ? DeletionConsumptionStatus.ConsumptionReserved : DeletionConsumptionStatus.Unconsumed);
+        f.Anchor.ShouldBe(failSave == 1 ? 1 : 2);
         await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        if (commitBeforeFault) { (await f.Actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.Consumed); }
-        else { await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.ReserveAndConsumeAsync(request)); }
-        if (commitBeforeFault) { f.Retained.Keys.Single().ShouldBe(persisted.Outcome.ReceiptId); }
+        foreach (var item in f.Backend.CommittedState.ToArray())
+        {
+            if (item.Value is AnchoredStateTransition pending) { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<AnchoredStateTransition>(JsonSerializer.Serialize(pending))!); }
+            else { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<DeletionConsumptionLedger>(JsonSerializer.Serialize(item.Value))!); }
+        }
+        await f.Backend.SaveStateAsync();
+        (await DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider).ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.Consumed);
+        var original = f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome;
+        f.Retained.Keys.Single().ShouldNotBeNullOrWhiteSpace(); original.TargetReceipts.Count.ShouldBe(2);
+        JsonSerializer.Serialize(await f.Actor.ReserveAndConsumeAsync(request)).ShouldBe(JsonSerializer.Serialize(original));
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>Admission integrity remains permanently restrictive regardless of earlier/later compromise, including serialized restart.</summary>
@@ -222,7 +242,7 @@ public sealed class DeletionConsumptionActorTests
         (await DeletionConsumptionFixture.Create(f.Backend).LookupAsync("tenant-a", "batch-1")).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
         f.Authority.AuthorizeOperationAsync("tenant-a", "batch-1", "LookupDeletionBatch", Arg.Any<CancellationToken>()).Returns(false);
         (await f.Actor.LookupAsync("tenant-a", "batch-1")).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
-        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome.ShouldBeEquivalentTo(consumed);
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome).ShouldBe(JsonSerializer.Serialize(consumed));
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
     /// <summary>At each existing operational collection bound, a new append denies before persistence and prior immutable terminal evidence remains readable.</summary>
@@ -285,4 +305,137 @@ public sealed class DeletionConsumptionActorTests
         DeletionConsumptionIdentity.Digest(await actor.LookupAsync("tenant-a", "batch-1")).ShouldBe(DeletionConsumptionIdentity.Digest(blocked));
     }
 
+
+    /// <summary>A covered requesting batch retains its own nonempty aggregate receipt and original target proofs across either pending/main persistence failure, retry and serialized restart.</summary>
+    [Theory]
+    [InlineData(1, false)][InlineData(1, true)][InlineData(2, false)][InlineData(2, true)]
+    public async Task AlreadyDestroyedRequestingBatchRetainsExactOriginalCoveredOutcome(int failSave, bool committed)
+    {
+        var f = new DeletionConsumptionFixture(); var original = DeletionConsumptionFixture.Request(); await f.Actor.RegisterAsync(original);
+        var consumed = await f.Actor.ReserveAndConsumeAsync(original); var covered = DeletionConsumptionFixture.Request("covered-requesting-batch");
+        var manager = DeletionConsumptionFixture.Faulting<DeletionConsumptionLedger>(f.Backend, failSave, committed);
+        await Should.ThrowAsync<HttpRequestException>(() => DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider).RegisterAsync(covered));
+        await f.Backend.ClearCacheAsync(TestContext.Current.CancellationToken);
+        var retained = await DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider).RegisterAsync(covered);
+        retained.Status.ShouldBe(DeletionConsumptionStatus.AlreadyDestroyedByBatch); retained.BatchId.ShouldBe(covered.Capability.BatchId); retained.ReceiptId.ShouldNotBeNullOrWhiteSpace();
+        retained.TargetReceipts.ShouldBe(consumed.TargetReceipts); retained.TargetReceipts.All(r => r.OriginalBatchId == original.Capability.BatchId).ShouldBeTrue();
+        var saved = f.Backend.CommittedState.Single(); var restored = new InMemoryStateManager();
+        await restored.SetStateAsync(saved.Key, JsonSerializer.Deserialize<DeletionConsumptionLedger>(JsonSerializer.Serialize(saved.Value))!, TestContext.Current.CancellationToken); await restored.SaveStateAsync(TestContext.Current.CancellationToken);
+        var restarted = DeletionConsumptionFixture.Create(restored, f.Authority, f.Provider);
+        JsonSerializer.Serialize(await restarted.LookupAsync("tenant-a", covered.Capability.BatchId)).ShouldBe(JsonSerializer.Serialize(retained));
+        JsonSerializer.Serialize(await restarted.ReserveAndConsumeAsync(covered)).ShouldBe(JsonSerializer.Serialize(retained));
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        restored.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Count.ShouldBe(2);
+    }
+    /// <summary>Both suspended invocation and noncooperative physical tasks release the actor turn on its own deadline; late completion cannot mutate state or cause a second consume.</summary>
+    [Theory]
+    [InlineData(false, false)][InlineData(false, true)][InlineData(true, false)][InlineData(true, true)]
+    public async Task PhysicalRecoveryDeadlinePreservesReservationAndAllowsSameTenantProgress(bool lookup, bool synchronous)
+    {
+        var f = new DeletionConsumptionFixture(); var request = DeletionConsumptionFixture.Request();
+        var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        await actor.RegisterAsync(request);
+        if (lookup) { f.LoseResponse = true; (await actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved); }
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var released = new TaskCompletionSource<DeletionManifestProviderResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<DeletionManifestProviderResult> Suspended()
+        {
+            entered.TrySetResult();
+            if (synchronous) { var result = released.Task.GetAwaiter().GetResult(); completed.TrySetResult(); return Task.FromResult(result); }
+            return Complete();
+            async Task<DeletionManifestProviderResult> Complete() { var result = await released.Task; completed.TrySetResult(); return result; }
+        }
+        if (lookup) { f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Suspended()); }
+        else { f.Provider.ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ => Suspended()); }
+        var pending = lookup ? actor.LookupAsync("tenant-a", request.Capability.BatchId) : actor.ReserveAndConsumeAsync(request);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        var original = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        original.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved);
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("unrelated-key"))).ShouldNotBeNull();
+        var other = DeletionConsumptionFixture.Request("other-batch", "healthy-other", targets: [new("tenant-a", "other-interaction", "other-alias")]);
+        (await actor.RegisterAsync(other)).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
+        string beforeLate = JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value);
+        var exact = new DeletionManifestProviderResult("tenant-a", request.Capability.BatchId, original.ReceiptId!, DeletionManifestProviderState.Consumed,
+            request.Targets.Select((target, index) => new DeletionTargetReceipt(target, request.Capability.BatchId, "late-original-" + index)).ToArray());
+        f.Retained[original.ReceiptId!] = exact; released.SetResult(exact);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value).ShouldBe(beforeLate);
+        f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(exact);
+        var restarted = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        var recovered = await restarted.LookupAsync("tenant-a", request.Capability.BatchId); recovered.Status.ShouldBe(DeletionConsumptionStatus.Consumed);
+        recovered.ReceiptId.ShouldBe(original.ReceiptId); recovered.TargetReceipts.ShouldBe(exact.TargetReceipts);
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await restarted.LookupAsync("tenant-a", "other-batch")).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
+    }
+
+    /// <summary>A completed physical provider task cannot retain the actor through its receipt Count/traversal; the original reserve wins and later exact lookup never repeats consumption.</summary>
+    [Theory]
+    [InlineData(false, false, false)][InlineData(false, true, false)][InlineData(true, false, false)][InlineData(true, true, false)][InlineData(true, false, true)]
+    public async Task SuspendedPhysicalReceiptCaptureRetainsReservationAndAllowsTenantProgress(bool lookup, bool traversal, bool notStarted)
+    {
+        var f = new DeletionConsumptionFixture(); var request = DeletionConsumptionFixture.Request();
+        var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow); var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        await actor.RegisterAsync(request); if (lookup) { f.LoseResponse = true; (await actor.ReserveAndConsumeAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved); }
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        void Suspend() { entered.TrySetResult(); release.Wait(); released.TrySetResult(); }
+        string? reservation = null; IReadOnlyList<DeletionTargetReceipt> exact = request.Targets.Select((target, index) => new DeletionTargetReceipt(target, request.Capability.BatchId, "retained-original-" + index)).ToArray();
+        var supplied = NSubstitute.Substitute.For<IReadOnlyList<DeletionTargetReceipt>>();
+        supplied.Count.Returns(_ => { if (!traversal) { Suspend(); } return notStarted ? 0 : exact.Count; });
+        IEnumerable<DeletionTargetReceipt> Enumerate() { Suspend(); foreach (var receipt in exact) { yield return receipt; } }
+        supplied.GetEnumerator().Returns(_ => Enumerate().GetEnumerator());
+        DeletionManifestProviderResult ProviderResult(string id) { reservation = id; return new("tenant-a", request.Capability.BatchId, id, notStarted ? DeletionManifestProviderState.NotStarted : DeletionManifestProviderState.Consumed, supplied); }
+        if (lookup) { f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => ProviderResult(call.Arg<string>())); }
+        else { f.Provider.ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => ProviderResult(call.Arg<string>())); }
+        var pending = lookup ? actor.LookupAsync("tenant-a", request.Capability.BatchId) : actor.ReserveAndConsumeAsync(request);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); clock.Advance(TimeSpan.FromSeconds(30));
+        var original = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); original.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved);
+        original.ReceiptId.ShouldBe(reservation);
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("unrelated"))).ShouldNotBeNull();
+        var other = DeletionConsumptionFixture.Request("other", "healthy", targets: [new("tenant-a", "other", "other")]);
+        (await actor.RegisterAsync(other)).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
+        string before = JsonSerializer.Serialize(f.Backend.CommittedState); release.Set(); await released.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        JsonSerializer.Serialize(f.Backend.CommittedState).ShouldBe(before);
+        f.Provider.LookupAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new DeletionManifestProviderResult("tenant-a", request.Capability.BatchId, original.ReceiptId!, DeletionManifestProviderState.Consumed, exact));
+        var recovered = await DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock).LookupAsync("tenant-a", request.Capability.BatchId);
+        recovered.Status.ShouldBe(DeletionConsumptionStatus.Consumed); recovered.ReceiptId.ShouldBe(original.ReceiptId); recovered.TargetReceipts.ShouldBe(exact);
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await actor.LookupAsync("tenant-a", "other")).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
+    }
+
+    /// <summary>Raw ordinal alias order agrees with the guard even when JSON escaping differs; reversed/duplicate vectors fail before admission/effect and the exact original survives consumption lookup/restart.</summary>
+    [Theory]
+    [InlineData("sorted")][InlineData("reversed")][InlineData("duplicate")]
+    public async Task CanonicalRawTargetOrderPreservesOriginalAcrossConsumeAndRestart(string vector)
+    {
+        ArgumentNullException.ThrowIfNull(vector);
+        var plus = new ProtectionTarget("tenant-a", "interaction-a", "key+v1");
+        var minus = plus with { TargetProtectionKeyAlias = "key-v1" };
+        IReadOnlyList<ProtectionTarget> targets = vector switch { "reversed" => [minus, plus], "duplicate" => [plus, plus], _ => [plus, minus] };
+        var f = new DeletionConsumptionFixture { LoseResponse = true }; var request = DeletionConsumptionFixture.Request(targets: targets);
+        if (vector != "sorted")
+        {
+            await Should.ThrowAsync<ArgumentException>(() => f.Actor.RegisterAsync(request));
+            await f.Authority.DidNotReceive().VerifyDispatchAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<CancellationToken>());
+            await f.Authority.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+            f.Provider.ReceivedCalls().ShouldBeEmpty(); f.Backend.CommittedState.ShouldBeEmpty(); return;
+        }
+        (await f.Actor.RegisterAsync(request)).Status.ShouldBe(DeletionConsumptionStatus.Unconsumed);
+        var reserved = await f.Actor.ReserveAndConsumeAsync(request); reserved.Status.ShouldBe(DeletionConsumptionStatus.ConsumptionReserved);
+        var saved = f.Backend.CommittedState.Single(); var persisted = saved.Value.ShouldBeOfType<DeletionConsumptionLedger>();
+        DeletionConsumptionIdentity.Digest(persisted.Batches.Single().Original).ShouldBe(DeletionConsumptionIdentity.Digest(request));
+        var restored = new Hexalith.EventStore.Testing.Fakes.InMemoryStateManager();
+        await restored.SetStateAsync(saved.Key, JsonSerializer.Deserialize<DeletionConsumptionLedger>(JsonSerializer.Serialize(saved.Value))!); await restored.SaveStateAsync();
+        var restarted = DeletionConsumptionFixture.Create(restored, f.Authority, f.Provider);
+        var original = await restarted.LookupAsync("tenant-a", request.Capability.BatchId); original.Status.ShouldBe(DeletionConsumptionStatus.Consumed);
+        original.ReceiptId.ShouldBe(reserved.ReceiptId); original.TargetReceipts.Select(r => r.Target).ShouldBe(targets);
+        DeletionConsumptionIdentity.Digest(await restarted.ReserveAndConsumeAsync(request)).ShouldBe(DeletionConsumptionIdentity.Digest(original));
+        var final = restored.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single();
+        DeletionConsumptionIdentity.Digest(final.Original).ShouldBe(DeletionConsumptionIdentity.Digest(request));
+        DeletionConsumptionIdentity.Digest(final.Outcome).ShouldBe(DeletionConsumptionIdentity.Digest(original));
+        await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
+    }
 }

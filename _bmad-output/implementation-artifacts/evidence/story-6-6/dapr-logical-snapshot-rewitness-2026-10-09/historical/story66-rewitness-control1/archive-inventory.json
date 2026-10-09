@@ -1,0 +1,34 @@
+[
+  {
+    "source": "/tmp/story66-rewitness-control1/attempt.json",
+    "sourceBytes": 2714684,
+    "sourceSha256": "c110a21474b0031d89e3a0770a0986d54b554e1a643f892a5b765b64217a29c9",
+    "archive": "attempt.json.xz",
+    "archiveBytes": 643188,
+    "archiveSha256": "269a7e0ea1e008d2522e2d6808a7242cd00f1e77b12de2b8d150a8fe14be3832"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control1/commands.json",
+    "sourceBytes": 972476,
+    "sourceSha256": "22b20bbaffb3c463aea1b52052007315b74f96b6290efe7fca4f1c2f86816175",
+    "archive": "commands.json.xz",
+    "archiveBytes": 118168,
+    "archiveSha256": "62663964612876608e6594d613a1c59a93d0167d223370313b6caac80885c718"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control1/rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-build.log",
+    "sourceBytes": 4013,
+    "sourceSha256": "6c3dceeac8511ac9ca53c8e2d05463605eef21f9f202f757217d689455d09eb7",
+    "archive": "rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-build.log.xz",
+    "archiveBytes": 692,
+    "archiveSha256": "0a15dae231e48b3e9ddd4892016ce5e6b50b9606db88df80fc0b82eebdc44b2d"
+  },
+  {
+    "source": "/tmp/story66-rewitness-control1-run.log",
+    "sourceBytes": 876,
+    "sourceSha256": "7b5b07691830856ee25c08144269af3731abb969b8fca2c638d090e31efab40a",
+    "archive": "runner.log.xz",
+    "archiveBytes": 448,
+    "archiveSha256": "b3ce2c5f20a9cc6a225d0f9342f3d8869cb716f048ff0f29d52ec33612961769"
+  }
+]

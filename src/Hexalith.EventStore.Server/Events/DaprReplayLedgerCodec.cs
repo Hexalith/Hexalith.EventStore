@@ -8,6 +8,16 @@ internal static class DaprReplayLedgerCodec
     /// <summary>Produces the fixed scalar preimage used solely for exact current logical participant comparison.</summary>
     internal static byte[] Encode(DaprReplayPageLedger ledger)
     {
+        if (ledger.AnchorSelectionHash is not null)
+        {
+            throw new InvalidOperationException("AnchorCapabilityHold: anchored ledgers require their distinct participant codec.");
+        }
+        bool commitments = ledger.PreviousEffectiveChainHash is not null || ledger.EffectiveChainHash is not null
+            || ledger.PreviousTranscriptHash is not null || ledger.TranscriptHash is not null || ledger.CommandProofHash is not null;
+        if (commitments && (ledger.PreviousEffectiveChainHash is not { Length: 32 } || ledger.EffectiveChainHash is not { Length: 32 }
+            || ledger.PreviousTranscriptHash is not { Length: 32 } || ledger.TranscriptHash is not { Length: 32 }
+            || ledger.CommandProofHash is not null && (ledger.CommandProofHash.Length != 32 || !ledger.IsFinal)))
+        { throw new InvalidOperationException("ReplayRestartRequired: logical ledger commitments are incomplete."); }
         if (ledger.PageOrdinal is < 1 or > 65536 || ledger.Generation < 1 || ledger.Count is < 0 or > 256
             || ledger.StartSequence < 1 || ledger.EndSequence < 0
             || ledger.RequestHash is not
@@ -27,7 +37,7 @@ internal static class DaprReplayLedgerCodec
         }
 
         using var writer = new EventEvolutionBinaryWriter(512);
-        writer.WriteRaw("HX-EV-DAPR-REPLAY-LEDGER-1\0"u8);
+        writer.WriteRaw(commitments ? "HX-EV-DAPR-REPLAY-LEDGER-2\0"u8 : "HX-EV-DAPR-REPLAY-LEDGER-1\0"u8);
         writer.WriteByte(1);
         writer.WriteInt64(ledger.PageOrdinal);
         writer.WriteInt64(ledger.Generation);
@@ -49,6 +59,14 @@ internal static class DaprReplayLedgerCodec
         if (ledger.CanonicalStateHash is not null)
         {
             writer.WriteHash(ledger.CanonicalStateHash);
+        }
+
+        if (commitments)
+        {
+            writer.WriteHash(ledger.PreviousEffectiveChainHash!); writer.WriteHash(ledger.EffectiveChainHash!);
+            writer.WriteHash(ledger.PreviousTranscriptHash!); writer.WriteHash(ledger.TranscriptHash!);
+            writer.WriteByte(ledger.CommandProofHash is null ? (byte)0 : (byte)1);
+            if (ledger.CommandProofHash is not null) { writer.WriteHash(ledger.CommandProofHash); }
         }
 
         return writer.CopyEncodedBytes();

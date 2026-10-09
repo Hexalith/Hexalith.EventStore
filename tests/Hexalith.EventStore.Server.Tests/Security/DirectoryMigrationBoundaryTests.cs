@@ -10,6 +10,22 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Actual durable conditional epoch/cohort/outcome protocol; independently qualified writer/fence facts are synthetic, no target append/physical proof.</summary>
 public sealed class DirectoryMigrationBoundaryTests
 {
+    /// <summary>A different authorized mutation resolves the independently admitted staged original after restart, while read-only lookup cannot advance it or repeat a physical effect.</summary>
+    [Fact]
+    public async Task LaterMutationRecoversPreJournalOriginalWithoutItsCaller()
+    {
+        var f = new DirectoryMigrationBoundaryFixture { JournalAvailable = false }; var original = DirectoryMigrationBoundaryFixture.Installation();
+        (await f.Actor.InstallAsync(original)).State.ShouldBe(DirectoryBoundaryOutcomeState.Unavailable);
+        var retained = System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<AnchoredStateTransition>());
+        f.Authority.ClearReceivedCalls(); var restarted = DirectoryMigrationBoundaryFixture.Create(f.Backend, f.Authority);
+        (await restarted.ReadAsync("tenant-a"))!.Revision.ShouldBe(0);
+        await f.Authority.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+        f.Anchor.ShouldBe(0); System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value).ShouldBe(retained);
+        f.JournalAvailable = true;
+        (await restarted.RepairAsync(DirectoryMigrationBoundaryFixture.Repair())).State.ShouldBe(DirectoryBoundaryOutcomeState.RepairFenced);
+        f.Persisted.Revision.ShouldBe(2); f.Persisted.Installations.Single().ShouldBe(original); f.Persisted.Outcomes.Count.ShouldBe(2);
+    }
+
     /// <summary>Every original finite obligation must drain before successor activation; serialized restart preserves predecessor cohorts/receipts/outcomes.</summary>
     [Fact]
     public async Task CompleteFiniteOriginalCohortPrecedesSuccessorAndSurvivesRestart()
@@ -64,18 +80,22 @@ public sealed class DirectoryMigrationBoundaryTests
     }
     /// <summary>Precommit failure closes availability; committed lost acknowledgement recovers the exact durable original without a repeated install.</summary>
     [Theory]
-    [InlineData(false)][InlineData(true)]
-    public async Task SaveFailureDoesNotCertifyStagedCache(bool committed)
+    [InlineData(1, false)][InlineData(1, true)][InlineData(2, false)][InlineData(2, true)]
+    public async Task SaveFailureDoesNotCertifyStagedCache(int failSave, bool committed)
     {
-        var f = new DirectoryMigrationBoundaryFixture(); var manager = Substitute.For<IActorStateManager>();
-        manager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(call => f.Backend.ClearCacheAsync(call.Arg<CancellationToken>()));
-        manager.TryGetStateAsync<DirectoryEpochLedger>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<DirectoryEpochLedger>(call.Arg<string>(), call.Arg<CancellationToken>()));
-        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<DirectoryEpochLedger>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<DirectoryEpochLedger>(), call.Arg<CancellationToken>()));
-        manager.SaveStateAsync(Arg.Any<CancellationToken>()).Returns(async call => { if (committed) { await f.Backend.SaveStateAsync(call.Arg<CancellationToken>()); } throw new HttpRequestException("Controlled boundary save failure."); });
+        var f = new DirectoryMigrationBoundaryFixture(); var manager = DirectoryMigrationBoundaryFixture.Faulting<DirectoryEpochLedger>(f.Backend, failSave, committed);
         await Should.ThrowAsync<HttpRequestException>(() => DirectoryMigrationBoundaryFixture.Create(manager, f.Authority).InstallAsync(DirectoryMigrationBoundaryFixture.Installation()));
-        (await f.Actor.InstallAsync(DirectoryMigrationBoundaryFixture.Installation())).State.ShouldBe(committed ? DirectoryBoundaryOutcomeState.Installed : DirectoryBoundaryOutcomeState.Unavailable);
-        f.Anchor.ShouldBe(1); if (committed) { f.Persisted.Installations.Count.ShouldBe(1); } else { f.Backend.CommittedState.ShouldBeEmpty(); }
+        f.Anchor.ShouldBe(failSave == 1 ? 0 : 1);
+        foreach (var item in f.Backend.CommittedState.ToArray())
+        {
+            if (item.Value is AnchoredStateTransition pending) { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<AnchoredStateTransition>(JsonSerializer.Serialize(pending))!); }
+            else { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<DirectoryEpochLedger>(JsonSerializer.Serialize(item.Value))!); }
+        }
+        await f.Backend.SaveStateAsync();
+        (await f.Actor.InstallAsync(DirectoryMigrationBoundaryFixture.Installation())).State.ShouldBe(DirectoryBoundaryOutcomeState.Installed);
+        f.Anchor.ShouldBe(1); f.Persisted.Installations.Count.ShouldBe(1); f.Backend.CommittedState.Count.ShouldBe(1);
     }
+
     /// <summary>Full original outcome bound refuses new mutation before anchor/save but retains authenticated terminal lookup.</summary>
     [Fact]
     public async Task CapacityRefusalPreservesOriginalImmutableLookup()

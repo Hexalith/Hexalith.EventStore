@@ -444,6 +444,66 @@ public sealed class AuthoritativeEventStreamReaderTests
         result.Stream.ShouldBeNull();
     }
 
+    /// <summary>Gateway return precedes blocked Count/MoveNext of page/head events or flags; owned capture must remain within the whole source deadline and never release late evidence.</summary>
+    [Theory]
+    [InlineData("head-count", false)][InlineData("head-count", true)]
+    [InlineData("head-events", false)][InlineData("head-events", true)]
+    [InlineData("page-count", false)][InlineData("page-count", true)]
+    [InlineData("page-events", false)][InlineData("page-events", true)]
+    [InlineData("flags-count", false)][InlineData("flags-count", true)]
+    [InlineData("flags-events", false)][InlineData("flags-events", true)]
+    public async Task SuspendedOwnedCollectionCannotRetainSourcePastCancellationOrDeadline(string vector, bool cancelCaller)
+    {
+        ArgumentNullException.ThrowIfNull(vector);
+        var gateway = Substitute.For<IEventStoreGatewayClient>(); var clock = new AuthoritativeReadTimeProvider();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var returned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim(); using var caller = new CancellationTokenSource();
+        void Suspend() { entered.TrySetResult(); release.Wait(); released.TrySetResult(); }
+        var events = Substitute.For<IReadOnlyList<StreamReadEvent>>();
+        bool head = vector.StartsWith("head-", StringComparison.Ordinal);
+        events.Count.Returns(_ => { if (vector.EndsWith("count", StringComparison.Ordinal)) { Suspend(); } return head ? 0 : 1; });
+        IEnumerable<StreamReadEvent> Events() { if (vector.EndsWith("events", StringComparison.Ordinal)) { Suspend(); } if (!head) { yield return Event(1); } }
+        events.GetEnumerator().Returns(_ => Events().GetEnumerator());
+        var flags = Substitute.For<IReadOnlyDictionary<string, string>>();
+        flags.Count.Returns(_ => { if (vector == "flags-count") { Suspend(); } return 1; });
+        IEnumerable<KeyValuePair<string, string>> Flags() { if (vector == "flags-events") { Suspend(); } yield return new("mode", "safe"); }
+        flags.GetEnumerator().Returns(_ => Flags().GetEnumerator());
+        int calls = 0;
+        gateway.ReadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Interlocked.Increment(ref calls); var request = call.Arg<StreamReadRequest>();
+            if (request.ToSequence == 0 && !head) { return Page(request, 1, []); }
+            IReadOnlyList<StreamReadEvent> supplied = vector.StartsWith("flags-", StringComparison.Ordinal)
+                ? [Event(1) with { ProtectionMetadata = new(PayloadProtectionState.Unprotected, 1, null, null, null, flags) }] : events;
+            // Construct gateway metadata without consulting the adversarial collection, isolating post-return capture.
+            var page = new StreamReadPage(request.Tenant, request.Domain, request.AggregateId, supplied,
+                new(request.FromSequence, request.ToSequence, head ? null : 1, 1, head ? 0 : 1, false, null));
+            returned.TrySetResult(); return page;
+        });
+        var reader = new AuthoritativeEventStreamReader(gateway, clock, TimeSpan.FromSeconds(3));
+        var reading = Task.Run(() => reader.ReadAsync(new("tenant-a", "party", "party-1"), caller.Token), TestContext.Current.CancellationToken);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); returned.Task.IsCompletedSuccessfully.ShouldBeTrue();
+            if (cancelCaller)
+            {
+                caller.Cancel();
+                (await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken))).CancellationToken.ShouldBe(caller.Token);
+            }
+            else
+            {
+                clock.Advance(TimeSpan.FromSeconds(3)); var result = await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+                result.Stream.ShouldBeNull(); result.FailureReason.ShouldBe("source-time-bound-exceeded");
+            }
+            int originalCalls = Volatile.Read(ref calls); release.Set();
+            await released.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Volatile.Read(ref calls).ShouldBe(originalCalls); reading.IsCompleted.ShouldBeTrue();
+        }
+        finally { release.Set(); }
+    }
+
     private static StreamReadEvent Event(long sequence) => new(sequence, "Created", "{}"u8.ToArray(), "json", 1, "message", null, null, DateTimeOffset.UnixEpoch, "actor");
     private static StreamReadPage Page(StreamReadRequest request, long head, IReadOnlyList<StreamReadEvent> events)
         => new(request.Tenant, request.Domain, request.AggregateId, events,

@@ -1,0 +1,105 @@
+{
+  "scope": "dormant canonical logical reconstruction",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "control": "passed",
+  "timeoutSecondsPerLane": 60,
+  "mutations": [
+    {
+      "mutation": "fold-read-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite",
+      "observedFailure": "Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`",
+      "elapsedSeconds": 9.099
+    },
+    {
+      "mutation": "roundtrip-read-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite",
+      "observedFailure": "Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`",
+      "elapsedSeconds": 8.831
+    },
+    {
+      "mutation": "synchronous-writer-borrow-lifetime",
+      "result": "killed",
+      "killingTest": "StateCallbackBorrowsExpireBeforeAsyncFenceAndLaterApplyOrWrite",
+      "observedFailure": "Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `writer.Complete()`",
+      "elapsedSeconds": 8.574
+    },
+    {
+      "mutation": "combined-working-admission",
+      "result": "killed",
+      "killingTest": "CombinedWorkingCapacityRefusesBeforeStateCallbacks",
+      "observedFailure": "Shouldly.ShouldAssertException : Task `fixture.Owner.BeginAsync(fixture.Source.Source, binding, fixture.Source.Trust, \"owner\", null, CancellationToken.None)`",
+      "elapsedSeconds": 8.819
+    }
+  ],
+  "dynamicCommandSetsStable": true,
+  "isolationWrapper": {
+    "status": "passed",
+    "selectedEstablishedLanes": [
+      "combined-working-admission",
+      "fold-read-borrow-lifetime",
+      "roundtrip-read-borrow-lifetime",
+      "synchronous-writer-borrow-lifetime"
+    ],
+    "selectionMethod": "Select established mutation inventory AST without changing control execution, mutation bodies, expected counts or named killers. Relax only old whole-root drift aborts involving excluded concurrent external work; retain factual old rootInputsUnchanged and new dynamic root seals. Dynamic private lane/helper/executed sets remain mandatory. No runtime substitutions.",
+    "excludedExternalPaths": [
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+      "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+      "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+      "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+      "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+      "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+      "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+      "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+    ],
+    "retainedExternalDependencyNames": [
+      "DeletionBatchCapabilityIdentity.cs",
+      "ExpiredIdentityHistoryCertificate.cs",
+      "IDeletionCapabilityCompromiseRegistrar.cs",
+      "IExpiredIdentityHistoryCustody.cs"
+    ],
+    "rootInputSetUnchanged": true
+  },
+  "successfulControlSummaries": {
+    "control-tests.log": [
+      [
+        "95",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ]
+  }
+}

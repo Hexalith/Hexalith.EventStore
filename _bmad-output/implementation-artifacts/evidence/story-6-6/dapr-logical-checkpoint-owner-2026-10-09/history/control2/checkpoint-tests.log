@@ -1,0 +1,250 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 1, foreign: False) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 2, foreign: False) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 3, foreign: False) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 1, foreign: True) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 2, foreign: True) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(stage: 3, foreign: True) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.OriginalCancellationAtEachStageWinsForeignCallbackException(Int32 stage, Boolean foreign)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.AbsentReadbackStagesNothing [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(55,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.AbsentReadbackStagesNothing()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.FinalReadbackCallbackHistoryLossWithholdsProven [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(248,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.FinalReadbackCallbackHistoryLossWithholdsProven()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ConservativeCapacityRefusesBeforeOriginOrProjectionEffects [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(268,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ConservativeCapacityRefusesBeforeOriginOrProjectionEffects()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(mode: "skip") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(216,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(String mode)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(mode: "foreign") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(216,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(String mode)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(mode: "repeat") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(216,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.SerializedOwnerRequiresExactlyOneOriginalDecision(String mode)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "source") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "history") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "binding") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "backend") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "private") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(point: "keys") [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(127,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.CallbackSubstitutionStopsLaterStagesAndRestoresBudget(String point)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(mode: "normal", result: 0) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(String mode, Int32 result)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(mode: "commit-throw", result: 0) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(String mode, Int32 result)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(mode: "no-commit", result: 1) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(String mode, Int32 result)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(mode: "mixed", result: 2) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.IndependentActualReadbackClassifiesSaveAndNeverRepeatsPendingSave(String mode, Int32 result)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ActualPureFoldIssuesThreeRowsAndReadbackRetryDoesNotSave [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(16,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.ActualPureFoldIssuesThreeRowsAndReadbackRetryDoesNotSave()
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(index: 0) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(Int32 index)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(index: 1) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(Int32 index)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(index: 2) [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.NonidenticalExistingParticipantHoldsWithoutOverwrite(Int32 index)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.FreshReadbackRequiresActualOriginEvenWhenRootBytesAreExact [FAIL]
+      System.ArgumentException : The actor type 'Hexalith.EventStore.Server.Actors.DaprLogicalCheckpointActor' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from 'Dapr.Actors.IActor' type. (Parameter 'actorType')
+      Stack Trace:
+           at Dapr.Actors.Runtime.ActorTypeInformation.Get(Type actorType, String actorTypeName)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest(Type actorType, String actorTypeName, ActorTestOptions options)
+           at Dapr.Actors.Runtime.ActorHost.CreateForTest[TActor](ActorTestOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs(21,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointFixture..ctor(Int32 maximumBudget)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs(231,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests.FreshReadbackRequiresActualOriginEvenWhenRootBytesAreExact()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'cfc2496b775e271d626c24dd3e1c0434d8721ee75a3b6f88c997e88a66c9e700')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 27, Errors: 0, Failed: 27, Skipped: 0, Not Run: 0, Time: 0.449s

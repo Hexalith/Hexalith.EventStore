@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+/tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.Client/Aggregates/RegisteredLogicalReplayBinding.cs(124,37): error CA1822: Member 'ReserveCommandGraphs' does not access instance data and can be marked as static (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1822) [/tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj]
+  Hexalith.EventStore.ServiceDefaults -> /tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.ServiceDefaults/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+
+Build FAILED.
+
+/tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.Client/Aggregates/RegisteredLogicalReplayBinding.cs(124,37): error CA1822: Member 'ReserveCommandGraphs' does not access instance data and can be marked as static (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1822) [/tmp/eventstore-logical-reconstruction-ek42hf40/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.54

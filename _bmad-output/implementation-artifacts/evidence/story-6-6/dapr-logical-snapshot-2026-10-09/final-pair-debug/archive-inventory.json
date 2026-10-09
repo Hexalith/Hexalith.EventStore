@@ -1,0 +1,86 @@
+[
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/attempt.json",
+    "retained": "final-pair-debug/attempt.json.xz",
+    "rawSha256": "49725a4c0e36ce97e15ca2c4187b8430055791120621e72493d88847e2b52c94",
+    "retainedSha256": "8156e7f8ad852a3cfb61d0f32e1fa601315ae933b7db7ea73ea05b6b8961e30f",
+    "rawBytes": 2711618
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/client-model-build.log",
+    "retained": "final-pair-debug/client-model-build.log.xz",
+    "rawSha256": "e8228e82bc687d71e1db67bbd4004e4c5e9607c7ddb25c688c240fc29c5e5e8b",
+    "retainedSha256": "3df5bacec5da2909b930d1b2bbc888e56e32017d259dcfa782e0b42193e10f9a",
+    "rawBytes": 1002
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/client-model-tests.log",
+    "retained": "final-pair-debug/client-model-tests.log.xz",
+    "rawSha256": "41bc2448a76b7d49184e3e106dfab87fa6322754ff0a0660cf5b5348208a2bdd",
+    "retainedSha256": "6f39e81412eed7b3d2bc27dcfd0c1396a8290afb393e0443d7940c388fc322d9",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/commands.json",
+    "retained": "final-pair-debug/commands.json.xz",
+    "rawSha256": "516d4fd026e6595d3eef06b9d0d583302124c1c685d986e477670ad7a930d0d8",
+    "retainedSha256": "5edb5df8b628b62a6e832cf08f46dd6cb695352547631a15f3fc635d20ad19a7",
+    "rawBytes": 7686512
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/control-build.log",
+    "retained": "final-pair-debug/control-build.log.xz",
+    "rawSha256": "36eff953c410c86dac9394110944307a2238286774fec7f8c4f4c8c89f934496",
+    "retainedSha256": "0b0e67bea838399e8667e573cdc8cb909937b62cdf4f6340e5b964259c8d12ce",
+    "rawBytes": 2750
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/control-tests.log",
+    "retained": "final-pair-debug/control-tests.log.xz",
+    "rawSha256": "9c9b9a2a0bdcb41fa0eb53fbf5859a0850431a761e7c572dfb9ba73ccffe7ff2",
+    "retainedSha256": "75138d0d076b906bc3dc2d5a9c2ca79527e6cdd17799d2081cb01e891c283731",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/mutations.json",
+    "retained": "final-pair-debug/mutations.json.xz",
+    "rawSha256": "55dcaf2e6f990db8c082f317dfdcf8f643767e7209896297048695215a7a0e78",
+    "retainedSha256": "6c65c111d065d1eb0d9dd04e0a777a5d35ab333dffc022da5f1fe1a4b666d6c3",
+    "rawBytes": 1667
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/pair-final-return-cleanup-build.log",
+    "retained": "final-pair-debug/pair-final-return-cleanup-build.log.xz",
+    "rawSha256": "cf946ea286412a6907741afe9e37d544ca65099411e4a044a15b41036f053241",
+    "retainedSha256": "c309a1c1fab28d9d018fe5f1c9a8e5d8f4e6b75bc4e0184f24d11f69113a8d85",
+    "rawBytes": 1370
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/pair-final-return-cleanup-tests.log",
+    "retained": "final-pair-debug/pair-final-return-cleanup-tests.log.xz",
+    "rawSha256": "7d63c9110bd1d557a8f0ed9e2635e4b36133ea651f82f1068319dbac339ecc50",
+    "retainedSha256": "e5760bc7b9db189e5868bd8b288f9c21b7ba25ba64e8b8b39eb119c9d96801cd",
+    "rawBytes": 2001
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/reconstruction-build.log",
+    "retained": "final-pair-debug/reconstruction-build.log.xz",
+    "rawSha256": "aa01ec65bfccfc3bf1bc9589d249237af47b94edcd90d075d5b820b594d7e6d3",
+    "retainedSha256": "7c3bf02e99e1a335caff6b90c042e830328076f02388414aae3a44fece137c3e",
+    "rawBytes": 1370
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/reconstruction-tests.log",
+    "retained": "final-pair-debug/reconstruction-tests.log.xz",
+    "rawSha256": "3d072ad0c86aeb8d6f9ca24551c953c627bbb360338056d92d83fc24dad80ceb",
+    "retainedSha256": "cc1182a607ee42035df2c1ee086b8fd09d67ffa1196022dbc40acd47628df18a",
+    "rawBytes": 475
+  },
+  {
+    "source": "/tmp/story66-snapshot-pair-return-debug/result.json",
+    "retained": "final-pair-debug/result.json.xz",
+    "rawSha256": "3f6e270617b2d8db303b2a09173d9b76046ea02fba3e7186aa3f14b1aa1768ad",
+    "retainedSha256": "787c07a59f254cbcc98ca61e9f86cf00a867782a8b42b049a38ac2ebf7a11c55",
+    "rawBytes": 13198199
+  }
+]

@@ -38,6 +38,8 @@ internal sealed class SourcePublicationDispatcherFixture
             if ((Read()?.Revision ?? 0) != call.Arg<long>()) { return false; }
             Persisted = JsonSerializer.SerializeToUtf8Bytes(call.Arg<SourcePublicationIndexState>()); return true;
         });
+        Delivery.LookupAcknowledgementAsync(Arg.Any<SourcePublicationIndexEntry>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Acknowledged.Contains(call.Arg<SourcePublicationIndexEntry>().Publication.PublicationId) ? SourcePublicationDeliveryStatus.Acknowledged : SourcePublicationDeliveryStatus.Pending);
         Delivery.DeliverAsync(Arg.Any<SourcePublicationIndexEntry>(), Arg.Any<CancellationToken>()).Returns(call => {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested(); var entry = call.Arg<SourcePublicationIndexEntry>(); Visited.Add(entry.Offset);
             if (entry.Offset == StopAt) { return Poison ? SourcePublicationDeliveryStatus.Quarantined : SourcePublicationDeliveryStatus.Unavailable; }

@@ -1,0 +1,102 @@
+{
+  "scope": "dormant logical source/codecs/local actor state-manager protocol composition",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "controls": [
+    {
+      "lane": "control-client",
+      "result": "passed",
+      "elapsedSeconds": 4.384
+    },
+    {
+      "lane": "control-server",
+      "result": "passed",
+      "elapsedSeconds": 7.856
+    }
+  ],
+  "mutations": [
+    {
+      "mutation": "verified-decoding-retained-charge",
+      "result": "killed",
+      "killingTest": "CurrentScopedKeySignsAndVerifiesBothClaimsThenClearsItsRetainedImage",
+      "observedFailure": "Shouldly.ShouldAssertException : prefix.Dispose(); budget.LiveBytes",
+      "additionalEdits": [],
+      "elapsedSeconds": 3.56,
+      "timeoutSecondsPerLane": 60
+    }
+  ],
+  "dynamicCommandSetsStable": true,
+  "isolationWrapper": {
+    "status": "passed",
+    "selectedEstablishedLanes": [
+      "verified-decoding-retained-charge"
+    ],
+    "selectionMethod": "Select established mutation inventory AST without changing control execution, mutation bodies, expected counts or named killers. Relax only old whole-root drift aborts involving excluded concurrent external work; retain factual old rootInputsUnchanged and new dynamic root seals. Dynamic private lane/helper/executed sets remain mandatory. No runtime substitutions.",
+    "excludedExternalPaths": [
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+      "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+      "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+      "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+      "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+      "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+      "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+      "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+      "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+      "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+    ],
+    "retainedExternalDependencyNames": [
+      "DeletionBatchCapabilityIdentity.cs",
+      "ExpiredIdentityHistoryCertificate.cs",
+      "IDeletionCapabilityCompromiseRegistrar.cs",
+      "IExpiredIdentityHistoryCustody.cs"
+    ],
+    "rootInputSetUnchanged": true
+  },
+  "successfulControlSummaries": {
+    "control-server-tests.log": [
+      [
+        "39",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ],
+    "control-client-tests.log": [
+      [
+        "16",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ]
+  }
+}

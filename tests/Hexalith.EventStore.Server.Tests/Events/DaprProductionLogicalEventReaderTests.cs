@@ -377,8 +377,11 @@ public sealed class DaprProductionLogicalEventReaderTests
         range.StoredEvents.Count.ShouldBe(258);
         range.StoredEvents.Select(e => e.SequenceNumber).ShouldBe(Enumerable.Range(1, 258).Select(i => (long)i));
         range.DomainEvents.ShouldBeEmpty();
-        _ = await stateManager.Received(6).TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey,
-            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        int metadataReads = stateManager.ReceivedCalls().Count(call => call.GetMethodInfo().Name == "TryGetStateAsync"
+            && call.GetMethodInfo().GetGenericArguments().Single() == typeof(AggregateMetadata));
+        // Two pages retain three observations each; every event's no-op validation
+        // now has separate bounded source checks before and after its invocation.
+        metadataReads.ShouldBeInRange(6 + 2 * range.StoredEvents.Count, 6 + 4 * range.StoredEvents.Count);
 
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(Identity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(258, DateTimeOffset.UnixEpoch, "etag")),

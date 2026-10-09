@@ -1,0 +1,73 @@
+{
+  "scope": "sequential final owned-file validation; no additional runtime build/test",
+  "commands": [
+    {
+      "argv": [
+        "/home/administrator/.local/bin/actionlint",
+        ".github/workflows/event-evolution-local-guards.yml"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "startedUtc": "2026-10-09T02:39:25.050997+00:00",
+      "endedUtc": "2026-10-09T02:39:25.439080+00:00",
+      "exitCode": 0,
+      "log": "actionlint.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/verify-dapr-logical-snapshot-vectors.py",
+        "--verify",
+        "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-snapshot-2026-10-09/vectors.json"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "startedUtc": "2026-10-09T02:39:25.439142+00:00",
+      "endedUtc": "2026-10-09T02:39:25.470690+00:00",
+      "exitCode": 0,
+      "log": "unchanged-snapshot-vectors.log",
+      "logSha256": "43091d4276c44317cf9d406e3d3093945ccef5ccec4ac1a76f0878ff6e8ea9fc"
+    },
+    {
+      "argv": [
+        "python3",
+        "-c",
+        "from pathlib import Path; import sys; [compile(Path(p).read_text(),p,\"exec\") for p in sys.argv[1:]]",
+        "scripts/verify-dapr-logical-snapshot-replacement-guards.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "startedUtc": "2026-10-09T02:39:25.470728+00:00",
+      "endedUtc": "2026-10-09T02:39:25.487499+00:00",
+      "exitCode": 0,
+      "log": "python-syntax.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src/Hexalith.EventStore.Server/Actors/AggregateActor.LogicalSnapshot.cs",
+        "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotWrite.cs",
+        "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotPrior.cs",
+        "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotCanonical.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReconstructionFixture.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementFixture.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementTests.cs",
+        "scripts/verify-dapr-logical-snapshot-replacement-guards.py",
+        ".github/workflows/event-evolution-local-guards.yml",
+        "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-snapshot-replacement-model.md",
+        "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "startedUtc": "2026-10-09T02:39:25.487536+00:00",
+      "endedUtc": "2026-10-09T02:39:25.495532+00:00",
+      "exitCode": 0,
+      "log": "diff-check.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "style": "style.json",
+  "frozenIntentSha256": "de1751b9887e48f8302be092797eba2ab5bbb2595958dab3d7325bd380cf548d",
+  "allPassed": true
+}

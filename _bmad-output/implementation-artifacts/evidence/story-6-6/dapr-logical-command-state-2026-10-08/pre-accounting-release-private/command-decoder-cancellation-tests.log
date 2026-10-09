@@ -1,0 +1,49 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "write", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(386,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(401,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes [FAIL]
+      Shouldly.ShouldAssertException : Task `DomainServiceRequestRouter.ProcessCompletedLogicalAsync(provider, new(Command, null), completed, cancellation.Token)`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(314,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(318,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '4f3b091b5e416bbfee955df0282d16ed5eaf00806dd14beb050e1e62ec68ca7d')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 63, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 12.800s

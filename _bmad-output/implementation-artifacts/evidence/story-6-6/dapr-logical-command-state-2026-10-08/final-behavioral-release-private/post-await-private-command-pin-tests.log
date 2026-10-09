@@ -1,0 +1,24 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.YieldingOwnerFenceCommandSubstitutionRefusesBeforeProcessor [FAIL]
+      Shouldly.ShouldAssertException : processor.Calls
+          should be
+      0
+          but was
+      1
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(806,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.YieldingOwnerFenceCommandSubstitutionRefusesBeforeProcessor()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(806,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.YieldingOwnerFenceCommandSubstitutionRefusesBeforeProcessor()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '1534b1f51b2d6b3be1e699dacd39409aaa50a3fe401808b2e7bcf0a1c283c9f9')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 76, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 14.127s

@@ -34,6 +34,9 @@ internal sealed class DaprLogicalReplaySource
         _evolution = evolution; _reader = new DaprLogicalEventReader(stateManager, protection, evolution);
     }
 
+    /// <summary>Checks that an additive owner uses this exact actual actor state-manager instance.</summary>
+    internal bool OwnsStateManager(IActorStateManager stateManager) => ReferenceEquals(_stateManager, stateManager);
+
     /// <summary>Captures the immutable complete-prefix source from actual actor metadata with the originating token.</summary>
     internal async Task<DaprLogicalSourceBinding> CaptureBindingAsync(string aggregateType, long? target,
         CancellationToken cancellationToken)
@@ -67,32 +70,66 @@ internal sealed class DaprLogicalReplaySource
 
     /// <summary>Builds page one from genesis without admitting a caller accumulator or token.</summary>
     internal Task<DaprLogicalReplayPage> ReadFirstPageAsync(DaprLogicalSourceBinding binding, int maxCount,
-        DaprLogicalClaimTrust trust, ECDsa key, EventBufferBudget budget, CancellationToken cancellationToken)
+        DaprLogicalClaimTrust trust, ECDsa key, EventBufferBudget budget, CancellationToken cancellationToken,
+        Func<CancellationToken, Task>? operationFence = null)
     {
         byte[] sourceHash = DaprLogicalClaimCodec.ComputeSourceBindingHash(binding, budget);
         byte[] genesis = DaprLogicalClaimCodec.ComputeGenesis(sourceHash, trust.RegistryFingerprint);
-        return ReadPageCoreAsync(binding, 1, maxCount, genesis, trust, key, budget, cancellationToken);
+        return ReadPageCoreAsync(binding, 1, maxCount, genesis, trust, key, budget, cancellationToken, operationFence);
     }
 
     /// <summary>Builds a successor only from the dedicated owner's freshly admitted committed ledger progress.</summary>
     internal Task<DaprLogicalReplayPage> ReadNextPageAsync(DaprLogicalSourceBinding binding, int maxCount,
         DaprReplayCommittedProgress progress, DaprLogicalClaimTrust trust, ECDsa key,
-        EventBufferBudget budget, CancellationToken cancellationToken)
+        EventBufferBudget budget, CancellationToken cancellationToken, Func<CancellationToken, Task>? operationFence = null)
     {
         if (progress.CompletedSequence == long.MaxValue || progress.CompletedSequence >= binding.TargetSequence
             || !progress.SourceBindingHash.AsSpan().SequenceEqual(DaprLogicalClaimCodec.ComputeSourceBindingHash(binding, budget))
             || !progress.RegistryFingerprint.AsSpan().SequenceEqual(trust.RegistryFingerprint.Span)) { throw new InvalidOperationException("ReplayRestartRequired: no admitted logical successor exists."); }
         return ReadPageCoreAsync(binding, progress.CompletedSequence + 1, maxCount, progress.Accumulator,
-            trust, key, budget, cancellationToken);
+            trust, key, budget, cancellationToken, operationFence);
+    }
+
+    /// <summary>Reads only the owning operation's separately admitted anchored successor, including its eligible zero tail.</summary>
+    internal Task<DaprLogicalReplayPage> ReadAnchoredPageAsync(DaprLogicalSourceBinding binding, int maxCount,
+        long completedSequence, ReadOnlyMemory<byte> accumulator, DaprLogicalClaimTrust trust, ECDsa key,
+        EventBufferBudget budget, CancellationToken token, DaprLogicalAnchoredIntake anchored,
+        Func<CancellationToken, Task> operationFence)
+    {
+        token.ThrowIfCancellationRequested();
+        anchored.Trust.RequireCurrent(trust, token);
+        if (completedSequence < anchored.Selection.CoveredSequence || completedSequence > binding.TargetSequence
+            || completedSequence == binding.TargetSequence && completedSequence != anchored.Selection.CoveredSequence
+            || accumulator.Length != 32)
+        {
+            throw new InvalidOperationException("AnchorCapabilityHold: no admitted anchored successor exists.");
+        }
+        long start = completedSequence == long.MaxValue ? long.MaxValue : completedSequence + 1;
+        return ReadPageCoreAsync(binding, start, maxCount, accumulator, trust, key, budget, token, operationFence, anchored);
     }
 
     private async Task<DaprLogicalReplayPage> ReadPageCoreAsync(DaprLogicalSourceBinding binding, long start, int maxCount,
         ReadOnlyMemory<byte> admittedAccumulator, DaprLogicalClaimTrust trust, ECDsa key,
-        EventBufferBudget budget, CancellationToken cancellationToken)
+        EventBufferBudget budget, CancellationToken cancellationToken, Func<CancellationToken, Task>? operationFence,
+        DaprLogicalAnchoredIntake? anchored = null)
     {
-        await RequireCurrentAsync(binding, trust, cancellationToken).ConfigureAwait(false);
-        DaprLogicalEventPage page = await _reader.ReadPageAsync(_identity, binding.AggregateType, start, maxCount,
-            cancellationToken, sharedBudget: budget, expectedSourceBinding: binding).ConfigureAwait(false);
+        async Task RequirePageCurrentAsync(CancellationToken token)
+        {
+            _evolution.RequireActive(token);
+            if (operationFence is not null) { await operationFence(token).ConfigureAwait(false); }
+            await RequireCurrentAsync(binding, trust, token).ConfigureAwait(false);
+            if (operationFence is not null) { await operationFence(token).ConfigureAwait(false); }
+            _evolution.RequireActive(token);
+            trust.RequireCurrent(token);
+            anchored?.Trust.RequireCurrent(trust, token);
+        }
+        await RequirePageCurrentAsync(cancellationToken).ConfigureAwait(false);
+        bool emptyTail = anchored is not null && anchored.Selection.CoveredSequence == binding.TargetSequence;
+        DaprLogicalEventPage page = emptyTail
+            ? new DaprLogicalEventPage(start, binding.ActorHead, [], binding.RetainedFloor)
+            : await _reader.ReadPageAsync(_identity, binding.AggregateType, start, maxCount,
+                cancellationToken, sharedBudget: budget, expectedSourceBinding: binding,
+                sourceFence: RequirePageCurrentAsync).ConfigureAwait(false);
         var routes = new List<DaprLogicalSignedClaim>(); DaprLogicalSignedClaim? signedPrefix = null;
         try
         {
@@ -121,14 +158,18 @@ internal sealed class DaprLogicalReplaySource
                 using var encodedRoute = new DaprLogicalEncodedClaim(() => DaprLogicalClaimCodec.EncodeRoute(fields), budget, cancellationToken);
                 routes.Add(trust.Sign(1, encodedRoute.Bytes.Span, key, budget, cancellationToken));
             }
-            long end = page.Events.Count == 0 ? 0 : page.Events[^1].SequenceNumber;
+            long end = page.Events.Count == 0 ? anchored?.Selection.CoveredSequence ?? 0 : page.Events[^1].SequenceNumber;
             var prefix = new DaprLogicalPrefixClaim(_identity.TenantId, _identity.Domain, _identity.AggregateId,
                 binding.AggregateType, start, end, binding.ActorHead, binding.TargetSequence, page.Events.Count,
-                DaprLogicalClaimCodec.ComputeOrderedList(sourceHash, entries), accumulator, registry, sourceHash);
-            await RequireCurrentAsync(binding, trust, cancellationToken).ConfigureAwait(false);
-            using var encodedPrefix = new DaprLogicalEncodedClaim(() => DaprLogicalClaimCodec.EncodePrefix(prefix), budget, cancellationToken);
-            signedPrefix = trust.Sign(3, encodedPrefix.Bytes.Span, key, budget, cancellationToken);
-            await RequireCurrentAsync(binding, trust, cancellationToken).ConfigureAwait(false);
+                DaprLogicalClaimCodec.ComputeOrderedList(sourceHash, entries), accumulator, registry, sourceHash,
+                anchored is null ? DaprLogicalSourceBinding.ModelId : DaprLogicalReplayAnchorCodec.ModelId);
+            await RequirePageCurrentAsync(cancellationToken).ConfigureAwait(false);
+            using var encodedPrefix = new DaprLogicalEncodedClaim(() => anchored is null ? DaprLogicalClaimCodec.EncodePrefix(prefix)
+                : DaprLogicalAnchoredPrefixCodec.Encode(new DaprLogicalAnchoredPrefixClaim(prefix,
+                    anchored.SelectionHash, anchored.Selection.CoveredSequence, anchored.Selection.CanonicalStateHash)), budget, cancellationToken);
+            signedPrefix = anchored is null ? trust.Sign(3, encodedPrefix.Bytes.Span, key, budget, cancellationToken)
+                : anchored.Trust.SignPrefix(encodedPrefix.Bytes.Span, key, budget, cancellationToken);
+            await RequirePageCurrentAsync(cancellationToken).ConfigureAwait(false);
             return new DaprLogicalReplayPage(page, routes.ToArray(), signedPrefix, prefix);
         }
         catch { foreach (DaprLogicalSignedClaim route in routes) { route.Dispose(); } signedPrefix?.Dispose(); page.Dispose(); throw; }

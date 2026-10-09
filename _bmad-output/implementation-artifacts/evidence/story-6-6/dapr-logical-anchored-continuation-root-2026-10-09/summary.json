@@ -1,0 +1,65 @@
+{
+  "scope": "Independent current-root verification of sealed dormant anchored continuation slice; no parent completion or activation authority",
+  "head": "07d1e23a6c5b06bbbb1fc8ddb5174cc3382d3d93",
+  "packetSealSha256": "a38288645cac043c0eb3312195f24412d1b59df408b34270237cda72d262a08a",
+  "packetFilesVerified": 728,
+  "ownedFilesVerified": 29,
+  "build": {
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0,
+    "inputSetUnchanged": true,
+    "elapsedSeconds": 24.896
+  },
+  "tests": {
+    "zeroTail": 1,
+    "nonemptyTail": 2,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0,
+    "inputAndDllSetsUnchanged": true
+  },
+  "ownedDiffCheckExit": 0,
+  "globalDiffCheckExit": 2,
+  "globalDiffIssue": "src/Hexalith.EventStore.Contracts/Streams/SourcePublicationIndexState.cs:19: new blank line at EOF (outside 29-file owned slice)",
+  "receipts": [
+    {
+      "path": "release_solution.json.gz",
+      "bytes": 8241076,
+      "sha256": "c929ec4228a8107a4faef272a70a8474d74649a3ec78a435e5f1d84fdd160af8",
+      "gzipSha256": "caef8dce44335ae4e5ee113bcac118a0e7c27ee4d8cebed6e4ac80ac79526692"
+    },
+    {
+      "path": "release_solution.log.gz",
+      "bytes": 12109,
+      "sha256": "e32882fc9f777fe0f5a189ca10629f79c1d3b3e5922e332aab77345aefa345d3",
+      "gzipSha256": "8ca61356146d67a4f824d08961f5ae770c129f6b3df688c2cced46261a2aad04"
+    },
+    {
+      "path": "root_zero_tail.json.gz",
+      "bytes": 8280431,
+      "sha256": "00a14bdb9c9d92d0f332bf14d77c6e29fa55a4954dcdbe7bbfa34e191e59a3e9",
+      "gzipSha256": "18499cdb6e9c39bb3c5eea5fd9e52340b5e4d1489f1eb3379e1c7439e5fa4843"
+    },
+    {
+      "path": "root_zero_tail.log.gz",
+      "bytes": 475,
+      "sha256": "7b9bad4fdfd0c3a12310ecf93fffc6e8c92964105862e6501f27a9ca90b30019",
+      "gzipSha256": "abe0a631a27b693f6cdfcb710483adeb940c576ab5b4bc21657fd8b7661d3589"
+    },
+    {
+      "path": "root_tail.json.gz",
+      "bytes": 8280413,
+      "sha256": "2b2cca1e363ab00656853cd99e7c86fe4f92ed7c2ba1507ab46a2d6ac0e2c7e0",
+      "gzipSha256": "6a9d32577a7c0156c5ae6a34c97f771dcd34dc57ad1965e1cb3040b35e3e90e3"
+    },
+    {
+      "path": "root_tail.log.gz",
+      "bytes": 476,
+      "sha256": "b1269181fe381b2f52423bbe1ab839164f0710b644d7f3f56fe0f9f597420afb",
+      "gzipSha256": "d1e76f0466df726aa81db95a456e21b0f2db16ed5247b953c17281d699f9e1f1"
+    }
+  ],
+  "parentTasksAndORowsClosed": false,
+  "productionAuthorityGranted": false
+}

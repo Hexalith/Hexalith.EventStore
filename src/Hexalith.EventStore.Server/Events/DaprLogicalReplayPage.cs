@@ -49,7 +49,9 @@ internal sealed class DaprLogicalReplayPage : IDisposable
         try
         {
             using var writer = new EventEvolutionBinaryWriter(responseSize);
-            writer.WriteRaw("HX-EV-DAPR-REPLAY-PAGE-1\0"u8); writer.WriteByte(1); writer.WriteBytes(proofBytes);
+            writer.WriteRaw(PrefixFields.LogicalEvidenceModelId == DaprLogicalReplayAnchorCodec.ModelId
+                ? "HX-EV-DAPR-ANCHORED-PAGE-1\0"u8 : "HX-EV-DAPR-REPLAY-PAGE-1\0"u8);
+            writer.WriteByte(1); writer.WriteBytes(proofBytes);
             writer.WriteUInt32(checked((uint)Events.Count));
             foreach (DaprLogicalEventView view in Events)
             {

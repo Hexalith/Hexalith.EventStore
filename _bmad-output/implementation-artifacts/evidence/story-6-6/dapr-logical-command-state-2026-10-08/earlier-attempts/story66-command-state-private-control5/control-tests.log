@@ -1,0 +1,19 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged [FAIL]
+      System.InvalidOperationException : ProofLimit: a single complete logical page cannot fit its composed admitted capacity.
+      ---- System.InvalidOperationException : ScratchLimit: combined live buffer capacities exceed the pipeline budget.
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(971,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(695,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalReplayTests.cs(321,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests.ComposedAdmissionShrinksContiguousPagesAndDisposalLeavesDurableImagesUnchanged()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(35,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.Reserve(Int32 capacity)
+        src/Hexalith.EventStore.Client/Events/EventBufferBudget.cs(57,0): at Hexalith.EventStore.Client.Events.EventBufferBudget.CreatePartition(Int32 capacity)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(942,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '2d1d31e3a588c116c40fec2e7b6550c48a0ea26de4d6310024dfad57bf2cadac')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 132, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 5.459s

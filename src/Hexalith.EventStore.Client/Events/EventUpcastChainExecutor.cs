@@ -12,6 +12,7 @@ internal sealed class EventUpcastChainExecutor
     private readonly EventDomainRegistry _registry;
     private readonly FrozenDictionary<(string Type, int Version), RegisteredEventUpcaster> _upcasters;
     private readonly EventVersionValidator _validateVersion;
+    private readonly EventVersionValidatorAsync? _validateVersionAsync;
     private readonly Action<string, int, CancellationToken>? _requireVersionBindings;
 
     /// <summary>Gets the exact registry instance admitted by this executor.</summary>
@@ -21,7 +22,8 @@ internal sealed class EventUpcastChainExecutor
     internal EventUpcastChainExecutor(EventDomainRegistry registry,
         IReadOnlyDictionary<(string Type, int Version), RegisteredEventUpcaster> upcasters,
         EventVersionValidator validateVersion,
-        Action<string, int, CancellationToken>? requireVersionBindings = null)
+        Action<string, int, CancellationToken>? requireVersionBindings = null,
+        EventVersionValidatorAsync? validateVersionAsync = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(upcasters);
@@ -30,6 +32,7 @@ internal sealed class EventUpcastChainExecutor
         _registry.CapabilityLoss.RequireNoObservedLoss();
         _upcasters = upcasters.ToFrozenDictionary();
         _validateVersion = validateVersion;
+        _validateVersionAsync = validateVersionAsync;
         _requireVersionBindings = requireVersionBindings;
         foreach (((string type, int source), RegisteredEventUpcaster binding) in _upcasters)
         {
@@ -39,30 +42,29 @@ internal sealed class EventUpcastChainExecutor
 
     /// <summary>Returns a charged exclusive current owner only after every hop has passed descriptor/schema/identity checks.</summary>
     internal ValueTask<ImmutablePayload> UpcastAsync(string canonicalType, int sourceVersion, IReadOnlyPayload source,
-        EventBufferBudget budget, CancellationToken cancellationToken)
+        EventBufferBudget budget, CancellationToken cancellationToken, Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentNullException.ThrowIfNull(budget);
         RequireChain(canonicalType, sourceVersion, cancellationToken);
         return UpcastOwnedAsync(canonicalType, sourceVersion,
-            ImmutablePayload.CopyFrom(source, budget, cancellationToken), budget, cancellationToken);
+            ImmutablePayload.CopyFrom(source, budget, cancellationToken), budget, cancellationToken, sourceFence);
     }
 
     /// <summary>Consumes an exclusive charged source owner without allocating a second copy.</summary>
     /// <remarks>Ownership transfers at entry, including refusal and cancellation; success transfers the final owner to the caller.</remarks>
     internal async ValueTask<ImmutablePayload> UpcastOwnedAsync(string canonicalType, int sourceVersion, ImmutablePayload owned,
-        EventBufferBudget budget, CancellationToken cancellationToken)
+        EventBufferBudget budget, CancellationToken cancellationToken, Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentNullException.ThrowIfNull(owned);
         try
         {
             ArgumentNullException.ThrowIfNull(budget);
             int current = RequireChain(canonicalType, sourceVersion, cancellationToken);
-            Validate(owned, canonicalType, sourceVersion, cancellationToken);
+            await ValidateAsync(owned, canonicalType, sourceVersion, sourceFence, cancellationToken).ConfigureAwait(false);
             byte[] sealedDigest = owned.ComputeSha256();
             for (int version = sourceVersion; version < current; version++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                _registry.CapabilityLoss.RequireNoObservedLoss();
+                await RequireBoundaryAsync(canonicalType, sourceVersion, sourceFence, cancellationToken).ConfigureAwait(false);
                 if (!CryptographicOperations.FixedTimeEquals(sealedDigest, owned.ComputeSha256()))
                 {
                     throw new InvalidOperationException("UpcasterContractViolation: sealed input changed before the next hop.");
@@ -70,66 +72,76 @@ internal sealed class EventUpcastChainExecutor
                 EventRegistryRow edge = _registry.GetEdge(canonicalType, version);
                 RegisteredEventUpcaster binding = GetBinding(canonicalType, version);
                 byte[] before = owned.ComputeSha256();
-                using var writer = new BoundedPayloadWriter(1024 * 1024, cancellationToken, budget);
-                using var scratch = new BoundedScratchAllocator(128 * 1024 * 1024, budget, cancellationToken);
-                EventUpcastResult result;
-                using (var lease = new InvocationPayloadLease(owned, cancellationToken))
+                var scratch = new BoundedScratchAllocator(128 * 1024 * 1024, budget, cancellationToken);
+                ImmutablePayload? next = null;
+                try
                 {
-                    try
+                    using (var writer = new BoundedPayloadWriter(1024 * 1024, cancellationToken, budget))
+                    using (scratch)
                     {
+                        EventUpcastResult result;
+                        using (var lease = new InvocationPayloadLease(owned, cancellationToken))
+                        {
+                            try
+                            {
+                                result = await binding.Upcaster.UpcastAsync(lease, writer, scratch, cancellationToken).ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                lease.Dispose();
+                                scratch.Dispose();
+                                cancellationToken.ThrowIfCancellationRequested();
+                                if (!CryptographicOperations.FixedTimeEquals(before, owned.ComputeSha256()))
+                                {
+                                    throw new InvalidOperationException("UpcasterContractViolation: immutable input changed during invocation.");
+                                }
+                            }
+                        }
+
+                        cancellationToken.ThrowIfCancellationRequested();
+                        _registry.RequireActive(cancellationToken);
                         _registry.CapabilityLoss.RequireNoObservedLoss();
-                        result = await binding.Upcaster.UpcastAsync(lease, writer, scratch, cancellationToken).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        lease.Dispose();
-                        scratch.Dispose();
+                        binding.RequireDescriptor(edge, _registry.CapabilityLoss);
                         if (!CryptographicOperations.FixedTimeEquals(before, owned.ComputeSha256()))
                         {
                             throw new InvalidOperationException("UpcasterContractViolation: immutable input changed during invocation.");
                         }
+                        scratch.RequireValidInvocation();
+                        if (result is null || !string.Equals(result.Domain, _registry.Domain, StringComparison.Ordinal)
+                            || !string.Equals(result.EventContractType, canonicalType, StringComparison.Ordinal)
+                            || result.PayloadVersion != version + 1
+                            || !string.Equals(result.SerializationFormat, edge.GetTextField(3), StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("UpcasterContractViolation: returned identity or format disagrees with the admitted edge.");
+                        }
+
+                        try
+                        {
+                            next = writer.TakeCompletedPayload();
+                        }
+                        catch (InvalidOperationException exception)
+                        {
+                            throw new InvalidOperationException("UpcasterContractViolation: output writer was not completed exactly once.", exception);
+                        }
                     }
-                }
 
-                scratch.RequireValidInvocation();
-                cancellationToken.ThrowIfCancellationRequested();
-                _registry.CapabilityLoss.RequireNoObservedLoss();
-                if (result is null || !string.Equals(result.Domain, _registry.Domain, StringComparison.Ordinal)
-                    || !string.Equals(result.EventContractType, canonicalType, StringComparison.Ordinal)
-                    || result.PayloadVersion != version + 1
-                    || !string.Equals(result.SerializationFormat, edge.GetTextField(3), StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException("UpcasterContractViolation: returned identity or format disagrees with the admitted edge.");
-                }
-
-                ImmutablePayload next;
-                try
-                {
-                    next = writer.TakeCompletedPayload();
-                }
-                catch (InvalidOperationException exception)
-                {
-                    throw new InvalidOperationException("UpcasterContractViolation: output writer was not completed exactly once.", exception);
-                }
-
-                try
-                {
-                    Validate(next, canonicalType, version + 1, cancellationToken);
+                    // Input, output and scratch facades expire before addressed readback yields.
+                    await RequireBoundaryAsync(canonicalType, sourceVersion, sourceFence, cancellationToken).ConfigureAwait(false);
+                    await ValidateAsync(next, canonicalType, version + 1, sourceFence, cancellationToken).ConfigureAwait(false);
                     scratch.RequireValidInvocation();
+                    owned.Dispose();
+                    owned = next;
+                    next = null;
+                    sealedDigest = owned.ComputeSha256();
                 }
-                catch
+                finally
                 {
-                    next.Dispose();
-                    throw;
+                    scratch.Dispose();
+                    next?.Dispose();
                 }
-
-                owned.Dispose();
-                owned = next;
-                sealedDigest = owned.ComputeSha256();
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
-            _registry.CapabilityLoss.RequireNoObservedLoss();
+            await RequireBoundaryAsync(canonicalType, sourceVersion, sourceFence, cancellationToken).ConfigureAwait(false);
             if (!CryptographicOperations.FixedTimeEquals(sealedDigest, owned.ComputeSha256()))
             {
                 throw new InvalidOperationException("UpcasterContractViolation: sealed output changed before use.");
@@ -148,6 +160,7 @@ internal sealed class EventUpcastChainExecutor
     internal int RequireChain(string canonicalType, int sourceVersion, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.RequireActive(cancellationToken);
         _registry.CapabilityLoss.RequireNoObservedLoss();
         int current = _registry.GetCurrentVersion(canonicalType);
         _ = _registry.GetVersion(canonicalType, sourceVersion);
@@ -176,27 +189,43 @@ internal sealed class EventUpcastChainExecutor
         => _upcasters.TryGetValue((canonicalType, sourceVersion), out RegisteredEventUpcaster? binding)
             ? binding : throw new InvalidOperationException("CapabilityMismatch: an admitted edge lacks an allow-listed callable.");
 
-    private void Validate(ImmutablePayload payload, string canonicalType, int version, CancellationToken cancellationToken)
+    private ValueTask RequireBoundaryAsync(string canonicalType, int sourceVersion,
+        Func<CancellationToken, Task>? sourceFence, CancellationToken token)
+        => EventCallbackFence.RequireAsync(_registry, sourceFence, token,
+            () => RequireChain(canonicalType, sourceVersion, token));
+
+    private async ValueTask ValidateAsync(ImmutablePayload payload, string canonicalType, int version,
+        Func<CancellationToken, Task>? sourceFence, CancellationToken cancellationToken)
     {
+        await RequireBoundaryAsync(canonicalType, version, sourceFence, cancellationToken).ConfigureAwait(false);
         byte[] before = payload.ComputeSha256();
-        using var lease = new InvocationPayloadLease(payload, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
         try
         {
-            _validateVersion(_registry.Domain, canonicalType, version,
-                _registry.GetVersion(canonicalType, version).GetTextField(7), lease, cancellationToken);
+            string format = _registry.GetVersion(canonicalType, version).GetTextField(7);
+            if (_validateVersionAsync is not null)
+            {
+                await _validateVersionAsync(_registry.Domain, canonicalType, version, format,
+                    payload, sourceFence, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                using var lease = new InvocationPayloadLease(payload, cancellationToken);
+                _validateVersion(_registry.Domain, canonicalType, version, format, lease, cancellationToken);
+            }
         }
         finally
         {
-            lease.Dispose();
-            if (!CryptographicOperations.FixedTimeEquals(before, payload.ComputeSha256()))
+            try
             {
-                throw new InvalidOperationException("UpcasterContractViolation: validation changed immutable payload bytes.");
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!CryptographicOperations.FixedTimeEquals(before, payload.ComputeSha256()))
+                {
+                    throw new InvalidOperationException("UpcasterContractViolation: validation changed immutable payload bytes.");
+                }
             }
+            finally { CryptographicOperations.ZeroMemory(before); }
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
+        await RequireBoundaryAsync(canonicalType, version, sourceFence, cancellationToken).ConfigureAwait(false);
     }
 }

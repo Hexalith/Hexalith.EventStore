@@ -11,7 +11,7 @@ internal static class PrivateLogicalReplayResponseVerifier
     /// <summary>Checks exact outer framing, scalar/image equality, source range and the operation-ledger predecessor.</summary>
     internal static DaprLogicalVerifiedClaim<DaprLogicalPrefixClaim> Verify(ReadOnlySpan<byte> response, DaprLogicalSourceBinding binding,
         DaprLogicalClaimTrust trust, ReadOnlyMemory<byte> previousAccumulator, EventBufferBudget budget,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, DaprLogicalAnchoredIntake? anchored = null)
     {
         if (response.Length > 64 * 1024 * 1024)
         {
@@ -20,7 +20,8 @@ internal static class PrivateLogicalReplayResponseVerifier
 
         trust.RequireCurrent(cancellationToken);
         var reader = new EventEvolutionBinaryReader(response);
-        if (!reader.ReadRaw("HX-EV-DAPR-REPLAY-PAGE-1\0"u8.Length).SequenceEqual("HX-EV-DAPR-REPLAY-PAGE-1\0"u8)
+        ReadOnlySpan<byte> separator = anchored is null ? "HX-EV-DAPR-REPLAY-PAGE-1\0"u8 : "HX-EV-DAPR-ANCHORED-PAGE-1\0"u8;
+        if (!reader.ReadRaw(separator.Length).SequenceEqual(separator)
             || reader.ReadByte() != 1)
         {
             throw new ArgumentException("Logical response model mismatch.");
@@ -28,8 +29,11 @@ internal static class PrivateLogicalReplayResponseVerifier
 
         using UnverifiedEventEvolutionProofFrame proof = EventEvolutionProofFraming.Capture(reader.ReadBytes(2 * 1024 * 1024),
             budget, true, false, cancellationToken);
-        DaprLogicalVerifiedClaim<DaprLogicalPrefixClaim> prefixOwner = trust.VerifyPrefix(proof.PrefixClaim, Encoding.UTF8.GetString(proof.PrefixKey),
-            proof.PrefixSignature, budget, cancellationToken);
+        anchored?.Trust.RequireCurrent(trust, cancellationToken);
+        DaprLogicalVerifiedClaim<DaprLogicalPrefixClaim> prefixOwner = anchored is null
+            ? trust.VerifyPrefix(proof.PrefixClaim, Encoding.UTF8.GetString(proof.PrefixKey), proof.PrefixSignature, budget, cancellationToken)
+            : anchored.Trust.VerifyPrefix(proof.PrefixClaim, Encoding.UTF8.GetString(proof.PrefixKey), proof.PrefixSignature,
+                anchored.Selection, anchored.SelectionHash.Span, budget, cancellationToken);
         try
         {
             DaprLogicalPrefixClaim prefix = prefixOwner.Value;
@@ -77,6 +81,7 @@ internal static class PrivateLogicalReplayResponseVerifier
             }
 
             trust.RequireCurrent(cancellationToken);
+            anchored?.Trust.RequireCurrent(trust, cancellationToken);
             return prefixOwner;
         }
         catch

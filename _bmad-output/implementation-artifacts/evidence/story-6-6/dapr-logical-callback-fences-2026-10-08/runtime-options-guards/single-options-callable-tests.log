@@ -1,0 +1,16 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.MulticastOptionsRefuseBeforeEitherCallback [FAIL]
+      Shouldly.ShouldAssertException : `new EventImplementationBinding("validator", (Action)(static () => { }), "{}\n"u8.ToArray(), [], source)`
+          should throw
+      System.ArgumentException
+          but did not
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/EventRuntimeOptionsBindingTests.cs(120,0): at Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.MulticastOptionsRefuseBeforeEitherCallback()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '97bdfe13bfed616cbacdbdb5ace485ad4828ee5af0bd0c428d883279e776b2be')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 15, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.425s

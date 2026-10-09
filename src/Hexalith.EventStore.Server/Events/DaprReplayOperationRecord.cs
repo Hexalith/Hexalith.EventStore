@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Client.Events;
+
 namespace Hexalith.EventStore.Server.Events;
 
 /// <summary>Contains the dedicated operation actor's bounded current generation and committed page pointer.</summary>
@@ -20,4 +22,18 @@ internal sealed record DaprReplayOperationRecord(string TenantId, string Operati
     public byte[]? ReconstructionBindingHash { get; init; }
     /// <summary>Gets the canonical committed state digest, absent on event-source-only operations.</summary>
     public byte[]? CanonicalStateHash { get; init; }
+    /// <summary>Gets the cumulative effective-event chain from operation genesis.</summary>
+    public byte[]? EffectiveChainHash { get; init; }
+    /// <summary>Gets the exact cumulative page transcript from operation genesis.</summary>
+    public byte[]? TranscriptHash { get; init; }
+    /// <summary>Gets the optional private exact command route fixed before Begin.</summary>
+    public byte[]? CommandRouteHash { get; init; }
+    /// <summary>Gets the terminal retained purpose-07 proof digest, only on completed command-bound operations.</summary>
+    public byte[]? CommandProofHash { get; init; }
+    /// <summary>Gets the explicitly selected replay model; ordinary event-only operations keep their original model.</summary>
+    public string LogicalEvidenceModelId { get; init; } = DaprLogicalSourceBinding.ModelId;
+    /// <summary>Gets the exact separate anchor selection hash, absent on ordinary operations.</summary>
+    public byte[]? AnchorSelectionHash { get; init; }
+    /// <summary>Gets the positive covered sequence fixed at anchored genesis, absent on ordinary operations.</summary>
+    public long? AnchorCoveredSequence { get; init; }
 }

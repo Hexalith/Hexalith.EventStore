@@ -1,0 +1,7 @@
+{
+  "scope": "packet contents only; two shared current runtime files and current Code Map/CI have an explicitly scoped successor revision; historical owned-root-byte claims are not upgraded",
+  "priorPacket": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-snapshot-replacement-2026-10-09",
+  "priorSealSha256": "60df0c279195ab3a60b0e19ba95908dceb54bfbe5fa6f07cd8436ab21d72dde3",
+  "allPriorPacketEntriesUnchanged": true,
+  "priorEntries": 688
+}

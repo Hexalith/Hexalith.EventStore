@@ -14,6 +14,12 @@ internal sealed class RetainedHistoryTimeProvider(DateTimeOffset now) : TimeProv
     public override DateTimeOffset GetUtcNow() => _now;
 
     /// <inheritdoc/>
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+    /// <inheritdoc/>
+    public override long GetTimestamp() => _now.UtcTicks;
+
+    /// <inheritdoc/>
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
         LastDueTime = dueTime;

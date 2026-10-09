@@ -1,0 +1,22 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.OriginalCancellationWinsDirectStoreCallWithBothTokensCancelled [FAIL]
+      Shouldly.ShouldAssertException : fixture.StoreRefusalToken
+          should be
+      System.Threading.CancellationToken (51884175)
+          but was
+      System.Threading.CancellationToken (34456204)
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Queries/DaprLogicalQueryTests.cs(824,0): at Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.OriginalCancellationWinsDirectStoreCallWithBothTokensCancelled()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a47d9ac1e8f865a781433c01ad045ab305c67cbf2313475803020c4bd1fde1cf')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 111, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 3.823s

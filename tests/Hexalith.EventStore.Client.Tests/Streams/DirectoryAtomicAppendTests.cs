@@ -37,7 +37,7 @@ public sealed class DirectoryAtomicAppendTests
     public async Task ExactAuthenticatedAtomicReceiptIsMandatory(string vector)
     {
         var request = Request(); var owner = Substitute.For<IAtomicDirectoryAppendOwner>(); var authority = Authority(); var outcome = Accepted(request);
-        outcome = vector switch { "ordinal" => outcome with { AcceptedAtAdmissionFenceOrdinal = 0 }, "high-water" => outcome with { AcceptedAtGuardHighWater = 0 },
+        outcome = vector switch { "ordinal" => outcome with { AcceptedAtAdmissionFenceOrdinal = -1 }, "high-water" => outcome with { AcceptedAtGuardHighWater = 0 },
             "changed-intent" => outcome with { RequestDigest = new string('B', 64) }, _ => outcome };
         owner.TryAppendAsync(Arg.Any<DirectoryAtomicAppendRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(outcome);
         if (vector == "unverified") { authority.VerifyOutcomeAsync(Arg.Any<DirectoryAtomicAppendRequest>(), Arg.Any<string>(), Arg.Any<DirectoryAtomicAppendOutcome>(), Arg.Any<CancellationToken>()).Returns(false); }
@@ -71,4 +71,22 @@ public sealed class DirectoryAtomicAppendTests
         else { clock.Advance(TimeSpan.FromSeconds(30)); (await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).State.ShouldBe(DirectoryAtomicAppendState.Unavailable); }
         pending.TrySetResult(Accepted(Request()));
     }
+    /// <summary>The actual append guard assigns zero outside all deletion scopes; an independently verified committed result remains accepted.</summary>
+    [Fact]
+    public async Task OutOfScopeCommittedWriteAcceptsOrdinalZero()
+    {
+        var request = Request(); var state = new TenantGovernanceGuardState("tenant-a", "installed", 1, "epoch-1", "legacy", "writers", null, [], [], [], [], [], []);
+        var facts = new GovernanceWriteFacts("tenant-a", "interaction-a", "conversation-a", "conversation-a", "tenant-a:directory:directory-a", "permit-a", "effect-capability", 3, DirectoryWriteKind.Create, "epoch-1", "source-proof");
+        var command = new GovernanceGuardTransition("tenant-a", "write", GovernanceGuardOperation.AppendWrite, state.Revision, "epoch-1", "", null, facts, null, null, null, null, "", "");
+        var now = DateTimeOffset.UtcNow;
+        var evidence = new GovernanceGuardEvidence("tenant-a", "intent", new string('D', 64), "authority", "receipt", now, now.AddMinutes(1), [], [], [], "writers", "legacy", "zero", 0, "", "", [], "") { AppendResourceId = facts.AgentInteractionId };
+        var reduced = Hexalith.EventStore.Server.Security.GovernanceScopeGuardReducer.Reduce(state, command, evidence, "intent");
+        reduced.Receipt.Status.ShouldBe("Accepted"); reduced.Receipt.AcceptedAtAdmissionFenceOrdinal.ShouldBe(0);
+        reduced.Receipt.AcceptedWriteResourceId.ShouldBe(facts.AgentInteractionId); reduced.Receipt.AcceptedWriteFacts.ShouldBe(facts);
+        reduced.Receipt.AcceptedTargetMutationDigest.ShouldBe(evidence.TargetMutationDigest);
+        var outcome = Accepted(request) with { AcceptedAtAdmissionFenceOrdinal = reduced.Receipt.AcceptedAtAdmissionFenceOrdinal, AcceptedAtGuardHighWater = reduced.Receipt.GuardHighWater };
+        var owner = Substitute.For<IAtomicDirectoryAppendOwner>(); owner.TryAppendAsync(Arg.Any<DirectoryAtomicAppendRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(outcome);
+        (await new DirectoryAtomicAppendClient(TimeProvider.System, owner, Authority()).AppendAsync(request, TestContext.Current.CancellationToken)).ShouldBe(outcome);
+    }
+
 }

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-command-state-guards.py", line 139, in <module>
+    main()
+    ~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-command-state-guards.py", line 106, in main
+    control, elapsed = execute("control", True)
+                       ~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-command-state-guards.py", line 97, in execute
+    raise RuntimeError(f"Lane did not compile: {label}; see {output / f'{label}-build.log'}")
+RuntimeError: Lane did not compile: control; see /tmp/story66-command-state-private-control3/control-build.log

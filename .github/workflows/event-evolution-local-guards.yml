@@ -46,6 +46,39 @@ jobs:
           - lane: dapr-logical-reconstruction
             script: scripts/verify-dapr-logical-reconstruction-guards.py
             options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-callbacks
+            script: scripts/verify-dapr-logical-callback-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-command-state
+            script: scripts/verify-dapr-logical-command-state-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-anchored-replay
+            script: scripts/verify-dapr-logical-anchored-replay-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-snapshot
+            script: scripts/verify-dapr-logical-snapshot-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-anchored-continuation
+            script: scripts/verify-dapr-logical-anchored-continuation-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-snapshot-replacement
+            script: scripts/verify-dapr-logical-snapshot-replacement-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-snapshot-rewitness
+            script: scripts/verify-dapr-logical-snapshot-rewitness-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-checkpoint
+            script: scripts/verify-dapr-logical-checkpoint-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-checkpoint-candidate
+            script: scripts/verify-dapr-logical-checkpoint-candidate-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-checkpoint-initial
+            script: scripts/verify-dapr-logical-checkpoint-initial-guards.py
+            options: --configuration Release --dependency-mode packages
+          - lane: dapr-logical-query
+            script: scripts/verify-dapr-logical-query-guards.py
+            options: --configuration Release --dependency-mode packages
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -61,7 +94,7 @@ jobs:
           global-json-file: global.json
 
       - name: Warm source dependency restore before timed guard lanes
-        if: matrix.lane != 'managed-artifacts' && matrix.lane != 'runtime-options' && matrix.lane != 'dapr-logical-model' && matrix.lane != 'dapr-logical-reconstruction'
+        if: matrix.lane != 'managed-artifacts' && matrix.lane != 'runtime-options' && matrix.lane != 'dapr-logical-model' && matrix.lane != 'dapr-logical-reconstruction' && matrix.lane != 'dapr-logical-callbacks' && matrix.lane != 'dapr-logical-command-state' && matrix.lane != 'dapr-logical-query' && matrix.lane != 'dapr-logical-snapshot' && matrix.lane != 'dapr-logical-anchored-continuation' && matrix.lane != 'dapr-logical-snapshot-replacement' && matrix.lane != 'dapr-logical-snapshot-rewitness' && matrix.lane != 'dapr-logical-checkpoint-candidate' && matrix.lane != 'dapr-logical-checkpoint-initial'
         run: |
           dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
           dotnet restore tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true
@@ -71,7 +104,7 @@ jobs:
         run: dotnet restore tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false
 
       - name: Warm Dapr logical protocol dependencies
-        if: matrix.lane == 'dapr-logical-model' || matrix.lane == 'dapr-logical-reconstruction'
+        if: matrix.lane == 'dapr-logical-model' || matrix.lane == 'dapr-logical-reconstruction' || matrix.lane == 'dapr-logical-callbacks' || matrix.lane == 'dapr-logical-command-state' || matrix.lane == 'dapr-logical-query' || matrix.lane == 'dapr-logical-snapshot' || matrix.lane == 'dapr-logical-anchored-continuation' || matrix.lane == 'dapr-logical-snapshot-replacement' || matrix.lane == 'dapr-logical-snapshot-rewitness' || matrix.lane == 'dapr-logical-checkpoint-candidate' || matrix.lane == 'dapr-logical-checkpoint-initial'
         run: dotnet restore tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false
 
       # These lanes compile private source copies and run finite mutation controls.
@@ -83,6 +116,30 @@ jobs:
       - name: Verify independent canonical ledger vectors
         if: matrix.lane == 'dapr-logical-reconstruction'
         run: python3 scripts/verify-dapr-logical-reconstruction-vectors.py
+
+      - name: Verify independent completed command-state vectors
+        if: matrix.lane == 'dapr-logical-command-state'
+        run: python3 scripts/verify-dapr-logical-command-state-vectors.py
+
+      - name: Verify independent private query vectors
+        if: matrix.lane == 'dapr-logical-query'
+        run: python3 scripts/verify-dapr-logical-query-vectors.py --verify _bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-query-2026-10-08/vectors.json
+
+      - name: Verify independent private snapshot candidate vectors
+        if: matrix.lane == 'dapr-logical-snapshot'
+        run: python3 scripts/verify-dapr-logical-snapshot-vectors.py --verify _bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-snapshot-2026-10-09/vectors.json
+
+      - name: Verify independent anchored continuation vectors
+        if: matrix.lane == 'dapr-logical-anchored-continuation'
+        run: python3 scripts/verify-dapr-logical-anchored-continuation-vectors.py --verify _bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-anchored-continuation-2026-10-09/vectors.json
+
+      - name: Verify independent logical checkpoint owner vectors
+        if: matrix.lane == 'dapr-logical-checkpoint' || matrix.lane == 'dapr-logical-checkpoint-candidate' || matrix.lane == 'dapr-logical-checkpoint-initial'
+        run: python3 scripts/verify-dapr-logical-checkpoint-vectors.py --verify _bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-checkpoint-owner-2026-10-09/vectors.json
+
+      - name: Verify independent unsigned checkpoint initial/range vectors
+        if: matrix.lane == 'dapr-logical-checkpoint-initial'
+        run: python3 scripts/verify-dapr-logical-checkpoint-initial-vectors.py --verify _bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-checkpoint-initial-2026-10-09/vectors.json
 
       - name: Verify isolated local guard controls
         run: >-

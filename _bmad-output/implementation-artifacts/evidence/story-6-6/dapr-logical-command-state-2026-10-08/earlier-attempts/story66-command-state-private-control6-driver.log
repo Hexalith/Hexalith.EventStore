@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-command-state-guards.py", line 176, in <module>
+    main()
+    ~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-command-state-guards.py", line 145, in main
+    raise RuntimeError("Unmutated control failed")
+RuntimeError: Unmutated control failed

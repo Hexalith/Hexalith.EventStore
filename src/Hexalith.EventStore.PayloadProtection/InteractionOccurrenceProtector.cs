@@ -85,7 +85,9 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
             { throw new PayloadProtectionFormatException(); }
             AadCodec.ValidateContext(Context(identity), identity.Kind);
             owned = payload.ToArray();
-            manifest = ProtectedPathManifestCodec.Create(paths, snapshot: identity.Kind == PayloadProtectionPayloadKind.Snapshot, cancellationToken: token);
+            manifest = await AwaitAsync(() => Task.FromResult(ProtectedPathManifestCodec.Create(paths,
+                snapshot: identity.Kind == PayloadProtectionPayloadKind.Snapshot, cancellationToken: token)), start, token,
+                static value => { CryptographicOperations.ZeroMemory(value.Encoded); CryptographicOperations.ZeroMemory(value.Commitment); }).ConfigureAwait(false);
             using var digest = await AwaitAsync(() => keys.ResolveDigestAsync(identity, digestVersion, CancellationToken.None), start, token,
                 static key => key?.Dispose()).ConfigureAwait(false);
             if (!ValidKey(digest, identity, "tenant-digest", digestVersion)) { return null; }
@@ -192,7 +194,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
         try
         {
             var result = await pending.WaitAsync(TimeSpan.FromSeconds(30) - clock.GetElapsedTime(start), clock, token).ConfigureAwait(false);
-            try { CheckBudget(start, token); return result; } catch { abandoned?.Invoke(result); throw; }
+            CheckBudget(start, token); return result;
         }
         catch (Exception)
         {

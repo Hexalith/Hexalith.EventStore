@@ -52,6 +52,33 @@ internal sealed class DaprLogicalClaimTrust : IDisposable
     /// <summary>Gets this trust tuple's exact shared observed-loss scope.</summary>
     internal EventEvolutionCapabilityLoss CapabilityLoss => _capabilityLoss;
 
+    /// <summary>Captures the exact current logical SPKI for an explicitly selected separate anchored trust owner.</summary>
+    internal byte[] CapturePublicKey(CancellationToken token)
+    {
+        byte[]? captured = null;
+        try
+        {
+            RequireCurrent(token);
+            captured = _spki.ToArray();
+            return captured;
+        }
+        finally
+        {
+            try
+            {
+                token.ThrowIfCancellationRequested();
+            }
+            catch
+            {
+                if (captured is not null)
+                {
+                    CryptographicOperations.ZeroMemory(captured);
+                }
+                throw;
+            }
+        }
+    }
+
     /// <summary>Checks current key validity and observed capability before each use.</summary>
     internal void RequireCurrent(CancellationToken cancellationToken)
     {
@@ -75,7 +102,7 @@ internal sealed class DaprLogicalClaimTrust : IDisposable
         byte[] privateClaim = claim.ToArray(); byte[]? signature = null;
         try
         {
-            ValidateScope(purpose, privateClaim);
+            ValidateScope(purpose, privateClaim, cancellationToken);
             byte[] actualSpki = key.ExportSubjectPublicKeyInfo();
             try
             {
@@ -88,6 +115,7 @@ internal sealed class DaprLogicalClaimTrust : IDisposable
             finally { CryptographicOperations.ZeroMemory(digest); }
             if (signature.Length != 64) { throw new CryptographicException("Logical signatures require fixed 64-byte P1363."); }
             RequireCurrent(cancellationToken);
+            if (purpose == 7) { ValidateScope(purpose, privateClaim, cancellationToken); }
             return new DaprLogicalSignedClaim(privateClaim, CurrentKeyId, signature, retained);
         }
         catch
@@ -127,6 +155,43 @@ internal sealed class DaprLogicalClaimTrust : IDisposable
         catch { if (privateClaim is not null) { CryptographicOperations.ZeroMemory(privateClaim); } decoding.Dispose(); throw; }
     }
 
+    /// <summary>Gets a bounded current logical command-proof validity interval, without issuing production authority.</summary>
+    internal (DateTimeOffset Issued, DateTimeOffset Expires) CommandValidity(CancellationToken token)
+    {
+        RequireCurrent(token); DateTimeOffset issued = _time.GetUtcNow().ToUniversalTime(); token.ThrowIfCancellationRequested();
+        DateTimeOffset expires = issued > DateTimeOffset.MaxValue - TimeSpan.FromMinutes(5) ? _validTo : issued.AddMinutes(5);
+        if (expires > _validTo) { expires = _validTo; }
+        RequireCurrent(token);
+        return (issued, expires);
+    }
+
+    /// <summary>Checks current logical command validity, exact domain/model registry and original cancellation.</summary>
+    internal void RequireCommandCurrent(DaprLogicalCommandStateClaim claim, CancellationToken token)
+    {
+        RequireCurrent(token); DateTimeOffset now = _time.GetUtcNow(); token.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(_disposed, this); _capabilityLoss.RequireNoObservedLoss();
+        if (claim.Domain != Domain || !claim.RegistryFingerprint.Span.SequenceEqual(_registryFingerprint)
+            || claim.IssuedAt < _validFrom || claim.ExpiresAt > _validTo || now < claim.IssuedAt || now >= claim.ExpiresAt)
+        { throw new InvalidOperationException("LogicalTrustUnavailable: completed command-state scope or validity changed."); }
+    }
+
+    /// <summary>Verifies purpose 07 only for the distinct logical completed-state separator and current trust.</summary>
+    internal DaprLogicalVerifiedClaim<DaprLogicalCommandStateClaim> VerifyCommandState(ReadOnlySpan<byte> claim, string keyId,
+        ReadOnlySpan<byte> signature, EventBufferBudget budget, CancellationToken token)
+    {
+        RequireCurrent(token);
+        EventBufferReservation decoding = budget.Reserve(checked(Math.Min(claim.Length, DaprLogicalClaimCodec.MaximumClaimBytes) * 4 + 4096));
+        byte[]? image = null;
+        try
+        {
+            image = Verify(7, claim, keyId, signature, budget, token);
+            DaprLogicalCommandStateClaim value = DaprLogicalCommandStateCodec.Decode(image);
+            RequireCommandCurrent(value, token);
+            return new DaprLogicalVerifiedClaim<DaprLogicalCommandStateClaim>(value, image, decoding);
+        }
+        catch { if (image is not null) { CryptographicOperations.ZeroMemory(image); } decoding.Dispose(); throw; }
+    }
+
     private byte[] Verify(byte purpose, ReadOnlySpan<byte> claim, string keyId, ReadOnlySpan<byte> signature,
         EventBufferBudget budget, CancellationToken cancellationToken)
     {
@@ -142,17 +207,18 @@ internal sealed class DaprLogicalClaimTrust : IDisposable
             try { verified = _publicKey.VerifyHash(digest, signature, DSASignatureFormat.IeeeP1363FixedFieldConcatenation); }
             finally { CryptographicOperations.ZeroMemory(digest); }
             if (!verified) { throw new InvalidOperationException("LogicalTrustUnavailable: invalid logical signature."); }
-            ValidateScope(purpose, privateClaim); RequireCurrent(cancellationToken); return privateClaim;
+            ValidateScope(purpose, privateClaim, cancellationToken); RequireCurrent(cancellationToken); return privateClaim;
         }
         catch { CryptographicOperations.ZeroMemory(privateClaim); throw; }
     }
 
-    private void ValidateScope(byte purpose, ReadOnlySpan<byte> claim)
+    private void ValidateScope(byte purpose, ReadOnlySpan<byte> claim, CancellationToken token)
     {
         string domain; ReadOnlyMemory<byte> registry;
         if (purpose == 1) { DaprLogicalRouteClaim route = DaprLogicalClaimCodec.DecodeRoute(claim); domain = route.Domain; registry = route.RegistryFingerprint; }
         else if (purpose == 3) { DaprLogicalPrefixClaim prefix = DaprLogicalClaimCodec.DecodePrefix(claim); domain = prefix.Domain; registry = prefix.RegistryFingerprint; }
-        else { throw new ArgumentException("Only logical route and prefix purposes are admitted."); }
+        else if (purpose == 7) { DaprLogicalCommandStateClaim state = DaprLogicalCommandStateCodec.Decode(claim); RequireCommandCurrent(state, token); domain = state.Domain; registry = state.RegistryFingerprint; }
+        else { throw new ArgumentException("Only separately identified logical route, prefix and command-state purposes are admitted."); }
         if (domain != Domain || !CryptographicOperations.FixedTimeEquals(registry.Span, _registryFingerprint)) { throw new InvalidOperationException("LogicalTrustUnavailable: domain or current registry fingerprint mismatch."); }
     }
 

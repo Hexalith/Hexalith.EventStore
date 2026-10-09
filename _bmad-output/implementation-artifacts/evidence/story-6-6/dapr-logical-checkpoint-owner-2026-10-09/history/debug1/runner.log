@@ -1,0 +1,20 @@
+checkpoint: {'total': 40, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
+client-model: {'total': 16, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
+reconstruction: {'total': 53, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
+source-operation: {'total': 39, 'errors': 0, 'failed': 0, 'skipped': 0, 'notRun': 0}
+exact-completed-fold-object: killed
+separate-proof-owner-manager: killed
+separate-source-owner-manager: killed
+pending-exact-declaration: killed
+pending-exact-fixed-source: killed
+retained-materialization-workspace: killed
+private-participant-pin: killed
+private-participant-key-pin: killed
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-checkpoint-guards.py", line 170, in <module>
+    main()
+    ~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/scripts/verify-dapr-logical-checkpoint-guards.py", line 150, in main
+    if original.count(old) != 1: raise RuntimeError("Mutation anchor missing/ambiguous: " + name)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Mutation anchor missing/ambiguous: all-three-participant-stages

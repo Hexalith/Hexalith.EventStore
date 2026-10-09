@@ -57,24 +57,290 @@ last-good bytes and operation-owned page/final readback. Its
 records completed checks and unfinished final verification. The owner requested
 save and stop on 2026-10-08; resume from the [session checkpoint](story-6-6-session-checkpoint-2026-10-08.md).
 
-The next local M2/M4 dependency is individual callback fencing under Client
-`Events/` and Server `Events/`. Thread an optional asynchronous addressed
-source/trust fence through `EventLogicalViewResolver`, `EventUpcastChainExecutor`,
-`RegisteredEventVersionValidation` and `RegisteredCurrentEventDeserializer`.
-The logical source must supply its actual fixed-head/current-trust check; operation
-composition also checks the supplied state binding. Runtime-options getters are
-application callables too. Recheck original cancellation, the specific registry,
-exact bindings and source/trust before and after each getter, schema validator,
-identity validator, upcaster and deserializer, expiring invocation leases before
-the following await. Preserve existing compatibility APIs and whole-page admission.
-Use composed controls that lose head/key/binding authority inside each callable
-and prove zero later callbacks, Apply, save or proof release, plus timed compiling
-mutations and actual private cleanup. Do not change the selected model inputs or
-historical evidence meanings. Purpose-07 command-state proof/intake, effective
-chain/transcript, snapshot/query integration and serving qualification remain later
-dependencies. Supplied local bindings and fixture keys grant no production authority.
+Individual callback fencing under Client and Server `Events/` is implemented and
+locally verified in the
+[individual callback packet](evidence/story-6-6/dapr-logical-callback-fences-2026-10-08/verification-2026-10-08-logical-callback-fences.md):
+all 90 loss cases and two lifetime/order controls passed, with 11 new compiling
+mutations and the established options/model/reconstruction controls passing.
+The required broad Release/package solution build passed with zero warnings/errors
+and an unchanged recorded input set. Original-token, specific-registry, exact
+binding and addressed source/trust fences surround each getter and event callable;
+borrowed facades expire before the next addressed await. Preserve these controls,
+whole-page admission, compatibility APIs and historical evidence meanings.
+
+Completed command-state proof and explicit private router intake are implemented
+under the [distinct logical model](story-6-6-dapr-logical-command-state-model.md).
+The [command-state packet](evidence/story-6-6/dapr-logical-command-state-2026-10-08/verification-2026-10-08-logical-command-state.md)
+records fourteen independent vectors, actual operation/router controls and timed
+compiling refusals, with exact private-copy input seals and external exclusions.
+Operations retain cumulative effective-event and exact page transcripts from
+genesis, recheck every prior and terminal participant, and atomically retain the
+distinct purpose-07 proof. Router admission privately decodes the exact canonical
+state, rechecks command/state pins around actual owner awaits, seals admission-stage
+state and retains bounded result ownership through final dispatch. Original-token
+precedence, payload/dictionary lifetime and composed capacity are directly tested.
+The required full-workspace Release/package solution build passed with zero
+warnings/errors and an unchanged recorded input set. Root Release regressions
+passed Client 1,516, DomainService 521 and Server Events 615 tests without
+failures/skips/not-run. Client/DomainService input and DLL sets remained unchanged;
+the Server run's DLL set remained unchanged, but 62 concurrent external
+Security/Streams source edits caused its input-seal wrapper to return code 2.
+That run binds its executed assembly snapshot, not the subsequently changed
+whole workspace. These results do not establish complete parent regression or
+live production qualification. Historical source/route/prefix and provider-purpose
+inputs retain their meanings. New registration remains dormant.
+
+Dormant private pinned query intake now composes the existing
+DomainQueryDispatcher, explicit QueryRouter/cache classification and isolated
+read-store scope under the [local query model](story-6-6-dapr-logical-query-model.md).
+The [query packet](evidence/story-6-6/dapr-logical-query-2026-10-08/verification-2026-10-08-logical-query.md)
+records thirteen independent vectors, 111 query/16 Client model controls in both
+Debug/source and Release/packages, and nineteen timed compiling mutations. Exact
+catalog/delegate/file/options/key/type/request pins, actual root/origin readback,
+serialized final authorization/fresh UTC, original-token precedence and private
+buffer/metadata cleanup are locally verified. Ordinary legacy stores remain in
+the host provider. Logical cache classification precedes lookup/ETag access and
+retains zero new entries; matching historical entries refuse until their buffer
+ownership can be safely resolved. The [current-workspace addendum](evidence/story-6-6/dapr-logical-query-2026-10-08/root-workspace/verification.md)
+records a zero-warning/error Release/packages solution build and passing root
+regressions: 211 selected Server query/router/cache, 1,526 Client and 521
+DomainService tests. All four command input sets stayed unchanged.
+
+This query packet qualifies privacy through the final fence and detached result
+handoff. It does not close actual HTTP reader ownership/complete encoded response
+capacity, public named-store/full-key guards, aggregate/multiple-root composition,
+bounded named-generation/root producers, safe historical cache eviction or live
+owner/SDK/materialization qualification. These are unfinished integration or
+qualification work, and the route remains internal and unregistered.
+
+Dormant read-only aggregate snapshot-candidate admission now follows the
+[distinct local snapshot model](story-6-6-dapr-logical-snapshot-model.md) and
+[retained packet](evidence/story-6-6/dapr-logical-snapshot-2026-10-09/verification-2026-10-09-logical-snapshot.md).
+Six independent vectors select separate snapshot/checkpoint/rebase framing;
+checkpoint/rebase support is codec-only. The private snapshot path rechecks the
+exact paired source-actor bytes and actual completed operation history, pins
+canonical state/serializer/source, and retains a currentness fence. Malformed
+private witness records and typed canonical-roundtrip evidence mismatch restart
+at one without deleting stored bytes; typed SDK materialization and arbitrary
+callback failures propagate. Timelines and below-head zero tails refuse.
+
+The final private Release/packages lane passed 66 snapshot, 16 Client-model and
+53 reconstruction controls and killed all sixteen compiling mutations. The
+established reconstruction lane passed 95 source-only/reconstruction controls
+and killed eighteen mutations at its historical narrower input-seal scope.
+Constructed candidate/origin and intermediate pair ownership survive final
+await/token boundaries; cancellation clears private capacity and restores shared
+charges. Dynamic final private/helper/DLL sets stayed unchanged; the root set
+drifted only in the two external SourcePublicationFeed paths. Exact exclusions,
+limits and historical runs remain in the packet. The separate
+[current-workspace root addendum](evidence/story-6-6/dapr-logical-snapshot-root-2026-10-09/verification.md)
+records two stable full Release/packages builds with zero warnings or errors,
+158/158 selected Server tests whose input seal caught eight concurrent Streams
+source edits, and a subsequent stable 66/66 snapshot-class run. The full Client
+suite passed 1,528/1,529 twice with the same unrelated concurrent Streams
+failure (`DirectoryAtomicAppendTests.OutOfScopeCommittedWriteAcceptsOrdinalZero`,
+expected `Accepted`, received `Blocked`). These results qualify the local
+snapshot intake only; the broad Client failure and parent acceptance remain open.
+
+Dormant anchor preparation now follows the separate
+[anchored replay model](story-6-6-dapr-logical-anchored-replay-model.md) and
+[retained packet](evidence/story-6-6/dapr-logical-anchored-replay-2026-10-09/verification-2026-10-09-anchor-preparation.md).
+Seven independent vectors bind exact anchor selection and covered-history seeds.
+The actual AggregateActor supplies the first paired logical snapshot save and
+fresh exact readback; an existing nonidentical or torn pair holds without
+replacement. Private initial-state adoption retains canonical bytes, selection,
+seeds and the actual candidate/origin fence under the same composed budget.
+The Debug/source and Release/packages private lanes each passed 56 anchor,
+16 Client-model, 66 snapshot and 53 reconstruction controls and killed eighteen
+compiling mutations. Dynamic copied-input/helper/DLL sets stayed unchanged;
+the Release root set drifted only in the unrelated
+`AuthoritativeEventStreamReaderTests.cs`. Exact scopes, prior failed attempts and
+the affected established snapshot guard results are retained in the packet.
+This preparation issues no anchored prefix, committed replay progress, tail,
+terminal or command proof, and supplies no production registration.
+
+Dormant anchored continuation now follows the matching distinct
+[continuation model](story-6-6-dapr-logical-anchored-continuation-model.md) and
+[retained packet](evidence/story-6-6/dapr-logical-anchored-continuation-2026-10-09/verification-2026-10-09-anchored-continuation.md).
+Nine independent vectors select separate anchored prefix/response, effective,
+request, transcript and ledger framing while preserving ordinary v1 claims.
+The actual replay owner fixes initial covered progress and selection/state/seeds,
+commits uncovered tails or the prescribed head zero-tail final page, checks full
+actual participants and releases exact retry bytes without Apply/save. Callback
+predecessor substitution refuses before staging; save outcome uses independent
+readback. Entry checks original cancellation and exact token identity before
+argument, gate or cache work. The originating token stays unchanged throughout
+one retained Begin/page/retry/takeover operation; distinct request tokens,
+cross-request retention, actor reactivation and restart remain unqualified.
+
+Final isolated Debug/source and Release/packages lanes each passed 54
+continuation, 16 Client-model, 66 snapshot, 53 reconstruction, 39 ordinary
+source-operation, 56 anchor-preparation and 76 ordinary command controls (360),
+with errors/failures/skips/not-run zero. Each killed twenty compiling timed
+mutations across 88 sequential commands; dynamic copied/helper/executed-DLL and
+recorded root input sets stayed unchanged. Earlier failed/superseded runs retain
+their precise scope and external drift separately. The separately sealed
+[continuation root addendum](evidence/story-6-6/dapr-logical-anchored-continuation-root-2026-10-09/verification.md)
+subsequently records the full Release/packages solution build with zero
+warnings/errors and two selected actual root assembly methods passing, with
+stable input/DLL sets at those prior bytes. This is dormant local continuation
+evidence, with no anchored purpose-07 command/origin issuance or production
+registration; the addendum does not qualify later replacement edits.
+
+Dormant explicit strictly older snapshot replacement now follows the separate
+[replacement policy](story-6-6-dapr-logical-snapshot-replacement-model.md) and
+[retained packet](evidence/story-6-6/dapr-logical-snapshot-replacement-2026-10-09/verification.md).
+It requires the complete prior pair under the same fixed head/source pins,
+strictly smaller coverage, both actual completed origins, the complete private
+witness pin and canonical read/write before staging. The actual aggregate saves
+both desired images together and independently reads both back. Every Proven
+exit finishes pair readback before its common-owner source/both-origin serving
+fences. Pending recovery freshly re-admits the prior; after a failed serving
+call with durable Proven, a later exact-desired call requires independent full
+desired history and fresh canonical admission. The initial issuer still holds
+nonidentical pairs; no automatic serving replacement is registered.
+
+Final isolated Debug/source and Release/packages each passed 51 replacement
+and 309 regression controls (360), errors/failures/skips/not-run zero, and killed
+25 compiling timed mutations across 96 sequential commands. Dynamic private
+copied/imported/executed-DLL sets and owned bytes stayed unchanged. Debug's
+whole-root set drifted in three concurrent unrelated Security/Streams paths;
+exact hashes and the earlier four-path drift remain scoped separately.
+The Release recorded root drift is retained exactly in its packet receipt. These results qualify the isolated copied-input scope;
+the separately retained [replacement root addendum](evidence/story-6-6/dapr-logical-snapshot-replacement-root-2026-10-09/verification.md)
+subsequently records the full current-root Release/packages solution build with
+zero warnings/errors and 51/51 actual root replacement controls, with stable
+input/DLL sets at those prior bytes. It does not qualify later revisions.
+Existing snapshot encoding is unchanged and its six independent vectors still
+match; no new encoding approval is claimed.
+
+The distinct [current-prefix re-witness policy](story-6-6-dapr-logical-snapshot-rewitness-model.md)
+and [scoped packet](evidence/story-6-6/dapr-logical-snapshot-rewitness-2026-10-09/verification.md)
+now supply the evidence-supported earlier-head local route. The current Dapr
+reader cannot re-fence an earlier metadata generation; historical rebase
+therefore remains held for an actual historical-source/equivalence owner.
+The prior binding/witness are unauthenticated hints. A separate full current
+prefix 1..S, fixed new head, retained floor one, exact immutable scope/config,
+current registry/reconstruction and canonical byte equality authorize only the
+successor witness. Forged old operation/generation hints grant no old-history
+authority. The actual aggregate stages the state and new ordinary witness in
+one save, independently reads both back, then fences current source/origin
+under the required common serialized owner. The entry remains unregistered.
+
+An explicitly scoped revision adds immutable policy identity to the shared
+paired-write owner and all three pending entry guards; cross-policy calls
+refuse before readback/origin/stage/save. Re-witness Proven recovery freshly
+proves the current completed origin and canonical state, without repeating
+save. Exact desired retries are independently admitted. State-only save leaves
+the exact prior pair because state bytes are equal; a third witness holds as
+Indeterminate. Existing initial/replacement policies retain their behavior.
+
+Final isolated Debug/source and Release/packages each pass 55 new and 360
+established controls (415), with errors/failures/skips/not-run zero, and kill
+24 compiling timed mutations across 130 sequential commands. Private dynamic
+copied/helper/executed-DLL seals remain unchanged; exact recorded root input
+drift or stability is retained in the packet. No runtime source is excluded or
+substituted. The separately sealed [re-witness root addendum](evidence/story-6-6/dapr-logical-snapshot-rewitness-root-2026-10-09/verification.md)
+records the full Release/packages solution build with zero warnings/errors and
+actual root re-witness 55/55 and replacement 51/51 classes passing with stable
+input/DLL sets at those prior bytes. Prior packets keep their execution-time
+scopes and bytes.
+
+Dormant first logical checkpoint issuance and exact readback now follow the
+[distinct checkpoint owner model](story-6-6-dapr-logical-checkpoint-owner-model.md)
+and [scoped packet](evidence/story-6-6/dapr-logical-checkpoint-owner-2026-10-09/verification.md).
+A dedicated internal unregistered actor owns three new application rows: an
+immutable canonical projection version, root pointer and unchanged nine-field
+checkpoint witness. The exact declared pure fold must be the binding used by
+an actual ordinary completed full-prefix operation; every Proven path checks
+fresh actual origin/history and canonical state, never trusts root DTO fields.
+Separate source/operation managers cannot clear its staging. Exactly one
+completed original-token decision supplies the declared common owner boundary.
+Nonidentical/torn prior rows hold, uncertain ownership retains charges and never
+repeats save, and independent readback determines durable outcome before final
+source/origin fences. The declared backend hash is a local configuration pin,
+not authenticated provider identity or the full handler catalog.
+
+Both isolated Debug/source and Release/packages pass 40 checkpoint and 108
+established model/reconstruction/source-operation controls (148), with errors,
+failures, skips and not-run zero. Each kills twenty compiling timed behavioral
+mutations across 49 sequential commands; dynamic copied/helper/DLL and recorded
+root input sets remain unchanged. Six independent new vectors match measured
+framing; MAX is encoding-only. No runtime input is excluded or substituted.
+Exact current-head readback/retry adds zero event-key reads and checks stored
+operation participants, with no Apply/stage/save. This outcome-only path emits
+no purpose-04/count-zero checkpoint serving admission or cost guarantee.
+Registered projection/rebuild/query routes retain their legacy behavior.
+The separately sealed [checkpoint root addendum](evidence/story-6-6/dapr-logical-checkpoint-owner-root-2026-10-09/verification.md)
+records the full Release/packages solution build with zero warnings/errors and
+40/40 actual root checkpoint controls, with stable inputs/DLLs at those bytes.
+It does not qualify the subsequent actor revision below.
+
+The separately selected [private checkpoint candidate model](story-6-6-dapr-logical-checkpoint-candidate-model.md)
+and [sealed scoped packet](evidence/story-6-6/dapr-logical-checkpoint-candidate-2026-10-09/verification.md)
+now add a retained non-serving input for the next M4 dependency. Both old
+outcome-only signatures remain intact. A scoped revision of the unregistered
+checkpoint actor captures charged detached state/root/witness images only after
+fresh actual-origin, canonical and complete readback admission. A second fresh
+serialized capture after first cleanup must match all three exact images.
+Retained currentness repeats that capture-and-compare path with local full-image,
+source/fold/trust/token pins before and after actual awaits. Cleanup refusal or
+cancellation disposes provisional copies while preserving the actor's uncertain
+cache/write retention policy. No purpose-04, Current result, projection dispatch,
+snapshot initial owner or replay progress is issued.
+
+Final isolated Debug/source and Release/packages each pass 40 candidate and 148
+established checkpoint/model/reconstruction/source-operation controls (188), with
+errors/failures/skips/not-run zero, and kill 22 compiling timed mutations across
+55 sequential commands per configuration (110 combined). Dynamic copied/helper/
+executed-DLL and recorded relevant-root sets are unchanged. No runtime source is
+excluded or substituted. The local acquisition/currentness path observed no new
+event-key reads, Apply, staging or saves; this is not count-zero serving admission
+or a production cost guarantee. The previous checkpoint packet remains unchanged
+historical evidence; the new packet owns its explicit actor revision and the
+additive CI/present-state documentation updates. Its separately sealed
+[current-root addendum](evidence/story-6-6/dapr-logical-checkpoint-candidate-root-2026-10-09/verification.md)
+records a zero-warning/error full Release/packages build and 40/40 candidate plus
+40/40 checkpoint controls with unchanged input/DLL sets at those bytes.
+
+The separately selected [unsigned checkpoint initial/range model](story-6-6-dapr-logical-checkpoint-initial-model.md)
+now adds immutable private prior adoption and preparation under the same actual
+fixed head. Candidate source remains targeted to covered k; requested source may
+change only target T, with all head/floor/config/ETag/exact timestamp and offset
+pins preserved. Exact current-zero preparation requires k=T=H; k=T<H and k>T
+refuse. Tail preparation only plans the bounded range k+1 through T. MAX zero
+and MAX count-one tail are distinct codec/structural forms; no actual MAX source
+or completed history is claimed. The new scope intentionally revises Candidate.cs
+admission while preserving the earlier packet as historical byte evidence.
+Focused current-byte qualification and the new scoped packet are pending.
+This unsigned owner issues no EventEvolutionProof, purpose-03/04 carrier,
+VerifiedProjectionPriorState, Current result, continuation ledger, handler intake
+or actual tail execution. AD-13 §6 still requires exactly one verified purpose-04
+checkpoint entry and prefix tag 0d hashing that exact signed entry before those
+consumer roles can be implemented. A separately selected checkpoint evidence/
+consumer model satisfying that binding and actual backend/state-pointer/handler
+requirements is the next local integration dependency; missing authority cannot
+be replaced by signing these unsigned preparation bytes.
+Historical earlier-head rebase retains the precise historical-source authority
+hold; the current-prefix successor proof does not authenticate the old witness.
+Current explicit replacement covers older targets under the same fixed
+head/source pins. Ordinary replay still starts at one and ordinary v1 tags
+0d–0f remain absent. Checkpoint serving/continuation, protected snapshot/public
+reconstructor/actor routing, anchored completed-command/origin schemas,
+restart/token retention and the query integration boundaries above remain
+authorized local implementation work.
+Missing authoritative catalogs, reviewed domain/state declarations, production
+keys/profile, immutable execution, live common-owner serialization/SDK/component/
+topology/fleet observations and activation evidence separately prevent production
+qualification and serving. No parent task, acceptance checkbox or O-row closes.
 
 [Implementation map](6-6-implementation-map.md) M1–M8 records the previous plan and the current Dapr-only corrections. AD-13's approved digest `bc1625e3b8147fb0bc2cd9491fad8379a95c1ce0b597eba70f8d29f2fee3b050` and its passing preflight describe the earlier design, not this amendment. A revised preflight and evidence set are required before claiming Story 6.6 completion.
+
+The owner's [Platform profile lookup](evidence/story-6-6/platform-production-profile-search-2026-10-08.md)
+found no approved AD-26 profile in the root-declared local Platform checkout or
+its cached `origin/main`. Platform still records ratification as a staging
+prerequisite and the EventStore template as upstream. No remote update was
+performed; local dormant preparation continues without serving authority.
 
 ## Tasks & Acceptance
 
@@ -122,6 +388,51 @@ would add ownership-tracking complexity without an established required acceptan
 boundary. The conservative live-array ceiling remains explicit.
 
 ## Implementation Notes
+
+### Dormant anchored initial-state preparation — 2026-10-09
+
+The [distinct model](story-6-6-dapr-logical-anchored-replay-model.md) and
+[packet](evidence/story-6-6/dapr-logical-anchored-replay-2026-10-09/verification-2026-10-09-anchor-preparation.md)
+record exact selection/seed framing, actual actor first-pair issuance, independent
+save/readback classification, unsafe-cache refusal and private canonical adoption.
+No helper saves, and no nonidentical prior snapshot is automatically overwritten.
+Charges survive yielding SDK readback and uncertain cache retention; cancellation
+and private-byte substitution withhold ownership and clear released capacity.
+Both final private configurations passed 191 controls and eighteen timed compiling
+mutations, preserving all external runtime inputs without substitutions. The
+Release root-input drift is external and explicitly bounded in the packet.
+These controls qualify preparation only. Matching distinct anchored operation,
+prefix, ledger/transcript/terminal consumers and actual tail/retry integration are
+the next executable local dependency; production authority and live-owner/SDK
+qualification remain separately absent. The root agent retains the required
+subsequent full-workspace Release/package gate. Parent tasks and O rows stay open.
+
+### Dormant private snapshot candidate dependency — 2026-10-09
+
+The [snapshot model](story-6-6-dapr-logical-snapshot-model.md) and
+[packet](evidence/story-6-6/dapr-logical-snapshot-2026-10-09/verification-2026-10-09-logical-snapshot.md)
+retain strict framing, actual paired/completed-origin readback, cancellation,
+capacity, cleanup and fallback controls. Sixteen timed compiling mutations cover
+final constructed-owner and pair-return cleanup with behavioral byte/charge
+assertions. Private-copy verification is distinct from the queued root build;
+external source drift and historical fixed-path seal limits are recorded.
+No snapshot issuer, anchor-aware replay prefix, checkpoint owner, rebase proof,
+production registration or snapshot-cost qualification is supplied by this slice.
+All parent tasks, acceptance and O rows remain open.
+
+### Dormant private query prerequisite — 2026-10-08
+
+The [query model](story-6-6-dapr-logical-query-model.md) and
+[retained packet](evidence/story-6-6/dapr-logical-query-2026-10-08/verification-2026-10-08-logical-query.md)
+record the exact new schema/control choices and verification limits. The final
+Release/packages lane executed 42 sequential commands; dynamic copied inputs,
+imported helper/config inputs and executed DLL sets stayed unchanged, as did the
+recorded root input set. Its private copy excludes 37 external Security paths
+and retains exact required external dependencies without substitutions. Older
+failed and successful attempts keep their original byte scopes. Full current
+root build/regression evidence must be retained separately. Response transport
+ownership and the remaining M4/M5 integration are unfinished, not implied by
+local controls. All parent tasks, O rows and activation gates remain open.
 
 ### Owner-requested stopped checkpoint — 2026-10-08
 
@@ -425,6 +736,12 @@ Current follow-up implementation and exact verification evidence is recorded in 
 
 ## Spec Change Log
 
+- 2026-10-09 — Added the distinct dormant current-prefix re-witness policy and actual paired owner composition. A full fresh prefix under the advanced current head and exact canonical state equality certify only the successor; historical rebase remains held for actual historical-source/equivalence authority. Immutable pending policy identity prevents cross-entry recovery bypass. Final isolated Debug/source and Release/packages pass 415 controls and 24 compiling mutations each with stable private dynamic seals; exact root drift is retained, the new current-root gate is pending, checkpoint owner/readback is the next independent local dependency, and parent/O obligations remain open.
+
+- 2026-10-09 — Added the explicit dormant strictly older logical snapshot replacement policy, actual paired save/prior-origin admission, independent exact-desired canonical retry and final post-readback serving fence. Final isolated Debug/source and Release/packages each pass 360 controls and 25 compiling mutations with stable private copied/helper/DLL sets and unchanged owned bytes; exact external root drift remains scoped in the packet. Current root gate is pending, earlier-head rebase is the next executable local M4 dependency, and parent acceptance/O obligations remain open.
+
+- 2026-10-09 — Added the distinct dormant anchored-continuation model and packet: actual Begin/tail/zero-tail/readback/retry/takeover, exact source/selection/trust binding, callback predecessor sealing, original-token entry refusal and private clearing. Final isolated Debug/source and Release/packages each pass 360 controls and twenty compiling mutations with stable recorded inputs. Parent root gates remain pending; eligible older-snapshot replacement is the next executable local M4 dependency, with production authority/evidence blockers separate and all parent/O obligations open.
+
 - 2026-10-08 — Owner selected the Dapr logical claim proposal as the implementation
   basis and delegated its remaining schema/control choices within the existing
   Dapr-only/trusted-code constraints. Added the selected-model amendment as a
@@ -596,3 +913,4 @@ inventory, but its checked-in Redis components are explicitly local Development
 assets and shared runtime/profile qualification remains owned work. No production
 profile or authoritative event-evolution catalog was supplied by those inputs.
 All M1–M8 tasks and activation gates remain open.
+- 2026-10-09 — Added the selected dormant private checkpoint candidate and exact second-capture/readback lifetime. Sequential Debug/source and Release/packages each pass 188 controls and 22 compiling timed behavioral mutations with stable dynamic and relevant-root input sets; the separate root gate remains pending. Outcome-only signatures remain intact, the previous packet stays historical, and checkpoint-specific initial ownership/zero/tail consumers are the next unfinished local M4 dependency. Parent acceptance and O rows remain open.

@@ -24,7 +24,7 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
                 var actor = proxies.CreateActorProxy<ISourcePublicationNamespaceActor>(new(scope.ActorId), SourcePublicationNamespaceActor.ActorTypeName);
                 var installed = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
                 if (installed is null) { return null; }
-                installed = SourcePublicationNamespaceActor.Capture(installed);
+                installed = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(installed))).ConfigureAwait(false);
                 if (installed.Scope != scope) { return null; }
                 var approved = await deadline.ReadAsync(token => authority.AuthorizeAsync(installed, token)).ConfigureAwait(false);
                 if (!Current(approved)) { return null; }
@@ -46,7 +46,7 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
                 }
                 var final = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
                 if (final is null) { return null; }
-                final = SourcePublicationNamespaceActor.Capture(final);
+                final = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(final))).ConfigureAwait(false);
                 if (final.Scope != scope || final.Revision != installed.Revision || final.AuthorityRevision != installed.AuthorityRevision
                     || final.LegacyCoverageReceipt != installed.LegacyCoverageReceipt || final.WriterEnforcementReceipt != installed.WriterEnforcementReceipt
                     || !final.InitialSources!.SequenceEqual(installed.InitialSources!) || !final.Sources.SequenceEqual(installed.Sources)) { return null; }

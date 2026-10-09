@@ -1,0 +1,66 @@
+{
+  "scope": "Independent current-root verification of sealed dormant older logical snapshot replacement slice; no parent completion or activation authority",
+  "head": "07d1e23a6c5b06bbbb1fc8ddb5174cc3382d3d93",
+  "packetSealSha256": "60df0c279195ab3a60b0e19ba95908dceb54bfbe5fa6f07cd8436ab21d72dde3",
+  "packetFilesVerified": 688,
+  "ownedFilesVerified": 11,
+  "build": {
+    "exitCode": 0,
+    "inputSetUnchanged": true,
+    "elapsedSeconds": 26.092,
+    "warnings": 0,
+    "errors": 0
+  },
+  "replacementClass": {
+    "exitCode": 0,
+    "cases": 51,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0,
+    "inputSetUnchanged": true,
+    "dllSetUnchanged": true,
+    "elapsedSeconds": 435.992
+  },
+  "receipts": [
+    {
+      "path": "replacement_release_solution.json.gz",
+      "bytes": 8597270,
+      "sha256": "3f5b6823be9241e52e7eb6a067ea44be5a4763116d59c874b70aff9cdc61d7a8",
+      "gzipBytes": 2144552,
+      "gzipSha256": "a37c87c715e253f07f3c6c31e59620796fd562f3b0a382b2152320919dcb3397"
+    },
+    {
+      "path": "replacement_release_solution.log.gz",
+      "bytes": 12267,
+      "sha256": "dbc3ee10f0b312838b7cd11d30fba1878219b9f2dad984674a86139ff8c87711",
+      "gzipBytes": 1183,
+      "gzipSha256": "dd215f266b6f447f2767c55d35d85d964dd65691e8dc556b4bf8edd0cc3f5a1f"
+    },
+    {
+      "path": "replacement_root_class.json.gz",
+      "bytes": 8636561,
+      "sha256": "292b38a887d2252786b82ea41480f4764237f77f11f4d7c2c22a42fc3d29f122",
+      "gzipBytes": 2150808,
+      "gzipSha256": "32a83a094cee0744f6429364cee33c31ff5a1736ef841ec07250d57b8977a44f"
+    },
+    {
+      "path": "replacement_root_class.log.gz",
+      "bytes": 477,
+      "sha256": "f43c6eb4258acb40a5ce7b699eafe5749bced52c753c7044c664d686dbb2579c",
+      "gzipBytes": 290,
+      "gzipSha256": "3137fb63889bed7d07a8f37417c5444da24d43218aa7bd8e8a5515768fa08802"
+    }
+  ],
+  "parentTasksAndORowsClosed": false,
+  "productionAuthorityGranted": false,
+  "frozenIntentSha256": "de1751b9887e48f8302be092797eba2ab5bbb2595958dab3d7325bd380cf548d",
+  "ownedFilesCurrentAfterTests": true,
+  "ownedDiffCheckExit": 0,
+  "globalDiffCheckExit": 2,
+  "globalDiffIssues": [
+    "src/Hexalith.EventStore.Contracts/Streams/SourcePublicationIndexState.cs:19 new blank line at EOF",
+    "src/Hexalith.EventStore.Server/Security/RetainedIdentityHistorySourceReader.cs:144 trailing whitespace",
+    "src/Hexalith.EventStore.Server/Security/RetainedIdentityHistorySourceReader.cs:151 trailing whitespace"
+  ]
+}

@@ -22,6 +22,10 @@ public interface IIdentityHistoryCustody
         byte[] payload, string format, IdentityHistoryCustodyEvidence evidence, CancellationToken cancellationToken = default);
 
     /// <summary>Unprotects retained attribution only under current non-rollback lifecycle authority.</summary>
+    /// <remarks>The provider may use the supplied input until its task terminates. A completed result transfers
+    /// exclusive ownership of its detached PayloadBytes to the caller: it must not alias the input, stored ciphertext,
+    /// or provider-shared memory. The caller clears transient readable bytes after use or abandoned completion;
+    /// a caller forwarding the result transfers that responsibility to its consumer.</remarks>
     Task<PayloadProtectionResult> UnprotectEventAsync(AggregateIdentity identity, string eventType,
         byte[] payload, string format, CancellationToken cancellationToken = default);
 

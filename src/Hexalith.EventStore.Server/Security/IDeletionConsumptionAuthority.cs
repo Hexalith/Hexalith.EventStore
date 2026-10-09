@@ -6,13 +6,16 @@ namespace Hexalith.EventStore.Server.Security;
 /// <remarks>Verify the complete JWS against independently published committed tenant/family/version anchors and audience,
 /// then perform a linearizable exact guard lookup proving one active attestation and conditional committed dispatch.
 /// Signature-only, cached guard reads, human/Workflow/custodian self-approval or open Product dispositions cannot implement this contract.</remarks>
-public interface IDeletionConsumptionAuthority
+public interface IDeletionConsumptionAuthority : IAnchoredStateTransitionAuthority
 {
     /// <summary>Authenticates current private caller/credential for exact tenant/batch-or-revocation identity and named actor method, independently of immutable outcome retention.</summary>
     Task<bool> AuthorizeOperationAsync(string tenantId, string identity, string operation, CancellationToken cancellationToken = default);
     /// <summary>Authenticates the independently installed protection owner and exact tenant/revision/owned safe-state digest, including initial absence. Rollback or divergent restore denies all reads and effects.</summary>
     Task<bool> ValidateStateAsync(string tenantId, long revision, string exactStateDigest, CancellationToken cancellationToken = default);
-    /// <summary>Conditionally advances the independently durable installed-owner anchor before ledger persistence. A failed or unknown store save leaves availability closed until exact independent reconciliation; no anchor rollback is permitted.</summary>
+    /// <summary>Deprecated compatibility-only legacy anchor hook; current recoverable actors do not invoke it.
+    /// Qualified implementations must implement the mandatory inherited IAnchoredStateTransitionAuthority admitted-original admission/recovery
+    /// and conditional exact transition journal, including independent staging ownership, current permission and final durable-state/anchor confirmation.
+    /// Implementing this legacy hook alone never enables an actor; omitted inherited proof defaults deny.</summary>
     Task<bool> RecordRevisionAsync(string tenantId, long expectedRevision, long nextRevision, string exactStateDigest, CancellationToken cancellationToken = default);
     /// <summary>Authenticates exact signed payload/manifest, separate committed issue revision and successful guard dispatch.</summary>
     Task<bool> VerifyDispatchAsync(DeletionBatchConsumptionRequest request, CancellationToken cancellationToken = default);

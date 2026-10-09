@@ -1,0 +1,150 @@
+{
+  "scope": "dormant private query prerequisite",
+  "configuration": "Debug",
+  "dependencyMode": "source",
+  "controls": {
+    "query": {
+      "total": 85,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "clientModel": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    }
+  },
+  "mutations": [],
+  "timeoutSecondsPerLane": 60,
+  "controlOnly": true,
+  "excludedExternalPaths": [
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+    "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+    "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+    "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+  ],
+  "rootInputSetUnchanged": true,
+  "fullWorkspaceQualified": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "recordedCommands": 4,
+  "allLaneSetsUnchanged": true,
+  "allImportedSetsUnchanged": true,
+  "allExecutedDllSetsUnchanged": true,
+  "exactResultBytesSha256": "0517bb43472888179109d3bbb041a18815c6778a811748de006c7566177f62c0",
+  "commandMetadata": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-query-draft-work5/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-query-draft-work5",
+      "exitCode": 0,
+      "log": "control-build.log",
+      "seconds": 4.695,
+      "startedUtc": "2026-10-08T21:32:39.882767+00:00",
+      "endedUtc": "2026-10-08T21:32:44.577292+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-query-draft-work5/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests"
+      ],
+      "cwd": "/tmp/story66-query-draft-work5",
+      "exitCode": 0,
+      "log": "control-tests.log",
+      "seconds": 3.736,
+      "startedUtc": "2026-10-08T21:32:44.752877+00:00",
+      "endedUtc": "2026-10-08T21:32:48.488615+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-query-draft-work5/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-query-draft-work5",
+      "exitCode": 0,
+      "log": "client-model-build.log",
+      "seconds": 1.894,
+      "startedUtc": "2026-10-08T21:32:48.663935+00:00",
+      "endedUtc": "2026-10-08T21:32:50.557939+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-query-draft-work5/tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "cwd": "/tmp/story66-query-draft-work5",
+      "exitCode": 0,
+      "log": "client-model-tests.log",
+      "seconds": 0.488,
+      "startedUtc": "2026-10-08T21:32:50.743218+00:00",
+      "endedUtc": "2026-10-08T21:32:51.231268+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    }
+  ]
+}

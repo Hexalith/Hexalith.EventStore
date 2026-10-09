@@ -1,0 +1,133 @@
+{
+  "scope": "this slice only; preserves all unrelated concurrent Streams/Security work",
+  "files": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/DaprLogicalReplayAnchorSelection.cs",
+      "bytes": 2098,
+      "sha256": "b22931eb22407f9da253f64bb13d5f7092f522bafa6f5632278db9ebe5676a96",
+      "releaseRootSealSha256": "b22931eb22407f9da253f64bb13d5f7092f522bafa6f5632278db9ebe5676a96",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Events/DaprLogicalReplayAnchorCodec.cs",
+      "bytes": 8384,
+      "sha256": "1e3a2ae477fa6ecfd81d29d00a5de1805eba0658c088114f75b330b8d298f356",
+      "releaseRootSealSha256": "1e3a2ae477fa6ecfd81d29d00a5de1805eba0658c088114f75b330b8d298f356",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalReplayInitialAnchor.cs",
+      "bytes": 11398,
+      "sha256": "ed7d0a9a33a7e9a48cea725b4682871fc1958887326fd75b6a7a0624dde5724e",
+      "releaseRootSealSha256": "ed7d0a9a33a7e9a48cea725b4682871fc1958887326fd75b6a7a0624dde5724e",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotWrite.cs",
+      "bytes": 7241,
+      "sha256": "81f05a0e95974ed5e203fb5507d575edf7fde29ec59681b5b52244c0133923de",
+      "releaseRootSealSha256": "81f05a0e95974ed5e203fb5507d575edf7fde29ec59681b5b52244c0133923de",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/AggregateActor.LogicalSnapshot.cs",
+      "bytes": 17660,
+      "sha256": "c81da39107847a5598161e4a2a1368de9ffb5df192f55cfab9d8be9fae9fbfa2",
+      "releaseRootSealSha256": "c81da39107847a5598161e4a2a1368de9ffb5df192f55cfab9d8be9fae9fbfa2",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotCandidate.cs",
+      "bytes": 5108,
+      "sha256": "99c64d0eedc1cf9819d9bffeafd32e06811601f0e794375b16219b398b748bda",
+      "releaseRootSealSha256": "99c64d0eedc1cf9819d9bffeafd32e06811601f0e794375b16219b398b748bda",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "earlier owned implementation with this additive slice"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotOwner.cs",
+      "bytes": 18595,
+      "sha256": "1fac3926bcd7cd01834f3ca7b322f690c03d12388a2983d68bc2dae4280a5113",
+      "releaseRootSealSha256": "1fac3926bcd7cd01834f3ca7b322f690c03d12388a2983d68bc2dae4280a5113",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "earlier owned implementation with this additive slice"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchorFixture.cs",
+      "bytes": 5459,
+      "sha256": "4d17d9d0e4cf0cafe0a5857e9d9b45f857dc3ac493bef711db6bd9b50c319d78",
+      "releaseRootSealSha256": "4d17d9d0e4cf0cafe0a5857e9d9b45f857dc3ac493bef711db6bd9b50c319d78",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredReplayTests.cs",
+      "bytes": 36768,
+      "sha256": "e27a96ef926315aa7dba462cd1621bd64843720c74933993594ecffab3aa95e6",
+      "releaseRootSealSha256": "e27a96ef926315aa7dba462cd1621bd64843720c74933993594ecffab3aa95e6",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs",
+      "bytes": 8064,
+      "sha256": "e34505b946fbceee2e0521d36b7c9ef6931e17cb1bf68b8e8241ff04a66bdf5a",
+      "releaseRootSealSha256": "e34505b946fbceee2e0521d36b7c9ef6931e17cb1bf68b8e8241ff04a66bdf5a",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "earlier owned implementation with this additive slice"
+    },
+    {
+      "path": "scripts/verify-dapr-logical-anchored-replay-vectors.py",
+      "bytes": 2454,
+      "sha256": "500c9f6352aacd060e94914a470d4b40319e77282149ad8263b4419607d90d75",
+      "releaseRootSealSha256": "500c9f6352aacd060e94914a470d4b40319e77282149ad8263b4419607d90d75",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "scripts/verify-dapr-logical-anchored-replay-guards.py",
+      "bytes": 18260,
+      "sha256": "67cf5db1e5b0497639b319533c5dd5b4dd26822e812396593641e38644c89764",
+      "releaseRootSealSha256": "67cf5db1e5b0497639b319533c5dd5b4dd26822e812396593641e38644c89764",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": ".github/workflows/event-evolution-local-guards.yml",
+      "bytes": 6578,
+      "sha256": "ebe10d91d8a49d294915a6853ce9cd0211a598f842b192b8940545b910a37d8e",
+      "releaseRootSealSha256": "ebe10d91d8a49d294915a6853ce9cd0211a598f842b192b8940545b910a37d8e",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "earlier owned implementation with this additive slice"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-anchored-replay-model.md",
+      "bytes": 6666,
+      "sha256": "c9ba9fded1a6d79b0611ef1ac2f353250a32122d1c9eb3a1cf09a8912aa58002",
+      "releaseRootSealSha256": "c9ba9fded1a6d79b0611ef1ac2f353250a32122d1c9eb3a1cf09a8912aa58002",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+      "bytes": 70943,
+      "sha256": "6d4b8bdecb64ddada8eab3e0d7ae4828faf25905d002c3d7d4df2843d615940e",
+      "releaseRootSealSha256": null,
+      "sameAsCheckedReleaseInput": null,
+      "scope": "earlier owned implementation with this additive slice"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-anchored-replay-2026-10-09/vectors.json",
+      "bytes": 5063,
+      "sha256": "0538531760cde77a7e452a2153cc03bbcc9529f3f3c6404981436db1445d6b39",
+      "releaseRootSealSha256": "0538531760cde77a7e452a2153cc03bbcc9529f3f3c6404981436db1445d6b39",
+      "sameAsCheckedReleaseInput": true,
+      "scope": "introduced by this slice"
+    }
+  ]
+}

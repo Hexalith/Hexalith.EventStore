@@ -1,0 +1,3805 @@
+{
+  "scope": "dormant current-prefix snapshot re-witnessing through actual aggregate and completed owners; earlier-head hint remains unauthenticated; all external runtime inputs preserved",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "controls": {
+    "rewitnessMethods": {
+      "ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ExactDesiredRetryIsCanonicalAndIdempotent": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "UnsupportedBindingRefusesBeforeOwner": {
+        "total": 10,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "IncompatibleHintNeverStagesOrSaves": {
+        "total": 10,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ForgedHistoricalOperationIsOnlyAHint": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CurrentPrefixStateMustEqualObservedHint": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CodecCallbackCannotSubstitutePinsOrCurrentHistory": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CanonicalCancellationStopsLaterCallbacks": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "IndependentReadbackClassifiesAndPendingNeverRepeatsSave": {
+        "total": 5,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "RewitnessPendingCannotCrossIntoOlderPolicy": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PendingProvenRecoveryRequiresFreshCurrentCanonicalProof": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "InitialPendingCannotCrossIntoRewitness": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ReplacementPendingCannotCrossIntoRewitness": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "LastReadbackCannotSubstituteCurrentCompletedHistory": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ExactDesiredLastReadbackCannotSubstituteCurrentHistory": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CommonOwnerMustCompleteExactlyOneOriginalDecision": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CapacityRefusesBeforeOriginAndStage": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    "rewitnessTotal": 55,
+    "replacementMethods": {
+      "ExactOlderPairReplacesAndAdmitsCurrentCandidate": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "IneligiblePriorPairNeverStagesOrSaves": {
+        "total": 13,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ReplacementRequiresDistinctExplicitPolicy": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PriorActualHistoryAndCanonicalRoundtripAreRequired": {
+        "total": 3,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CodecCallbackCannotSubstitutePriorOrEitherHistory": {
+        "total": 5,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PriorCodecCancellationStopsLaterCallbacksAndClears": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ReplacementReadbackClassifiesExactDesiredPriorOrHold": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ReplacementCapacityRefusesBeforeOriginAndStage": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ProvenReplacementRetryIsFreshAndIdempotent": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PriorDecodingAndOriginOwnershipRemainChargedThroughStage": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "StageCallbackHistorySubstitutionStopsLaterStageAndSave": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PendingReplacementRevalidatesPriorBeforeProven": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "PriorBoundaryTokenRefusesBeforeAddressedCallback": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "FreshExactDesiredAdmissionAfterFailedPriorProofRequiresCanonicalState": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "LastPairReadbackCannotSubstituteCompletedHistory": {
+        "total": 5,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    "replacementTotal": 51,
+    "clientModel": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "snapshot": {
+      "total": 66,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "reconstruction": {
+      "total": 53,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "ordinarySourceOperation": {
+      "total": 39,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "anchoredPreparation": {
+      "total": 56,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "ordinaryCommand": {
+      "total": 76,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "anchoredContinuation": {
+      "ActualAnchoredTailBeginPageReadbackAndRetry": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    }
+  },
+  "mutations": [
+    {
+      "mutation": "older-entry-policy-identity",
+      "result": "killed",
+      "killingTest": "RewitnessPendingCannotCrossIntoOlderPolicy",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 4,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.RewitnessPendingCannotCrossIntoOlderPolicy(actualDesired: False, replacement: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `replacement ? fixture.ReplaceCurrentAsync(budget) : fixture.IssueCurrentAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "rewitness-entry-policy-identity",
+      "result": "killed",
+      "killingTest": "InitialPendingCannotCrossIntoRewitness",
+      "summary": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.InitialPendingCannotCrossIntoRewitness(actualDesired: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "exact-target-before-owner",
+      "result": "killed",
+      "killingTest": "UnsupportedBindingRefusesBeforeOwner",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(changed: \"target\") [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.OwnerCalls",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(154,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(159,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "earlier-head-before-owner",
+      "result": "killed",
+      "killingTest": "UnsupportedBindingRefusesBeforeOwner",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(changed: \"same-head\") [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.OwnerCalls",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(154,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(159,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "complete-prefix-floor-before-owner",
+      "result": "killed",
+      "killingTest": "UnsupportedBindingRefusesBeforeOwner",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(changed: \"prior-floor\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget, model: changed == \"policy\" ? DaprLogicalSnapshotCodec.RebaseModel : DaprLogicalSnapshotRewitnessPolicy.ModelId, prior: prior, current: current)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but threw",
+        "      System.ArgumentException",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "same-namespace-before-owner",
+      "result": "killed",
+      "killingTest": "UnsupportedBindingRefusesBeforeOwner",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(changed: \"namespace\") [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.OwnerCalls",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(154,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(159,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "exact-observed-source-hint",
+      "result": "killed",
+      "killingTest": "IncompatibleHintNeverStagesOrSaves",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves(shape: \"source\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "exact-hint-registry",
+      "result": "killed",
+      "killingTest": "IncompatibleHintNeverStagesOrSaves",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves(shape: \"registry\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "exact-hint-reconstruction",
+      "result": "killed",
+      "killingTest": "IncompatibleHintNeverStagesOrSaves",
+      "summary": {
+        "total": 10,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves(shape: \"reconstruction\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "exact-current-prefix-state",
+      "result": "killed",
+      "killingTest": "CurrentPrefixStateMustEqualObservedHint",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CurrentPrefixStateMustEqualObservedHint [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "fresh-current-canonical-admission",
+      "result": "killed",
+      "killingTest": "ExactDesiredRetryIsCanonicalAndIdempotent",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredRetryIsCanonicalAndIdempotent [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.Actor.Snapshot.Replay.Reads",
+        "          should be greater than",
+        "      6",
+        "          but was",
+        "      6",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(62,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredRetryIsCanonicalAndIdempotent()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(67,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredRetryIsCanonicalAndIdempotent()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "pending-current-canonical-admission",
+      "result": "killed",
+      "killingTest": "PendingProvenRecoveryRequiresFreshCurrentCanonicalProof",
+      "summary": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.PendingProvenRecoveryRequiresFreshCurrentCanonicalProof(noncanonical: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.Actor.Snapshot.Replay.Reads",
+        "          should be greater than",
+        "      8",
+        "          but was",
+        "      8",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(486,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.PendingProvenRecoveryRequiresFreshCurrentCanonicalProof(Boolean noncanonical)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(489,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.PendingProvenRecoveryRequiresFreshCurrentCanonicalProof(Boolean noncanonical)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "actual-current-origin-fences",
+      "result": "killed",
+      "killingTest": "CodecCallbackCannotSubstitutePinsOrCurrentHistory",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory(changed: \"current-history\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.Exception",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "actual-prestage-prior-pair",
+      "result": "killed",
+      "killingTest": "CodecCallbackCannotSubstitutePinsOrCurrentHistory",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory(changed: \"actual-pair\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.Exception",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "private-complete-prior-witness-pin",
+      "result": "killed",
+      "killingTest": "CodecCallbackCannotSubstitutePinsOrCurrentHistory",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory(changed: \"private-witness\") [FAIL]",
+        "      Shouldly.ShouldAssertException : later",
+        "          should be",
+        "      0",
+        "          but was",
+        "      3",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(335,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(340,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "current-origin-after-last-readback",
+      "result": "killed",
+      "killingTest": "LastReadbackCannotSubstituteCurrentCompletedHistory",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.LastReadbackCannotSubstituteCurrentCompletedHistory [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.Exception",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "exact-desired-after-last-readback",
+      "result": "killed",
+      "killingTest": "ExactDesiredLastReadbackCannotSubstituteCurrentHistory",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredLastReadbackCannotSubstituteCurrentHistory [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.Exception",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "current-origin-after-state-stage",
+      "result": "killed",
+      "killingTest": "YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget)`",
+        "          should throw",
+        "      System.Exception",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "retained-materialization-capacity",
+      "result": "killed",
+      "killingTest": "CapacityRefusesBeforeOriginAndStage",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CapacityRefusesBeforeOriginAndStage [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget, maximumStateBytes: 64 * 1024 * 1024)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "retained-origin-state-clearing",
+      "result": "killed",
+      "killingTest": "ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority [FAIL]",
+        "      Shouldly.ShouldAssertException : budget.LiveBytes",
+        "          should be",
+        "      0",
+        "          but was",
+        "      278",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(780,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.AssertCleared(DaprLogicalSnapshotRewitnessFixture fixture, EventBufferBudget budget)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(39,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(46,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)"
+      ]
+    },
+    {
+      "mutation": "paired-witness-stage",
+      "result": "killed",
+      "killingTest": "IndependentReadbackClassifiesAndPendingNeverRepeatsSave",
+      "summary": {
+        "total": 5,
+        "errors": 0,
+        "failed": 5,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(mode: \"normal\") [FAIL]",
+        "      Shouldly.ShouldAssertException : await fixture.RewitnessAsync(budget)",
+        "          should be",
+        "      DaprReplayCommitOutcome.Proven",
+        "          but was",
+        "      DaprReplayCommitOutcome.NoCommit",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(415,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "independent-paired-readback",
+      "result": "killed",
+      "killingTest": "IndependentReadbackClassifiesAndPendingNeverRepeatsSave",
+      "summary": {
+        "total": 5,
+        "errors": 0,
+        "failed": 3,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(mode: \"no-commit\") [FAIL]",
+        "      Shouldly.ShouldAssertException : await fixture.RewitnessAsync(budget)",
+        "          should be",
+        "      DaprReplayCommitOutcome.NoCommit",
+        "          but was",
+        "      DaprReplayCommitOutcome.Proven",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(415,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "pending-no-repeat-save",
+      "result": "killed",
+      "killingTest": "IndependentReadbackClassifiesAndPendingNeverRepeatsSave",
+      "summary": {
+        "total": 5,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(mode: \"mixed\") [FAIL]",
+        "      System.InvalidOperationException : SnapshotRewitnessHold: observed prior witness is malformed.",
+        "      ---- System.ArgumentException : Truncated evidence record.",
+        "      Stack Trace:",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotRewitnessPolicy.cs(34,0): at Hexalith.EventStore.Server.Events.DaprLogicalSnapshotRewitnessPolicy.RequirePrior(DaprLogicalSnapshotWrite write, DaprLogicalSourceBinding prior, DaprLogicalClaimTrust trust, RegisteredLogicalReplayBinding reconstruction)",
+        "        src/Hexalith.EventStore.Server/Actors/AggregateActor.LogicalSnapshotRewitness.cs(169,0): at Hexalith.EventStore.Server.Actors.AggregateActor.<>c__DisplayClass158_0.<<RewitnessLogicalSnapshotAsync>g__DecideAsync|4>d.MoveNext()",
+        "        --- End of stack trace from previous location ---",
+        "        src/Hexalith.EventStore.Server/Actors/AggregateActor.LogicalSnapshotRewitness.cs(237,0): at Hexalith.EventStore.Server.Actors.AggregateActor.<>c__DisplayClass158_0.<<RewitnessLogicalSnapshotAsync>g__DecideAsync|4>d.MoveNext()",
+        "        --- End of stack trace from previous location ---",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs(152,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotFixture.SerializeAsync(Func`2 decision, CancellationToken token)",
+        "        src/Hexalith.EventStore.Server/Actors/AggregateActor.LogicalSnapshotRewitness.cs(245,0): at Hexalith.EventStore.Server.Actors.AggregateActor.RewitnessLogicalSnapshotAsync(String model, DaprLogicalSourceBinding priorHint, DaprLogicalSourceBinding current, DaprLogicalReplaySource source, DaprLogicalClaimTrust trust, RegisteredLogicalReplayBinding reconstruction, Int32 maximumStateBytes, Func`4 acquireCurrentOrigin, Func`3 ownerFence, EventBufferBudget budget, CancellationToken token)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(422,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotRewitnessTests.cs(429,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave(String mode)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "complete-original-owner-decision",
+      "result": "killed",
+      "killingTest": "CommonOwnerMustCompleteExactlyOneOriginalDecision",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CommonOwnerMustCompleteExactlyOneOriginalDecision(mode: \"early\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.RewitnessAsync(budget).WaitAsync(TimeSpan.FromSeconds(3))`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but threw",
+        "      System.TimeoutException",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    }
+  ],
+  "timeoutSecondsPerLane": 60,
+  "controlOnly": false,
+  "excludedExternalPaths": [],
+  "rootInputSetUnchanged": true,
+  "copiedFixtureFiles": [
+    "DaprLogicalSnapshotRewitnessFixture.cs",
+    "DaprLogicalSnapshotRewitnessTests.cs",
+    "DaprLogicalSnapshotReplacementFixture.cs",
+    "DaprLogicalSnapshotReplacementTests.cs",
+    "DaprLogicalSnapshotFixture.cs",
+    "DaprLogicalSnapshotTests.cs",
+    "DaprLogicalReconstructionFixture.cs",
+    "DaprLogicalReconstructionTestState.cs",
+    "DaprLogicalReconstructionTests.cs",
+    "DaprLogicalAnchorFixture.cs",
+    "DaprLogicalAnchoredReplayTests.cs",
+    "DaprLogicalAnchoredContinuationFixture.cs",
+    "DaprLogicalAnchoredContinuationTests.cs",
+    "DaprLogicalAnchoredContinuationCodecTests.cs",
+    "DaprLogicalCommandStateTests.cs",
+    "DaprLogicalCommandStateProcessor.cs",
+    "DaprLogicalCommandStateAdmissionStage.cs",
+    "DaprLogicalCommandStateResult.cs",
+    "DaprLogicalCommandStateTestEvent.cs",
+    "DaprLogicalCommandStateSerializedEvent.cs",
+    "DaprLogicalCommandStateEventList.cs"
+  ],
+  "fullWorkspaceQualified": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "rootInputDrift": {},
+  "commandCount": 130,
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-build.log",
+      "seconds": 4.497,
+      "startedUtc": "2026-10-09T03:27:45.609697+00:00",
+      "endedUtc": "2026-10-09T03:27:50.107075+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "rewitness-control-ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority-tests.log",
+      "seconds": 1.398,
+      "startedUtc": "2026-10-09T03:27:50.279229+00:00",
+      "endedUtc": "2026-10-09T03:27:51.677631+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-build.log",
+      "seconds": 1.571,
+      "startedUtc": "2026-10-09T03:27:51.841254+00:00",
+      "endedUtc": "2026-10-09T03:27:53.412681+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredRetryIsCanonicalAndIdempotent"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-ExactDesiredRetryIsCanonicalAndIdempotent-tests.log",
+      "seconds": 1.464,
+      "startedUtc": "2026-10-09T03:27:53.589100+00:00",
+      "endedUtc": "2026-10-09T03:27:55.053420+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-UnsupportedBindingRefusesBeforeOwner-build.log",
+      "seconds": 1.539,
+      "startedUtc": "2026-10-09T03:27:55.220832+00:00",
+      "endedUtc": "2026-10-09T03:27:56.759655+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-UnsupportedBindingRefusesBeforeOwner-tests.log",
+      "seconds": 4.028,
+      "startedUtc": "2026-10-09T03:27:56.939142+00:00",
+      "endedUtc": "2026-10-09T03:28:00.967520+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-IncompatibleHintNeverStagesOrSaves-build.log",
+      "seconds": 1.552,
+      "startedUtc": "2026-10-09T03:28:01.138995+00:00",
+      "endedUtc": "2026-10-09T03:28:02.691420+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-IncompatibleHintNeverStagesOrSaves-tests.log",
+      "seconds": 4.332,
+      "startedUtc": "2026-10-09T03:28:02.877782+00:00",
+      "endedUtc": "2026-10-09T03:28:07.208953+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-ForgedHistoricalOperationIsOnlyAHint-build.log",
+      "seconds": 1.568,
+      "startedUtc": "2026-10-09T03:28:07.384968+00:00",
+      "endedUtc": "2026-10-09T03:28:08.952789+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ForgedHistoricalOperationIsOnlyAHint"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-ForgedHistoricalOperationIsOnlyAHint-tests.log",
+      "seconds": 1.248,
+      "startedUtc": "2026-10-09T03:28:09.141989+00:00",
+      "endedUtc": "2026-10-09T03:28:10.390295+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-CurrentPrefixStateMustEqualObservedHint-build.log",
+      "seconds": 1.513,
+      "startedUtc": "2026-10-09T03:28:10.571424+00:00",
+      "endedUtc": "2026-10-09T03:28:12.084361+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CurrentPrefixStateMustEqualObservedHint"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-CurrentPrefixStateMustEqualObservedHint-tests.log",
+      "seconds": 1.215,
+      "startedUtc": "2026-10-09T03:28:12.281200+00:00",
+      "endedUtc": "2026-10-09T03:28:13.496329+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-build.log",
+      "seconds": 1.578,
+      "startedUtc": "2026-10-09T03:28:13.678666+00:00",
+      "endedUtc": "2026-10-09T03:28:15.256277+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-CodecCallbackCannotSubstitutePinsOrCurrentHistory-tests.log",
+      "seconds": 2.366,
+      "startedUtc": "2026-10-09T03:28:15.455547+00:00",
+      "endedUtc": "2026-10-09T03:28:17.821320+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-CanonicalCancellationStopsLaterCallbacks-build.log",
+      "seconds": 1.504,
+      "startedUtc": "2026-10-09T03:28:18.011418+00:00",
+      "endedUtc": "2026-10-09T03:28:19.515595+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CanonicalCancellationStopsLaterCallbacks"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-CanonicalCancellationStopsLaterCallbacks-tests.log",
+      "seconds": 2.277,
+      "startedUtc": "2026-10-09T03:28:19.713704+00:00",
+      "endedUtc": "2026-10-09T03:28:21.990438+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-build.log",
+      "seconds": 1.528,
+      "startedUtc": "2026-10-09T03:28:22.179417+00:00",
+      "endedUtc": "2026-10-09T03:28:23.707214+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-IndependentReadbackClassifiesAndPendingNeverRepeatsSave-tests.log",
+      "seconds": 3.517,
+      "startedUtc": "2026-10-09T03:28:23.927557+00:00",
+      "endedUtc": "2026-10-09T03:28:27.444108+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-RewitnessPendingCannotCrossIntoOlderPolicy-build.log",
+      "seconds": 1.559,
+      "startedUtc": "2026-10-09T03:28:27.652925+00:00",
+      "endedUtc": "2026-10-09T03:28:29.212151+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.RewitnessPendingCannotCrossIntoOlderPolicy"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-RewitnessPendingCannotCrossIntoOlderPolicy-tests.log",
+      "seconds": 2.924,
+      "startedUtc": "2026-10-09T03:28:29.437517+00:00",
+      "endedUtc": "2026-10-09T03:28:32.361048+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-PendingProvenRecoveryRequiresFreshCurrentCanonicalProof-build.log",
+      "seconds": 1.523,
+      "startedUtc": "2026-10-09T03:28:32.578158+00:00",
+      "endedUtc": "2026-10-09T03:28:34.100751+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.PendingProvenRecoveryRequiresFreshCurrentCanonicalProof"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-PendingProvenRecoveryRequiresFreshCurrentCanonicalProof-tests.log",
+      "seconds": 2.17,
+      "startedUtc": "2026-10-09T03:28:34.324358+00:00",
+      "endedUtc": "2026-10-09T03:28:36.492844+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-InitialPendingCannotCrossIntoRewitness-build.log",
+      "seconds": 1.514,
+      "startedUtc": "2026-10-09T03:28:36.712691+00:00",
+      "endedUtc": "2026-10-09T03:28:38.227011+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.InitialPendingCannotCrossIntoRewitness"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-InitialPendingCannotCrossIntoRewitness-tests.log",
+      "seconds": 1.548,
+      "startedUtc": "2026-10-09T03:28:38.457837+00:00",
+      "endedUtc": "2026-10-09T03:28:40.005591+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-ReplacementPendingCannotCrossIntoRewitness-build.log",
+      "seconds": 1.504,
+      "startedUtc": "2026-10-09T03:28:40.238837+00:00",
+      "endedUtc": "2026-10-09T03:28:41.743316+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ReplacementPendingCannotCrossIntoRewitness"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-ReplacementPendingCannotCrossIntoRewitness-tests.log",
+      "seconds": 2.446,
+      "startedUtc": "2026-10-09T03:28:41.982095+00:00",
+      "endedUtc": "2026-10-09T03:28:44.428365+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal-build.log",
+      "seconds": 1.513,
+      "startedUtc": "2026-10-09T03:28:44.658245+00:00",
+      "endedUtc": "2026-10-09T03:28:46.171217+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal-tests.log",
+      "seconds": 1.224,
+      "startedUtc": "2026-10-09T03:28:46.425240+00:00",
+      "endedUtc": "2026-10-09T03:28:47.648985+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-LastReadbackCannotSubstituteCurrentCompletedHistory-build.log",
+      "seconds": 1.472,
+      "startedUtc": "2026-10-09T03:28:47.886735+00:00",
+      "endedUtc": "2026-10-09T03:28:49.358410+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.LastReadbackCannotSubstituteCurrentCompletedHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-LastReadbackCannotSubstituteCurrentCompletedHistory-tests.log",
+      "seconds": 1.268,
+      "startedUtc": "2026-10-09T03:28:49.602645+00:00",
+      "endedUtc": "2026-10-09T03:28:50.870439+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-ExactDesiredLastReadbackCannotSubstituteCurrentHistory-build.log",
+      "seconds": 1.508,
+      "startedUtc": "2026-10-09T03:28:51.106336+00:00",
+      "endedUtc": "2026-10-09T03:28:52.614790+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredLastReadbackCannotSubstituteCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-ExactDesiredLastReadbackCannotSubstituteCurrentHistory-tests.log",
+      "seconds": 1.495,
+      "startedUtc": "2026-10-09T03:28:52.870025+00:00",
+      "endedUtc": "2026-10-09T03:28:54.365185+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-CommonOwnerMustCompleteExactlyOneOriginalDecision-build.log",
+      "seconds": 1.515,
+      "startedUtc": "2026-10-09T03:28:54.607248+00:00",
+      "endedUtc": "2026-10-09T03:28:56.122126+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CommonOwnerMustCompleteExactlyOneOriginalDecision"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-CommonOwnerMustCompleteExactlyOneOriginalDecision-tests.log",
+      "seconds": 2.259,
+      "startedUtc": "2026-10-09T03:28:56.378492+00:00",
+      "endedUtc": "2026-10-09T03:28:58.637592+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-control-CapacityRefusesBeforeOriginAndStage-build.log",
+      "seconds": 1.541,
+      "startedUtc": "2026-10-09T03:28:58.890162+00:00",
+      "endedUtc": "2026-10-09T03:29:00.431066+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CapacityRefusesBeforeOriginAndStage"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "rewitness-control-CapacityRefusesBeforeOriginAndStage-tests.log",
+      "seconds": 1.011,
+      "startedUtc": "2026-10-09T03:29:00.709098+00:00",
+      "endedUtc": "2026-10-09T03:29:01.719627+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-ExactOlderPairReplacesAndAdmitsCurrentCandidate-build.log",
+      "seconds": 1.521,
+      "startedUtc": "2026-10-09T03:29:01.976806+00:00",
+      "endedUtc": "2026-10-09T03:29:03.497497+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.ExactOlderPairReplacesAndAdmitsCurrentCandidate"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-ExactOlderPairReplacesAndAdmitsCurrentCandidate-tests.log",
+      "seconds": 1.87,
+      "startedUtc": "2026-10-09T03:29:03.773841+00:00",
+      "endedUtc": "2026-10-09T03:29:05.642635+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-IneligiblePriorPairNeverStagesOrSaves-build.log",
+      "seconds": 1.53,
+      "startedUtc": "2026-10-09T03:29:05.908851+00:00",
+      "endedUtc": "2026-10-09T03:29:07.439014+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.IneligiblePriorPairNeverStagesOrSaves"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-IneligiblePriorPairNeverStagesOrSaves-tests.log",
+      "seconds": 8.805,
+      "startedUtc": "2026-10-09T03:29:07.729607+00:00",
+      "endedUtc": "2026-10-09T03:29:16.534491+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-ReplacementRequiresDistinctExplicitPolicy-build.log",
+      "seconds": 1.509,
+      "startedUtc": "2026-10-09T03:29:16.801013+00:00",
+      "endedUtc": "2026-10-09T03:29:18.309706+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.ReplacementRequiresDistinctExplicitPolicy"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-ReplacementRequiresDistinctExplicitPolicy-tests.log",
+      "seconds": 1.32,
+      "startedUtc": "2026-10-09T03:29:18.597157+00:00",
+      "endedUtc": "2026-10-09T03:29:19.916967+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-PriorActualHistoryAndCanonicalRoundtripAreRequired-build.log",
+      "seconds": 1.515,
+      "startedUtc": "2026-10-09T03:29:20.212801+00:00",
+      "endedUtc": "2026-10-09T03:29:21.727508+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.PriorActualHistoryAndCanonicalRoundtripAreRequired"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-PriorActualHistoryAndCanonicalRoundtripAreRequired-tests.log",
+      "seconds": 2.868,
+      "startedUtc": "2026-10-09T03:29:22.047429+00:00",
+      "endedUtc": "2026-10-09T03:29:24.915229+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-CodecCallbackCannotSubstitutePriorOrEitherHistory-build.log",
+      "seconds": 1.522,
+      "startedUtc": "2026-10-09T03:29:25.198400+00:00",
+      "endedUtc": "2026-10-09T03:29:26.720768+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.CodecCallbackCannotSubstitutePriorOrEitherHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-CodecCallbackCannotSubstitutePriorOrEitherHistory-tests.log",
+      "seconds": 4.333,
+      "startedUtc": "2026-10-09T03:29:27.015114+00:00",
+      "endedUtc": "2026-10-09T03:29:31.348447+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-PriorCodecCancellationStopsLaterCallbacksAndClears-build.log",
+      "seconds": 1.55,
+      "startedUtc": "2026-10-09T03:29:31.630761+00:00",
+      "endedUtc": "2026-10-09T03:29:33.181140+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.PriorCodecCancellationStopsLaterCallbacksAndClears"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-PriorCodecCancellationStopsLaterCallbacksAndClears-tests.log",
+      "seconds": 3.5,
+      "startedUtc": "2026-10-09T03:29:33.476559+00:00",
+      "endedUtc": "2026-10-09T03:29:36.974997+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-ReplacementReadbackClassifiesExactDesiredPriorOrHold-build.log",
+      "seconds": 1.547,
+      "startedUtc": "2026-10-09T03:29:37.243878+00:00",
+      "endedUtc": "2026-10-09T03:29:38.791338+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.ReplacementReadbackClassifiesExactDesiredPriorOrHold"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-ReplacementReadbackClassifiesExactDesiredPriorOrHold-tests.log",
+      "seconds": 4.606,
+      "startedUtc": "2026-10-09T03:29:39.083877+00:00",
+      "endedUtc": "2026-10-09T03:29:43.689417+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-ReplacementCapacityRefusesBeforeOriginAndStage-build.log",
+      "seconds": 1.51,
+      "startedUtc": "2026-10-09T03:29:43.966508+00:00",
+      "endedUtc": "2026-10-09T03:29:45.476537+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.ReplacementCapacityRefusesBeforeOriginAndStage"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-ReplacementCapacityRefusesBeforeOriginAndStage-tests.log",
+      "seconds": 1.273,
+      "startedUtc": "2026-10-09T03:29:45.781936+00:00",
+      "endedUtc": "2026-10-09T03:29:47.054587+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-ProvenReplacementRetryIsFreshAndIdempotent-build.log",
+      "seconds": 1.492,
+      "startedUtc": "2026-10-09T03:29:47.352752+00:00",
+      "endedUtc": "2026-10-09T03:29:48.844677+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.ProvenReplacementRetryIsFreshAndIdempotent"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-ProvenReplacementRetryIsFreshAndIdempotent-tests.log",
+      "seconds": 1.971,
+      "startedUtc": "2026-10-09T03:29:49.149139+00:00",
+      "endedUtc": "2026-10-09T03:29:51.120551+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-PriorDecodingAndOriginOwnershipRemainChargedThroughStage-build.log",
+      "seconds": 1.539,
+      "startedUtc": "2026-10-09T03:29:51.419701+00:00",
+      "endedUtc": "2026-10-09T03:29:52.958690+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.PriorDecodingAndOriginOwnershipRemainChargedThroughStage"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-PriorDecodingAndOriginOwnershipRemainChargedThroughStage-tests.log",
+      "seconds": 1.697,
+      "startedUtc": "2026-10-09T03:29:53.291337+00:00",
+      "endedUtc": "2026-10-09T03:29:54.988624+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-StageCallbackHistorySubstitutionStopsLaterStageAndSave-build.log",
+      "seconds": 1.539,
+      "startedUtc": "2026-10-09T03:29:55.298458+00:00",
+      "endedUtc": "2026-10-09T03:29:56.837141+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.StageCallbackHistorySubstitutionStopsLaterStageAndSave"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-StageCallbackHistorySubstitutionStopsLaterStageAndSave-tests.log",
+      "seconds": 4.551,
+      "startedUtc": "2026-10-09T03:29:57.158235+00:00",
+      "endedUtc": "2026-10-09T03:30:01.709716+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-PendingReplacementRevalidatesPriorBeforeProven-build.log",
+      "seconds": 1.525,
+      "startedUtc": "2026-10-09T03:30:02.034411+00:00",
+      "endedUtc": "2026-10-09T03:30:03.559269+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.PendingReplacementRevalidatesPriorBeforeProven"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-PendingReplacementRevalidatesPriorBeforeProven-tests.log",
+      "seconds": 3.114,
+      "startedUtc": "2026-10-09T03:30:03.894957+00:00",
+      "endedUtc": "2026-10-09T03:30:07.008131+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-PriorBoundaryTokenRefusesBeforeAddressedCallback-build.log",
+      "seconds": 1.576,
+      "startedUtc": "2026-10-09T03:30:07.341030+00:00",
+      "endedUtc": "2026-10-09T03:30:08.917181+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.PriorBoundaryTokenRefusesBeforeAddressedCallback"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-PriorBoundaryTokenRefusesBeforeAddressedCallback-tests.log",
+      "seconds": 3.334,
+      "startedUtc": "2026-10-09T03:30:09.252123+00:00",
+      "endedUtc": "2026-10-09T03:30:12.586340+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-FreshExactDesiredAdmissionAfterFailedPriorProofRequiresCanonicalState-build.log",
+      "seconds": 1.572,
+      "startedUtc": "2026-10-09T03:30:12.946498+00:00",
+      "endedUtc": "2026-10-09T03:30:14.518844+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.FreshExactDesiredAdmissionAfterFailedPriorProofRequiresCanonicalState"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-FreshExactDesiredAdmissionAfterFailedPriorProofRequiresCanonicalState-tests.log",
+      "seconds": 3.126,
+      "startedUtc": "2026-10-09T03:30:14.863272+00:00",
+      "endedUtc": "2026-10-09T03:30:17.989657+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "replacement-control-LastPairReadbackCannotSubstituteCompletedHistory-build.log",
+      "seconds": 1.654,
+      "startedUtc": "2026-10-09T03:30:18.323357+00:00",
+      "endedUtc": "2026-10-09T03:30:19.977001+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotReplacementTests.LastPairReadbackCannotSubstituteCompletedHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "replacement-control-LastPairReadbackCannotSubstituteCompletedHistory-tests.log",
+      "seconds": 6.53,
+      "startedUtc": "2026-10-09T03:30:20.329435+00:00",
+      "endedUtc": "2026-10-09T03:30:26.859562+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "client-model-build.log",
+      "seconds": 1.596,
+      "startedUtc": "2026-10-09T03:30:27.205621+00:00",
+      "endedUtc": "2026-10-09T03:30:28.801764+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "client-model-tests.log",
+      "seconds": 0.499,
+      "startedUtc": "2026-10-09T03:30:29.165672+00:00",
+      "endedUtc": "2026-10-09T03:30:29.664214+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "snapshot-build.log",
+      "seconds": 1.525,
+      "startedUtc": "2026-10-09T03:30:30.016175+00:00",
+      "endedUtc": "2026-10-09T03:30:31.541168+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "snapshot-tests.log",
+      "seconds": 13.096,
+      "startedUtc": "2026-10-09T03:30:31.917346+00:00",
+      "endedUtc": "2026-10-09T03:30:45.012133+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "reconstruction-build.log",
+      "seconds": 1.578,
+      "startedUtc": "2026-10-09T03:30:45.355415+00:00",
+      "endedUtc": "2026-10-09T03:30:46.933065+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "reconstruction-tests.log",
+      "seconds": 9.401,
+      "startedUtc": "2026-10-09T03:30:47.294230+00:00",
+      "endedUtc": "2026-10-09T03:30:56.694810+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-source-operation-build.log",
+      "seconds": 1.537,
+      "startedUtc": "2026-10-09T03:30:57.060465+00:00",
+      "endedUtc": "2026-10-09T03:30:58.597390+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "ordinary-source-operation-tests.log",
+      "seconds": 2.142,
+      "startedUtc": "2026-10-09T03:30:58.967889+00:00",
+      "endedUtc": "2026-10-09T03:31:01.109599+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-preparation-build.log",
+      "seconds": 1.542,
+      "startedUtc": "2026-10-09T03:31:01.473382+00:00",
+      "endedUtc": "2026-10-09T03:31:03.015559+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredReplayTests"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "anchored-preparation-tests.log",
+      "seconds": 13.52,
+      "startedUtc": "2026-10-09T03:31:03.405120+00:00",
+      "endedUtc": "2026-10-09T03:31:16.923863+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-command-build.log",
+      "seconds": 1.574,
+      "startedUtc": "2026-10-09T03:31:17.295309+00:00",
+      "endedUtc": "2026-10-09T03:31:18.869372+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "ordinary-command-tests.log",
+      "seconds": 23.965,
+      "startedUtc": "2026-10-09T03:31:19.243661+00:00",
+      "endedUtc": "2026-10-09T03:31:43.206970+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "continuation-ActualAnchoredTailBeginPageReadbackAndRetry-build.log",
+      "seconds": 1.492,
+      "startedUtc": "2026-10-09T03:31:43.583120+00:00",
+      "endedUtc": "2026-10-09T03:31:45.075039+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "continuation-ActualAnchoredTailBeginPageReadbackAndRetry-tests.log",
+      "seconds": 12.135,
+      "startedUtc": "2026-10-09T03:31:45.474909+00:00",
+      "endedUtc": "2026-10-09T03:31:57.610370+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "continuation-ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry-build.log",
+      "seconds": 1.484,
+      "startedUtc": "2026-10-09T03:31:57.983458+00:00",
+      "endedUtc": "2026-10-09T03:31:59.467958+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "continuation-ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry-tests.log",
+      "seconds": 2.379,
+      "startedUtc": "2026-10-09T03:31:59.863953+00:00",
+      "endedUtc": "2026-10-09T03:32:02.243308+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "older-entry-policy-identity-build.log",
+      "seconds": 2.833,
+      "startedUtc": "2026-10-09T03:32:02.638879+00:00",
+      "endedUtc": "2026-10-09T03:32:05.470055+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.RewitnessPendingCannotCrossIntoOlderPolicy"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "older-entry-policy-identity-tests.log",
+      "seconds": 2.947,
+      "startedUtc": "2026-10-09T03:32:05.868442+00:00",
+      "endedUtc": "2026-10-09T03:32:08.815035+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "rewitness-entry-policy-identity-build.log",
+      "seconds": 2.854,
+      "startedUtc": "2026-10-09T03:32:09.193654+00:00",
+      "endedUtc": "2026-10-09T03:32:12.048001+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.InitialPendingCannotCrossIntoRewitness"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "rewitness-entry-policy-identity-tests.log",
+      "seconds": 1.66,
+      "startedUtc": "2026-10-09T03:32:12.451444+00:00",
+      "endedUtc": "2026-10-09T03:32:14.111702+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-target-before-owner-build.log",
+      "seconds": 2.807,
+      "startedUtc": "2026-10-09T03:32:14.511398+00:00",
+      "endedUtc": "2026-10-09T03:32:17.317996+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-target-before-owner-tests.log",
+      "seconds": 4.031,
+      "startedUtc": "2026-10-09T03:32:17.711953+00:00",
+      "endedUtc": "2026-10-09T03:32:21.743023+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "earlier-head-before-owner-build.log",
+      "seconds": 2.493,
+      "startedUtc": "2026-10-09T03:32:22.156055+00:00",
+      "endedUtc": "2026-10-09T03:32:24.648608+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "earlier-head-before-owner-tests.log",
+      "seconds": 4.097,
+      "startedUtc": "2026-10-09T03:32:25.068368+00:00",
+      "endedUtc": "2026-10-09T03:32:29.165340+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "complete-prefix-floor-before-owner-build.log",
+      "seconds": 2.756,
+      "startedUtc": "2026-10-09T03:32:29.575247+00:00",
+      "endedUtc": "2026-10-09T03:32:32.330790+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "complete-prefix-floor-before-owner-tests.log",
+      "seconds": 4.005,
+      "startedUtc": "2026-10-09T03:32:32.756177+00:00",
+      "endedUtc": "2026-10-09T03:32:36.759981+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "same-namespace-before-owner-build.log",
+      "seconds": 2.487,
+      "startedUtc": "2026-10-09T03:32:37.157459+00:00",
+      "endedUtc": "2026-10-09T03:32:39.644393+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.UnsupportedBindingRefusesBeforeOwner"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "same-namespace-before-owner-tests.log",
+      "seconds": 4.081,
+      "startedUtc": "2026-10-09T03:32:40.073229+00:00",
+      "endedUtc": "2026-10-09T03:32:44.154143+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-observed-source-hint-build.log",
+      "seconds": 2.663,
+      "startedUtc": "2026-10-09T03:32:44.583442+00:00",
+      "endedUtc": "2026-10-09T03:32:47.246468+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-observed-source-hint-tests.log",
+      "seconds": 4.599,
+      "startedUtc": "2026-10-09T03:32:47.667289+00:00",
+      "endedUtc": "2026-10-09T03:32:52.266300+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-hint-registry-build.log",
+      "seconds": 2.439,
+      "startedUtc": "2026-10-09T03:32:52.696263+00:00",
+      "endedUtc": "2026-10-09T03:32:55.135504+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "exact-hint-registry-tests.log",
+      "seconds": 4.573,
+      "startedUtc": "2026-10-09T03:32:55.564853+00:00",
+      "endedUtc": "2026-10-09T03:33:00.137646+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-hint-reconstruction-build.log",
+      "seconds": 2.531,
+      "startedUtc": "2026-10-09T03:33:00.560011+00:00",
+      "endedUtc": "2026-10-09T03:33:03.091338+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IncompatibleHintNeverStagesOrSaves"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "exact-hint-reconstruction-tests.log",
+      "seconds": 4.499,
+      "startedUtc": "2026-10-09T03:33:03.531519+00:00",
+      "endedUtc": "2026-10-09T03:33:08.028938+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-current-prefix-state-build.log",
+      "seconds": 2.625,
+      "startedUtc": "2026-10-09T03:33:08.438782+00:00",
+      "endedUtc": "2026-10-09T03:33:11.064162+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CurrentPrefixStateMustEqualObservedHint"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-current-prefix-state-tests.log",
+      "seconds": 1.272,
+      "startedUtc": "2026-10-09T03:33:11.504277+00:00",
+      "endedUtc": "2026-10-09T03:33:12.776105+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "fresh-current-canonical-admission-build.log",
+      "seconds": 3.051,
+      "startedUtc": "2026-10-09T03:33:13.215027+00:00",
+      "endedUtc": "2026-10-09T03:33:16.265684+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredRetryIsCanonicalAndIdempotent"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "fresh-current-canonical-admission-tests.log",
+      "seconds": 1.18,
+      "startedUtc": "2026-10-09T03:33:16.712310+00:00",
+      "endedUtc": "2026-10-09T03:33:17.891897+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "pending-current-canonical-admission-build.log",
+      "seconds": 2.764,
+      "startedUtc": "2026-10-09T03:33:18.334581+00:00",
+      "endedUtc": "2026-10-09T03:33:21.098857+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.PendingProvenRecoveryRequiresFreshCurrentCanonicalProof"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "pending-current-canonical-admission-tests.log",
+      "seconds": 1.922,
+      "startedUtc": "2026-10-09T03:33:21.549420+00:00",
+      "endedUtc": "2026-10-09T03:33:23.471326+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "actual-current-origin-fences-build.log",
+      "seconds": 2.891,
+      "startedUtc": "2026-10-09T03:33:23.916640+00:00",
+      "endedUtc": "2026-10-09T03:33:26.807254+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "actual-current-origin-fences-tests.log",
+      "seconds": 2.601,
+      "startedUtc": "2026-10-09T03:33:27.264888+00:00",
+      "endedUtc": "2026-10-09T03:33:29.865443+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "actual-prestage-prior-pair-build.log",
+      "seconds": 2.911,
+      "startedUtc": "2026-10-09T03:33:30.316391+00:00",
+      "endedUtc": "2026-10-09T03:33:33.227150+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "actual-prestage-prior-pair-tests.log",
+      "seconds": 2.448,
+      "startedUtc": "2026-10-09T03:33:33.689328+00:00",
+      "endedUtc": "2026-10-09T03:33:36.135789+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "private-complete-prior-witness-pin-build.log",
+      "seconds": 2.538,
+      "startedUtc": "2026-10-09T03:33:36.587005+00:00",
+      "endedUtc": "2026-10-09T03:33:39.125152+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CodecCallbackCannotSubstitutePinsOrCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "private-complete-prior-witness-pin-tests.log",
+      "seconds": 2.557,
+      "startedUtc": "2026-10-09T03:33:39.593594+00:00",
+      "endedUtc": "2026-10-09T03:33:42.150761+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "current-origin-after-last-readback-build.log",
+      "seconds": 2.756,
+      "startedUtc": "2026-10-09T03:33:42.614822+00:00",
+      "endedUtc": "2026-10-09T03:33:45.371074+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.LastReadbackCannotSubstituteCurrentCompletedHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "current-origin-after-last-readback-tests.log",
+      "seconds": 1.259,
+      "startedUtc": "2026-10-09T03:33:45.851807+00:00",
+      "endedUtc": "2026-10-09T03:33:47.111157+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-desired-after-last-readback-build.log",
+      "seconds": 2.693,
+      "startedUtc": "2026-10-09T03:33:47.574742+00:00",
+      "endedUtc": "2026-10-09T03:33:50.267560+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ExactDesiredLastReadbackCannotSubstituteCurrentHistory"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-desired-after-last-readback-tests.log",
+      "seconds": 1.441,
+      "startedUtc": "2026-10-09T03:33:50.735981+00:00",
+      "endedUtc": "2026-10-09T03:33:52.177014+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "current-origin-after-state-stage-build.log",
+      "seconds": 2.66,
+      "startedUtc": "2026-10-09T03:33:52.636239+00:00",
+      "endedUtc": "2026-10-09T03:33:55.296288+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.YieldingStageKeepsCapacityAndExpiresFacadesBeforeRefusal"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "current-origin-after-state-stage-tests.log",
+      "seconds": 1.335,
+      "startedUtc": "2026-10-09T03:33:55.782179+00:00",
+      "endedUtc": "2026-10-09T03:33:57.117485+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "retained-materialization-capacity-build.log",
+      "seconds": 2.658,
+      "startedUtc": "2026-10-09T03:33:57.591284+00:00",
+      "endedUtc": "2026-10-09T03:34:00.249459+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CapacityRefusesBeforeOriginAndStage"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "retained-materialization-capacity-tests.log",
+      "seconds": 1.236,
+      "startedUtc": "2026-10-09T03:34:00.739720+00:00",
+      "endedUtc": "2026-10-09T03:34:01.975609+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "retained-origin-state-clearing-build.log",
+      "seconds": 2.6,
+      "startedUtc": "2026-10-09T03:34:02.457231+00:00",
+      "endedUtc": "2026-10-09T03:34:05.056502+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.ActualCurrentPrefixRewitnessesWithoutHistoricalAuthority"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "retained-origin-state-clearing-tests.log",
+      "seconds": 1.328,
+      "startedUtc": "2026-10-09T03:34:05.555748+00:00",
+      "endedUtc": "2026-10-09T03:34:06.884173+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "paired-witness-stage-build.log",
+      "seconds": 2.516,
+      "startedUtc": "2026-10-09T03:34:07.365048+00:00",
+      "endedUtc": "2026-10-09T03:34:09.880744+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "paired-witness-stage-tests.log",
+      "seconds": 3.508,
+      "startedUtc": "2026-10-09T03:34:10.374843+00:00",
+      "endedUtc": "2026-10-09T03:34:13.882385+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "independent-paired-readback-build.log",
+      "seconds": 2.741,
+      "startedUtc": "2026-10-09T03:34:14.392097+00:00",
+      "endedUtc": "2026-10-09T03:34:17.133226+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "independent-paired-readback-tests.log",
+      "seconds": 3.479,
+      "startedUtc": "2026-10-09T03:34:17.634045+00:00",
+      "endedUtc": "2026-10-09T03:34:21.113380+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "pending-no-repeat-save-build.log",
+      "seconds": 2.993,
+      "startedUtc": "2026-10-09T03:34:21.616305+00:00",
+      "endedUtc": "2026-10-09T03:34:24.609083+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.IndependentReadbackClassifiesAndPendingNeverRepeatsSave"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "pending-no-repeat-save-tests.log",
+      "seconds": 3.611,
+      "startedUtc": "2026-10-09T03:34:25.121996+00:00",
+      "endedUtc": "2026-10-09T03:34:28.732980+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "complete-original-owner-decision-build.log",
+      "seconds": 2.406,
+      "startedUtc": "2026-10-09T03:34:29.241372+00:00",
+      "endedUtc": "2026-10-09T03:34:31.647540+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-rewitness-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotRewitnessTests.CommonOwnerMustCompleteExactlyOneOriginalDecision"
+      ],
+      "cwd": "/tmp/story66-rewitness-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "complete-original-owner-decision-tests.log",
+      "seconds": 5.304,
+      "startedUtc": "2026-10-09T03:34:32.182769+00:00",
+      "endedUtc": "2026-10-09T03:34:37.485686+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    }
+  ],
+  "fullReceipt": "result.json.xz",
+  "allCopiedImportedExecutedSetsUnchanged": true
+}

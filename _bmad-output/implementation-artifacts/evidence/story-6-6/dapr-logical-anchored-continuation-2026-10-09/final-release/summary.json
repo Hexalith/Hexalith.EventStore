@@ -1,0 +1,2658 @@
+{
+  "scope": "dormant distinct anchored continuation through actual replay owner; all external runtime inputs preserved",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "controls": {
+    "continuationMethods": {
+      "ActualAnchoredTailBeginPageReadbackAndRetry": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ActualTakeoverUsesSameOperationTokenAndSeparateOrdinaryKeys": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "DifferentRequestTokenCannotContinueRetainedOperation": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "DualCanceledTokensRefuseBeforeGateOrSideEffects": {
+        "total": 5,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CallbackLossPreservesPriorAndReleasesTemporaryCapacity": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ActualCommittedHistorySubstitutionRefusesBeforeCallbacks": {
+        "total": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ActualAnchoredSaveModesUseIndependentReadback": {
+        "total": 3,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ConstructorCapacityRefusalClearsTransferredInitialOwnership": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "CommittedZeroTailWithholdsDisclosureAfterFinalAuthorityLoss": {
+        "total": 2,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "MalformedCandidateFallsBackToActualFullReplayWithoutDeletion": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "LaterCallbackCannotReplaceActualAnchoredPredecessor": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "EquivalentRouteTrustCannotGrantAnchoredBegin": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "IndependentContinuationVectorsMatchRuntime": {
+        "total": 9,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "StrictAnchoredPrefixRefusesUnsupportedShapes": {
+        "total": 6,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ExactAnchoredTrustRefusesSelectionSubstitution": {
+        "total": 9,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "ExactUtf8BoundaryUsesMeasuredWriterBytes": {
+        "total": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0
+      }
+    },
+    "continuationTotal": 54,
+    "clientModel": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "snapshot": {
+      "total": 66,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "reconstruction": {
+      "total": 53,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "ordinarySourceOperation": {
+      "total": 39,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "anchoredPreparation": {
+      "total": 56,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "ordinaryCommand": {
+      "total": 76,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    }
+  },
+  "mutations": [
+    {
+      "mutation": "distinct-prefix-framing",
+      "result": "killed",
+      "killingTest": "IndependentContinuationVectorsMatchRuntime",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 3,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"tail-prefix\") [FAIL]",
+        "      Shouldly.ShouldAssertException : DaprLogicalAnchoredPrefixCodec.Measure(claim)",
+        "          should be",
+        "      366",
+        "          but was",
+        "      375",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(35,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(String name)",
+        "           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)",
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"zero-tail-prefix\") [FAIL]",
+        "      Shouldly.ShouldAssertException : DaprLogicalAnchoredPrefixCodec.Measure(claim)",
+        "          should be",
+        "      366"
+      ]
+    },
+    {
+      "mutation": "canonical-prefix-tags",
+      "result": "killed",
+      "killingTest": "StrictAnchoredPrefixRefusesUnsupportedShapes",
+      "summary": {
+        "total": 6,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(mode: \"reordered\") [FAIL]",
+        "      Shouldly.ShouldAssertException : `DaprLogicalAnchoredPrefixCodec.Decode(image)`",
+        "          should throw",
+        "      System.ArgumentException",
+        "          but did not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(120,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(String mode)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ===",
+        "   Hexalith.EventStore.Server.Tests  Total: 6, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.121s"
+      ]
+    },
+    {
+      "mutation": "exact-selection-scope",
+      "result": "killed",
+      "killingTest": "ExactAnchoredTrustRefusesSelectionSubstitution",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 6,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(point: \"tenant\") [FAIL]",
+        "      Shouldly.ShouldAssertException : `trust.VerifyPrefix(signed.Claim.Span, signed.KeyId, signed.Signature.Span, selection, Hash(point == \"selection\" ? (byte)2 : (byte)1), budget, CancellationToken.None)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(192,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(String point)",
+        "           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)",
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(point: \"aggregate\") [FAIL]",
+        "      Shouldly.ShouldAssertException : `trust.VerifyPrefix(signed.Claim.Span, signed.KeyId, signed.Signature.Span, selection, Hash(point == \"selection\" ? (byte)2 : (byte)1), budget, CancellationToken.None)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not"
+      ]
+    },
+    {
+      "mutation": "retained-prefix-decoding-charge",
+      "result": "killed",
+      "killingTest": "ExactAnchoredTrustRefusesSelectionSubstitution",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 9,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(point: \"tenant\") [FAIL]",
+        "      Shouldly.ShouldAssertException : budget.LiveBytes - baseline",
+        "          should be",
+        "      5532",
+        "          but was",
+        "      0",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(151,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(String point)",
+        "           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)",
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution(point: \"aggregate\") [FAIL]",
+        "      Shouldly.ShouldAssertException : budget.LiveBytes - baseline",
+        "          should be",
+        "      5532"
+      ]
+    },
+    {
+      "mutation": "anchored-request-separator",
+      "result": "killed",
+      "killingTest": "IndependentContinuationVectorsMatchRuntime",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"request\") [FAIL]",
+        "      Shouldly.ShouldAssertException : actual",
+        "          should be",
+        "      [69, 151, 201, 0, 245, 146, 155, 253, 1, 198, 115, 198, 143, 122, 51, 211, 1, 247, 5, 18, 215, 157, 5, 158, 116, 237, 248, 23, 22, 203, 131, 244]",
+        "          but was",
+        "      [64, 173, 90, 18, 205, 120, 249, 2, 43, 218, 168, 209, 147, 212, 58, 67, 38, 159, 88, 105, 89, 227, 126, 250, 163, 223, 71, 103, 106, 162, 55, 23]",
+        "          difference",
+        "      [*64*, *173*, *90*, *18*, *205*, *120*, *249*, *2*, *43*, *218*, *168*, *209*, *147*, *212*, *58*, *67*, *38*, *159*, *88*, *105*, *89*, *227*, *126*, *250*, *163*, *223*, *71*, *103*, *106*, *162*, *55*, *23*]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(60,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(String name)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    },
+    {
+      "mutation": "anchored-transcript-separator",
+      "result": "killed",
+      "killingTest": "IndependentContinuationVectorsMatchRuntime",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"transcript-step\") [FAIL]",
+        "      Shouldly.ShouldAssertException : actual",
+        "          should be",
+        "      [240, 26, 140, 39, 42, 114, 165, 76, 26, 98, 180, 67, 11, 184, 18, 156, 218, 113, 219, 82, 184, 110, 4, 130, 193, 95, 175, 11, 67, 97, 221, 249]",
+        "          but was",
+        "      [34, 119, 127, 189, 145, 48, 155, 183, 240, 250, 138, 117, 102, 210, 55, 222, 140, 56, 103, 207, 72, 106, 199, 241, 6, 149, 96, 110, 246, 112, 11, 169]",
+        "          difference",
+        "      [*34*, *119*, *127*, *189*, *145*, *48*, *155*, *183*, *240*, *250*, *138*, *117*, *102*, *210*, *55*, *222*, *140*, *56*, *103*, *207*, *72*, *106*, *199*, *241*, *6*, *149*, *96*, *110*, *246*, *112*, *11*, *169*]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(60,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(String name)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    },
+    {
+      "mutation": "anchored-effective-separator",
+      "result": "killed",
+      "killingTest": "IndependentContinuationVectorsMatchRuntime",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"effective-step\") [FAIL]",
+        "      Shouldly.ShouldAssertException : actual",
+        "          should be",
+        "      [157, 3, 222, 228, 103, 206, 235, 3, 193, 109, 254, 170, 238, 150, 48, 198, 92, 49, 130, 118, 75, 158, 233, 9, 220, 34, 192, 107, 24, 115, 31, 76]",
+        "          but was",
+        "      [92, 127, 156, 35, 37, 45, 97, 5, 90, 60, 124, 76, 108, 59, 63, 170, 84, 114, 52, 170, 162, 7, 159, 2, 5, 107, 56, 237, 128, 29, 235, 159]",
+        "          difference",
+        "      [*92*, *127*, *156*, *35*, *37*, *45*, *97*, *5*, *90*, *60*, *124*, *76*, *108*, *59*, *63*, *170*, *84*, *114*, *52*, *170*, *162*, *7*, *159*, *2*, *5*, *107*, *56*, *237*, *128*, *29*, *235*, *159*]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(60,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(String name)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    },
+    {
+      "mutation": "anchored-ledger-separator",
+      "result": "killed",
+      "killingTest": "IndependentContinuationVectorsMatchRuntime",
+      "summary": {
+        "total": 9,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(name: \"ledger\") [FAIL]",
+        "      Shouldly.ShouldAssertException : actual",
+        "          should be",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 65, 78, 67, 72, 79, 82, 69, 68, 45, 76, 69, 68, 71, 69, 82, 45, 49, 0, 1, 101, 4, 81, 52, 6, 77, 212, 217, 5, 102, 94, 206, 175, 65, 83, 254, 164, 249, 214, 157, 42, 226, 34, 85, 160, 183, 206, 244, 112, 31, 72, 134, 0, 0, 1, 132, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 76, 69, 68, 71, 69, 82, 45, 50, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 31, 88, 185, 20, 91, 36, 209, 8, 215, 172, 56, 136, 115, 56, 179, 234, 50, 41, 131, 59, 156, 30, 65, 130, 80, 52, 63, 144, 123, 253, 16, 71, 84, 11, 144, 54, 132, 160, 239, 32, 125, 90, 140, 161, 99, 68, 81, 8, 0, 141, 59, 13, 173, 50, 125, 23, 60, 97, 101, 252, 153, 40, 205, 206, 167, 174, 5, 248, 126, 172, 181, 163, 153, 88, 219, 120, 182, 130, 160, 218, 202, 65, 179, 61, 45, 95, 193, 120, 244, 23, 214, 26, 160, 129, 161, 130, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 169, 244, 179, 210, 42, 82, 63, 218, 218, 65, 200, 92, 23, 84, 37, 188, 209, 91, 50, 180, 205, 15, 84, 217, 67, 58, 204, 213, 45, 113, 149, 161, 0, 1, 60, 169, 71, 54, 184, 202, 67, 95, 248, 32, 197, 124, 76, 128, 78, 246, 146, 96, 194, 59, 185, 210, 245, 119, 228, 185, 225, 240, 150, 55, 161, 19, 1, 204, 161, 48, 57, 118, 205, 137, 154, 46, 146, 206, 73, 104, 4, 236, 182, 225, 241, 83, 51, 219, 185, 47, 201, 64, 62, 10, 85, 63, 177, 224, 113, 97, 53, 15, 229, 173, 220, 242, 119, 228, 40, 79, 188, 4, 167, 7, 178, 253, 16, 168, 82, 7, 72, 13, 14, 240, 219, 180, 148, 205, 41, 66, 53, 68, 250, 205, 137, 229, 167, 2, 159, 43, 36, 209, 167, 100, 135, 200, 1, 88, 181, 53, 192, 25, 180, 169, 199, 61, 149, 47, 208, 22, 172, 12, 15, 247, 196, 48, 17, 89, 168, 62, 113, 219, 1, 219, 124, 219, 152, 151, 193, 205, 179, 88, 136, 220, 60, 155, 202, 186, 173, 176, 137, 90, 114, 168, 112, 173, 253, 86, 61, 126, 51, 229, 170, 197, 45, 203, 13, 82, 219, 229, 201, 225, 209, 102, 15, 4, 180, 197, 216, 229, 251, 239, 152, 110, 152, 110, 178, 0]",
+        "          but was",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 76, 69, 68, 71, 69, 82, 45, 50, 0, 1, 101, 4, 81, 52, 6, 77, 212, 217, 5, 102, 94, 206, 175, 65, 83, 254, 164, 249, 214, 157, 42, 226, 34, 85, 160, 183, 206, 244, 112, 31, 72, 134, 0, 0, 1, 132, 72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 76, 69, 68, 71, 69, 82, 45, 50, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 31, 88, 185, 20, 91, 36, 209, 8, 215, 172, 56, 136, 115, 56, 179, 234, 50, 41, 131, 59, 156, 30, 65, 130, 80, 52, 63, 144, 123, 253, 16, 71, 84, 11, 144, 54, 132, 160, 239, 32, 125, 90, 140, 161, 99, 68, 81, 8, 0, 141, 59, 13, 173, 50, 125, 23, 60, 97, 101, 252, 153, 40, 205, 206, 167, 174, 5, 248, 126, 172, 181, 163, 153, 88, 219, 120, 182, 130, 160, 218, 202, 65, 179, 61, 45, 95, 193, 120, 244, 23, 214, 26, 160, 129, 161, 130, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 169, 244, 179, 210, 42, 82, 63, 218, 218, 65, 200, 92, 23, 84, 37, 188, 209, 91, 50, 180, 205, 15, 84, 217, 67, 58, 204, 213, 45, 113, 149, 161, 0, 1, 60, 169, 71, 54, 184, 202, 67, 95, 248, 32, 197, 124, 76, 128, 78, 246, 146, 96, 194, 59, 185, 210, 245, 119, 228, 185, 225, 240, 150, 55, 161, 19, 1, 204, 161, 48, 57, 118, 205, 137, 154, 46, 146, 206, 73, 104, 4, 236, 182, 225, 241, 83, 51, 219, 185, 47, 201, 64, 62, 10, 85, 63, 177, 224, 113, 97, 53, 15, 229, 173, 220, 242, 119, 228, 40, 79, 188, 4, 167, 7, 178, 253, 16, 168, 82, 7, 72, 13, 14, 240, 219, 180, 148, 205, 41, 66, 53, 68, 250, 205, 137, 229, 167, 2, 159, 43, 36, 209, 167, 100, 135, 200, 1, 88, 181, 53, 192, 25, 180, 169, 199, 61, 149, 47, 208, 22, 172, 12, 15, 247, 196, 48, 17, 89, 168, 62, 113, 219, 1, 219, 124, 219, 152, 151, 193, 205, 179, 88, 136, 220, 60, 155, 202, 186, 173, 176, 137, 90, 114, 168, 112, 173, 253, 86, 61, 126, 51, 229, 170, 197, 45, 203, 13, 82, 219, 229, 201, 225, 209, 102, 15, 4, 180, 197, 216, 229, 251, 239, 152, 110, 152, 110, 178, 0]",
+        "          difference",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, *82*, *69*, *80*, *76*, *65*, *89*, *45*, *76*, *69*, *68*, *71*, *69*, *82*, *45*, *50*, *0*, *1*, *101*, *4*, *81*, *52*, *6*, *77*, *212*, *217*, *5*, *102*, *94*, *206*, *175*, *65*, *83*, *254*, *164*, *249*, *214*, *157*, *42*, *226*, *34*, *85*, *160*, *183*, *206*, *244*, *112*, *31*, *72*, *134*, *0*, *0*, *1*, *132*, *72*, *88*, *45*, *69*, *86*, *45*, *68*, *65*, *80*, *82*, *45*, 82, *69*, *80*, *76*, *65*, *89*, *45*, *76*, *69*, *68*, *71*, *69*, *82*, *45*, *50*, *0*, *1*, 0, *0*, 0, 0, 0, 0, 0, *1*, 0, *0*, 0, 0, 0, 0, 0, *1*, *31*, *88*, *185*, *20*, *91*, *36*, *209*, *8*, *215*, *172*, *56*, *136*, *115*, *56*, *179*, *234*, *50*, *41*, *131*, *59*, *156*, *30*, *65*, *130*, *80*, *52*, *63*, *144*, *123*, *253*, *16*, *71*, *84*, *11*, *144*, *54*, *132*, *160*, *239*, *32*, *125*, *90*, *140*, *161*, *99*, *68*, *81*, *8*, *0*, *141*, *59*, *13*, *173*, *50*, *125*, *23*, *60*, *97*, *101*, *252*, *153*, *40*, *205*, *206*, *167*, *174*, *5*, *248*, *126*, *172*, *181*, *163*, *153*, *88*, *219*, *120*, *182*, *130*, *160*, *218*, *202*, *65*, *179*, *61*, *45*, *95*, *193*, *120*, *244*, *23*, *214*, *26*, *160*, *129*, *161*, *130*, *0*, *0*, 0, 0, 0, 0, 0, *3*, 0, *0*, 0, 0, 0, 0, 0, *4*, 0, *0*, 0, *2*, *169*, *244*, *179*, *210*, *42*, *82*, *63*, *218*, *218*, *65*, *200*, *92*, *23*, *84*, *37*, *188*, *209*, *91*, *50*, *180*, *205*, *15*, *84*, *217*, *67*, *58*, *204*, *213*, *45*, *113*, *149*, *161*, *0*, *1*, *60*, *169*, *71*, *54*, *184*, *202*, *67*, *95*, *248*, *32*, *197*, *124*, *76*, *128*, *78*, *246*, *146*, *96*, *194*, *59*, *185*, *210*, *245*, *119*, *228*, *185*, *225*, *240*, *150*, *55*, *161*, *19*, *1*, *204*, *161*, *48*, *57*, *118*, *205*, *137*, *154*, *46*, *146*, *206*, *73*, *104*, *4*, *236*, *182*, *225*, *241*, *83*, *51*, *219*, *185*, *47*, *201*, *64*, *62*, *10*, *85*, *63*, *177*, *224*, *113*, *97*, *53*, *15*, *229*, *173*, *220*, *242*, *119*, *228*, *40*, *79*, *188*, *4*, *167*, *7*, *178*, *253*, *16*, *168*, *82*, *7*, *72*, *13*, *14*, *240*, *219*, *180*, *148*, *205*, *41*, *66*, *53*, *68*, *250*, *205*, *137*, *229*, *167*, *2*, *159*, *43*, *36*, *209*, *167*, *100*, *135*, *200*, *1*, *88*, *181*, *53*, *192*, *25*, *180*, *169*, *199*, *61*, *149*, *47*, *208*, *22*, *172*, *12*, *15*, *247*, *196*, *48*, *17*, *89*, *168*, *62*, *113*, *219*, *1*, 219, *124*, 219, *152*, *151*, *193*, *205*, *179*, *88*, *136*, *220*, *60*, *155*, *202*, *186*, *173*, *176*, *137*, *90*, *114*, *168*, *112*, *173*, *253*, *86*, *61*, *126*, *51*, *229*, *170*, *197*, *45*, *203*, *13*, *82*, *219*, *229*, *201*, *225*, *209*, *102*, *15*, *4*, *180*, *197*, *216*, *229*, *251*, *239*, *152*, *110*, 152, 110, *178*, *0*, *, *]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(60,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(String name)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    },
+    {
+      "mutation": "actual-anchor-participant",
+      "result": "killed",
+      "killingTest": "ActualCommittedHistorySubstitutionRefusesBeforeCallbacks",
+      "summary": {
+        "total": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualCommittedHistorySubstitutionRefusesBeforeCallbacks(point: \"selection\") [FAIL]",
+        "      Shouldly.ShouldAssertException : refusal.Outcome",
+        "          should be",
+        "      DaprReplayCommitOutcome.Indeterminate",
+        "          but was",
+        "      DaprReplayCommitOutcome.Proven",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(313,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualCommittedHistorySubstitutionRefusesBeforeCallbacks(String point)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(318,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualCommittedHistorySubstitutionRefusesBeforeCallbacks(String point)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "no-below-head-zero",
+      "result": "killed",
+      "killingTest": "StrictAnchoredPrefixRefusesUnsupportedShapes",
+      "summary": {
+        "total": 6,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(mode: \"below-head-zero\") [FAIL]",
+        "      Shouldly.ShouldAssertException : `DaprLogicalAnchoredPrefixCodec.Encode(prefix)`",
+        "          should throw",
+        "      System.ArgumentException",
+        "          but did not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationCodecTests.cs(105,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(String mode)",
+        "           at InvokeStub_DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes(Object, Span`1)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ===",
+        "   Hexalith.EventStore.Server.Tests  Total: 6, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.124s"
+      ]
+    },
+    {
+      "mutation": "callback-predecessor-seal",
+      "result": "killed",
+      "killingTest": "LaterCallbackCannotReplaceActualAnchoredPredecessor",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.LaterCallbackCannotReplaceActualAnchoredPredecessor [FAIL]",
+        "      Shouldly.ShouldAssertException : result.Response",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalResponseOwner (60344979)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(519,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.LaterCallbackCannotReplaceActualAnchoredPredecessor()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(528,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.LaterCallbackCannotReplaceActualAnchoredPredecessor()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "private-anchor-clearing",
+      "result": "killed",
+      "killingTest": "YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity [FAIL]",
+        "      Shouldly.ShouldAssertException : segment.Array!",
+        "          should satisfy the condition",
+        "      (value == 0)",
+        "          but",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 82, 69, 80, 76, 65, 89, 45, 65, 78, 67, 72, 79, 82, 45, 49, 1, 16, 1, 6, 116, 101, 110, 97, 110, 116, 2, 1, 100, 3, 9, 97, 103, 103, 114, 101, 103, 97, 116, 101, 4, 1, 114, 5, 11, 223, 242, 7, 159, 94, 209, 153, 93, 188, 253, 130, 86, 9, 1, 132, 159, 39, 156, 83, 9, 17, 176, 101, 217, 146, 250, 5, 96, 20, 1, 146, 6, 36, 231, 162, 39, 56, 164, 4, 244, 105, 15, 162, 76, 20, 79, 196, 139, 172, 103, 119, 225, 183, 116, 74, 220, 162, 247, 181, 234, 200, 45, 113, 233, 7, 45, 221, 120, 171, 177, 27, 173, 166, 183, 96, 35, 21, 175, 20, 197, 137, 234, 42, 153, 230, 128, 107, 212, 130, 147, 206, 233, 126, 54, 56, 222, 123, 8, 102, 244, 146, 225, 6, 204, 158, 106, 172, 230, 86, 178, 134, 129, 68, 177, 124, 115, 140, 193, 183, 119, 153, 186, 147, 103, 200, 252, 193, 7, 4, 78, 9, 72, 32, 143, 148, 40, 214, 70, 52, 189, 142, 40, 255, 52, 91, 240, 234, 182, 13, 83, 193, 143, 162, 251, 219, 11, 155, 193, 232, 77, 242, 181, 246, 10, 243, 180, 95, 7, 98, 241, 202, 230, 30, 225, 53, 135, 29, 143, 212, 246, 24, 65, 173, 246, 50, 44, 245, 203, 83, 157, 222, 118, 9, 58, 80, 143, 11, 121, 165, 130, 60, 206, 55, 175, 175, 118, 156, 222, 1, 235, 46, 72, 140, 208, 204, 53, 101, 232, 208, 251, 249, 22, 98, 182, 217, 79, 35, 142, 14, 12, 229, 149, 244, 32, 170, 185, 56, 115, 79, 93, 221, 76, 81, 223, 45, 200, 138, 61, 159, 186, 149, 83, 150, 236, 80, 17, 139, 9, 39, 155, 77, 85, 13, 1, 14, 3, 15, 3, 16, 37, 100, 97, 112, 114, 45, 97, 99, 116, 111, 114, 45, 108, 111, 103, 105, 99, 97, 108, 45, 97, 110, 99, 104, 111, 114, 101, 100, 45, 114, 101, 112, 108, 97, 121, 45, 118, 49]",
+        "          do not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(449,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(455,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)"
+      ]
+    },
+    {
+      "mutation": "initial-covered-progress",
+      "result": "killed",
+      "killingTest": "ActualAnchoredTailBeginPageReadbackAndRetry",
+      "summary": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(count: 1) [FAIL]",
+        "      Shouldly.ShouldAssertException : genesis.CompletedSequence",
+        "          should be",
+        "      1L",
+        "          but was",
+        "      0L",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(26,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(Int32 count)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(57,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(Int32 count)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "actual-anchored-transcript",
+      "result": "killed",
+      "killingTest": "ActualAnchoredTailBeginPageReadbackAndRetry",
+      "summary": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(count: 1) [FAIL]",
+        "      Shouldly.ShouldAssertException : ledger.TranscriptHash",
+        "          should be",
+        "      [43, 33, 209, 217, 223, 123, 9, 181, 246, 87, 43, 172, 84, 10, 212, 86, 11, 183, 144, 91, 138, 65, 1, 145, 1, 9, 63, 238, 145, 189, 175, 193]",
+        "          but was",
+        "      [52, 45, 11, 122, 199, 133, 125, 49, 57, 73, 129, 199, 123, 145, 191, 183, 208, 182, 56, 223, 170, 254, 94, 6, 146, 212, 146, 71, 201, 160, 140, 215]",
+        "          difference",
+        "      [*52*, *45*, *11*, *122*, *199*, *133*, *125*, *49*, *57*, *73*, *129*, *199*, *123*, *145*, *191*, *183*, *208*, *182*, *56*, *223*, *170*, *254*, *94*, *6*, *146*, *212*, *146*, *71*, *201*, *160*, *140*, *215*]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(37,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(Int32 count)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(57,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry(Int32 count)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "exact-route-trust-object",
+      "result": "killed",
+      "killingTest": "EquivalentRouteTrustCannotGrantAnchoredBegin",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.EquivalentRouteTrustCannotGrantAnchoredBegin [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.Store.Saves",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(548,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.EquivalentRouteTrustCannotGrantAnchoredBegin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(550,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.EquivalentRouteTrustCannotGrantAnchoredBegin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "retained-intake-reference-drop",
+      "result": "killed",
+      "killingTest": "YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity [FAIL]",
+        "      Shouldly.ShouldAssertException : Field(fixture.Owner, \"_anchoredIntake\")",
+        "          should be null but was",
+        "      DaprLogicalAnchoredIntake { Trust = Hexalith.EventStore.Client.Events.DaprLogicalAnchoredClaimTrust, Selection = DaprLogicalReplayAnchorSelection { TenantId = tenant, Domain = d, AggregateId = aggregate, AggregateType = r, SourceBindingHash = System.ReadOnlyMemory<Byte>[32], RegistryFingerprint = System.ReadOnlyMemory<Byte>[32], ReconstructionBindingHash = System.ReadOnlyMemory<Byte>[32], SnapshotWitnessHash = System.ReadOnlyMemory<Byte>[32], CanonicalStateHash = System.ReadOnlyMemory<Byte>[32], CoveredAccumulator = System.ReadOnlyMemory<Byte>[32], CoveredEffectiveChain = System.ReadOnlyMemory<Byte>[32], CoveredTranscript = System.ReadOnlyMemory<Byte>[32], CoveredSequence = 1, ActorHead = 3, TargetSequence = 3, ModelId = dapr-actor-logical-anchored-replay-v1 }, SelectionHash = System.ReadOnlyMemory<Byte>[32] }",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(453,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(455,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "original-cancellation-before-entry",
+      "result": "killed",
+      "killingTest": "DualCanceledTokensRefuseBeforeGateOrSideEffects",
+      "summary": {
+        "total": 5,
+        "errors": 0,
+        "failed": 5,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DualCanceledTokensRefuseBeforeGateOrSideEffects(entry: \"begin\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `async () => { switch (entry) { case \"begin\": using (await fixture.Owner.BeginAsync(fixture.Snapshot.Replay.Source.Source, fixture.Source, fixture.Snapshot.Replay.Source.Trust, \"owner\", null, foreign.Token)) { } break; case \"page\": case \"invalid-page\": using (await fixture.Owner.ExecutePageAsync(fixture.Snapshot.Replay.Source.Source, fixture.Source, fixture.Snapshot.Replay.Source.Trust, fixture.Snapshot.Replay.Source.Key, \"owner\", 1, entry == \"page\" ? 1 : 0, \"request\", 1, foreign.Token)) { } break; case \"anchor-capture\": using (await fixture.Owner.CaptureCompletedAnchorOriginAsync(fixture.Snapshot.Replay.Source.Source, fixture.Source, fixture.Snapshot.Replay.Source.Trust, fixture.Budget, foreign.Token)) { } break; case \"command-capture\": using (await fixture.Owner.CaptureCompletedCommandStateAsync(fixture.Snapshot.Replay.Source.Source, fixture.Source, fixture.Snapshot.Replay.Source.Trust, foreign.Token)) { } break; } }`",
+        "          should throw",
+        "      System.OperationCanceledException",
+        "          but threw",
+        "      System.InvalidOperationException",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "exact-entry-token-before-owner-work",
+      "result": "killed",
+      "killingTest": "DifferentRequestTokenCannotContinueRetainedOperation",
+      "summary": {
+        "total": 2,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DifferentRequestTokenCannotContinueRetainedOperation(canceled: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : await Should.ThrowAsync<InvalidOperationException>(pending);",
+        "                  refusedBeforeGate",
+        "          should be",
+        "      True",
+        "          but was",
+        "      False",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(150,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DifferentRequestTokenCannotContinueRetainedOperation(Boolean canceled)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalAnchoredContinuationTests.cs(160,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DifferentRequestTokenCannotContinueRetainedOperation(Boolean canceled)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)"
+      ]
+    },
+    {
+      "mutation": "ordinary-effective-chain-commitment",
+      "result": "killed",
+      "killingTest": "EveryCommandCommitmentMatchesIndependentPythonVectors",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors [FAIL]",
+        "      Shouldly.ShouldAssertException : c1",
+        "          should be",
+        "      [57, 28, 106, 69, 82, 245, 214, 244, 9, 245, 184, 183, 207, 142, 243, 235, 37, 232, 6, 212, 64, 245, 240, 16, 86, 55, 67, 94, 0, 165, 240, 19]",
+        "          but was",
+        "      [161, 237, 20, 84, 98, 249, 165, 25, 131, 14, 121, 113, 198, 196, 108, 6, 210, 20, 13, 47, 81, 225, 186, 20, 175, 31, 231, 203, 148, 46, 134, 164]",
+        "          difference",
+        "      [*161*, *237*, *20*, *84*, *98*, *249*, *165*, *25*, *131*, *14*, *121*, *113*, *198*, *196*, *108*, *6*, *210*, *20*, *13*, *47*, *81*, *225*, *186*, *20*, *175*, *31*, *231*, *203*, *148*, *46*, *134*, *164*]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(275,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors()",
+        "           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    },
+    {
+      "mutation": "ordinary-exact-page-transcript",
+      "result": "killed",
+      "killingTest": "EveryCommandCommitmentMatchesIndependentPythonVectors",
+      "summary": {
+        "total": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors [FAIL]",
+        "      Shouldly.ShouldAssertException : DaprLogicalReplayCommitmentCodec.EncodeTranscriptEntry(entry)",
+        "          should be",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 83, 133, 239, 137, 6, 217, 23, 110, 160, 233, 92, 186, 70, 168, 198, 92, 48, 18, 246, 55, 169, 55, 123, 65, 233, 74, 249, 53, 194, 170, 63, 97, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]",
+        "          but was",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]",
+        "          difference",
+        "      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(282,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors()",
+        "           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)",
+        "           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)",
+        "  Finished:    Hexalith.EventStore.Server.Tests (ID = '721e73f9d7ced239800a60f16a51c1eb58a589c47f9b06066aa180c8feeda609')",
+        "=== TEST EXECUTION SUMMARY ==="
+      ]
+    }
+  ],
+  "timeoutSecondsPerLane": 60,
+  "controlOnly": false,
+  "excludedExternalPaths": [],
+  "rootInputSetUnchanged": true,
+  "copiedFixtureFiles": [
+    "DaprLogicalSnapshotFixture.cs",
+    "DaprLogicalSnapshotTests.cs",
+    "DaprLogicalReconstructionFixture.cs",
+    "DaprLogicalReconstructionTestState.cs",
+    "DaprLogicalReconstructionTests.cs",
+    "DaprLogicalAnchorFixture.cs",
+    "DaprLogicalAnchoredReplayTests.cs",
+    "DaprLogicalAnchoredContinuationFixture.cs",
+    "DaprLogicalAnchoredContinuationTests.cs",
+    "DaprLogicalAnchoredContinuationCodecTests.cs",
+    "DaprLogicalCommandStateTests.cs",
+    "DaprLogicalCommandStateProcessor.cs",
+    "DaprLogicalCommandStateAdmissionStage.cs",
+    "DaprLogicalCommandStateResult.cs",
+    "DaprLogicalCommandStateTestEvent.cs",
+    "DaprLogicalCommandStateSerializedEvent.cs",
+    "DaprLogicalCommandStateEventList.cs"
+  ],
+  "fullWorkspaceQualified": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "rootInputDrift": {},
+  "commandCount": 88,
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ActualAnchoredTailBeginPageReadbackAndRetry-build.log",
+      "seconds": 4.471,
+      "startedUtc": "2026-10-09T01:14:15.203764+00:00",
+      "endedUtc": "2026-10-09T01:14:19.674961+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "control-ActualAnchoredTailBeginPageReadbackAndRetry-tests.log",
+      "seconds": 9.76,
+      "startedUtc": "2026-10-09T01:14:19.851819+00:00",
+      "endedUtc": "2026-10-09T01:14:29.611409+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry-build.log",
+      "seconds": 1.619,
+      "startedUtc": "2026-10-09T01:14:29.773788+00:00",
+      "endedUtc": "2026-10-09T01:14:31.392803+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ActualHeadSnapshotZeroTailCommitsTerminalReadbackAndExactRetry-tests.log",
+      "seconds": 1.981,
+      "startedUtc": "2026-10-09T01:14:31.571126+00:00",
+      "endedUtc": "2026-10-09T01:14:33.552554+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ActualTakeoverUsesSameOperationTokenAndSeparateOrdinaryKeys-build.log",
+      "seconds": 1.588,
+      "startedUtc": "2026-10-09T01:14:33.720933+00:00",
+      "endedUtc": "2026-10-09T01:14:35.307887+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualTakeoverUsesSameOperationTokenAndSeparateOrdinaryKeys"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ActualTakeoverUsesSameOperationTokenAndSeparateOrdinaryKeys-tests.log",
+      "seconds": 5.754,
+      "startedUtc": "2026-10-09T01:14:35.494571+00:00",
+      "endedUtc": "2026-10-09T01:14:41.249078+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-DifferentRequestTokenCannotContinueRetainedOperation-build.log",
+      "seconds": 1.604,
+      "startedUtc": "2026-10-09T01:14:41.422905+00:00",
+      "endedUtc": "2026-10-09T01:14:43.027361+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DifferentRequestTokenCannotContinueRetainedOperation"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-DifferentRequestTokenCannotContinueRetainedOperation-tests.log",
+      "seconds": 1.581,
+      "startedUtc": "2026-10-09T01:14:43.238218+00:00",
+      "endedUtc": "2026-10-09T01:14:44.818891+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-DualCanceledTokensRefuseBeforeGateOrSideEffects-build.log",
+      "seconds": 1.615,
+      "startedUtc": "2026-10-09T01:14:44.995294+00:00",
+      "endedUtc": "2026-10-09T01:14:46.610186+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DualCanceledTokensRefuseBeforeGateOrSideEffects"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-DualCanceledTokensRefuseBeforeGateOrSideEffects-tests.log",
+      "seconds": 2.938,
+      "startedUtc": "2026-10-09T01:14:46.802760+00:00",
+      "endedUtc": "2026-10-09T01:14:49.740490+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-CallbackLossPreservesPriorAndReleasesTemporaryCapacity-build.log",
+      "seconds": 1.524,
+      "startedUtc": "2026-10-09T01:14:49.917547+00:00",
+      "endedUtc": "2026-10-09T01:14:51.441828+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.CallbackLossPreservesPriorAndReleasesTemporaryCapacity"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-CallbackLossPreservesPriorAndReleasesTemporaryCapacity-tests.log",
+      "seconds": 7.327,
+      "startedUtc": "2026-10-09T01:14:51.666989+00:00",
+      "endedUtc": "2026-10-09T01:14:58.994362+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ActualCommittedHistorySubstitutionRefusesBeforeCallbacks-build.log",
+      "seconds": 1.583,
+      "startedUtc": "2026-10-09T01:14:59.177136+00:00",
+      "endedUtc": "2026-10-09T01:15:00.760405+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualCommittedHistorySubstitutionRefusesBeforeCallbacks"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ActualCommittedHistorySubstitutionRefusesBeforeCallbacks-tests.log",
+      "seconds": 11.394,
+      "startedUtc": "2026-10-09T01:15:00.960217+00:00",
+      "endedUtc": "2026-10-09T01:15:12.353170+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ActualAnchoredSaveModesUseIndependentReadback-build.log",
+      "seconds": 1.762,
+      "startedUtc": "2026-10-09T01:15:12.550614+00:00",
+      "endedUtc": "2026-10-09T01:15:14.312960+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredSaveModesUseIndependentReadback"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ActualAnchoredSaveModesUseIndependentReadback-tests.log",
+      "seconds": 4.529,
+      "startedUtc": "2026-10-09T01:15:14.527445+00:00",
+      "endedUtc": "2026-10-09T01:15:19.056043+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ConstructorCapacityRefusalClearsTransferredInitialOwnership-build.log",
+      "seconds": 1.641,
+      "startedUtc": "2026-10-09T01:15:19.266017+00:00",
+      "endedUtc": "2026-10-09T01:15:20.907058+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ConstructorCapacityRefusalClearsTransferredInitialOwnership"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ConstructorCapacityRefusalClearsTransferredInitialOwnership-tests.log",
+      "seconds": 1.17,
+      "startedUtc": "2026-10-09T01:15:21.120983+00:00",
+      "endedUtc": "2026-10-09T01:15:22.290731+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-CommittedZeroTailWithholdsDisclosureAfterFinalAuthorityLoss-build.log",
+      "seconds": 1.655,
+      "startedUtc": "2026-10-09T01:15:22.505730+00:00",
+      "endedUtc": "2026-10-09T01:15:24.161019+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.CommittedZeroTailWithholdsDisclosureAfterFinalAuthorityLoss"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-CommittedZeroTailWithholdsDisclosureAfterFinalAuthorityLoss-tests.log",
+      "seconds": 3.04,
+      "startedUtc": "2026-10-09T01:15:24.396179+00:00",
+      "endedUtc": "2026-10-09T01:15:27.436246+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity-build.log",
+      "seconds": 1.703,
+      "startedUtc": "2026-10-09T01:15:27.654837+00:00",
+      "endedUtc": "2026-10-09T01:15:29.358333+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity-tests.log",
+      "seconds": 1.217,
+      "startedUtc": "2026-10-09T01:15:29.589962+00:00",
+      "endedUtc": "2026-10-09T01:15:30.806800+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-MalformedCandidateFallsBackToActualFullReplayWithoutDeletion-build.log",
+      "seconds": 1.674,
+      "startedUtc": "2026-10-09T01:15:31.031877+00:00",
+      "endedUtc": "2026-10-09T01:15:32.706336+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.MalformedCandidateFallsBackToActualFullReplayWithoutDeletion"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-MalformedCandidateFallsBackToActualFullReplayWithoutDeletion-tests.log",
+      "seconds": 1.103,
+      "startedUtc": "2026-10-09T01:15:32.969505+00:00",
+      "endedUtc": "2026-10-09T01:15:34.072095+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-LaterCallbackCannotReplaceActualAnchoredPredecessor-build.log",
+      "seconds": 1.669,
+      "startedUtc": "2026-10-09T01:15:34.326573+00:00",
+      "endedUtc": "2026-10-09T01:15:35.993869+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.LaterCallbackCannotReplaceActualAnchoredPredecessor"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-LaterCallbackCannotReplaceActualAnchoredPredecessor-tests.log",
+      "seconds": 5.551,
+      "startedUtc": "2026-10-09T01:15:36.239393+00:00",
+      "endedUtc": "2026-10-09T01:15:41.790674+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-EquivalentRouteTrustCannotGrantAnchoredBegin-build.log",
+      "seconds": 1.763,
+      "startedUtc": "2026-10-09T01:15:42.033835+00:00",
+      "endedUtc": "2026-10-09T01:15:43.796640+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.EquivalentRouteTrustCannotGrantAnchoredBegin"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "control-EquivalentRouteTrustCannotGrantAnchoredBegin-tests.log",
+      "seconds": 1.167,
+      "startedUtc": "2026-10-09T01:15:44.062708+00:00",
+      "endedUtc": "2026-10-09T01:15:45.229452+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-IndependentContinuationVectorsMatchRuntime-build.log",
+      "seconds": 1.857,
+      "startedUtc": "2026-10-09T01:15:45.481058+00:00",
+      "endedUtc": "2026-10-09T01:15:47.338240+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "control-IndependentContinuationVectorsMatchRuntime-tests.log",
+      "seconds": 0.541,
+      "startedUtc": "2026-10-09T01:15:47.606182+00:00",
+      "endedUtc": "2026-10-09T01:15:48.146831+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-StrictAnchoredPrefixRefusesUnsupportedShapes-build.log",
+      "seconds": 1.923,
+      "startedUtc": "2026-10-09T01:15:48.419467+00:00",
+      "endedUtc": "2026-10-09T01:15:50.342723+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "control-StrictAnchoredPrefixRefusesUnsupportedShapes-tests.log",
+      "seconds": 0.49,
+      "startedUtc": "2026-10-09T01:15:50.633993+00:00",
+      "endedUtc": "2026-10-09T01:15:51.123918+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ExactAnchoredTrustRefusesSelectionSubstitution-build.log",
+      "seconds": 1.702,
+      "startedUtc": "2026-10-09T01:15:51.390464+00:00",
+      "endedUtc": "2026-10-09T01:15:53.092647+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "control-ExactAnchoredTrustRefusesSelectionSubstitution-tests.log",
+      "seconds": 0.625,
+      "startedUtc": "2026-10-09T01:15:53.368255+00:00",
+      "endedUtc": "2026-10-09T01:15:53.993173+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "control-ExactUtf8BoundaryUsesMeasuredWriterBytes-build.log",
+      "seconds": 1.737,
+      "startedUtc": "2026-10-09T01:15:54.246034+00:00",
+      "endedUtc": "2026-10-09T01:15:55.983433+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactUtf8BoundaryUsesMeasuredWriterBytes"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "control-ExactUtf8BoundaryUsesMeasuredWriterBytes-tests.log",
+      "seconds": 0.467,
+      "startedUtc": "2026-10-09T01:15:56.262501+00:00",
+      "endedUtc": "2026-10-09T01:15:56.729739+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "client-model-build.log",
+      "seconds": 1.777,
+      "startedUtc": "2026-10-09T01:15:57.008765+00:00",
+      "endedUtc": "2026-10-09T01:15:58.785502+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "client-model-tests.log",
+      "seconds": 0.533,
+      "startedUtc": "2026-10-09T01:15:59.072947+00:00",
+      "endedUtc": "2026-10-09T01:15:59.605660+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "snapshot-build.log",
+      "seconds": 1.702,
+      "startedUtc": "2026-10-09T01:15:59.901785+00:00",
+      "endedUtc": "2026-10-09T01:16:01.603721+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "snapshot-tests.log",
+      "seconds": 11.196,
+      "startedUtc": "2026-10-09T01:16:01.908738+00:00",
+      "endedUtc": "2026-10-09T01:16:13.103972+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "reconstruction-build.log",
+      "seconds": 1.721,
+      "startedUtc": "2026-10-09T01:16:13.383233+00:00",
+      "endedUtc": "2026-10-09T01:16:15.104304+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "reconstruction-tests.log",
+      "seconds": 8.018,
+      "startedUtc": "2026-10-09T01:16:15.406320+00:00",
+      "endedUtc": "2026-10-09T01:16:23.424602+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-source-operation-build.log",
+      "seconds": 1.632,
+      "startedUtc": "2026-10-09T01:16:23.717130+00:00",
+      "endedUtc": "2026-10-09T01:16:25.349428+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalReplayTests"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "ordinary-source-operation-tests.log",
+      "seconds": 2.277,
+      "startedUtc": "2026-10-09T01:16:25.654220+00:00",
+      "endedUtc": "2026-10-09T01:16:27.930995+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-preparation-build.log",
+      "seconds": 1.697,
+      "startedUtc": "2026-10-09T01:16:28.219073+00:00",
+      "endedUtc": "2026-10-09T01:16:29.916316+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredReplayTests"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "anchored-preparation-tests.log",
+      "seconds": 11.043,
+      "startedUtc": "2026-10-09T01:16:30.224554+00:00",
+      "endedUtc": "2026-10-09T01:16:41.266684+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-command-build.log",
+      "seconds": 1.653,
+      "startedUtc": "2026-10-09T01:16:41.562928+00:00",
+      "endedUtc": "2026-10-09T01:16:43.216126+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 58,
+      "log": "ordinary-command-tests.log",
+      "seconds": 19.66,
+      "startedUtc": "2026-10-09T01:16:43.529176+00:00",
+      "endedUtc": "2026-10-09T01:17:03.189498+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "distinct-prefix-framing-build.log",
+      "seconds": 2.003,
+      "startedUtc": "2026-10-09T01:17:03.504660+00:00",
+      "endedUtc": "2026-10-09T01:17:05.506381+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "distinct-prefix-framing-tests.log",
+      "seconds": 0.47,
+      "startedUtc": "2026-10-09T01:17:05.842464+00:00",
+      "endedUtc": "2026-10-09T01:17:06.312479+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "canonical-prefix-tags-build.log",
+      "seconds": 2.327,
+      "startedUtc": "2026-10-09T01:17:06.630055+00:00",
+      "endedUtc": "2026-10-09T01:17:08.956711+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "canonical-prefix-tags-tests.log",
+      "seconds": 0.464,
+      "startedUtc": "2026-10-09T01:17:09.270378+00:00",
+      "endedUtc": "2026-10-09T01:17:09.734837+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-selection-scope-build.log",
+      "seconds": 2.181,
+      "startedUtc": "2026-10-09T01:17:10.056842+00:00",
+      "endedUtc": "2026-10-09T01:17:12.238131+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "exact-selection-scope-tests.log",
+      "seconds": 0.583,
+      "startedUtc": "2026-10-09T01:17:12.545082+00:00",
+      "endedUtc": "2026-10-09T01:17:13.128212+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "retained-prefix-decoding-charge-build.log",
+      "seconds": 2.036,
+      "startedUtc": "2026-10-09T01:17:13.451337+00:00",
+      "endedUtc": "2026-10-09T01:17:15.487350+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.ExactAnchoredTrustRefusesSelectionSubstitution"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "retained-prefix-decoding-charge-tests.log",
+      "seconds": 0.637,
+      "startedUtc": "2026-10-09T01:17:15.800787+00:00",
+      "endedUtc": "2026-10-09T01:17:16.437588+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-request-separator-build.log",
+      "seconds": 4.08,
+      "startedUtc": "2026-10-09T01:17:16.743263+00:00",
+      "endedUtc": "2026-10-09T01:17:20.823305+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "anchored-request-separator-tests.log",
+      "seconds": 0.49,
+      "startedUtc": "2026-10-09T01:17:21.150300+00:00",
+      "endedUtc": "2026-10-09T01:17:21.640287+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-transcript-separator-build.log",
+      "seconds": 3.937,
+      "startedUtc": "2026-10-09T01:17:21.963617+00:00",
+      "endedUtc": "2026-10-09T01:17:25.900856+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "anchored-transcript-separator-tests.log",
+      "seconds": 0.483,
+      "startedUtc": "2026-10-09T01:17:26.241429+00:00",
+      "endedUtc": "2026-10-09T01:17:26.724092+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-effective-separator-build.log",
+      "seconds": 3.894,
+      "startedUtc": "2026-10-09T01:17:27.089552+00:00",
+      "endedUtc": "2026-10-09T01:17:30.983802+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "anchored-effective-separator-tests.log",
+      "seconds": 0.486,
+      "startedUtc": "2026-10-09T01:17:31.360245+00:00",
+      "endedUtc": "2026-10-09T01:17:31.845830+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "anchored-ledger-separator-build.log",
+      "seconds": 4.017,
+      "startedUtc": "2026-10-09T01:17:32.189789+00:00",
+      "endedUtc": "2026-10-09T01:17:36.205221+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.IndependentContinuationVectorsMatchRuntime"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 55,
+      "log": "anchored-ledger-separator-tests.log",
+      "seconds": 0.469,
+      "startedUtc": "2026-10-09T01:17:36.561641+00:00",
+      "endedUtc": "2026-10-09T01:17:37.030322+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "actual-anchor-participant-build.log",
+      "seconds": 3.138,
+      "startedUtc": "2026-10-09T01:17:37.371169+00:00",
+      "endedUtc": "2026-10-09T01:17:40.508953+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualCommittedHistorySubstitutionRefusesBeforeCallbacks"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "actual-anchor-participant-tests.log",
+      "seconds": 13.211,
+      "startedUtc": "2026-10-09T01:17:40.865965+00:00",
+      "endedUtc": "2026-10-09T01:17:54.076798+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "no-below-head-zero-build.log",
+      "seconds": 3.401,
+      "startedUtc": "2026-10-09T01:17:54.431182+00:00",
+      "endedUtc": "2026-10-09T01:17:57.831898+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationCodecTests.StrictAnchoredPrefixRefusesUnsupportedShapes"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "no-below-head-zero-tests.log",
+      "seconds": 0.485,
+      "startedUtc": "2026-10-09T01:17:58.186962+00:00",
+      "endedUtc": "2026-10-09T01:17:58.671506+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "callback-predecessor-seal-build.log",
+      "seconds": 3.46,
+      "startedUtc": "2026-10-09T01:17:59.041672+00:00",
+      "endedUtc": "2026-10-09T01:18:02.502085+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.LaterCallbackCannotReplaceActualAnchoredPredecessor"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "callback-predecessor-seal-tests.log",
+      "seconds": 5.515,
+      "startedUtc": "2026-10-09T01:18:02.875096+00:00",
+      "endedUtc": "2026-10-09T01:18:08.389270+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "private-anchor-clearing-build.log",
+      "seconds": 2.539,
+      "startedUtc": "2026-10-09T01:18:08.761951+00:00",
+      "endedUtc": "2026-10-09T01:18:11.301450+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "private-anchor-clearing-tests.log",
+      "seconds": 1.184,
+      "startedUtc": "2026-10-09T01:18:11.693179+00:00",
+      "endedUtc": "2026-10-09T01:18:12.877451+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "initial-covered-progress-build.log",
+      "seconds": 2.787,
+      "startedUtc": "2026-10-09T01:18:13.246125+00:00",
+      "endedUtc": "2026-10-09T01:18:16.032911+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "initial-covered-progress-tests.log",
+      "seconds": 1.856,
+      "startedUtc": "2026-10-09T01:18:16.413712+00:00",
+      "endedUtc": "2026-10-09T01:18:18.269684+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "actual-anchored-transcript-build.log",
+      "seconds": 2.753,
+      "startedUtc": "2026-10-09T01:18:18.647735+00:00",
+      "endedUtc": "2026-10-09T01:18:21.400609+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.ActualAnchoredTailBeginPageReadbackAndRetry"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "actual-anchored-transcript-tests.log",
+      "seconds": 7.619,
+      "startedUtc": "2026-10-09T01:18:21.786920+00:00",
+      "endedUtc": "2026-10-09T01:18:29.406381+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-route-trust-object-build.log",
+      "seconds": 3.509,
+      "startedUtc": "2026-10-09T01:18:29.787421+00:00",
+      "endedUtc": "2026-10-09T01:18:33.296760+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.EquivalentRouteTrustCannotGrantAnchoredBegin"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-route-trust-object-tests.log",
+      "seconds": 1.26,
+      "startedUtc": "2026-10-09T01:18:33.686278+00:00",
+      "endedUtc": "2026-10-09T01:18:34.945337+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "retained-intake-reference-drop-build.log",
+      "seconds": 3.377,
+      "startedUtc": "2026-10-09T01:18:35.330443+00:00",
+      "endedUtc": "2026-10-09T01:18:38.707538+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.YieldingInitialAliasSubstitutionRefusesAndDropsOwnedCapacity"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "retained-intake-reference-drop-tests.log",
+      "seconds": 1.175,
+      "startedUtc": "2026-10-09T01:18:39.114312+00:00",
+      "endedUtc": "2026-10-09T01:18:40.289142+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "original-cancellation-before-entry-build.log",
+      "seconds": 2.6,
+      "startedUtc": "2026-10-09T01:18:40.670864+00:00",
+      "endedUtc": "2026-10-09T01:18:43.271312+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DualCanceledTokensRefuseBeforeGateOrSideEffects"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "original-cancellation-before-entry-tests.log",
+      "seconds": 3.029,
+      "startedUtc": "2026-10-09T01:18:43.674972+00:00",
+      "endedUtc": "2026-10-09T01:18:46.703757+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "exact-entry-token-before-owner-work-build.log",
+      "seconds": 2.945,
+      "startedUtc": "2026-10-09T01:18:47.108066+00:00",
+      "endedUtc": "2026-10-09T01:18:50.052592+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalAnchoredContinuationTests.DifferentRequestTokenCannotContinueRetainedOperation"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "exact-entry-token-before-owner-work-tests.log",
+      "seconds": 1.593,
+      "startedUtc": "2026-10-09T01:18:50.455319+00:00",
+      "endedUtc": "2026-10-09T01:18:52.048755+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-effective-chain-commitment-build.log",
+      "seconds": 3.546,
+      "startedUtc": "2026-10-09T01:18:52.444673+00:00",
+      "endedUtc": "2026-10-09T01:18:55.990441+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 56,
+      "log": "ordinary-effective-chain-commitment-tests.log",
+      "seconds": 0.47,
+      "startedUtc": "2026-10-09T01:18:56.416976+00:00",
+      "endedUtc": "2026-10-09T01:18:56.886679+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 0,
+      "timedOut": false,
+      "timeoutSeconds": 60,
+      "log": "ordinary-exact-page-transcript-build.log",
+      "seconds": 2.043,
+      "startedUtc": "2026-10-09T01:18:57.307813+00:00",
+      "endedUtc": "2026-10-09T01:18:59.350553+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchored-continuation-entry-final-release/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors"
+      ],
+      "cwd": "/tmp/story66-anchored-continuation-entry-final-release/work",
+      "exitCode": 1,
+      "timedOut": false,
+      "timeoutSeconds": 57,
+      "log": "ordinary-exact-page-transcript-tests.log",
+      "seconds": 0.48,
+      "startedUtc": "2026-10-09T01:18:59.771510+00:00",
+      "endedUtc": "2026-10-09T01:19:00.251752+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    }
+  ],
+  "fullReceipt": "result.json.xz",
+  "allCopiedImportedExecutedSetsUnchanged": true
+}

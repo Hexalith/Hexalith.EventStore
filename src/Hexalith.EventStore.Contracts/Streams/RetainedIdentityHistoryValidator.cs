@@ -20,7 +20,8 @@ public static class RetainedIdentityHistoryValidator
             || evaluatedAt == default || stream.ObservedAt > evaluatedAt || stream.ValidUntil <= evaluatedAt
             || string.IsNullOrWhiteSpace(stream.AuthorityRevision)
             || string.IsNullOrWhiteSpace(stream.ObservationId) || stream.Events is null || stream.ExcludedSequences is null
-            || stream.Events.Count + stream.ExcludedSequences.Count != stream.Head)
+            || stream.ExpiredEvents is null
+            || stream.Events.Count + (long)stream.ExcludedSequences.Count + stream.ExpiredEvents.Count != stream.Head)
         {
             return false;
         }
@@ -46,6 +47,23 @@ public static class RetainedIdentityHistoryValidator
             }
 
             previous = item.SequenceNumber;
+        }
+
+        previous = 0;
+        foreach (ExpiredIdentityHistoryCertificate certificate in stream.ExpiredEvents)
+        {
+            if (certificate is null || certificate.ContractVersion != 1 || certificate.Identity != request.Identity
+                || string.IsNullOrWhiteSpace(certificate.PolicyId) || certificate.PolicyId.Length > 2048
+                || certificate.Purpose != request.Purpose || certificate.SourceSequence <= previous || certificate.SourceSequence > stream.Head
+                || !covered.Add(certificate.SourceSequence) || certificate.LifecycleRevision <= 0
+                || certificate.ObservedAt == default || certificate.ObservedAt > evaluatedAt || certificate.ValidUntil <= evaluatedAt
+                || certificate.ValidUntil < stream.ValidUntil || string.IsNullOrWhiteSpace(certificate.EventTypeName)
+                || certificate.EventTypeName.Length > RetainedIdentityHistoryLimits.MaxContractNameLength
+                || string.IsNullOrWhiteSpace(certificate.DestructionReceiptId) || certificate.DestructionReceiptId.Length > 2048
+                || string.IsNullOrWhiteSpace(certificate.AuthorityRevision) || certificate.AuthorityRevision.Length > 2048
+                || certificate.SealedPayloadDigest is not { Length: 64 } digest || !digest.All(char.IsAsciiHexDigit))
+            { return false; }
+            previous = certificate.SourceSequence;
         }
 
         previous = 0;

@@ -59,7 +59,7 @@ internal sealed class EventEvolutionService
             _deserializers[type].RequireDescriptor(registry, type, CancellationToken.None);
         }
 
-        var executor = new EventUpcastChainExecutor(registry, transforms, ValidateVersion, RequireVersionBindings);
+        var executor = new EventUpcastChainExecutor(registry, transforms, ValidateVersion, RequireVersionBindings, ValidateVersionAsync);
         Resolver = new EventLogicalViewResolver(registry, executor);
         registry.RequireActive(CancellationToken.None);
         registry.CapabilityLoss.RequireNoObservedLoss();
@@ -121,15 +121,13 @@ internal sealed class EventEvolutionService
 
     /// <summary>Deserializes a privately admitted signed current view through the shared catalog.</summary>
     internal async ValueTask<object> DeserializeCurrentAsync(string domain, string aggregateType, string canonicalType, int version,
-        string format, IReadOnlyPayload payload, Func<CancellationToken, Task> sourceFence, CancellationToken cancellationToken)
+        string format, IReadOnlyPayload payload, Func<CancellationToken, Task>? sourceFence, CancellationToken cancellationToken)
     {
         RequireCurrentRoute(domain, aggregateType, canonicalType, version, format, cancellationToken);
         await _validations[(canonicalType, version)].ValidateAsync(domain, canonicalType, version, format, payload,
             sourceFence, cancellationToken).ConfigureAwait(false);
-        await sourceFence(cancellationToken).ConfigureAwait(false);
-        RequireActive(cancellationToken);
-        object value = _deserializers[canonicalType].Deserialize(_registry, canonicalType, payload, cancellationToken);
-        await sourceFence(cancellationToken).ConfigureAwait(false);
+        object value = await _deserializers[canonicalType].DeserializeAsync(_registry, canonicalType, payload,
+            sourceFence, cancellationToken).ConfigureAwait(false);
         RequireActive(cancellationToken);
         return value;
     }
@@ -139,7 +137,7 @@ internal sealed class EventEvolutionService
     internal async ValueTask<object> ResolveAndDeserializeAsync(string domain, string eventTypeName,
         int metadataVersion, string? eventContractType, int? payloadVersion, string serializationFormat,
         ReadOnlyMemory<byte> applicationPayload, string aggregateType, CancellationToken cancellationToken,
-        EventBufferBudget? sharedBudget = null)
+        EventBufferBudget? sharedBudget = null, Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         RequireActive(cancellationToken);
@@ -153,9 +151,9 @@ internal sealed class EventEvolutionService
         {
             using ResolvedLogicalEvent resolved = await Resolver.ResolveAsync(domain, eventTypeName,
                 metadataVersion, eventContractType, payloadVersion, serializationFormat, applicationPayload,
-                cancellationToken, sharedBudget, aggregateType).ConfigureAwait(false);
-            object value = _deserializers[resolved.CanonicalType].Deserialize(_registry, resolved.CanonicalType,
-                resolved.Payload, cancellationToken);
+                cancellationToken, sharedBudget, aggregateType, sourceFence).ConfigureAwait(false);
+            object value = await _deserializers[resolved.CanonicalType].DeserializeAsync(_registry, resolved.CanonicalType,
+                resolved.Payload, sourceFence, cancellationToken).ConfigureAwait(false);
             RequireActive(cancellationToken);
             byte[] after = SHA256.HashData(applicationPayload.Span);
             try
@@ -182,4 +180,8 @@ internal sealed class EventEvolutionService
     private void ValidateVersion(string domain, string canonicalType, int version, string format,
         Hexalith.EventStore.Contracts.Events.IReadOnlyPayload payload, CancellationToken cancellationToken)
         => _validations[(canonicalType, version)].Validate(domain, canonicalType, version, format, payload, cancellationToken);
+
+    private ValueTask ValidateVersionAsync(string domain, string canonicalType, int version, string format,
+        IReadOnlyPayload payload, Func<CancellationToken, Task>? sourceFence, CancellationToken token)
+        => _validations[(canonicalType, version)].ValidateAsync(domain, canonicalType, version, format, payload, sourceFence, token);
 }

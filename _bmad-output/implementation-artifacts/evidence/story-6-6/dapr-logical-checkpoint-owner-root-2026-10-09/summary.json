@@ -1,0 +1,79 @@
+{
+  "scope": "Independent current-root Release/packages build and actual checkpoint class after sealed packet handoff",
+  "head": "07d1e23a6c5b06bbbb1fc8ddb5174cc3382d3d93",
+  "packetSealSha256": "dc8463281ec440f220e9273c71215af5fc606475098e2630d508434e235fd873",
+  "packetVerificationSha256": "d406dc7fc1e95d4ef08408ae0b7a20a34b0dc8d997f2bfb73fcb017ac7a8f1f7",
+  "ownedFilesSha256": "aba726c5dbf3f65d86a1d593eb60f3e6528a3946c150b01af851cf0efe89b82f",
+  "frozenIntentSha256": "de1751b9887e48f8302be092797eba2ab5bbb2595958dab3d7325bd380cf548d",
+  "commands": {
+    "checkpoint-root-build": {
+      "exitCode": 0,
+      "elapsedSeconds": 19.523,
+      "inputSetUnchanged": true,
+      "executedDllsUnchanged": true,
+      "argv": [
+        "dotnet",
+        "build",
+        "Hexalith.EventStore.slnx",
+        "--configuration",
+        "Release",
+        "-m:1",
+        "-warnaserror",
+        "-p:UseHexalithProjectReferences=false"
+      ]
+    },
+    "checkpoint-root-tests": {
+      "exitCode": 0,
+      "elapsedSeconds": 183.58,
+      "inputSetUnchanged": true,
+      "executedDllsUnchanged": true,
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalCheckpointTests"
+      ]
+    }
+  },
+  "checkpointClass": {
+    "total": 40,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0
+  },
+  "ownedDiffCheckExitCode": 0,
+  "globalDiffCheckExitCode": 2,
+  "artifacts": [
+    {
+      "path": "checkpoint-root-build.json.gz",
+      "bytes": 2188047,
+      "sha256": "d8a20c7ac39b0521d4c9e0512294f833e0ebd6e8578a751b2d9815c097c3b697"
+    },
+    {
+      "path": "checkpoint-root-build.log.gz",
+      "bytes": 984,
+      "sha256": "f89bbedee123ee7b87e93d4c148c98b13e1fcbc4211336617833ee754c66b432"
+    },
+    {
+      "path": "checkpoint-root-tests.json.gz",
+      "bytes": 2194307,
+      "sha256": "aa67377cbdff374e5bb44f6834bcf7e590eb40b646322e1f82ae329c62bab1e1"
+    },
+    {
+      "path": "checkpoint-root-tests.log.gz",
+      "bytes": 290,
+      "sha256": "e758405895d8096be5aab9eb14286e27ca328ccc5cae39c28a96b09461864cd3"
+    },
+    {
+      "path": "owned-diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "global-diff-check.log",
+      "bytes": 8876,
+      "sha256": "46a6744c78f5f8abc0aea1c7f0f0ba2bc0302465383edc67b86c4e0f61629cf5"
+    }
+  ]
+}

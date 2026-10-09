@@ -24,7 +24,8 @@ internal sealed class EventLogicalViewResolver
     internal async ValueTask<ResolvedLogicalEvent> ResolveAsync(string domain, string eventTypeName,
         int metadataVersion, string? eventContractType, int? payloadVersion, string serializationFormat,
         ReadOnlyMemory<byte> originalApplicationPayload, CancellationToken cancellationToken,
-        EventBufferBudget? sharedBudget = null, string? aggregateType = null)
+        EventBufferBudget? sharedBudget = null, string? aggregateType = null,
+        Func<CancellationToken, Task>? sourceFence = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         _registry.CapabilityLoss.RequireNoObservedLoss();
@@ -49,7 +50,7 @@ internal sealed class EventLogicalViewResolver
             sourceBytes = null;
             ResolvedLogicalEvent resolved = await ResolveOwnedAsync(domain, eventTypeName, metadataVersion,
                 eventContractType, payloadVersion, serializationFormat, source, budget,
-                cancellationToken, aggregateType).ConfigureAwait(false);
+                cancellationToken, aggregateType, sourceFence).ConfigureAwait(false);
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -104,14 +105,14 @@ internal sealed class EventLogicalViewResolver
     internal async ValueTask<ResolvedLogicalEvent> ResolveOwnedAsync(string domain, string eventTypeName,
         int metadataVersion, string? eventContractType, int? payloadVersion, string serializationFormat,
         ImmutablePayload readablePayload, EventBufferBudget budget, CancellationToken cancellationToken,
-        string? aggregateType = null)
+        string? aggregateType = null, Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentNullException.ThrowIfNull(readablePayload);
         try
         {
             ArgumentNullException.ThrowIfNull(budget);
             cancellationToken.ThrowIfCancellationRequested();
-            _registry.CapabilityLoss.RequireNoObservedLoss();
+            _registry.RequireActive(cancellationToken);
             (string canonicalType, int sourceVersion) = ResolveSource(domain, eventTypeName, metadataVersion,
                 eventContractType, payloadVersion, serializationFormat, aggregateType);
             if (readablePayload.Length > 64 * 1024 * 1024)
@@ -120,11 +121,11 @@ internal sealed class EventLogicalViewResolver
             }
 
             ImmutablePayload effective = await _executor.UpcastOwnedAsync(canonicalType, sourceVersion,
-                readablePayload, budget, cancellationToken).ConfigureAwait(false);
+                readablePayload, budget, cancellationToken, sourceFence).ConfigureAwait(false);
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                _registry.CapabilityLoss.RequireNoObservedLoss();
+                _registry.RequireActive(cancellationToken);
                 int currentVersion = _registry.GetCurrentVersion(canonicalType);
                 return new ResolvedLogicalEvent(canonicalType, sourceVersion, currentVersion,
                     _registry.GetVersion(canonicalType, currentVersion).GetTextField(7), effective);
@@ -193,6 +194,7 @@ internal sealed class EventLogicalViewResolver
     internal void RequireNoObservedLoss(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _registry.RequireActive(cancellationToken);
         _registry.CapabilityLoss.RequireNoObservedLoss();
     }
 

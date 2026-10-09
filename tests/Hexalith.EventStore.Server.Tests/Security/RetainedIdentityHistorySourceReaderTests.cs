@@ -111,7 +111,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         RetainedIdentityHistorySourceReader reader = Arrange();
         _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { ExpiresAt = _now })), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { ExpiresAt = _now })), "json"));
 
         RetainedIdentityHistoryReadResult result = await reader.ReadAsync(_principal, Request());
 
@@ -138,7 +138,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         RetainedIdentityHistorySourceReader reader = Arrange();
         _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { PolicyId = "" })), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { PolicyId = "" })), "json"));
         (await reader.ReadAsync(_principal, Request())).Stream.ShouldBeNull();
     }
 
@@ -149,7 +149,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         RetainedIdentityHistorySourceReader reader = Arrange();
         _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { ExpiresAt = _now.AddSeconds(30) })), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence() with { ExpiresAt = _now.AddSeconds(30) })), "json"));
         _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(true), _ => { _clock.GetUtcNow().Returns(_now.AddSeconds(31)); return Task.FromResult(true); });
         (await reader.ReadAsync(_principal, Request())).Stream.ShouldBeNull();
@@ -176,7 +176,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         JsonNode payload = JsonSerializer.SerializeToNode(new HistoryCustodyProbeEvent(Evidence()), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         (nested ? payload["custody"]! : payload)["profile"] = "private-profile-content";
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(payload), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(payload), "json"));
 
         RetainedIdentityHistoryReadResult result = await reader.ReadAsync(_principal, Request());
         result.Stream.ShouldBeNull();
@@ -478,7 +478,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
             _ => original,
         };
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(copied)), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(copied)), "json"));
         _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
             .Returns(call => fault == "unavailable" ? throw new IOException("synthetic lifecycle outage")
                 : fault != "missing-receipt" && call.Arg<AggregateIdentity>() == _identity
@@ -514,7 +514,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         IdentityHistoryCustodyEvidence accepted = decoded;
         _actor.ReadEventsRangeAsync(0, 2, 100).Returns(stored);
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(decoded)), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(decoded)), "json"));
         _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<AggregateIdentity>() == _identity && call.Arg<IdentityHistoryCustodyEvidence>() == accepted);
         (await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken)).IsAuthoritative.ShouldBeTrue();
@@ -535,18 +535,102 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         JsonSerializer.Serialize(result).ShouldNotContain(accepted.EvidenceId);
     }
 
+    /// <summary>Custody transfers one transient buffer; closed history survives clearing on every completed path.</summary>
+    [Theory]
+    [InlineData("success")]
+    [InlineData("parse")]
+    [InlineData("validation")]
+    public async Task OwnedReadableBufferIsClearedAfterCompletedUse(string outcome)
+    {
+        RetainedIdentityHistorySourceReader reader = Arrange();
+        ArrangeCompleteSource();
+        byte[] bytes = outcome == "parse" ? Encoding.UTF8.GetBytes("invalid-json")
+            : JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(outcome == "validation"
+                ? Evidence() with { RestoreSafe = false } : Evidence()));
+        byte[] exact = bytes.ToArray();
+        _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new PayloadProtectionResult(bytes, "json"));
+
+        RetainedIdentityHistoryReadResult result = await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken);
+
+        bytes.ShouldBe(new byte[bytes.Length]);
+        if (outcome == "success")
+        {
+            result.IsAuthoritative.ShouldBeTrue();
+            result.Stream!.Events.Single().Payload.ShouldBe(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence()), new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            exact.ShouldNotBe(new byte[exact.Length]);
+        }
+        else
+        {
+            result.Stream.ShouldBeNull();
+        }
+    }
+
+    /// <summary>Abandonment does not touch a live provider's input and clears only its eventual transferred result.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AbandonedCustodyResultIsClearedAtProviderCompletion(bool deadlineExpires)
+    {
+        Arrange();
+        ArrangeCompleteSource();
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var cancellation = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource<PayloadProtectionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        byte[] readable = JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence()));
+        byte[] exactReadable = readable.ToArray();
+        byte[]? providerInput = null;
+        _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => { providerInput = call.Arg<byte[]>(); entered.SetResult(); return completed.Task; });
+        var reader = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, clock);
+        Task<RetainedIdentityHistoryReadResult> reading = reader.ReadAsync(_principal, Request(), cancellation.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        try
+        {
+            if (deadlineExpires)
+            {
+                clock.Advance(TimeSpan.FromSeconds(30));
+                (await reading.WaitAsync(TimeSpan.FromSeconds(2))).FailureReason.ShouldBe("history-time-bound-exceeded");
+            }
+            else
+            {
+                cancellation.Cancel();
+                await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(2)));
+            }
+            completed.Task.IsCompleted.ShouldBeFalse();
+            Encoding.UTF8.GetString(providerInput!).ShouldBe("sealed-history");
+            readable.ShouldBe(exactReadable);
+        }
+        finally { completed.TrySetResult(new PayloadProtectionResult(readable, "json")); }
+
+        await completed.Task;
+        DateTime until = DateTime.UtcNow.AddSeconds(2);
+        while (readable.Any(value => value != 0) && DateTime.UtcNow < until) { await Task.Yield(); }
+        readable.ShouldBe(new byte[readable.Length]);
+        Encoding.UTF8.GetString(providerInput!).ShouldBe("sealed-history");
+        await _custody.DidNotReceiveWithAnyArgs().CanReadAsync(default!, default!, default);
+        await _custody.Received(1).UnprotectEventAsync(_identity, typeof(HistoryCustodyProbeEvent).FullName!, Arg.Any<byte[]>(), "json", Arg.Any<CancellationToken>());
+        await _actor.Received(1).GetStreamMetadataAsync();
+    }
+
     private void ArrangeCompleteSource()
         => _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
 
     private RetainedIdentityHistorySourceReader Arrange()
     {
         _clock.GetUtcNow().Returns(_now);
+        _clock.GetTimestamp().Returns(_ => System.Diagnostics.Stopwatch.GetTimestamp());
+        _clock.TimestampFrequency.Returns(System.Diagnostics.Stopwatch.Frequency);
+        _clock.CreateTimer(Arg.Any<TimerCallback>(), Arg.Any<object?>(), Arg.Any<TimeSpan>(), Arg.Any<TimeSpan>())
+            .Returns(call => TimeProvider.System.CreateTimer(call.ArgAt<TimerCallback>(0), call.ArgAt<object?>(1),
+                call.ArgAt<TimeSpan>(2), call.ArgAt<TimeSpan>(3)));
         _admission.AdmitAsync(_principal, Arg.Any<RetainedIdentityHistoryReadRequest>(), Arg.Any<CancellationToken>()).Returns(Grant());
         _actors.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(_actor);
         _actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 2));
         _custody.CanReadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IdentityHistoryCustodyEvidence>(), Arg.Any<CancellationToken>()).Returns(true);
         _custody.UnprotectEventAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence())), "json"));
+            .Returns(_ => new PayloadProtectionResult(JsonSerializer.SerializeToUtf8Bytes(new HistoryCustodyProbeEvent(Evidence())), "json"));
         return new(_actors, _admission, _custody, _clock);
     }
 

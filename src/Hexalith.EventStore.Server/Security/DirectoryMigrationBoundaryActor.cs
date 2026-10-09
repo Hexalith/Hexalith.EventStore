@@ -82,7 +82,7 @@ public sealed class DirectoryMigrationBoundaryActor(ActorHost host, IDirectoryMi
     {
         var unavailable = new DirectoryBoundaryOutcome(id, requestDigest, DirectoryBoundaryOutcomeState.Unavailable, 0);
         if (!await AuthorizedAsync(tenant, method, requestDigest).ConfigureAwait(false)) { return unavailable; }
-        var state = await ReadStateAsync(tenant).ConfigureAwait(false); if (state is null) { return unavailable; }
+        var state = await ReadStateAsync(tenant, true).ConfigureAwait(false); if (state is null) { return unavailable; }
         var prior = state.Outcomes.SingleOrDefault(o => o.OperationId == id);
         if (prior is not null) { return prior.RequestDigest == requestDigest && await AuthorizedAsync(tenant, method, requestDigest).ConfigureAwait(false)
             ? prior : unavailable with { State = DirectoryBoundaryOutcomeState.Conflict }; }
@@ -91,17 +91,47 @@ public sealed class DirectoryMigrationBoundaryActor(ActorHost host, IDirectoryMi
         if (change is null || !await AuthorizedAsync(tenant, method, requestDigest).ConfigureAwait(false)) { return unavailable; }
         long revision = checked(state.Revision + 1); var outcome = new DirectoryBoundaryOutcome(id, requestDigest, change.Value.Item2, revision);
         var next = Capture(change.Value.Item1 with { Revision = revision, Outcomes = state.Outcomes.Append(outcome).ToArray() });
-        if (authority is null || !await authority.RecordRevisionAsync(tenant, state.Revision, revision, Digest(next)).ConfigureAwait(false)) { return unavailable; }
-        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false); await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (authority is null) { return unavailable; }
+        var pending = RecoverableAnchoredState.Prepare(PendingScope, state.Revision, revision, state, next);
+        if (!await RecoverableAnchoredState.CommitAsync(pending, authority, ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false)) { return unavailable; }
         var confirmed = await ReadStateAsync(tenant).ConfigureAwait(false);
         return confirmed?.Outcomes.SingleOrDefault(o => o.OperationId == id) == outcome && await AuthorizedAsync(tenant, method, requestDigest).ConfigureAwait(false) ? outcome : unavailable;
     }
     private Task<bool> AuthorizedAsync(string tenant, string method, string digest) => authority?.AuthorizeOperationAsync(tenant, method, digest) ?? Task.FromResult(false);
-    private async Task<DirectoryEpochLedger?> ReadStateAsync(string tenant)
+    private async Task<DirectoryEpochLedger?> ReadStateAsync(string tenant, bool recoverAdmittedOriginal = false)
     {
         await StateManager.ClearCacheAsync().ConfigureAwait(false); var stored = await StateManager.TryGetStateAsync<DirectoryEpochLedger>(StateKey).ConfigureAwait(false);
         var state = stored.HasValue ? Capture(stored.Value) : new(tenant, 0, null, null, [], [], [], [], []);
-        return state.TenantId == tenant && authority is not null && await authority.ValidateStateAsync(tenant, state.Revision, Digest(state)).ConfigureAwait(false) ? state : null;
+        if (state.TenantId != tenant || authority is null) { return null; }
+        try
+        {
+        return await RecoverableAnchoredState.ReconcileAsync(PendingScope, state, await ReadPendingAsync().ConfigureAwait(false), Capture,
+            value => authority.ValidateStateAsync(tenant, value.Revision, Digest(value)), authority, PersistTargetAsync, recoverAdmittedOriginal).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException) { return null; }
+    }
+
+    private string PendingScope => Host.Id.GetId() + "|" + StateKey;
+    private const string PendingKey = StateKey + "-pending-transition-v1";
+    private async Task<AnchoredStateTransition?> ReadPendingAsync()
+    {
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var pending = await StateManager.TryGetStateAsync<AnchoredStateTransition>(PendingKey).ConfigureAwait(false);
+        return pending.HasValue ? pending.Value : null;
+    }
+    private async Task PersistPendingAsync(AnchoredStateTransition pending)
+    {
+        await StateManager.SetStateAsync(PendingKey, pending).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+    private async Task<DirectoryEpochLedger> PersistTargetAsync(DirectoryEpochLedger next)
+    {
+        await StateManager.SetStateAsync(StateKey, next).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(PendingKey).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        var confirmed = await StateManager.TryGetStateAsync<DirectoryEpochLedger>(StateKey).ConfigureAwait(false);
+        return confirmed.HasValue ? confirmed.Value : throw new InvalidOperationException("Reconciled main state is missing.");
     }
     private void Check(string tenant) { Text(tenant); if (Host.Id.GetId() != GetActorId(tenant)) { throw new ArgumentException("Directory boundary tenant mismatch."); } }
     private static DirectoryEpochLedger Capture(DirectoryEpochLedger state)

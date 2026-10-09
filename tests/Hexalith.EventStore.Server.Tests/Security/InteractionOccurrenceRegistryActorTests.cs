@@ -11,6 +11,24 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Actual durable candidate uniqueness/retry/completion/restore source tests; ciphertext/writer/independent anchor ports are synthetic.</summary>
 public sealed class InteractionOccurrenceRegistryActorTests
 {
+    /// <summary>A different authorized mutation resolves the independently admitted staged original after restart, while read-only lookup cannot advance it or repeat a physical effect.</summary>
+    [Fact]
+    public async Task LaterMutationRecoversPreJournalOriginalWithoutItsCaller()
+    {
+        var f = new InteractionOccurrenceFixture { JournalAvailable = false }; var original = InteractionOccurrenceFixture.Request();
+        await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.ReserveAsync(original));
+        var retained = System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<AnchoredStateTransition>());
+        f.Authority.ClearReceivedCalls(); var restarted = InteractionOccurrenceFixture.Create(f.Backend, f.Authority);
+        (await restarted.LookupAsync(original.Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+        await f.Authority.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+        f.Head.ShouldBe(0); System.Text.Json.JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value).ShouldBe(retained);
+        f.JournalAvailable = true;
+        (await restarted.ReserveAsync(InteractionOccurrenceFixture.Request(2, "01ARZ3NDEKTSV4RRFFQ69G5FAW"))).Status.ShouldBe(InteractionOccurrenceReservationStatus.Reserved);
+        var saved = f.Backend.CommittedState.Single().Value.ShouldBeOfType<InteractionOccurrenceRegistrySnapshot>();
+        saved.Revision.ShouldBe(2); saved.Records.Count.ShouldBe(2); saved.Records[0].Request.ShouldBe(original);
+        (await restarted.LookupAsync(original.Identity)).Record!.RegistryRevision.ShouldBe(1);
+    }
+
     /// <summary>Reservation commits before any sealed result; same exact retry keeps the original reference and sealed bytes across restart.</summary>
     [Fact]
     public async Task DurableUniqueReservationAndOriginalSealedRetrySurviveRestart()
@@ -87,20 +105,25 @@ public sealed class InteractionOccurrenceRegistryActorTests
     }
     /// <summary>Precommit save failure advances the independent anchor conservatively and closes availability; committed lost ack reuses the original reference only.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task FailedOrLostAckReservationNeverUsesStagedCache(bool commitBeforeFault)
+    [InlineData(1, false)][InlineData(1, true)][InlineData(2, false)][InlineData(2, true)]
+    public async Task FailedOrLostAckReservationNeverUsesStagedCache(int failSave, bool committed)
     {
-        var f = new InteractionOccurrenceFixture(); var request = InteractionOccurrenceFixture.Request(); var manager = Substitute.For<IActorStateManager>();
-        manager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(call => f.Backend.ClearCacheAsync(call.Arg<CancellationToken>()));
-        manager.TryGetStateAsync<InteractionOccurrenceRegistrySnapshot>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<InteractionOccurrenceRegistrySnapshot>(call.Arg<string>(), call.Arg<CancellationToken>()));
-        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<InteractionOccurrenceRegistrySnapshot>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<InteractionOccurrenceRegistrySnapshot>(), call.Arg<CancellationToken>()));
-        manager.SaveStateAsync(Arg.Any<CancellationToken>()).Returns(async call => { if (commitBeforeFault) { await f.Backend.SaveStateAsync(call.Arg<CancellationToken>()).ConfigureAwait(false); } throw new HttpRequestException("Controlled candidate registry save fault."); });
-        await Should.ThrowAsync<HttpRequestException>(() => InteractionOccurrenceFixture.Create(manager, f.Authority).ReserveAsync(request)); f.Head.ShouldBe(1);
-        var retry = await f.Actor.ReserveAsync(request); retry.Status.ShouldBe(commitBeforeFault ? InteractionOccurrenceReservationStatus.Reserved : InteractionOccurrenceReservationStatus.Unavailable);
-        if (commitBeforeFault) { retry.Record!.KeyReference.ShouldBe(request.ProposedKeyReference); f.Backend.CommittedState.Count.ShouldBe(1); }
-        else { f.Backend.CommittedState.ShouldBeEmpty(); }
+        var f = new InteractionOccurrenceFixture(); var request = InteractionOccurrenceFixture.Request();
+        var manager = InteractionOccurrenceFixture.Faulting<InteractionOccurrenceRegistrySnapshot>(f.Backend, failSave, committed);
+        await Should.ThrowAsync<HttpRequestException>(() => InteractionOccurrenceFixture.Create(manager, f.Authority).ReserveAsync(request));
+        f.Head.ShouldBe(failSave == 1 ? 0 : 1);
+        // Round-trip both pending and main objects before a fresh actor performs reconciliation.
+        foreach (var item in f.Backend.CommittedState.ToArray())
+        {
+            if (item.Value is AnchoredStateTransition pending) { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<AnchoredStateTransition>(JsonSerializer.Serialize(pending))!); }
+            else { await f.Backend.SetStateAsync(item.Key, JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(JsonSerializer.Serialize(item.Value))!); }
+        }
+        await f.Backend.SaveStateAsync();
+        var retry = await f.Actor.ReserveAsync(request); retry.Status.ShouldBe(InteractionOccurrenceReservationStatus.Reserved);
+        retry.Record!.KeyReference.ShouldBe(request.ProposedKeyReference); f.Head.ShouldBe(1);
+        f.Backend.CommittedState.Single().Value.ShouldBeOfType<InteractionOccurrenceRegistrySnapshot>().Records.Single().KeyReference.ShouldBe(request.ProposedKeyReference);
     }
+
     /// <summary>Existing reference bound denies a new occurrence before anchor/save while retaining exact original committed ciphertext lookup.</summary>
     [Fact]
     public async Task AtReferenceBoundRetainsOriginalOutcomeAndIndependentAnchor()
@@ -134,6 +157,83 @@ public sealed class InteractionOccurrenceRegistryActorTests
         await restored.SaveStateAsync(TestContext.Current.CancellationToken);
         (await InteractionOccurrenceFixture.Create(restored, f.Authority).LookupAsync(request.Identity)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
         ((InteractionOccurrenceRegistrySnapshot)restored.CommittedState.Single().Value).Revision.ShouldBe(f.Head);
+    }
+
+    /// <summary>An actor-ID-sensitive private transport executes persisted original reserve/seal/lookup through the canonical owner address.</summary>
+    [Fact]
+    public async Task PrivateRegistryTransportUsesCanonicalHostedActorAndRetainsOriginal()
+    {
+        var f = new InteractionOccurrenceFixture(); var proxies = Substitute.For<Dapr.Actors.Client.IActorProxyFactory>();
+        proxies.CreateActorProxy<IInteractionOccurrenceRegistryActor>(Arg.Any<Dapr.Actors.ActorId>(), Arg.Any<string>()).Returns(call =>
+        {
+            call.Arg<Dapr.Actors.ActorId>().GetId().ShouldBe(InteractionOccurrenceRegistryActor.GetActorId("tenant-a"));
+            call.Arg<string>().ShouldBe(InteractionOccurrenceRegistryActor.ActorTypeName);
+            return InteractionOccurrenceFixture.Create(f.Backend, f.Authority);
+        });
+        var adapter = new DaprInteractionOccurrenceRegistry(proxies, TimeProvider.System); var request = InteractionOccurrenceFixture.Request();
+        (await adapter.ReserveAsync(request, TestContext.Current.CancellationToken)).Status.ShouldBe(InteractionOccurrenceReservationStatus.Reserved);
+        var sealedResult = InteractionOccurrenceFixture.Sealed();
+        var sealedOriginal = await adapter.RetainSealedAsync(request.Identity, sealedResult, TestContext.Current.CancellationToken);
+        sealedOriginal.Record!.Sealed!.PayloadBytes.ShouldBe(sealedResult.PayloadBytes);
+        await f.Backend.ClearCacheAsync(TestContext.Current.CancellationToken);
+        var original = await new DaprInteractionOccurrenceRegistry(proxies, TimeProvider.System).LookupAsync(request.Identity, TestContext.Current.CancellationToken);
+        JsonSerializer.Serialize(original).ShouldBe(JsonSerializer.Serialize(sealedOriginal));
+        f.Backend.CommittedState.Single().Value.ShouldBeOfType<InteractionOccurrenceRegistrySnapshot>().Records.Single().Request.ShouldBe(request);
+    }
+    /// <summary>Aggregate restored carriers must be refused before independent state validation or mutation, without changing original arrays.</summary>
+    [Fact]
+    public async Task RestoredCumulativeCiphertextBoundPrecedesIndependentStateCalls()
+    {
+        var f = new InteractionOccurrenceFixture();
+        var records = Enumerable.Range(1, 3).Select(n =>
+        {
+            string reference = "01ARZ3NDEKTSV4RRF" + n.ToString("D9", System.Globalization.CultureInfo.InvariantCulture);
+            var request = InteractionOccurrenceFixture.Request((ulong)n, reference);
+            return new InteractionOccurrenceRecord(request, reference, n, InteractionOccurrenceWriterState.SealedPending,
+                new(reference, Enumerable.Repeat((byte)n, 12 * 1024 * 1024).ToArray(), "json+pdenc-v2", 1), null);
+        }).ToArray();
+        var state = new InteractionOccurrenceRegistrySnapshot("tenant-a", "epoch-1", 3, records);
+        await f.Backend.SetStateAsync("candidate-interaction-occurrences-v1", state, TestContext.Current.CancellationToken);
+        await f.Backend.SaveStateAsync(TestContext.Current.CancellationToken);
+        byte[][] hashes = records.Select(r => System.Security.Cryptography.SHA256.HashData(r.Sealed!.PayloadBytes)).ToArray();
+        f.Authority.ClearReceivedCalls();
+
+        await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.LookupAsync(records[0].Request.Identity));
+
+        await f.Authority.DidNotReceiveWithAnyArgs().ValidateStateAsync(default!, default!, default, default!, default);
+        await f.Authority.DidNotReceiveWithAnyArgs().AdmitTransitionAsync(default!, default);
+        await f.Authority.DidNotReceiveWithAnyArgs().RecordTransitionAsync(default!, default);
+        await f.Authority.DidNotReceiveWithAnyArgs().AuthorizeReservationAsync(default!, default);
+        f.Head.ShouldBe(0); f.Backend.CommittedState.Single().Value.ShouldBeSameAs(state);
+        for (int n = 0; n < records.Length; n++) { System.Security.Cryptography.SHA256.HashData(records[n].Sealed!.PayloadBytes).ShouldBe(hashes[n]); }
+    }
+
+    /// <summary>Several exact carriers within the existing aggregate budget retain detached ciphertext after serialized restart.</summary>
+    [Fact]
+    public async Task WithinBoundMultiCarrierRestartKeepsExactOriginals()
+    {
+        var f = new InteractionOccurrenceFixture();
+        for (int n = 1; n <= 3; n++)
+        {
+            string reference = "01ARZ3NDEKTSV4RRF" + n.ToString("D9", System.Globalization.CultureInfo.InvariantCulture);
+            var request = InteractionOccurrenceFixture.Request((ulong)n, reference);
+            await f.Actor.ReserveAsync(request);
+            await f.Actor.RetainSealedAsync(request.Identity, InteractionOccurrenceFixture.Sealed(reference));
+        }
+        var saved = f.Backend.CommittedState.Single(); byte[] exact = JsonSerializer.SerializeToUtf8Bytes(saved.Value);
+        var restored = new InMemoryStateManager();
+        await restored.SetStateAsync(saved.Key, JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(exact)!, TestContext.Current.CancellationToken);
+        await restored.SaveStateAsync(TestContext.Current.CancellationToken);
+        var restarted = InteractionOccurrenceFixture.Create(restored, f.Authority);
+        var original = JsonSerializer.Deserialize<InteractionOccurrenceRegistrySnapshot>(exact)!;
+        foreach (var record in original.Records)
+        {
+            var result = await restarted.LookupAsync(record.Request.Identity);
+            result.Status.ShouldBe(InteractionOccurrenceReservationStatus.Sealed);
+            result.Record!.Sealed!.PayloadBytes.ShouldBe(record.Sealed!.PayloadBytes);
+            result.Record.Sealed.PayloadBytes.ShouldNotBeSameAs(record.Sealed.PayloadBytes);
+        }
+        JsonSerializer.SerializeToUtf8Bytes(restored.CommittedState.Single().Value).ShouldBe(exact);
     }
 
 }

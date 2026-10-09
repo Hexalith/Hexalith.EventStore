@@ -1,0 +1,73 @@
+{
+  "ownedFiles": [
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/DaprLogicalCheckpointActor.cs",
+      "bytes": 18083,
+      "sha256": "4d84602d826e3c709d9bdf94bb644f635e6acde949cdb5550798eeedc581db6b"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/DaprLogicalCheckpointActor.Candidate.cs",
+      "bytes": 3992,
+      "sha256": "c41052f376759c6febfe8c2b8b551d82b92bfb929c8a4ce9a37e3549f6159b9a"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalCheckpointCandidate.cs",
+      "bytes": 7695,
+      "sha256": "444fd57a7883020b449ea537c9704690694cc5043970655d94f0b12b647f258a"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointCandidateFixture.cs",
+      "bytes": 3140,
+      "sha256": "bc2914eae6b6b233db53061b120e5f4a6c4f34da7f05337c27063a6c509a5e22"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointCandidateTests.cs",
+      "bytes": 24464,
+      "sha256": "5917c815e637a2c9c7a70584218b4e5f9366fa64f24bc9a29d2710ef1b4a38b7"
+    },
+    {
+      "path": "scripts/verify-dapr-logical-checkpoint-candidate-guards.py",
+      "bytes": 24800,
+      "sha256": "79165267ac9b5238755ae6284ee36a993235b80c40db66aff2967b1bd4820194"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-checkpoint-candidate-model.md",
+      "bytes": 6756,
+      "sha256": "4df16a59007f444f942fe6e7c69b717746edd3f972a3ff482c0eda4b4f530681"
+    },
+    {
+      "path": ".github/workflows/event-evolution-local-guards.yml",
+      "bytes": 8701,
+      "sha256": "31179aa4c9c14359a5c8b22023546a62b0fe594e878f19f3c7acab9c0d1c57d8"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+      "bytes": 84289,
+      "sha256": "b399961c87dec4bd0a61dde7ba7d1002c208fbba9704a142f51f6e8c337173d7"
+    }
+  ],
+  "frontmatterContext": [
+    {
+      "path": "_bmad-output/implementation-artifacts/epic-6-context.md",
+      "sha256": "864c581799ec38c9c4f26bd2113ce530a66bb8346ffe33b3958a4cde61ad9afa"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/6-6-implementation-map.md",
+      "sha256": "58bf5a1d8694820eb78db3e149ad06bcfa6ca22c103b96cb93ed64f1b3b30fd3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md",
+      "sha256": "2eb79903da2157747aab5833e99826dd636b02ca2c080b4436c643912a90d0b7"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md",
+      "sha256": "9ce0913f5b442db9a1070d6155c9a34fef4aff69a9df85953d9c2a14184a66f7"
+    }
+  ],
+  "frozenIntentSha256": "de1751b9887e48f8302be092797eba2ab5bbb2595958dab3d7325bd380cf548d",
+  "runtimeChecksComplete": true,
+  "currentRootBuildPending": true,
+  "noRuntimeExclusionsOrSubstitutions": true,
+  "actualOwnerSDKAndProductionQualification": false,
+  "nextExecutableLocalDependency": "Checkpoint-specific initial ownership and a distinctly selected projection-only current-head zero/checkpoint+1 consumer with immutable prior adoption; retained candidate supplies no purpose-04 or replay/serving authority."
+}

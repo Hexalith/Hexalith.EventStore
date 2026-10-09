@@ -57,6 +57,9 @@ public sealed class SourcePublicationFeedTests
         var restart = new SourcePublicationFeed(f.Namespace, f.Streams, f.Projector, f.Store, TimeProvider.System);
         var second = await restart.ReadAsync(Scope, first.Page.NextOffset, 1, TestContext.Current.CancellationToken);
         second.Page!.Entries.Single().Offset.ShouldBe(2); second.Page.HasMore.ShouldBeFalse();
+        second.Page.Checkpoint.IndexRevision.ShouldBe(first.Page.Checkpoint.IndexRevision);
+        (await restart.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).Page!.Checkpoint.IndexRevision.ShouldBe(first.Page.Checkpoint.IndexRevision);
+        f.Store.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(ISourcePublicationIndexStore.TryWriteAsync)).ShouldBe(1);
         f.State()!.Entries.Select(e => e.Offset).ShouldBe([1L, 2L]);
     }
 
@@ -65,11 +68,13 @@ public sealed class SourcePublicationFeedTests
     [InlineData("incomplete")]
     [InlineData("foreign")]
     [InlineData("expired")]
+    [InlineData("missing-observation")]
     public async Task UnqualifiedNamespaceReturnsNoCheckpointBeforeSourceReads(string vector)
     {
         var f = Fixture();
         var cut = vector switch { "incomplete" => Cut() with { IsComplete = false },
             "foreign" => Cut() with { Sources = [new(new("tenant-b", "conversation", "source-a"), 2)] },
+            "missing-observation" => Cut() with { ObservedAt = default },
             _ => Cut() with { ValidUntil = At.AddSeconds(-1) } };
         f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(cut);
         (await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).Page.ShouldBeNull();
@@ -145,6 +150,7 @@ public sealed class SourcePublicationFeedTests
         f.Store.TryWriteAsync(Scope, Arg.Any<long>(), Arg.Any<SourcePublicationIndexState>(), Arg.Any<CancellationToken>()).Returns(call =>
         { state = Clone(call.ArgAt<SourcePublicationIndexState>(2))!; return Task.FromException<bool>(new HttpRequestException("Controlled lost acknowledgement.")); });
         f.Store.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(_ => Clone(state));
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(Cut() with { AuthorityRevision = "new-authenticated-cut" });
         (await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).Page.ShouldBeNull();
         state.Entries.Count.ShouldBe(2); state.Entries.ShouldBe(f.State()!.Entries);
         f.Store.TryWriteAsync(Scope, Arg.Any<long>(), Arg.Any<SourcePublicationIndexState>(), Arg.Any<CancellationToken>()).Returns(call => { state = Clone(call.ArgAt<SourcePublicationIndexState>(2))!; return true; });
@@ -186,5 +192,27 @@ public sealed class SourcePublicationFeedTests
             (await reading.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).FailureReason.ShouldBe("publication-time-bound-exceeded");
         }
         f.State().ShouldBeNull(); f.Streams.ReceivedCalls().ShouldBeEmpty(); pending.TrySetResult(Cut());
+    }
+    /// <summary>Actually suspended synchronous projection releases caller cancellation and deadline promptly without a late checkpoint or index mutation.</summary>
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task SuspendedProjectionCannotRetainTheFeedContinuation(bool callerCancellation)
+    {
+        var clock = new AuthoritativeReadTimeProvider(); clock.Advance(At - DateTimeOffset.UnixEpoch);
+        var f = Fixture(clock); using var caller = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim(); var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Projector.Project(Arg.Any<AuthoritativeEventStream>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        { entered.TrySetResult(); release.Wait(); completed.TrySetResult(); return Array.Empty<SourcePublicationDescriptor>(); });
+        var pending = f.Feed.ReadAsync(Scope, cancellationToken: caller.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        try
+        {
+            if (callerCancellation) { caller.Cancel(); (await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken))).CancellationToken.ShouldBe(caller.Token); }
+            else { clock.Advance(TimeSpan.FromSeconds(30)); (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).FailureReason.ShouldBe("publication-time-bound-exceeded"); }
+            f.State().ShouldBeNull();
+        }
+        finally { release.Set(); }
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); f.State().ShouldBeNull();
     }
 }

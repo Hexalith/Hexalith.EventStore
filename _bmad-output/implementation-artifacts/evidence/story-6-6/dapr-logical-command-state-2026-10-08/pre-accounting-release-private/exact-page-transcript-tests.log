@@ -1,0 +1,46 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors [FAIL]
+      Shouldly.ShouldAssertException : DaprLogicalReplayCommitmentCodec.EncodeTranscriptEntry(entry)
+          should be
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 83, 133, 239, 137, 6, 217, 23, 110, 160, 233, 92, 186, 70, 168, 198, 92, 48, 18, 246, 55, 169, 55, 123, 65, 233, 74, 249, 53, 194, 170, 63, 97, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]
+          but was
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]
+          difference
+      [72, 88, 45, 69, 86, 45, 68, 65, 80, 82, 45, 80, 65, 71, 69, 45, 84, 82, 65, 78, 83, 67, 82, 73, 80, 84, 45, 49, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, *0*, 191, 95, 104, 106, 221, 104, 68, 52, 107, 205, 77, 211, 10, 210, 67, 57, 93, 54, 165, 242, 4, 162, 232, 245, 252, 62, 137, 66, 44, 167, 2, 118, 100, 93, 68, 243, 96, 160, 10, 55, 59, 194, 237, 171, 191, 59, 115, 38, 210, 51, 235, 245, 89, 155, 120, 28, 103, 14, 111, 241, 85, 201, 55, 134, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 152, 193, 203, 234, 240, 252, 168, 40, 2, 12, 18, 74, 33, 102, 253, 223, 33, 91, 75, 165, 49, 235, 233, 165, 1, 147, 142, 66, 146, 120, 217, 167, 1, 1, 35, 215, 178, 134, 189, 66, 148, 96, 185, 42, 42, 28, 33, 182, 175, 195, 65, 16, 68, 108, 80, 52, 193, 115, 99, 253, 163, 99, 170, 10, 124, 93, 1, 230, 197, 143, 186, 103, 158, 238, 94, 209, 235, 65, 6, 204, 198, 50, 100, 39, 38, 45, 121, 100, 253, 233, 129, 233, 226, 39, 121, 237, 242, 197, 84, 88, 254, 51, 90, 191, 195, 234, 69, 203, 42, 33, 119, 228, 251, 68, 229, 112, 195, 43, 63, 231, 129, 24, 197, 224, 10, 225, 178, 16, 76, 63, 236, 94, 95, 221, 52, 99, 75, 76, 156, 232, 229, 44, 47, 208, 188, 173, 0, 25, 81, 2, 1, 99, 136, 100, 222, 134, 189, 19, 72, 4, 113, 212, 62]
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(61,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.EveryCommandCommitmentMatchesIndependentPythonVectors()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualParticipantAndCallerSubstitutionsRefuseBeforeProcessor(kind: "old-ledger") [FAIL]
+      Shouldly.ShouldAssertException : Task `DomainServiceRequestRouter.ProcessCompletedLogicalAsync(provider, request, completed)`
+          should throw
+      System.Exception
+          but did not
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualParticipantAndCallerSubstitutionsRefuseBeforeProcessor(String kind)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(245,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualParticipantAndCallerSubstitutionsRefuseBeforeProcessor(String kind)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '4f3b091b5e416bbfee955df0282d16ed5eaf00806dd14beb050e1e62ec68ca7d')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 63, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 11.131s

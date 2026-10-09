@@ -1,0 +1,10 @@
+control: passed
+client-model-control: passed
+domain-compatibility-control: passed
+command-decoder-cancellation: killed
+post-await-private-command-pin: killed
+actual-command-payload-capacity: killed
+private-command-metadata-charge: killed
+owner-command-metadata-charge: killed
+private-command-owner-drop: killed
+replay-command-owner-drop: killed

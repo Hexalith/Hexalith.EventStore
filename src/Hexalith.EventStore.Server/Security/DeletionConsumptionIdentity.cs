@@ -15,7 +15,7 @@ internal static class DeletionConsumptionIdentity
         { throw new ArgumentException("Invalid protection identity."); }
     }
     internal static string Digest<T>(T value) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value)));
-    internal static string TargetDigest(IReadOnlyList<ProtectionTarget> targets) => Digest(targets.Select(t => new[] { t.TenantId, t.AgentInteractionId, t.TargetProtectionKeyAlias }).ToArray());
+    internal static string TargetDigest(IReadOnlyList<ProtectionTarget> targets) => DeletionBatchCapabilityIdentity.TargetManifestDigest(targets);
     internal static DeletionBatchConsumptionRequest Capture(DeletionBatchConsumptionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request); var c = request.Capability; ArgumentNullException.ThrowIfNull(c);
@@ -28,14 +28,18 @@ internal static class DeletionConsumptionIdentity
             || request.CommittedIssuedGuardRevision <= 0 || request.DispatchGuardRevision < request.CommittedIssuedGuardRevision
             || request.DetachedJws is not { Length: > 0 and <= 16384 } || request.Targets is null || request.Targets.Count is < 1 or > 1000)
         { throw new ArgumentException("Invalid protection request."); }
-        var targets = new List<ProtectionTarget>(); string? previous = null;
+        var targets = new List<ProtectionTarget>(); ProtectionTarget? previous = null;
         foreach (var target in request.Targets)
         {
             if (targets.Count >= 1000 || target is null || target.TenantId != c.TenantId) { throw new ArgumentException("Invalid protection target."); }
             Text(target.TenantId); Text(target.AgentInteractionId); Text(target.TargetProtectionKeyAlias);
-            string identity = JsonSerializer.Serialize(new[] { target.TenantId, target.AgentInteractionId, target.TargetProtectionKeyAlias });
-            if (previous is not null && StringComparer.Ordinal.Compare(previous, identity) >= 0) { throw new ArgumentException("Unsorted or duplicate protection target."); }
-            previous = identity; targets.Add(target);
+            if (previous is not null)
+            {
+                int interactionOrder = StringComparer.Ordinal.Compare(previous.AgentInteractionId, target.AgentInteractionId);
+                if (interactionOrder > 0 || interactionOrder == 0 && StringComparer.Ordinal.Compare(previous.TargetProtectionKeyAlias, target.TargetProtectionKeyAlias) >= 0)
+                { throw new ArgumentException("Unsorted or duplicate protection target."); }
+            }
+            previous = target; targets.Add(target);
         }
         var owned = Array.AsReadOnly(targets.ToArray());
         if (c.ManifestDigest != TargetDigest(owned)) { throw new ArgumentException("Protection manifest mismatch."); }

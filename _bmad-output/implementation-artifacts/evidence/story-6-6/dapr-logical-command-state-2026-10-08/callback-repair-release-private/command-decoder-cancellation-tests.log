@@ -1,0 +1,187 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes [FAIL]
+      Shouldly.ShouldAssertException : Task `DomainServiceRequestRouter.ProcessCompletedLogicalAsync(provider, new(Command, null), completed, cancellation.Token)`
+          should throw
+      System.OperationCanceledException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(534,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(538,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.BeginGenesisCapacityRefusalRestoresEveryInitialCharge(cancelled: True) [FAIL]
+      Shouldly.ShouldAssertException : error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(173,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.BeginGenesisCapacityRefusalRestoresEveryInitialCharge(Boolean cancelled)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.BeginGenesisCapacityRefusalRestoresEveryInitialCharge(Boolean cancelled)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "create", page: False, foreignCancellation: False) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "read", page: False, foreignCancellation: False) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "write", page: False, foreignCancellation: False) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "read", page: True, foreignCancellation: False) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "write", page: True, foreignCancellation: False) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(point: "apply", page: True, foreignCancellation: True) [FAIL]
+      Shouldly.ShouldAssertException : await Should.ThrowAsync<Exception>(async {
+                  using DaprReplayOperationResult result = page
+                      ? await fixture.Owner.ExecutePageAsync(fixture.Source.Source, source, fixture.Source.Trust, fixture.Source.Key, "owner", 1, 1, "page", 1, token.Token)
+                      : await fixture.Owner.BeginAsync(fixture.Source.Source, source, fixture.Source.Trust, "owner", null, token.Token);
+              });
+              error
+          should be
+      System.Threading.CancellationToken (40906347)
+          but was
+      System.Threading.CancellationToken (20552794)
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(222,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(244,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes(String point, Boolean page, Boolean foreignCancellation)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(boundary: "write", refusal: "cancel", throws: True) [FAIL]
+      Shouldly.ShouldAssertException : error
+          should be assignable to
+      System.OperationCanceledException
+          but was
+      System.InvalidOperationException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(606,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs(621,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCommandStateTests.ActualRouterCallbackFencesPreventLaterCallbacksAndResultRelease(String boundary, String refusal, Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '42d3941f29b4be91c1218a8c7851b2563bd86c8da40a8e4cf35baa5526f6d893')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 76, Errors: 0, Failed: 9, Skipped: 0, Not Run: 0, Time: 13.794s

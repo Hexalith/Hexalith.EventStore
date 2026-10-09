@@ -1,0 +1,126 @@
+{
+  "scope": "dormant actual-owner completed logical command intake",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "control": "passed",
+  "controlSummaries": {
+    "serverSourceReconstructionCallbacksAndCommand": {
+      "total": 263,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "client-model-control": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "domain-compatibility-control": {
+      "total": 20,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    }
+  },
+  "timeoutSecondsPerLane": 60,
+  "controlOnly": false,
+  "selectedMutations": [
+    "command-decoder-cancellation",
+    "reconstruction-callback-cancellation"
+  ],
+  "rootInputSetUnchanged": true,
+  "excludedExternalPaths": [
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+    "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+    "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+    "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+  ],
+  "retainedExternalDependencyNames": [
+    "ExpiredIdentityHistoryCertificate.cs",
+    "IDeletionCapabilityCompromiseRegistrar.cs",
+    "IExpiredIdentityHistoryCustody.cs",
+    "DeletionBatchCapabilityIdentity.cs"
+  ],
+  "mutations": [
+    {
+      "mutation": "command-decoder-cancellation",
+      "result": "killed",
+      "killingTest": "ThrowingCancelledDecoderRefusesBeforeProcessorAndClearsCapturedBytes",
+      "elapsedSeconds": 17.31
+    },
+    {
+      "mutation": "reconstruction-callback-cancellation",
+      "result": "killed",
+      "killingTest": "SynchronousReconstructionCallbacksPreserveOriginalCancellationAndDurableBytes",
+      "elapsedSeconds": 17.147
+    }
+  ],
+  "rootChangedPaths": [],
+  "dynamicCommandSetsStable": true,
+  "successfulControlSummaries": {
+    "client-model-control-tests.log": [
+      [
+        "16",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ],
+    "control-tests.log": [
+      [
+        "263",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ],
+    "domain-compatibility-control-tests.log": [
+      [
+        "20",
+        "0",
+        "0",
+        "0",
+        "0"
+      ]
+    ]
+  }
+}

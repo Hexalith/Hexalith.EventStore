@@ -1,0 +1,1288 @@
+{
+  "scope": "dormant private snapshot-candidate prerequisite",
+  "configuration": "Release",
+  "dependencyMode": "packages",
+  "controls": {
+    "snapshot": {
+      "total": 66,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "clientModel": {
+      "total": 16,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    },
+    "reconstruction": {
+      "total": 53,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0
+    }
+  },
+  "mutations": [
+    {
+      "mutation": "explicit-model-selection",
+      "result": "killed",
+      "killingTest": "ModelAndActualManagerSelectionAreExplicit",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(wrong: \"model\") [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (66167900)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(466,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(String wrong)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(475,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(String wrong)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "same-actual-owner-manager",
+      "result": "killed",
+      "killingTest": "ModelAndActualManagerSelectionAreExplicit",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(wrong: \"manager\") [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (58514437)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(466,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(String wrong)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(475,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.ModelAndActualManagerSelectionAreExplicit(String wrong)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "timeline-restarts-one",
+      "result": "killed",
+      "killingTest": "BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(covered: 1, target: 3, timeline: True) [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (15315213)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(Int64 covered, Int64 target, Boolean timeline)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(77,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(Int64 covered, Int64 target, Boolean timeline)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "below-head-zero-tail-refusal",
+      "result": "killed",
+      "killingTest": "BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(covered: 1, target: 1, timeline: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (15315213)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(73,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(Int64 covered, Int64 target, Boolean timeline)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(77,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.BelowHeadZeroTailAboveTargetAndTimelineRestartAtOne(Int64 covered, Int64 target, Boolean timeline)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "source-binding-before-origin",
+      "result": "killed",
+      "killingTest": "InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(corruption: \"wrong-source\") [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.OriginCalls",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(160,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(String corruption)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(164,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(String corruption)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "storage-hash-before-origin",
+      "result": "killed",
+      "killingTest": "InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(corruption: \"protected\") [FAIL]",
+        "      Shouldly.ShouldAssertException : fixture.OriginCalls",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(160,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(String corruption)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(164,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.InvalidPairDiscardsEntireCandidateAndPreservesStoredBytes(String corruption)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "fresh-completed-origin-chain",
+      "result": "killed",
+      "killingTest": "YieldingFinalReadSubstitutionWithholdsCandidate",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(changed: \"origin\") [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (15315213)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(286,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(287,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "final-exact-paired-witness",
+      "result": "killed",
+      "killingTest": "YieldingFinalReadSubstitutionWithholdsCandidate",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(changed: \"pair\") [FAIL]",
+        "      Shouldly.ShouldAssertException : candidate",
+        "          should be null but was",
+        "      Hexalith.EventStore.Server.Events.DaprLogicalSnapshotCandidate (22318356)",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(286,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(287,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.YieldingFinalReadSubstitutionWithholdsCandidate(String changed)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)"
+      ]
+    },
+    {
+      "mutation": "canonical-mismatch-fallback",
+      "result": "killed",
+      "killingTest": "NoncanonicalRoundtripFallsBackWithoutApplyOrSave",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.NoncanonicalRoundtripFallsBackWithoutApplyOrSave [FAIL]",
+        "      Hexalith.EventStore.Client.Aggregates.LogicalReplayCanonicalMismatchException : ReplayRestartRequired: supplied state bytes are not canonical under their sealed codec.",
+        "      Stack Trace:",
+        "        src/Hexalith.EventStore.Client/Aggregates/RegisteredLogicalReplayBinding.cs(307,0): at Hexalith.EventStore.Client.Aggregates.RegisteredLogicalReplayBinding.SerializeAsync(Object state, EventBufferBudget budget, Func`2 sourceFence, CancellationToken token)",
+        "        src/Hexalith.EventStore.Client/Aggregates/RegisteredLogicalReplayBinding.cs(146,0): at Hexalith.EventStore.Client.Aggregates.RegisteredLogicalReplayBinding.ReadCommandStateAsync(IReadOnlyPayload canonical, EventBufferBudget budget, Func`2 actualOwnerFence, CancellationToken token)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotOwner.cs(211,0): at Hexalith.EventStore.Server.Events.DaprLogicalSnapshotOwner.<>c__DisplayClass12_0.<<AcquireAsync>b__2>d.MoveNext()",
+        "        --- End of stack trace from previous location ---",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs(152,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotFixture.SerializeAsync(Func`2 decision, CancellationToken token)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotOwner.cs(406,0): at Hexalith.EventStore.Server.Events.DaprLogicalSnapshotOwner.InOwnerFenceAsync(Func`2 decision, CancellationToken token)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotOwner.cs(428,0): at Hexalith.EventStore.Server.Events.DaprLogicalSnapshotOwner.InOwnerFenceAsync(Func`2 decision, CancellationToken token)",
+        "        src/Hexalith.EventStore.Server/Events/DaprLogicalSnapshotOwner.cs(139,0): at Hexalith.EventStore.Server.Events.DaprLogicalSnapshotOwner.AcquireAsync(DaprLogicalSourceBinding binding, Boolean includeTimeline, Func`4 acquireOrigin, EventBufferBudget budget, CancellationToken token)",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(177,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.NoncanonicalRoundtripFallsBackWithoutApplyOrSave()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(181,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.NoncanonicalRoundtripFallsBackWithoutApplyOrSave()",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "retained-witness-decoding-charge",
+      "result": "killed",
+      "killingTest": "EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin [FAIL]",
+        "      Shouldly.ShouldAssertException : (int)typeof(EventBufferReservation).GetField(\"_capacity\", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(decoding)!",
+        "          should be",
+        "      6304",
+        "          but was",
+        "      0",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(36,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(56,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "private-state-clearing",
+      "result": "killed",
+      "killingTest": "EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 8,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin [FAIL]",
+        "      Shouldly.ShouldAssertException : owned",
+        "          should satisfy the condition",
+        "      (x == 0)",
+        "          but",
+        "      [123, 34, 118, 97, 108, 117, 101, 34, 58, 49, 125]",
+        "          do not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(48,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(56,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.EligibleTailCandidateOwnsPrivateCanonicalBytesAndFreshCompleteOrigin()",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)"
+      ]
+    },
+    {
+      "mutation": "retained-actual-owner-fence",
+      "result": "killed",
+      "killingTest": "RetainedCandidateRechecksActualPairAndHistory",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.RetainedCandidateRechecksActualPairAndHistory [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `candidate.RequireCurrentAsync(CancellationToken.None)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "completed-owner-decision",
+      "result": "killed",
+      "killingTest": "SerializedOwnerMustCompleteExactlyOneOriginalDecision",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.SerializedOwnerMustCompleteExactlyOneOriginalDecision(mode: \"early\") [FAIL]",
+        "      Shouldly.ShouldAssertException : Task `fixture.Owner.AcquireAsync(fixture.OriginBinding with { TargetSequence = 3 }, false, fixture.AcquireOriginAsync, budget, CancellationToken.None)`",
+        "          should throw",
+        "      System.InvalidOperationException",
+        "          but did not",
+        "      Stack Trace:",
+        "           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)",
+        "           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)",
+        "        --- End of stack trace from previous location ---",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()"
+      ]
+    },
+    {
+      "mutation": "snapshot-final-return-cleanup",
+      "result": "killed",
+      "killingTest": "CancellationAtFinalOwnerReturnWithholdsAndClearsCandidate",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtFinalOwnerReturnWithholdsAndClearsCandidate(foreign: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : originBytes",
+        "          should satisfy the condition",
+        "      (x == 0)",
+        "          but",
+        "      [123, 34, 118, 97, 108, 117, 101, 34, 58, 49, 125]",
+        "          do not",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(617,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtFinalOwnerReturnWithholdsAndClearsCandidate(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(620,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtFinalOwnerReturnWithholdsAndClearsCandidate(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)"
+      ]
+    },
+    {
+      "mutation": "origin-final-return-cleanup",
+      "result": "killed",
+      "killingTest": "CancellationAtCompletedOriginFinalFenceRestoresCharge",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtCompletedOriginFinalFenceRestoresCharge(foreign: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : budget.LiveBytes",
+        "          should be",
+        "      0",
+        "          but was",
+        "      4374",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(657,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtCompletedOriginFinalFenceRestoresCharge(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(658,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtCompletedOriginFinalFenceRestoresCharge(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    },
+    {
+      "mutation": "pair-final-return-cleanup",
+      "result": "killed",
+      "killingTest": "CancellationAtPrivatePairReturnRestoresChargesAndPreservesActorBytes",
+      "summary": {
+        "total": 66,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0
+      },
+      "failureExcerpt": [
+        "    Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtPrivatePairReturnRestoresChargesAndPreservesActorBytes(foreign: False) [FAIL]",
+        "      Shouldly.ShouldAssertException : budget.LiveBytes",
+        "          should be",
+        "      0",
+        "          but was",
+        "      1638",
+        "      Stack Trace:",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(573,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtPrivatePairReturnRestoresChargesAndPreservesActorBytes(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotTests.cs(575,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests.CancellationAtPrivatePairReturnRestoresChargesAndPreservesActorBytes(Boolean foreign)",
+        "           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+        "           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "        --- End of stack trace from previous location ---"
+      ]
+    }
+  ],
+  "timeoutSecondsPerLane": 60,
+  "controlOnly": false,
+  "excludedExternalPaths": [
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceAuthorization.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceBatchState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceContentBinding.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceDeletionState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardEvidence.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardOperation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardReduction.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceGuardTransition.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceHoldState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOrdinalCommand.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceOwnerCycle.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtectionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceProtocolReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceRepairState.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceScopeV1.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceSigningRecovery.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceViolation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GovernanceWriteFacts.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCell.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitReceipt.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitRequest.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitResult.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateCommitStatus.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateMutation.cs",
+    "src/Hexalith.EventStore.Contracts/Security/GuardedStateTransactionTarget.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Contracts/Security/IGovernanceScopeGuard.cs",
+    "src/Hexalith.EventStore.Contracts/Security/TenantGovernanceGuardState.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionCapabilityCompromiseRegistrar.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprDeletionProtectionOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/DaprGuardedStateTransaction.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardOwner.cs",
+    "src/Hexalith.EventStore.Server/Security/GovernanceScopeGuardReducer.cs",
+    "src/Hexalith.EventStore.Server/Security/IGovernanceGuardAuthority.cs",
+    "src/Hexalith.EventStore.Server/Security/IGuardedStateTransactionAuthority.cs"
+  ],
+  "rootInputSetUnchanged": false,
+  "copiedFixtureFiles": [
+    "DaprLogicalSnapshotFixture.cs",
+    "DaprLogicalSnapshotTests.cs",
+    "DaprLogicalReconstructionFixture.cs",
+    "DaprLogicalReconstructionTestState.cs",
+    "DaprLogicalReconstructionTests.cs"
+  ],
+  "fullWorkspaceQualified": false,
+  "productionQualification": false,
+  "activationAuthority": false,
+  "rootInputDrift": {
+    "src/Hexalith.EventStore.Client/Streams/AuthoritativeEventStreamReader.cs": {
+      "beforeSha256": "d4d77e8319bd9e1b720ad09b43c2233a2ecd3582cf90264d851f101ed56591b0",
+      "afterSha256": "94f2a831247b990d07d0d5a5a10017ec243fe8b8af54653f4f3e32edd6782474"
+    },
+    "src/Hexalith.EventStore.Server/Streams/DaprSourcePublicationWriterRegistration.cs": {
+      "beforeSha256": "c34e3ebcad6750259f0bfbb4f430bb4a701e94ab80acf9e8057e334d1af36bb6",
+      "afterSha256": "7b6b89246b96a8f2b2702b482c7239f9165bd28f35034262b35e63c8d99cbae9"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorPublicationRegistrationTests.cs": {
+      "beforeSha256": "8df902a339d9b4de99a392ea0cfe1fc0f08e2ccf8993d78f4294a2d5f91e4b7a",
+      "afterSha256": "f532aab464afc23b5cb373151f4ab6117b415f24edaaa2e29a9aa7d322a86d99"
+    }
+  },
+  "commandCount": 38,
+  "commands": [
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "control-build.log",
+      "seconds": 11.422,
+      "startedUtc": "2026-10-08T23:45:37.115768+00:00",
+      "endedUtc": "2026-10-08T23:45:48.537408+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "control-tests.log",
+      "seconds": 7.196,
+      "startedUtc": "2026-10-08T23:45:48.734770+00:00",
+      "endedUtc": "2026-10-08T23:45:55.931101+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "client-model-build.log",
+      "seconds": 2.446,
+      "startedUtc": "2026-10-08T23:45:56.118166+00:00",
+      "endedUtc": "2026-10-08T23:45:58.564338+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "client-model-tests.log",
+      "seconds": 0.622,
+      "startedUtc": "2026-10-08T23:45:58.787229+00:00",
+      "endedUtc": "2026-10-08T23:45:59.408836+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "reconstruction-build.log",
+      "seconds": 1.958,
+      "startedUtc": "2026-10-08T23:45:59.615008+00:00",
+      "endedUtc": "2026-10-08T23:46:01.572778+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalReconstructionTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "reconstruction-tests.log",
+      "seconds": 5.036,
+      "startedUtc": "2026-10-08T23:46:01.790338+00:00",
+      "endedUtc": "2026-10-08T23:46:06.825555+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "explicit-model-selection-build.log",
+      "seconds": 4.355,
+      "startedUtc": "2026-10-08T23:46:07.020625+00:00",
+      "endedUtc": "2026-10-08T23:46:11.375487+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "explicit-model-selection-tests.log",
+      "seconds": 6.922,
+      "startedUtc": "2026-10-08T23:46:11.594801+00:00",
+      "endedUtc": "2026-10-08T23:46:18.516842+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "same-actual-owner-manager-build.log",
+      "seconds": 2.961,
+      "startedUtc": "2026-10-08T23:46:18.722932+00:00",
+      "endedUtc": "2026-10-08T23:46:21.684141+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "same-actual-owner-manager-tests.log",
+      "seconds": 7.927,
+      "startedUtc": "2026-10-08T23:46:21.892470+00:00",
+      "endedUtc": "2026-10-08T23:46:29.819035+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "timeline-restarts-one-build.log",
+      "seconds": 3.34,
+      "startedUtc": "2026-10-08T23:46:30.029494+00:00",
+      "endedUtc": "2026-10-08T23:46:33.369556+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "timeline-restarts-one-tests.log",
+      "seconds": 7.029,
+      "startedUtc": "2026-10-08T23:46:33.577679+00:00",
+      "endedUtc": "2026-10-08T23:46:40.605121+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "below-head-zero-tail-refusal-build.log",
+      "seconds": 3.733,
+      "startedUtc": "2026-10-08T23:46:40.815630+00:00",
+      "endedUtc": "2026-10-08T23:46:44.548854+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "below-head-zero-tail-refusal-tests.log",
+      "seconds": 6.907,
+      "startedUtc": "2026-10-08T23:46:44.781008+00:00",
+      "endedUtc": "2026-10-08T23:46:51.687761+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "source-binding-before-origin-build.log",
+      "seconds": 3.263,
+      "startedUtc": "2026-10-08T23:46:51.906028+00:00",
+      "endedUtc": "2026-10-08T23:46:55.169473+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "source-binding-before-origin-tests.log",
+      "seconds": 7.159,
+      "startedUtc": "2026-10-08T23:46:55.392720+00:00",
+      "endedUtc": "2026-10-08T23:47:02.551610+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "storage-hash-before-origin-build.log",
+      "seconds": 3.212,
+      "startedUtc": "2026-10-08T23:47:02.787759+00:00",
+      "endedUtc": "2026-10-08T23:47:05.994152+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "storage-hash-before-origin-tests.log",
+      "seconds": 6.844,
+      "startedUtc": "2026-10-08T23:47:06.229383+00:00",
+      "endedUtc": "2026-10-08T23:47:13.073628+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "fresh-completed-origin-chain-build.log",
+      "seconds": 3.176,
+      "startedUtc": "2026-10-08T23:47:13.300295+00:00",
+      "endedUtc": "2026-10-08T23:47:16.476029+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "fresh-completed-origin-chain-tests.log",
+      "seconds": 6.598,
+      "startedUtc": "2026-10-08T23:47:16.716944+00:00",
+      "endedUtc": "2026-10-08T23:47:23.314653+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "final-exact-paired-witness-build.log",
+      "seconds": 4.52,
+      "startedUtc": "2026-10-08T23:47:23.551463+00:00",
+      "endedUtc": "2026-10-08T23:47:28.071719+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "final-exact-paired-witness-tests.log",
+      "seconds": 7.743,
+      "startedUtc": "2026-10-08T23:47:28.322372+00:00",
+      "endedUtc": "2026-10-08T23:47:36.063485+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "canonical-mismatch-fallback-build.log",
+      "seconds": 2.936,
+      "startedUtc": "2026-10-08T23:47:36.326401+00:00",
+      "endedUtc": "2026-10-08T23:47:39.262666+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "canonical-mismatch-fallback-tests.log",
+      "seconds": 6.726,
+      "startedUtc": "2026-10-08T23:47:39.506714+00:00",
+      "endedUtc": "2026-10-08T23:47:46.232779+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "retained-witness-decoding-charge-build.log",
+      "seconds": 2.894,
+      "startedUtc": "2026-10-08T23:47:46.539295+00:00",
+      "endedUtc": "2026-10-08T23:47:49.433658+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "retained-witness-decoding-charge-tests.log",
+      "seconds": 6.952,
+      "startedUtc": "2026-10-08T23:47:49.693145+00:00",
+      "endedUtc": "2026-10-08T23:47:56.644865+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "private-state-clearing-build.log",
+      "seconds": 3.052,
+      "startedUtc": "2026-10-08T23:47:56.912371+00:00",
+      "endedUtc": "2026-10-08T23:47:59.963989+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "private-state-clearing-tests.log",
+      "seconds": 6.934,
+      "startedUtc": "2026-10-08T23:48:00.226178+00:00",
+      "endedUtc": "2026-10-08T23:48:07.158783+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "retained-actual-owner-fence-build.log",
+      "seconds": 3.126,
+      "startedUtc": "2026-10-08T23:48:07.445632+00:00",
+      "endedUtc": "2026-10-08T23:48:10.572077+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "retained-actual-owner-fence-tests.log",
+      "seconds": 6.765,
+      "startedUtc": "2026-10-08T23:48:10.834688+00:00",
+      "endedUtc": "2026-10-08T23:48:17.599617+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "completed-owner-decision-build.log",
+      "seconds": 2.73,
+      "startedUtc": "2026-10-08T23:48:17.843444+00:00",
+      "endedUtc": "2026-10-08T23:48:20.573456+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "completed-owner-decision-tests.log",
+      "seconds": 6.933,
+      "startedUtc": "2026-10-08T23:48:20.832357+00:00",
+      "endedUtc": "2026-10-08T23:48:27.764880+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "snapshot-final-return-cleanup-build.log",
+      "seconds": 2.954,
+      "startedUtc": "2026-10-08T23:48:28.022316+00:00",
+      "endedUtc": "2026-10-08T23:48:30.976069+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "snapshot-final-return-cleanup-tests.log",
+      "seconds": 6.629,
+      "startedUtc": "2026-10-08T23:48:31.248807+00:00",
+      "endedUtc": "2026-10-08T23:48:37.875815+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "origin-final-return-cleanup-build.log",
+      "seconds": 3.076,
+      "startedUtc": "2026-10-08T23:48:38.132548+00:00",
+      "endedUtc": "2026-10-08T23:48:41.208178+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "origin-final-return-cleanup-tests.log",
+      "seconds": 8.069,
+      "startedUtc": "2026-10-08T23:48:41.510291+00:00",
+      "endedUtc": "2026-10-08T23:48:49.579150+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-m:1",
+        "-warnaserror",
+        "--nologo"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 0,
+      "log": "pair-final-return-cleanup-build.log",
+      "seconds": 4.12,
+      "startedUtc": "2026-10-08T23:48:49.895546+00:00",
+      "endedUtc": "2026-10-08T23:48:54.015840+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "/tmp/story66-anchor-established-snapshot/work/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "Hexalith.EventStore.Server.Tests.Events.DaprLogicalSnapshotTests"
+      ],
+      "cwd": "/tmp/story66-anchor-established-snapshot/work",
+      "exitCode": 1,
+      "log": "pair-final-return-cleanup-tests.log",
+      "seconds": 6.65,
+      "startedUtc": "2026-10-08T23:48:54.312781+00:00",
+      "endedUtc": "2026-10-08T23:49:00.962543+00:00",
+      "dynamicLaneSetUnchanged": true,
+      "dynamicImportedSetUnchanged": true,
+      "dynamicDllSetUnchanged": true
+    }
+  ],
+  "fullReceipt": "result.json.xz",
+  "allCopiedImportedExecutedSetsUnchanged": true
+}

@@ -42,6 +42,7 @@ internal sealed class RegisteredEventVersionValidation
     {
         cancellationToken.ThrowIfCancellationRequested();
         registry.CapabilityLoss.RequireNoObservedLoss();
+        registry.RequireActive(cancellationToken);
         if (!ReferenceEquals(registry, _registry))
         {
             throw new InvalidOperationException("CapabilityMismatch: version validation belongs to another registry.");
@@ -77,29 +78,50 @@ internal sealed class RegisteredEventVersionValidation
 
     /// <summary>Rechecks addressed source/trust/binding between the separately leased current schema and identity callbacks.</summary>
     internal async ValueTask ValidateAsync(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
-        Func<CancellationToken, Task> sourceFence, CancellationToken token)
+        Func<CancellationToken, Task>? sourceFence, CancellationToken token)
     {
-        await sourceFence(token).ConfigureAwait(false);
-        RequireValidation(domain, canonicalType, version, format, payload, token);
+        ArgumentNullException.ThrowIfNull(payload);
+        Task FenceAsync(CancellationToken cancellation) => EventCallbackFence.RequireAsync(_registry, sourceFence, cancellation,
+            () => RequireValidationDescriptor(domain, canonicalType, version, format, cancellation)).AsTask();
+        await FenceAsync(token).ConfigureAwait(false);
+        EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
+        await _schemaBinding.RequireFieldsAsync(descriptor, 1, FenceAsync, token,
+            () => RequireValidationDescriptor(domain, canonicalType, version, format, token)).ConfigureAwait(false);
+        await FenceAsync(token).ConfigureAwait(false);
         using (var schemaLease = new InvocationPayloadLease(payload, token))
         {
-            _schema(domain, canonicalType, version, format, schemaLease, token);
+            try { _schema(domain, canonicalType, version, format, schemaLease, token); }
+            finally { token.ThrowIfCancellationRequested(); }
         }
-        await sourceFence(token).ConfigureAwait(false);
-        RequireValidation(domain, canonicalType, version, format, payload, token);
+        await FenceAsync(token).ConfigureAwait(false);
+        await _identityBinding.RequireFieldsAsync(descriptor, 8, FenceAsync, token,
+            () => RequireValidationDescriptor(domain, canonicalType, version, format, token)).ConfigureAwait(false);
+        await FenceAsync(token).ConfigureAwait(false);
         using (var identityLease = new InvocationPayloadLease(payload, token))
         {
-            _identity(domain, canonicalType, version, format, identityLease, token);
+            try { _identity(domain, canonicalType, version, format, identityLease, token); }
+            finally { token.ThrowIfCancellationRequested(); }
         }
-        await sourceFence(token).ConfigureAwait(false);
+        await FenceAsync(token).ConfigureAwait(false);
     }
 
     private void RequireValidation(string domain, string canonicalType, int version, string format, IReadOnlyPayload payload,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(payload);
+        RequireValidationDescriptor(domain, canonicalType, version, format, cancellationToken);
+        EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
+        _schemaBinding.RequireFields(descriptor, 1, cancellationToken);
+        RequireValidationDescriptor(domain, canonicalType, version, format, cancellationToken);
+        _identityBinding.RequireFields(descriptor, 8, cancellationToken);
+        RequireValidationDescriptor(domain, canonicalType, version, format, cancellationToken);
+    }
+
+    private void RequireValidationDescriptor(string domain, string canonicalType, int version, string format,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
+        _registry.RequireActive(cancellationToken);
         RequireDescriptor(_registry, canonicalType, version, cancellationToken);
         EventRegistryRow descriptor = _registry.GetVersion(canonicalType, version);
         if (!string.Equals(domain, _registry.Domain, StringComparison.Ordinal)
@@ -107,11 +129,5 @@ internal sealed class RegisteredEventVersionValidation
         {
             throw new InvalidOperationException("CapabilityMismatch: validation scope or format disagrees with the registered V descriptor.");
         }
-        _schemaBinding.RequireFields(descriptor, 1, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
-        _identityBinding.RequireFields(descriptor, 8, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        _registry.CapabilityLoss.RequireNoObservedLoss();
     }
 }

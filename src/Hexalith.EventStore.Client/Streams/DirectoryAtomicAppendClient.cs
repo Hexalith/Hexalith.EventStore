@@ -29,7 +29,7 @@ public sealed class DirectoryAtomicAppendClient(TimeProvider clock, IAtomicDirec
             deadline.ThrowIfCancellationRequested();
             if (outcome is null || outcome.OperationId != id || outcome.RequestDigest != digest || !Enum.IsDefined(outcome.State)
                 || outcome.State == DirectoryAtomicAppendState.Accepted && (outcome.CommittedTargetRevision <= owned.ExpectedStreamRevision
-                    || outcome.AcceptedAtAdmissionFenceOrdinal <= 0 || outcome.AcceptedAtGuardHighWater <= 0)
+                    || outcome.AcceptedAtAdmissionFenceOrdinal < 0 || outcome.AcceptedAtGuardHighWater <= 0)
                 || outcome.State != DirectoryAtomicAppendState.Accepted && (outcome.CommittedTargetRevision != 0 || outcome.AcceptedAtAdmissionFenceOrdinal != 0 || outcome.AcceptedAtGuardHighWater != 0)
                 || outcome.State is DirectoryAtomicAppendState.Accepted or DirectoryAtomicAppendState.Rejected && !ValidText(outcome.AuthenticatedReceiptId)) { return unavailable; }
             if (!await deadline.ReadAsync(token => authority.VerifyOutcomeAsync(owned, digest, outcome, token)).ConfigureAwait(false)

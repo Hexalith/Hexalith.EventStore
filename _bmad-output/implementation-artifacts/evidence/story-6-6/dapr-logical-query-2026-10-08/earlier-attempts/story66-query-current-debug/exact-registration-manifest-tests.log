@@ -1,0 +1,37 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.ExactManifestAndDelegateSubstitutionRefusesBeforeCallbacks(mode: "registration-id") [FAIL]
+      Shouldly.ShouldAssertException : fixture.HandlerCalls
+          should be
+      0
+          but was
+      1
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Queries/DaprLogicalQueryTests.cs(313,0): at Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.ExactManifestAndDelegateSubstitutionRefusesBeforeCallbacks(String mode)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.ExactManifestAndDelegateSubstitutionRefusesBeforeCallbacks(mode: "registration-image") [FAIL]
+      Shouldly.ShouldAssertException : fixture.HandlerCalls
+          should be
+      0
+          but was
+      1
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Queries/DaprLogicalQueryTests.cs(313,0): at Hexalith.EventStore.Server.Tests.Queries.DaprLogicalQueryTests.ExactManifestAndDelegateSubstitutionRefusesBeforeCallbacks(String mode)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '636778177e17b6963de3410573a829d876d38b729fdc0865c426d98edf653e0e')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 99, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 3.698s

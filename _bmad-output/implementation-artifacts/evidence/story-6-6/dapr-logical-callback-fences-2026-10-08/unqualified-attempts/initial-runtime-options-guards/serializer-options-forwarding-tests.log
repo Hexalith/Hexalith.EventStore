@@ -1,0 +1,18 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.RegisteredWrappersUseSeparatelyAdmittedOptionsAndRefuseDefaultSubstitution(stage: "deserialize", mismatch: False) [FAIL]
+      System.InvalidOperationException : CapabilityMismatch: the callback assembly is not the admitted managed image object.
+      Stack Trace:
+        src/Hexalith.EventStore.Client/Events/EventManagedArtifactExecutionBinding.cs(37,0): at Hexalith.EventStore.Client.Events.EventManagedArtifactExecutionBinding.RequireBoundAssembly(Assembly assembly)
+        src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs(177,0): at Hexalith.EventStore.Client.Events.EventImplementationBinding.RequireCallableBindings()
+        src/Hexalith.EventStore.Client/Events/EventImplementationBinding.cs(54,0): at Hexalith.EventStore.Client.Events.EventImplementationBinding..ctor(String implementationId, Delegate implementation, ReadOnlyMemory`1 canonicalOptions, IReadOnlyList`1 optionSchema, Func`1 runtimeOptions, EventManagedArtifactExecutionBinding executionBinding, EventManagedArtifactExecutionBinding runtimeOptionsExecutionBinding)
+        src/Hexalith.EventStore.Client/Events/RegisteredCurrentEventDeserializer.cs(29,0): at Hexalith.EventStore.Client.Events.RegisteredCurrentEventDeserializer..ctor(Type currentType, String serializerId, Func`3 deserialize, ReadOnlyMemory`1 canonicalOptions, IReadOnlyList`1 optionSchema, Func`1 runtimeOptions, EventManagedArtifactExecutionBinding serializerExecutionBinding, EventManagedArtifactExecutionBinding currentTypeExecutionBinding, EventManagedArtifactExecutionBinding runtimeOptionsExecutionBinding)
+        tests/Hexalith.EventStore.Client.Tests/EventRuntimeOptionsBindingTests.cs(223,0): at Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.<>c__DisplayClass6_0.<RegisteredWrappersUseSeparatelyAdmittedOptionsAndRefuseDefaultSubstitution>g__Bind|0()
+        tests/Hexalith.EventStore.Client.Tests/EventRuntimeOptionsBindingTests.cs(241,0): at Hexalith.EventStore.Client.Tests.Events.EventRuntimeOptionsBindingTests.RegisteredWrappersUseSeparatelyAdmittedOptionsAndRefuseDefaultSubstitution(String stage, Boolean mismatch)
+           at InvokeStub_EventRuntimeOptionsBindingTests.RegisteredWrappersUseSeparatelyAdmittedOptionsAndRefuseDefaultSubstitution(Object, Span`1)
+           at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = 'e1b8b6a03a4c9a4c56260fc4e3918c1446cc95085d7606b024ba8e2fe3fae25c')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 15, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.494s

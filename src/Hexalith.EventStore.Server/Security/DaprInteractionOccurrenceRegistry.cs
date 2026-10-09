@@ -33,7 +33,7 @@ public sealed class DaprInteractionOccurrenceRegistry(IActorProxyFactory proxyFa
         try
         {
             var result = await deadline.ReadAsync(_ => operation(proxyFactory.CreateActorProxy<IInteractionOccurrenceRegistryActor>(
-                new ActorId(identity.Target.TenantId), InteractionOccurrenceRegistryActor.ActorTypeName))).ConfigureAwait(false);
+                new ActorId(InteractionOccurrenceRegistryActor.GetActorId(identity.Target.TenantId)), InteractionOccurrenceRegistryActor.ActorTypeName))).ConfigureAwait(false);
             deadline.ThrowIfCancellationRequested(); return result;
         }
         catch (Exception) { token.ThrowIfCancellationRequested(); throw; }

@@ -1,0 +1,28 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls [FAIL]
+      Shouldly.ShouldAssertException : else { failure
+          should be of type
+      System.InvalidOperationException
+          but was
+      System.Text.Json.JsonReaderException
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(92,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(103,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.CallableAuthorityLossStopsLaterCallbacksApplySaveAndProof(String stage, String authority, String scope)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(114,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.RepresentativeCallbackAuthorityLossControls()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'bb34f02830daff1d23d2f8a4e2d858d95e6e476b2c0b46b89a5f98a66a12694b')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.694s

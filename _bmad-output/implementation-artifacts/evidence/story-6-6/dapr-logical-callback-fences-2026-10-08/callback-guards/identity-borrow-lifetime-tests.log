@@ -1,0 +1,44 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState [FAIL]
+      Hexalith.EventStore.Server.Events.EventDeserializationException : Failed to deserialize event at sequence -1 for tenant:d:aggregate: `payload.CopyTo(0, new byte[1])`
+          should throw
+      System.ObjectDisposedException
+          but did not
+      ---- Shouldly.ShouldAssertException : `payload.CopyTo(0, new byte[1])`
+          should throw
+      System.ObjectDisposedException
+          but did not
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(505,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadMetadataAsync(AggregateIdentity identity, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(421,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.RequireStableMetadataAsync(AggregateIdentity identity, ConditionalValue`1 before, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(375,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.<>c__DisplayClass11_0.<<ReadPageAsync>g__RequirePreparedPageAsync|0>d.MoveNext()
+        --- End of stack trace from previous location ---
+        src/Hexalith.EventStore.Client/Events/EventCallbackFence.cs(17,0): at Hexalith.EventStore.Client.Events.EventCallbackFence.RequireAsync(EventDomainRegistry registry, Func`2 sourceFence, CancellationToken token, Action requireBindings)
+        src/Hexalith.EventStore.Client/Events/RegisteredEventVersionValidation.cs(102,0): at Hexalith.EventStore.Client.Events.RegisteredEventVersionValidation.ValidateAsync(String domain, String canonicalType, Int32 version, String format, IReadOnlyPayload payload, Func`2 sourceFence, CancellationToken token)
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(207,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor.ValidateAsync(ImmutablePayload payload, String canonicalType, Int32 version, Func`2 sourceFence, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Events/EventUpcastChainExecutor.cs(63,0): at Hexalith.EventStore.Client.Events.EventUpcastChainExecutor.UpcastOwnedAsync(String canonicalType, Int32 sourceVersion, ImmutablePayload owned, EventBufferBudget budget, CancellationToken cancellationToken, Func`2 sourceFence)
+        src/Hexalith.EventStore.Client/Events/EventLogicalViewResolver.cs(123,0): at Hexalith.EventStore.Client.Events.EventLogicalViewResolver.ResolveOwnedAsync(String domain, String eventTypeName, Int32 metadataVersion, String eventContractType, Nullable`1 payloadVersion, String serializationFormat, ImmutablePayload readablePayload, EventBufferBudget budget, CancellationToken cancellationToken, String aggregateType, Func`2 sourceFence)
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(274,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ResolvePreparedAsync(DaprLogicalEventPreparation prepared, EventBufferBudget budget, CancellationToken cancellationToken, Func`2 sourceFence)
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(383,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadPageAsync(AggregateIdentity identity, String aggregateType, Int64 startSequence, Int32 maxCount, CancellationToken cancellationToken, Nullable`1 expectedActorHead, Nullable`1 expectedRetainedFloor, EventBufferBudget sharedBudget, Boolean requireUnversioned, LegacyEventArrayBudget arrayBudget, DaprLogicalSourceBinding expectedSourceBinding, Func`2 sourceFence)
+        src/Hexalith.EventStore.Server/Events/DaprLogicalReplaySource.cs(104,0): at Hexalith.EventStore.Server.Events.DaprLogicalReplaySource.ReadPageCoreAsync(DaprLogicalSourceBinding binding, Int64 start, Int32 maxCount, ReadOnlyMemory`1 admittedAccumulator, DaprLogicalClaimTrust trust, ECDsa key, EventBufferBudget budget, CancellationToken cancellationToken, Func`2 operationFence)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(809,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.PrepareTransitionAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa key, DaprReplayOperationRecord prior, Int32 maxCount, EventBufferBudget budget, CancellationToken token)
+        src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.cs(662,0): at Hexalith.EventStore.Server.Events.DaprReplayOperationOwner.ExecutePageAsync(DaprLogicalReplaySource source, DaprLogicalSourceBinding binding, DaprLogicalClaimTrust trust, ECDsa signingKey, String ownerId, Int64 generation, Int64 pageOrdinal, String requestId, Int32 maxCount, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(143,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(155,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(133,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.<>c.<YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState>b__3_3(IReadOnlyPayload payload)
+           at System.Collections.Generic.List`1.ForEach(Action`1 action)
+        tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCallbackFenceTests.cs(133,0): at Hexalith.EventStore.Server.Tests.Events.DaprLogicalCallbackFenceTests.<>c__DisplayClass3_0.<<YieldingAddressedFenceSeesExpiredAllCallbackFacadesAndExactFinalState>b__1>d.MoveNext()
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult()
+        src/Hexalith.EventStore.Server/Events/DaprLogicalEventReader.cs(498,0): at Hexalith.EventStore.Server.Events.DaprLogicalEventReader.ReadMetadataAsync(AggregateIdentity identity, CancellationToken cancellationToken)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '8dc9e713f1badf3d52969446149150ce3a83bc1a010c12b9a9badbc1bba01558')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.578s

@@ -1,0 +1,78 @@
+{
+  "packet": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-checkpoint-owner-2026-10-09",
+  "sealSha256": "dc8463281ec440f220e9273c71215af5fc606475098e2630d508434e235fd873",
+  "artifactCount": 178,
+  "allHistoricalArtifactsUnchanged": true,
+  "unchangedPriorOwnedInputs": [
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/IDaprLogicalCheckpointActor.cs",
+      "bytes": 233,
+      "sha256": "709edaddee4ad331e3469a7342a1ee8a0f4c9fb25118500b8a573fd283c8fe9b"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalCheckpointCodec.cs",
+      "bytes": 5826,
+      "sha256": "ed2850543d241a4cfc030bc7dd9c15ac99fd3a0912f9d402f7675f97af3ef934"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalCheckpointWrite.cs",
+      "bytes": 8309,
+      "sha256": "a449337a1819c814d8d99516f8a422509295c7752af5f15ec272822f8052117a"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprLogicalProjectionFold.cs",
+      "bytes": 5362,
+      "sha256": "21cbd0bce4200ae41419d303c43b123ce729b2f8cba5f6df6a6f59c3a33bb672"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Events/DaprReplayOperationOwner.Checkpoint.cs",
+      "bytes": 876,
+      "sha256": "d375a4a513364bd2918412cbed045c229c8adbc882f1cca7aebf3866fec6ef3c"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointFixture.cs",
+      "bytes": 9363,
+      "sha256": "958e218c6c023883d642d4940300653f78c8050dbbd2e20807d0b1fb068ffb29"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCheckpointTests.cs",
+      "bytes": 26251,
+      "sha256": "8fde8964ef48b005dc4dce1592925b9aec5537cb5a3ea30c03cfa74f99765b3e"
+    },
+    {
+      "path": "scripts/verify-dapr-logical-checkpoint-guards.py",
+      "bytes": 20157,
+      "sha256": "a6f71f54c0a8b389c0dfe720e5dffbfda2ad80abfbe2a281894ae8f923d966fe"
+    },
+    {
+      "path": "scripts/verify-dapr-logical-checkpoint-vectors.py",
+      "bytes": 2579,
+      "sha256": "5ec8fda10c59a481b4cc9075249503ecb36ad3f15e2ef7165be65bdaa5c01520"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/story-6-6-dapr-logical-checkpoint-owner-model.md",
+      "bytes": 8373,
+      "sha256": "8377c8e755f50157c4142805ef287612655665fa62f21cd5faac939d3c932e04"
+    }
+  ],
+  "explicitCurrentRevisions": [
+    {
+      "path": "src/Hexalith.EventStore.Server/Actors/DaprLogicalCheckpointActor.cs",
+      "historicalSha256": "238e31388fb201db06e91aa3388484c9e74a2a83b47d3b793302d2795a68fd18",
+      "currentSha256": "4d84602d826e3c709d9bdf94bb644f635e6acde949cdb5550798eeedc581db6b",
+      "scope": "Explicitly scoped candidate actor revision"
+    },
+    {
+      "path": ".github/workflows/event-evolution-local-guards.yml",
+      "historicalSha256": "329758a86f2a336beb3c54038a81184bcb3e24aa8ff89301871b2523efedc37a",
+      "currentSha256": "31179aa4c9c14359a5c8b22023546a62b0fe594e878f19f3c7acab9c0d1c57d8",
+      "scope": "Additive candidate CI/present-state spec update"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md",
+      "historicalSha256": "788a0612ded53edab4adeb9d270252ace592e1d8aa3faa75c7cf5e46a12da4a4",
+      "currentSha256": "b399961c87dec4bd0a61dde7ba7d1002c208fbba9704a142f51f6e8c337173d7",
+      "scope": "Additive candidate CI/present-state spec update"
+    }
+  ]
+}

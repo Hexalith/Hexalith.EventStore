@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "--configuration",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1",
+    "-warnaserror"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "result": "failed; 16 external RecoverableAnchoredState.cs CA1062 errors at that historical attempt",
+  "currentWorkspaceQualification": false,
+  "externalSourceChangedLater": true,
+  "exitCode": 1
+}

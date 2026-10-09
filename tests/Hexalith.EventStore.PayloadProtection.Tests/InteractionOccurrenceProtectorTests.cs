@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Hexalith.EventStore.Contracts.Security;
 using NSubstitute;
 
@@ -90,4 +91,107 @@ public sealed class InteractionOccurrenceProtectorTests
         using var watchdog = new CancellationTokenSource(TimeSpan.FromSeconds(5)); while (owned.Bytes.Any(value => value != 0)) { await Task.Delay(10, watchdog.Token); }
         f.Record!.Sealed.ShouldBeNull(); await f.Registry.DidNotReceive().RetainSealedAsync(Arg.Any<InteractionOccurrenceIdentity>(), Arg.Any<InteractionOccurrenceSealedResult>(), Arg.Any<CancellationToken>());
     }
+
+    /// <summary>Actual active event/snapshot decryption cannot release plaintext when final Read authority is withdrawn; pending, active and source evidence remain immutable.</summary>
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task ActiveReadWithdrawalAfterDecryptReleasesNoPayloadAndPreservesOriginal(bool snapshot)
+    {
+        var f = new InteractionOccurrenceProtectorFixture(); byte[] source = Payload();
+        var identity = snapshot ? f.Identity with { Kind = PayloadProtectionPayloadKind.Snapshot, PayloadTypeId = "hx-snapshot-v1:test" } : f.Identity;
+        var sealedResult = snapshot ? await f.Adapter.ProtectSnapshotAsync(source, identity, "digest-v1", 1,
+            InteractionOccurrenceProtectorFixture.Reference, TestContext.Current.CancellationToken) : await Write(f, source);
+        sealedResult.ShouldNotBeNull();
+        var pending = f.Record!; pending.WriterState.ShouldBe(InteractionOccurrenceWriterState.SealedPending);
+        byte[] pendingBytes = JsonSerializer.SerializeToUtf8Bytes(pending); byte[] cipher = sealedResult.PayloadBytes.ToArray();
+        (await f.Adapter.CompleteWriterAsync(identity, sealedResult.KeyReference, "exact-committed-source", true,
+            TestContext.Current.CancellationToken)).Record!.WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+        byte[] activeBytes = JsonSerializer.SerializeToUtf8Bytes(f.Record); int finalChecks = 0;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        f.Keys.Current = () => { Interlocked.Increment(ref finalChecks); entered.TrySetResult(); release.Wait(); return f.Current; };
+        var reading = f.Adapter.UnprotectAsync(identity, TestContext.Current.CancellationToken);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            f.Current = false; release.Set();
+            var denied = await reading.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            denied.IsReadable.ShouldBeFalse(); denied.PayloadBytes.ShouldBeNull(); Volatile.Read(ref finalChecks).ShouldBe(1);
+            JsonSerializer.SerializeToUtf8Bytes(pending).ShouldBe(pendingBytes);
+            JsonSerializer.SerializeToUtf8Bytes(f.Record).ShouldBe(activeBytes);
+            f.Record!.Sealed!.PayloadBytes.ShouldBe(cipher); sealedResult.PayloadBytes.ShouldBe(cipher); source.ShouldBe(Payload());
+            f.OwnedBuffers.All(buffer => buffer.All(value => value == 0)).ShouldBeTrue();
+            f.Keys.WriteRoots.ShouldBe(1); f.Keys.Leases.ShouldBe(1);
+        }
+        finally { release.Set(); }
+    }
+    /// <summary>Only pure local path capture runs after abandonment; no late key, reservation, encryption or writer mutation occurs.</summary>
+    [Theory]
+    [InlineData("enumerator", false)]
+    [InlineData("enumerator", true)]
+    [InlineData("move", false)]
+    [InlineData("move", true)]
+    [InlineData("current", false)]
+    [InlineData("current", true)]
+    public async Task SuspendedPathTraversalIsBounded(string stage, bool deadlineExpires)
+    {
+        var f = new InteractionOccurrenceProtectorFixture();
+        var (clock, advance) = CaptureClock();
+        var adapter = new InteractionOccurrenceProtector(f.Registry, f.Keys, clock);
+        using var release = new ManualResetEventSlim(); using var caller = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Suspend() { entered.TrySetResult(); release.Wait(); finished.TrySetResult(); }
+        var paths = Substitute.For<IReadOnlyCollection<string>>();
+        // The normative codec consumes IEnumerable; Count is deliberately not consulted.
+        paths.Count.Returns(1);
+        var iterator = Substitute.For<IEnumerator<string>>(); int moves = 0;
+        paths.GetEnumerator().Returns(_ => { if (stage == "enumerator") { Suspend(); } return iterator; });
+        iterator.MoveNext().Returns(_ => { if (++moves > 1) { return false; } if (stage == "move") { Suspend(); } return true; });
+        iterator.Current.Returns(_ => { if (stage == "current") { Suspend(); } return "/ProtectedContent"; });
+        byte[] source = Payload(); byte[] original = source.ToArray();
+        var operation = Task.Run(() => adapter.ProtectEventAsync(source, paths, f.Identity, "digest-v1", 1,
+            InteractionOccurrenceProtectorFixture.Reference, caller.Token), TestContext.Current.CancellationToken);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        try
+        {
+            if (deadlineExpires)
+            {
+                advance(TimeSpan.FromSeconds(30));
+                await Should.ThrowAsync<TimeoutException>(() => operation.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+            }
+            else
+            {
+                caller.Cancel();
+                var error = await Should.ThrowAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+                error.CancellationToken.ShouldBe(caller.Token);
+            }
+            operation.IsCompleted.ShouldBeTrue();
+            release.Set(); await finished.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            source.ShouldBe(original); f.Record.ShouldBeNull(); f.Registry.ReceivedCalls().ShouldBeEmpty();
+            f.OwnedBuffers.ShouldBeEmpty(); f.Keys.Leases.ShouldBe(0); f.Keys.WriteRoots.ShouldBe(0);
+            _ = paths.DidNotReceive().Count;
+        }
+        finally { release.Set(); }
+    }
+
+    private static (TimeProvider Clock, Action<TimeSpan> Advance) CaptureClock()
+    {
+        var clock = Substitute.For<TimeProvider>(); long ticks = 0;
+        var observations = new System.Collections.Concurrent.ConcurrentDictionary<int, long>();
+        var timers = new System.Collections.Concurrent.ConcurrentDictionary<int, (long Due, Action Fire)>(); int next = 0;
+        clock.TimestampFrequency.Returns(TimeSpan.TicksPerSecond);
+        clock.GetTimestamp().Returns(_ => { long current = Interlocked.Read(ref ticks); observations[Environment.CurrentManagedThreadId] = current; return current; });
+        clock.CreateTimer(Arg.Any<TimerCallback>(), Arg.Any<object?>(), Arg.Any<TimeSpan>(), Arg.Any<TimeSpan>()).Returns(call =>
+        {
+            int id = Interlocked.Increment(ref next); var timer = Substitute.For<ITimer>();
+            timers[id] = (observations.GetValueOrDefault(Environment.CurrentManagedThreadId) + call.ArgAt<TimeSpan>(2).Ticks,
+                () => call.Arg<TimerCallback>()(call.ArgAt<object?>(1)));
+            timer.When(value => value.Dispose()).Do(callInfo => timers.TryRemove(id, out _));
+            if (timers[id].Due <= Interlocked.Read(ref ticks)) { timers[id].Fire(); }
+            return timer;
+        });
+        return (clock, elapsed => { long current = Interlocked.Add(ref ticks, elapsed.Ticks); foreach (var timer in timers.Values) { if (timer.Due <= current) { timer.Fire(); } } });
+    }
+
 }

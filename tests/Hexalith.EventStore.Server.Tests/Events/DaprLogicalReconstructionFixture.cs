@@ -5,6 +5,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Server.Tests.Events;
@@ -14,7 +15,7 @@ internal sealed class DaprLogicalReconstructionFixture : IAsyncDisposable
 {
     /// <summary>Creates an addressed source and canonical operation binding.</summary>
     internal DaprLogicalReconstructionFixture(int events = 3, int workingBytes = 16384, bool mixedHistory = false,
-        int maximumBufferBytes = 128 * 1024 * 1024, int payloadBytes = 2)
+        int maximumBufferBytes = 128 * 1024 * 1024, int payloadBytes = 2, CommandEnvelope? command = null)
     {
         Source = new DaprLogicalReplayFixture(events, payloadBytes, mixedHistory);
         if (!mixedHistory && payloadBytes > 2)
@@ -32,7 +33,7 @@ internal sealed class DaprLogicalReconstructionFixture : IAsyncDisposable
         }
         Binding = new RegisteredLogicalReplayBinding(typeof(DaprLogicalReconstructionTestState), Source.Service, "r", "test-state-json",
             "{}\n"u8.ToArray(), Create, Read, Write, Apply, 32, workingBytes);
-        Owner = new DaprReplayOperationOwner(Store.Manager, "tenant", "operation", maximumBufferBytes, Binding);
+        Owner = new DaprReplayOperationOwner(Store.Manager, "tenant", "operation", maximumBufferBytes, Binding, command);
     }
 
     /// <summary>Gets the real addressed source and shared catalog.</summary>
@@ -101,6 +102,9 @@ internal sealed class DaprLogicalReconstructionFixture : IAsyncDisposable
         get; set;
     }
 
+    /// <summary>Gets or sets deterministic noncanonical padding for snapshot replacement roundtrip controls.</summary>
+    internal bool AlwaysNoncanonical { get; set; }
+
     /// <summary>Gets or sets whether the writer emits malformed state JSON.</summary>
     internal bool Malformed
     {
@@ -162,7 +166,7 @@ internal sealed class DaprLogicalReconstructionFixture : IAsyncDisposable
         }
 
         string image = Malformed ? "invalid" : "{\"value\":" + ((DaprLogicalReconstructionTestState)value).Value.ToString(CultureInfo.InvariantCulture) + "}";
-        if (Noncanonical && Writes % 2 == 1)
+        if (AlwaysNoncanonical || Noncanonical && Writes % 2 == 1)
         {
             image += " ";
         }

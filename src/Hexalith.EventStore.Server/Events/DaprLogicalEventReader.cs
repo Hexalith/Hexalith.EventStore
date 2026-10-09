@@ -56,10 +56,22 @@ internal sealed class DaprLogicalEventReader
         CancellationToken cancellationToken, string? expectedAggregateType, EventBufferBudget budget,
         long maximumStoredBytes, long maximumReadableBytes, bool requireUnversioned, LegacyEventArrayBudget? arrayBudget)
     {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sequenceNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+        ConditionalValue<AggregateMetadata> before = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
         using DaprLogicalEventPreparation prepared = await PrepareCoreAsync(identity, sequenceNumber,
             cancellationToken, expectedAggregateType, budget, maximumStoredBytes, maximumReadableBytes,
             requireUnversioned, arrayBudget).ConfigureAwait(false);
-        return await ResolvePreparedAsync(prepared, budget, cancellationToken).ConfigureAwait(false);
+        async Task RequirePreparedAsync(CancellationToken token)
+        {
+            _resolver.RequireNoObservedLoss(token);
+            prepared.RequireStoredUnchanged();
+            await RequireStableMetadataAsync(identity, before, token).ConfigureAwait(false);
+            _resolver.RequireNoObservedLoss(token);
+            prepared.RequireStoredUnchanged();
+        }
+        return await ResolvePreparedAsync(prepared, budget, cancellationToken, RequirePreparedAsync).ConfigureAwait(false);
     }
 
     private async Task<DaprLogicalEventPreparation> PrepareCoreAsync(AggregateIdentity identity, long sequenceNumber,
@@ -254,7 +266,7 @@ internal sealed class DaprLogicalEventReader
     }
 
     private async Task<DaprLogicalEventView> ResolvePreparedAsync(DaprLogicalEventPreparation prepared,
-        EventBufferBudget budget, CancellationToken cancellationToken)
+        EventBufferBudget budget, CancellationToken cancellationToken, Func<CancellationToken, Task>? sourceFence = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         prepared.RequireStoredUnchanged();
@@ -262,7 +274,7 @@ internal sealed class DaprLogicalEventReader
         ResolvedLogicalEvent resolved = await _resolver.ResolveOwnedAsync(source.Domain,
             source.EventTypeName, source.MetadataVersion, source.EventContractType, source.PayloadVersion,
             prepared.ReadableFormat, prepared.TakeReadablePayload(), budget, cancellationToken,
-            source.AggregateType).ConfigureAwait(false);
+            source.AggregateType, sourceFence).ConfigureAwait(false);
         EventBufferReservation? metadataReservation = null;
         try
         {
@@ -287,7 +299,7 @@ internal sealed class DaprLogicalEventReader
         long startSequence, int maxCount, CancellationToken cancellationToken,
         long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null,
         bool requireUnversioned = false, LegacyEventArrayBudget? arrayBudget = null,
-        DaprLogicalSourceBinding? expectedSourceBinding = null)
+        DaprLogicalSourceBinding? expectedSourceBinding = null, Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
@@ -356,9 +368,20 @@ internal sealed class DaprLogicalEventReader
                 input.RequireStoredUnchanged();
             }
 
+            async Task RequirePreparedPageAsync(CancellationToken token)
+            {
+                _resolver.RequireNoObservedLoss(token);
+                foreach (DaprLogicalEventPreparation input in prepared) { input.RequireStoredUnchanged(); }
+                await RequireStableMetadataAsync(identity, before, token).ConfigureAwait(false);
+                if (sourceFence is not null) { await sourceFence(token).ConfigureAwait(false); }
+                _resolver.RequireNoObservedLoss(token);
+                foreach (DaprLogicalEventPreparation input in prepared) { input.RequireStoredUnchanged(); }
+            }
+
             for (int index = 0; index < count; index++)
             {
-                views[index] = await ResolvePreparedAsync(prepared[index], budget, cancellationToken).ConfigureAwait(false);
+                views[index] = await ResolvePreparedAsync(prepared[index], budget, cancellationToken,
+                    RequirePreparedPageAsync).ConfigureAwait(false);
             }
 
             if (count > 0)

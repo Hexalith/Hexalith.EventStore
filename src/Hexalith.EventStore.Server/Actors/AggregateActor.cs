@@ -1392,6 +1392,7 @@ public partial class AggregateActor(
                         if (serviceProvider?.GetService(typeof(Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration))
                             is Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration publicationRegistration) {
                             await publicationRegistration.RegisterBeforeWriteAsync(command.AggregateIdentity, cancellationToken).ConfigureAwait(false);
+                            await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         }
                         persistResult = await eventPersister
                             .PersistEventsAsync(

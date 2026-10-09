@@ -1,0 +1,213 @@
+{
+  "scope": "baseline inspection only; application was stopped before runtime work",
+  "startExitCode": 0,
+  "describeExitCode": 0,
+  "stopExitCode": 0,
+  "apphost": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "resources": [
+    {
+      "name": "eventstore-admin-dapr-cli-mwdwthcp",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-admin-enpdkrkp",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-kkdufpnc",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-admin-ui-sxajfrqs",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-dapr-cli-rseprcfa",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "eventstore-euerdnqt",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-admin-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-admin-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-sample-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-sample-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-signing-key",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "local-auth-workload-client-secret",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "sample-api-dapr-cli-xzbfvtpf",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "sample-api-xpwutsak",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "sample-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-pymekpzq",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "sample-blazor-ui-sxsbvtnx",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "sample-dapr-cli-qvrxucga",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "sample-ppfcbnre",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "security-eventstore-client-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "security-eventstore-client-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "security-gcagwrdk",
+      "resourceType": "Container",
+      "state": "Running",
+      "healthReports": [
+        {}
+      ]
+    },
+    {
+      "name": "tenants-api-dapr-cli-yfqvqhen",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "tenants-api-dzfzkzvh",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "tenants-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthReports": []
+    },
+    {
+      "name": "tenants-dapr-cli-vtvztnsc",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "healthReports": []
+    },
+    {
+      "name": "tenants-ytuvuusj",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "healthReports": []
+    }
+  ],
+  "rawArtifacts": [
+    {
+      "path": "/tmp/story66-logical-snapshot-aspire-start.log",
+      "sha256": "2a8b158213ff1e615809b1a4d6e28c6afa8fea5f05879742324af4bc6b3d5f50",
+      "bytes": 434,
+      "retainedContent": false
+    },
+    {
+      "path": "/tmp/story66-logical-snapshot-aspire-describe.json",
+      "sha256": "49bc476d38096382430b150cd6ce9adbf4363cc4ccd937c5734020673aa74820",
+      "bytes": 65501,
+      "retainedContent": false
+    },
+    {
+      "path": "/tmp/story66-logical-snapshot-aspire-stop.log",
+      "sha256": "e122616cb442df5e99ecbf0effb30d593310441376a97f585f12770f6977e570",
+      "bytes": 399,
+      "retainedContent": false
+    }
+  ],
+  "credentialsAndEnvironmentOmitted": true,
+  "actualServingQualification": false
+}
