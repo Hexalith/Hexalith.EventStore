@@ -25,14 +25,6 @@ public class EventPersisterTests {
 
     private sealed record TestRejectionEvent(string Reason = "rejected") : IRejectionEvent;
 
-    private sealed record SerializedVersionedEvent(
-        string EventTypeName,
-        byte[] PayloadBytes,
-        string SerializationFormat,
-        int? MetadataVersion,
-        string? EventContractType,
-        int? PayloadVersion) : ISerializedEventPayload;
-
     private sealed class FakeGlobalPositionAllocator(long nextPosition = 1) : IGlobalPositionAllocator {
         private long _nextPosition = nextPosition;
 
@@ -326,8 +318,8 @@ public class EventPersisterTests {
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         var allocator = new FakeGlobalPositionAllocator();
         var persister = new EventPersister(stateManager, Substitute.For<ILogger<EventPersister>>(), protection, allocator);
-        var serialized = new SerializedVersionedEvent(
-            "order-created", [1, 2, 3], "json", 2, "order-created", 3);
+        var serialized = new SerializedDomainEventPayload(
+            "order-created", "{}"u8.ToArray(), "json", 2, "order-created", 3);
 
         InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => persister.PersistEventsAsync(
             TestIdentity, "order", CreateTestCommand(), DomainResult.Success([serialized]), "v2"));
@@ -355,8 +347,8 @@ public class EventPersisterTests {
         int? payloadVersion) {
         (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) = CreatePersisterWithAllocator();
         ConfigureNoMetadata(stateManager);
-        var serialized = new SerializedVersionedEvent(
-            "order-created", [1], "json", metadataVersion, eventContractType, payloadVersion);
+        var serialized = new SerializedDomainEventPayload(
+            "order-created", "{}"u8.ToArray(), "json", metadataVersion, eventContractType, payloadVersion);
 
         _ = await Should.ThrowAsync<ArgumentException>(() => persister.PersistEventsAsync(
             TestIdentity,

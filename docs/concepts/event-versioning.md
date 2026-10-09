@@ -54,6 +54,19 @@ public string TargetEventTypeName => typeof(CounterIncremented).FullName!;
 
 A later step uses the target name. Keep historical names in the upcaster chain even if the old CLR type has been retired. The SDK resolves full, short, and anchored alias names and runs a registered rename before treating an old CLR type as terminal.
 
+## Domain service version routing
+
+The resolver checks registrations in this order for the requested domain service version:
+
+1. exact static registration keyed by `tenant:domain:version`
+2. exact static registration keyed by `tenant|domain|version`
+3. pipe wildcard static registration keyed by `*|domain|version`
+4. sanitized wildcard static registration keyed by `wildcard_{domain}_{version}`
+5. opt-in DAPR config-store lookup when `ConfigStoreName` is non-empty
+6. convention fallback: `AppId = domain`, `MethodName = "process"`
+
+See the [configuration reference](../guides/configuration-reference.md#domain-services) for supported key formats and deployment settings.
+
 ## Deploy in order
 
 1. Deploy the Story 6.6 EventStore server release to **every server replica**. Older replicas can discard a new `PayloadVersion` permanently or reject its write.

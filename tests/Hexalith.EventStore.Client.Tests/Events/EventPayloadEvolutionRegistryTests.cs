@@ -57,6 +57,27 @@ public sealed class EventPayloadEvolutionRegistryTests
     }
 
     [Fact]
+    public void ReadForReplay_RejectsEffectivePayloadExpandedPastReadableLimit()
+    {
+        string name = typeof(VersionedTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry(
+            [typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null, static payload => payload),
+             new TestPayloadUpcaster(name, 2, null, static payload =>
+             {
+                 payload["Value"] = new string('x', 64 * 1024 * 1024);
+                 return payload;
+             })]);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            registry.ReadForReplay(name, 1, "{}"u8.ToArray(), 4));
+
+        failure.EventTypeName.ShouldBe(name);
+        failure.SequenceNumber.ShouldBe(4);
+        failure.Message.ShouldContain("payload exceeds the readable limit");
+    }
+
+    [Fact]
     public void Read_HistoricalAliasWithMissingVersionFailsTyped()
     {
         var registry = new EventPayloadEvolutionRegistry(

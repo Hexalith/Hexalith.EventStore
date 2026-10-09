@@ -21,7 +21,7 @@ public class SnapshotRehydrationTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateEvent(int seq) => new(
-        $"msg-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+        $"01J{seq:D23}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
         $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
         [1, 2, 3], null);
 

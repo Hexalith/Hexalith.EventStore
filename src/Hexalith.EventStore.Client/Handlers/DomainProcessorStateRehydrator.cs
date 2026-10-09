@@ -361,7 +361,7 @@ internal static class DomainProcessorStateRehydrator {
         cancellationToken.ThrowIfCancellationRequested();
         RequireSupportedReplayMetadata(envelope.Metadata.MetadataVersion, envelope.Metadata.SerializationFormat,
             envelope.Metadata.EventContractType, envelope.Metadata.PayloadVersion);
-        ResolvedEventPayload effective = evolution.Read(envelope.Metadata.EventTypeName,
+        ResolvedEventPayload effective = evolution.ReadForReplay(envelope.Metadata.EventTypeName,
             envelope.Metadata.PayloadVersion, envelope.Payload, envelope.Metadata.SequenceNumber);
         MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(
             applyMethods,
@@ -418,7 +418,7 @@ internal static class DomainProcessorStateRehydrator {
         byte[] storedPayload = payloadElement is { ValueKind: JsonValueKind.String } encoded
             ? input.DecodePayload(encoded)
             : JsonSerializer.SerializeToUtf8Bytes(payloadElement ?? eventElement, EventStorePayloadSerialization.Options);
-        ResolvedEventPayload effective = evolution.Read(eventTypeName, storedVersion, storedPayload, sequence);
+        ResolvedEventPayload effective = evolution.ReadForReplay(eventTypeName, storedVersion, storedPayload, sequence);
         MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, effective.EventTypeName) ?? throw new MissingApplyMethodException(
                 stateType: typeof(TState),
                 eventTypeName: eventTypeName);

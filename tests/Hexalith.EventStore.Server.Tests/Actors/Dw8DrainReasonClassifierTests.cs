@@ -208,7 +208,7 @@ public class Dw8DrainReasonClassifierTests {
         int startSequence = 1) {
         for (int seq = startSequence; seq < startSequence + eventCount; seq++) {
             var evt = new EventEnvelope(
-                "msg-1",
+                Guid.NewGuid().ToString(),
                 "agg-001",
                 "test-aggregate",
                 "test-tenant",

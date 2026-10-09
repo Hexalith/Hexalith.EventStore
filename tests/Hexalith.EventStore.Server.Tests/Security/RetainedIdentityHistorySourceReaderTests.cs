@@ -357,8 +357,8 @@ public sealed class RetainedIdentityHistorySourceReaderTests
     [InlineData("metadata-version", true)]
     [InlineData("event-contract", false)]
     [InlineData("event-contract", true)]
-    [InlineData("payload-version", false)]
-    [InlineData("payload-version", true)]
+    [InlineData("payload-version-out-of-range", false)]
+    [InlineData("payload-version-out-of-range", true)]
     public async Task UnsupportedStoredMetadata_DeniesBeforeCustody(string corruption, bool excludedProfile)
     {
         RetainedIdentityHistorySourceReader reader = Arrange();
@@ -370,7 +370,7 @@ public sealed class RetainedIdentityHistorySourceReaderTests
             "redacted" => changed with { SerializationFormat = "json-redacted" },
             "metadata-version" => changed with { MetadataVersion = 2 },
             "event-contract" => changed with { EventContractType = "future-event" },
-            _ => changed with { PayloadVersion = 2 },
+            _ => changed with { PayloadVersion = 1025 },
         };
         _actor.ReadEventsRangeAsync(0, 2, 100).Returns(excludedProfile ? [changed, history] : [profile, changed]);
 

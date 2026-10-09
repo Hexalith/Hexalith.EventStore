@@ -309,7 +309,7 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
-                    "msg-1",
+                    Guid.NewGuid().ToString(),
                     "agg-001",
                     "test-aggregate",
                     "test-tenant",
@@ -333,7 +333,7 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
-                    "msg-1",
+                    Guid.NewGuid().ToString(),
                     "agg-001",
                     "test-aggregate",
                     "test-tenant",
@@ -412,7 +412,7 @@ public class StateMachineIntegrationTests {
         for (int sequence = 7; sequence <= 8; sequence++)
         {
             bool mutate = sequence == 7;
-            EventEnvelope envelope = new($"event-{sequence}", mutate && mismatch == "aggregate" ? "other" : command.AggregateId,
+            EventEnvelope envelope = new(Guid.NewGuid().ToString(), mutate && mismatch == "aggregate" ? "other" : command.AggregateId,
                 "test-aggregate", mutate && mismatch == "tenant" ? "other" : command.TenantId,
                 mutate && mismatch == "domain" ? "other" : command.Domain,
                 mutate && mismatch == "sequence" ? 6 : sequence, 0, DateTimeOffset.UtcNow,
@@ -481,7 +481,7 @@ public class StateMachineIntegrationTests {
                 .Returns(new ConditionalValue<EventEnvelope>(
                     true,
                     new EventEnvelope(
-                        "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
+                        Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
                         "corr-sm-test", "msg-sm-test", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
         }
 
@@ -537,7 +537,7 @@ public class StateMachineIntegrationTests {
                 .Returns(new ConditionalValue<EventEnvelope>(
                     true,
                     new EventEnvelope(
-                        "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
+                        Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
                         "corr-sm-test", "corr-sm-test", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
         }
 
@@ -592,7 +592,7 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
-                    "msg-1",
+                    Guid.NewGuid().ToString(),
                     "agg-001",
                     "test-aggregate",
                     "test-tenant",
@@ -616,7 +616,7 @@ public class StateMachineIntegrationTests {
             .Returns(new ConditionalValue<EventEnvelope>(
                 true,
                 new EventEnvelope(
-                    "msg-1",
+                    Guid.NewGuid().ToString(),
                     "agg-001",
                     "test-aggregate",
                     "test-tenant",
@@ -775,7 +775,7 @@ public class StateMachineIntegrationTests {
                 .Returns(new ConditionalValue<EventEnvelope>(
                     true,
                     new EventEnvelope(
-                        "old-message",
+                        Guid.NewGuid().ToString(),
                         "agg-001",
                         "test-aggregate",
                         "test-tenant",

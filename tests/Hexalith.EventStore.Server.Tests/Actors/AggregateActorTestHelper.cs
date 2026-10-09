@@ -153,7 +153,7 @@ internal static class AggregateActorTestHelper {
         for (int i = 1; i <= eventCount; i++) {
             int seq = i;
             var evt = new EventEnvelope(
-                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                 $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())

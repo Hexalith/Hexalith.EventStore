@@ -96,7 +96,7 @@ public sealed class DaprProductionLogicalEventReaderTests
         using DaprLogicalEventPage page = await reader.ReadPageAsync(
             Identity, "r", 1, 1, CancellationToken.None).ConfigureAwait(true);
 
-        page.Events.ShouldHaveSingleItem().MessageId.ShouldBe("message");
+        page.Events.ShouldHaveSingleItem().MessageId.ShouldBe("01J00000000000000000000001");
         page.Events[0].Source.Payload.ShouldBe(stored.Payload);
         stored.Payload.ShouldBe([1, 2]);
         DaprProductionLogicalEventReader.IsZeroHopV1(page.Events[0]).ShouldBeTrue();
@@ -815,9 +815,9 @@ public sealed class DaprProductionLogicalEventReaderTests
             protection,
             allocator);
         var versioned = new SerializedDomainEventPayload(
-            "order-created", [1, 2, 3], "json", 2, "order-created", 2);
+            "order-created", "{}"u8.ToArray(), "json", 2, "order-created", 2);
         var command = new CommandEnvelope(
-            MessageId: "message",
+            MessageId: "01J00000000000000000000001",
             TenantId: Identity.TenantId,
             Domain: Identity.Domain,
             AggregateId: Identity.AggregateId,
@@ -1022,7 +1022,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(head, DateTimeOffset.UnixEpoch, "etag")));
         for (int sequence = 1; sequence <= count; sequence++)
         {
-            EventEnvelope envelope = stored with { SequenceNumber = sequence, MessageId = sequence == 1 ? stored.MessageId : $"message-{sequence}" };
+            EventEnvelope envelope = stored with { SequenceNumber = sequence, MessageId = $"01J{sequence:D23}" };
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"{Identity.EventStreamKeyPrefix}{sequence}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, envelope));
@@ -1048,7 +1048,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             new NoOpEventPayloadProtectionService());
 
     private static EventEnvelope CreateEvent() => new(
-        MessageId: "message", AggregateId: "aggregate", AggregateType: "r", TenantId: "tenant",
+        MessageId: "01J00000000000000000000001", AggregateId: "aggregate", AggregateType: "r", TenantId: "tenant",
         Domain: "d", SequenceNumber: 1, GlobalPosition: 0, Timestamp: DateTimeOffset.UnixEpoch,
         CorrelationId: "correlation", CausationId: "causation", UserId: "user",
         DomainServiceVersion: "v1", EventTypeName: "Legacy.Event", MetadataVersion: 1,
@@ -1092,7 +1092,7 @@ public sealed class DaprProductionLogicalEventReaderTests
             EventEnvelope envelope = CreateEvent() with
             {
                 SequenceNumber = sequence,
-                MessageId = UniqueIdHelper.GenerateSortableUniqueStringId(),
+                MessageId = $"01J{sequence:D23}",
                 Payload = [9, (byte)sequence],
             };
             byte[] plaintext = JsonSerializer.SerializeToUtf8Bytes(new Legacy.Event(sequence));

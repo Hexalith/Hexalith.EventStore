@@ -18,7 +18,7 @@ public sealed class EventEvolutionLegacyIntakeTests
     [Theory]
     [InlineData(2, "evt", 1)]
     [InlineData(1, "evt", 1)]
-    [InlineData(1, null, 1)]
+    [InlineData(1, null, 0)]
     public async Task ReplayRefusesVersionedBatchBeforeSyncOrAsyncRouteSelection(int metadataVersion, string? type, int? version)
     {
         IServiceProvider provider = Substitute.For<IServiceProvider>();
@@ -58,7 +58,7 @@ public sealed class EventEvolutionLegacyIntakeTests
     [Theory]
     [InlineData(2, "evt", 1)]
     [InlineData(1, "evt", 1)]
-    [InlineData(1, null, 1)]
+    [InlineData(1, null, 0)]
     public async Task EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(int metadataVersion, string? type, int? version)
     {
         IServiceProvider provider = Substitute.For<IServiceProvider>();

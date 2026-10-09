@@ -2872,7 +2872,7 @@ public class AggregateActorInfrastructureFailureTests
 
     private static EventEnvelope CreateEvent(AggregateIdentity identity, long sequence, string messageId)
         => new(
-            messageId,
+            Guid.TryParse(messageId, out _) ? messageId : Guid.NewGuid().ToString(),
             identity.AggregateId,
             "test-aggregate",
             identity.TenantId,

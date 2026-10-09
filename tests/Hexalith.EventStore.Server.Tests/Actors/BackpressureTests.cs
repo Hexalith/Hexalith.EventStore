@@ -374,7 +374,7 @@ public class BackpressureTests {
         // Configure events in state
         for (int seq = 1; seq <= 2; seq++) {
             var evt = new EventEnvelope(
-                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                 "corr-drain", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(

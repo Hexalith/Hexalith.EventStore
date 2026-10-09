@@ -17,7 +17,7 @@ public class EventStreamReaderTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static EventEnvelope CreateTestEvent(int seq) => new(
-        MessageId: $"msg-{seq}",
+        MessageId: $"01J{seq:D23}",
         AggregateId: "agg-001",
         AggregateType: "test-aggregate",
         TenantId: "test-tenant",

@@ -74,8 +74,8 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
 
         IDomainProjectionHandler legacy = Substitute.For<IDomainProjectionHandler>();
         legacy.Domain.Returns(Domain);
-        legacy.Project(Arg.Any<ProjectionRequest>()).Returns(call => {
-            ProjectionRebuildEquivalenceSnapshot snapshot = BuildSnapshot(call.Arg<ProjectionRequest>());
+        legacy.Project(Arg.Any<ProjectionRequest>(), Arg.Any<CancellationToken>()).Returns(call => {
+            ProjectionRebuildEquivalenceSnapshot snapshot = BuildSnapshot(call.ArgAt<ProjectionRequest>(0));
             return new ProjectionResponse(
                 DetailProjectionType,
                 JsonSerializer.SerializeToElement(snapshot.Detail, JsonSerializerOptions.Web));

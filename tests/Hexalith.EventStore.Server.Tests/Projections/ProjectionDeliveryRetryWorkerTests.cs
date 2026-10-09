@@ -58,7 +58,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 && registration.Version == "v1"),
             Arg.Is<EventEnvelope[]>(events => events.Length == 2
                 && events[events.Length - 1].SequenceNumber == 2
-                && events[events.Length - 1].MessageId == "message-2"),
+                && events[events.Length - 1].MessageId == "01J00000000000000000000002"),
             Arg.Is<Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[]>(events => events.Length == 2),
             Arg.Any<CancellationToken>());
     }
@@ -102,8 +102,8 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         ProjectionDeliveryRetryWorkItem workItem = WorkItem(now) with {
             HeadSequence = 300,
-            HeadMessageId = "message-300",
-            DispatchId = "message-300",
+            HeadMessageId = "01J00000000000000000000300",
+            DispatchId = "01J00000000000000000000300",
         };
         IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
         _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>())
@@ -345,10 +345,10 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
             "widget-service",
             "v1",
             2,
-            "message-2",
+            "01J00000000000000000000002",
             ["widget-detail"],
             [],
-            "message-2",
+            "01J00000000000000000000002",
             "fingerprint",
             0,
             dueUtc,
@@ -356,7 +356,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
 
     private static EventEnvelope Envelope(long sequence)
         => new(
-            $"message-{sequence}",
+            $"01J{sequence:D23}",
             "widget-1",
             "widget",
             "tenant-a",

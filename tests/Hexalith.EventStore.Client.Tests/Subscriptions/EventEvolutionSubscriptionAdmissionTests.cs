@@ -21,7 +21,7 @@ public sealed class EventEvolutionSubscriptionAdmissionTests
     [InlineData(2, "evt", 1)]
     [InlineData(1, "evt", 1)]
     [InlineData(1, "evt", null)]
-    [InlineData(1, null, 1)]
+    [InlineData(1, null, 0)]
     [InlineData(0, null, null)]
     public async Task UnsupportedVersionedDeliveryRefusesBeforeAnyMarkerOrHandler(int metadataVersion, string? type, int? version)
     {

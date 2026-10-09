@@ -109,9 +109,7 @@ public class EventDrainRecoveryTests {
         MessageId: messageId);
 
     /// <summary>
-    /// Seeds the persisted event range. Story 4.4: each seeded event carries a DISTINCT message id
-    /// derived from its sequence, so an identity assertion of the form
-    /// <c>ShouldAllBe(id =&gt; id == "msg-1")</c> can no longer be satisfied by the fixture itself.
+    /// Seeds the persisted event range with distinct, valid stored message IDs.
     /// </summary>
     private static void ConfigureEventsInState(
         IActorStateManager stateManager,
@@ -127,7 +125,7 @@ public class EventDrainRecoveryTests {
 
         for (int seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
-                $"evt-msg-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                 correlationId, causationId ?? $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
@@ -149,7 +147,7 @@ public class EventDrainRecoveryTests {
             }
 
             var evt = new EventEnvelope(
-                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                 correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
@@ -374,7 +372,7 @@ public class EventDrainRecoveryTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(30, DateTimeOffset.UtcNow, null)));
         if (scenario is "wrong-scope" or "wrong-domain" or "wrong-aggregate" or "wrong-sequence" or "wrong-correlation" or "wrong-causation")
         {
-            EventEnvelope mismatched = new("event-7", scenario is "wrong-aggregate" ? "other" : "agg-001", "test-aggregate", scenario is "wrong-scope" ? "other" : "test-tenant",
+            EventEnvelope mismatched = new(Guid.NewGuid().ToString(), scenario is "wrong-aggregate" ? "other" : "agg-001", "test-aggregate", scenario is "wrong-scope" ? "other" : "test-tenant",
                 scenario is "wrong-domain" ? "other" : "test-domain", scenario is "wrong-sequence" ? 6 : 7, 0, DateTimeOffset.UtcNow,
                 scenario is "wrong-correlation" ? "other" : "corr-drain",
                 scenario is "wrong-causation" ? "other" : "cause-drain",
@@ -484,7 +482,7 @@ public class EventDrainRecoveryTests {
         for (int sequence = 1; sequence <= 2; sequence++)
         {
             await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", new EventEnvelope(
-                $"evt-{sequence}", "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
                 DateTimeOffset.UtcNow, correlationId, "cause-stale", "system", "1.0.0", "OrderCreated", 1, "json", [1], null))
                 .ConfigureAwait(true);
         }
@@ -529,7 +527,7 @@ public class EventDrainRecoveryTests {
         for (int sequence = 1; sequence <= 2; sequence++)
         {
             await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", new EventEnvelope(
-                $"evt-{sequence}", "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
                 DateTimeOffset.UtcNow, correlationId, causationId, "system", "1.0.0", "OrderCreated", 1, "json", [1], null))
                 .ConfigureAwait(true);
         }
@@ -619,7 +617,7 @@ public class EventDrainRecoveryTests {
             EventCount: 2, MessageId: messageId, CommandType: record.CommandType,
             ExpiresAt: now.AddHours(1), Disposition: IdempotencyRecordDisposition.Recoverable);
         var events = Enumerable.Range(7, 2).Select(sequence => new EventEnvelope(
-            $"event-{sequence}", "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
             now, record.CorrelationId, "cause-drain", "user", "1.0.0", "OrderCreated", 1, "json", [1], null)).ToArray();
         await state.SetStateAsync($"drain:{messageId}", record).ConfigureAwait(true);
         await state.SetStateAsync($"idempotency:{messageId}", recoverable).ConfigureAwait(true);
@@ -761,7 +759,7 @@ public class EventDrainRecoveryTests {
             eventCount: 1,
             messageId: "msg-cleanup-ambiguous");
         EventEnvelope persistedEvent = new(
-            "evt-cleanup", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
             DateTimeOffset.UtcNow, record.CorrelationId, "cause-cleanup", "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
@@ -806,7 +804,7 @@ public class EventDrainRecoveryTests {
             eventCount: 1,
             messageId: "msg-cleanup-cancel");
         EventEnvelope persistedEvent = new(
-            "evt-cleanup-cancel", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
             DateTimeOffset.UtcNow, record.CorrelationId, "cause-cleanup", "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
@@ -970,7 +968,7 @@ public class EventDrainRecoveryTests {
             eventCount: 1,
             messageId: "msg-retry-remediation");
         EventEnvelope persistedEvent = new(
-            "evt-retry-remediation", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
             DateTimeOffset.UtcNow, record.CorrelationId, "cause-retry", "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {

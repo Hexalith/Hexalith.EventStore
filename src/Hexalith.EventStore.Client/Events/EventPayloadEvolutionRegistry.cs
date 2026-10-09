@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Client.Events;
 /// <summary>Validates immutable JSON upcast chains and resolves known stored events before deserialization.</summary>
 public sealed class EventPayloadEvolutionRegistry
 {
+    private const int MaximumPayloadBytes = 64 * 1024 * 1024;
     private static readonly JsonNodeOptions s_nodeOptions = new() { PropertyNameCaseInsensitive = true };
     private static readonly JsonDocumentOptions s_documentOptions = new() { MaxDepth = 64 };
     private static readonly ConcurrentDictionary<Type, EventPayloadEvolutionRegistry> s_applyRegistries = new();
@@ -58,14 +59,45 @@ public sealed class EventPayloadEvolutionRegistry
     public static EventPayloadEvolutionRegistry ForApplyState(Type stateType)
     {
         ArgumentNullException.ThrowIfNull(stateType);
-        return s_applyRegistries.GetOrAdd(stateType, static type => new EventPayloadEvolutionRegistry(
-            ApplyMethodResolver.GetOrBuildTable(type).ByType.Keys,
-            DiscoverUpcasters(type.Assembly)));
+        return s_applyRegistries.GetOrAdd(stateType, static type =>
+        {
+            Type[] knownTypes = [.. ApplyMethodResolver.GetOrBuildTable(type).ByType.Keys];
+            IEventPayloadUpcaster[] candidates = [.. DiscoverUpcasters(type.Assembly)];
+            var relevantNames = new HashSet<string>(knownTypes.Select(static known => known.FullName ?? known.Name), StringComparer.Ordinal);
+            var selected = new HashSet<IEventPayloadUpcaster>();
+            bool added;
+            do
+            {
+                added = false;
+                foreach (IEventPayloadUpcaster step in candidates)
+                {
+                    if (!selected.Contains(step) && relevantNames.Any(name => NamesMatch(name, step.TargetEventTypeName ?? step.EventTypeName)))
+                    {
+                        selected.Add(step);
+                        relevantNames.Add(step.EventTypeName);
+                        added = true;
+                    }
+                }
+            }
+            while (added);
+            return new EventPayloadEvolutionRegistry(knownTypes, selected);
+        });
     }
 
     /// <summary>Resolves and validates a known event, running each required step once in ascending order.</summary>
     public ResolvedEventPayload Read(string eventTypeName, int? storedPayloadVersion, byte[] payload, long sequenceNumber = 0,
         bool validateDeserialization = true)
+        => ReadCore(eventTypeName, storedPayloadVersion, payload, sequenceNumber, validateDeserialization,
+            deferCurrentPayloadValidation: false);
+
+    /// <summary>Resolves replay metadata while leaving payload validation to the replay batch preflight.</summary>
+    internal ResolvedEventPayload ReadForReplay(string eventTypeName, int? storedPayloadVersion, byte[] payload,
+        long sequenceNumber = 0)
+        => ReadCore(eventTypeName, storedPayloadVersion, payload, sequenceNumber, validateDeserialization: false,
+            deferCurrentPayloadValidation: true);
+
+    private ResolvedEventPayload ReadCore(string eventTypeName, int? storedPayloadVersion, byte[] payload,
+        long sequenceNumber, bool validateDeserialization, bool deferCurrentPayloadValidation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
         ArgumentNullException.ThrowIfNull(payload);
@@ -97,8 +129,16 @@ public sealed class EventPayloadEvolutionRegistry
                             $"missing step from {name} version {version}");
                     }
                     byte[] effective = json is null ? payload : JsonSerializer.SerializeToUtf8Bytes(json, EventStorePayloadSerialization.Options);
-                    ValidateCurrentJson(effective, terminal, eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
-                        validateDeserialization);
+                    if (deferCurrentPayloadValidation && effective.Length > MaximumPayloadBytes)
+                    {
+                        throw Failure(eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
+                            "payload exceeds the readable limit");
+                    }
+                    if (!deferCurrentPayloadValidation)
+                    {
+                        ValidateCurrentJson(effective, terminal, eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
+                            validateDeserialization);
+                    }
                     return new ResolvedEventPayload(terminal.FullName ?? terminal.Name, terminal, effective, version);
                 }
 
@@ -217,7 +257,7 @@ public sealed class EventPayloadEvolutionRegistry
 
     private static JsonObject ParseObject(byte[] payload, string name, int version, long sequence)
     {
-        if (payload.Length > 64 * 1024 * 1024)
+        if (payload.Length > MaximumPayloadBytes)
         {
             throw Failure(name, version, sequence, "payload exceeds the readable limit");
         }
@@ -235,7 +275,7 @@ public sealed class EventPayloadEvolutionRegistry
     private static void ValidateCurrentJson(byte[] payload, Type type, string name, int version, long sequence,
         bool validateDeserialization)
     {
-        if (payload.Length > 64 * 1024 * 1024)
+        if (payload.Length > MaximumPayloadBytes)
         {
             throw Failure(name, version, sequence, "payload exceeds the readable limit");
         }

@@ -357,17 +357,17 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_MalformedPayload_ReturnsFailedInvalidPayloadAndMarksCompleted() {
+    public async Task ProcessAsync_MalformedPayload_RemainsRetryableForCorrectedRedelivery() {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         byte[] garbage = Encoding.UTF8.GetBytes("{ not json");
         EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", garbage);
 
         EventStoreDomainEventProcessingResult first = await processor.ProcessAsync(envelope);
-        first.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        first.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
 
         EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope with { Payload = PayloadFor("t1", 7) });
-        retry.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
-        handler.Handled.ShouldBeEmpty();
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
     }
 
     [Fact]
@@ -460,8 +460,6 @@ public class EventStoreDomainEventProcessorTests {
 
         _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
         EventStoreDomainEventProcessingResult redelivery = await processor.ProcessAsync(envelope with {
-            AggregateId = " ",
-            EventTypeName = " ",
             SerializationFormat = " ",
             Payload = [],
         });
@@ -482,8 +480,7 @@ public class EventStoreDomainEventProcessorTests {
             new Dictionary<string, Type>(StringComparer.Ordinal),
             markerStore,
             NullLogger<EventStoreDomainEventProcessor>.Instance);
-        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, " ", []) with {
-            EventTypeName = " ",
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", []) with {
             SerializationFormat = " ",
         };
 
@@ -563,7 +560,7 @@ public class EventStoreDomainEventProcessorTests {
     [InlineData("EventTypeName")]
     [InlineData("CorrelationId")]
     [InlineData("SerializationFormat")]
-    public async Task ProcessAsync_BlankEnvelopeIdentity_ReturnsFailedInvalidPayload(string propertyName) {
+    public async Task ProcessAsync_BlankEnvelopeIdentity_ReturnsRetryableCapabilityMismatch(string propertyName) {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         EventStoreDomainEventEnvelope envelope = propertyName switch {
             "MessageId" => Envelope(" ", "t1", PayloadFor("t1", 1)),
@@ -576,19 +573,21 @@ public class EventStoreDomainEventProcessorTests {
 
         EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
 
-        result.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        result.ShouldBe(propertyName == "SerializationFormat"
+            ? EventStoreDomainEventProcessingResult.FailedInvalidPayload
+            : EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
         handler.Handled.ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task ProcessAsync_PostAcquisitionInvalidEnvelope_ReleasesForCorrectedRedelivery() {
+    public async Task ProcessAsync_InvalidIdentityAllowsCorrectedRedelivery() {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         EventStoreDomainEventEnvelope valid = Envelope(s_messageId, "t1", PayloadFor("t1", 1));
 
         EventStoreDomainEventProcessingResult invalid = await processor.ProcessAsync(valid with { AggregateId = " " });
         EventStoreDomainEventProcessingResult corrected = await processor.ProcessAsync(valid);
 
-        invalid.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        invalid.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
         corrected.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
         handler.Handled.Count.ShouldBe(1);
     }
@@ -607,7 +606,7 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_InvalidMessageId_ReturnsFailedInvalidPayloadBeforeMarkerAcquire() {
+    public async Task ProcessAsync_InvalidMessageId_ReturnsRetryableCapabilityMismatchBeforeMarkerAcquire() {
         var handler = new CapturingHandler();
         var markerStore = new FixedAcquisitionMarkerStore(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
         ServiceProvider provider = new ServiceCollection()
@@ -625,7 +624,7 @@ public class EventStoreDomainEventProcessorTests {
         EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(
             Envelope("not-a-ulid", "t1", PayloadFor("t1", 1)));
 
-        result.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
         markerStore.AcquireCount.ShouldBe(0);
         handler.Handled.ShouldBeEmpty();
     }

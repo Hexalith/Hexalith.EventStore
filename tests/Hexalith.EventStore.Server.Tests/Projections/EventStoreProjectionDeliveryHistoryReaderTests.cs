@@ -166,7 +166,7 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
     private static EventEnvelope Envelope(
         int sequence,
         EventStorePayloadProtectionMetadata? metadata) => new(
-            $"message-{sequence}",
+            $"01J{sequence:D23}",
             Identity.AggregateId,
             "Order",
             Identity.TenantId,

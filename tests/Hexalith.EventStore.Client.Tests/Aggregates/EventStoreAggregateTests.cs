@@ -120,7 +120,7 @@ public class EventStoreAggregateTests : IDisposable {
         EventMetadata metadata = P1RHydrationEvent(2).Metadata with
         {
             EventContractType = payloadVersion ? null : "counter.incremented",
-            PayloadVersion = payloadVersion ? 1 : null,
+            PayloadVersion = payloadVersion ? 0 : null,
         };
         EventEnvelope[] events = [first, new EventEnvelope(metadata, "{}"u8.ToArray(), null)];
         object currentState = enumerable ? events : new DomainServiceCurrentState(null, events, 0, 2);
@@ -142,7 +142,7 @@ public class EventStoreAggregateTests : IDisposable {
     [InlineData("\"serializationFormat\":\"json\",\"SerializationFormat\":\"protected+json\"")]
     [InlineData("\"SerializationFormat\":\"protected+json\",\"serializationFormat\":\"json\"")]
     [InlineData("\"EventContractType\":\"counter.incremented\"")]
-    [InlineData("\"PayloadVersion\":1")]
+    [InlineData("\"PayloadVersion\":0")]
     public async Task ProcessAsync_LateJsonMetadataAliasesRefuseBeforeConverters(string metadata)
     {
         using var scope = new CancellationTestScope();

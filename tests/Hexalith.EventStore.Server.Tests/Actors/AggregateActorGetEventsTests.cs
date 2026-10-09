@@ -52,7 +52,7 @@ public class AggregateActorGetEventsTests {
     }
 
     private static EventEnvelope CreateEvent(int seq) => new(
-        MessageId: $"msg-{seq}",
+        MessageId: Guid.NewGuid().ToString(),
         AggregateId: "counter-1",
         AggregateType: "counter",
         TenantId: "tenant-a",

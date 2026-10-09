@@ -42,7 +42,7 @@ public class ProjectionUpdateOrchestratorTests {
 
     private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1, string aggregateId = "agg-001") =>
         new(
-            MessageId: $"msg-{sequenceNumber}",
+            MessageId: $"01J{sequenceNumber:D23}",
             AggregateId: aggregateId,
             AggregateType: "test-aggregate",
             TenantId: "test-tenant",
@@ -2999,7 +2999,7 @@ public class ProjectionUpdateOrchestratorTests {
         body.AggregateId.ShouldBe("agg-001");
         body.Events.Length.ShouldBe(events.Length);
         body.Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 1, 2, 3 });
-        body.Events.Select(e => e.MessageId).ShouldBe(new string?[] { "msg-1", "msg-2", "msg-3" });
+        body.Events.Select(e => e.MessageId).ShouldBe(new string?[] { "01J00000000000000000000001", "01J00000000000000000000002", "01J00000000000000000000003" });
         body.Events.Select(e => e.UserId).ShouldBe(new string?[] { "user-1", "user-1", "user-1" });
     }
 

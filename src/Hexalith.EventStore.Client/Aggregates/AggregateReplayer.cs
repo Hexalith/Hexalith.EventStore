@@ -181,7 +181,7 @@ public static class AggregateReplayer {
 
             ResolvedEventPayload effective;
             try {
-                effective = evolution.Read(evt.EventTypeName, evt.StoredPayloadVersion, evt.Payload, evt.SequenceNumber);
+                effective = evolution.ReadForReplay(evt.EventTypeName, evt.StoredPayloadVersion, evt.Payload, evt.SequenceNumber);
             }
             catch (EventPayloadEvolutionException error) {
                 return AggregateReconstructionResult.Failed(
