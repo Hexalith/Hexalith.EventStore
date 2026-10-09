@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.DomainService;
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
-/// <item><description>Only <c>/health</c>, <c>/alive</c>, and <c>/ready</c> may carry anonymous metadata.</description></item>
+/// <item><description>Only probes and explicitly marked literal public endpoints may carry anonymous metadata.</description></item>
 /// <item><description>Every effective canonical operational route, including a host override, must carry its exact
 /// catalog policy (<see cref="EventStoreDomainServiceRoutes"/>) and no anonymous metadata.</description></item>
 /// <item><description>Every sidecar-originated route — <c>dapr/subscribe</c>, every pub/sub subscription, and every
@@ -43,19 +43,24 @@ public static class EventStoreDomainServiceEndpointInventory
             bool isProbe = EventStoreDomainServiceRoutes.AnonymousProbeRoutes.Contains(route, StringComparer.OrdinalIgnoreCase);
             bool isAnonymous = endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null;
             IReadOnlyList<IAuthorizeData> authorizeData = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>();
+            IReadOnlyList<EventStorePublicEndpointMetadata> publicMarkers = endpoint.Metadata.GetOrderedMetadata<EventStorePublicEndpointMetadata>();
             if (isProbe)
             {
-                continue;
-            }
+                if (publicMarkers.Count > 0)
+                {
+                    violations.Add($"{route}: a probe cannot carry a public-endpoint marker.");
+                }
 
-            if (isAnonymous)
-            {
-                violations.Add($"{route}: anonymous access is limited to {string.Join(", ", EventStoreDomainServiceRoutes.AnonymousProbeRoutes)}.");
                 continue;
             }
 
             if (IsSidecarOriginated(endpoint, route))
             {
+                if (isAnonymous || publicMarkers.Count > 0)
+                {
+                    violations.Add($"{route}: a sidecar-originated route cannot allow anonymous access or carry a public marker.");
+                }
+
                 if (!authorizeData.Any(static data => string.Equals(data.Policy, EventStoreDomainServicePolicies.SidecarChannel, StringComparison.Ordinal)))
                 {
                     violations.Add($"{route}: a sidecar-originated route must require policy '{EventStoreDomainServicePolicies.SidecarChannel}' (call RequireEventStoreSidecarChannel()).");
@@ -64,11 +69,38 @@ public static class EventStoreDomainServiceEndpointInventory
                 continue;
             }
 
-            if (EventStoreDomainServiceRoutes.TryGet(route, out EventStoreDomainServiceRoute? catalogRoute)
-                && SupportsPost(endpoint)
-                && !authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
+            if (EventStoreDomainServiceRoutes.TryGet(route, out EventStoreDomainServiceRoute? catalogRoute))
             {
-                violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
+                if (isAnonymous || publicMarkers.Count > 0)
+                {
+                    violations.Add($"{route}: a canonical route cannot be public.");
+                }
+
+                if (!authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
+                {
+                    violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
+                }
+
+                continue;
+            }
+
+            if (isAnonymous)
+            {
+                if (publicMarkers.Count != 1
+                    || !string.Equals(endpoint.RoutePattern.RawText, publicMarkers[0].Route, StringComparison.Ordinal)
+                    || route.IndexOfAny(['{', '}', '*', '?']) >= 0
+                    || !HasSinglePublicMethod(endpoint)
+                    || authorizeData.Count > 0)
+                {
+                    violations.Add($"{route}: anonymous access requires one exact public-endpoint marker on a literal GET or POST route without authorization metadata.");
+                }
+
+                continue;
+            }
+
+            if (publicMarkers.Count > 0)
+            {
+                violations.Add($"{route}: a public-endpoint marker requires anonymous metadata.");
                 continue;
             }
 
@@ -106,9 +138,11 @@ public static class EventStoreDomainServiceEndpointInventory
             || endpoint.Metadata.GetMetadata<ITopicMetadata>() is not null;
     }
 
-    private static bool SupportsPost(RouteEndpoint endpoint)
+    private static bool HasSinglePublicMethod(RouteEndpoint endpoint)
     {
         IHttpMethodMetadata? methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
-        return methods is null || methods.HttpMethods.Contains(HttpMethods.Post, StringComparer.OrdinalIgnoreCase);
+        return methods?.HttpMethods.Count == 1
+            && (string.Equals(methods.HttpMethods[0], HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(methods.HttpMethods[0], HttpMethods.Post, StringComparison.OrdinalIgnoreCase));
     }
 }

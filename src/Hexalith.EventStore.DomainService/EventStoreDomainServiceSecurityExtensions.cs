@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -134,5 +135,22 @@ public static class EventStoreDomainServiceSecurityExtensions
             }
         });
         return builder.RequireAuthorization(EventStoreDomainServicePolicies.SidecarChannel);
+    }
+
+    /// <summary>
+    /// Allows anonymous access to one literal GET or POST route. The startup inventory rejects a marker inherited
+    /// by another route, a route template, and any canonical or sidecar-originated endpoint.
+    /// </summary>
+    /// <typeparam name="TBuilder">The endpoint convention builder type.</typeparam>
+    /// <param name="builder">The endpoint convention builder.</param>
+    /// <param name="route">The exact route pattern mapped by the host.</param>
+    /// <returns>The builder.</returns>
+    public static TBuilder AllowEventStorePublicEndpoint<TBuilder>(this TBuilder builder, string route)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(route);
+        builder.Add(endpointBuilder => endpointBuilder.Metadata.Add(new EventStorePublicEndpointMetadata(route)));
+        return builder.AllowAnonymous();
     }
 }
