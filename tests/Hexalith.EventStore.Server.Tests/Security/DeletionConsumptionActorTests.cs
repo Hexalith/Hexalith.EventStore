@@ -254,7 +254,8 @@ public sealed class DeletionConsumptionActorTests
         clock.Advance(TimeSpan.FromSeconds(30));
         var result = await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         result.Status.ShouldBe(DeletionConsumptionStatus.Unavailable); result.BatchId.ShouldBe("batch-2"); result.ReceiptId.ShouldBeNull();
-        f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome.ShouldBe(reserved);
+        JsonSerializer.Serialize(f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Batches.Single().Outcome)
+            .ShouldBe(JsonSerializer.Serialize(reserved));
         release.SetResult(new("tenant-a", "batch-1", reserved.ReceiptId!, DeletionManifestProviderState.Unknown, []));
         await f.Provider.Received(1).ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), reserved.ReceiptId!, Arg.Any<CancellationToken>());
     }
