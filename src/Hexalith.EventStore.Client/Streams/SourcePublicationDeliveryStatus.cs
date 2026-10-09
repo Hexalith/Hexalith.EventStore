@@ -9,4 +9,6 @@ public enum SourcePublicationDeliveryStatus
     Acknowledged = 1,
     /// <summary>The durable original is poisoned and requires independent resolution; it cannot be skipped.</summary>
     Quarantined = 2,
+    /// <summary>The exact original source remains pending and has no authenticated acknowledgement yet.</summary>
+    Pending = 3,
 }
