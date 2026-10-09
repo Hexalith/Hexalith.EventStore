@@ -1077,6 +1077,39 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         }
     }
 
+    /// <summary>A GET-only canonical route with explicit authorization must use its catalog policy.</summary>
+    /// <param name="authorization">The authorization applied to the GET route.</param>
+    [Theory]
+    [InlineData("default")]
+    [InlineData("wrong-policy")]
+    [InlineData("project-policy")]
+    public void EndpointInventory_GetOnlyCanonicalRouteRejectsWeakExplicitAuthorization(string authorization) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        RouteHandlerBuilder route = app.MapGet("/project", () => "diagnostic view");
+        if (authorization == "default") {
+            _ = route.RequireAuthorization();
+        }
+        else if (authorization == "wrong-policy") {
+            _ = route.RequireAuthorization(EventStoreDomainServicePolicies.Query);
+        }
+        else {
+            _ = route.RequireAuthorization(EventStoreDomainServicePolicies.Project);
+        }
+
+        _ = app.UseEventStoreDomainService();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions
+            .CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme);
+        IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallback);
+        if (authorization == "project-policy") {
+            violations.ShouldBeEmpty();
+        }
+        else {
+            violations.ShouldHaveSingleItem().ShouldContain($"/project: the effective endpoint must require policy '{EventStoreDomainServicePolicies.Project}'.");
+        }
+    }
+
     /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
     /// <param name="route">The literal public route.</param>
     /// <param name="method">Its single HTTP method.</param>

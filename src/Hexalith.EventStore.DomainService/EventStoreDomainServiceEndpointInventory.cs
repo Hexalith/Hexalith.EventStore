@@ -13,8 +13,10 @@ namespace Hexalith.EventStore.DomainService;
 /// <remarks>
 /// <list type="bullet">
 /// <item><description>Only probes and explicitly marked literal public endpoints may carry anonymous metadata.</description></item>
-/// <item><description>Every effective POST-capable canonical operational route, including a host override, must carry
-/// its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>). No canonical route may be public.</description></item>
+/// <item><description>Every effective POST-capable canonical operational route, and every canonical route with
+/// explicit authorization metadata, must carry its exact catalog policy (<see cref="EventStoreDomainServiceRoutes"/>).
+/// A GET-only canonical route without authorization metadata may rely on a denying fallback. No canonical route
+/// may be public.</description></item>
 /// <item><description>Every sidecar-originated route — <c>dapr/subscribe</c>, every pub/sub subscription, and every
 /// Dapr actor route — must carry <see cref="EventStoreDomainServicePolicies.SidecarChannel"/>, including one a host
 /// mapped itself before the SDK.</description></item>
@@ -76,7 +78,7 @@ public static class EventStoreDomainServiceEndpointInventory
                     violations.Add($"{route}: a canonical route cannot be public.");
                 }
 
-                if (SupportsPost(endpoint)
+                if ((SupportsPost(endpoint) || authorizeData.Count > 0)
                     && !authorizeData.Any(data => string.Equals(data.Policy, catalogRoute!.Policy, StringComparison.Ordinal)))
                 {
                     violations.Add($"{route}: the effective endpoint must require policy '{catalogRoute!.Policy}'.");
