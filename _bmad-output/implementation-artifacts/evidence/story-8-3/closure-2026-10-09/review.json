@@ -7,5 +7,17 @@
   "triage": "spec Review Triage Log RESUME-BH-01..10 and RESUME-EC-01",
   "resolution": "BH01 carried prior owner decision; all other findings directly patched with eight guard and eighteen core regression cases",
   "startupFollowup": "Resolved. Interlocked guard prevents concurrent or reentrant initialization without blocking; overlapping calls may temporarily omit telemetry but later calls retry. Sequential recovery for both activity and meter publication is tested; reentrant/concurrent initialization inspected by independent code tracing.",
-  "independentModels": "inherited parent model for all three review layers"
+  "independentModels": "inherited parent model for all three review layers",
+  "authorizedRemediation": {
+    "ownerAuthorization": "remediation-authorization.json",
+    "originalsAndSeals": "Independent read-only review confirmed both originals and all 483 prior packet files unchanged; two replacements differ only at one header value each.",
+    "scope": "Exactly two owner-authorized retirement paths; no active binding hash exemption; historical binding exact-content exception only; 100 negative/control cases added.",
+    "executedScannerClass": {
+      "passed": 202,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "authorized-secrets-results.trx.xml"
+    },
+    "finalFollowupService": "Reviewer service rejected the final read-only source follow-up as possible cybersecurity risk; no successful final independent follow-up is claimed. Original three core review lenses and prior independent retirement/seal review completed. Parent locally inspected final source and executed negative controls."
+  }
 }

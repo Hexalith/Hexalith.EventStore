@@ -142,3 +142,143 @@ failed Hexalith.EventStore.Contracts.Tests.Packaging.ProjectionPackageContractTe
   Actual:   1
     at Hexalith.EventStore.Contracts.Tests.Packaging.ProjectionPackageContractTests.PackagedProjectionApisCompileAndRunWithoutProjectReferences() in /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProjectionPackageContractTests.cs:28
     --- End of stack trace from previous location ---
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64) failed with 2 error(s) (4m 25s 877ms)
+Exit code: 2
+  Standard output: Validating isolated package-only consumer for Hexalith.EventStore.Contracts...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-8tdgwwha/PackageConsumer.csproj (in 907 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-8tdgwwha/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.73
+  Validating isolated package-only consumer for Hexalith.EventStore.Client...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-lrn6gmr4/PackageConsumer.csproj (in 2.96 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-lrn6gmr4/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.87
+  Validating isolated package-only consumer for Hexalith.EventStore.Server...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-olslwi8m/PackageConsumer.csproj (in 2.26 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-olslwi8m/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:01.55
+  Validating isolated package-only consumer for Hexalith.EventStore.SignalR...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-6k7tj9fu/PackageConsumer.csproj (in 615 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-6k7tj9fu/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.63
+  Validating isolated package-only consumer for Hexalith.EventStore.Testing...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-1etmsfdr/PackageConsumer.csproj (in 1.1 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-1etmsfdr/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.82
+  Validating isolated package-only consumer for Hexalith.EventStore.Testing.Integration...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-a4f0ercl/PackageConsumer.csproj (in 5.85 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-a4f0ercl/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:01.15
+  Validating isolated package-only consumer for Hexalith.EventStore.Aspire...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-jb596_rk/PackageConsumer.csproj (in 3.13 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-jb596_rk/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:01.01
+  Validating isolated package-only consumer for Hexalith.EventStore.ServiceDefaults...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-s312xoz1/PackageConsumer.csproj (in 954 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-s312xoz1/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.69
+  Validating isolated package-only consumer for Hexalith.EventStore.DomainService...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-pt1766f2/PackageConsumer.csproj (in 916 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-pt1766f2/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.81
+  Validating isolated package-only consumer for Hexalith.EventStore.RestApi.Generators...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-vx0abqep/PackageConsumer.csproj (in 217 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-vx0abqep/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.74
+  Validating isolated package-only consumer for Hexalith.EventStore.Gateway...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-b9dbwryh/PackageConsumer.csproj (in 1.27 sec).
+    PackageConsumer -> /tmp/eventstore-package-consumer-b9dbwryh/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.91
+  Validating isolated package-only consumer for Hexalith.EventStore.Admin.Abstractions...
+    Determining projects to restore...
+    Restored /tmp/eventstore-package-consumer-geeyj95k/PackageConsumer.csproj (in 336 ms).
+    PackageConsumer -> /tmp/eventstore-package-consumer-geeyj95k/bin/Release/net10.0/PackageConsumer.dll
+  
+  Build succeeded.
+      0 Warning(s)
+      0 Error(s)
+  
+  Time Elapsed 00:00:00.57
+  Validating isolated package-only consumer for Hexalith.EventStore.Admin.Server...
+    Determining projects to restore...
+  /tmp/eventstore-package-consumer-g8ei4la7/PackageConsumer.csproj : error NU1605: Warning As Error: Detected package downgrade: Hexalith.EventStore.Contracts from 3.102.0 to 1.0.0. Reference the package directly from the project to select a different version. 
+  /tmp/eventstore-package-consumer-g8ei4la7/PackageConsumer.csproj : error NU1605:  PackageConsumer -> Hexalith.EventStore.Admin.Server 1.0.0 -> Hexalith.Tenants.Contracts 5.7.0 -> Hexalith.EventStore.Contracts (>= 3.102.0) 
+  /tmp/eventstore-package-consumer-g8ei4la7/PackageConsumer.csproj : error NU1605:  PackageConsumer -> Hexalith.EventStore.Admin.Server 1.0.0 -> Hexalith.EventStore.Contracts (>= 1.0.0)
+    Failed to restore /tmp/eventstore-package-consumer-g8ei4la7/PackageConsumer.csproj (in 759 ms).
+  Error output: validate-consumer-package-references: Package-only consumer failed for Hexalith.EventStore.Admin.Server: Command '['dotnet', 'restore', '/tmp/eventstore-package-consumer-g8ei4la7/PackageConsumer.csproj', '--configfile', '/tmp/eventstore-package-consumer-g8ei4la7/nuget.config', '--packages', '/tmp/eventstore-package-consumer-g8ei4la7/packages', '-p:UseHexalithProjectReferences=false']' returned non-zero exit status 1.
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/final-contracts-results.trx.xml
+
+Test run summary: Failed!
+  total: 2327
+  failed: 2
+  succeeded: 2325
+  skipped: 0
+  duration: 4m 26s 039ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

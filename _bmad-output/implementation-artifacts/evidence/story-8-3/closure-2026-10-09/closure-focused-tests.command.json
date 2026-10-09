@@ -1,0 +1,27 @@
+{
+  "command": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "324",
+    "--fail-skips",
+    "on",
+    "--no-ansi",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "closure-focused-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:38:16.370476+00:00",
+  "endUtc": "2026-10-09T07:38:20.209170+00:00",
+  "exitCode": 0,
+  "logSha256": "b747c27204e6920b959fa4b86b47b690ba7c97535a0c1d281d78cb5355d7bd03"
+}

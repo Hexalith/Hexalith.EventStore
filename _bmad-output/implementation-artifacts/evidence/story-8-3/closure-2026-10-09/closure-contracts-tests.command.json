@@ -1,0 +1,29 @@
+{
+  "command": [
+    "env",
+    "EVENTSTORE_PACKAGE_CONTRACT_DIR=/tmp/story83-closure-pack-20261009",
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+    "--no-build",
+    "--configuration",
+    "Release",
+    "--filter-not-trait",
+    "Category=HeavyweightContainerPublish",
+    "--fail-skips",
+    "on",
+    "--no-ansi",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "closure-contracts-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:39:01.708167+00:00",
+  "endUtc": "2026-10-09T07:43:06.273894+00:00",
+  "exitCode": 0,
+  "logSha256": "08f068c097fbc5b2b86125fb022d2abd70bd3c694d8516bcd576326d6f38b8f1"
+}

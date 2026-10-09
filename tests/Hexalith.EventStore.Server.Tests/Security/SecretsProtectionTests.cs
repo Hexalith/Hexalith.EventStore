@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 
 using Shouldly;
 
@@ -25,6 +27,9 @@ public sealed partial class SecretsProtectionTests
         "_bmad-output/implementation-artifacts/evidence/story-6-6/counter-v1-serialization-2026-10-07/sample-full.xml";
     private const string SealedCounterSerializationTestResultsSha256 =
         "cd94c23807386ef2a245b9f7e81e5243a36b00449de3d19579484989afa82622";
+
+    private const string RetiredCallbackOtlpCapture = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-callback-fences-2026-10-08/story66-callback-aspire-baseline.json";
+    private const string RetiredCommandStateOtlpCapture = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/earlier-attempts/story66-command-state-aspire-baseline.json";
 
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
@@ -641,6 +646,258 @@ public sealed partial class SecretsProtectionTests
         FindViolations(SealedCounterSerializationTestResults).ShouldBe([SealedCounterSerializationTestResults + ":1"]);
     }
 
+    /// <summary>Only empty framework cancellation sources in executable C# are noncredential expressions.</summary>
+    [Theory]
+    [InlineData(".cs", "CancellationTokenSource")]
+    [InlineData(".razor", "CancellationTokenSource")]
+    [InlineData(".cs", "System.Threading.CancellationTokenSource")]
+    [InlineData(".razor", "System.Threading.CancellationTokenSource")]
+    [InlineData(".cs", "global::System.Threading.CancellationTokenSource")]
+    [InlineData(".razor", "global::System.Threading.CancellationTokenSource")]
+    public void CancellationSourceRecognition_RequiresExactFrameworkExpression(string extension, string type)
+    {
+        string path = "tests/cancellation" + extension;
+        string name = "to" + "ken";
+        string expression = "new " + type + "( )";
+        FindViolations(path, Assignment(name, expression)).ShouldBeEmpty();
+        foreach (string rejected in new[] { "new Other.CancellationTokenSource()", "new OtherTokenSource()",
+            "new " + type + "(\"" + RandomSecret() + "\")", expression + " + \"" + RandomSecret() + "\"" })
+        {
+            FindViolations(path, Assignment(name, rejected)).ShouldBe([path + ":1"]);
+        }
+        FindViolations("capture.log", Assignment(name, expression)).ShouldBe(["capture.log:1"]);
+        FindViolations(path, "string fixture = \"" + Assignment(name, expression) + "\";").ShouldBe([path + ":1"]);
+        FindViolations(path, Assignment(name, expression) + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":2"]);
+    }
+
+    /// <summary>Typed mock extraction admits only a literal-free cancellation argument.</summary>
+    [Theory]
+    [InlineData(".cs", "CancellationToken")]
+    [InlineData(".razor", "CancellationToken")]
+    [InlineData(".cs", "System.Threading.CancellationToken")]
+    [InlineData(".razor", "System.Threading.CancellationToken")]
+    [InlineData(".cs", "global::System.Threading.CancellationToken")]
+    [InlineData(".razor", "global::System.Threading.CancellationToken")]
+    public void TypedCancellationRecognition_RequiresExactArgumentExtraction(string extension, string type)
+    {
+        string path = "tests/cancellation" + extension;
+        string name = "to" + "ken";
+        string expression = "call.Arg<" + type + ">()";
+        FindViolations(path, Assignment(name, expression)).ShouldBeEmpty();
+        foreach (string rejected in new[] { "call.Arg<Other.CancellationToken>()", "call.Arg<string>()",
+            "call.Arg<" + type + ">(\"" + RandomSecret() + "\")", expression + " + \"" + RandomSecret() + "\"" })
+        {
+            FindViolations(path, Assignment(name, rejected)).ShouldBe([path + ":1"]);
+        }
+        FindViolations("capture.log", Assignment(name, expression)).ShouldBe(["capture.log:1"]);
+        FindViolations(path, "string fixture = \"" + Assignment(name, expression) + "\";").ShouldBe([path + ":1"]);
+        FindViolations(path, Assignment(name, expression) + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":2"]);
+    }
+
+    /// <summary>State-address and protocol fixtures require their exact reviewed source context.</summary>
+    [Theory]
+    [InlineData("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs", 97)]
+    [InlineData("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementTests.cs", 106)]
+    [InlineData("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", 42)]
+    public void FixtureAssignmentRecognition_RequiresExactContext(string path, int lineNumber)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string line = File.ReadLines(Path.Combine(RepoRoot, path)).ElementAt(lineNumber - 1).Trim();
+        FindViolations(path, line).ShouldBeEmpty();
+        FindViolations("tests/unrelated.cs", line).ShouldNotBeEmpty();
+        string changed = line.Replace("=", "= \"" + RandomSecret() + "\" +", StringComparison.Ordinal);
+        FindViolations(path, changed).ShouldNotBeEmpty();
+        FindViolations(path, line + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":2"]);
+    }
+
+    /// <summary>Historical cancellation fixtures retain executable-source classification without seal changes.</summary>
+    [Fact]
+    public void HistoricalCancellationFixtures_RemainScannedAsSource()
+    {
+        const string path = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/owned-source-snapshot/tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs";
+        FindViolations(path).ShouldBeEmpty();
+        FindViolations(path, Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":1"]);
+    }
+
+    /// <summary>Only the exact known synthetic name in valid TRX test metadata is recognized.</summary>
+    [Theory]
+    [InlineData("result", false, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("definition", false, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("outside-path", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("other-attribute", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("other-element", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("mutated-name", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("extra-secret", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("malformed", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("wrong-namespace", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
+    [InlineData("result", false, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("definition", false, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("outside-path", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("other-attribute", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("other-element", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("mutated-name", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("extra-secret", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("malformed", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("wrong-namespace", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
+    [InlineData("result", false, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("definition", false, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("outside-path", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("other-attribute", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("other-element", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("mutated-name", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("extra-secret", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("malformed", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("wrong-namespace", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
+    [InlineData("result", false, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("definition", false, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("outside-path", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("other-attribute", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("other-element", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("mutated-name", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("extra-secret", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("malformed", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("wrong-namespace", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
+    [InlineData("result", false, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("definition", false, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("outside-path", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("other-attribute", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("other-element", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("mutated-name", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("extra-secret", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("malformed", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("wrong-namespace", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
+    [InlineData("result", false, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("definition", false, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("outside-path", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("other-attribute", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("other-element", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("mutated-name", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("extra-secret", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("malformed", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("wrong-namespace", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
+    [InlineData("result", false, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("definition", false, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("outside-path", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("other-attribute", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("other-element", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("mutated-name", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("extra-secret", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("malformed", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("wrong-namespace", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
+    [InlineData("result", false, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("definition", false, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("outside-path", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("other-attribute", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("other-element", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("mutated-name", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("extra-secret", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("malformed", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("wrong-namespace", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
+    [InlineData("result", false, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("definition", false, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("outside-path", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("other-attribute", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("other-element", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("mutated-name", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("extra-secret", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("malformed", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    [InlineData("wrong-namespace", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
+    public void SyntheticTrxRecognition_RequiresExactTestMetadata(string mutation, bool rejected, string fixtureHash)
+    {
+        const string directory = "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/";
+        const string trxNamespace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
+        string receipt = fixtureHash is "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e" or "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b" ? "contracts-results.trx.xml" : "server-results.trx.xml";
+        XDocument original = XDocument.Load(Path.Combine(RepoRoot, directory + receipt));
+        string name = original.Descendants(XName.Get("UnitTestResult", trxNamespace))
+            .Select(element => element.Attribute("testName")!.Value)
+            .Single(value => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant() == fixtureHash);
+        if (mutation == "mutated-name")
+        {
+            name += RandomSecret();
+        }
+
+        string escaped = System.Security.SecurityElement.Escape(name)!;
+        string body = mutation switch
+        {
+            "definition" => "<TestDefinitions><UnitTest name=\"" + escaped + "\" /></TestDefinitions>",
+            "other-attribute" => "<Results><UnitTestResult outcome=\"" + escaped + "\" /></Results>",
+            "other-element" => "<Results><Message testName=\"" + escaped + "\" /></Results>",
+            _ => "<Results><UnitTestResult testName=\"" + escaped + "\" /></Results>",
+        };
+        if (mutation == "extra-secret")
+        {
+            body += "<Message>" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"") + "</Message>";
+        }
+
+        string content = "<TestRun xmlns=\"" + (mutation == "wrong-namespace" ? "urn:other" : trxNamespace) + "\">" + body + "</TestRun>";
+        if (mutation == "malformed")
+        {
+            content += "<";
+        }
+
+        string path = mutation == "outside-path" ? "tools/candidate.trx.xml" : directory + "candidate.trx.xml";
+        FindViolations(path, content).Any().ShouldBe(rejected);
+        IsExplicitGeneratedPath(path).ShouldBeFalse();
+    }
+
+    /// <summary>Frozen binding metadata requires exact reviewed bytes and path.</summary>
+    [Theory]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json")]
+    public void SyntheticBindingRecognition_RequiresExactSealedContent(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string content = File.ReadAllText(Path.Combine(RepoRoot, path));
+        FindViolations(path, content).ShouldBeEmpty();
+        FindViolations("tools/binding.json", content).ShouldNotBeEmpty();
+        FindViolations(path, content + " ").ShouldNotBeEmpty();
+        FindViolations(path, content + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldNotBeEmpty();
+    }
+
+    /// <summary>Candidate receipts and sanitized replacements are scanned even before Git tracks them.</summary>
+    [Fact]
+    public void DatedCandidateReportsAndSanitizedCaptures_AreScannedDirectly()
+    {
+        string receipts = Path.Combine(RepoRoot, "_bmad-output/implementation-artifacts/evidence/story-8-3");
+        string[] reports = Directory.GetFiles(receipts, "*.trx.xml", SearchOption.AllDirectories);
+        reports.ShouldNotBeEmpty();
+        string[] captures =
+        [
+            "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-callback-aspire-baseline.json",
+            "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-command-state-aspire-baseline.json",
+        ];
+        string[] datedDirectories =
+        [
+            Path.Combine(receipts, "closure-2026-10-09"),
+            Path.Combine(RepoRoot, "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09"),
+        ];
+        IEnumerable<string> metadata = datedDirectories.SelectMany(directory =>
+            Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)));
+        foreach (string path in reports.Concat(metadata).Select(path => Path.GetRelativePath(RepoRoot, path).Replace('\\', '/')).Concat(captures).Distinct(StringComparer.Ordinal))
+        {
+            File.Exists(Path.Combine(RepoRoot, path)).ShouldBeTrue();
+            FindViolations(path).ShouldBeEmpty("Candidate content is scanned directly: " + path);
+        }
+    }
+
+    /// <summary>Only the two owner-authorized OTLP originals are eligible for governed retirement.</summary>
+    [Fact]
+    public void OtlpRetirementEligibility_IsLimitedToExactOriginalPaths()
+    {
+        foreach (string path in new[] { RetiredCallbackOtlpCapture, RetiredCommandStateOtlpCapture })
+        {
+            IsGovernedRetirementPath(path).ShouldBeTrue();
+            IsExplicitGeneratedPath(path).ShouldBeFalse();
+            IsGovernedRetirementPath(path + ".orig").ShouldBeFalse();
+            IsGovernedRetirementPath(path.Replace("2026-10-08", "2026-10-09", StringComparison.Ordinal)).ShouldBeFalse();
+            // Path eligibility alone never removes credential detection from the raw capture.
+            FindViolations(path, Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":1"]);
+        }
+        IsGovernedRetirementPath("_bmad-output/implementation-artifacts/evidence/story-6-6/arbitrary.json").ShouldBeFalse();
+        IsGovernedRetirementPath("_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-callback-aspire-baseline.json").ShouldBeFalse();
+    }
+
     [Theory]
     [InlineData("null", true, false)]
     [InlineData("\"null\"", true, true)]
@@ -828,6 +1085,8 @@ public sealed partial class SecretsProtectionTests
 
     private static IEnumerable<string> FindViolations(string relativePath, string content)
     {
+        content = MaskKnownSyntheticBindingTestNames(relativePath, content);
+        content = MaskKnownSyntheticTrxTestNames(relativePath, content);
         var violationLines = new SortedSet<int>();
         (HashSet<int> nullValues, HashSet<int> dependencyNames) = GetJsonNonSecretMetadata(content);
         void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
@@ -1056,7 +1315,8 @@ public sealed partial class SecretsProtectionTests
                 isBare = false;
             }
 
-            if (IsUsableLiteral(
+            if (!IsNonCredentialFixtureAssignment(effectivePath, content, match)
+                && IsUsableLiteral(
                 effectivePath,
                 match.Groups["name"].Value,
                 value,
@@ -1083,6 +1343,175 @@ public sealed partial class SecretsProtectionTests
         }
 
         return violationLines.Select(line => $"{relativePath}:{line}");
+    }
+
+    private static bool IsNonCredentialFixtureAssignment(string path, string content, Match assignment)
+    {
+        int start = content.LastIndexOf('\n', Math.Max(0, assignment.Index - 1)) + 1;
+        int end = content.IndexOf('\n', assignment.Index);
+        string line = content[start..(end < 0 ? content.Length : end)].Trim();
+        // These are reviewed state-address/protocol fixtures, not a general StorageKey or token exemption.
+        string lineHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(line))).ToLowerInvariant();
+        return (path, assignment.Groups["name"].Value, lineHash) switch
+        {
+            ("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotFixture.cs", "Owner.StorageKey", "221ccb0d705309751edf7e9d406aa58283cb845235ea6e3614b2d1a4b521078b") => true,
+            ("tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalSnapshotReplacementTests.cs", "StorageKey", "cb1f4ebbccf486c792ade38243bfdcd8895b85269a9681261393fa09531327ea") => true,
+            ("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", "token", "f26481a946a1ce2f8b4dc68ded2466a055e5abf0466bea4ead8f5bb5c0a3cb03") => true,
+            _ => false,
+        };
+    }
+
+    private static bool IsKnownSyntheticTestNameHash(string hash)
+        => hash is "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e"
+            or "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b"
+            or "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd"
+            or "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218"
+            or "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a"
+            or "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47"
+            or "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e"
+            or "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812"
+            or "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4";
+
+    private static string MaskKnownSyntheticBindingTestNames(string path, string content)
+    {
+        if (!string.Equals(path, "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json", StringComparison.Ordinal))
+        {
+            return content;
+        }
+        string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
+        bool reviewedBinding = (path, hash) switch
+        {
+            ("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json", "2d9f6bb7e4f2006249fe249e081902b7015d3d3802393b62796650aad9eb6bb6") => true,
+            _ => false,
+        };
+        if (!reviewedBinding)
+        {
+            return content;
+        }
+
+        char[] masked = content.ToCharArray();
+        foreach (Match match in SyntheticBindingTestNamePattern().Matches(content))
+        {
+            Group value = match.Groups["value"];
+            string name = JsonSerializer.Deserialize<string>(value.Value)!;
+            string nameHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name))).ToLowerInvariant();
+            if (IsKnownSyntheticTestNameHash(nameHash))
+            {
+                Array.Fill(masked, ' ', value.Index + 1, value.Length - 2);
+            }
+        }
+        return new string(masked);
+    }
+
+    [GeneratedRegex("\"testName\"\\s*:\\s*(?<value>\"(?:\\\\.|[^\"\\\\])*\")")]
+    private static partial Regex SyntheticBindingTestNamePattern();
+
+    private static string MaskKnownSyntheticTrxTestNames(string path, string content)
+    {
+        if (!SyntheticTrxReceiptPathPattern().IsMatch(path))
+        {
+            return content;
+        }
+
+        const string trxNamespace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
+        var ranges = new List<(int Start, int Length)>();
+        var lineStarts = new List<int> { 0 };
+        for (int index = 0; index < content.Length; index++)
+        {
+            if (content[index] == '\n')
+            {
+                lineStarts.Add(index + 1);
+            }
+        }
+
+        try
+        {
+            using var text = new StringReader(content);
+            using XmlReader reader = XmlReader.Create(text, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+            });
+            bool isTrx = false;
+            string? container = null;
+            while (reader.Read())
+            {
+                if (reader.NodeType != XmlNodeType.Element)
+                {
+                    continue;
+                }
+
+                if (reader.Depth == 0)
+                {
+                    isTrx = reader.LocalName == "TestRun" && reader.NamespaceURI == trxNamespace;
+                }
+
+                if (reader.Depth == 1)
+                {
+                    container = reader.NamespaceURI == trxNamespace ? reader.LocalName : null;
+                }
+
+                string? attribute = reader.LocalName switch
+                {
+                    "UnitTestResult" when reader.Depth == 2 && container == "Results" => "testName",
+                    "UnitTest" when reader.Depth == 2 && container == "TestDefinitions" => "name",
+                    _ => null,
+                };
+                if (!isTrx || reader.NamespaceURI != trxNamespace || attribute is null
+                    || !reader.MoveToAttribute(attribute))
+                {
+                    continue;
+                }
+
+                // Exact reviewed negative-fixture display name only; never arbitrary theory arguments.
+                string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(reader.Value))).ToLowerInvariant();
+                if (IsKnownSyntheticTestNameHash(hash))
+                {
+                    var info = (IXmlLineInfo)reader;
+                    int start = lineStarts[info.LineNumber - 1] + info.LinePosition - 1;
+                    int equals = content.IndexOf('=', start);
+                    int quote = equals + 1;
+                    while (quote < content.Length && char.IsWhiteSpace(content[quote]))
+                    {
+                        quote++;
+                    }
+
+                    if (quote >= content.Length || content[quote] is not ('\"' or '\''))
+                    {
+                        return content;
+                    }
+
+                    int end = content.IndexOf(content[quote], quote + 1);
+                    if (end < 0)
+                    {
+                        return content;
+                    }
+
+                    ranges.Add((quote + 1, end - quote - 1));
+                }
+
+                reader.MoveToElement();
+            }
+        }
+        catch (XmlException)
+        {
+            // Malformed reports receive the complete ordinary credential scan.
+            return content;
+        }
+
+        char[] masked = content.ToCharArray();
+        foreach ((int start, int length) in ranges)
+        {
+            for (int index = start; index < start + length; index++)
+            {
+                if (masked[index] is not ('\r' or '\n'))
+                {
+                    masked[index] = ' ';
+                }
+            }
+        }
+
+        return new string(masked);
     }
 
     private static string[] GetTrackedFiles()
@@ -1226,7 +1655,9 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsGovernedRetirementPath(string path)
         => GovernedEvidenceCapturePathPattern().IsMatch(path)
-            || OwnerApprovedProofPacketPathPattern().IsMatch(path);
+            || OwnerApprovedProofPacketPathPattern().IsMatch(path)
+            || string.Equals(path, RetiredCallbackOtlpCapture, StringComparison.Ordinal)
+            || string.Equals(path, RetiredCommandStateOtlpCapture, StringComparison.Ordinal);
 
     private static bool HasKnownBinarySignature(ReadOnlySpan<byte> bytes)
     {
@@ -2369,7 +2800,10 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsCSharpRuntimeExpression(string name, string value)
     {
-        if (value is "string.Empty" or "default" || CancellationTokenBooleanConstructorPattern().IsMatch(value))
+        if (value is "string.Empty" or "default"
+            || CancellationTokenBooleanConstructorPattern().IsMatch(value)
+            || CancellationTokenSourceEmptyConstructorPattern().IsMatch(value)
+            || TypedCancellationArgumentPattern().IsMatch(value))
         {
             return true;
         }
@@ -2979,6 +3413,15 @@ public sealed partial class SecretsProtectionTests
         @"\bnew\s+(?:NetworkCredential|SymmetricSecurityKey)\s*\(",
         RegexOptions.CultureInvariant)]
     private static partial Regex CredentialConstructorPattern();
+
+    [GeneratedRegex(@"\A_bmad-output/implementation-artifacts/evidence/story-8-3/(?:closure|verification)-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-postreview)?/[^/]+\.trx\.xml\z", RegexOptions.CultureInvariant)]
+    private static partial Regex SyntheticTrxReceiptPathPattern();
+
+    [GeneratedRegex(@"\Anew\s+(?:CancellationTokenSource|(?:global::)?System\.Threading\.CancellationTokenSource)\s*\(\s*\)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex CancellationTokenSourceEmptyConstructorPattern();
+
+    [GeneratedRegex(@"\Acall\.Arg\s*<\s*(?:CancellationToken|(?:global::)?System\.Threading\.CancellationToken)\s*>\s*\(\s*\)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex TypedCancellationArgumentPattern();
 
     [GeneratedRegex(@"\Anew\s+(?:CancellationToken|(?:global::)?System\.Threading\.CancellationToken)\s*\(\s*(?:canceled\s*:\s*)?(?:true|false)\s*\)\z", RegexOptions.CultureInvariant)]
     private static partial Regex CancellationTokenBooleanConstructorPattern();

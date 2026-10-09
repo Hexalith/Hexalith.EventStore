@@ -1,0 +1,4 @@
+warning: in the working copy of 'src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Contracts/Security/DeletionBlockedReplacementReconciliation.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionOperation.cs', CRLF will be replaced by LF the next time Git touches it

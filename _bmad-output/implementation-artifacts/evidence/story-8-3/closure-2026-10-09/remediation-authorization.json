@@ -1,0 +1,13 @@
+{
+  "recordedAtUtc": "2026-10-09T07:50:43.055055+00:00",
+  "authorization": "Interactive user explicitly answered: Authorize the proposed remediation.",
+  "proposal": "remediation-proposal.md",
+  "scope": "Sanitized capture replacements, explicit retirement/provenance preserving original seals and frozen approvals, narrow scanner false-positive repairs and renewed verification.",
+  "notGranted": [
+    "EventStore 8.4 successor authorization",
+    "G5 closure",
+    "commit/push/branch",
+    "external credential rotation or deployment"
+  ],
+  "implementation": "Existing governed-retirement model retains original byte-preserved historical captures as non-authoritative provenance; sanitized replacements and lineage are separate."
+}

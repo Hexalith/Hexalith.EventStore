@@ -1,0 +1,136 @@
+Validating isolated package-only consumer for Hexalith.EventStore.Contracts...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-hkg03ppl/PackageConsumer.csproj (in 331 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-hkg03ppl/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.65
+Validating isolated package-only consumer for Hexalith.EventStore.Client...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-guxllsss/PackageConsumer.csproj (in 504 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-guxllsss/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.94
+Validating isolated package-only consumer for Hexalith.EventStore.Server...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-ccfqt_ol/PackageConsumer.csproj (in 685 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-ccfqt_ol/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.89
+Validating isolated package-only consumer for Hexalith.EventStore.SignalR...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-7yoijlhd/PackageConsumer.csproj (in 459 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-7yoijlhd/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.68
+Validating isolated package-only consumer for Hexalith.EventStore.Testing...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-u7p8q8q5/PackageConsumer.csproj (in 736 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-u7p8q8q5/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.83
+Validating isolated package-only consumer for Hexalith.EventStore.Testing.Integration...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-kq7491ps/PackageConsumer.csproj (in 1.27 sec).
+  PackageConsumer -> /tmp/eventstore-package-consumer-kq7491ps/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.20
+Validating isolated package-only consumer for Hexalith.EventStore.Aspire...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-t9y4suub/PackageConsumer.csproj (in 929 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-t9y4suub/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.94
+Validating isolated package-only consumer for Hexalith.EventStore.ServiceDefaults...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-rtsw9ypd/PackageConsumer.csproj (in 598 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-rtsw9ypd/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.66
+Validating isolated package-only consumer for Hexalith.EventStore.DomainService...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-wb4va_fc/PackageConsumer.csproj (in 675 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-wb4va_fc/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.75
+Validating isolated package-only consumer for Hexalith.EventStore.RestApi.Generators...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-i0r7mtjv/PackageConsumer.csproj (in 160 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-i0r7mtjv/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.60
+Validating isolated package-only consumer for Hexalith.EventStore.Gateway...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-i0rexqlb/PackageConsumer.csproj (in 663 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-i0rexqlb/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.92
+Validating isolated package-only consumer for Hexalith.EventStore.Admin.Abstractions...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-2whtjqmd/PackageConsumer.csproj (in 347 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-2whtjqmd/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.60
+Validating isolated package-only consumer for Hexalith.EventStore.Admin.Server...
+  Determining projects to restore...
+  Restored /tmp/eventstore-package-consumer-1xjfxue7/PackageConsumer.csproj (in 448 ms).
+  PackageConsumer -> /tmp/eventstore-package-consumer-1xjfxue7/bin/Release/net10.0/PackageConsumer.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.69
+Validating isolated tool consumer for Hexalith.EventStore.Admin.Cli...
+The template "Dotnet local tool manifest file" was created successfully.
+
+You can invoke the tool from this directory using the following commands: 'dotnet tool run eventstore-admin' or 'dotnet eventstore-admin'.
+Tool 'hexalith.eventstore.admin.cli' (version '3.117.2-story83-validation') was successfully installed. Entry is added to the manifest file /tmp/eventstore-package-tool-consumer-trwf0cus/dotnet-tools.json.
+Validated 13 isolated package-only consumers and 1 isolated tool consumers at version 3.117.2-story83-validation.

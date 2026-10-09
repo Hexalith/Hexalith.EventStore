@@ -44,3 +44,8 @@ _bmad-output/implementation-artifacts/evidence/latest-packages-2026-10-08/** -te
 # Story 8.3 binds exact dated receipt bytes, including raw TRX and mixed-newline diagnostics.
 _bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08/** -text
 _bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08-postreview/** -text
+
+# Story 8.3 closure receipts preserve exact command, TRX, inventory, and binding bytes.
+_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/** -text -whitespace
+# Authorized sanitized replacements retain exact one-field transformation bytes.
+_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/** -text -whitespace

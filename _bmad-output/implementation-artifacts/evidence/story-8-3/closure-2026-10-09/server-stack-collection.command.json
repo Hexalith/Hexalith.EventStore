@@ -1,0 +1,17 @@
+{
+  "command": [
+    "dotnet-dump",
+    "collect",
+    "--process-id",
+    "53908",
+    "--type",
+    "Triage",
+    "--output",
+    "/tmp/story83-server-triage.dmp"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:16:57.361683+00:00",
+  "endUtc": "2026-10-09T07:16:57.797411+00:00",
+  "exitCode": 0,
+  "logSha256": "1da886c18123addd4e67da969b0e0b55f2228479f836fbe9f7b743f872aaf7ea"
+}

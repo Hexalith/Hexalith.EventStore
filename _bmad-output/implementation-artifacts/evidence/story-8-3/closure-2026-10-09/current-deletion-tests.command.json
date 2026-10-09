@@ -1,0 +1,29 @@
+{
+  "command": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "--no-build",
+    "--configuration",
+    "Release",
+    "--filter-class",
+    "*DeletionConsumptionActorTests",
+    "--minimum-expected-tests",
+    "21",
+    "--fail-skips",
+    "on",
+    "--no-ansi",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "current-deletion-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:30:58.731738+00:00",
+  "endUtc": "2026-10-09T07:31:01.096938+00:00",
+  "exitCode": 0,
+  "logSha256": "8b8de84d4b91a39ee95c8055a16137876c33745a9e775ba492a921153770313f"
+}

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "scripts/validate-consumer-package-references.py",
+    "/tmp/story83-closure-pack-20261009"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:41:49.107492+00:00",
+  "endUtc": "2026-10-09T07:42:21.590134+00:00",
+  "exitCode": 0,
+  "logSha256": "c3a2994f319495c076175ad3fca9028d8c836bf87675eaa16dd600c794208910"
+}

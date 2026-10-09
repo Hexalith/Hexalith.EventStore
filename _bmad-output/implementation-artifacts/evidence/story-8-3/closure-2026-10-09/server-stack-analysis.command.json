@@ -1,0 +1,18 @@
+{
+  "command": [
+    "dotnet-dump",
+    "analyze",
+    "/tmp/story83-server-triage.dmp",
+    "-c",
+    "clrthreads",
+    "-c",
+    "clrstack -all",
+    "-c",
+    "exit"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:16:57.823835+00:00",
+  "endUtc": "2026-10-09T07:17:00.166733+00:00",
+  "exitCode": 0,
+  "logSha256": "471ae8294f784ec25b029abe2797aa699085bd4463baacfd4dced08c35bc6a33"
+}

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "scripts/validate-nuget-packages.py",
+    "/tmp/story83-closure-pack-20261009"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:41:49.027167+00:00",
+  "endUtc": "2026-10-09T07:41:49.084356+00:00",
+  "exitCode": 0,
+  "logSha256": "95e8bb0448ee5e450f29a47deccbd2cbd53a92e6ea3b69db34f1a02e67e95b47"
+}

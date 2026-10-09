@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -802,7 +802,56 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
-**Current observed results (2026-10-08, post-review):** scoped Release
+**Current closure results (2026-10-09, after authorized remediation):**
+Story 8.3 closes under existing conditional AR-20260914-02 authority after all
+required technical checks pass. The interactive user authorized the separate
+capture-remediation proposal; original captures/seals remain byte-preserved as
+non-authoritative provenance and sanitized replacements have exact lineage.
+Broad/focused Release builds pass with `-warnaserror`; focused 357/357 (324 owned
+plus 33 concurrent prototypes), invariant 1/1, Contracts 2,327/2,327, Client
+1,636/1,636, affected deletion 48/48 and scanner 202/202 pass without skips.
+Normal restore-based packing plus both validators passes for 14 archives, with
+13 isolated library and one tool consumer verified against sealed archive hashes.
+Final code/configuration/dependency identities and executed runtime files match;
+original frozen authority, approvals, fixtures, solution/manifest and 46 approved
+Security files are preserved. Exact commands, raw results and identities are in
+`evidence/story-8-3/closure-2026-10-09/`.
+
+The original three core review lenses and independent retirement/seal review
+completed; the final additional scanner review was unavailable because the
+reviewer service flagged it as possible cybersecurity risk. Parent source
+inspection and 100 added controls (202 scanner cases total) completed; no
+successful unavailable follow-up or new core deferral is claimed. Spec/sprint
+are `done`; EventStore 8.4 is unauthorized/backlog, Parties 8.7 stays blocked
+until G5 closes, and no G5, release, deployment or Git mutation is authorized.
+
+**Historical pre-remediation results (2026-10-09, resumed closure verification):**
+Broad solution and focused Release builds pass with `-warnaserror`; normal
+restore-based packing plus both validators passes with exactly 14 local archives
+at `3.117.2-story83-validation`. The live focused suite passes 357 cases
+(324 owned core plus 33 concurrent prototype cases); the invariant case passes.
+The required lane floors are now 324. Eleven fresh findings are triaged in
+`RESUME-BH-01..10` and `RESUME-EC-01`: the carried owner decision is preserved,
+and the remaining findings are patched with 18 core and eight guard regressions.
+Concurrent source/dependency/compiled-runtime identities are recorded separately
+from the original 35-file core / frozen 46-file Security scope.
+
+Closure remains blocked: supplemental Server verification reports a repository
+secrets-scan failure on 15 locations, including two authentication headers in
+sealed Story 6.6 captures. The remaining locations are independently assessed
+fixture/test-metadata false positives. Original captures and seals are preserved;
+no exemption or silent rewrite is used. A later concurrent edit to
+`DeletionBlockedReplacementReconciliation.cs` is recorded as uncompiled drift
+from the exact tested candidate, requiring renewed reconciliation before closure.
+Exact commands, failing result rows,
+reconciliation, and the concrete owner-remediation proposal are in
+`evidence/story-8-3/closure-2026-10-09/`. Retain spec `in-review` and sprint
+`in-progress`; conditional AR-20260914-02 authority is preserved without declaring
+its condition met. EventStore 8.4 stays unauthorized/backlog; Parties 8.7 stays
+blocked until G5 closes. No new core deferral, dependency update, or Git mutation
+was performed by this workflow.
+
+**Historical observed results (2026-10-08, post-review):** scoped Release
 restore/build passes with zero warnings/errors; 306/306 focused cases, 1/1
 invariant globalization, 31/31 frozen v1/API compatibility, and 119/119 required
 lane/package guards pass with no failure/skip/unrun. Node/Python verifiers,
@@ -1245,3 +1294,16 @@ result list and is recorded as failed/empty. Remaining groups for follow-up runs
 - [Rejected][low] Cancellation after `AadCodec.Validate` can still complete AAD encoding — same 4,096-byte remainder as the Blind Hunter write-path claim; adding a post-Validate checkpoint is not a direct correction worth the extra branch.
 - [Rejected][low] A Form-C-always-true normalizer would accept decomposed identity — the documented inert-normalizer threat is already fail-closed; the hypothetical half-stub is not an everyday platform.
 - [Rejected][false] `ParseArrayIndex` throws `NullReferenceException` on a null segment — `Decode` never yields null tokens, and `BoundedJsonDocument.Resolve` is the only production caller.
+
+## Authorized repository-scan remediation — 2026-10-09
+
+The interactive user explicitly authorized the dated capture-remediation proposal.
+The existing governed-retirement model preserves both original Story 6.6 capture
+bytes and seals as non-authoritative provenance; separate sanitized replacements
+and exact original/replacement hashes record a one-header transformation. Frozen
+Story 8.2/8.3 approvals and authority remain unchanged. This authorization adds
+no G5, successor, Git mutation, deployment or credential-rotation permission.
+Narrow scanner repairs and negative controls address confirmed fixture/metadata
+false positives, including candidate receipts before Git tracks them. Independent
+read-only review confirms seal preservation and exact retirement scope; current
+verification subsequently passed as recorded in the current closure results.

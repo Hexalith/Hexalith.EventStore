@@ -167,7 +167,12 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         var state = await ReadAsync(tenantId).ConfigureAwait(false); var batch = Find(state, batchId);
         if (batch?.Outcome.Status != DeletionConsumptionStatus.ConsumptionBlocked || batch.Outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise
             || string.IsNullOrWhiteSpace(batch.Outcome.ReceiptId)) { return null; }
-        var comparison = new DeletionActivationComparison(tenantId, batchId, batch.Outcome.ReceiptId, state.KeyBlockSetRevision,
+        // An already completed original blocked activation may still await its guard mirror.
+        // The exact original activation retains the preceding guard block; unrelated successors use the current block.
+        var priorActivation = state.Operations.SingleOrDefault(o => o.ActivationOriginal?.Replacement.Capability == batch.Current.Capability
+            && o.ActivationOriginal.Replacement.Capability.CapabilityKeyVersion == replacementKeyVersion
+            && o.Outcome.Status == DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise && o.Outcome.ReceiptId == batch.Outcome.ReceiptId);
+        var comparison = new DeletionActivationComparison(tenantId, batchId, priorActivation?.ActivationOriginal?.CompromiseBlockReceiptId ?? batch.Outcome.ReceiptId, state.KeyBlockSetRevision,
             replacementKeyVersion, KeyBlock(state, replacementKeyVersion) is not null, state.Revision)
             { ReplacementKeyRevocation = KeyBlock(state, replacementKeyVersion) };
         var final = await ReadAsync(tenantId).ConfigureAwait(false);
@@ -184,10 +189,15 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
         if (prior is not null)
         { return prior.RequestDigest == digest && await AdmitAsync(tenant, id, "ReconcileBlockedDeletionReplacement").ConfigureAwait(false) ? prior.Outcome : Result(state, id, DeletionConsumptionStatus.Conflict); }
         var batch = Find(state, id); var keyBlock = KeyBlock(state, owned.Capability.CapabilityKeyVersion);
+        bool originalBlockedActivation = batch is not null && batch.Current.Capability == owned.Capability && state.Operations.Any(o =>
+            o.ActivationOriginal is { } activation && activation.Replacement.Capability == owned.Capability
+            && activation.CompromiseBlockReceiptId == owned.CompromiseBlockReceiptId && activation.GuardReplacementReceiptId == owned.GuardReplacementReceiptId
+            && activation.Replacement.DetachedJws == owned.DetachedJws && activation.Replacement.CommittedIssuedGuardRevision == owned.CommittedIssuedGuardRevision
+            && o.Outcome.Status == DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise && o.Outcome.ReceiptId == batch.Outcome.ReceiptId);
         if (batch is null || batch.Outcome.Status != DeletionConsumptionStatus.ConsumptionBlocked || batch.Outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise
-            || batch.Outcome.ReceiptId != owned.CompromiseBlockReceiptId || !DeletionConsumptionIdentity.SameBatch(batch.Original, owned)
-            || owned.Capability.AttestationOrdinal != checked((batch.BlockedReplacement?.Capability.AttestationOrdinal ?? batch.Current.Capability.AttestationOrdinal) + 1)
-            || owned.Capability.CapabilityKeyVersion == (batch.BlockedReplacement?.Capability.CapabilityKeyVersion ?? batch.Current.Capability.CapabilityKeyVersion)
+            || !originalBlockedActivation && batch.Outcome.ReceiptId != owned.CompromiseBlockReceiptId || !DeletionConsumptionIdentity.SameBatch(batch.Original, owned)
+            || !originalBlockedActivation && (owned.Capability.AttestationOrdinal != checked((batch.BlockedReplacement?.Capability.AttestationOrdinal ?? batch.Current.Capability.AttestationOrdinal) + 1)
+                || owned.Capability.CapabilityKeyVersion == (batch.BlockedReplacement?.Capability.CapabilityKeyVersion ?? batch.Current.Capability.CapabilityKeyVersion))
             || owned.ExpectedKeyBlockSetRevision != state.KeyBlockSetRevision || keyBlock is null || DeletionConsumptionIdentity.Digest(keyBlock) != DeletionConsumptionIdentity.Digest(owned.RevocationReceipt))
         { return Result(state, id, DeletionConsumptionStatus.Conflict); }
         if (state.Operations.Count >= 10000 || authority is null || !await authority.VerifyBlockedReplacementAsync(owned).ConfigureAwait(false)) { return Unavailable(tenant, id); }
@@ -196,19 +206,19 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             ReceiptId = DeletionConsumptionIdentity.Digest(new[] { owned.OperationId, digest, "blocked-issued-replacement" }), BlockReason = DeletionConsumptionBlockReason.CapabilityKeyCompromise,
             BlockedKeyVersion = owned.Capability.CapabilityKeyVersion, RevocationRevision = keyBlock.Envelope.RevocationRevision };
         next = Replace(next, batch with { BlockedReplacement = owned, Outcome = outcome with { Status = DeletionConsumptionStatus.ConsumptionBlocked } });
-        next = next with { Operations = state.Operations.Append(new DeletionConsumptionOperation(owned.OperationId, digest, outcome)).ToArray() };
+        next = next with { Operations = state.Operations.Append(new DeletionConsumptionOperation(owned.OperationId, digest, outcome) { BlockedReplacementOriginal = owned }).ToArray() };
         await SaveAsync(next).ConfigureAwait(false);
         return await AdmitAsync(tenant, id, "ReconcileBlockedDeletionReplacement").ConfigureAwait(false) ? outcome : Unavailable(tenant, id);
     }
     /// <inheritdoc/>
     public async Task<DeletionBlockedReplacementResult?> ReadBlockedReplacementAsync(DeletionBatchCapabilityV1 capability)
     {
-        ArgumentNullException.ThrowIfNull(capability);
         ArgumentNullException.ThrowIfNull(capability); Check(capability.TenantId); _ = DeletionBatchCapabilityIdentity.SigningRequestId(capability);
         if (!await AdmitAsync(capability.TenantId, capability.BatchId, "ReadBlockedDeletionReplacement").ConfigureAwait(false)) { return null; }
-        var state = await ReadAsync(capability.TenantId).ConfigureAwait(false); var phase = Find(state, capability.BatchId)?.BlockedReplacement;
-        if (phase is null || phase.Capability != capability) { return null; }
-        var operation = state.Operations.SingleOrDefault(o => o.OperationId == phase.OperationId && o.RequestDigest == DeletionConsumptionIdentity.Digest(phase));
+        var state = await ReadAsync(capability.TenantId).ConfigureAwait(false);
+        var operation = state.Operations.SingleOrDefault(o => o.BlockedReplacementOriginal?.Capability == capability);
+        var phase = operation?.BlockedReplacementOriginal;
+        if (phase is null || operation!.RequestDigest != DeletionConsumptionIdentity.Digest(phase)) { return null; }
         var final = await ReadAsync(capability.TenantId).ConfigureAwait(false);
         return operation is not null && DeletionConsumptionIdentity.Digest(final) == DeletionConsumptionIdentity.Digest(state)
             && await AdmitAsync(capability.TenantId, capability.BatchId, "ReadBlockedDeletionReplacement").ConfigureAwait(false) ? new(phase, operation.Outcome) : null;
@@ -241,7 +251,7 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
                 BlockedKeyVersion = replacementBlock?.Envelope.KeyVersion, RevocationRevision = replacementBlock?.Envelope.RevocationRevision };
         var durable = outcome with { Status = replacementBlock is null ? DeletionConsumptionStatus.Unconsumed : DeletionConsumptionStatus.ConsumptionBlocked };
         next = Replace(next, batch with { Current = owned.Replacement, Outcome = durable, BlockedReplacement = null });
-        next = next with { Operations = state.Operations.Append(new DeletionConsumptionOperation(owned.OperationId, digest, outcome)).ToArray() };
+        next = next with { Operations = state.Operations.Append(new DeletionConsumptionOperation(owned.OperationId, digest, outcome) { ActivationOriginal = owned }).ToArray() };
         await SaveAsync(next).ConfigureAwait(false); return outcome;
     }
     /// <inheritdoc/>
@@ -360,7 +370,9 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
             var outcome = b.Outcome; DeletionConsumptionIdentity.Text(outcome.ReceiptId!);
             if (b.BlockedReplacement is { } phase && (outcome.Status != DeletionConsumptionStatus.ConsumptionBlocked
                 || outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise || !DeletionConsumptionIdentity.SameBatch(b.Original, phase)
-                || phase.Capability.AttestationOrdinal <= b.Current.Capability.AttestationOrdinal || phase.ExpectedKeyBlockSetRevision > state.KeyBlockSetRevision
+                || phase.Capability.AttestationOrdinal < b.Current.Capability.AttestationOrdinal
+                || phase.Capability.AttestationOrdinal == b.Current.Capability.AttestationOrdinal && phase.Capability != b.Current.Capability
+                || phase.ExpectedKeyBlockSetRevision > state.KeyBlockSetRevision
                 || !state.Revocations.Any(r => DeletionConsumptionIdentity.Digest(r) == DeletionConsumptionIdentity.Digest(phase.RevocationReceipt))
                 || !state.Operations.Any(o => o.OperationId == phase.OperationId && o.RequestDigest == DeletionConsumptionIdentity.Digest(phase)
                     && o.Outcome.ReceiptId == outcome.ReceiptId && o.Outcome.Status == DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise)))
@@ -397,8 +409,33 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
                 || o.Outcome.OwnerRevision <= 0 || o.Outcome.OwnerRevision > state.Revision || string.IsNullOrWhiteSpace(o.OperationId)
                 || o.RequestDigest.Length != 64 || o.RequestDigest.Any(c => !char.IsAsciiHexDigit(c))))
         { throw new InvalidOperationException("Malformed durable protection operation."); }
+        foreach (var operation in state.Operations.Where(o => o.ActivationOriginal is not null))
+        {
+            var activation = operation.ActivationOriginal!; var replacement = DeletionConsumptionIdentity.Capture(activation.Replacement);
+            var batch = batches.SingleOrDefault(b => b.Current.Capability.BatchId == replacement.Capability.BatchId);
+            if (batch is null || !DeletionConsumptionIdentity.SameBatch(batch.Original, replacement) || replacement.Capability.TenantId != tenant
+                || activation.OperationId != operation.OperationId || operation.RequestDigest != DeletionConsumptionIdentity.Digest(activation)
+                || operation.Outcome.BatchId != replacement.Capability.BatchId || operation.Outcome.Status is not (DeletionConsumptionStatus.Unconsumed or DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise)
+                || operation.Outcome.ReceiptId != DeletionConsumptionIdentity.Digest(new[] { activation.OperationId, operation.RequestDigest, "activation" })
+                || activation.ExpectedKeyBlockSetRevision < 0 || activation.ExpectedKeyBlockSetRevision > state.KeyBlockSetRevision
+                || string.IsNullOrWhiteSpace(activation.CompromiseBlockReceiptId) || string.IsNullOrWhiteSpace(activation.GuardReplacementReceiptId))
+            { throw new InvalidOperationException("Malformed retained activation original."); }
+        }
+        foreach (var operation in state.Operations.Where(o => o.BlockedReplacementOriginal is not null))
+        {
+            var phase = DeletionConsumptionIdentity.Capture(operation.BlockedReplacementOriginal!); var batch = batches.SingleOrDefault(b => b.Current.Capability.BatchId == phase.Capability.BatchId);
+            if (batch is null || !DeletionConsumptionIdentity.SameBatch(batch.Original, phase) || phase.Capability.TenantId != tenant
+                || operation.OperationId != phase.OperationId || operation.RequestDigest != DeletionConsumptionIdentity.Digest(phase)
+                || operation.Outcome.Status != DeletionConsumptionStatus.ActivationBlockedByReplacementKeyCompromise || operation.Outcome.BatchId != phase.Capability.BatchId
+                || operation.Outcome.KeyBlockSetRevision != phase.ExpectedKeyBlockSetRevision || operation.Outcome.BlockReason != DeletionConsumptionBlockReason.CapabilityKeyCompromise
+                || operation.Outcome.BlockedKeyVersion != phase.Capability.CapabilityKeyVersion || operation.Outcome.RevocationRevision != phase.RevocationReceipt.Envelope.RevocationRevision
+                || operation.Outcome.ReceiptId != DeletionConsumptionIdentity.Digest(new[] { phase.OperationId, operation.RequestDigest, "blocked-issued-replacement" })
+                || operation.Outcome.TargetReceipts.Count != 0 || !state.Revocations.Any(r => DeletionConsumptionIdentity.Digest(r) == DeletionConsumptionIdentity.Digest(phase.RevocationReceipt)))
+            { throw new InvalidOperationException("Malformed retained reconciliation original."); }
+        }
         var owned = state with { Batches = Array.AsReadOnly(batches), Revocations = Array.AsReadOnly(state.Revocations.Select(r => r with {
-            AffectedBatchIds = Array.AsReadOnly(r.AffectedBatchIds.ToArray()) }).ToArray()), Operations = Array.AsReadOnly(state.Operations.ToArray()) };
+            AffectedBatchIds = Array.AsReadOnly(r.AffectedBatchIds.ToArray()) }).ToArray()), Operations = Array.AsReadOnly(state.Operations.Select(o => o with { BlockedReplacementOriginal = o.BlockedReplacementOriginal is null ? null : DeletionConsumptionIdentity.Capture(o.BlockedReplacementOriginal),
+            ActivationOriginal = o.ActivationOriginal is null ? null : o.ActivationOriginal with { Replacement = DeletionConsumptionIdentity.Capture(o.ActivationOriginal.Replacement) } }).ToArray()) };
         return owned;
     }
     private async Task SaveAsync(DeletionConsumptionLedger state)

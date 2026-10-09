@@ -1,0 +1,9 @@
+{
+  "story": "8.3",
+  "decision": "Story 8.3 closed under AR-20260914-02 after successful required verification and authorized capture remediation; no successor or G5 authorization",
+  "bindingSha256": "ab5ce3b60fe643fa655d0fc633338ced59e053284dedd6bc00295d4887683a6f",
+  "head": "bb97eb788189a676bd2ff4be1275553d3cf4d788",
+  "reviewedCoreSha256": "2c5643ec4c0d8d52aa0bedb090eba56ec68c80f1e99f090e160f4831db5e8c0f",
+  "reviewedTestsSha256": "1685f50e210cd96dbe5fc32d567a16567daf1a571f82c9da9cec6308e6240fbc",
+  "normativeDigest": "de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e"
+}

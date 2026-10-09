@@ -1,0 +1,3 @@
+_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-callback-fences-2026-10-08/story66-callback-aspire-baseline.json: original seal preserved; one header value replaced; retirement lineage verified
+_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/earlier-attempts/story66-command-state-aspire-baseline.json: original seal preserved; one header value replaced; retirement lineage verified
+PASS: two exact authorized replacements; frozen approval artifacts were not mutated.

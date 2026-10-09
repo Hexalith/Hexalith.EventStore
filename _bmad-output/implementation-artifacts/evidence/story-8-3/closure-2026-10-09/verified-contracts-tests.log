@@ -1,0 +1,12 @@
+Running tests from /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64)
+/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll (net10.0|x64) passed (4m 09s 196ms)
+
+  In process file artifacts produced:
+    - /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verified-contracts-results.trx.xml
+
+Test run summary: Passed!
+  total: 2327
+  failed: 0
+  succeeded: 2327
+  skipped: 0
+  duration: 4m 09s 334ms

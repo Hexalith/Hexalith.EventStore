@@ -1,0 +1,29 @@
+{
+  "command": [
+    "env",
+    "EVENTSTORE_PACKAGE_CONTRACT_DIR=/tmp/story83-authorized-pack-20261009",
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+    "--no-build",
+    "--configuration",
+    "Release",
+    "--filter-not-trait",
+    "Category=HeavyweightContainerPublish",
+    "--fail-skips",
+    "on",
+    "--no-ansi",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "authorized-contracts-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T08:16:03.118481+00:00",
+  "endUtc": "2026-10-09T08:21:09.298168+00:00",
+  "exitCode": 0,
+  "logSha256": "8942c8a1f59d077a05e2a70219660a05327e5c68c1ad8ccde74d25e4b9f8b470"
+}

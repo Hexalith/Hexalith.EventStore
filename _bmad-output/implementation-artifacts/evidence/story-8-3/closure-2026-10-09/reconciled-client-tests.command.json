@@ -1,0 +1,23 @@
+{
+  "command": [
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+    "--no-build",
+    "--configuration",
+    "Release",
+    "--no-ansi",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "client-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:26:50.984979+00:00",
+  "endUtc": "2026-10-09T07:26:57.934298+00:00",
+  "exitCode": 0,
+  "logSha256": "a8d6d24d7eee1e54319cca62222d45e186146562746d6549ba406d409bce0c79"
+}

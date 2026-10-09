@@ -1,0 +1,31 @@
+{
+  "command": [
+    "env",
+    "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1",
+    "dotnet",
+    "test",
+    "--project",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-build",
+    "--minimum-expected-tests",
+    "1",
+    "--fail-skips",
+    "on",
+    "--no-ansi",
+    "--filter-method",
+    "*V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams",
+    "--results-directory",
+    "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09",
+    "--report-xunit-trx",
+    "--report-xunit-trx-filename",
+    "current-invariant-results.trx.xml",
+    "-p:UseHexalithProjectReferences=false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T07:29:22.324007+00:00",
+  "endUtc": "2026-10-09T07:29:23.390769+00:00",
+  "exitCode": 0,
+  "logSha256": "38ca4ee13faa006dc6e412ddf47898adf602a45cc6d21f61153744cae0c2595f"
+}

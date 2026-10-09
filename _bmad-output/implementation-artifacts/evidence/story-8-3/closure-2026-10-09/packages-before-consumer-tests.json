@@ -1,0 +1,72 @@
+[
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Admin.Abstractions.3.117.2-story83-validation.nupkg",
+    "sha256": "fbbf8ddeaf36bf7145b3543ecbe34ddac4373af6fb5448d2c320df2c45f2016a",
+    "bytes": 117249
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Admin.Cli.3.117.2-story83-validation.nupkg",
+    "sha256": "3e0882803ea852d60cc5937ffac6c26b280f5c25bde4cc7556a35e0609babf52",
+    "bytes": 847727
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Admin.Server.3.117.2-story83-validation.nupkg",
+    "sha256": "23cc61f69bc1595e3f9c1d57c7ea391ea1ab7f86f771eb3fa4187faae72513cd",
+    "bytes": 178889
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Aspire.3.117.2-story83-validation.nupkg",
+    "sha256": "fe9caf82361e64d6f85b9a71b5615a4b1d506f80a2e294b386fc8187ebc23139",
+    "bytes": 31394
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Client.3.117.2-story83-validation.nupkg",
+    "sha256": "336e8f7256b3ad4a5d642a014e0cdfc27f2d87612fe5b5fd48433b7dc959d5f8",
+    "bytes": 424158
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Contracts.3.117.2-story83-validation.nupkg",
+    "sha256": "a3947449edf54a01a43c40b754d666679871041e8f5fe20931edda3c585d2453",
+    "bytes": 303556
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.DomainService.3.117.2-story83-validation.nupkg",
+    "sha256": "4960246b24cdd197f3ddcb0958e220ba8ec4504ea092bf5d8eeadf14ce409567",
+    "bytes": 175501
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Gateway.3.117.2-story83-validation.nupkg",
+    "sha256": "353c551c682862ce4e2a907fd8f90f7ce131797e6a994db7c133f601138b88a8",
+    "bytes": 244185
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.RestApi.Generators.3.117.2-story83-validation.nupkg",
+    "sha256": "4ed62295b2f29239b860ff792ed52fdac9a0cbe04859a586f17b0c861cde956a",
+    "bytes": 36999
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Server.3.117.2-story83-validation.nupkg",
+    "sha256": "88f6683e7b9b743a04c8ea457b6b5fb5816a01812db5d2996f069a4e4eafa34f",
+    "bytes": 771333
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.ServiceDefaults.3.117.2-story83-validation.nupkg",
+    "sha256": "fe244e6184d3d271b9b0f4bd936f677c26f12f3e292ea5ab479b7125483af524",
+    "bytes": 48530
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.SignalR.3.117.2-story83-validation.nupkg",
+    "sha256": "af92a6dc685cb736d81abb9371a74b467e0563643624c8f244a4f2152bcf5b6d",
+    "bytes": 21159
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Testing.3.117.2-story83-validation.nupkg",
+    "sha256": "fc38a9782834681abac479889fe68f55cae02006056c8394c6042bcd8aa5b9ee",
+    "bytes": 55146
+  },
+  {
+    "path": "/tmp/story83-closure-pack-20261009/Hexalith.EventStore.Testing.Integration.3.117.2-story83-validation.nupkg",
+    "sha256": "6ce6e84246b051104528ed0be5a65888c73614b397ec6be9bada99fc90bd9e31",
+    "bytes": 64254
+  }
+]

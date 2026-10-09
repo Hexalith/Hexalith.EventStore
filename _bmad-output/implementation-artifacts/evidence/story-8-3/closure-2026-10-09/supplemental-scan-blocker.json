@@ -1,0 +1,34 @@
+{
+  "story": "8.3",
+  "status": "blocked",
+  "failedCheck": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+  "findings": {
+    "reportedLocations": 15,
+    "fixtureAndTestMetadataFalsePositives": 13,
+    "sealedCapturesContainingOtlpAuthenticationHeaders": 2
+  },
+  "sealedCaptures": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-callback-fences-2026-10-08/story66-callback-aspire-baseline.json",
+      "sha256": "a89e5bdfa82ee8cb81a194c4424989ec2bab59733b4b7bafdb3aa1720b1af5fb",
+      "modified": false
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/earlier-attempts/story66-command-state-aspire-baseline.json",
+      "sha256": "f0df91c3d4b429ca29c3ea88ca98da0593e60271469b8bc5cef2dc131d5058c5",
+      "modified": false
+    }
+  ],
+  "assessment": "Independent read-only assessment; no credential values copied into this record. Matching seals do not establish token expiry. No exemption, silent sanitization, seal rewrite or rotation performed.",
+  "serverRun": "SIGINT requested after the observed failure at approximately 20 minutes; raw TRX and terminal counts differ by one successful result. This run is failing evidence, not a complete green certificate.",
+  "proposedRemediation": [
+    "Owner-governed retirement/sanitized replacement of the two sealed captures, with original SHA-256 and replacement lineage; preserve Story 8.2/8.3 frozen authority and approvals.",
+    "Narrow scanner recognition for framework CancellationTokenSource construction, typed mock cancellation arguments, state-store addresses and test metadata, with negative credential controls.",
+    "Repeat scanner and affected Server checks; rebuild, repack and rebind final source/dependency identities before closure."
+  ],
+  "successorGates": {
+    "eventStore84": "No authorization; remain backlog",
+    "parties87": "Blocked until G5",
+    "G5": "Not closed"
+  }
+}

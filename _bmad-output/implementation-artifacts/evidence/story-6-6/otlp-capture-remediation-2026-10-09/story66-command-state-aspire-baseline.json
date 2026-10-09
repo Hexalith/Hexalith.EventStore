@@ -1,0 +1,1953 @@
+{
+  "resources": [
+    {
+      "name": "eventstore-admin-dapr-cli-dnsrvujp",
+      "displayName": "eventstore-admin-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-dapr-cli-dnsrvujp",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-admin-hknpqqht"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "eventstore-admin-hknpqqht",
+        "resource.waitingFor": [
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-hknpqqht",
+      "displayName": "eventstore-admin",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "security"
+      ],
+      "source": "Hexalith.EventStore.Admin.Server.Host.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-hknpqqht",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-thdjxrkc",
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore-admin",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-ui-dapr-cli-thdjxrkc",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-admin-ui-fpwfbbnv"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "eventstore-admin-ui-fpwfbbnv",
+        "resource.waitingFor": [
+          "eventstore-admin-hknpqqht",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-ui-fpwfbbnv",
+      "displayName": "eventstore-admin-ui",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore-admin",
+        "security"
+      ],
+      "source": "Hexalith.EventStore.Admin.UI.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-ui-fpwfbbnv",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-admin-hknpqqht"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-admin-hknpqqht"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-username"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-password"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-admin-hknpqqht"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI",
+        "project.launchProfile": "Hexalith.EventStore.Admin.UI",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-admin-hknpqqht",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "eventstore-app-api-token",
+      "displayName": "eventstore-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:eventstore-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:eventstore-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "eventstore-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for eventstore-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "eventstore-dapr-cli-xpdnkpmx",
+      "displayName": "eventstore-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-dapr-cli-xpdnkpmx",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-jarxwapk"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "eventstore-jarxwapk",
+        "resource.waitingFor": [
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "eventstore-jarxwapk",
+      "displayName": "eventstore",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "security"
+      ],
+      "source": "Hexalith.EventStore.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-jarxwapk",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-workload-client-secret"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-app-api-token"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-password",
+      "displayName": "local-auth-admin-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-password",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-password",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-password",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-password",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-password",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "displayName": "local-auth-admin-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-user-id",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-user-id",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-user-id",
+        "Value": "1f648a2c-4ea6-440c-8db4-33fee321e493"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-user-id",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-user-id",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-username",
+      "displayName": "local-auth-admin-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-username",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-username",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-username",
+        "Value": "local-cf18adb01cda0556f0c5eb7b"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-username",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-username",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-password",
+      "displayName": "local-auth-sample-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-password",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-password",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-password",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-password",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-password",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "displayName": "local-auth-sample-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-user-id",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-user-id",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-user-id",
+        "Value": "2ceb9f6c-2fa7-4d22-b227-2922f0b42eaa"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-user-id",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-user-id",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-username",
+      "displayName": "local-auth-sample-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-username",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-username",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-username",
+        "Value": "tenant-a-user"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-username",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-username",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-signing-key",
+      "displayName": "local-auth-signing-key",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-signing-key",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-signing-key",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-signing-key",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-signing-key",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-signing-key",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-workload-client-secret",
+      "displayName": "local-auth-workload-client-secret",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-workload-client-secret",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-workload-client-secret",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-workload-client-secret",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-workload-client-secret",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-workload-client-secret",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "sample-api-dapr-cli-dxbcurfj",
+      "displayName": "sample-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-api-dapr-cli-dxbcurfj",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-api-qxhhtpxf"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "sample-api-qxhhtpxf",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "sample-api-qxhhtpxf",
+      "displayName": "sample-api",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "Hexalith.EventStore.Sample.Api.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-api-qxhhtpxf",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "sample-app-api-token",
+      "displayName": "sample-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:sample-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:sample-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "sample-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for sample-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-xhatpqfp",
+      "displayName": "sample-blazor-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-blazor-ui-dapr-cli-xhatpqfp",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-blazor-ui-hcbeaeby"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "sample-blazor-ui-hcbeaeby",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "sample-blazor-ui-hcbeaeby",
+      "displayName": "sample-blazor-ui",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "Hexalith.EventStore.Sample.BlazorUI.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-blazor-ui-hcbeaeby",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-sample-username"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-sample-password"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "sample-dapr-cli-qshcctpm",
+      "displayName": "sample-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-dapr-cli-qshcctpm",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-dnxnrxhd"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "sample-dnxnrxhd",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "sample-dnxnrxhd",
+      "displayName": "sample",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "Hexalith.EventStore.Sample.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-dnxnrxhd",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "sample-app-api-token"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "security-eventstore-client-password",
+      "displayName": "security-eventstore-client-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:security-eventstore-client-password",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=security-eventstore-client-password",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:security-eventstore-client-password",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "security-eventstore-client-password",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for security-eventstore-client-password",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security-eventstore-client-username",
+      "displayName": "security-eventstore-client-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:security-eventstore-client-username",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=security-eventstore-client-username",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:security-eventstore-client-username",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "security-eventstore-client-username",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for security-eventstore-client-username",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security-gbqpucge",
+      "displayName": "security",
+      "resourceType": "Container",
+      "state": "Running",
+      "creationTimestamp": "2026-10-08T17:47:52+00:00",
+      "startTimestamp": "2026-10-08T17:47:53.518346+00:00",
+      "source": "quay.io/keycloak/keycloak:26.6",
+      "healthStatus": "Unhealthy",
+      "dashboardUrl": "https://localhost:17017/?resource=security-gbqpucge",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "security-eventstore-client-username"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-eventstore-client-password"
+        }
+      ],
+      "urls": [
+        {
+          "name": "management",
+          "url": "https://localhost:8543",
+          "isInternal": true
+        },
+        {
+          "name": "http",
+          "url": "https://localhost:8180"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "container.args": null,
+        "container.command": null,
+        "container.id": "26f35464daf386053eca4f5484403c5251ad96237e2104ca9c017e4867181539",
+        "container.image": "quay.io/keycloak/keycloak:26.6",
+        "container.lifetime": "Session",
+        "container.ports": [
+          9000,
+          8443
+        ],
+        "resource.appArgs": [
+          "/opt/keycloak/bin/kc.sh",
+          "start-dev"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0
+        ]
+      },
+      "environment": {
+        "HEXALITH_EVENTSTORE_CLIENT_PASSWORD": null,
+        "HEXALITH_EVENTSTORE_CLIENT_USERNAME": null,
+        "KC_BOOTSTRAP_ADMIN_PASSWORD": null,
+        "KC_BOOTSTRAP_ADMIN_USERNAME": "admin",
+        "KC_FEATURES": "opentelemetry",
+        "KC_HEALTH_ENABLED": "true",
+        "KC_HTTPS_CERTIFICATE_FILE": "/usr/lib/ssl/aspire/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.crt",
+        "KC_HTTPS_CERTIFICATE_KEY_FILE": "/usr/lib/ssl/aspire/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.key",
+        "KC_HTTPS_PORT": "8443",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://aspire.dev.internal:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=gbqpucge",
+        "OTEL_SERVICE_NAME": "security",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/usr/lib/ssl/aspire/certs:/etc/ssl/certs:/usr/local/share/ca-certificates:/etc/pki/tls/certs"
+      },
+      "healthReports": {
+        "security_management_/health/ready_200_check": {
+          "status": "Unhealthy",
+          "description": "Failed to connect to https://localhost:8543/health/ready",
+          "exceptionMessage": "System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.\n ---> System.IO.IOException: Unable to read data from the transport connection: Connection reset by peer.\n ---> System.Net.Sockets.SocketException (104): Connection reset by peer\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)\n   at System.Net.Sockets.NetworkStream.ReadAsync(Memory`1 buffer, CancellationToken cancellationToken)\n   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)\n   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)\n   at System.Net.Sockets.SocketAsyncEngine.System.Threading.IThreadPoolWorkItem.Execute()\n   at System.Threading.ThreadPoolWorkQueue.Dispatch()\n   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()\n   at System.Threading.Thread.StartCallback()\n--- End of stack trace from previous location ---\n\n   --- End of inner exception stack trace ---\n   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)\n   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)\n   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)\n   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)\n   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)\n   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)\n   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)\n   at Microsoft.Extensions.Http.Logging.LoggingHttpMessageHandler.<SendCoreAsync>g__Core|4_0(HttpRequestMessage request, Boolean useAsync, CancellationToken cancellationToken)\n   at Microsoft.Extensions.Http.Logging.LoggingScopeHttpMessageHandler.<SendCoreAsync>g__Core|4_0(HttpRequestMessage request, Boolean useAsync, CancellationToken cancellationToken)\n   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)\n   at Aspire.Hosting.HttpHealthCheckHelpers.CheckUriAsync(Uri uri, Int32 expectedStatusCode, Func`1 httpClientFactory, HealthCheckContext context, CancellationToken cancellationToken) in /_/src/Aspire.Hosting/ExternalServiceBuilderExtensions.cs:line 351"
+        }
+      },
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "tenants-api-dapr-cli-xytgbmpx",
+      "displayName": "tenants-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-api-dapr-cli-xytgbmpx",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "tenants-api-jwazymcp"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "tenants-api-jwazymcp",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "tenants-api-jwazymcp",
+      "displayName": "tenants-api",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "Hexalith.Tenants.Api.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-api-jwazymcp",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api",
+        "project.launchProfile": "Hexalith.Tenants.Api",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "tenants-app-api-token",
+      "displayName": "tenants-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:tenants-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:tenants-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "tenants-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for tenants-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "tenants-dapr-cli-zjtbxfqg",
+      "displayName": "tenants-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "dapr",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-dapr-cli-zjtbxfqg",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "tenants-xggvmbjn"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.parentName": "tenants-xggvmbjn",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "tenants-xggvmbjn",
+      "displayName": "tenants",
+      "resourceType": "Project",
+      "state": "Waiting",
+      "waitingFor": [
+        "eventstore",
+        "security"
+      ],
+      "source": "Hexalith.Tenants.csproj",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-xggvmbjn",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-jarxwapk"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-user-id"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "security-gbqpucge"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-username"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-password"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "tenants-app-api-token"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": null,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants",
+        "project.launchProfile": "Hexalith.Tenants",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj",
+        "resource.appArgs": null,
+        "resource.appArgsSensitivity": null,
+        "resource.launchConfigurationType": "project",
+        "resource.waitingFor": [
+          "eventstore-jarxwapk",
+          "security-gbqpucge"
+        ]
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    }
+  ]
+}

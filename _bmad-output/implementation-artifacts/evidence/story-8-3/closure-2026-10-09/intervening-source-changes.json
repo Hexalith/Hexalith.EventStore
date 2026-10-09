@@ -1,0 +1,17 @@
+{
+  "before": "before-current-rebuild.json",
+  "after": "current-compiled.json",
+  "changes": [
+    {
+      "path": "src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs",
+      "before": "036aef8fa9ef740265dd43f4e53c85f05ca8a2c948ddd9ad24011e953a229788",
+      "after": "eb42605e9287246258fb2d6be50fa92dbb70b92116b697154e9ddeab9d2192f3"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Security/DeletionConsumptionOperation.cs",
+      "before": "da1a84c4bff170a11d674dd388892f36a7f38c19433558a08c75c5695480fbd8",
+      "after": "2f4a3bfdab148efa5ce8638cda53a820d2130be6d8d8275c28a3e2128ae7b56c"
+    }
+  ],
+  "disposition": "This compilation boundary crossed concurrent owner edits; superseded by final stable-source build. No owner changes reverted."
+}

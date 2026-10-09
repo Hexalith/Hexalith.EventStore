@@ -1,6 +1,83 @@
 # Story 8.3 pdenc-v2 Core Cryptographic Engine
 
-## Current disposition — 2026-10-08
+## Current disposition — closed 2026-10-09
+
+**Story 8.3 is closed** under the existing conditional authority in
+`AR-20260914-02`, after successful independent core review, required verification,
+and the interactive user's explicit authorization of the repository-scan
+remediation. Spec and sprint status are `done`. No frozen approval was rewritten
+or retroactively attributed to different implementation bytes.
+
+The [closure packet](evidence/story-8-3/closure-2026-10-09/README.md),
+[binding](evidence/story-8-3/closure-2026-10-09/binding.json), and
+[subject](evidence/story-8-3/closure-2026-10-09/subject.json) bind exact source,
+dependency, executed-runtime and archive identities. Broad solution and focused
+Release builds pass with warnings treated as errors; focused 357/357 (324 owned
+core plus 33 concurrent prototypes), invariant 1/1, Contracts 2,327/2,327, Client
+1,636/1,636, affected deletion 48/48, and repository scanner 202/202 pass without
+skips. Normal restore-based packing and both validators pass for exactly 14
+archives; 13 package-only library consumers and one tool consumer pass against
+the sealed hashes. Local version `3.117.2-story83-validation` is not a published
+release; the core remains non-packable and excluded from the solution/manifest.
+
+The two original Story 6.6 captures and their seals remain byte-preserved as
+explicitly retired, non-authoritative provenance. Separate sanitized replacements
+change one header value each and record exact lineage. Narrow scanner repairs
+and 100 added control cases resolve the false positives, including untracked
+candidate records. The original 46 approved Security files, authority and
+fixtures remain unchanged. Concurrent source/configuration changes now match
+the tested candidate; unrelated planning changes are separately recorded.
+
+The three core review lenses and independent retirement/seal review completed.
+A final additional scanner follow-up was rejected by the reviewer service as
+possible cybersecurity risk; it is recorded as unavailable, with no successful
+follow-up claimed. Parent source inspection and all 202 scanner cases completed.
+No new core deferral was added.
+
+**Parties 8.7 remains blocked until G5 closes. G5 is not closed by this packet.**
+**EventStore 8.4 remains backlog and requires separate successor authorization.**
+This workflow did not stage, commit, push, branch, update dependencies, deploy,
+or rotate credentials. External sessions advanced Git history; their exact
+identities are disclosed in the binding.
+
+## Historical pre-remediation disposition — 2026-10-09
+
+The resumed Story 8.3 candidate passes the previous Release-build and normal
+packing checks, with exact tested source/dependency identities recorded. **Story 8.3 is not closed:** the
+broader Server verification exposed a failing repository secrets check involving
+sealed Story 6.6 captures and fixture/test-metadata false positives. Later
+concurrent Contracts Security edits remain uncompiled drift from the tested
+candidate. The spec
+remains `in-review`; sprint 8.3 remains `in-progress`.
+
+The [dated verification packet](evidence/story-8-3/closure-2026-10-09/README.md)
+records reproducible commands, result rows, source/dependency inventories,
+compiled/runtime identities, package hashes, review triage, and the remaining
+blocker. Its [remediation proposal](evidence/story-8-3/closure-2026-10-09/remediation-proposal.md)
+requires explicit owner disposition of the separately sealed captures. Neither
+those capture bytes nor frozen 8.2/8.3 approvals were rewritten.
+
+The core now retries diagnostic initialization after listener-publication
+failures. Eighteen core regression cases cover that recovery and the additional
+snapshot, malformed-JSON, bounds, and cancellation review findings; eight lane
+mutation cases strengthen trigger and shell-command checks. All fresh review
+findings are triaged; no new core deferral was added. Live focused results are
+357 passes: 324 owned core cases plus 33 preserved concurrent prototype cases.
+The invariant run passes 1/1. Broad Release and focused builds pass with
+warnings treated as errors. Normal restore-based packing and both validators
+produce exactly 14 archives at local validation version
+`3.117.2-story83-validation`, excluding PayloadProtection; no release was
+published. Concurrent Client/Server edits were preserved and rebuilt.
+
+Existing `AR-20260914-02` conditionally authorizes independent review and closure;
+its condition is not declared satisfied while the repository check fails.
+**EventStore 8.4 remains backlog and unauthorized. Parties 8.7 remains blocked
+until G5 closes; this core packet makes no G5 or later-story approval claim.**
+This workflow did not stage, commit, push, branch, or update dependencies;
+other sessions advanced Git history during the run and their changes are
+explicitly bound in the packet.
+
+## Historical disposition — 2026-10-08
 
 The resumed Story 8.3 implementation and three-layer independent review are
 complete for the exact scoped candidate. Fourteen review findings are resolved;

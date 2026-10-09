@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "scripts/validate-consumer-package-references.py",
+    "/tmp/story83-authorized-pack-20261009"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T08:21:09.324816+00:00",
+  "endUtc": "2026-10-09T08:21:45.167646+00:00",
+  "exitCode": 0,
+  "logSha256": "467330dab6d397297fcce57d054809edb5523ae62934a894f45d6d08a28a0952"
+}
