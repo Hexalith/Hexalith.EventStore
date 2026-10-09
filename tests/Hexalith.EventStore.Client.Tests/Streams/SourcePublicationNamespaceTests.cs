@@ -71,6 +71,49 @@ public sealed class SourcePublicationNamespaceTests
         restarted.CommittedState.Single().Value.ShouldBeOfType<SourcePublicationNamespaceState>().Revision.ShouldBe(2);
     }
 
+    /// <summary>A revision-one installation cannot authenticate a smaller initial vector than its complete requested roster.</summary>
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task RevisionOneSubsetCannotInstallOrCertifyRestoredState(bool restored)
+    {
+        var backend = new InMemoryStateManager(); var actor = Actor(backend);
+        var inconsistent = Installation() with { Sources = [Existing, Created], InitialSources = [Existing] };
+        if (restored)
+        {
+            await backend.SetStateAsync("source-publication-namespace-v1", JsonSerializer.Deserialize<SourcePublicationNamespaceState>(JsonSerializer.SerializeToUtf8Bytes(inconsistent))!);
+            await backend.SaveStateAsync();
+            byte[] original = JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value);
+            await Should.ThrowAsync<InvalidOperationException>(() => actor.ReadAsync(Scope));
+            await Should.ThrowAsync<InvalidOperationException>(() => actor.InstallAsync(Installation()));
+            JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value).ShouldBe(original);
+        }
+        else
+        {
+            await Should.ThrowAsync<InvalidOperationException>(() => actor.InstallAsync(inconsistent));
+            backend.CommittedState.ShouldBeEmpty();
+            (await actor.InstallAsync(Installation() with { InitialSources = [Existing] })).ShouldBeTrue();
+            byte[] original = JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value);
+            await Should.ThrowAsync<InvalidOperationException>(() => actor.InstallAsync(inconsistent));
+            JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value).ShouldBe(original);
+        }
+    }
+
+    /// <summary>Registered growth keeps its original installation vector through serialized retry without replacing the complete persisted roster.</summary>
+    [Fact]
+    public async Task PostRegistrationGrowthAndOriginalInstallationRetryRemainExact()
+    {
+        var backend = new InMemoryStateManager(); var actor = Actor(backend);
+        var original = Installation() with { InitialSources = [Existing] };
+        (await actor.InstallAsync(original)).ShouldBeTrue(); (await actor.RegisterAsync(Scope, 1, Created)).ShouldBeTrue();
+        var stored = backend.CommittedState.Single(); byte[] saved = JsonSerializer.SerializeToUtf8Bytes(stored.Value);
+        var restored = new InMemoryStateManager();
+        await restored.SetStateAsync(stored.Key, JsonSerializer.Deserialize<SourcePublicationNamespaceState>(saved)!); await restored.SaveStateAsync();
+        var restarted = Actor(restored); (await restarted.InstallAsync(original)).ShouldBeTrue();
+        var read = (await restarted.ReadAsync(Scope))!; read.Revision.ShouldBe(2);
+        read.InitialSources!.ShouldBe(new[] { Existing }); read.Sources.ShouldBe(new[] { Existing, Created }.OrderBy(source => source.ActorId, StringComparer.Ordinal));
+        JsonSerializer.SerializeToUtf8Bytes(restored.CommittedState.Single().Value).ShouldBe(saved);
+    }
+
     /// <summary>Neither precommit failure nor a lost acknowledgement can certify staged inventory.</summary>
     [Theory]
     [InlineData(false)]

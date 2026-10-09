@@ -5664,3 +5664,15 @@ status: open
 ## Deferred from: code review of spec-5-2-admin-endpoint-authorization-and-tenant-filters.md (2026-10-08)
 
 - Repeated `tenantId` query values are joined with commas and fail closed. The baseline `AdminTenantAuthorizationFilter` already compared `queryValue.ToString()`, so a repeated matching key is rejected. This chunk preserved that comparison.
+
+### DW-543: Consolidate the gateway correlation-ID predicate with the AD-32 rule
+
+origin: bmad-review of Story 6.6 (epics.md), 2026-10-09
+location: src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs:IsValidIdentifier; SubmitCommandRequestValidator
+severity: low
+reason: Optional. The gateway predicate also requires an alphanumeric first and last character, which is stricter than AD-32 (1-128 ASCII alphanumeric or hyphen characters). Story 6.6 AC6 implements the AD-32 rule in Contracts for event identity, so two definitions remain until the gateway reuses the Contracts predicate. Outside the Story 6.6 acceptance criteria.
+status: open
+
+- source_spec: `_bmad-output/planning-artifacts/epics.md` (Story 6.6)
+  summary: Consolidate the gateway correlation-ID predicate with the AD-32 rule
+  evidence: CorrelationIdMiddleware.IsValidIdentifier uses ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ with a 128-character limit; AD-32 (architecture.md) defines 1-128 ASCII alphanumeric or hyphen characters with no anchor rule.

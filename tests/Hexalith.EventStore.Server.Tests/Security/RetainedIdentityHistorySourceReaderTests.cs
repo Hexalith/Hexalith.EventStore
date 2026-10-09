@@ -659,6 +659,83 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         for (int n = 0; n < stored.Length; n++) { stored[n].Payload.ShouldBe(originals[n]); }
     }
 
+    /// <summary>Initial and final independently returned grant collections cannot retain the whole read beyond its original budget.</summary>
+    /// <param name="phase">The initial or final grant.</param>
+    /// <param name="field">The admitted types or excluded names.</param>
+    /// <param name="access">The actually suspended collection operation.</param>
+    /// <param name="expires">Whether the thirty-second operation expires instead of caller cancellation.</param>
+    /// <param name="invalid">Whether the released carrier is invalid.</param>
+    [Theory]
+    [InlineData("initial", "types", "count", false, false)][InlineData("initial", "types", "count", true, false)]
+    [InlineData("initial", "types", "traversal", false, false)][InlineData("initial", "types", "traversal", true, false)]
+    [InlineData("initial", "excluded", "count", false, false)][InlineData("initial", "excluded", "count", true, false)]
+    [InlineData("initial", "excluded", "traversal", false, false)][InlineData("initial", "excluded", "traversal", true, false)]
+    [InlineData("final", "types", "count", false, false)][InlineData("final", "types", "count", true, false)]
+    [InlineData("final", "types", "traversal", false, false)][InlineData("final", "types", "traversal", true, false)]
+    [InlineData("final", "excluded", "count", false, false)][InlineData("final", "excluded", "count", true, false)]
+    [InlineData("final", "excluded", "traversal", false, false)][InlineData("final", "excluded", "traversal", true, false)]
+    [InlineData("initial", "types", "count", false, true)][InlineData("final", "excluded", "traversal", false, true)]
+    public async Task SuspendedGrantCaptureCannotReturnHistoryOrContinueAfterAbandonment(string phase, string field, string access, bool expires, bool invalid)
+    {
+        Arrange(); ArrangeCompleteSource();
+        var clock = new RetainedHistoryTimeProvider(_now);
+        using var caller = new CancellationTokenSource(); using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Block() { entered.TrySetResult(); release.Wait(); finished.TrySetResult(); }
+        Type[] types = [invalid ? null! : typeof(HistoryCustodyProbeEvent)];
+        string[] names = [invalid ? string.Empty : "Profile", "ErasedProfile"];
+        var suppliedTypes = Substitute.For<IReadOnlyList<Type>>();
+        var suppliedNames = Substitute.For<IReadOnlyList<string>>();
+        suppliedTypes.Count.Returns(_ => { if (field == "types" && access == "count") { Block(); } return types.Length; });
+        suppliedNames.Count.Returns(_ => { if (field == "excluded" && access == "count") { Block(); } return names.Length; });
+        suppliedTypes.GetEnumerator().Returns(_ => { if (field == "types" && access == "traversal") { Block(); } return ((IEnumerable<Type>)types).GetEnumerator(); });
+        suppliedNames.GetEnumerator().Returns(_ => { if (field == "excluded" && access == "traversal") { Block(); } return ((IEnumerable<string>)names).GetEnumerator(); });
+        var supplied = Grant() with { EventTypes = suppliedTypes, ExcludedEventTypeNames = suppliedNames };
+        int admissions = 0; var owned = new List<byte[]>();
+        _admission.AdmitAsync(_principal, Arg.Any<RetainedIdentityHistoryReadRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++admissions == (phase == "initial" ? 1 : 2) ? supplied : Grant());
+        var reader = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, clock, owned.Add);
+        var reading = reader.ReadAsync(_principal, Request(), caller.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        int sourceCalls = _actor.ReceivedCalls().Count(); int providerCalls = _custody.ReceivedCalls().Count();
+        try
+        {
+            if (expires)
+            {
+                clock.Advance(TimeSpan.FromSeconds(30));
+                var result = await reading.WaitAsync(TimeSpan.FromSeconds(2));
+                result.Stream.ShouldBeNull(); result.FailureReason.ShouldBe("history-time-bound-exceeded");
+            }
+            else
+            {
+                caller.Cancel();
+                var error = await Should.ThrowAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(2)));
+                error.CancellationToken.ShouldBe(caller.Token);
+            }
+            if (phase == "final") { owned.ShouldNotBeEmpty(); owned.All(bytes => bytes.All(value => value == 0)).ShouldBeTrue(); }
+        }
+        finally { release.Set(); }
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        _actor.ReceivedCalls().Count().ShouldBe(sourceCalls); _custody.ReceivedCalls().Count().ShouldBe(providerCalls);
+        if (phase == "initial") { _actors.DidNotReceive().CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>()); }
+    }
+
+    /// <summary>Only detached admitted collections are used after the independently owned originals change.</summary>
+    [Fact]
+    public async Task GrantTypeAndExclusionSnapshotsRemainExactAcrossSourceAwaits()
+    {
+        Arrange(); ArrangeCompleteSource();
+        Type[] types = [typeof(HistoryCustodyProbeEvent)]; string[] excluded = ["Profile", "ErasedProfile"];
+        var first = Grant() with { EventTypes = types, ExcludedEventTypeNames = excluded };
+        _admission.AdmitAsync(_principal, Arg.Any<RetainedIdentityHistoryReadRequest>(), Arg.Any<CancellationToken>()).Returns(first, Grant());
+        _actor.GetStreamMetadataAsync().Returns(_ => { types[0] = null!; excluded[0] = "changed-provider-name"; return new AggregateStreamMetadata(true, 2); });
+        var reader = new RetainedIdentityHistorySourceReader(_actors, _admission, _custody, _clock);
+        var result = await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken);
+        result.IsAuthoritative.ShouldBeTrue(); result.Stream!.ExcludedSequences.ShouldBe([1L]);
+        result.Stream.Events.Single().EventTypeName.ShouldBe(typeof(HistoryCustodyProbeEvent).FullName);
+    }
+
     private void ArrangeCompleteSource()
         => _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")]);
 

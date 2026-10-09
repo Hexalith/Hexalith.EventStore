@@ -88,6 +88,8 @@ public sealed class SourcePublicationNamespaceActor(ActorHost host, ISourcePubli
             { throw new InvalidOperationException("Malformed initial namespace roster."); }
             initial.Add(identity);
         }
+        if (state.Revision == 1 && initial.Count != owned.Count)
+        { throw new InvalidOperationException("Initial installation must contain its complete roster."); }
         return state with { Sources = Array.AsReadOnly(owned.OrderBy(s => s.ActorId, StringComparer.Ordinal).ToArray()),
             InitialSources = Array.AsReadOnly(initial.OrderBy(s => s.ActorId, StringComparer.Ordinal).ToArray()) };
     }

@@ -16,6 +16,7 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
+            deadline.ThrowIfCancellationRequested();
             if (authority is null) { return null; }
             var cell = await deadline.ReadAsync(token => transaction.ReadGuardAsync(tenantId, token)).ConfigureAwait(false);
             if (cell is null) { return null; }
@@ -32,6 +33,7 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
+            deadline.ThrowIfCancellationRequested();
             if (authority is null || payload is null || signingRequestId != DeletionBatchCapabilityIdentity.SigningRequestId(payload)
                 || detachedJwsDigest is not { Length: 64 } || !detachedJwsDigest.All(char.IsAsciiHexDigit)) { return null; }
             string operationId = "issue-" + Hash(new[] { signingRequestId, detachedJwsDigest });
@@ -62,10 +64,12 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
-            if (authority is null || transition is null || !GovernanceScopeGuardReducer.IsClosedCommand(transition) || targets is null || targets.Count > 1000) { return null; }
+            deadline.ThrowIfCancellationRequested();
+            if (authority is null || transition is null || !GovernanceScopeGuardReducer.IsClosedCommand(transition) || targets is null) { return null; }
             transition = await deadline.ReadAsync(_ => Task.FromResult(Capture(transition))).ConfigureAwait(false);
             targets = await deadline.ReadAsync(_ =>
             {
+                if (targets.Count > 1000) { throw new ArgumentException("Oversized joint write."); }
                 long bytes = 0; var capturedTargets = new List<GuardedStateMutation>();
                 foreach (var value in targets)
                 {

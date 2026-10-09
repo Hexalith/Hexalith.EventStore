@@ -370,4 +370,50 @@ public sealed class GovernanceScopeGuardTests
         (await restarted.ExecuteAsync(first.Original, [first.Mutation], TestContext.Current.CancellationToken)).ShouldBe(first.Receipt);
     }
 
+    /// <summary>The actual InstallEpoch entry bounds supplied target Count and traversal before any independent guard authority or joint effect.</summary>
+    [Theory]
+    [InlineData("count", false)][InlineData("count", true)][InlineData("traversal", false)][InlineData("traversal", true)]
+    public async Task SuspendedTargetsCannotAuthorizeOrMutateGuard(string access, bool expires)
+    {
+        var fixture = new GovernanceGuardFixture(); var command = fixture.Command(GovernanceGuardOperation.InstallEpoch);
+        var stored = fixture.Backend.Stored.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray());
+        var clock = new RetainedHistoryTimeProvider(fixture.Backend.Now); using var caller = new CancellationTokenSource();
+        using var release = new ManualResetEventSlim(); var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Block() { entered.TrySetResult(); release.Wait(); finished.TrySetResult(); }
+        var supplied = Substitute.For<IReadOnlyList<GuardedStateMutation>>();
+        supplied.Count.Returns(_ => { if (access == "count") { Block(); } return 0; });
+        supplied.GetEnumerator().Returns(_ => { if (access == "traversal") { Block(); } return ((IEnumerable<GuardedStateMutation>)Array.Empty<GuardedStateMutation>()).GetEnumerator(); });
+        fixture.Authority.ClearReceivedCalls(); fixture.Backend.Authority.ClearReceivedCalls();
+        var owner = new GovernanceScopeGuardOwner(fixture.Backend.Owner, clock, fixture.Authority);
+        var pending = Task.Run(() => owner.ExecuteAsync(command, supplied, caller.Token), CancellationToken.None);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        try
+        {
+            if (expires) { clock.Advance(TimeSpan.FromSeconds(30)); (await pending.WaitAsync(TimeSpan.FromSeconds(2))).ShouldBeNull(); }
+            else { caller.Cancel(); var error = await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(2))); error.CancellationToken.ShouldBe(caller.Token); }
+        }
+        finally { release.Set(); }
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        fixture.Authority.ReceivedCalls().ShouldBeEmpty(); fixture.Backend.Authority.ReceivedCalls().ShouldBeEmpty(); fixture.Backend.TransactionCalls.ShouldBe(0);
+        foreach (var pair in stored) { fixture.Backend.Stored[pair.Key].ShouldBe(pair.Value); }
+    }
+
+    /// <summary>Every demonstrated disabled owner entry preserves original cancellation and remains null for an active caller.</summary>
+    [Theory]
+    [InlineData("read")][InlineData("execute")][InlineData("no-issue")]
+    public async Task DisabledOwnerEntriesCheckOriginalCancellation(string entry)
+    {
+        var fixture = new GovernanceGuardFixture(); var owner = new GovernanceScopeGuardOwner(fixture.Backend.Owner, TimeProvider.System);
+        var command = fixture.Command(GovernanceGuardOperation.InstallEpoch);
+        var payload = new DeletionBatchCapabilityV1("issuer", "audience", "tenant-a", "deletion-a", new string('A', 64), "AcceptedSet", 0,
+            new string('B', 64), new string('C', 64), "guard", 1, 1, 1, "key");
+        string requestId = DeletionBatchCapabilityIdentity.SigningRequestId(payload);
+        using var caller = new CancellationTokenSource(); caller.Cancel();
+        async Task<bool> Run(CancellationToken token) => entry == "read" ? await owner.ReadAsync("tenant-a", token) is null
+            : entry == "execute" ? await owner.ExecuteAsync(command, [], token) is null : await owner.ReadNoIssueAsync(payload, requestId, new string('D', 64), token) is null;
+        var error = await Should.ThrowAsync<OperationCanceledException>(() => Run(caller.Token)); error.CancellationToken.ShouldBe(caller.Token);
+        (await Run(CancellationToken.None)).ShouldBeTrue(); fixture.Backend.TransactionCalls.ShouldBe(0);
+    }
+
 }

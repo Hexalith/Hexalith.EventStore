@@ -165,4 +165,78 @@ public sealed class GuardedStateTransactionTests
         var restart = await fixture.Owner.LookupByIntentAsync(fixture.Target.TenantId, first.OperationId, first.LogicalIntentDigest, TestContext.Current.CancellationToken);
         restart.Status.ShouldBe(winner.Status); restart.Receipt!.RequestDigest.ShouldBe(winner.Receipt!.RequestDigest); restart.Receipt.Outcome.ShouldBe(winner.Receipt.Outcome);
     }
+    /// <summary>Oversized backend outcomes are denied before another full buffer allocation on every public original lookup path.</summary>
+    [Theory]
+    [InlineData("original")][InlineData("intent")][InlineData("request")]
+    public async Task OversizedReceiptOutcomeIsRejectedBeforeCopy(string path)
+    {
+        var fixture = new GuardedTransactionFixture(); var request = fixture.Request();
+        var committed = await fixture.Owner.CommitAsync(request, TestContext.Current.CancellationToken);
+        committed.Status.ShouldBe(GuardedStateCommitStatus.Committed);
+        byte[] oversizedBytes = new byte[16 * 1024 * 1024 + 1]; oversizedBytes[0] = 17; oversizedBytes[^1] = 23;
+        var oversized = committed.Receipt! with { Outcome = oversizedBytes };
+        fixture.ReceiptRead = _ => Task.FromResult<GuardedStateCommitReceipt?>(oversized);
+        fixture.Authority.ClearReceivedCalls(); var stored = fixture.Stored.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray());
+        long allocatedBefore = GC.GetTotalAllocatedBytes(true);
+        var result = path == "request" ? await fixture.Owner.LookupAsync(request, TestContext.Current.CancellationToken)
+            : path == "intent" ? await fixture.Owner.LookupByIntentAsync(request.TenantId, request.OperationId, GuardedTransactionFixture.Hash("intent"u8.ToArray()), TestContext.Current.CancellationToken)
+            : await fixture.Owner.LookupOriginalAsync(request.TenantId, request.OperationId, GuardedTransactionFixture.Hash("scope"u8.ToArray()), TestContext.Current.CancellationToken);
+        long allocation = GC.GetTotalAllocatedBytes(true) - allocatedBefore;
+        result.Status.ShouldBe(GuardedStateCommitStatus.Unavailable); result.Receipt.ShouldBeNull();
+        allocation.ShouldBeLessThan(oversizedBytes.Length);
+        oversizedBytes[0].ShouldBe((byte)17); oversizedBytes[^1].ShouldBe((byte)23);
+        await fixture.Authority.DidNotReceiveWithAnyArgs().ValidateReceiptAsync(default!, default!, default);
+        fixture.TransactionCalls.ShouldBe(1); foreach (var pair in stored) { fixture.Stored[pair.Key].ShouldBe(pair.Value); }
+    }
+
+    /// <summary>Pure supplied request capture is bounded; terminated entries cannot authorize or change an existing joint original.</summary>
+    [Theory]
+    [InlineData("commit", "count", false)][InlineData("commit", "count", true)]
+    [InlineData("commit", "traversal", false)][InlineData("commit", "traversal", true)]
+    [InlineData("lookup", "count", false)][InlineData("lookup", "count", true)]
+    [InlineData("lookup", "traversal", false)][InlineData("lookup", "traversal", true)]
+    public async Task SuspendedRequestCaptureNeverContinuesJointTransaction(string operation, string access, bool expires)
+    {
+        var fixture = new GuardedTransactionFixture(); var request = fixture.Request();
+        (await fixture.Owner.CommitAsync(request, TestContext.Current.CancellationToken)).Status.ShouldBe(GuardedStateCommitStatus.Committed);
+        var stored = fixture.Stored.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray());
+        byte[] guard = request.Guard.NextValue.ToArray(); byte[] source = request.Targets.Single().NextValue.ToArray();
+        var clock = new RetainedHistoryTimeProvider(fixture.Now); using var caller = new CancellationTokenSource();
+        using var release = new ManualResetEventSlim(); var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Block() { entered.TrySetResult(); release.Wait(); finished.TrySetResult(); }
+        var supplied = Substitute.For<IReadOnlyList<GuardedStateMutation>>();
+        supplied.Count.Returns(_ => { if (access == "count") { Block(); } return 1; });
+        supplied.GetEnumerator().Returns(_ => { if (access == "traversal") { Block(); } return request.Targets.GetEnumerator(); });
+        var input = request with { Targets = supplied }; var owner = new DaprGuardedStateTransaction(fixture.Client, clock, fixture.Authority);
+        fixture.Authority.ClearReceivedCalls(); fixture.Client.ClearReceivedCalls();
+        Task<GuardedStateCommitResult> pending = Task.Run(() => operation == "commit" ? owner.CommitAsync(input, caller.Token) : owner.LookupAsync(input, caller.Token), CancellationToken.None);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        try
+        {
+            if (expires) { clock.Advance(TimeSpan.FromSeconds(30)); (await pending.WaitAsync(TimeSpan.FromSeconds(2))).Status.ShouldBe(GuardedStateCommitStatus.Unavailable); }
+            else { caller.Cancel(); var error = await Should.ThrowAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(2))); error.CancellationToken.ShouldBe(caller.Token); }
+        }
+        finally { release.Set(); }
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        fixture.Authority.ReceivedCalls().ShouldBeEmpty(); fixture.Client.ReceivedCalls().ShouldBeEmpty(); fixture.TransactionCalls.ShouldBe(1);
+        foreach (var pair in stored) { fixture.Stored[pair.Key].ShouldBe(pair.Value); }
+        request.Guard.NextValue.ShouldBe(guard); request.Targets.Single().NextValue.ShouldBe(source);
+    }
+
+    /// <summary>Disabled direct original/request/guard read entries still honor the original caller token, with unchanged restrictive active defaults.</summary>
+    [Theory]
+    [InlineData("original")][InlineData("intent")][InlineData("request")][InlineData("guard")]
+    public async Task DisabledLookupEntriesCheckOriginalCancellation(string entry)
+    {
+        var fixture = new GuardedTransactionFixture(); var owner = new DaprGuardedStateTransaction(fixture.Client, TimeProvider.System);
+        var request = fixture.Request(); using var caller = new CancellationTokenSource(); caller.Cancel();
+        async Task<bool> Run(CancellationToken token) => entry == "guard" ? await owner.ReadGuardAsync(request.TenantId, token) is null
+            : (entry == "request" ? await owner.LookupAsync(request, token)
+                : entry == "intent" ? await owner.LookupByIntentAsync(request.TenantId, request.OperationId, GuardedTransactionFixture.Hash("intent"u8.ToArray()), token)
+                : await owner.LookupOriginalAsync(request.TenantId, request.OperationId, GuardedTransactionFixture.Hash("scope"u8.ToArray()), token)).Status == GuardedStateCommitStatus.Unavailable;
+        var error = await Should.ThrowAsync<OperationCanceledException>(() => Run(caller.Token)); error.CancellationToken.ShouldBe(caller.Token);
+        (await Run(CancellationToken.None)).ShouldBeTrue(); fixture.TransactionCalls.ShouldBe(0);
+    }
+
 }

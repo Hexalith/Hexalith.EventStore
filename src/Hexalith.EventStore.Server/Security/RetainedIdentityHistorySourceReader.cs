@@ -42,14 +42,21 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         var ownedClosedPayloads = new List<byte[]>();
         bool transferred = false;
+        RetainedIdentityHistoryReadResult Denied(string reason)
+        {
+            deadline.ThrowIfCancellationRequested();
+            return new(null, reason);
+        }
         try
         {
             deadline.ThrowIfCancellationRequested();
             RetainedIdentityHistoryGrant? grant = await deadline.ReadAsync(token => admission.AdmitAsync(principal, request, token)).ConfigureAwait(false);
             deadline.ThrowIfCancellationRequested();
-            if (!ValidGrant(grant, request, clock.GetUtcNow()))
+            grant = await deadline.ReadAsync(_ => Task.FromResult(CaptureGrant(grant, request, clock.GetUtcNow(), deadline))).ConfigureAwait(false);
+            deadline.ThrowIfCancellationRequested();
+            if (grant is null || grant.ExpiresAt <= clock.GetUtcNow())
             {
-                return new(null, "history-denied");
+                return Denied("history-denied");
             }
 
             IAggregateActor actor = actors.CreateActorProxy<IAggregateActor>(new ActorId(request.Identity.ActorId), "AggregateActor");
@@ -57,7 +64,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
             deadline.ThrowIfCancellationRequested();
             if (!head.Exists || head.CurrentSequence is < 0 or > RetainedIdentityHistoryLimits.MaxSourcePositions)
             {
-                return new(null, "history-unavailable");
+                return Denied("history-unavailable");
             }
 
             var events = new List<StreamReadEvent>();
@@ -73,7 +80,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                 deadline.ThrowIfCancellationRequested();
                 if (page.Length is 0 or > 100)
                 {
-                    return new(null, "history-source-gap");
+                    return Denied("history-source-gap");
                 }
 
                 foreach (EventEnvelope item in page)
@@ -82,20 +89,20 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                     if (item is null || item.Identity != request.Identity || item.SequenceNumber != cursor + 1
                         || item.SequenceNumber > head.CurrentSequence || item.Payload is null)
                     {
-                        return new(null, "history-source-gap-or-scope-mismatch");
+                        return Denied("history-source-gap-or-scope-mismatch");
                     }
 
                     if (item.MetadataVersion != 1 || item.EventContractType is not null || item.PayloadVersion is not null
                         || item.SerializationFormat is not ("json" or "json+pdenc-v1" or "json+identity-history-v1"))
                     {
-                        return new(null, "history-source-metadata-unsupported");
+                        return Denied("history-source-metadata-unsupported");
                     }
 
                     cursor++;
                     bytes += item.Payload.Length;
                     if (bytes > RetainedIdentityHistoryLimits.MaxPayloadBytes)
                     {
-                        return new(null, "history-source-bound-exceeded");
+                        return Denied("history-source-bound-exceeded");
                     }
 
                     Type? type = grant!.EventTypes.SingleOrDefault(candidate => item.EventTypeName == candidate.FullName);
@@ -103,7 +110,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                     {
                         if (!grant.ExcludedEventTypeNames.Contains(item.EventTypeName, StringComparer.Ordinal))
                         {
-                            return new(null, "history-source-contract-unavailable");
+                            return Denied("history-source-contract-unavailable");
                         }
 
                         excluded.Add(item.SequenceNumber);
@@ -112,7 +119,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
 
                     if (EventStorePayloadProtectionMetadataCarrier.Read(item.Extensions).State != PayloadProtectionState.Protected)
                     {
-                        return new(null, "history-source-protection-missing");
+                        return Denied("history-source-protection-missing");
                     }
 
                     // Retain only detached existing ciphertext metadata for actor-free continuity.
@@ -127,7 +134,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                         if (expired is not null)
                         {
                             if (!ValidExpired(expired, request, item.EventTypeName, item.SequenceNumber, sealedPayload, clock.GetUtcNow()))
-                            { return new(null, "history-expired-proof-unavailable"); }
+                            { return Denied("history-expired-proof-unavailable"); }
                             expiredEvents.Add((expired, sealedPayload, item.SerializationFormat));
                             continue;
                         }
@@ -147,14 +154,14 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                             || string.IsNullOrWhiteSpace(evidence.PolicyId) || string.IsNullOrWhiteSpace(evidence.EvidenceId)
                             || evidence.Purpose != request.Purpose || evidence.ExpiresAt <= clock.GetUtcNow())
                         {
-                            return new(null, "history-custody-unavailable-or-expired");
+                            return Denied("history-custody-unavailable-or-expired");
                         }
     
                         bool allowed = await deadline.ReadAsync(token => custody.CanReadAsync(request.Identity, evidence, token)).ConfigureAwait(false);
                         deadline.ThrowIfCancellationRequested();
                         if (!allowed)
                         {
-                            return new(null, "history-custody-unavailable-or-expired");
+                            return Denied("history-custody-unavailable-or-expired");
                         }
     
                         retainedEvidence.Add(evidence);
@@ -173,13 +180,15 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
             deadline.ThrowIfCancellationRequested();
             RetainedIdentityHistoryGrant? finalGrant = await deadline.ReadAsync(token => admission.AdmitAsync(principal, request, token)).ConfigureAwait(false);
             deadline.ThrowIfCancellationRequested();
-            if (confirmed != head || !ValidGrant(finalGrant, request, clock.GetUtcNow())
+            finalGrant = await deadline.ReadAsync(_ => Task.FromResult(CaptureGrant(finalGrant, request, clock.GetUtcNow(), deadline))).ConfigureAwait(false);
+            deadline.ThrowIfCancellationRequested();
+            if (confirmed != head || finalGrant is null || finalGrant.ExpiresAt <= clock.GetUtcNow()
                 || finalGrant!.AuthorityRevision != grant!.AuthorityRevision || finalGrant.ExpiresAt != grant.ExpiresAt
                 || !finalGrant.EventTypes.SequenceEqual(grant.EventTypes)
                 || !finalGrant.ExcludedEventTypeNames.SequenceEqual(grant.ExcludedEventTypeNames)
                 || retainedEvidence.Any(evidence => evidence.ExpiresAt <= clock.GetUtcNow()))
             {
-                return new(null, "history-source-or-authority-changed");
+                return Denied("history-source-or-authority-changed");
             }
 
             // Lifecycle validation must follow the awaited source/authority checks. The owner provider
@@ -190,7 +199,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                 deadline.ThrowIfCancellationRequested();
                 if (!allowed)
                 {
-                    return new(null, "history-custody-unavailable-or-expired");
+                    return Denied("history-custody-unavailable-or-expired");
                 }
             }
 
@@ -202,7 +211,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
                 deadline.ThrowIfCancellationRequested();
                 if (final is null || !ValidExpired(final, request, cert.EventTypeName, cert.SourceSequence, expired.Payload, clock.GetUtcNow())
                     || final with { ObservedAt = cert.ObservedAt } != cert)
-                { return new(null, "history-expired-proof-changed"); }
+                { return Denied("history-expired-proof-changed"); }
             }
 
             DateTimeOffset observedAt = clock.GetUtcNow();
@@ -232,7 +241,7 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
             }
             bool valid = bounded && validUntil > clock.GetUtcNow();
             deadline.ThrowIfCancellationRequested();
-            if (!valid) { return new(null, "history-source-incomplete-or-expired"); }
+            if (!valid) { return Denied("history-source-incomplete-or-expired"); }
             transferred = true;
             return result;
         }
@@ -268,6 +277,34 @@ public sealed class RetainedIdentityHistorySourceReader(IActorProxyFactory actor
             && certificate.LifecycleRevision > 0 && certificate.ObservedAt != default && certificate.ObservedAt <= now && certificate.ValidUntil > now
             && !string.IsNullOrWhiteSpace(certificate.AuthorityRevision) && certificate.AuthorityRevision.Length <= 2048
             && !string.IsNullOrWhiteSpace(certificate.DestructionReceiptId) && certificate.DestructionReceiptId.Length <= 2048;
+
+    private static RetainedIdentityHistoryGrant? CaptureGrant(RetainedIdentityHistoryGrant? grant,
+        RetainedIdentityHistoryReadRequest request, DateTimeOffset now, AuthoritativeStreamReadDeadline deadline)
+    {
+        deadline.ThrowIfCancellationRequested();
+        if (grant?.EventTypes is null || grant.ExcludedEventTypeNames is null) { return null; }
+        int typeCount = grant.EventTypes.Count;
+        int excludedCount = grant.ExcludedEventTypeNames.Count;
+        if (typeCount is < 1 or > 32 || excludedCount is < 0 or > 512) { return null; }
+        var types = new List<Type>(typeCount);
+        foreach (Type type in grant.EventTypes)
+        {
+            deadline.ThrowIfCancellationRequested();
+            if (types.Count >= typeCount) { return null; }
+            types.Add(type);
+        }
+        var excluded = new List<string>(excludedCount);
+        foreach (string name in grant.ExcludedEventTypeNames)
+        {
+            deadline.ThrowIfCancellationRequested();
+            if (excluded.Count >= excludedCount) { return null; }
+            excluded.Add(name);
+        }
+        deadline.ThrowIfCancellationRequested();
+        if (types.Count != typeCount || excluded.Count != excludedCount) { return null; }
+        var captured = grant with { EventTypes = types.AsReadOnly(), ExcludedEventTypeNames = excluded.AsReadOnly() };
+        return ValidGrant(captured, request, now) ? captured : null;
+    }
 
     private static bool ValidGrant(RetainedIdentityHistoryGrant? grant, RetainedIdentityHistoryReadRequest request, DateTimeOffset now)
         => grant is not null && request.Identity is not null && grant.Identity == request.Identity

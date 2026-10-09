@@ -5189,67 +5189,131 @@ As a platform maintainer, I want every hold, wait, and legacy-admission mechanis
 ### Story 6.6: Event Versioning And Upcasting Implementation
 
 As a domain author,
-I want to declare an event payload version and register upcasters that convert older stored payloads when they are read,
-So that I can evolve event schemas without rewriting history, while malformed event identity is rejected and processing honours cancellation.
+I want to declare an event payload version, register upcasters that convert older stored payloads when they are read, have malformed event identity rejected, and receive the caller's cancellation token in my handlers,
+So that I can evolve event schemas without rewriting history.
 
 **Requirements coverage:** Primary ownership of FR33-C6 (upcasting, metadata identity rejection, published cancellation seams). Supporting NFR7 (fail closed, never skip silently), NFR12 (additive; version-1 events unchanged), NFR16 (one persisted production-path test) and NFR18 (upcaster discovery is a reflection convention inventoried by Story 6.7).
 
-**Architecture constraints:** AD-1, AD-6 and AD-13 (2026-10-09 pragmatic scope). Stored events are never rewritten; upcasting changes only the in-memory payload a domain service deserializes. Event state stays actor-owned through Dapr; no application SQL or direct-database evidence.
+**Architecture constraints:** AD-1, AD-6, AD-13 (2026-10-09 pragmatic scope) and AD-32. Stored events are never rewritten; upcasting changes only the in-memory payload a domain service deserializes. Event state stays actor-owned through Dapr; the story adds no application SQL, and no test reads the state store directly.
 
-**UX coverage:** None required. Admin stream and event views keep showing stored data and may show the stored payload version where their DTO already carries it.
+**UX coverage:** None required. Admin stream and event views keep showing stored data and may show the stored payload version where their DTOs already carry it.
 
-**Dependencies:** None blocking. The Story 6.5 specification and the 2026-10-05/06/08 Story 6.6 amendments are historical context only; this story's design and acceptance criteria are the governing specification (owner decision, sprint-change-proposal-2026-10-09).
+**Dependencies:** None blocking.
 
-**Current reconciliation (2026-10-09):** Rescoped by sprint-change-proposal-2026-10-09. The first attempt (2026-10-04 to 2026-10-09) built dormant scaffolding that Task 1 retires. Its live pieces stay: the async processor/replay interfaces, bounded V1 wire parsing, event logical digest, legacy command replay admission, and the nullable `PayloadVersion`/`EventContractType` metadata fields. Review action items P1–P17 of the first attempt are superseded by AC1 and AC2.
+**Current reconciliation (2026-10-09):** Rescoped by owner decision in sprint-change-proposal-2026-10-09: this story's design, tasks and acceptance criteria are the governing specification; the Story 6.5 specification and the Story 6.6 amendments of 2026-10-05, 2026-10-06 and 2026-10-08 are historical context only. The first attempt (2026-10-04 to 2026-10-09) built dormant scaffolding that Task 1 retires. Review action items P1–P17 of the first attempt are superseded by AC1 and AC2. The same day, a review of this text (owner-approved) added the guard relaxation, version carriers, failure dispositions, deployment order and identity read rules below.
 
-**Design (owner-approved 2026-10-09; type names are indicative):**
+**Design — versioning and upcasting (owner-approved 2026-10-09; names of new types and members are indicative):**
 
-- A domain event type declares its current payload version with `[EventPayloadVersion(n)]`, where 1 ≤ n ≤ 1024. Without the attribute the version is 1.
-- Version-1 events are persisted exactly as today, with no `PayloadVersion`. An event of version n ≥ 2 stores `PayloadVersion = n`, keeps `MetadataVersion` 1, and keeps the CLR type name as `EventTypeName`. `EventContractType` and metadata version 2 stay unused; the existing V2 write fence stays.
-- An upcaster implements `IEventPayloadUpcaster`: the `EventTypeName` and `FromVersion` it accepts, an optional `TargetEventTypeName` for renames (null keeps the name), and `JsonObject Upcast(JsonObject payload)`, which produces version `FromVersion + 1`. Upcasters are discovered from the assemblies already scanned for aggregates and projections, and can also be registered explicitly with `AddEventPayloadUpcaster<T>()`.
-- One shared client component runs the chain before CLR type resolution and deserialization. Every domain-service read path calls it: command-time state rehydration, replay/reconstruction, projections (including `/project` dispatch) and subscriptions.
-- The EventStore server does not upcast; it stores and forwards `PayloadVersion` unchanged.
+- **Declared version.** A domain event type declares its current payload version with `[EventPayloadVersion(n)]`, where 1 ≤ n ≤ 1024. Without the attribute, or with n = 1, the version is 1.
+- **Write.** Version-1 events are persisted exactly as today, with no `PayloadVersion`; a stored `PayloadVersion` of 1 reads as absent. An event of version n ≥ 2 stores `PayloadVersion = n`, keeps `MetadataVersion` 1, and keeps the CLR type name as `EventTypeName`. `EventContractType` and metadata V2 stay unused, and the existing metadata-V2 write fence (`EventPersister` refuses `MetadataVersion` 2) stays. Both domain-result producers (`DomainServiceWireResult.FromDomainResult` and the bounded V1 producer and response) set `PayloadVersion` from the declared version; a pre-serialized `ISerializedEventPayload` whose `PayloadVersion` (null = 1) differs from its type's declared version is rejected.
+- **Version carriers.** Every event DTO carries the stored version in exactly one field (null = 1), and every builder copies it: `PayloadVersion` on `EventMetadata`, `DomainServiceWireEvent` and `EventStoreDomainEventEnvelope`; the existing `StoredPayloadVersion` on `ProjectionEventDto` and `ReplayEventEnvelope`; a new nullable `PayloadVersion` on `StreamReadEvent`. The other first-attempt version fields (`EffectivePayloadVersion`, and `StoredPayloadVersion` on the subscription envelope) stay unused and are refused when non-null.
+- **Upcaster.** An upcaster implements `IEventPayloadUpcaster` (not the obsolete `IEventUpcaster` shell), which exposes the `EventTypeName` and `FromVersion` it accepts, an optional `TargetEventTypeName` for renames (null keeps the name), and `JsonObject Upcast(JsonObject payload)`, which produces version `FromVersion + 1`. Each upcaster is one step of the upcaster chain. A rename step outputs the target type at `FromVersion + 1`, so the target type declares at least that version; if the target type has older history of its own, that history needs its own steps. Upcasters are pure: the same input always gives the same output (no clock, random IDs, I/O or scoped services).
+- **Discovery.** Upcasters, public or not, are discovered from the assemblies already scanned for aggregates and projections and from the event-contract assemblies of subscriber hosts, and can also be registered explicitly with `AddEventPayloadUpcaster<T>()`; a type found both ways counts once. Each host that reads events builds one immutable registry at startup and validates it (AC4).
+- **Read.** One shared client component runs the upcaster chain before CLR type resolution and deserialization. Every domain-service read path calls it: command-time state rehydration (including events embedded in a snapshot's state), replay/reconstruction (including the static `AggregateReplayer`), projections (the SDK upcasts each event of a `/project` or `/project/v2` request before the handler sees it) and subscriptions. A path that cannot reach the registry behaves as if no step is registered. Step lookup matches the stored `EventTypeName` with the same full-name, short-name and alias rules as Apply/handler resolution. When no step applies, the payload bytes go to deserialization untouched; otherwise the payload is parsed once with the existing bounded replay JSON limits and case-insensitive property names.
+- **Known types.** An event type is known to a service when its stored or renamed name resolves through that service's Apply, handler or subscription registrations. Upcasting and the AC5 failures apply to known types only; unknown names keep today's behaviour. A domain service that maps its own `/project` endpoint instead of the SDK's is not supported for versioned events.
+- **Server.** The EventStore server does not upcast; it stores, publishes and forwards `PayloadVersion` unchanged.
+- **Deployment order.** (1) Every EventStore server replica runs the 6.6 release: an older server either drops `PayloadVersion`, storing version-n bytes as version 1 for good, or refuses the write. (2) Every consumer of the event type (all replicas of the domain service and of its projection and subscriber hosts) runs a 6.6 SDK release. (3) Only then does a release declare the new version together with its upcaster. During step 3's rolling deployment, replicas still on the step-2 release refuse the versioned events (AC5) and retry instead of misreading them.
 
 **Tasks:**
 
 1. Retire the dormant first-attempt scaffolding (time-box: 1 day).
-   - Delete internal code with no production caller and its tests: logical source/reconstruction/replay operations except `EventLogicalDigest`; checkpoint, anchored replay/continuation, snapshot issue/replace/rewitness; logical command state; logical query model; managed artifact/loader observation; proof framing/runtime-options codecs; the inert registry/upcast executor/evolution service with its client scratch/writer implementations.
-   - Delete the 30 `scripts/verify-dapr-logical-*`/`verify-event-evolution*`/`prepare-event-evolution-candidates` scripts and their fixtures, `.github/workflows/event-evolution-local-guards.yml`, the `ci.yml` `event-evolution-compatibility` job, and tests that read 6.6 planning or evidence files.
-   - Keep the shipped public types (`IEventUpcaster`, `EventUpcastResult`, `IV1Downserializer`, `V1DownserializeResult`, `AddEventStoreEventEvolutionManifestCandidate`, `AuthenticatedRawEvent`, `AuthenticatedRawEventPage`, both `IAuthenticatedRawEventSource`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator`, `IReadOnlyPayload`, `ScratchSpanAction`) as `[Obsolete]` shells without behaviour, to be removed at the next major release.
-   - Move the first-attempt 6.6 planning documents to `_bmad-output/implementation-artifacts/archive/story-6-6-first-attempt/` and delete `evidence/story-6-6/` from HEAD (history keeps it; record the last commit containing it in the archive README).
-   - If removing a group would change live behaviour, leave that group in place and note it rather than refactoring.
+   - Keep the live pieces: `IAsyncDomainProcessor`, `IAsyncAggregateReplay`, bounded V1 wire parsing, `EventLogicalDigest`, legacy command replay admission, and the nullable `PayloadVersion`/`EventContractType` metadata fields. If removing a listed group would change live behaviour, leave that group in place, note it in the archive README, and do not refactor it.
+   - Delete internal code that has no production caller, together with its tests: logical source/reconstruction/replay operations except `EventLogicalDigest`; checkpoint, anchored replay/continuation, snapshot issue/replace/rewitness; logical command state; logical query model; managed artifact/loader observation; proof framing/runtime-options codecs; the inert registry, upcast executor and evolution service, with their client scratch/writer implementations.
+   - Delete the 30 scripts matching `scripts/verify-dapr-logical-*`, `scripts/verify-event-evolution*` and `scripts/prepare-event-evolution-candidates*`, with their fixtures; `.github/workflows/event-evolution-local-guards.yml`; the `ci.yml` `event-evolution-compatibility` job; and the `ci.yml` `contracts` job step "Verify current Dapr-only event evolution boundary", which runs `scripts/verify-event-evolution.py`.
+   - Keep the shipped public types (`IEventUpcaster`, `EventUpcastResult`, `IV1Downserializer`, `V1DownserializeResult`, `AddEventStoreEventEvolutionManifestCandidate`, `AuthenticatedRawEvent`, `AuthenticatedRawEventPage`, `IAuthenticatedRawEventSource` in Contracts and in Server, `IBoundedPayloadWriter`, `IBoundedScratchAllocator`, `IReadOnlyPayload`, `ScratchSpanAction`) as `[Obsolete]` shells without behaviour, to be removed at the next major release. Mark a type obsolete only after its internal references are gone: under warnings-as-errors, any remaining reference fails the build (CS0618).
+   - Move the first-attempt 6.6 planning documents to `_bmad-output/implementation-artifacts/archive/story-6-6-first-attempt/` and delete `_bmad-output/implementation-artifacts/evidence/story-6-6/` from HEAD, together with the tests that read those files (for example `EventEvolutionObligationAuditTests`). Record the last commit containing them in the archive README.
 2. Implement versioning and upcasting (AC1–AC5).
+   - Relax every current refusal of `PayloadVersion` for metadata V1 with no `EventContractType` and a version of 1–1024. Today the refusals are in `EventPersister` (V1 branch), `LegacyEventReadGuard`, `EventPublisher`, `DaprDomainServiceInvoker`, `DaprAggregateStateReconstructor`, `DomainServiceRequestRouter`, `BoundedV1WireResultAdmission`, `BoundedV1DomainResultProducer`, `DomainProjectionEvolutionAdmission`, `AggregateReplayer`, `DomainProcessorStateRehydrator`, `LegacyCommandReplayJsonAdmission`, `EventStoreDomainEventProcessor` and `RetainedIdentityHistorySourceReader`; confirm the inventory with `git grep -n PayloadVersion src`.
+   - Keep refusing metadata V2, a non-null `EventContractType` and the first-attempt `Effective*`/proof fields on every path. Update the tests that pin the old refusal messages.
 3. Implement the identity validator (AC6).
-4. Close the cancellation gaps (AC7).
+   - Preflight, before enabling the read-side check: review the Git history of every event-writing path against each AC6 rule (the event state store is not inspected directly, AD-1). The legacy GUID `MessageId` is already handled by AC6. If any other rule would reject legitimately stored events, stop and ask the owner instead of weakening the rule silently.
+4. Close the cancellation-seam gaps (AC7).
 5. Add evidence and documentation (AC8).
 
 **Acceptance Criteria:**
 
-**AC1 — Write.** **Given** an event type without a version attribute **When** it is persisted **Then** its stored envelope is identical to pre-6.6 behaviour, with no `PayloadVersion`. **Given** an event type declaring `[EventPayloadVersion(3)]` **When** it is persisted **Then** `PayloadVersion` 3 travels unchanged through the wire result, persisted envelope, stream read, projection and subscription payloads, and the domain service, and is never dropped or relabelled.
+**AC1 — Write.**
+**Given** an event of a type without a version attribute, or with `[EventPayloadVersion(1)]`
+**When** it is persisted
+**Then** its stored envelope is identical to the envelope written before Story 6.6, with no `PayloadVersion`.
 
-**AC2 — Upcast on read.** **Given** stored history mixing older and current payload versions of the same event, with an upcaster registered for every step **When** a domain service rehydrates state for a command, replays/reconstructs, projects or handles a subscription **Then** each older payload passes through each step exactly once, in ascending version order, before deserialization **And** the resulting state equals the state produced by the same history written at the current version, while stored bytes, `MessageId`, sequence and correlation stay unchanged.
+**Given** an event of a type declaring `[EventPayloadVersion(3)]`
+**When** it is persisted
+**Then** `PayloadVersion` 3 travels unchanged through the wire result, persisted envelope, published envelope, stream read, projection and subscription payloads, and the domain service, and is never dropped or relabelled.
 
-**AC3 — Rename.** **Given** a step with `TargetEventTypeName` **When** it runs **Then** the event deserializes as the renamed CLR type through the existing Apply/handler resolution.
+**AC2 — Upcast on read.**
+**Given** stored history mixing older and current payload versions of the same event type, with a step registered for every version
+**When** a domain service rehydrates state for a command (including events embedded in a snapshot), replays or reconstructs, projects (including `/project` and `/project/v2` dispatch) or handles a subscription
+**Then** each older payload passes exactly once through each step from its stored version up to the current version, in ascending order, before deserialization
+**And** the resulting state equals the state produced by the same history written at the current version, while stored bytes, `MessageId`, sequence and `CorrelationId` stay unchanged.
 
-**AC4 — Startup validation.** **Given** two upcasters for the same `(EventTypeName, FromVersion)`, a `FromVersion` below 1, a step whose output neither feeds another step nor equals the declared current version of a known event type, or an event type declaring version n > 1 that no step produces **When** the domain service starts **Then** startup fails with a message naming the event type and version.
+**AC3 — Rename.**
+**Given** a step whose `TargetEventTypeName` is set
+**When** it runs
+**Then** the event deserializes as the renamed CLR type through the existing Apply/handler resolution, and projection handlers receive it under the target name.
 
-**AC5 — Fail closed.** **Given** a stored payload with no path to a known current type, a version above the type's declared version, or an upcaster that throws or returns null **When** any read path meets it **Then** it fails with a typed error naming the type and version; nothing is skipped, no state or checkpoint advances, no handler effect occurs, and the payload content is not logged. Existing retry/poison handling applies to subscriptions and projections.
+**AC4 — Startup validation.**
+**Given** any of the following:
+- two upcasters for the same `(EventTypeName, FromVersion)` (the same upcaster type found by discovery and by explicit registration counts once);
+- a `FromVersion` below 1, or a step whose output version is above 1024;
+- an `[EventPayloadVersion]` value outside 1–1024;
+- an event type declaring version n ≥ 2 without a continuous chain of steps from version 1 (possibly under an older name) up to n;
+- a step whose output version neither feeds another step nor equals the declared current version of its output event type;
+- a `TargetEventTypeName` that does not resolve to a known event type;
+- an event type declaring version n ≥ 2 that is not serialized as JSON
 
-**AC6 — Identity validation.** **Given** an event about to be persisted **When** any identity component is absent or malformed **Then** the append is rejected before any state is staged, with a typed error naming the component. The components and rules are: tenant, domain and aggregate ID per the `AggregateIdentity` grammar; non-blank aggregate type and event type name; `MessageId` a valid ULID; `CorrelationId` per AD-32 (1–128 ASCII alphanumeric or hyphen); `CausationId` non-blank under the same character rule; sequence ≥ 1. **And** the same single `Contracts` validator also runs on stream read (`EventStreamReader`, beside the existing address checks) and in the subscription envelope check, so a stored event that fails it fails closed instead of being applied. **Preflight:** before enabling the read-side check, confirm that persisted history written by earlier versions satisfies every rule (for example, that event `MessageId`s have always been ULIDs). If a rule would reject legitimately stored events, stop and ask the owner instead of weakening the rule silently.
+**When** the host starts
+**Then** startup fails with a message naming the event type and version.
 
-**AC7 — Cancellation seams.** **Given** a request whose token is cancelled **When** it reaches a legacy `IDomainProjectionHandler`, a processor registered through `AddEventStoreClient<TProcessor>`, or an aggregate `Handle` method **Then** the token arrives:
-- `IDomainProjectionHandler` gains a token-aware default interface method that the `/project` endpoint and dispatcher call with the request token.
-- `AddEventStoreClient<TProcessor>` also registers the keyed `IAsyncDomainProcessor` when the processor implements it.
-- The `Handle` convention accepts an optional trailing `CancellationToken`.
+**AC5 — Fail closed.**
+**Given** any of the following for a known event type:
+- the registered steps do not reach the type's declared current version;
+- a stored version above the type's declared version, or a stored `PayloadVersion` outside 1–1024;
+- after the chain, a version that differs from the declared version of the resolved CLR type;
+- an upcaster that throws or returns null, or an upcast payload that does not deserialize
 
-**And** existing `IDomainProcessor`, `IAggregateReplay` and projection-handler implementations compile and behave unchanged, and no touched path replaces an available caller token with `CancellationToken.None`.
+**When** any read path meets it
+**Then** the read fails with a typed error naming the event type and version; nothing is skipped, no state or checkpoint advances, and no handler effect occurs
+**And** the error carries the event type, stored version, sequence and upcaster type, plus only the type name of any inner exception; payload content and upcaster exception messages are neither logged nor chained
+**And** a subscription returns the retryable result (HTTP 503, as `RetryableCapabilityMismatch` does), never marks the event completed and never uses the acknowledge-and-drop `FailedInvalidPayload` path; a projection fails without advancing its checkpoint.
 
-**AC8 — Evidence and completion.** **Given** completion is requested **When** checks run **Then** all of the following hold:
-- Unit tests cover the pipeline: single step, multiple steps, rename, missing step, too-new version, throwing upcaster, and every startup-validation case.
-- Unit tests cover the identity validator, one case per component, on append and on read.
+**AC6 — Identity validation.**
+**Given** an event about to be persisted
+**When** any identity component is absent or malformed
+**Then** the append is rejected before any state is staged, with a typed error naming the component. The components and rules are:
+- tenant, domain and aggregate ID: the `AggregateIdentity` grammar;
+- aggregate type and event type name: non-blank;
+- `MessageId`: a valid ULID;
+- `CorrelationId`: the AD-32 rule, 1–128 ASCII alphanumeric or hyphen characters;
+- `CausationId`: non-blank, with the same characters and length limit as `CorrelationId`;
+- sequence: ≥ 1.
+
+**And** the same single `Contracts` validator runs at every stored-event read chokepoint (the current `LegacyEventReadGuard.RequireUnversioned` call sites: `EventStreamReader`, the `AggregateActor` range reads and `ProjectionEventWireBuilder`) and in the subscription envelope check, so a stored event that does not pass fails closed instead of being applied
+**And** on read, `MessageId` also accepts the 36-character GUID form that `EventPersister` wrote until 2026-03-15 (`671e4523`)
+**And** the subscription check validates `Domain`, `CausationId` and `AggregateType` only when present, and a failure there uses the AC5 retryable disposition.
+
+**AC7 — Cancellation seams.**
+**Given** a request carrying the caller's cancellation token
+**When** it reaches a legacy `IDomainProjectionHandler`, a processor registered through `AddEventStoreClient<TProcessor>`, or an aggregate `Handle` method
+**Then** the handler, processor or method receives that same token instance through these seams:
+- `IDomainProjectionHandler` gains a token-aware default interface method. The `/project` endpoint, `LegacyDomainProjectionHandlerAdapter`, and a new token overload of `DomainProjectionDispatcher.Project` call it with the request token.
+- `AddEventStoreClient<TProcessor>` also registers the keyed `IAsyncDomainProcessor` when the processor implements it. The key is the domain name that `AssemblyScanner` derives (`NamingConventionEngine.GetDomainName`), so `DomainServiceRequestRouter` delivers `/process` requests to it.
+- The `Handle` convention accepts an optional trailing `CancellationToken`, after the state or after the `CommandEnvelope`. When an aggregate has both a token-aware and a token-less `Handle` for the same command, the token-aware one is used.
+
+**And** existing `IDomainProcessor`, `IAggregateReplay` and projection-handler implementations compile and behave unchanged, and no touched path replaces an available caller token with `CancellationToken.None`
+**And** tests assert the token instance or cancel during execution; a token cancelled before dispatch does not count, because it throws before any handler runs.
+
+**AC8 — Evidence and completion.**
+**Given** completion is requested
+**When** checks run
+**Then** all of the following hold:
+- Unit tests cover the upcaster chain: single step, multiple steps, rename, a payload needing no step (bytes untouched), missing step, too-new and out-of-range stored versions, a stored name variant that skips the chain, a throwing or null-returning upcaster, an event embedded in a snapshot, and every startup-validation case.
+- Unit tests show a version-2 event passing every refusal site relaxed in Task 2.
+- Unit tests cover the identity validator, one case per component, on append and on read, including the legacy GUID `MessageId` on read.
 - Tests cover the three cancellation seams.
-- One end-to-end test runs through the real write and read path in an existing test project: persist version-1 events, declare version 2 with an upcaster, persist a version-2 event, rehydrate. It asserts the persisted envelopes (version 1 without `PayloadVersion`, version 2 with `PayloadVersion` 2, payload bytes unchanged) and the resulting aggregate state.
-- `docs/concepts/event-versioning.md` explains how to version an event, write an upcaster, rename an event, and deploy in order: consumers with the upcaster before or together with the writer; older consumers refuse versioned events rather than misread them.
+- One end-to-end test in `tests/Hexalith.EventStore.Server.Tests` (run by the existing CI) goes through the real write and read path (`AggregateActor`, `EventPersister`, `EventStreamReader` and domain-service routing), with actor state round-tripped through System.Text.Json. It seeds version-1 history as serialized payloads under the event's name, declares the event type at version 2 with an upcaster, persists a version-2 event, and rehydrates. It asserts the persisted envelopes (version-1 envelopes without `PayloadVersion`, the version-2 envelope with `PayloadVersion` 2, stored version-1 payload bytes unchanged), the published envelope, and the resulting aggregate state.
+- `docs/concepts/event-versioning.md` explains how to version an event, write a pure upcaster, rename an event, and follow the deployment order in the Design. It also says that subscriptions retry events they cannot upcast, so operators configure Dapr resiliency `maxRetries` and a dead-letter topic.
+- Task 1's retirement is complete, or each group left in place is noted in the archive README.
 - The Release build with warnings-as-errors and every affected test project pass in the existing CI.
 
 **Out of scope:**
@@ -5261,6 +5325,7 @@ So that I can evolve event schemas without rewriting history, while malformed ev
 - rolling-upgrade and downgrade matrices (replaced by the documented deployment order)
 - V1 downserialization, publication pins and receipts, hold/resume lifecycle
 - Admin UI or Type Catalog work, and offline rewrite of stored events
+- consolidating the gateway's correlation-ID predicate with the AD-32 rule (DW-543)
 
 Findings outside these acceptance criteria go to `deferred-work.md` as optional follow-ups, not to this story.
 

@@ -27,11 +27,13 @@ public sealed class DaprGuardedStateTransaction(DaprClient client, TimeProvider 
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
+            deadline.ThrowIfCancellationRequested();
             if (authority is null || !Text(tenantId) || !Text(operationId) || !Hex(intentDigest)) { return new(GuardedStateCommitStatus.Unavailable); }
             var target = await deadline.ReadAsync(token => authority.GetCurrentAsync(tenantId, token)).ConfigureAwait(false);
             if (!ValidTarget(target, tenantId) || !await deadline.ReadAsync(token => authority.AuthorizeLookupAsync(target!, operationId, intentDigest, token)).ConfigureAwait(false))
             { return new(GuardedStateCommitStatus.Unavailable); }
             var read = await deadline.ReadAsync(token => client.GetStateAsync<GuardedStateCommitReceipt>(target!.ComponentName, OutcomeKey(target, operationId), ConsistencyMode.Strong, Metadata(target), token)).ConfigureAwait(false);
+            if (read is not null && read.Outcome is not { Length: <= MaxBytes }) { return new(GuardedStateCommitStatus.Unavailable); }
             var receipt = read is null ? null : read with { Outcome = read.Outcome?.ToArray()! };
             if (receipt is not null && (!ValidReceipt(receipt, target!, operationId) || !await deadline.ReadAsync(token => authority.ValidateReceiptAsync(target!, receipt with { Outcome = receipt.Outcome.ToArray() }, token)).ConfigureAwait(false)))
             { return new(GuardedStateCommitStatus.Unavailable); }
@@ -51,6 +53,7 @@ public sealed class DaprGuardedStateTransaction(DaprClient client, TimeProvider 
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
+            deadline.ThrowIfCancellationRequested();
             if (authority is null || !Text(tenantId)) { return null; }
             var target = await deadline.ReadAsync(token => authority.GetCurrentAsync(tenantId, token)).ConfigureAwait(false);
             if (!ValidTarget(target, tenantId) || !await deadline.ReadAsync(token => authority.AuthorizeReadAsync(target!, target!.GuardCellId, token)).ConfigureAwait(false)) { return null; }
@@ -72,7 +75,8 @@ public sealed class DaprGuardedStateTransaction(DaprClient client, TimeProvider 
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
-            request = Capture(request, deadline); string digest = Digest(request);
+            deadline.ThrowIfCancellationRequested();
+            request = await deadline.ReadAsync(_ => Task.FromResult(Capture(request, deadline))).ConfigureAwait(false); string digest = Digest(request);
             var target = await CurrentAsync(request, digest, "Commit", deadline).ConfigureAwait(false);
             if (target is null) { return new(GuardedStateCommitStatus.Unavailable); }
             if (request.Guard.CellId != target.GuardCellId || request.Guard.ExpectedRevision <= 0) { return new(GuardedStateCommitStatus.Unavailable); }
@@ -124,7 +128,8 @@ public sealed class DaprGuardedStateTransaction(DaprClient client, TimeProvider 
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, cancellationToken, clock.GetTimestamp());
         try
         {
-            request = Capture(request, deadline); string digest = Digest(request); var target = await CurrentAsync(request, digest, "Lookup", deadline).ConfigureAwait(false);
+            deadline.ThrowIfCancellationRequested();
+            request = await deadline.ReadAsync(_ => Task.FromResult(Capture(request, deadline))).ConfigureAwait(false); string digest = Digest(request); var target = await CurrentAsync(request, digest, "Lookup", deadline).ConfigureAwait(false);
             if (target is null) { return new(GuardedStateCommitStatus.Unavailable); }
             var result = await LookupCoreAsync(target, request, digest, deadline).ConfigureAwait(false);
             return await CurrentAsync(request, digest, "Lookup", deadline).ConfigureAwait(false) == target
@@ -138,6 +143,7 @@ public sealed class DaprGuardedStateTransaction(DaprClient client, TimeProvider 
     {
         var read = await deadline.ReadAsync(token => client.GetStateAsync<GuardedStateCommitReceipt>(target.ComponentName,
             OutcomeKey(target, request.OperationId), ConsistencyMode.Strong, Metadata(target), token)).ConfigureAwait(false);
+        if (read is not null && read.Outcome is not { Length: <= MaxBytes }) { return new(GuardedStateCommitStatus.Unavailable); }
         var receipt = read is null ? null : read with { Outcome = read.Outcome?.ToArray()! };
         if (receipt is null) { return null; }
         if (!ValidReceipt(receipt, target, request.OperationId) || authority is null
