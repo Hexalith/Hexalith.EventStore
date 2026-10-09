@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -88,7 +88,7 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.EventStore.PayloadProtection/` -- Add these internal types, one per file:
+- [x] `src/Hexalith.EventStore.PayloadProtection/` -- Add these internal types, one per file:
   - The `CompatibilityReadRoute` enum.
   - `ILegacyPayloadReader`, with `ReaderId`, an event read and a snapshot read, each returning `CoreUnprotectionResult`.
   - The `CompatibilityEventRecord` and `CompatibilitySnapshotRecord` inputs.
@@ -98,14 +98,14 @@ context:
   - The pure `PayloadCompatibilityClassifier` and the async `PayloadCompatibilityRouter`.
 
   These implement the matrix and §12.2/12.3.
-- [ ] `tests/Hexalith.EventStore.PayloadProtection.Tests/Compatibility{EventRouting,MixedHistory,SnapshotRouting}Tests.cs` -- Cover every matrix row:
+- [x] `tests/Hexalith.EventStore.PayloadProtection.Tests/Compatibility{EventRouting,MixedHistory,SnapshotRouting}Tests.cs` -- Cover every matrix row:
   - The V107–V119 cases.
   - Zero resolver and reader calls on local mismatches.
   - Calls stop after the first unreadable record.
   - Cancellation.
   - A sentinel no-leak check on unreadable results and exceptions.
   - A fake v1 reader.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- Mark DW-519 resolved by the format-aware route. Add one entry for Story 8.7: identity-history records (`json+identity-history-v1`) need an explicit route or must stay outside the router when it is wired in.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- Mark DW-519 resolved by the format-aware route. Add one entry for Story 8.7: identity-history records (`json+identity-history-v1`) need an explicit route or must stay outside the router when it is wired in.
 
 **Acceptance Criteria:**
 - Given a registered reader set, when capability is read, then it lists the exact reader ids, formats and versions. A reader that is not registered is never advertised.
@@ -114,9 +114,72 @@ context:
 
 ## Implementation Notes
 
+- 2026-10-09: Added the listed internal types, one per file, plus a `CompatibilityClassification` helper record that carries the pure classifier output. Other core changes:
+  - `PayloadProtectionWireFormat` gained `json-redacted`, `json+pdenc-v1` and the `json+pdenc-` prefix.
+  - `BoundedJsonDocument` gained `ContainsLegacyProtectedMember`. The `$enc` scan runs in the same bounded parse as `$pdenc`, so it shares the 16 MiB, 65,536-node and depth-64 limits, strict UTF-8 and unique member names.
+  - `AadCodec.ValidateSnapshotTypeId` is now `internal`, so the registry reuses the §6.1 grammar.
+  - `TryUnprotectEventAsync` and `TryUnprotectSnapshotAsync` are unchanged.
+- Carrier strictness: before `Carrier.Read` runs, these return `MalformedMetadata`:
+  - a duplicate top-level or flag member;
+  - any `state` spelling other than an exact defined name (numeric, comma-list or padded);
+  - `metadataVersion` below 1, which `Carrier.Read` would otherwise report as an unknown version;
+  - carrier text longer than 65,536 characters.
+
+  A blank carrier stays legacy, matching `Carrier.Read`. A stored carrier equal to `Legacy()` keeps the legacy route.
+- Allowlists:
+  - v2 metadata is the exact §8.4 allowlist.
+  - Parties v1 metadata requires the exact scheme and exactly the two flags; `KeyAlias` and `ContentHint` are left to the reader.
+  - A known scheme outside its allowlist is `MalformedMetadata`. An unknown protected scheme is `ProviderOpaqueUnsupportedOperation`.
+- Reserved formats: any format starting with `json+pdenc-`, containing `+pdenc-`, or starting with `protected+` is reserved, ignoring case. These are the markers the no-op provider already refuses. Only exact `json+pdenc-v1` and `json+pdenc-v2` are routable; every other reserved spelling is `ProviderOpaqueUnsupportedOperation` under any metadata.
+- Legacy readers: only reader id `parties-pdenc-v1` is accepted. An unknown, respelled, duplicate or null reader fails router construction.
+  - Reader output is checked before it is returned. A reader that returns the stored buffer gets `ConsistencyMismatch`. So does output that is not bounded JSON or still carries `$enc` or `$pdenc`; that output is zeroed.
+  - A v1 snapshot is returned as a `JsonElement`.
+- Snapshot input:
+  - State must be the stored `JsonElement` or an in-process `ProtectedSnapshotPayloadV2`. Any other type is an `ArgumentException`.
+  - The three v2 carrier member names match ignoring case, because Dapr actor state stores them in camelCase (`JsonSerializerOptions.Web`). The exactly-three-members rule still applies.
+  - Snapshot metadata is the typed `EventStorePayloadProtectionMetadata?` that `SnapshotRecord` stores, not a carrier string.
+  - The v2 AAD type id is the stored id, which may be an alias. Unknown ids, and authenticated plaintext that fails to deserialize or deserializes to null, give `ConsistencyMismatch`.
+  - `AllowsCorruptLegacyDeletion` is true only for readable legacy or unprotected pass-through.
+- Streams:
+  - Records must belong to one aggregate in contiguous ascending sequence: each record's sequence is its predecessor's plus one. A violation, including a gap, is an `ArgumentException`, raised before any routing.
+  - On the first unreadable record, the router zeroes the decrypted plaintext it produced for earlier v1/v2 records. Pass-through buffers belong to the caller and are never zeroed.
+- Risk: legacy `json` and `json-redacted` payloads must be valid bounded JSON as §8 defines it. Stored legacy JSON with duplicate member names, more than 65,536 nodes, depth above 64 or invalid UTF-8 is now `BytesMetadataMismatch`. Custom formats that cannot be parsed still pass through.
+- Concurrent commit `aaf4a5e0` (`fix: eventstore`, 15:19 +02:00) absorbed the in-progress core source files during implementation. That history was left untouched; the later classifier edits remain in the working tree.
+- 2026-10-09 review fixes: case-insensitive v2 snapshot member names; contiguous stream sequences; only caller cancellation escapes snapshot deserialization; registry exceptions name `registrations`; stronger oversized-carrier, classification-order, cancellation-zeroing and `OwnsPayload` tests; corrected DW-519 and DW-544 text. Focused run of the three compatibility test classes: 232 passed, 0 failed, 0 skipped. Full-suite verification is run by the coordinator.
+- Verification (before the review fixes): Release build with `-warnaserror` and the AOT/trim analyzers: 0 warnings, 0 errors. Test assembly: 575 passed, 0 failed, 0 skipped (357 prior plus 218 new). `ReleasePackageManifestTests.Payload_protection*`: 13/13 passed. The invariant-globalization V029 lane: 1/1 passed. Mutation checks: 18 mutants, each failed at least one new test.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Pass 1 (2026-10-09). Layers: blind hunter (BH), edge-case hunter (EC) and verification gap (VG). Severities assigned by reviewers were ignored. Routes: P = patch, D = defer, R = reject.
+
+| ID | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| BH1, EC1 | A v2 snapshot read back from Dapr actor state has camelCase members, but `TryInspectSnapshotState` matches only PascalCase. | high | `AggregateActor.cs:111-114` falls back to `JsonSerializerOptions.Web`. The existing `NoOpEventPayloadProtectionService.IsProtectedSnapshot` matches `format` with `OrdinalIgnoreCase`. Authority §6.1 requires the "JsonElement object shape after DAPR object deserialization". The `camel-case-v2` test rows pin a mismatch. | P1 |
+| BH2, VG-other | The reviewed diff lacks the `metadataVersion < 1` guard, so a V115 row fails. | false | The diff was captured at 15:32:59, inside the 15:33:12 autostash rebase window of a concurrent session. The worktree has the guard (`PayloadCompatibilityClassifier.cs:412`), and the diff from before the race is byte-identical to the current tree. 575/575 pass. | R |
+| BH3, EC3 | `ReadStreamAsync` accepts sequence gaps such as 1, 2, 4. | low | `PayloadCompatibilityRouter.cs:167` checks only `<=`. §12.1 says "do not skip", and the existing `RetainedIdentityHistorySourceReader.cs:89` enforces `+1` contiguity. The fix is a direct correction. | P2 |
+| BH4, EC8 | Any `Unprotected`-state metadata, including metadata with v2 scheme or flags, routes to plaintext pass-through. | low | `TryValidate` accepts these fields under Unprotected. The pass-through returns the stored bytes, which contain no wrapper and therefore no ciphertext. The only harmful case is stripped wrappers, which an unauthenticated carrier already cannot reveal (DW-519 residual). Requiring exact metadata could strand foreign writers' history; that is a policy choice, not a direct correction. | R |
+| BH5a | The DW-519 resolution omits Story 8.7's writer obligation: a zero-wrapper protect must persist a missing or `Unprotected()` carrier. | low | The router rejects `json` under v2 metadata per §12.2, and `CoreProtectionResult` carries no metadata. A text-only fix in this story's own entry. | P8 |
+| BH5b | The DW-519 residual ("storage-integrity controls") names no owner. | low | Cosmetic, and fixed in the same text as P8. | P8 |
+| BH6, EC10, EC11 | Legacy `json`/`json-redacted` events and legacy snapshots beyond the core bounds become `BytesMetadataMismatch`, and those snapshots are never deletable. | medium (unverified) | This is the behaviour the epics AC requires ("valid bounded bytes"). Whether stored history exceeds the bounds is pre-existing and unknown; a scan of stored data before 8.7 wiring would settle it. | D1 |
+| BH7 | `Cancellation_PropagatesFromEveryRouteAsync` uses a pre-cancelled token, so it never reaches the route-level handling. | low | `Cancellation_DuringReaderOrResolverPropagatesAsync` covers in-call propagation. A regression is unlikely, and the fix is extra test rows. | R |
+| BH8, VG3 | Plaintext zeroing on a stopped or cancelled stream is tested only for v1. | low | Pre-verified by VG: mutants A (no `finally`) and B (`OwnsPayload` v1-only) survive. | P5 |
+| BH9 | The registry rejects two ids that share one CLR type, and has no registry version. | low | The authority lists the failure cases but does not require shared CLR types, and the 8.7 writer's type-to-id lookup needs uniqueness. The ids are themselves versioned (`hx-snapshot-v1:`). | R |
+| BH10 | `SnapshotTypeRegistry.Add` throws with `nameof(registration)` instead of `registrations`. | low | `SnapshotTypeRegistry.cs:80,85`. A direct correction. | P7 |
+| BH11 | `ReadStreamAsync` has no memory bound and no public clean-up. | low | All-or-nothing is the spec's contract, and Server replay already holds every event. Clearing owned buffers is a loop over `OwnsPayload` at the 8.7 call sites. The fix would add API. | R |
+| BH12 | Every read pays a copy and parse, and v2 is parsed twice. | low | Per-record shape classification is mandated by §12.1. No performance requirement applies. | R |
+| BH13 | Respelled plaintext formats (`JSON-REDACTED`, `Json`) pass through as custom. | low | Formats come from code constants, and the spec requires exact `json-redacted`. | R |
+| BH14, EC12 | `Capabilities` does not advertise custom-format pass-through. | low | Custom formats are open-ended, and the XML doc states the behaviour. Listing them would invent a capability model. | R |
+| EC2 | Mutating the caller's list during the awaits bypasses validation. | low | This is an internal API, and concurrent mutation of an input list is a caller bug. The fix adds a defensive copy. | R |
+| EC4 | A foreign `OperationCanceledException` from a `JsonTypeInfo` converter escapes. | low | `PayloadCompatibilityRouter.cs` catch filter `when (exception is not OperationCanceledException)`. The legacy reader path already maps foreign cancellation. A direct correction. | P6 |
+| EC5 | A legacy reader can return an undefined reason value. | low | Readers are trusted, host-registered components. The fix adds a guard. | R |
+| EC6 | A disposed `JsonElement` throws `ObjectDisposedException`. | false | That input is a caller bug, and failing loudly is correct for that state. | R |
+| EC7 | `ValidateSnapshotTypeId` can throw `PayloadProtectionCryptographicException` (`CanonicalText.cs:48`). | low | Startup fails loudly either way; only the exception type differs. | R |
+| EC9 | A carrier with schema version 2 and a new member or state gives `MalformedMetadata`, not `UnknownMetadataVersion`. | low | No newer-schema writer exists, and both reasons are permanent. Reordering is more than a direct correction. | R |
+| EC13 | The DW-544 text misstates identity-history failure reasons. | low | Exact v2/v1 carriers give `BytesMetadataMismatch`, and a non-allowlisted known scheme gives `MalformedMetadata`. A text-only fix. | P8 |
+| VG1 | The oversized-carrier test cannot detect removal of the 65,536-character limit. | low | Pre-verified mutant: the test's 65,536-character `scheme` is already rejected by `TryValidate`. | P3 |
+| VG2 | No test checks that the carrier and metadata are classified before format and shape. | low | Pre-verified: both order-swap mutants survive. | P4 |
 
 ## Design Notes
 

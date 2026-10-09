@@ -77,12 +77,12 @@ internal sealed class SnapshotTypeRegistry
         }
         catch (PayloadProtectionFormatException)
         {
-            throw new ArgumentException("A snapshot type identifier or alias is invalid.", nameof(registration));
+            throw new ArgumentException("A snapshot type identifier or alias is invalid.", "registrations");
         }
 
         if (!byIdentifier.TryAdd(identifier!, registration))
         {
-            throw new ArgumentException("A snapshot type identifier or alias collides with another registration.", nameof(registration));
+            throw new ArgumentException("A snapshot type identifier or alias collides with another registration.", "registrations");
         }
     }
 }

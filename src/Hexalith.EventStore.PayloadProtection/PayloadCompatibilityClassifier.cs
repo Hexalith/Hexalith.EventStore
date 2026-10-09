@@ -42,9 +42,9 @@ internal static class PayloadCompatibilityClassifier
     /// </summary>
     /// <remarks>
     /// A missing or blank carrier is legacy, matching <see cref="EventStorePayloadProtectionMetadataCarrier.Read(string?)"/>.
-    /// Before that reader runs, a duplicate member (top level or flag) or a state spelling other than an exact
-    /// defined name is <see cref="UnreadableProtectedDataReason.MalformedMetadata"/>, even though the reader would
-    /// accept it.
+    /// Before that reader runs, a duplicate member (top level or flag), a state spelling other than an exact
+    /// defined name, or a metadata version below one is <see cref="UnreadableProtectedDataReason.MalformedMetadata"/>,
+    /// even where the reader would accept or reclassify it.
     /// </remarks>
     /// <param name="carrier">The raw carrier text, or <see langword="null"/>.</param>
     /// <returns>The metadata route or one bounded rejection.</returns>
@@ -406,6 +406,14 @@ internal static class PayloadCompatibilityClassifier
                     return false;
                 }
 
+                // The carrier reader maps a version below one to "unknown version"; it is malformed, not newer.
+                if (property.NameEquals("metadataVersion")
+                    && property.Value.ValueKind == JsonValueKind.Number
+                    && (!property.Value.TryGetInt64(out long version) || version < 1))
+                {
+                    return false;
+                }
+
                 if (property.NameEquals("compatibilityFlags")
                     && property.Value.ValueKind == JsonValueKind.Object
                     && !HasUniqueMemberNames(property.Value))
@@ -474,15 +482,16 @@ internal static class PayloadCompatibilityClassifier
         {
             memberCount++;
             string? value = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
-            if (property.NameEquals(nameof(ProtectedSnapshotPayloadV2.Format)))
+            // Dapr actor state uses web (camelCase) naming, so the three v2 member names ignore case.
+            if (string.Equals(property.Name, nameof(ProtectedSnapshotPayloadV2.Format), StringComparison.OrdinalIgnoreCase))
             {
                 format = value;
             }
-            else if (property.NameEquals(nameof(ProtectedSnapshotPayloadV2.SnapshotTypeId)))
+            else if (string.Equals(property.Name, nameof(ProtectedSnapshotPayloadV2.SnapshotTypeId), StringComparison.OrdinalIgnoreCase))
             {
                 snapshotTypeId = value;
             }
-            else if (property.NameEquals(nameof(ProtectedSnapshotPayloadV2.Envelope)))
+            else if (string.Equals(property.Name, nameof(ProtectedSnapshotPayloadV2.Envelope), StringComparison.OrdinalIgnoreCase))
             {
                 envelope = value;
             }

@@ -140,14 +140,14 @@ internal sealed class PayloadCompatibilityRouter
     /// <summary>
     /// Routes one mixed-history stream record by record and stops at the first unreadable record.
     /// </summary>
-    /// <param name="records">The stored events of one aggregate in strictly ascending sequence order.</param>
+    /// <param name="records">The stored events of one aggregate in contiguous ascending sequence order.</param>
     /// <param name="cancellationToken">The caller cancellation token.</param>
     /// <returns>
     /// Every event readable in order, or only the first unreadable decision. No later record is examined and no
     /// partial list is returned; router-owned plaintext from earlier records is cleared.
     /// </returns>
     /// <exception cref="ArgumentException">
-    /// A record is null, belongs to another aggregate, or is not in strictly ascending sequence order.
+    /// A record is null, belongs to another aggregate, or does not follow its predecessor's sequence by exactly one.
     /// </exception>
     internal async ValueTask<CompatibilityStreamReadResult> ReadStreamAsync(
         IReadOnlyList<CompatibilityEventRecord> records,
@@ -164,10 +164,12 @@ internal sealed class PayloadCompatibilityRouter
 
             ValidateEventRecord(record);
             if (index > 0
-                && (record.SequenceNumber <= records[index - 1].SequenceNumber || record.Identity != records[0].Identity))
+                && (record.SequenceNumber == 0
+                    || record.SequenceNumber - 1 != records[index - 1].SequenceNumber
+                    || record.Identity != records[0].Identity))
             {
                 throw new ArgumentException(
-                    "Stream records must belong to one aggregate in strictly ascending sequence order.",
+                    "Stream records must belong to one aggregate in contiguous ascending sequence order.",
                     nameof(records));
             }
         }
@@ -419,7 +421,7 @@ internal sealed class PayloadCompatibilityRouter
             {
                 state = JsonSerializer.Deserialize(plaintext, registration.TypeInfo);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 state = null;
             }
