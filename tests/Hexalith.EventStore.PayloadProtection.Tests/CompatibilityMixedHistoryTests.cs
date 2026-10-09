@@ -225,6 +225,44 @@ public sealed class CompatibilityMixedHistoryTests
         legacy.PayloadBytes.ShouldBe(CompatibilityTestData.PlainJson());
     }
 
+    /// <summary>An aborted stream clears the earlier v2 output buffer, as observed only after zeroing.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task V119_AbortedStream_ClearsEarlierV2PlaintextAsync(bool cancel)
+    {
+        var observer = new RecordingBufferObserver();
+        using var source = new CancellationTokenSource();
+        var reader = new FakeLegacyPayloadReader
+        {
+            OnEvent = (_, _) =>
+            {
+                source.Cancel();
+                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey);
+            },
+        };
+        var router = new PayloadCompatibilityRouter(
+            new CountingKeyResolver().ResolveAsync,
+            [reader],
+            bufferObserver: observer);
+        CompatibilityEventRecord storedV2 = CompatibilityTestData.V2Event(1);
+
+        if (cancel)
+        {
+            await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadStreamAsync(
+                [storedV2, CompatibilityTestData.V1Event(2)], source.Token));
+        }
+        else
+        {
+            CompatibilityStreamReadResult result = await router.ReadStreamAsync(
+                [storedV2, CompatibilityTestData.Event(2, CompatibilityTestData.PlainJson(), "json+pdenc-v2", CompatibilityTestData.V2Carrier())]);
+            result.FirstUnreadable!.SequenceNumber.ShouldBe(2UL);
+        }
+
+        observer.Observed.ShouldBe([SensitiveBufferKind.DecryptedPlaintext]);
+        storedV2.PayloadBytes.ShouldBe(CompatibilityTestData.V2Json(1));
+    }
+
     /// <summary>
     /// A stream cancelled after an earlier protected record was read clears that record's router-owned plaintext.
     /// </summary>

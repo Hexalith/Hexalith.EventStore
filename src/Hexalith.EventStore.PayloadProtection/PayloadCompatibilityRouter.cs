@@ -39,6 +39,7 @@ internal sealed class PayloadCompatibilityRouter
     private readonly Func<string, uint, CancellationToken, ValueTask<byte[]?>> _keyResolver;
     private readonly ILegacyPayloadReader? _partiesV1Reader;
     private readonly SnapshotTypeRegistry _snapshotTypes;
+    private readonly ISensitiveBufferObserver? _bufferObserver;
 
     /// <summary>
     /// Initializes a router over an exact reader set.
@@ -53,17 +54,20 @@ internal sealed class PayloadCompatibilityRouter
     /// </param>
     /// <param name="snapshotTypes">The v2 snapshot type registry, or <see langword="null"/> for none.</param>
     /// <param name="core">The Story 8.3 core, or <see langword="null"/> for a default instance.</param>
+    /// <param name="bufferObserver">An optional test observer called after abandoned plaintext buffers are cleared.</param>
     /// <exception cref="ArgumentException">A legacy reader is null, unknown, or registered twice.</exception>
     internal PayloadCompatibilityRouter(
         Func<string, uint, CancellationToken, ValueTask<byte[]?>> keyResolver,
         IEnumerable<ILegacyPayloadReader>? legacyReaders = null,
         SnapshotTypeRegistry? snapshotTypes = null,
-        PayloadProtectionCore? core = null)
+        PayloadProtectionCore? core = null,
+        ISensitiveBufferObserver? bufferObserver = null)
     {
         ArgumentNullException.ThrowIfNull(keyResolver);
         _keyResolver = keyResolver;
         _core = core ?? new PayloadProtectionCore();
         _snapshotTypes = snapshotTypes ?? new SnapshotTypeRegistry([]);
+        _bufferObserver = bufferObserver;
         foreach (ILegacyPayloadReader? reader in legacyReaders ?? [])
         {
             if (reader is null || !string.Equals(reader.ReaderId, PartiesV1ReaderId, StringComparison.Ordinal))
@@ -248,7 +252,7 @@ internal sealed class PayloadCompatibilityRouter
         ArgumentNullException.ThrowIfNull(record.SerializationFormat);
     }
 
-    private static void ClearOwnedPayloads(List<CompatibilityEventReadResult> events)
+    private void ClearOwnedPayloads(List<CompatibilityEventReadResult> events)
     {
         // Pass-through results alias caller-owned stored bytes and are never cleared.
         for (int index = 0; index < events.Count; index++)
@@ -256,6 +260,19 @@ internal sealed class PayloadCompatibilityRouter
             if (events[index].OwnsPayload && events[index].PayloadBytes is { } owned)
             {
                 CryptographicOperations.ZeroMemory(owned);
+            }
+        }
+
+        // Notify only after every owned buffer is cleared, so an observer failure cannot leave later
+        // protected records in plaintext.
+        if (_bufferObserver is not null)
+        {
+            for (int index = 0; index < events.Count; index++)
+            {
+                if (events[index].OwnsPayload && events[index].PayloadBytes is { } owned)
+                {
+                    _bufferObserver.BufferCleared(SensitiveBufferKind.DecryptedPlaintext, owned);
+                }
             }
         }
     }
@@ -269,6 +286,7 @@ internal sealed class PayloadCompatibilityRouter
         plaintext = null;
         if (result is null)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return UnreadableProtectedDataReason.ProviderUnavailable;
         }
 
@@ -276,14 +294,18 @@ internal sealed class PayloadCompatibilityRouter
         if (owned is not null && ReferenceEquals(owned, callerBuffer))
         {
             // A reader that hands back the stored buffer did not produce plaintext; never clear caller bytes.
+            cancellationToken.ThrowIfCancellationRequested();
             return UnreadableProtectedDataReason.ConsistencyMismatch;
         }
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (result.UnreadableReason is { } reason)
             {
-                return reason;
+                return Enum.IsDefined(reason)
+                    ? reason
+                    : UnreadableProtectedDataReason.ConsistencyMismatch;
             }
 
             if (owned is null)
@@ -325,6 +347,24 @@ internal sealed class PayloadCompatibilityRouter
         CoreUnprotectionResult result = await _core
             .TryUnprotectEventAsync(record.PayloadBytes, context, _keyResolver, cancellationToken)
             .ConfigureAwait(false);
+        if (result.PayloadBytes is { } plaintext)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException)
+            {
+                CryptographicOperations.ZeroMemory(plaintext);
+                _bufferObserver?.BufferCleared(SensitiveBufferKind.AbandonedOutput, plaintext);
+                throw;
+            }
+        }
+        else
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
         return result.IsReadable
             ? CompatibilityEventReadResult.Readable(
                 record.SequenceNumber,
@@ -389,6 +429,17 @@ internal sealed class PayloadCompatibilityRouter
         ProtectedSnapshotPayloadV2 carrier,
         CancellationToken cancellationToken)
     {
+        try
+        {
+            AadCodec.ValidateSnapshotTypeId(carrier.SnapshotTypeId);
+        }
+        catch (PayloadProtectionFormatException)
+        {
+            return CompatibilitySnapshotReadResult.Unreadable(
+                CompatibilityReadRoute.Rejected,
+                UnreadableProtectedDataReason.BytesMetadataMismatch);
+        }
+
         if (!_snapshotTypes.TryResolve(carrier.SnapshotTypeId, out SnapshotTypeRegistration? registration))
         {
             return CompatibilitySnapshotReadResult.Unreadable(
@@ -425,6 +476,8 @@ internal sealed class PayloadCompatibilityRouter
             {
                 state = null;
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             return state is null
                 ? CompatibilitySnapshotReadResult.Unreadable(
@@ -480,9 +533,23 @@ internal sealed class PayloadCompatibilityRouter
         {
             // Clone copies the element so the decrypted buffer can be cleared before returning.
             using JsonDocument document = JsonDocument.Parse(plaintext!);
+            JsonElement root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Null
+                || (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("marker", out JsonElement marker)
+                    && marker.ValueKind == JsonValueKind.String
+                    && string.Equals(marker.GetString(), "$protectedSnapshot", StringComparison.Ordinal)))
+            {
+                return CompatibilitySnapshotReadResult.Unreadable(
+                    CompatibilityReadRoute.RegisteredV1,
+                    UnreadableProtectedDataReason.ConsistencyMismatch);
+            }
+
+            JsonElement state = document.RootElement.Clone();
+            cancellationToken.ThrowIfCancellationRequested();
             return CompatibilitySnapshotReadResult.Readable(
                 CompatibilityReadRoute.RegisteredV1,
-                document.RootElement.Clone(),
+                state,
                 EventStorePayloadProtectionMetadata.Unprotected());
         }
         catch (JsonException)

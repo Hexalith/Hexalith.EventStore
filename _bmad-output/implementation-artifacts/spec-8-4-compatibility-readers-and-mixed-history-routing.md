@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -114,13 +114,13 @@ context:
 
 ### Review Findings
 
-- [ ] [Review][Patch] Reject incomplete v2 snapshot carrier shapes before legacy pass-through [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:513]
-- [ ] [Review][Patch] Validate all required v1 snapshot wrapper fields before calling the registered reader [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:522]
-- [ ] [Review][Patch] Keep legacy-reader failure reasons inside the defined reason taxonomy [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
-- [ ] [Review][Patch] Propagate caller cancellation when a legacy reader returns an unreadable result [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
-- [ ] [Review][Patch] Recheck cancellation after v1 and v2 snapshot materialization [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:429]
-- [ ] [Review][Patch] Classify numeric future carrier versions beyond `Int32.MaxValue` as `UnknownMetadataVersion` [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:410]
-- [ ] [Review][Patch] Verify that aborted streams zero earlier v2 plaintext buffers [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilityMixedHistoryTests.cs:209]
+- [x] [Review][Patch] Reject incomplete v2 snapshot carrier shapes before legacy pass-through [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:513]
+- [x] [Review][Patch] Validate all required v1 snapshot wrapper fields before calling the registered reader [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:522]
+- [x] [Review][Patch] Keep legacy-reader failure reasons inside the defined reason taxonomy [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
+- [x] [Review][Patch] Propagate caller cancellation when a legacy reader returns an unreadable result [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
+- [x] [Review][Patch] Recheck cancellation after v1 and v2 snapshot materialization [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:429]
+- [x] [Review][Patch] Classify numeric future carrier versions beyond `Int32.MaxValue` as `UnknownMetadataVersion` [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:410]
+- [x] [Review][Patch] Verify that aborted streams zero earlier v2 plaintext buffers [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilityMixedHistoryTests.cs:209]
 - [x] [Review][Defer] Check stored legacy history against the new JSON bounds before Server wiring [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:170] — deferred: no stored-data inventory is available; a scan for oversized, deep, duplicate-member or invalid-UTF-8 events and snapshots will establish whether replay or snapshot loads are affected. This is also recorded in the existing Story 8.4 deferred-work entry.
 
 #### Rejected
@@ -169,6 +169,8 @@ context:
 - Risk: legacy `json` and `json-redacted` payloads must be valid bounded JSON as §8 defines it. Stored legacy JSON with duplicate member names, more than 65,536 nodes, depth above 64 or invalid UTF-8 is now `BytesMetadataMismatch`. Custom formats that cannot be parsed still pass through.
 - Concurrent commit `aaf4a5e0` (`fix: eventstore`, 15:19 +02:00) absorbed the in-progress core source files during implementation. That history was left untouched; the later classifier edits remain in the working tree.
 - 2026-10-09 review fixes: case-insensitive v2 snapshot member names; contiguous stream sequences; only caller cancellation escapes snapshot deserialization; registry exceptions name `registrations`; stronger oversized-carrier, classification-order, cancellation-zeroing and `OwnsPayload` tests; corrected DW-519 and DW-544 text. Focused run of the three compatibility test classes: 232 passed, 0 failed, 0 skipped. Full-suite verification is run by the coordinator.
+- 2026-10-09 follow-up review fixes: incomplete v2 snapshot carrier members and incomplete v1 wrapper fields fail locally; large positive integer carrier versions report `UnknownMetadataVersion`; legacy-reader results preserve the bounded reason taxonomy and caller cancellation; snapshot materialization rechecks cancellation. The router uses the core's cleared-buffer observer contract for abandoned stream output, including v2. Release build: 0 warnings, 0 errors. Payload-protection assembly: 609 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
+- 2026-10-09 review pass 2 fixes: writer-produced v2 events with an unrelated `$enc` property authenticate; malformed v2 snapshot IDs return `BytesMetadataMismatch`; v1 snapshot reader output cannot be an undecrypted wrapper or JSON null; v2 event output is cleared when cancellation arrives during core cleanup; registry aliases are frozen. The cancellation test converter lives in its own C# file. Final Release build: 0 warnings, 0 errors. Payload-protection assembly: 618 passed, 0 failed, 0 skipped. Invariant-globalization V029: 1 passed. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - Verification (before the review fixes): Release build with `-warnaserror` and the AOT/trim analyzers: 0 warnings, 0 errors. Test assembly: 575 passed, 0 failed, 0 skipped (357 prior plus 218 new). `ReleasePackageManifestTests.Payload_protection*`: 13/13 passed. The invariant-globalization V029 lane: 1/1 passed. Mutation checks: 18 mutants, each failed at least one new test.
 
 ## Spec Change Log
@@ -203,6 +205,26 @@ Pass 1 (2026-10-09). Layers: blind hunter (BH), edge-case hunter (EC) and verifi
 | EC13 | The DW-544 text misstates identity-history failure reasons. | low | Exact v2/v1 carriers give `BytesMetadataMismatch`, and a non-allowlisted known scheme gives `MalformedMetadata`. A text-only fix. | P8 |
 | VG1 | The oversized-carrier test cannot detect removal of the 65,536-character limit. | low | Pre-verified mutant: the test's 65,536-character `scheme` is already rejected by `TryValidate`. | P3 |
 | VG2 | No test checks that the carrier and metadata are classified before format and shape. | low | Pre-verified: both order-swap mutants survive. | P4 |
+
+Pass 2 (2026-10-09). The verification-gap layer found no gaps. The findings below were checked against the current classifier, router, core, tests, and the earlier triage rows.
+
+| ID | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| BH1 | A v2 event with an unrelated `$enc` property is rejected. | medium | `ProtectEvent` rejects `$pdenc` input but permits `$enc`; `ClassifyEvent` requires no `$enc` even after it finds the required `$pdenc`. A writer-produced record can fail before authentication. | patch |
+| BH2 | A plain historical `$enc` field may fail the marker scan. | medium (unverified) | The approved matrix deliberately treats `$enc` as a protected marker. Whether stored plain history contains that field is unknown; a stored-data inventory before 8.7 wiring would settle the replay impact. | defer |
+| BH3 | A lone `Envelope` or `SnapshotTypeId` domain field is now treated as a protected shape. | low | The follow-up guard treats those reserved carrier members as evidence of an incomplete v2 wrapper. No affected stored state is known, and distinguishing it from a stripped wrapper would require more policy and shape rules. | reject |
+| BH4 | A legacy snapshot outside the new JSON bounds remains retained on failed reads. | medium (unverified) | carried: the earlier BH6/EC10/EC11 row and deferred inventory already cover the same behavior; the router still returns an unreadable result whose deletion flag is false. | defer (carried) |
+| BH5 | A malformed v2 snapshot type id returns `ConsistencyMismatch`. | medium | Registry lookup precedes the core's closed-id validation, so an empty or invalid id is misreported as unknown. The normative malformed-ID case requires `BytesMetadataMismatch`. | patch |
+| BH6 | An in-process v2 carrier can bring an oversized type id to registry lookup. | low | `ClassifySnapshot` accepts the typed carrier without checking the closed 16–128 byte id grammar. The same local validation as BH5 resolves this before lookup. | patch |
+| BH7 | A v1 wrapper with extra fields reaches its registered reader. | false | The v1 reader owns its wrapper details; the approved matrix requires the marker, format, type and payload but does not forbid extensions. No failing behavior was shown. | reject |
+| BH8 | Successful streams retain decrypted buffers without a cumulative bound. | low | carried: the earlier BH11 row rejects an API expansion; all-or-nothing stream output and caller cleanup at Story 8.7 are documented. | reject (carried) |
+| BH9 | A caller can mutate registered snapshot aliases after construction. | low | The registry retains the original registration and alias list while lookup keys are fixed. A future caller inspecting `Registrations` could see a list that disagrees with resolution. | patch |
+| BH10 | The leak assertion misses a sentinel encoded as hex or Base64 text. | low | `ShouldNotLeak` renders bytes in those encodings but compares each rendering only with the raw sentinel. An encoded sentinel inside a safe-looking string escapes this test. | patch |
+| BH11 | The legacy bounds scan has a duplicate, untracked ledger line. | low | The structured deferred entry is followed by a second bullet with the same scan and no work id. Removing the duplicate preserves the tracked entry. | patch |
+| BH12 | A real Parties v1 reader conformance test is absent. | low | carried: the spec's prior BH9 decision assigns consumer conformance to later authorized work; this story uses a fake registered reader and unit-test evidence. | reject (carried) |
+| EC1 | A v2 event read can return plaintext after cancellation lands in the core's finalizer. | medium | The core checks cancellation before its finalizer, then clears buffers and returns; the router does not recheck the token before returning the result. The observer seam can reproduce that timing. | patch |
+| EC2 | A v1 reader can return its undecrypted snapshot wrapper as readable state. | medium | The event path rejects returned `$enc`, but the historical snapshot wrapper has a `marker` and opaque payload string with no `$enc`; `ReadRegisteredV1SnapshotAsync` currently clones and returns it. | patch |
+| EC3 | A v1 reader can return JSON `null` as a readable snapshot. | medium | `JsonElement.Null` is a non-null boxed object, so `CompatibilitySnapshotReadResult.IsReadable` becomes true despite there being no state. | patch |
 
 ## Design Notes
 

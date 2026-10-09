@@ -288,6 +288,59 @@ public sealed class CompatibilityEventRoutingTests
         record.PayloadBytes.ShouldBe(stored);
     }
 
+    /// <summary>An unrelated legacy-named field does not prevent a valid v2 wrapper from authenticating.</summary>
+    [Fact]
+    public async Task V113_V2WithUnrelatedEncField_AuthenticatesAsync()
+    {
+        const ulong Sequence = 14;
+        byte[] original = "{\"email\":\"alice@example.com\",\"note\":{\"$enc\":\"ordinary\"}}"u8.ToArray();
+        CoreProtectionResult protectedPayload = new PayloadProtectionCore().ProtectEvent(
+            original,
+            ["/email"],
+            TestFixture.Context(Sequence),
+            TestFixture.Material);
+        var resolver = new CountingKeyResolver();
+        var router = new PayloadCompatibilityRouter(resolver.ResolveAsync);
+
+        CompatibilityEventReadResult result = await router.ReadEventAsync(CompatibilityTestData.Event(
+            Sequence,
+            protectedPayload.PayloadBytes,
+            protectedPayload.SerializationFormat,
+            CompatibilityTestData.V2Carrier()));
+
+        result.IsReadable.ShouldBeTrue();
+        result.Route.ShouldBe(CompatibilityReadRoute.SharedV2);
+        result.PayloadBytes.ShouldBe(original);
+        resolver.Calls.ShouldBe(1);
+    }
+
+    /// <summary>Cancellation in core cleanup cannot return or retain the completed v2 event output.</summary>
+    [Fact]
+    public async Task V113_CancellationAfterCoreCompletion_ClearsOutputAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var coreObserver = new RecordingBufferObserver(kind =>
+        {
+            if (kind == SensitiveBufferKind.DataEncryptionKey)
+            {
+                source.Cancel();
+            }
+        });
+        var routerObserver = new RecordingBufferObserver();
+        var resolver = new CountingKeyResolver();
+        var router = new PayloadCompatibilityRouter(
+            resolver.ResolveAsync,
+            core: new PayloadProtectionCore(coreObserver),
+            bufferObserver: routerObserver);
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadEventAsync(
+            CompatibilityTestData.V2Event(15), source.Token));
+
+        coreObserver.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        routerObserver.Observed.ShouldBe([SensitiveBufferKind.AbandonedOutput]);
+        resolver.Calls.ShouldBe(1);
+    }
+
     /// <summary>Every core failure returns the core's typed reason and never partial output.</summary>
     [Theory]
     [InlineData("wrong-key", UnreadableProtectedDataReason.BytesMetadataMismatch, 1)]
@@ -451,6 +504,8 @@ public sealed class CompatibilityEventRoutingTests
     /// <summary>An over-version carrier is unknown-version metadata with no calls.</summary>
     [Theory]
     [InlineData("{\"state\":\"Protected\",\"metadataVersion\":2,\"scheme\":\"hexalith-pdenc-v2\"}")]
+    [InlineData("{\"state\":\"Protected\",\"metadataVersion\":2147483648,\"scheme\":\"hexalith-pdenc-v2\"}")]
+    [InlineData("{\"state\":\"Protected\",\"metadataVersion\":9223372036854775808,\"scheme\":\"hexalith-pdenc-v2\"}")]
     [InlineData("{\"state\":\"ProviderOpaque\",\"metadataVersion\":1,\"compatibilityFlags\":{\"reason\":\"unknownVersion\"}}")]
     public async Task V115_OverVersionCarrier_IsUnknownMetadataVersionAsync(string carrier)
     {
@@ -535,7 +590,6 @@ public sealed class CompatibilityEventRoutingTests
     [Theory]
     [InlineData("v2", "json+pdenc-v2", "plain")]
     [InlineData("v2", "json+pdenc-v2", "v1")]
-    [InlineData("v2", "json+pdenc-v2", "both")]
     [InlineData("v2", "json+pdenc-v2", "invalid")]
     [InlineData("v2", "json", "v2")]
     [InlineData("v2", "json", "plain")]
@@ -707,6 +761,67 @@ public sealed class CompatibilityEventRoutingTests
         CompatibilityEventRecord record = kind == "v1" ? CompatibilityTestData.V1Event(1) : CompatibilityTestData.V2Event(1);
 
         await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadEventAsync(record, source.Token));
+    }
+
+    /// <summary>An unreadable v1 reader result cannot override caller cancellation or introduce an unknown reason.</summary>
+    [Fact]
+    public async Task V111_LegacyReaderResult_RespectsCancellationAndReasonTaxonomyAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var resolver = new CountingKeyResolver();
+        var reader = new FakeLegacyPayloadReader
+        {
+            OnEvent = (_, _) => CoreUnprotectionResult.Unreadable((UnreadableProtectedDataReason)999),
+        };
+        var router = new PayloadCompatibilityRouter(resolver.ResolveAsync, [reader]);
+
+        CompatibilityEventReadResult result = await router.ReadEventAsync(CompatibilityTestData.V1Event(1));
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+        result.PayloadBytes.ShouldBeNull();
+
+        reader.OnEvent = (_, _) =>
+        {
+            source.Cancel();
+            return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey);
+        };
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadEventAsync(
+            CompatibilityTestData.V1Event(1), source.Token));
+    }
+
+    /// <summary>A v1 reader's plaintext is cleared if it cancels the caller immediately before returning.</summary>
+    [Fact]
+    public async Task V111_LegacyReaderPlaintextAfterCancellation_IsClearedAsync()
+    {
+        using var source = new CancellationTokenSource();
+        byte[] plaintext = CompatibilityTestData.PlainJson();
+        var reader = new FakeLegacyPayloadReader
+        {
+            OnEvent = (_, _) =>
+            {
+                source.Cancel();
+                return CoreUnprotectionResult.Readable(plaintext);
+            },
+        };
+        var router = new PayloadCompatibilityRouter(new CountingKeyResolver().ResolveAsync, [reader]);
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadEventAsync(
+            CompatibilityTestData.V1Event(1), source.Token));
+
+        plaintext.ShouldAllBe(static value => value == 0);
+    }
+
+    /// <summary>The no-leak assertion catches encoded forms as well as literal sentinel text.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NoLeakAssertion_RejectsEncodedSentinel(bool base64)
+    {
+        byte[] sentinelBytes = Encoding.UTF8.GetBytes(CompatibilityTestData.Sentinel);
+        string encoded = base64
+            ? Convert.ToBase64String(sentinelBytes)
+            : Convert.ToHexString(sentinelBytes);
+
+        Should.Throw<ShouldAssertException>(() => CompatibilityTestData.ShouldNotLeak(encoded));
     }
 
     /// <summary>Unreadable results, records, and argument exceptions never render a planted sentinel.</summary>

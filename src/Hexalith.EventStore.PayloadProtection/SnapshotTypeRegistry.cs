@@ -33,18 +33,23 @@ internal sealed class SnapshotTypeRegistry
                 throw new ArgumentException("A snapshot type registration is incomplete.", nameof(registrations));
             }
 
-            if (!clrTypes.Add(registration.TypeInfo.Type))
+            SnapshotTypeRegistration frozen = registration with
+            {
+                Aliases = Array.AsReadOnly([.. registration.Aliases]),
+            };
+
+            if (!clrTypes.Add(frozen.TypeInfo.Type))
             {
                 throw new ArgumentException("Two snapshot type registrations share one CLR type.", nameof(registrations));
             }
 
-            Add(byIdentifier, registration.SnapshotTypeId, registration);
-            foreach (string alias in registration.Aliases)
+            Add(byIdentifier, frozen.SnapshotTypeId, frozen);
+            foreach (string alias in frozen.Aliases)
             {
-                Add(byIdentifier, alias, registration);
+                Add(byIdentifier, alias, frozen);
             }
 
-            ordered.Add(registration);
+            ordered.Add(frozen);
         }
 
         _byIdentifier = byIdentifier;

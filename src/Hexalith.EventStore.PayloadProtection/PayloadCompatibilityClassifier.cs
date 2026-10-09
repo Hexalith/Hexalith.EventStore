@@ -1,4 +1,6 @@
 // Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 8.4, 12.1-12.3, 14, and Appendix B.
+using System.Globalization;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Hexalith.EventStore.Contracts.Security;
@@ -55,9 +57,14 @@ internal static class PayloadCompatibilityClassifier
             return ClassifyMetadata(null);
         }
 
-        if (carrier.Length > MaximumCarrierCharacters || !HasCanonicalCarrierStructure(carrier))
+        if (carrier.Length > MaximumCarrierCharacters || !HasCanonicalCarrierStructure(carrier, out bool futureVersion))
         {
             return CompatibilityClassification.Reject(UnreadableProtectedDataReason.MalformedMetadata);
+        }
+
+        if (futureVersion)
+        {
+            return CompatibilityClassification.Reject(UnreadableProtectedDataReason.UnknownMetadataVersion);
         }
 
         return ClassifyMetadata(EventStorePayloadProtectionMetadataCarrier.Read(carrier));
@@ -171,7 +178,7 @@ internal static class PayloadCompatibilityClassifier
         bool plain = parsed && !hasV2Wrapper && !hasV1Marker;
         if (v2Format)
         {
-            return parsed && hasV2Wrapper && !hasV1Marker
+            return parsed && hasV2Wrapper
                 ? carrier
                 : CompatibilityClassification.Reject(UnreadableProtectedDataReason.BytesMetadataMismatch);
         }
@@ -387,8 +394,9 @@ internal static class PayloadCompatibilityClassifier
         return first && second;
     }
 
-    private static bool HasCanonicalCarrierStructure(string carrier)
+    private static bool HasCanonicalCarrierStructure(string carrier, out bool futureVersion)
     {
+        futureVersion = false;
         try
         {
             using JsonDocument document = JsonDocument.Parse(carrier, new JsonDocumentOptions { MaxDepth = 8 });
@@ -408,10 +416,21 @@ internal static class PayloadCompatibilityClassifier
 
                 // The carrier reader maps a version below one to "unknown version"; it is malformed, not newer.
                 if (property.NameEquals("metadataVersion")
-                    && property.Value.ValueKind == JsonValueKind.Number
-                    && (!property.Value.TryGetInt64(out long version) || version < 1))
+                    && property.Value.ValueKind == JsonValueKind.Number)
                 {
-                    return false;
+                    if (!BigInteger.TryParse(
+                        property.Value.GetRawText(),
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out BigInteger version)
+                        || version < BigInteger.One)
+                    {
+                        return false;
+                    }
+
+                    // The existing carrier can deserialize only Int32 versions. Recognize larger positive
+                    // integer versions here so its parse-error fallback cannot hide an upgrade requirement.
+                    futureVersion = version > int.MaxValue;
                 }
 
                 if (property.NameEquals("compatibilityFlags")
@@ -478,6 +497,8 @@ internal static class PayloadCompatibilityClassifier
         string? envelope = null;
         string? marker = null;
         string? markerFormat = null;
+        string? v1TypeName = null;
+        bool hasV1Payload = false;
         foreach (JsonProperty property in state.EnumerateObject())
         {
             memberCount++;
@@ -503,6 +524,22 @@ internal static class PayloadCompatibilityClassifier
             {
                 markerFormat = value;
             }
+            else if (property.NameEquals("typeName"))
+            {
+                v1TypeName = value;
+            }
+            else if (property.NameEquals("payload"))
+            {
+                // The registered reader owns the v1 payload representation. The router requires
+                // the field to be present and non-null, without interpreting its contents.
+                hasV1Payload = property.Value.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined);
+            }
+
+            if (string.Equals(property.Name, nameof(ProtectedSnapshotPayloadV2.SnapshotTypeId), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(property.Name, nameof(ProtectedSnapshotPayloadV2.Envelope), StringComparison.OrdinalIgnoreCase))
+            {
+                protectedShape = true;
+            }
 
             if (value is not null && IsProtectedSnapshotMember(property.Name, value))
             {
@@ -521,7 +558,9 @@ internal static class PayloadCompatibilityClassifier
 
         v1Wrapper = !hasV2Wrapper
             && string.Equals(marker, V1SnapshotMarker, StringComparison.Ordinal)
-            && string.Equals(markerFormat, PayloadProtectionWireFormat.LegacyProtectedSerializationFormat, StringComparison.Ordinal);
+            && string.Equals(markerFormat, PayloadProtectionWireFormat.LegacyProtectedSerializationFormat, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(v1TypeName)
+            && hasV1Payload;
         return true;
     }
 

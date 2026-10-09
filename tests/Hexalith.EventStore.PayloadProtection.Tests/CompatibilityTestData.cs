@@ -191,9 +191,14 @@ internal static class CompatibilityTestData
     /// </summary>
     internal static void ShouldNotLeak(object? value, string sentinel = Sentinel)
     {
+        byte[] sentinelBytes = Encoding.UTF8.GetBytes(sentinel);
+        string hex = Convert.ToHexString(sentinelBytes);
+        string base64 = Convert.ToBase64String(sentinelBytes);
         foreach (string rendered in Render(value, 0))
         {
             rendered.ShouldNotContain(sentinel, Case.Insensitive);
+            rendered.ShouldNotContain(hex, Case.Insensitive);
+            rendered.ShouldNotContain(base64, Case.Sensitive);
         }
     }
 

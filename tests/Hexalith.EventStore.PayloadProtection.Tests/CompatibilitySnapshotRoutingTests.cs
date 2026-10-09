@@ -171,6 +171,27 @@ public sealed class CompatibilitySnapshotRoutingTests
         registry.Registrations.Count.ShouldBe(1);
     }
 
+    /// <summary>Lookup keys and exposed aliases stay frozen after the caller mutates its alias list.</summary>
+    [Fact]
+    public void V117_Registry_CopiesCallerAliases()
+    {
+        var aliases = new List<string> { CompatibilityTestData.SnapshotAlias };
+        var registry = new SnapshotTypeRegistry(
+            [new SnapshotTypeRegistration(
+                CompatibilityTestData.SnapshotTypeId,
+                CompatibilityTestJsonContext.Default.PartySnapshotState,
+                aliases)]);
+
+        aliases[0] = "hx-snapshot-v1:replacement";
+        aliases.Add("hx-snapshot-v1:added");
+
+        registry.TryResolve(CompatibilityTestData.SnapshotAlias, out SnapshotTypeRegistration? registration).ShouldBeTrue();
+        registration!.Aliases.ShouldBe([CompatibilityTestData.SnapshotAlias]);
+        registry.TryResolve("hx-snapshot-v1:replacement", out _).ShouldBeFalse();
+        registry.TryResolve("hx-snapshot-v1:added", out _).ShouldBeFalse();
+        Should.Throw<NotSupportedException>(() => ((IList<string>)registration.Aliases)[0] = "hx-snapshot-v1:changed");
+    }
+
     /// <summary>Colliding identifiers or aliases, invalid identifiers, and shared CLR types fail construction.</summary>
     [Theory]
     [InlineData("duplicate-id")]
@@ -251,6 +272,32 @@ public sealed class CompatibilitySnapshotRoutingTests
         CompatibilityTestData.ShouldNotLeak(result);
     }
 
+    /// <summary>Invalid v2 type IDs are malformed stored bytes, not missing registry entries.</summary>
+    [Theory]
+    [InlineData("uppercase")]
+    [InlineData("oversized")]
+    [InlineData("wrong-prefix")]
+    public async Task V118_InvalidV2SnapshotTypeId_IsBytesMetadataMismatchBeforeLookupAsync(string defect)
+    {
+        (PayloadCompatibilityRouter router, CountingKeyResolver resolver, FakeLegacyPayloadReader reader) = CreateRouter();
+        ProtectedSnapshotPayloadV2 original = CompatibilityTestData.ProtectSnapshot();
+        string invalidId = defect switch
+        {
+            "uppercase" => "hx-snapshot-v1:Party-state",
+            "oversized" => "hx-snapshot-v1:" + new string('a', 128),
+            _ => "other-snapshot-v1:party-state",
+        };
+
+        CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(CompatibilityTestData.Snapshot(
+            original with { SnapshotTypeId = invalidId },
+            CompatibilityTestData.V2Metadata()));
+
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        result.State.ShouldBeNull();
+        resolver.Calls.ShouldBe(0);
+        reader.SnapshotCalls.ShouldBe(0);
+    }
+
     /// <summary>Missing or unprotected metadata over any protected snapshot shape is a local mismatch.</summary>
     [Theory]
     [InlineData("v2-element", false)]
@@ -263,6 +310,8 @@ public sealed class CompatibilitySnapshotRoutingTests
     [InlineData("reserved-format-member", true)]
     [InlineData("nested-pdenc", false)]
     [InlineData("nested-enc", true)]
+    [InlineData("v2-missing-format", false)]
+    [InlineData("v2-only-type-id", true)]
     [InlineData("duplicate-members", false)]
     [InlineData("beyond-depth", false)]
     public async Task V118_ProtectedShapeWithLegacyMetadata_IsBytesMetadataMismatchAsync(string shape, bool explicitUnprotected)
@@ -287,12 +336,20 @@ public sealed class CompatibilitySnapshotRoutingTests
     [InlineData("v2", "plain", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v2", "v1-wrapper", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v2", "v2-extra-member", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v2", "v2-missing-format", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v2", "v2-only-type-id", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v2", "v2-v1-format", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v2", "v2-v3-format", UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation)]
     [InlineData("v1", "v2-element", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v1", "v2-instance", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v1", "plain", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     [InlineData("v1", "v1-wrong-format", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-missing-marker", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-missing-format", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-missing-type", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-empty-type", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-missing-payload", UnreadableProtectedDataReason.BytesMetadataMismatch)]
+    [InlineData("v1", "v1-null-payload", UnreadableProtectedDataReason.BytesMetadataMismatch)]
     public async Task V118_ProtectedMetadataShapeDisagreement_IsLocalDecisionAsync(
         string metadata,
         string shape,
@@ -366,15 +423,17 @@ public sealed class CompatibilitySnapshotRoutingTests
     }
 
     /// <summary>Exact Parties v1 metadata over its snapshot wrapper is decided by the registered reader.</summary>
-    [Fact]
-    public async Task V117_V1Snapshot_RoutesToRegisteredReaderAsync()
+    [Theory]
+    [InlineData("v1-wrapper")]
+    [InlineData("v1-object-payload")]
+    public async Task V117_V1Snapshot_RoutesToRegisteredReaderAsync(string shape)
     {
         (PayloadCompatibilityRouter router, CountingKeyResolver resolver, FakeLegacyPayloadReader reader) = CreateRouter();
         byte[] plaintext = CompatibilityTestData.SnapshotPlaintext();
         reader.OnSnapshot = (_, _) => CoreUnprotectionResult.Readable(plaintext);
 
         CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(
-            CompatibilityTestData.Snapshot(ShapeFor("v1-wrapper"), CompatibilityTestData.PartiesV1Metadata()));
+            CompatibilityTestData.Snapshot(ShapeFor(shape), CompatibilityTestData.PartiesV1Metadata()));
 
         result.IsReadable.ShouldBeTrue();
         result.Route.ShouldBe(CompatibilityReadRoute.RegisteredV1);
@@ -393,6 +452,8 @@ public sealed class CompatibilitySnapshotRoutingTests
     [InlineData("missing-key", UnreadableProtectedDataReason.MissingKey)]
     [InlineData("fault", UnreadableProtectedDataReason.ProviderUnavailable)]
     [InlineData("partial", UnreadableProtectedDataReason.ConsistencyMismatch)]
+    [InlineData("wrapper-no-enc", UnreadableProtectedDataReason.ConsistencyMismatch)]
+    [InlineData("json-null", UnreadableProtectedDataReason.ConsistencyMismatch)]
     public async Task V118_UnreadableV1Snapshot_ReturnsNoStateAsync(string failure, UnreadableProtectedDataReason expected)
     {
         var resolver = new CountingKeyResolver();
@@ -402,6 +463,9 @@ public sealed class CompatibilitySnapshotRoutingTests
             {
                 "missing-key" => static (_, _) => CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey),
                 "fault" => static (_, _) => throw new InvalidOperationException(CompatibilityTestData.Sentinel),
+                "wrapper-no-enc" => static (_, _) => CoreUnprotectionResult.Readable(
+                    "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"plain\",\"serializationFormat\":\"json+pdenc-v1\"}"u8.ToArray()),
+                "json-null" => static (_, _) => CoreUnprotectionResult.Readable("null"u8.ToArray()),
                 _ => static (_, _) => CoreUnprotectionResult.Readable(
                     Encoding.UTF8.GetBytes("{\"marker\":\"$protectedSnapshot\",\"payload\":{\"$enc\":1}}")),
             },
@@ -419,6 +483,63 @@ public sealed class CompatibilitySnapshotRoutingTests
         result.State.ShouldBeNull();
         result.AllowsCorruptLegacyDeletion.ShouldBeFalse();
         CompatibilityTestData.ShouldNotLeak(result);
+    }
+
+    /// <summary>A reader cannot escape the bounded reason taxonomy, even when its result is unreadable.</summary>
+    [Fact]
+    public async Task V118_UndefinedLegacyReaderReason_IsConsistencyMismatchAsync()
+    {
+        var resolver = new CountingKeyResolver();
+        var reader = new FakeLegacyPayloadReader
+        {
+            OnSnapshot = static (_, _) => CoreUnprotectionResult.Unreadable((UnreadableProtectedDataReason)999),
+        };
+        var router = new PayloadCompatibilityRouter(resolver.ResolveAsync, [reader]);
+
+        CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(
+            CompatibilityTestData.Snapshot(ShapeFor("v1-wrapper"), CompatibilityTestData.PartiesV1Metadata()));
+
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
+        result.State.ShouldBeNull();
+    }
+
+    /// <summary>Cancellation wins when a legacy reader returns an unreadable result after cancelling the caller.</summary>
+    [Fact]
+    public async Task V118_LegacyReaderUnreadableAfterCancellation_PropagatesAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var reader = new FakeLegacyPayloadReader
+        {
+            OnSnapshot = (_, _) =>
+            {
+                source.Cancel();
+                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey);
+            },
+        };
+        var router = new PayloadCompatibilityRouter(new CountingKeyResolver().ResolveAsync, [reader]);
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadSnapshotAsync(
+            CompatibilityTestData.Snapshot(ShapeFor("v1-wrapper"), CompatibilityTestData.PartiesV1Metadata()),
+            source.Token));
+    }
+
+    /// <summary>Caller cancellation during registered v2 deserialization propagates after materialization.</summary>
+    [Fact]
+    public async Task V118_V2SnapshotCancellationDuringMaterialization_PropagatesAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var options = new JsonSerializerOptions { TypeInfoResolver = CompatibilityTestJsonContext.Default };
+        options.Converters.Add(new CancellingSnapshotConverter(source));
+        var registry = new SnapshotTypeRegistry(
+            [new SnapshotTypeRegistration(CompatibilityTestData.SnapshotTypeId, options.GetTypeInfo(typeof(PartySnapshotState)))]);
+        var resolver = new CountingKeyResolver();
+        var router = new PayloadCompatibilityRouter(resolver.ResolveAsync, snapshotTypes: registry);
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadSnapshotAsync(
+            CompatibilityTestData.Snapshot(CompatibilityTestData.ProtectSnapshot(), CompatibilityTestData.V2Metadata()),
+            source.Token));
+
+        resolver.Calls.ShouldBe(1);
     }
 
     /// <summary>A snapshot state that is neither a stored JSON element nor a v2 carrier is an invalid argument.</summary>
@@ -479,14 +600,31 @@ public sealed class CompatibilitySnapshotRoutingTests
             "v2-instance" => carrier,
             "v1-wrapper" => CompatibilityTestData.Json(
                 "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-object-payload" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":{\"email\":{\"$enc\":{}}},\"serializationFormat\":\"json+pdenc-v1\"}"),
             "v1-wrong-format" => CompatibilityTestData.Json(
                 "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v2\"}"),
+            "v1-missing-marker" => CompatibilityTestData.Json(
+                "{\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-missing-format" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":\"bm9wZQ\"}"),
+            "v1-missing-type" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-empty-type" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"  \",\"payload\":\"bm9wZQ\",\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-missing-payload" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"serializationFormat\":\"json+pdenc-v1\"}"),
+            "v1-null-payload" => CompatibilityTestData.Json(
+                "{\"marker\":\"$protectedSnapshot\",\"typeName\":\"PartyState\",\"payload\":null,\"serializationFormat\":\"json+pdenc-v1\"}"),
             "camel-case-v2" => CompatibilityTestData.Json(
                 "{\"format\":\"json+pdenc-v2\",\"snapshotTypeId\":\"" + carrier.SnapshotTypeId + "\",\"envelope\":\"" + carrier.Envelope + "\"}"),
             "v2-extra-member" => CompatibilityTestData.Json(
                 "{\"Format\":\"json+pdenc-v2\",\"SnapshotTypeId\":\"" + carrier.SnapshotTypeId + "\",\"Envelope\":\"" + carrier.Envelope + "\",\"Note\":\"x\"}"),
             "v2-v1-format" => CompatibilityTestData.ToElement(carrier with { Format = "json+pdenc-v1" }),
             "v2-v3-format" => CompatibilityTestData.ToElement(carrier with { Format = "json+pdenc-v3" }),
+            "v2-missing-format" => CompatibilityTestData.Json(
+                "{\"SnapshotTypeId\":\"" + carrier.SnapshotTypeId + "\",\"Envelope\":\"" + carrier.Envelope + "\"}"),
+            "v2-only-type-id" => CompatibilityTestData.Json("{\"snapshotTypeId\":\"" + carrier.SnapshotTypeId + "\"}"),
             "reserved-format-member" => CompatibilityTestData.Json("{\"Name\":\"Alice\",\"serializationFormat\":\"JSON+PDENC-V9\"}"),
             "nested-pdenc" => CompatibilityTestData.Json("{\"Name\":{\"$pdenc\":\"AAAA\"}}"),
             "nested-enc" => CompatibilityTestData.Json("{\"Items\":[{\"Name\":{\"$enc\":{}}}]}"),
@@ -507,4 +645,5 @@ public sealed class CompatibilitySnapshotRoutingTests
             resolver,
             reader);
     }
+
 }
