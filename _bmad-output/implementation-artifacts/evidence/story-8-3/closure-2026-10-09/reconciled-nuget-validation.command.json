@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "scripts/validate-nuget-packages.py",
+    "/tmp/story83-reconciled-pack-20261009"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:57:12.163856+00:00",
+  "endUtc": "2026-10-09T06:57:12.235869+00:00",
+  "exitCode": 0,
+  "logSha256": "dacb61135586de38fecc02cf818b8487ab68726e49211cee48f9a0d113e7acca"
+}

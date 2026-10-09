@@ -91,3 +91,24 @@ dotnet pack src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj -
 dotnet pack src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj --configuration Release --output /tmp/story83-reconciled-pack-20261009 -p:Version=1.0.0 -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
   Determining projects to restore...
   All projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Successfully created package '/tmp/story83-reconciled-pack-20261009/Hexalith.EventStore.Admin.Abstractions.1.0.0.nupkg'.
+dotnet pack src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj --configuration Release --output /tmp/story83-reconciled-pack-20261009 -p:Version=1.0.0 -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj (in 250 ms).
+  2 of 3 projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Admin.Cli -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Cli/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.dll
+  Hexalith.EventStore.Admin.Cli -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Cli/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.dll
+  Hexalith.EventStore.Admin.Cli -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Cli/bin/Release/net10.0/publish/
+  Successfully created package '/tmp/story83-reconciled-pack-20261009/Hexalith.EventStore.Admin.Cli.1.0.0.nupkg'.
+dotnet pack src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj --configuration Release --output /tmp/story83-reconciled-pack-20261009 -p:Version=1.0.0 -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...
+  Restored /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (in 207 ms).
+  2 of 3 projects are up-to-date for restore.
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Abstractions/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Admin.Server -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Successfully created package '/tmp/story83-reconciled-pack-20261009/Hexalith.EventStore.Admin.Server.1.0.0.nupkg'.

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "tools/validate-release-packages.py",
+    "/tmp/story83-reconciled-pack-20261009",
+    "1.0.0"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "startUtc": "2026-10-09T06:57:12.072342+00:00",
+  "endUtc": "2026-10-09T06:57:12.120990+00:00",
+  "exitCode": 0,
+  "logSha256": "edc2faa3fabaf384c5674504f5151158602af985720e862d9ab30241cd4f0b46"
+}
