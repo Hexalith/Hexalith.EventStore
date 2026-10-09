@@ -5189,85 +5189,80 @@ As a platform maintainer, I want every hold, wait, and legacy-admission mechanis
 ### Story 6.6: Event Versioning And Upcasting Implementation
 
 As a domain author,
-I want versioned event contracts to upcast deterministically through cancellation-aware platform seams,
-So that old and new event history can be processed safely without CLR-name coupling, identity confusion, or partial work.
+I want to declare an event payload version and register upcasters that convert older stored payloads when they are read,
+So that I can evolve event schemas without rewriting history, while malformed event identity is rejected and processing honours cancellation.
 
-**Requirements coverage:** Primary ownership of FR33's event-versioning/upcasting, event-identity validation, and cancellation-seam runtime outcomes; supporting NFR7 no-silent-loss, NFR12 compatibility, NFR16 persisted production-path evidence, NFR18 documented reflection posture, and NFR19 protected-data safety.
+**Requirements coverage:** Primary ownership of FR33-C6 (upcasting, metadata identity rejection, published cancellation seams). Supporting NFR7 (fail closed, never skip silently), NFR12 (additive; version-1 events unchanged), NFR16 (one persisted production-path test) and NFR18 (upcaster discovery is a reflection convention inventoried by Story 6.7).
 
-**Architecture constraints:** AD-1, AD-5, AD-6, AD-7, AD-12, and AD-13. Implementation follows the Story 6.5 artifact where compatible with the owner's Dapr-only amendment, preserves immutable application history, uses one allow-listed evolution pipeline across consumers, and keeps actor/dispatcher durable boundaries authoritative.
+**Architecture constraints:** AD-1, AD-6 and AD-13 (2026-10-09 pragmatic scope). Stored events are never rewritten; upcasting changes only the in-memory payload a domain service deserializes. Event state stays actor-owned through Dapr; no application SQL or direct-database evidence.
 
-**UX coverage:** Type Catalog, stream, replay, and failure surfaces may show support-safe canonical event contract type, stored/current payload version, legacy/upcast state, hop count, and cancellation/failure reason. They do not render raw or protected payloads, promote assembly-qualified CLR names as public identity, expose secrets/provider internals/stack traces, or describe failed partial replay as current state.
+**UX coverage:** None required. Admin stream and event views keep showing stored data and may show the stored payload version where their DTO already carries it.
 
-**Dependencies:** Stories 6.5a, 6.5b, 6.5c, and 6.5d must have completed their reviewed specification work, and Story 6.5 must be complete with the owner-approved design. Implementation starts when the owner requests Story 6.6. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
+**Dependencies:** None blocking. The Story 6.5 specification and the 2026-10-05/06/08 Story 6.6 amendments are historical context only; this story's design and acceptance criteria are the governing specification (owner decision, sprint-change-proposal-2026-10-09).
 
-**Current reconciliation (2026-10-05):** Story 6.6 is in progress. The owner directed implementation to stay within the Dapr abstraction. The [Dapr-only amendment](../implementation-artifacts/story-6-6-dapr-only-amendment.md) supersedes direct PostgreSQL/provider-extension requirements in the earlier approved design while retaining its historical review record. Partial contracts, bounded primitives and legacy-path guards exist; the shared production evolution pipeline and complete Dapr/consumer qualification remain open. V2 admission remains fenced.
+**Current reconciliation (2026-10-09):** Rescoped by sprint-change-proposal-2026-10-09. The first attempt (2026-10-04 to 2026-10-09) built dormant scaffolding that Task 1 retires. Its live pieces stay: the async processor/replay interfaces, bounded V1 wire parsing, event logical digest, legacy command replay admission, and the nullable `PayloadVersion`/`EventContractType` metadata fields. Review action items P1–P17 of the first attempt are superseded by AC1 and AC2.
+
+**Design (owner-approved 2026-10-09; type names are indicative):**
+
+- A domain event type declares its current payload version with `[EventPayloadVersion(n)]`, where 1 ≤ n ≤ 1024. Without the attribute the version is 1.
+- Version-1 events are persisted exactly as today, with no `PayloadVersion`. An event of version n ≥ 2 stores `PayloadVersion = n`, keeps `MetadataVersion` 1, and keeps the CLR type name as `EventTypeName`. `EventContractType` and metadata version 2 stay unused; the existing V2 write fence stays.
+- An upcaster implements `IEventPayloadUpcaster`: the `EventTypeName` and `FromVersion` it accepts, an optional `TargetEventTypeName` for renames (null keeps the name), and `JsonObject Upcast(JsonObject payload)`, which produces version `FromVersion + 1`. Upcasters are discovered from the assemblies already scanned for aggregates and projections, and can also be registered explicitly with `AddEventPayloadUpcaster<T>()`.
+- One shared client component runs the chain before CLR type resolution and deserialization. Every domain-service read path calls it: command-time state rehydration, replay/reconstruction, projections (including `/project` dispatch) and subscriptions.
+- The EventStore server does not upcast; it stores and forwards `PayloadVersion` unchanged.
+
+**Tasks:**
+
+1. Retire the dormant first-attempt scaffolding (time-box: 1 day).
+   - Delete internal code with no production caller and its tests: logical source/reconstruction/replay operations except `EventLogicalDigest`; checkpoint, anchored replay/continuation, snapshot issue/replace/rewitness; logical command state; logical query model; managed artifact/loader observation; proof framing/runtime-options codecs; the inert registry/upcast executor/evolution service with its client scratch/writer implementations.
+   - Delete the 30 `scripts/verify-dapr-logical-*`/`verify-event-evolution*`/`prepare-event-evolution-candidates` scripts and their fixtures, `.github/workflows/event-evolution-local-guards.yml`, the `ci.yml` `event-evolution-compatibility` job, and tests that read 6.6 planning or evidence files.
+   - Keep the shipped public types (`IEventUpcaster`, `EventUpcastResult`, `IV1Downserializer`, `V1DownserializeResult`, `AddEventStoreEventEvolutionManifestCandidate`, `AuthenticatedRawEvent`, `AuthenticatedRawEventPage`, both `IAuthenticatedRawEventSource`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator`, `IReadOnlyPayload`, `ScratchSpanAction`) as `[Obsolete]` shells without behaviour, to be removed at the next major release.
+   - Move the first-attempt 6.6 planning documents to `_bmad-output/implementation-artifacts/archive/story-6-6-first-attempt/` and delete `evidence/story-6-6/` from HEAD (history keeps it; record the last commit containing it in the archive README).
+   - If removing a group would change live behaviour, leave that group in place and note it rather than refactoring.
+2. Implement versioning and upcasting (AC1–AC5).
+3. Implement the identity validator (AC6).
+4. Close the cancellation gaps (AC7).
+5. Add evidence and documentation (AC8).
 
 **Acceptance Criteria:**
 
-**Given** Story 6.6 implementation preflight runs
-**When** Stories 6.5a–6.5d and the Story 6.5 artifact and approval are inspected
-**Then** the four focused specification stories have reviewed outputs, the integrated historical artifact and its approval validate as earlier evidence, and the owner's Dapr-only amendment is present
-**And** implementation and tests trace to the amended Dapr boundary without treating the earlier digest as approval of this changed design.
+**AC1 — Write.** **Given** an event type without a version attribute **When** it is persisted **Then** its stored envelope is identical to pre-6.6 behaviour, with no `PayloadVersion`. **Given** an event type declaring `[EventPayloadVersion(3)]` **When** it is persisted **Then** `PayloadVersion` 3 travels unchanged through the wire result, persisted envelope, stream read, projection and subscription payloads, and the domain service, and is never dropped or relabelled.
 
-**Given** a new `IEventContract` event is returned by domain processing
-**When** its wire and persisted envelopes are built
-**Then** they carry the approved canonical kebab-case event contract type and positive payload schema version consistently across command result, storage, stream read, replay, projection, publication/subscription, and Admin metadata
-**And** its CLR type/assembly name is only the allow-listed runtime mapping, while message id, aggregate identity, sequence, metadata version, serialization format, protection metadata, and payload bytes follow the approved immutable schema.
+**AC2 — Upcast on read.** **Given** stored history mixing older and current payload versions of the same event, with an upcaster registered for every step **When** a domain service rehydrates state for a command, replays/reconstructs, projects or handles a subscription **Then** each older payload passes through each step exactly once, in ascending version order, before deserialization **And** the resulting state equals the state produced by the same history written at the current version, while stored bytes, `MessageId`, sequence and correlation stay unchanged.
 
-**Given** a legacy event lacks the new stable contract fields
-**When** any supported consumer reads it
-**Then** the approved legacy CLR-name mapping and assumed version resolve it deterministically through the same registry and pipeline, and mixed old/new history produces the same current domain state as its canonical equivalent
-**And** ambiguous, unknown, malformed, retired, or non-allow-listed legacy evidence returns the approved typed outcome without arbitrary type loading, silent skipping, stored-history rewrite, checkpoint advancement, or partial-state publication.
+**AC3 — Rename.** **Given** a step with `TargetEventTypeName` **When** it runs **Then** the event deserializes as the renamed CLR type through the existing Apply/handler resolution.
 
-**Given** a stored payload version is older than the registered current version
-**When** replay, projection, subscription, reconstruction, or inspection needs the event
-**Then** the registered `IEventUpcaster` chain executes each unique contiguous approved step exactly once, in ascending version order, after readability/unprotection and before current-type allow-listed deserialization/domain dispatch
-**And** the resulting contract type, version, payload bounds, identity invariants, hop limit, and deterministic output are validated after every step while original persisted bytes and message/sequence/correlation evidence remain unchanged.
+**AC4 — Startup validation.** **Given** two upcasters for the same `(EventTypeName, FromVersion)`, a `FromVersion` below 1, a step whose output neither feeds another step nor equals the declared current version of a known event type, or an event type declaring version n > 1 that no step produces **When** the domain service starts **Then** startup fails with a message naming the event type and version.
 
-**Given** registry discovery encounters duplicate contract keys, conflicting/current versions, duplicate or branching edges, gaps, cycles, downgrade/non-advancing edges, incompatible payload mappings, invalid static metadata, or a chain beyond the approved numeric bound
-**When** the application starts or refreshes its catalog
-**Then** readiness fails deterministically with the approved bounded diagnostic before affected domain work is admitted
-**And** valid registration order cannot depend on assembly enumeration, host timing, culture, dictionary order, or unbounded reflection; the documented non-AOT/trimming posture remains explicit.
+**AC5 — Fail closed.** **Given** a stored payload with no path to a known current type, a version above the type's declared version, or an upcaster that throws or returns null **When** any read path meets it **Then** it fails with a typed error naming the type and version; nothing is skipped, no state or checkpoint advances, no handler effect occurs, and the payload content is not logged. Existing retry/poison handling applies to subscriptions and projections.
 
-**Given** an upcaster is missing, throws, is cancelled, returns malformed or oversized data, changes identity, reports the wrong version/type, or encounters unreadable protected/provider-opaque input
-**When** the shared pipeline handles the failure
-**Then** it returns the approved typed, retryable/non-retryable outcome consistently to replay, projection, subscription, reconstruction, and Admin diagnostics and records only support-safe telemetry
-**And** no domain handler receives a partial chain, no event or snapshot is overwritten/deleted, no projection or aggregate state is committed, no checkpoint passes the event, and no raw payload, key material, secret, or stack trace is exposed.
+**AC6 — Identity validation.** **Given** an event about to be persisted **When** any identity component is absent or malformed **Then** the append is rejected before any state is staged, with a typed error naming the component. The components and rules are: tenant, domain and aggregate ID per the `AggregateIdentity` grammar; non-blank aggregate type and event type name; `MessageId` a valid ULID; `CorrelationId` per AD-32 (1–128 ASCII alphanumeric or hyphen); `CausationId` non-blank under the same character rule; sequence ≥ 1. **And** the same single `Contracts` validator also runs on stream read (`EventStreamReader`, beside the existing address checks) and in the subscription envelope check, so a stored event that fails it fails closed instead of being applied. **Preflight:** before enabling the read-side check, confirm that persisted history written by earlier versions satisfies every rule (for example, that event `MessageId`s have always been ULIDs). If a rule would reject legitimately stored events, stop and ask the owner instead of weakening the rule silently.
 
-**Given** an event enters append, storage read, replay, projection, or publication through an addressed aggregate stream
-**When** metadata identity is validated
-**Then** tenant, domain, aggregate id, aggregate type, canonical event contract type, message identity, and positive contiguous sequence satisfy the approved grammar and equality rules against `AggregateIdentity`, stream/address context, command result, and registered contract before trusted use
-**And** cross-tenant/domain/aggregate substitution, reserved delimiters, payload-claimed authority, type mismatch, malformed identity, and sequence inconsistency fail closed before persistence or domain execution with zero downstream mutation.
+**AC7 — Cancellation seams.** **Given** a request whose token is cancelled **When** it reaches a legacy `IDomainProjectionHandler`, a processor registered through `AddEventStoreClient<TProcessor>`, or an aggregate `Handle` method **Then** the token arrives:
+- `IDomainProjectionHandler` gains a token-aware default interface method that the `/project` endpoint and dispatcher call with the request token.
+- `AddEventStoreClient<TProcessor>` also registers the keyed `IAsyncDomainProcessor` when the processor implements it.
+- The `Handle` convention accepts an optional trailing `CancellationToken`.
 
-**Given** the same mixed-version event prefix is consumed through aggregate replay, full and incremental projection, subscription, manual reconstruction, snapshot recovery, and test helpers
-**When** each path reaches domain code
-**Then** all use the same registered evolution service and yield semantically identical current event objects, aggregate/projection state, sequence evidence, and typed failures
-**And** no path bypasses upcasting, applies it twice, falls back to unregistered polymorphic deserialization, or changes duplicate/message fingerprint semantics because its payload was adapted in memory.
+**And** existing `IDomainProcessor`, `IAggregateReplay` and projection-handler implementations compile and behave unchanged, and no touched path replaces an available caller token with `CancellationToken.None`.
 
-**Given** published processing, query, and projection APIs are updated under the approved compatibility plan
-**When** callers use `IDomainProcessor`, query handlers, legacy or asynchronous projection handlers, replay/upcasters, and their adapters
-**Then** the approved signatures expose and propagate the originating cancellation token through dispatch, domain execution, upcasting, reads/writes, and notifications until the documented durable boundary
-**And** supported legacy callers retain source/binary/wire behavior exactly as approved, default-token adapters are explicit, and no adapter silently replaces an available caller token with `CancellationToken.None` before the terminalization boundary.
+**AC8 — Evidence and completion.** **Given** completion is requested **When** checks run **Then** all of the following hold:
+- Unit tests cover the pipeline: single step, multiple steps, rename, missing step, too-new version, throwing upcaster, and every startup-validation case.
+- Unit tests cover the identity validator, one case per component, on append and on read.
+- Tests cover the three cancellation seams.
+- One end-to-end test runs through the real write and read path in an existing test project: persist version-1 events, declare version 2 with an upcaster, persist a version-2 event, rehydrate. It asserts the persisted envelopes (version 1 without `PayloadVersion`, version 2 with `PayloadVersion` 2, payload bytes unchanged) and the resulting aggregate state.
+- `docs/concepts/event-versioning.md` explains how to version an event, write an upcaster, rename an event, and deploy in order: consumers with the upcaster before or together with the writer; older consumers refuse versioned events rather than misread them.
+- The Release build with warnings-as-errors and every affected test project pass in the existing CI.
 
-**Given** cancellation occurs before dispatch, between upcast steps, during domain processing/query/projection work, before durable commit, after commit, or during required cleanup
-**When** the production pipeline observes it
-**Then** pre-commit work stops without append/state/checkpoint mutation, post-commit work preserves committed truth and completes only the approved non-cancellable bookkeeping, and `OperationCanceledException` remains distinct from domain rejection or infrastructure failure
-**And** retry/resume uses stable identities and cannot duplicate events, handler effects, read-model batches, completion markers, projection notifications, or upcast application.
+**Out of scope:**
+- kebab-case contract identity and metadata V2
+- application digest, provider attestation or logical-readback proofs
+- checkpoint, anchored, snapshot-rewitness and command-state models
+- bounded scratch/writer memory accounting and artifact-hash loader admission
+- mutation-kill scripts, sealed evidence packets, content-digest approvals, new CI workflows and live-sidecar qualification lanes
+- rolling-upgrade and downgrade matrices (replaced by the documented deployment order)
+- V1 downserialization, publication pins and receipts, hold/resume lifecycle
+- Admin UI or Type Catalog work, and offline rewrite of stored events
 
-**Given** rolling upgrades mix legacy and version-aware writers, readers, handlers, and packages
-**When** supported, unsupported, rollback, and downgrade matrices run
-**Then** supported combinations negotiate or adapt exactly as approved and preserve canonical state, while unsupported combinations fail closed before incompatible writes or reads
-**And** no downgraded component overwrites newer metadata, strips version evidence, emits CLR identity for new events, corrupts protected history, or violates existing generic gateway/package compatibility.
-
-**Given** operators inspect event evolution through Type Catalog, streams, replay, or diagnostics
-**When** current, legacy-resolved, upcast, unknown, malformed, protected-unreadable, or cancelled cases occur
-**Then** the surfaces show only approved stable contract/version, bounded hop/outcome, location/sequence, and typed support evidence with available actions matching authoritative state
-**And** payloads, protected bytes, CLR assembly details, secrets, cross-tenant identifiers, provider internals, and stack traces remain redacted or absent.
-
-**Given** Story 6.6 completion is requested
-**When** new-event persistence, mixed legacy/current replay, every upcast-chain topology, registry startup failure, metadata substitution, protected readability, all consumer-path equivalence, cancellation at every boundary, rolling upgrade/rollback, public API compatibility, and Admin evidence tests run through production serializers, actors, dispatchers, handlers, Dapr state/actor APIs, pub/sub, and live sidecars
-**Then** persisted application payload bytes remain immutable, reconstructed aggregate/projection/end state equals the canonical current-version baseline, failures produce zero forbidden downstream mutation, and exact token/registry/upcast evidence satisfies the amended matrices
-**And** focused unit/contract/integration tests, full affected-project regressions, warnings-as-errors Release build, package/API compatibility checks, and live-sidecar lanes pass with no unexpected skips, warnings, errors, or leaked processes; folded-snapshot, projection-cost, and optional protection-engine redesign remain outside this story.
+Findings outside these acceptance criteria go to `deferred-work.md` as optional follow-ups, not to this story.
 
 ### Story 6.7: AOT And Trimming Posture Reference
 

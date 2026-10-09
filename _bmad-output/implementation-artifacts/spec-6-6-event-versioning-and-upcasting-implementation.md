@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'superseded'
 route: 'dispatch'
 review_loop_iteration: 1
 story_key: '6-6-event-versioning-and-upcasting-implementation'
@@ -14,6 +14,8 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-trusted-code-amendment.md'
   - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-dapr-logical-model-amendment.md'
 ---
+
+> **SUPERSEDED 2026-10-09** by [sprint-change-proposal-2026-10-09](../planning-artifacts/sprint-change-proposal-2026-10-09.md) — do not resume; `/bmad-build 6.6` starts a new spec from the rewritten story in `epics.md`.
 
 <frozen-after-approval reason="human-owned intent — renegotiated by owner on 2026-10-05 for Dapr-only storage">
 

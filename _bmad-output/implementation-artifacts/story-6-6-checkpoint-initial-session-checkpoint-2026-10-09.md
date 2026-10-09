@@ -1,5 +1,7 @@
 # Story 6.6 — unsigned checkpoint preparation: saved and stopped
 
+> **SUPERSEDED 2026-10-09** by [sprint-change-proposal-2026-10-09](../planning-artifacts/sprint-change-proposal-2026-10-09.md) — do not resume; `/bmad-build 6.6` starts a new spec from the rewritten story in `epics.md`.
+
 Paused at the user's explicit “save and stop” request on 2026-10-09. Step 3, M1–M8, acceptance and O rows remain open. No Release lane, packet seal, independent root build, staging, commit or push was started for this slice.
 
 The selected dormant model is [unsigned checkpoint initial/range preparation](story-6-6-dapr-logical-checkpoint-initial-model.md). Runtime/codecs/tests/guard/vectors and the additive CI/current Code Map edits are preserved. The owner takes the actual checkpoint candidate and privately adopts canonical bytes; only target T may differ from original covered k under the same actual head H and complete source pins. Current-zero preparation requires k=T=H; below-head zero and k>T refuse. Tail preparation plans k+1 only. MAX is structural/codec-only. No EventEvolutionProof, purpose-03/04 carrier, Current serving, handler intake, continuation ledger or actual tail execution is implemented.

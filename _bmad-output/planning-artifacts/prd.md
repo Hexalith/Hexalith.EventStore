@@ -411,7 +411,7 @@ The top-level FR/NFR IDs remain stable. The clause IDs below expose existing ind
 | FR33-C3 | 6.3 | The projection-cost and sequence-guard specification binds quantitative budgets and authorization. |
 | FR33-C4 | 6.4 | Current projections perform zero event reads, while tail/sequence handling remains safe under the approved bound. |
 | FR33-C5 | 6.5 | Event evolution, identity validation, and cancellation seams are specified and approved. |
-| FR33-C6 | 6.6 | Upcasting, metadata rejection, and published cancellation behavior conform to the approved specification. |
+| FR33-C6 | 6.6 | Upcasting, metadata rejection, and published cancellation behavior satisfy Story 6.6's acceptance criteria (owner-approved pragmatic scope, sprint-change-proposal-2026-10-09). |
 | FR34-C1 | 7.1 | At-least-once/unordered delivery, poison/dead-letter handling, and bounded deduplication are implemented and proven. |
 | FR34-C2 | 7.2 | Admin claims are normalized without trusting caller-supplied flags. |
 | FR34-C3 | 7.3 | Every state-mutating admin action emits a support-safe attributable audit record. |

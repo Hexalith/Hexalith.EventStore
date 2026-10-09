@@ -1,5 +1,7 @@
 # Story 6.6 session checkpoint — 2026-10-08
 
+> **SUPERSEDED 2026-10-09** by [sprint-change-proposal-2026-10-09](../planning-artifacts/sprint-change-proposal-2026-10-09.md) — do not resume; `/bmad-build 6.6` starts a new spec from the rewritten story in `epics.md`.
+
 **Stopped at the owner's explicit request:** “save and stop. I will continue in a fresh session”. Resume only on a new owner instruction. Changes remain in the working tree. No staging, commit, push, branch or dependency update was performed by this continuation.
 
 ## Resume state

@@ -2,7 +2,7 @@
 title: 'Story 6.6: Shared Evolution Reader For Replay'
 type: 'feature'
 created: '2026-10-05'
-status: 'done'
+status: 'superseded'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '6-6-event-versioning-and-upcasting-implementation'
@@ -12,6 +12,8 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/story-6-6-dapr-only-amendment.md'
   - '{project-root}/_bmad-output/implementation-artifacts/6-6-implementation-map.md'
 ---
+
+> **SUPERSEDED 2026-10-09** by [sprint-change-proposal-2026-10-09](../planning-artifacts/sprint-change-proposal-2026-10-09.md) — do not resume; `/bmad-build 6.6` starts a new spec from the rewritten story in `epics.md`.
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
