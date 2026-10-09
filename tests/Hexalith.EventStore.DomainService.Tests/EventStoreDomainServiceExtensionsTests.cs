@@ -1047,6 +1047,126 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         }
     }
 
+    /// <summary>A GET-only canonical route may rely on a denying fallback but cannot be made public.</summary>
+    /// <param name="publicConfiguration">The public metadata applied to the GET route.</param>
+    [Theory]
+    [InlineData("none")]
+    [InlineData("anonymous")]
+    [InlineData("marker")]
+    public void EndpointInventory_GetOnlyCanonicalRouteRequiresPrivateAccess(string publicConfiguration) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        RouteHandlerBuilder route = app.MapGet("/project", () => "diagnostic view");
+        if (publicConfiguration == "anonymous") {
+            _ = route.AllowAnonymous();
+        }
+        else if (publicConfiguration == "marker") {
+            _ = route.AllowEventStorePublicEndpoint("/project");
+        }
+
+        _ = app.UseEventStoreDomainService();
+        Microsoft.AspNetCore.Authorization.AuthorizationPolicy fallback = ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions
+            .CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme);
+        IReadOnlyList<string> violations = EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallback);
+        if (publicConfiguration == "none") {
+            violations.ShouldBeEmpty();
+        }
+        else {
+            violations.ShouldHaveSingleItem().ShouldContain("/project: a canonical route cannot be public.");
+        }
+    }
+
+    /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
+    /// <param name="route">The literal public route.</param>
+    /// <param name="method">Its single HTTP method.</param>
+    [Theory]
+    [InlineData("/metadata/timesheets", "GET")]
+    [InlineData("/api/timesheets/magic-links/confirm", "GET")]
+    [InlineData("/api/timesheets/magic-links/confirm/submit", "POST")]
+    [InlineData("/api/timesheets/magic-links/adjust", "GET")]
+    [InlineData("/api/timesheets/magic-links/adjust/submit", "POST")]
+    public void EndpointInventory_AcceptsOneExplicitPublicRoute(string route, string method) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        if (method == HttpMethods.Get) {
+            _ = app.MapGet(route, () => "public").AllowEventStorePublicEndpoint(route);
+        }
+        else {
+            _ = app.MapPost(route, () => "public").AllowEventStorePublicEndpoint(route);
+        }
+
+        _ = app.UseEventStoreDomainService();
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallbackPolicy: null).ShouldBeEmpty();
+    }
+
+    /// <summary>A marker cannot make a bare, protected, mismatched, or broad route public.</summary>
+    /// <param name="scenario">The invalid endpoint configuration.</param>
+    [Theory]
+    [InlineData("bare")]
+    [InlineData("canonical")]
+    [InlineData("sidecar")]
+    [InlineData("mismatched")]
+    [InlineData("template")]
+    [InlineData("all-methods")]
+    [InlineData("multi-method")]
+    [InlineData("group")]
+    [InlineData("mixed-authorization")]
+    [InlineData("duplicate-marker")]
+    public void EndpointInventory_RejectsInvalidPublicOptIns(string scenario) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        switch (scenario) {
+            case "bare":
+                _ = app.MapGet("/public", () => "open").AllowAnonymous();
+                break;
+            case "canonical":
+                _ = app.MapPost("/project/v2", () => "open")
+                    .RequireAuthorization(EventStoreDomainServicePolicies.Project)
+                    .AllowEventStorePublicEndpoint("/project/v2");
+                break;
+            case "sidecar":
+                _ = app.MapPost("/widget/events", () => "open")
+                    .WithTopic("pubsub", "widget.events")
+                    .RequireEventStoreSidecarChannel()
+                    .AllowEventStorePublicEndpoint("/widget/events");
+                break;
+            case "mismatched":
+                _ = app.MapGet("/public", () => "open").AllowEventStorePublicEndpoint("/other");
+                break;
+            case "template":
+                _ = app.MapGet("/public/{id}", (string id) => id).AllowEventStorePublicEndpoint("/public/{id}");
+                break;
+            case "all-methods":
+                _ = app.Map("/public", () => "open").AllowEventStorePublicEndpoint("/public");
+                break;
+            case "multi-method":
+                _ = app.MapMethods("/public", [HttpMethods.Get, HttpMethods.Post], () => "open")
+                    .AllowEventStorePublicEndpoint("/public");
+                break;
+            case "mixed-authorization":
+                _ = app.MapGet("/public", () => "open")
+                    .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload)
+                    .AllowEventStorePublicEndpoint("/public");
+                break;
+            case "duplicate-marker":
+                _ = app.MapGet("/public", () => "open")
+                    .AllowEventStorePublicEndpoint("/public")
+                    .AllowEventStorePublicEndpoint("/public");
+                break;
+            default:
+                _ = app.MapGroup("/public").AllowEventStorePublicEndpoint("/public")
+                    .MapGet("/child", () => "open");
+                break;
+        }
+
+        _ = app.UseEventStoreDomainService();
+        EventStoreDomainServiceEndpointInventory.Validate(GetRouteEndpoints(app), fallbackPolicy: null)
+            .ShouldNotBeEmpty(scenario);
+    }
+
     /// <summary>Without a fallback policy every endpoint lacking authorization metadata is a violation.</summary>
     [Fact]
     public void EndpointInventory_WithoutFallbackPolicy_RequiresExplicitMetadata() {
