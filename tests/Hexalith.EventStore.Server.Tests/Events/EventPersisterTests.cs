@@ -147,6 +147,43 @@ public class EventPersisterTests {
         state.ReceivedCalls().Count().ShouldBe(1);
     }
 
+    [Fact]
+    public async Task PersistEventsAsync_PresentZeroHeadRefusesBeforeEffects()
+    {
+        IActorStateManager state = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var allocator = new FakeGlobalPositionAllocator();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(0, DateTimeOffset.UnixEpoch, "original", 1)));
+        var writer = new EventPersister(state, Substitute.For<ILogger<EventPersister>>(), protection, allocator);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => writer.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([new TestEvent()]), "v1"));
+
+        allocator.CallCount.ShouldBe(0);
+        protection.ReceivedCalls().ShouldBeEmpty();
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("protected+json")]
+    [InlineData("json+pdenc-v2")]
+    public async Task PersistEventsAsync_NoOpProtectionRefusesProtectedFormatBeforeReservationOrWrite(string format)
+    {
+        (EventPersister writer, IActorStateManager state, FakeGlobalPositionAllocator allocator) =
+            CreatePersisterWithAllocator();
+        ConfigureNoMetadata(state);
+        var serialized = new SerializedDomainEventPayload("TestEvent", "{}"u8.ToArray(), format,
+            MetadataVersion: 1, EventContractType: null, PayloadVersion: null);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => writer.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(), DomainResult.Success([serialized]), "v1"));
+
+        allocator.CallCount.ShouldBe(0);
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(5)]

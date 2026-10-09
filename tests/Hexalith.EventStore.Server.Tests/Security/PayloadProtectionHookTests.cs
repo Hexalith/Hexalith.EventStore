@@ -151,6 +151,17 @@ public class PayloadProtectionHookTests {
     }
 
     [Theory]
+    [InlineData("protected+json")]
+    [InlineData("json+pdenc-v2")]
+    public async Task NoOpProvider_RefusesToWriteProtectedFormatAsUnprotected(string format)
+    {
+        var provider = new NoOpEventPayloadProtectionService();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => provider.ProtectEventPayloadAsync(
+            TestIdentity, new TestEvent(), "event", "{}"u8.ToArray(), format));
+    }
+
+    [Theory]
     [InlineData(PayloadProtectionState.ProviderOpaque, 1, UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation)]
     [InlineData(PayloadProtectionState.Unprotected, 987, UnreadableProtectedDataReason.UnknownMetadataVersion)]
     public async Task NoOpProvider_UnsupportedMetadataIsUnreadable(

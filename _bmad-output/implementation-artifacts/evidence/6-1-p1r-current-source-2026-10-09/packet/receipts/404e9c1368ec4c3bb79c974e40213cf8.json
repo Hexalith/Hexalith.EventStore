@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/usr/bin/python3.14",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 1129,
+          "pid": 1129,
+          "session": 1129,
+          "start_ticks": 8140443
+        },
+        {
+          "pgid": 1133,
+          "pid": 1133,
+          "session": 1133,
+          "start_ticks": 8140445
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "descendants",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-current-source-2026-10-09/packet",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-09T15:32:16.802085+00:00",
+  "id": "404e9c1368ec4c3bb79c974e40213cf8",
+  "invocation": "7466118a1793471287cdb575d0ea590d",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/404e9c1368ec4c3bb79c974e40213cf8.txt",
+    "sha256": "03adf8be16f48fb78a4f885e9b3ac3a46e066df758d992aee48db1831e11cee9"
+  },
+  "owned_processes": [
+    {
+      "pgid": 1129,
+      "pid": 1129,
+      "session": 1129,
+      "start_ticks": 8140443
+    },
+    {
+      "pgid": 1133,
+      "pid": 1133,
+      "session": 1133,
+      "start_ticks": 8140445
+    }
+  ],
+  "root_process": {
+    "pgid": 1129,
+    "pid": 1129,
+    "session": 1129,
+    "start_ticks": 8140443
+  },
+  "started_utc": "2026-10-09T15:32:16.250214+00:00",
+  "timed_out": true
+}

@@ -25,6 +25,12 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
         ArgumentNullException.ThrowIfNull(payloadBytes);
         ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (HasProtectedMarker(serializationFormat))
+        {
+            throw new InvalidOperationException("Protected serialization format requires a protection provider.");
+        }
 
         return Task.FromResult(new PayloadProtectionResult(
             payloadBytes,

@@ -1,0 +1,660 @@
+{
+  "decisions": {
+    "path": "decisions.json",
+    "scope": "owner-selected",
+    "sha256": "6c6bf4de5085d584cb0e86dd0ea9545dc7df3e1810499b387b236c4e5e9cd17d"
+  },
+  "downstream_gates": {
+    "deployment": "separately-authorized",
+    "dw-35": "retained",
+    "dw-68": "retained",
+    "fixed-p1r-acceptance-v1": "retained",
+    "g-6": "retained",
+    "independent-readiness": "NOT_READY",
+    "p0-stage-1": "retained",
+    "p2": "retained",
+    "p3": "retained",
+    "p4": "retained",
+    "pins": "unchanged",
+    "publication": "separately-authorized",
+    "story-6.1": "blocked",
+    "story-8.11": "terminal-release-decision"
+  },
+  "errors": [],
+  "evaluation": {
+    "capable_rollback_qualified": false,
+    "decisions_complete": false,
+    "p1r_usable": false,
+    "qualified": false,
+    "recovery": "mutation-freeze-and-forward-recovery",
+    "required_lanes": 31,
+    "technically_qualified": false,
+    "unsatisfied": [
+      "scenarios/legacy-metadata",
+      "scenarios/metadata-read",
+      "scenarios/metadata-write",
+      "scenarios/invalid-evidence",
+      "scenarios/query-wire",
+      "scenarios/projection-wire",
+      "scenarios/mixed-api",
+      "scenarios/pre-upgrade-restore",
+      "families/metadata-read",
+      "families/metadata-write",
+      "families/invalid-evidence",
+      "families/query-wire",
+      "families/projection-wire",
+      "families/mixed-api",
+      "additions/logical-event-evolution"
+    ],
+    "usability_authority": "separately validated coordinated fixed-record-v1/guard/catalog/Stack/pin transition after P0/P2/P3/P4 and independent readiness"
+  },
+  "finished_utc": "2026-10-09T15:32:18.637339+00:00",
+  "inputs": {
+    "path": "inputs.json",
+    "scope": "owner-selected",
+    "sha256": "64bec8bb218e932d248f5d51dda3c32db65d24d34c4c0547350c54c2fd1966a0"
+  },
+  "invocation": "7466118a1793471287cdb575d0ea590d",
+  "lanes": {
+    "additions": [
+      {
+        "assertions": {
+          "attempted": 131,
+          "failed": 0,
+          "passed": 131
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "reminder-recovery",
+        "reason": null,
+        "receipts": [
+          "receipts/21aa8408fff249f3920955bbecc804cf.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 150,
+          "failed": 3,
+          "passed": 147
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "logical-event-evolution",
+        "reason": null,
+        "receipts": [
+          "receipts/fa0c9b15dea048ca92a89959c722de93.json"
+        ],
+        "scope": "operational"
+      }
+    ],
+    "families": [
+      {
+        "assertions": {
+          "attempted": 48,
+          "failed": 4,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-read",
+        "reason": null,
+        "receipts": [
+          "receipts/b6a16901d59b47f0965d01a184442d80.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 312,
+          "failed": 2,
+          "passed": 310
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-write",
+        "reason": null,
+        "receipts": [
+          "receipts/903b66093b8747329f382e0a9455651e.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 570,
+          "failed": 6,
+          "passed": 564
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "invalid-evidence",
+        "reason": null,
+        "receipts": [
+          "receipts/875f1b71c50b487194a050d789a8bcf1.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 420,
+          "failed": 60,
+          "passed": 360
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "query-wire",
+        "reason": null,
+        "receipts": [
+          "receipts/4456cbb88e164df9ac06726b7a714d0b.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 78,
+          "failed": 4,
+          "passed": 74
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "projection-wire",
+        "reason": null,
+        "receipts": [
+          "receipts/4a3b26d920a34bee96c57399b3f471d8.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 956,
+          "failed": 29,
+          "passed": 927
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "mixed-api",
+        "reason": null,
+        "receipts": [
+          "receipts/f47960fbe23d41c49dd4175bf1d22a63.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 704,
+          "failed": 0,
+          "passed": 704
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "checkout",
+        "reason": null,
+        "receipts": [
+          "receipts/4cf3434753ea408aa10c5f274b62fb35.json"
+        ],
+        "scope": "operational"
+      }
+    ],
+    "packages": [
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "candidate-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/c9f9b18ed60444e6994adfcc271de6aa.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "rollback-packages",
+        "reason": "capable rollback not selected; mutation freeze and forward recovery retained",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.70.1-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/d340a596743c45308225fe188b380e2f.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.110.0-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/a68f2aa581c44aceaae8825151904b42.json"
+        ],
+        "scope": "published-package"
+      }
+    ],
+    "recovery": [
+      {
+        "assertions": {
+          "attempted": 12,
+          "failed": 0,
+          "passed": 12
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "candidate-restore",
+        "reason": null,
+        "receipts": [
+          "receipts/57a5ffa17f4a4fec8eb76e12ccafcb46.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "rollback-restore",
+        "reason": "capable rollback not selected; mutation freeze and forward recovery retained",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "container-cleanup",
+        "reason": null,
+        "receipts": [
+          "receipts/240c5af93b294e0993e6cb805f5bf7a4.json"
+        ],
+        "scope": "operational"
+      }
+    ],
+    "scenarios": [
+      {
+        "assertions": {
+          "attempted": 33,
+          "failed": 0,
+          "passed": 33
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "provenance",
+        "reason": null,
+        "receipts": [
+          "receipts/7ad4b2b891cd4db19f86bea6c2463772.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 24,
+          "failed": 2,
+          "passed": 22
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "legacy-metadata",
+        "reason": null,
+        "receipts": [
+          "receipts/3db7ce35f5474a75a522c833167d7b42.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 48,
+          "failed": 4,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-read",
+        "reason": null,
+        "receipts": [
+          "receipts/b6a16901d59b47f0965d01a184442d80.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 312,
+          "failed": 2,
+          "passed": 310
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-write",
+        "reason": null,
+        "receipts": [
+          "receipts/903b66093b8747329f382e0a9455651e.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 270,
+          "failed": 0,
+          "passed": 270
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "full-replay",
+        "reason": null,
+        "receipts": [
+          "receipts/78d83ab884114ffdb4c877373d337835.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 270,
+          "failed": 0,
+          "passed": 270
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "snapshot-tail",
+        "reason": null,
+        "receipts": [
+          "receipts/c41038d7a1724070b9ceba7524efd8ef.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 270,
+          "failed": 0,
+          "passed": 270
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "retained-covered",
+        "reason": null,
+        "receipts": [
+          "receipts/6f4cafb998754c8d928ddceba99f399e.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 540,
+          "failed": 0,
+          "passed": 540
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "retained-uncovered",
+        "reason": null,
+        "receipts": [
+          "receipts/446fed83a9ee41aeb5c0caae58b2bec3.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 540,
+          "failed": 0,
+          "passed": 540
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "missing-event",
+        "reason": null,
+        "receipts": [
+          "receipts/fcb6c074f6ec4f02bfe49549f0a48e22.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 570,
+          "failed": 6,
+          "passed": 564
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "invalid-evidence",
+        "reason": null,
+        "receipts": [
+          "receipts/875f1b71c50b487194a050d789a8bcf1.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 420,
+          "failed": 60,
+          "passed": 360
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "query-wire",
+        "reason": null,
+        "receipts": [
+          "receipts/4456cbb88e164df9ac06726b7a714d0b.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 78,
+          "failed": 4,
+          "passed": 74
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "projection-wire",
+        "reason": null,
+        "receipts": [
+          "receipts/4a3b26d920a34bee96c57399b3f471d8.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 956,
+          "failed": 29,
+          "passed": 927
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "mixed-api",
+        "reason": null,
+        "receipts": [
+          "receipts/f47960fbe23d41c49dd4175bf1d22a63.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 704,
+          "failed": 0,
+          "passed": 704
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "checkout",
+        "reason": null,
+        "receipts": [
+          "receipts/4cf3434753ea408aa10c5f274b62fb35.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 47,
+          "failed": 0,
+          "passed": 47
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "post-upgrade-restore",
+        "reason": null,
+        "receipts": [
+          "receipts/352d9e89f7074f1fa94e61ca9d55a9d9.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 44,
+          "failed": 0,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "id": "pre-upgrade-restore",
+        "reason": null,
+        "receipts": [
+          "receipts/adf29202976f43d69c6599b7f9c36acd.json"
+        ],
+        "scope": "operational"
+      },
+      {
+        "assertions": {
+          "attempted": 115,
+          "failed": 0,
+          "passed": 115
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "failure-cleanup",
+        "reason": null,
+        "receipts": [
+          "receipts/9bfec2f8a1824547a7a63182d1b1b307.json"
+        ],
+        "scope": "operational"
+      }
+    ]
+  },
+  "process_controls": {
+    "rows": [
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "startup-failure",
+        "receipt": "receipts/a0809f095e014b3ea9064438a0a24514.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "success",
+        "receipt": "receipts/6e2e212911a2446aba286fe7d695bb91.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "timeout",
+        "receipt": "receipts/c599d7989341465e9e02e0d05bbffcd7.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "cancellation",
+        "receipt": "receipts/14e07b0275a048e6a2730c5b1fa65737.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "descendants",
+        "receipt": "receipts/404e9c1368ec4c3bb79c974e40213cf8.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "repeated-cleanup",
+        "receipt": "receipts/fb9b3f9f13334d98bf10007d3cca6d8b.json"
+      }
+    ],
+    "scope": "local-process-control",
+    "sentinel": {
+      "after_controls": {
+        "pgid": 705,
+        "pid": 705,
+        "running": true,
+        "session": 705,
+        "start_ticks": 8140024
+      },
+      "after_release": null,
+      "before": {
+        "pgid": 705,
+        "pid": 705,
+        "running": true,
+        "session": 705,
+        "start_ticks": 8140024
+      },
+      "identity": {
+        "pgid": 705,
+        "pid": 705,
+        "session": 705,
+        "start_ticks": 8140024
+      },
+      "released": true
+    }
+  },
+  "refusals": [
+    "capable rollback not selected; mutation freeze and forward recovery retained",
+    "eventstore-owner decision pending",
+    "builds-owner decision pending",
+    "solution-owner decision pending",
+    "test-owner decision pending",
+    "same-baseline conformance pending"
+  ],
+  "schema": "hexalith.p1r.published-qualification.v1",
+  "source_binding": "source-binding.json",
+  "source_binding_sha256": "784d838a967823d9f8f51bef8eb8a7aafe7a07bec6e6bffc79fc5fe3eff33d3f",
+  "started_utc": "2026-10-09T15:31:59.337037+00:00"
+}

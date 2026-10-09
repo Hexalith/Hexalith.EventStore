@@ -1,0 +1,68 @@
+{
+  "argv": [
+    "/nonexistent/hexalith-p1r-owned-startup-control"
+  ],
+  "assertions": {
+    "attempted": 6,
+    "failed": 0,
+    "passed": 6
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "startup-failure",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-current-source-2026-10-09/packet",
+  "execution": "passed",
+  "exit_code": null,
+  "finished_utc": "2026-10-09T15:32:12.758861+00:00",
+  "id": "a0809f095e014b3ea9064438a0a24514",
+  "invocation": "7466118a1793471287cdb575d0ea590d",
+  "launch_error": {
+    "errno": 2,
+    "type": "FileNotFoundError"
+  },
+  "output": {
+    "path": "receipts/a0809f095e014b3ea9064438a0a24514.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "owned_processes": [],
+  "root_process": null,
+  "started_utc": "2026-10-09T15:32:12.700178+00:00",
+  "timed_out": false
+}

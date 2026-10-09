@@ -121,8 +121,8 @@ public partial class EventPersister(
         cancellationToken.ThrowIfCancellationRequested();
 
         long currentSequence = metadataResult.HasValue ? metadataResult.Value.CurrentSequence : 0;
-        if (currentSequence < 0) {
-            throw new InvalidOperationException("Invalid aggregate metadata: CurrentSequence cannot be negative.");
+        if (metadataResult.HasValue && currentSequence <= 0) {
+            throw new InvalidOperationException("Invalid aggregate metadata: a stored CurrentSequence must be positive.");
         }
 
         long retainedFloor = metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1;
