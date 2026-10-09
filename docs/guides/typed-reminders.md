@@ -274,8 +274,9 @@ in-repo Aspire wiring already uses `/alive`.
 
 The host must also configure `APP_API_TOKEN` outside Development, and its
 sidecar must present the same token. On Azure Container Apps the platform
-injects the token and its managed sidecar sends it, so operators do not set
-their own.
+injects the token and its managed sidecar sends it. Operators must not define
+their own `APP_API_TOKEN` there: a value that differs from the injected token
+makes every reminder actor call receive `401`.
 
 ### Trusted-effect submission credentials
 
@@ -308,12 +309,16 @@ retained. Provision three things for each submitting domain service:
    AppHost, `WithEventStoreWorkloadClientCredentials`). That client may
    request only the optional `eventstore-audience.eventstore` and
    `eventstore-operation.eventstore.trusted-effect` scopes (the default
-   `AudienceScopePrefix` and `OperationScopePrefix` forms), and the authority
+   `Authentication:WorkloadIssuer:AudienceScopePrefix` and
+   `Authentication:WorkloadIssuer:OperationScopePrefix` forms), and the authority
    must declare both scopes, each with exactly one mapper. If
    `Authentication:DaprInternal:Audience` is changed from `eventstore`, pass the
    new audience to `AddEventStoreTrustedEffectWorkloadAssertion(gatewayAudience)`
    and request the matching audience scope formed from the configured
    `Authentication:WorkloadIssuer:AudienceScopePrefix` followed by `<audience>`.
+   If `Authentication:WorkloadIssuer:OperationScopePrefix` is customized, request
+   `<OperationScopePrefix>eventstore.trusted-effect` and declare that scope in
+   the authority instead.
 3. **Keep the token short-lived.** The token lifetime
    (`Authentication:WorkloadIssuer:LifetimeSeconds`, default 120, capped at 300)
    must not exceed EventStore's
@@ -339,7 +344,7 @@ no internal caller.
 | --- | --- | --- |
 | `ActorTypeName` | none; required | Dapr actor type, unique to this application because actor types are global under Dapr placement. It also scopes every persisted key, so changing it abandons existing state |
 | `StateStoreName` | `statestore` | State store for witnesses, index, and dispositions |
-| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context and delegation; it must equal the submitting workload assertion's caller identity |
+| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context and delegation; it must equal the submitting workload assertion's caller identity. Set it explicitly to that identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting |
 | `Purposes:<kind>` | none | Named delegated purpose per kind. A kind without one is denied |
 | `ReconciliationEnabled` | `true` | Runs the periodic reconciler |
 | `ReconciliationInterval` | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
@@ -465,16 +470,24 @@ Quarantined witnesses are never submitted. Check the stored witness and its
 disposition to identify the pending operation, then fix its dependency; the next
 firing or convergence retries that operation.
 
-A credential `401`, an admission or delegation `403`, and a transient submission
-failure can all surface as `Retrying` with `submission-uncertain` and an
-`HttpRequestException`; an `HttpClient` timeout can surface with a
-`TaskCanceledException`. If the condition persists, check the gateway's event
-`5501` reason code for assertion denials, the workload assertion handler on the
-submitter client, `Authentication:DaprInternal:AllowedCallers`, and the
-assertion lifetime provisioning. Reminder diagnostics retain the exception type,
-not the HTTP status. When gateway-side status evidence shows `403`, also check
-the delegation token provider and the
-[trusted-effect admission policy](trusted-effects.md).
+A credential `401`, an admission or delegation `403`, a verifier-unavailable
+`503`, and a transient submission failure can all surface as `Retrying` with
+`submission-uncertain` and an `HttpRequestException`; an `HttpClient` timeout
+can surface with a `TaskCanceledException`. If the condition persists, check
+gateway event `5501` for `StatusCode` and `Reason`: assertion `401` denials,
+`403` refusals, and `503` with `Reason=verifier-unavailable`. A `403` with
+`Reason=operation-not-granted` can mean a missing operation grant or an
+admission or delegation refusal. A payload-free `denied` record in the
+trusted-effect audit sink identifies an admission or delegation refusal when
+present; if there is no record, check admission component registration and
+audit-sink configuration before attributing the `403` to a missing grant.
+Check the workload assertion handler on the submitter client,
+`Authentication:DaprInternal:AllowedCallers`,
+and the assertion lifetime provisioning described under
+[Trusted-effect submission credentials](#trusted-effect-submission-credentials).
+Reminder diagnostics retain the exception type, not the HTTP status. For a
+`403`, also check the delegation token provider and the
+[trusted-effect production admission gate](trusted-effects.md#production-admission-gate).
 
 ### Quarantine
 
