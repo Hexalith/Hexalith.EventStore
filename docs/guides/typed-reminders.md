@@ -272,6 +272,11 @@ channel, so a probe on Dapr's default path receives `401` and marks the host
 unhealthy. On Kubernetes, set `dapr.io/app-health-check-path: /alive`; the
 in-repo Aspire wiring already uses `/alive`.
 
+The host must also configure `APP_API_TOKEN` outside Development, and its
+sidecar must present the same token. On Azure Container Apps the platform
+injects the token and its managed sidecar sends it, so operators do not set
+their own.
+
 ### Trusted-effect submission credentials
 
 Every due reminder is submitted to `POST /api/v1/trusted-effects`, an internal
@@ -290,26 +295,35 @@ retained. Provision three things for each submitting domain service:
    key it already uses, and its identity is
    `Authentication:WorkloadIssuer:Workload` (default
    `EventStore:DomainService:AppId`). That `Workload` must equal the
-   submitter's Dapr app ID; otherwise the gateway denies the call as
-   `caller-conflict`. In authority mode it needs its own
+   submitter's Dapr app ID and `EventStore:Reminders:Workload`. A mismatch
+   with the gateway allow-list is denied as `caller-not-allowed`; if the
+   mismatched identity is allow-listed and a conflicting `dapr-caller-app-id`
+   header is present, the Dapr caller check denies it as `caller-conflict`.
+   A mismatch with `EventStore:Reminders:Workload` can fail in the domain
+   delegation provider before HTTP as `delegation-failed` or
+   `delegation-unavailable`; if the provider issues a mismatched token, the
+   gateway denies submission with `403`. In authority mode it needs its own
    confidential, service-account-only client whose `azp` is its app ID, set
    as `Authentication:WorkloadIssuer:ClientId` and `ClientSecret` (in an
    AppHost, `WithEventStoreWorkloadClientCredentials`). That client may
    request only the optional `eventstore-audience.eventstore` and
-   `eventstore-operation.eventstore.trusted-effect` scopes, and the authority
+   `eventstore-operation.eventstore.trusted-effect` scopes (the default
+   `AudienceScopePrefix` and `OperationScopePrefix` forms), and the authority
    must declare both scopes, each with exactly one mapper. If
    `Authentication:DaprInternal:Audience` is changed from `eventstore`, pass the
    new audience to `AddEventStoreTrustedEffectWorkloadAssertion(gatewayAudience)`
-   and request the matching `eventstore-audience.<audience>` scope instead.
+   and request the matching audience scope formed from the configured
+   `Authentication:WorkloadIssuer:AudienceScopePrefix` followed by `<audience>`.
 3. **Keep the token short-lived.** The token lifetime
    (`Authentication:WorkloadIssuer:LifetimeSeconds`, default 120, capped at 300)
    must not exceed EventStore's
    `Authentication:DaprInternal:MaximumLifetimeSeconds` (default 300 seconds).
    An authority-issued token follows the same limit.
 
-Once `Authentication:DaprInternal:AllowedCallers` is non-empty, EventStore
-itself needs `APP_API_TOKEN` outside Development, and the submitting domain
-service needs the `Authentication:JwtBearer` contract. See
+Every domain service composed with `AddEventStoreDomainService()` needs the
+`Authentication:JwtBearer` contract outside Development. EventStore itself
+needs `APP_API_TOKEN` outside Development once
+`Authentication:DaprInternal:AllowedCallers` is non-empty. See
 [Internal Workload Assertions](security-model.md#internal-workload-assertions),
 including the breaking upgrade step and the external identity provider
 constraints, and the
@@ -325,7 +339,7 @@ no internal caller.
 | --- | --- | --- |
 | `ActorTypeName` | none; required | Dapr actor type, unique to this application because actor types are global under Dapr placement. It also scopes every persisted key, so changing it abandons existing state |
 | `StateStoreName` | `statestore` | State store for witnesses, index, and dispositions |
-| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context |
+| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context and delegation; it must equal the submitting workload assertion's caller identity |
 | `Purposes:<kind>` | none | Named delegated purpose per kind. A kind without one is denied |
 | `ReconciliationEnabled` | `true` | Runs the periodic reconciler |
 | `ReconciliationInterval` | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
@@ -341,11 +355,6 @@ matching `[A-Za-z][A-Za-z0-9_-]{0,63}`. `IndexWriteAttempts` must be 1–100 and
 `RetryMaxDelay`. All three delays must stay within 4294967294 milliseconds.
 `Purposes` accepts only `works.date-resume.v1` and `works.expiry.v1`, each with
 a non-blank value; a purpose for any other kind fails startup validation.
-
-The host must also configure `APP_API_TOKEN` outside Development, and its
-sidecar must present the same token. On Azure Container Apps the platform
-injects the token and its managed sidecar sends it, so operators do not set
-their own.
 
 ## Persisted state
 
@@ -377,9 +386,10 @@ and one tenant cannot pull the service out of rotation. Its data holds
 
 Outside Development, a host composed with `AddEventStoreDomainService()` fails
 startup without `APP_API_TOKEN`, before readiness is ever reported. The check
-still reports `Unhealthy`, as the gateway does, when the token is missing; that
-is defense in depth for a host composed another way, where every reminder actor
-call is refused with `401`. Configure the token on the app and its sidecar.
+still reports `Unhealthy` outside Development, as the gateway does, when the
+token is missing; that is defense in depth for a host composed another way,
+where every reminder actor call is refused with `401`. Configure the token on
+the app and its sidecar.
 
 It is `Degraded` in any of these cases:
 
@@ -455,12 +465,16 @@ Quarantined witnesses are never submitted. Check the stored witness and its
 disposition to identify the pending operation, then fix its dependency; the next
 firing or convergence retries that operation.
 
-A credential `401` and a transient submission failure both surface as
-`Retrying` with `submission-uncertain` and an `HttpRequestException`. If it
-persists, check the gateway's event `5501` reason code, the workload assertion
-handler on the submitter client, `Authentication:DaprInternal:AllowedCallers`,
-and the assertion lifetime provisioning described under
-[Trusted-effect submission credentials](#trusted-effect-submission-credentials).
+A credential `401`, an admission or delegation `403`, and a transient submission
+failure can all surface as `Retrying` with `submission-uncertain` and an
+`HttpRequestException`; an `HttpClient` timeout can surface with a
+`TaskCanceledException`. If the condition persists, check the gateway's event
+`5501` reason code for assertion denials, the workload assertion handler on the
+submitter client, `Authentication:DaprInternal:AllowedCallers`, and the
+assertion lifetime provisioning. Reminder diagnostics retain the exception type,
+not the HTTP status. When gateway-side status evidence shows `403`, also check
+the delegation token provider and the
+[trusted-effect admission policy](trusted-effects.md).
 
 ### Quarantine
 
@@ -525,7 +539,13 @@ Works adopts this seam in Story 4.15:
   keep a self-mapping that carries `.RequireEventStoreSidecarChannel()` and runs
   before `UseEventStoreDomainService`. `WorksHost` calls `app.MapActorsHandlers()`
   after `app.UseEventStoreDomainService()`, so its startup inventory fails as soon
-  as Works consumes 3.117 or later.
+  as Works consumes 3.117 or later. Its own `MapPost("/project")` also needs
+  `.RequireEventStoreDomainServicePolicy("/project")`, and its
+  `MapWorksDomainEvents()` topic route needs `.RequireEventStoreSidecarChannel()`
+  attached to the `MapPost` result inside
+  `WorksDomainEventEndpointExtensions.MapWorksDomainEvents()`.
+  Sibling-source Debug builds already consume this endpoint inventory and expose
+  these failures.
 - Attach `.AddEventStoreTrustedEffectWorkloadAssertion()` to the submitter
   client.
 - Allow-list the Works workload in EventStore's

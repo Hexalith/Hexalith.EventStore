@@ -5,6 +5,7 @@ using Hexalith.EventStore.Client.Reminders;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -172,7 +173,8 @@ public sealed class EventStoreReminderCompositionTests
 
     /// <summary>
     /// A host that already mapped the Dapr actor handlers with the sidecar-channel policy, the supported
-    /// self-mapping shape, stays authoritative: the routes are not duplicated and the endpoint inventory is valid.
+    /// self-mapping shape, stays authoritative: the routes are not duplicated and the registered fallback
+    /// protects an ordinary custom route without explicit authorization metadata.
     /// </summary>
     [Fact]
     public void PreMappedActorHandlersAreNotDuplicated()
@@ -182,11 +184,12 @@ public sealed class EventStoreReminderCompositionTests
 
         _ = app.UseEventStoreDomainService();
         _ = app.MapEventStoreReminders();
+        _ = app.MapGet("/custom", static () => Results.Ok());
 
         CountReminderRoutes(app).ShouldBe(1);
         EventStoreDomainServiceEndpointInventory.Validate(
             ((IEndpointRouteBuilder)app).DataSources.SelectMany(static source => source.Endpoints),
-            fallbackPolicy: ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationExtensions.CreateAnyWorkloadPolicy(ServiceDefaults.Authentication.EventStoreWorkloadAuthenticationDefaults.WorkloadScheme)).ShouldBeEmpty();
+            fallbackPolicy: app.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy).ShouldBeEmpty();
     }
 
     /// <summary>Mapping reminder routes without the registration is a composition error.</summary>
