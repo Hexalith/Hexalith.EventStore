@@ -8,17 +8,17 @@ internal sealed class DeadlineDeletionConsumptionAuthority(IAnchoredStateTransit
 {
     /// <inheritdoc/>
     public Task<bool> AdmitTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
-        => deadline.ReadAsync(_ => authority.AdmitTransitionAsync(transition, cancellationToken));
+        => deadline.ReadAsync(token => authority.AdmitTransitionAsync(transition, token));
 
     /// <inheritdoc/>
     public Task<bool> RecoverTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
-        => deadline.ReadAsync(_ => authority.RecoverTransitionAsync(transition, cancellationToken));
+        => deadline.ReadAsync(token => authority.RecoverTransitionAsync(transition, token));
 
     /// <inheritdoc/>
     public Task<bool> RecordTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
-        => deadline.ReadAsync(_ => authority.RecordTransitionAsync(transition, cancellationToken));
+        => deadline.ReadAsync(token => authority.RecordTransitionAsync(transition, token));
 
     /// <inheritdoc/>
     public Task<bool> VerifyTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
-        => deadline.ReadAsync(_ => authority.VerifyTransitionAsync(transition, cancellationToken));
+        => deadline.ReadAsync(token => authority.VerifyTransitionAsync(transition, token));
 }

@@ -54,6 +54,45 @@ public sealed class GovernanceScopeGuardTests
         fixture.State.Revision.ShouldBe(prior); fixture.Backend.Stored.ContainsKey(fixture.Backend.Key("fenced-source")).ShouldBeFalse();
     }
 
+    /// <summary>Accepted writes never carry more scope attribution entries than a later original violation can validate.</summary>
+    [Theory]
+    [InlineData(1001, false)][InlineData(900, true)]
+    public async Task OversizedAttributionVectorBlocksAppendBeforeSourceEffect(int count, bool longIds)
+    {
+        var fixture = new GovernanceGuardFixture();
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: fixture.Scope, authorization: "seed-fence"))).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.CommitAdmissionFence, scope: fixture.Scope, authorization: "seed-fence"))).Status.ShouldBe("Committed");
+        var baseState = fixture.State; var template = baseState.Deletions.Single();
+        var deletions = Enumerable.Range(1, count).Select(index => template with
+        { RequestId = "deletion-" + index.ToString("D4", System.Globalization.CultureInfo.InvariantCulture) + (longIds ? new string('x', 80) : "") }).ToArray();
+        var state = baseState with { Deletions = deletions };
+        fixture.Backend.Stored[fixture.Backend.Key(fixture.Backend.Target.GuardCellId)] = JsonSerializer.SerializeToUtf8Bytes(
+            new GuardedStateCell("tenant-a", fixture.Backend.Target.InstallationId, fixture.Backend.Target.GuardCellId, state.Revision, JsonSerializer.SerializeToUtf8Bytes(state)));
+        var mutation = new GuardedStateMutation("oversized-attribution-source", 0, GuardedTransactionFixture.Hash([]), "sealed-content"u8.ToArray());
+        var result = await fixture.Owner.ExecuteAsync(fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()), [mutation], TestContext.Current.CancellationToken);
+        result.ShouldNotBeNull(); result.Status.ShouldBe("Blocked");
+        fixture.Backend.Stored.ContainsKey(fixture.Backend.Key(mutation.CellId)).ShouldBeFalse();
+        fixture.State.Revision.ShouldBe(state.Revision); fixture.State.Deletions.Count.ShouldBe(count);
+    }
+
+    /// <summary>A serialized deletion without an installed admission revision is refused at state ingress before lookup or append effects.</summary>
+    [Fact]
+    public async Task MissingAdmissionFenceRevisionRefusesGuardStateAtIngress()
+    {
+        var fixture = new GovernanceGuardFixture();
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.AuthorizeAdmissionFence, scope: fixture.Scope, authorization: "seed-fence"))).Status.ShouldBe("Committed");
+        (await fixture.Apply(fixture.Command(GovernanceGuardOperation.CommitAdmissionFence, scope: fixture.Scope, authorization: "seed-fence"))).Status.ShouldBe("Committed");
+        var state = fixture.State with { Deletions = [fixture.State.Deletions.Single() with { AdmissionFenceGuardRevision = 0 }] };
+        fixture.Backend.Stored[fixture.Backend.Key(fixture.Backend.Target.GuardCellId)] = JsonSerializer.SerializeToUtf8Bytes(
+            new GuardedStateCell("tenant-a", fixture.Backend.Target.InstallationId, fixture.Backend.Target.GuardCellId, state.Revision, JsonSerializer.SerializeToUtf8Bytes(state)));
+        (await fixture.Owner.ReadAsync("tenant-a", TestContext.Current.CancellationToken)).ShouldBeNull();
+        var mutation = new GuardedStateMutation("legacy-source", 0, GuardedTransactionFixture.Hash([]), "sealed-content"u8.ToArray());
+        (await fixture.Owner.ExecuteAsync(fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()), [mutation], TestContext.Current.CancellationToken)).ShouldBeNull();
+        fixture.Backend.Stored.ContainsKey(fixture.Backend.Key(mutation.CellId)).ShouldBeFalse();
+        GovernanceScopeGuardReducer.Reduce(state, fixture.Command(GovernanceGuardOperation.AppendWrite, write: fixture.Facts()),
+            new GovernanceGuardEvidence("tenant-a", "intent", "target", "authority", "receipt", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(1), [], [], [], "writer", "revocation", "zero", 1, "Open", "", [], ""), "intent").Receipt.Status.ShouldBe("Unavailable");
+    }
+
     /// <summary>Scope, owner-obligation and candidate cut/token substitutions cannot reuse an authorization at the identical guard revision.</summary>
     [Theory]
     [InlineData("scope")][InlineData("owners")][InlineData("obligations")][InlineData("cut")][InlineData("token")]

@@ -13,6 +13,7 @@ public static class GovernanceScopeGuardReducer
     {
         ArgumentNullException.ThrowIfNull(state); ArgumentNullException.ThrowIfNull(command); ArgumentNullException.ThrowIfNull(evidence);
         if (!Shape(command) || state.TenantId != command.TenantId || state.Revision <= 0 || state.InstallationId.Length == 0
+            || state.Deletions is null || state.Deletions.Any(value => value is null || value.AdmissionFenceGuardRevision <= 0)
             || evidence.TenantId != state.TenantId || evidence.IntentDigest != intentDigest || !Text(evidence.AuthorityReceiptId))
         { return Result(state, command, intentDigest, "Unavailable", false); }
         var deletion = state.Deletions.SingleOrDefault(value => value.RequestId == command.DeletionRequestId);
@@ -65,6 +66,7 @@ public static class GovernanceScopeGuardReducer
                 if (matching.Any(value => Admission(facts.Kind) || Content(facts.Kind) && value.ContentBindings.Count > 0)) { return Denied(); }
                 var attributions = matching.OrderBy(value => value.RequestId, StringComparer.Ordinal)
                     .Select(value => new GovernanceAdmissionAttribution(value.RequestId, value.Ordinal)).ToArray();
+                if (!ValidAttributions(attributions)) { return Denied(); }
                 long acceptedOrdinal = matching.Select(value => value.Ordinal).DefaultIfEmpty(0).Max();
                 return Result(state, command, intentDigest, "Accepted", true, true, acceptedOrdinal, reference, evidence, attributions);
             case GovernanceGuardOperation.AuthorizeAdmissionFence:
@@ -341,15 +343,17 @@ public static class GovernanceScopeGuardReducer
         GovernanceAdmissionAttribution[]? attributions;
         try { attributions = JsonSerializer.Deserialize<GovernanceAdmissionAttribution[]>(accepted.AdmissionAttributionsJson); }
         catch (JsonException) { return false; }
-        if (attributions is null || attributions.Length > 1000 || JsonSerializer.Serialize(attributions) != accepted.AdmissionAttributionsJson
-            || attributions.Any(value => value is null || !Text(value.DeletionRequestId) || value.Ordinal <= 0)
-            || attributions.Select(value => value.DeletionRequestId).Distinct(StringComparer.Ordinal).Count() != attributions.Length
-            || !attributions.SequenceEqual(attributions.OrderBy(value => value.DeletionRequestId, StringComparer.Ordinal))) { return false; }
+        if (attributions is null || !ValidAttributions(attributions) || JsonSerializer.Serialize(attributions) != accepted.AdmissionAttributionsJson) { return false; }
         var installed = attributions.SingleOrDefault(value => value.DeletionRequestId == deletion.RequestId);
         return installed is null
             ? accepted.GuardHighWater < deletion.AdmissionFenceGuardRevision && ordinal == 0
             : accepted.GuardHighWater >= deletion.AdmissionFenceGuardRevision && installed.Ordinal == ordinal;
     }
+    private static bool ValidAttributions(IReadOnlyList<GovernanceAdmissionAttribution> attributions)
+        => attributions.Count <= 1000 && attributions.All(value => value is not null && Text(value.DeletionRequestId) && value.Ordinal > 0)
+            && attributions.Select(value => value.DeletionRequestId).Distinct(StringComparer.Ordinal).Count() == attributions.Count
+            && attributions.SequenceEqual(attributions.OrderBy(value => value.DeletionRequestId, StringComparer.Ordinal))
+            && JsonSerializer.Serialize(attributions).Length <= 65536;
     private static bool Ready(GovernanceDeletionState deletion, GovernanceGuardEvidence evidence) => evidence.ZeroOrdinal == deletion.Ordinal && Text(evidence.CurrentZeroReceiptId)
         && !deletion.Violations.Any(value => value.Ordinal == deletion.Ordinal && value.SuccessorOrdinal > value.Ordinal)
         && deletion.RequiredOwnerIds.All(owner => deletion.OwnerCycles.Any(value => value.Ordinal == deletion.Ordinal && value.OwnerId == owner && value.ObligationDigest == Hash(deletion.ObligationIds)));

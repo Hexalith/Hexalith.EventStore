@@ -21,7 +21,8 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
             var cell = await deadline.ReadAsync(token => transaction.ReadGuardAsync(tenantId, token)).ConfigureAwait(false);
             if (cell is null) { return null; }
             var state = await deadline.ReadAsync(_ => Task.FromResult(JsonSerializer.Deserialize<TenantGovernanceGuardState>(cell.Value))).ConfigureAwait(false);
-            if (state is null || state.TenantId != tenantId || state.InstallationId != cell.InstallationId || state.Revision <= 0 || state.Revision > cell.Revision) { return null; }
+            if (state is null || state.TenantId != tenantId || state.InstallationId != cell.InstallationId || state.Revision <= 0 || state.Revision > cell.Revision
+                || state.Deletions is null || state.Deletions.Any(value => value is null || value.AdmissionFenceGuardRevision <= 0)) { return null; }
             var final = await deadline.ReadAsync(token => transaction.ReadGuardAsync(tenantId, token)).ConfigureAwait(false); deadline.ThrowIfCancellationRequested();
             return final is not null && final.Revision == cell.Revision && final.InstallationId == cell.InstallationId && final.Value.AsSpan().SequenceEqual(cell.Value) ? state : null;
         }
@@ -86,6 +87,11 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
             string intentDigest = Hash(new { Transition = transition, TargetMutationDigest = targetDigest });
             var lookupAuthority = await LookupEvidenceAsync().ConfigureAwait(false);
             if (lookupAuthority is null) { return null; }
+            var guard = await deadline.ReadAsync(token => transaction.ReadGuardAsync(transition.TenantId, token)).ConfigureAwait(false);
+            if (guard is null) { return null; }
+            var state = JsonSerializer.Deserialize<TenantGovernanceGuardState>(guard.Value);
+            if (state is null || state.TenantId != guard.TenantId || state.InstallationId != guard.InstallationId || state.Revision <= 0 || state.Revision > guard.Revision
+                || state.Deletions is null || state.Deletions.Any(value => value is null || value.AdmissionFenceGuardRevision <= 0)) { return null; }
             var prior = await deadline.ReadAsync(token => transaction.LookupByIntentAsync(transition.TenantId, transition.OperationId, intentDigest, token)).ConfigureAwait(false);
             if (prior.Status == GuardedStateCommitStatus.Committed)
             {
@@ -93,10 +99,6 @@ public sealed class GovernanceScopeGuardOwner(DaprGuardedStateTransaction transa
                 return original is not null && Hash(await LookupEvidenceAsync().ConfigureAwait(false)) == Hash(lookupAuthority) && Current(lookupAuthority) ? original : null;
             }
             if (prior.Status != GuardedStateCommitStatus.Unknown) { return null; }
-            var guard = await deadline.ReadAsync(token => transaction.ReadGuardAsync(transition.TenantId, token)).ConfigureAwait(false);
-            if (guard is null) { return null; }
-            var state = JsonSerializer.Deserialize<TenantGovernanceGuardState>(guard.Value);
-            if (state is null || state.TenantId != guard.TenantId || state.InstallationId != guard.InstallationId || state.Revision <= 0 || state.Revision > guard.Revision) { return null; }
             var evidence = await EvidenceAsync().ConfigureAwait(false);
             if (evidence is null) { return null; }
             var reduction = await deadline.ReadAsync(_ => Task.FromResult(GovernanceScopeGuardReducer.Reduce(Copy(state), Copy(transition), Copy(evidence), intentDigest))).ConfigureAwait(false);

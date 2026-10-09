@@ -255,6 +255,39 @@ public sealed class DeletionConsumptionActorTests
         await f.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Stalled independent admission and journal record calls receive the private deadline token and cannot apply a late actor state effect.</summary>
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task SuspendedTransitionJournalUsesEntryDeadlineWithoutLateActorEffect(bool record)
+    {
+        var fixture = new DeletionConsumptionFixture(); var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(fixture.Backend, fixture.Authority, fixture.Provider, clock);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken supplied = default;
+        if (record)
+        {
+            fixture.Authority.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return release.Task; });
+        }
+        else
+        {
+            fixture.Authority.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return release.Task; });
+        }
+        var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        supplied.CanBeCanceled.ShouldBeTrue();
+        clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        supplied.IsCancellationRequested.ShouldBeTrue();
+        string retained = JsonSerializer.Serialize(fixture.Backend.CommittedState);
+        release.SetResult(true);
+        await Task.Yield();
+        JsonSerializer.Serialize(fixture.Backend.CommittedState).ShouldBe(retained);
+        await fixture.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     /// <summary>A state task remains turn-owned after deadline release; later entries wait for its actual completion.</summary>
     [Fact]
     public async Task SuspendedStateReadExcludesLaterTurnUntilCompletion()
