@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Dapr.Client;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Queries;
 using Hexalith.EventStore.Server.Events;
@@ -107,7 +108,7 @@ public sealed class ProjectionWatermarkProcessRestartTests(DaprTestContainerFixt
     }
 
     private static EventEnvelope Event(string tenantId, string aggregateId, long sequence, long position) => new(
-        MessageId: $"message-{sequence}",
+        MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
         AggregateId: aggregateId,
         AggregateType: "Widget",
         TenantId: tenantId,

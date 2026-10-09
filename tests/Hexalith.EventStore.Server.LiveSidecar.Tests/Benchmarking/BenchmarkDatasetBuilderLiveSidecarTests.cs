@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -115,7 +116,7 @@ public class BenchmarkDatasetBuilderLiveSidecarTests {
     private static BenchmarkDatasetDefinition CreateDefinition(AggregateIdentity identity) {
         BenchmarkEventDefinition[] events = [
             .. Enumerable.Range(1, 3).Select(sequence => new BenchmarkEventDefinition(
-                $"benchmark-message-{sequence}",
+                UniqueIdHelper.GenerateSortableUniqueStringId(),
                 _timestamp.AddSeconds(sequence),
                 $"benchmark-correlation-{sequence}",
                 $"benchmark-causation-{sequence}",
