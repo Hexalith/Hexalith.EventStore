@@ -84,6 +84,22 @@ public sealed class CompatibilityMixedHistoryTests
         reader.EventCalls.ShouldBe(0);
     }
 
+    /// <summary>Cancellation raised by an indexed record is observed before the next record is validated.</summary>
+    [Fact]
+    public async Task V119_PrevalidationObservesCancellationRaisedInsideLoopAsync()
+    {
+        using var source = new CancellationTokenSource();
+        (PayloadCompatibilityRouter router, CountingKeyResolver resolver, FakeLegacyPayloadReader reader) = CreateRouter();
+        var records = new CancellingPrevalidationEventList(source, CompatibilityTestData.V2Event(1));
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+            async () => await router.ReadStreamAsync(records, source.Token));
+
+        exception.CancellationToken.ShouldBe(source.Token);
+        resolver.Calls.ShouldBe(0);
+        reader.EventCalls.ShouldBe(0);
+    }
+
     /// <summary>The stream stops at the first unreadable sequence and no later record is examined.</summary>
     [Theory]
     [InlineData("missing-key", UnreadableProtectedDataReason.MissingKey)]

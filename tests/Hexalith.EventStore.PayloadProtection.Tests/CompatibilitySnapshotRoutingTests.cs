@@ -165,6 +165,7 @@ public sealed class CompatibilitySnapshotRoutingTests
     public async Task V118_V2SnapshotPlaintext_IsZeroedForEveryOutcomeAsync(string outcome)
     {
         using var source = new CancellationTokenSource();
+        using var foreign = new CancellationTokenSource();
         var observer = new RecordingBufferObserver();
         var resolver = new CountingKeyResolver();
         SnapshotTypeRegistry registry = CompatibilityTestData.Registry();
@@ -175,7 +176,7 @@ public sealed class CompatibilitySnapshotRoutingTests
             {
                 "cancellation" => new CancellingSnapshotConverter(source),
                 "out-of-memory" => new ThrowingSnapshotConverter(new OutOfMemoryException()),
-                _ => new ThrowingSnapshotConverter(new OperationCanceledException()),
+                _ => new ThrowingSnapshotConverter(new OperationCanceledException(foreign.Token)),
             });
             registry = new SnapshotTypeRegistry(
                 [new SnapshotTypeRegistration(CompatibilityTestData.SnapshotTypeId, options.GetTypeInfo(typeof(PartySnapshotState)))]);
@@ -189,6 +190,10 @@ public sealed class CompatibilitySnapshotRoutingTests
             ? CompatibilityTestData.ProtectSnapshot(plaintext: "[1,2]"u8.ToArray())
             : CompatibilityTestData.ProtectSnapshot();
         CompatibilitySnapshotRecord record = CompatibilityTestData.Snapshot(carrier, CompatibilityTestData.V2Metadata());
+        if (outcome == "foreign-cancellation")
+        {
+            foreign.Cancel();
+        }
 
         if (outcome == "cancellation")
         {
@@ -200,7 +205,7 @@ public sealed class CompatibilitySnapshotRoutingTests
         }
         else
         {
-            CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(record);
+            CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(record, source.Token);
             if (outcome == "readable")
             {
                 result.State.ShouldBe(new PartySnapshotState("Alice", 3));
@@ -209,6 +214,7 @@ public sealed class CompatibilitySnapshotRoutingTests
             {
                 result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
                 result.State.ShouldBeNull();
+                result.AllowsCorruptLegacyDeletion.ShouldBeFalse();
             }
         }
 
@@ -459,6 +465,7 @@ public sealed class CompatibilitySnapshotRoutingTests
     /// <summary>Malformed, over-version, opaque, or non-allowlisted snapshot metadata is rejected before shape checks.</summary>
     [Theory]
     [InlineData("undefined-state", UnreadableProtectedDataReason.MalformedMetadata)]
+    [InlineData("undefined-state-over-version", UnreadableProtectedDataReason.MalformedMetadata)]
     [InlineData("version-zero", UnreadableProtectedDataReason.MalformedMetadata)]
     [InlineData("over-version", UnreadableProtectedDataReason.UnknownMetadataVersion)]
     [InlineData("opaque", UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation)]
@@ -474,6 +481,7 @@ public sealed class CompatibilitySnapshotRoutingTests
         EventStorePayloadProtectionMetadata metadata = defect switch
         {
             "undefined-state" => v2 with { State = (PayloadProtectionState)7 },
+            "undefined-state-over-version" => v2 with { State = (PayloadProtectionState)7, MetadataVersion = 2 },
             "version-zero" => v2 with { MetadataVersion = 0 },
             "over-version" => v2 with { MetadataVersion = 2 },
             "opaque" => EventStorePayloadProtectionMetadata.ProviderOpaque(),

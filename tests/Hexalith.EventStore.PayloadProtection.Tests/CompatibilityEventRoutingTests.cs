@@ -369,6 +369,34 @@ public sealed class CompatibilityEventRoutingTests
         resolver.Calls.ShouldBe(1);
     }
 
+    /// <summary>Caller cancellation after an unreadable v2 core result wins over its typed reason.</summary>
+    [Fact]
+    public async Task V113_CancellationAfterUnreadableCoreCompletion_PropagatesAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var coreObserver = new RecordingBufferObserver(kind =>
+        {
+            if (kind == SensitiveBufferKind.DataEncryptionKey)
+            {
+                source.Cancel();
+            }
+        });
+        var routerObserver = new RecordingBufferObserver();
+        var resolver = new CountingKeyResolver(static _ => new byte[32]);
+        var router = new PayloadCompatibilityRouter(
+            resolver.ResolveAsync,
+            core: new PayloadProtectionCore(coreObserver),
+            bufferObserver: routerObserver);
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadEventAsync(
+            CompatibilityTestData.V2Event(15), source.Token));
+
+        exception.CancellationToken.ShouldBe(source.Token);
+        coreObserver.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        routerObserver.Observed.ShouldBeEmpty();
+        resolver.Calls.ShouldBe(1);
+    }
+
     /// <summary>Every core failure returns the core's typed reason and never partial output.</summary>
     [Theory]
     [InlineData("wrong-key", UnreadableProtectedDataReason.BytesMetadataMismatch, 1)]
