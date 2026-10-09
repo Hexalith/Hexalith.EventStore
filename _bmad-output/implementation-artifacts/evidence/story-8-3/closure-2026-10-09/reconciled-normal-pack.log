@@ -86,3 +86,8 @@ dotnet pack src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj -
   Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.ServiceDefaults/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll
   Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll
   Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll
+  Successfully created package '/tmp/story83-reconciled-pack-20261009/Hexalith.EventStore.Gateway.1.0.0.nupkg'.
+dotnet pack src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj --configuration Release --output /tmp/story83-reconciled-pack-20261009 -p:Version=1.0.0 -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false
+  Determining projects to restore...
+  All projects are up-to-date for restore.
