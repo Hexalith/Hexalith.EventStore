@@ -527,7 +527,7 @@ public sealed class ReleasePackageManifestTests
         string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
         ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
-        ciJob.ShouldContain("build-timeout-minutes: 40");
+        ciJob.ShouldContain("build-timeout-minutes: 180");
         ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
         ciJob.ShouldContain("tests/Hexalith.EventStore.LoadTests.Tests");
