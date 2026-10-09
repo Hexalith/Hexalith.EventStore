@@ -1,7 +1,7 @@
 namespace Hexalith.EventStore.Client.Streams;
 
 /// <summary>One monotonic operational budget for gateway invocation, pagination and source evidence release.</summary>
-internal sealed class AuthoritativeStreamReadDeadline : IDisposable
+public sealed class AuthoritativeStreamReadDeadline : IDisposable
 {
     private readonly CancellationToken _callerToken;
     private readonly TimeProvider _timeProvider;
@@ -15,6 +15,7 @@ internal sealed class AuthoritativeStreamReadDeadline : IDisposable
     /// <summary>Starts the remaining timer for one finite budget measured from query entry.</summary>
     public AuthoritativeStreamReadDeadline(TimeSpan timeout, TimeProvider timeProvider, CancellationToken callerToken, long startedAt)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         _callerToken = callerToken;
         _timeProvider = timeProvider;
         _startedAt = startedAt;
