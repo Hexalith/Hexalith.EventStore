@@ -625,6 +625,10 @@ public sealed class DomainServiceTrustBoundaryTests
     [InlineData("weak-project")]
     [InlineData("anonymous-extra")]
     [InlineData("weak-subscribe")]
+    [InlineData("public-project")]
+    [InlineData("public-sidecar")]
+    [InlineData("mismatched-public")]
+    [InlineData("broad-public")]
     [InlineData("secured-project")]
     public async Task HostOverrides_MustCarryTheSdkPolicy(string overrideKind)
     {
@@ -644,6 +648,24 @@ public sealed class DomainServiceTrustBoundaryTests
                     // any-workload fallback and silently deny every subscription discovery.
                     _ = app.MapSubscribeHandler();
                     break;
+                case "public-project":
+                    _ = app.MapPost("/project/v2", () => Interlocked.Increment(ref hits))
+                        .RequireAuthorization(EventStoreDomainServicePolicies.Project)
+                        .AllowEventStorePublicEndpoint("/project/v2");
+                    break;
+                case "public-sidecar":
+                    _ = app.MapPost("/dapr/subscribe", () => Interlocked.Increment(ref hits))
+                        .RequireEventStoreSidecarChannel()
+                        .AllowEventStorePublicEndpoint("/dapr/subscribe");
+                    break;
+                case "mismatched-public":
+                    _ = app.MapGet("/faults/hit-count", () => hits)
+                        .AllowEventStorePublicEndpoint("/faults/other");
+                    break;
+                case "broad-public":
+                    _ = app.MapGet("/faults/{id}", (string id) => id)
+                        .AllowEventStorePublicEndpoint("/faults/{id}");
+                    break;
                 default:
                     _ = app.MapPost("/project", () => Interlocked.Increment(ref hits))
                         .RequireAuthorization(EventStoreDomainServicePolicies.Project);
@@ -658,6 +680,9 @@ public sealed class DomainServiceTrustBoundaryTests
             {
                 "weak-project" => "/project",
                 "weak-subscribe" => "/dapr/subscribe",
+                "public-project" => "/project/v2",
+                "public-sidecar" => "/dapr/subscribe",
+                "broad-public" => "/faults/{id}",
                 _ => "/faults/hit-count",
             });
             hits.ShouldBe(0);
@@ -676,6 +701,22 @@ public sealed class DomainServiceTrustBoundaryTests
         forgedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         allowedResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         hits.ShouldBe(1);
+    }
+
+    /// <summary>An explicitly marked literal route starts and serves anonymous callers under the workload fallback.</summary>
+    [Fact]
+    public async Task ExplicitPublicEndpoint_BypassesFallbackOnlyForItsOwnRoute()
+    {
+        await using WebApplication app = await StartAsync(beforeSdk: application =>
+            application.MapGet("/metadata/timesheets", () => "timesheets")
+                .AllowEventStorePublicEndpoint("/metadata/timesheets"));
+
+        using HttpResponseMessage response = await app.GetTestClient().GetAsync(
+            "/metadata/timesheets", TestContext.Current.CancellationToken);
+        using HttpResponseMessage protectedResponse = await app.GetTestClient().PostAsync(
+            "/project/v2", new StringContent("{}"), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     private static async Task<WebApplication> StartAsync(
