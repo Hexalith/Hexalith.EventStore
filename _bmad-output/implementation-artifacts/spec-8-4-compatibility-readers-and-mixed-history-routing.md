@@ -112,6 +112,29 @@ context:
 - Given a carrier with a duplicate member or an undefined numeric state, when it is classified, then the result is `MalformedMetadata`, even though `Carrier.Read` accepts it.
 - Given the existing test lane, when it runs, then all prior cases still pass and the new cases run, with zero skips.
 
+### Review Findings
+
+- [ ] [Review][Patch] Reject incomplete v2 snapshot carrier shapes before legacy pass-through [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:513]
+- [ ] [Review][Patch] Validate all required v1 snapshot wrapper fields before calling the registered reader [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:522]
+- [ ] [Review][Patch] Keep legacy-reader failure reasons inside the defined reason taxonomy [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
+- [ ] [Review][Patch] Propagate caller cancellation when a legacy reader returns an unreadable result [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:284]
+- [ ] [Review][Patch] Recheck cancellation after v1 and v2 snapshot materialization [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:429]
+- [ ] [Review][Patch] Classify numeric future carrier versions beyond `Int32.MaxValue` as `UnknownMetadataVersion` [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:410]
+- [ ] [Review][Patch] Verify that aborted streams zero earlier v2 plaintext buffers [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilityMixedHistoryTests.cs:209]
+- [x] [Review][Defer] Check stored legacy history against the new JSON bounds before Server wiring [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityClassifier.cs:170] — deferred: no stored-data inventory is available; a scan for oversized, deep, duplicate-member or invalid-UTF-8 events and snapshots will establish whether replay or snapshot loads are affected. This is also recorded in the existing Story 8.4 deferred-work entry.
+
+#### Rejected
+
+- BH1 (`false`): Stream shape validation is an explicit precondition that the story requires before routing; it does not classify or read later payloads.
+- BH2 (`low`): Augmented `Unprotected` metadata over plain bytes is permissive by the story's prior review decision; tightening it could strand existing foreign-writer history without detecting stripped ciphertext.
+- BH8 (`false`): The advertised v2 capability describes the event reader, which works with an empty snapshot registry; snapshot type support is a separate concern.
+- BH9 (`false`): Real Parties reader conformance is outside Story 8.4's authorized unit-test scope and belongs to the separately authorized consumer work.
+- BH10 (`false`): The focused payload-protection test assembly now passes 589/589 with zero skips; the claim of unverified test success does not hold for this review.
+- BH11 (`low`): The router has no Server consumer yet; buffer ownership is documented and successful-read cleanup belongs to the Story 8.7 call site.
+- VG-other (`low`): The augmented `Unprotected` metadata case repeats BH2 and the prior review's deliberate compatibility decision.
+- AA2 (`low`): The story explicitly treats blank carriers as legacy, including whitespace; changing the ceiling precedence needs an intent decision for a negligible case.
+- EC5 (`false`): Snapshot input intentionally uses typed `ProtectionMetadata`, as the story's implementation notes state; no raw snapshot carrier is promised.
+
 ## Implementation Notes
 
 - 2026-10-09: Added the listed internal types, one per file, plus a `CompatibilityClassification` helper record that carries the pure classifier output. Other core changes:
