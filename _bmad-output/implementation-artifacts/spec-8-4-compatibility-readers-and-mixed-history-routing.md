@@ -2,7 +2,7 @@
 title: 'Story 8.4: Compatibility Readers And Mixed-History Routing'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -190,22 +190,22 @@ Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), accepta
 
 Scope: the fix delta `42813102` only (pass-3 and pass-4 fixes, 211 diff lines). Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), acceptance auditor (AA). 24 raw findings: 5 patch, 0 decision, 0 defer, 15 rejected. The auditor confirmed all three acceptance criteria still hold, with 625/625 tests passing and zero skips.
 
-- [ ] [Review][Patch] Pin cancellation after an unreadable v2 snapshot core result (VG1, BH7, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:462]
+- [x] [Review][Patch] Pin cancellation after an unreadable v2 snapshot core result (VG1, BH7, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:462]
   - Deleting the pass-4 `ThrowIfCancellationRequested()` passes every test. The only in-call v2 snapshot cancellation test cancels in the resolver, and the core rethrows that itself (`PayloadProtectionCore.cs:842`).
   - Fix: add a snapshot counterpart of `V113_CancellationAfterCoreCompletion_ClearsOutputAsync`. Use `core: new PayloadProtectionCore(observer)` with an observer that cancels when the `DataEncryptionKey` buffer is cleared, and a resolver that returns a wrong 32-byte key. Assert `OperationCanceledException`.
-- [ ] [Review][Patch] Pin the snapshot deserialization exception filter with a throwing converter (VG2, BH5, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:477]
+- [x] [Review][Patch] Pin the snapshot deserialization exception filter with a throwing converter (VG2, BH5, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:477]
   - Nothing in the test project throws from inside `JsonSerializer.Deserialize`. Removing the pass-4 `OutOfMemoryException` arm, or the foreign-cancellation arm, passes every test.
   - Fix: add a converter in its own file that throws a supplied exception. Add rows to `V118_V2SnapshotPlaintext_IsZeroedForEveryOutcomeAsync`:
     - `OutOfMemoryException` propagates.
     - `OperationCanceledException` with an uncancelled caller token gives `ConsistencyMismatch`.
     - Both observe one zeroed `DecryptedPlaintext` buffer.
-- [ ] [Review][Patch] Pin the stream prevalidation cancellation check (VG3, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:163]
+- [x] [Review][Patch] Pin the stream prevalidation cancellation check (VG3, AA1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:163]
   - Every stream test that passes a token cancels inside a reader callback, after prevalidation. With a valid list, the second loop throws anyway, so removing the pass-4 line is unobservable.
   - Fix: add `V119_PrevalidationObservesCancellationAsync`. Use a pre-cancelled token and `[V2Event(1), null]`. Assert `OperationCanceledException`, zero resolver calls and zero reader calls.
-- [ ] [Review][Patch] An empty stream with a cancelled token returns `Readable([])` (EC4, BH8) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:160]
+- [x] [Review][Patch] An empty stream with a cancelled token returns `Readable([])` (EC4, BH8) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:160]
   - Neither loop body runs, so the cancellation is never observed. `ReadEventAsync` and `ReadSnapshotAsync` both throw for a pre-cancelled token.
   - Fix: call `cancellationToken.ThrowIfCancellationRequested()` once before the validation loop, and add an empty-list row to the test above.
-- [ ] [Review][Patch] Pin AC2 at metadata version 2 (AA3) [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilityEventRoutingTests.cs:482]
+- [x] [Review][Patch] Pin AC2 at metadata version 2 (AA3) [tests/Hexalith.EventStore.PayloadProtection.Tests/CompatibilityEventRoutingTests.cs:482]
   - Pass 3 lowered the `futureVersion` threshold from `int.MaxValue` to `CurrentMetadataVersion`, so every version-2 carrier now takes the new precedence.
   - Every undefined-numeric-state row uses `metadataVersion: 1`. Three reviewers in this pass proposed letting future state names win over malformation, and a change like that could also turn `{"metadataVersion":2,"state":"7"}` into `UnknownMetadataVersion`, against AC2.
   - Fix: add `{"metadataVersion":2,"state":"7"}` and `{"state":1,"metadataVersion":2}` rows to `V115_MalformedCarrier_IsMalformedMetadataWithoutCallsAsync`. They cannot go in `V115_DuplicateMemberOrUndefinedNumericState…`, because that test asserts `Carrier.Read` accepts the carrier, and a version-2 carrier is `ProviderOpaque` there.
@@ -278,6 +278,7 @@ Scope: the fix delta `42813102` only (pass-3 and pass-4 fixes, 211 diff lines). 
 - 2026-10-09 review pass 2 fixes: writer-produced v2 events with an unrelated `$enc` property authenticate; malformed v2 snapshot IDs return `BytesMetadataMismatch`; v1 snapshot reader output cannot be an undecrypted wrapper or JSON null; v2 event output is cleared when cancellation arrives during core cleanup; registry aliases are frozen. The cancellation test converter lives in its own C# file. Final Release build: 0 warnings, 0 errors. Payload-protection assembly: 618 passed, 0 failed, 0 skipped. Invariant-globalization V029: 1 passed. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - 2026-10-09 review pass 3 fixes: v2 snapshot plaintext clear is observed after readable, deserialization-failure, and caller-cancellation outcomes; both v1 snapshot failure buffers are asserted zeroed; a v1 wrapper also carrying `$pdenc` is rejected locally; and future carrier versions take precedence over unknown schema members. Release build: 0 warnings, 0 errors. Payload-protection assembly: 623 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - 2026-10-09 review pass 4 fixes: stream prevalidation checks cancellation; failed v2 snapshot reads recheck cancellation after core cleanup; snapshot deserialization propagates `OutOfMemoryException`; and the legacy event router test covers the 65,536/65,537-node boundary. Release builds: 0 warnings, 0 errors. Payload-protection assembly: 625 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
+- 2026-10-09 review pass 5 fixes: cancelled empty streams now throw; tests pin stream prevalidation, cancellation after an unreadable v2 snapshot core result, snapshot deserialization exception handling and plaintext clearing, and malformed numeric states at metadata version 2. Release builds: 0 warnings, 0 errors. Payload-protection assembly: 632 passed, 0 failed, 0 skipped. Contracts package-manifest lane: 13 passed, 0 failed, 0 skipped.
 - Verification (before the review fixes): Release build with `-warnaserror` and the AOT/trim analyzers: 0 warnings, 0 errors. Test assembly: 575 passed, 0 failed, 0 skipped (357 prior plus 218 new). `ReleasePackageManifestTests.Payload_protection*`: 13/13 passed. The invariant-globalization V029 lane: 1/1 passed. Mutation checks: 18 mutants, each failed at least one new test.
 
 ## Spec Change Log
@@ -352,6 +353,27 @@ The blind hunter (BH), edge-case hunter (EC), and verification-gap reviewer (VG)
 | EC1 | low | A mutable caller list can be changed across awaits, but this is the same internal caller-mutation defect rejected in pass 1 EC2. No Server consumer exists yet; the caller must keep the input stable. | reject (carried) |
 | VG1 | low | Direct parser tests cover the 65,537-node boundary, but no router test would catch dropping the node limit from event classification. | patch |
 | VG-other | medium | The failed v2 snapshot read returns without rechecking caller cancellation after core cleanup. This shares BH3's root cause. | patch (with BH3) |
+
+### Pass 6 review triage (2026-10-09)
+
+The blind hunter (BH), edge-case hunter (EC), and verification-gap reviewer (VG) reviewed the cumulative Story 8.4 diff. The prior triage and current code settle every finding; no new patch or deferred entry is needed. Each row preserves the reviewer's separate claim.
+
+| ID | Verdict | Evidence | Route |
+|---|---|---|---|
+| BH1 | low | DW-519's original core routing ambiguity is resolved, and its status explicitly names the remaining unauthenticated-carrier rewrite for Story 8.7. Changing the status or spec would not change the behavior. | reject |
+| BH2 | medium | Carried from DW-544: `json+identity-history-v1` is a custom pass-through until Story 8.7 either adds an explicit route or keeps that reader outside this router. No Server consumer is wired here. | defer (carried) |
+| BH3 | medium (unverified) | Carried from pass 1 BH6/EC10/EC11: bounded JSON can reject stored legacy history that existing readers accepted. The recorded stored-data inventory before 8.7 determines whether any such record exists. | defer (carried) |
+| BH4 | medium (unverified) | Carried from pass 2 BH2: a plain historical `$enc` field would be rejected as a protected marker. The existing history scan determines whether one exists. | defer (carried) |
+| BH5 | low | `2e0` is valid JSON numeric notation, but it is not the carrier's canonical integer spelling; `HasCanonicalCarrierStructure` rejects it before the integer DTO reader. The safe malformed result retains the record, and supporting alternate spellings adds parsing rules without a known writer. | reject |
+| BH6 | low | `BigInteger.TryParse` receives at most the carrier's 65,536-character ceiling. The reviewer showed no reachable resource failure or unbounded input; replacing the parser adds complexity to this internal classifier. | reject |
+| BH7 | low | Carried from the approved v1 shape decision: the router detects `$enc` within bounded JSON, while the registered reader owns its envelope and authentication details. A malformed marker cannot pass through as plaintext. | reject (carried) |
+| BH8 | low | The v1 snapshot wrapper requires its marker, format, type name and non-null payload; the registered reader owns the payload representation. A boolean or number reaches that reader but cannot bypass its authentication contract. | reject |
+| BH9 | false | Stream shape validation is an explicit precondition and occurs before routing. A later malformed record raises `ArgumentException`; the first-unreadable promise applies to valid contiguous streams. This is carried from the earlier BH1 decision. | reject (carried) |
+| BH10 | low | The router passes caller-owned plain bytes through unchanged by design. Its API is internal and the caller must keep its input stable; a defensive copy would add a new ownership cost without a demonstrated consumer defect. | reject |
+| BH11 | medium | Carried from pass 3 VG4: 357 earlier tests already exceed the lane's 324-test floor, so compatibility-class disappearance would stay green. The existing deferred entry covers the frozen workflow and required-check follow-up. | defer (carried) |
+| EC1 | low | Carried from pass 1 BH4/EC8: augmented `Unprotected` metadata over marker-free plain bytes is permitted for foreign-writer compatibility. Tightening it cannot detect a carrier that was maliciously rewritten. | reject (carried) |
+| EC2 | false | The malformed-later-record case violates stream shape preconditions, which are validated before any record is read; it is the same claim as BH9. | reject (carried) |
+| VG1 | medium | The reviewer confirmed that excluding all three compatibility classes leaves 357 passing tests above the frozen 324 floor. The pass 3 deferred entry already owns the discovery and required-check changes. | defer (carried) |
 
 ## Design Notes
 

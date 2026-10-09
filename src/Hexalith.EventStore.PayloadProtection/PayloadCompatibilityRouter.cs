@@ -158,6 +158,7 @@ internal sealed class PayloadCompatibilityRouter
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(records);
+        cancellationToken.ThrowIfCancellationRequested();
         for (int index = 0; index < records.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -160,16 +160,23 @@ public sealed class CompatibilitySnapshotRoutingTests
     [InlineData("readable")]
     [InlineData("deserialization-failure")]
     [InlineData("cancellation")]
+    [InlineData("out-of-memory")]
+    [InlineData("foreign-cancellation")]
     public async Task V118_V2SnapshotPlaintext_IsZeroedForEveryOutcomeAsync(string outcome)
     {
         using var source = new CancellationTokenSource();
         var observer = new RecordingBufferObserver();
         var resolver = new CountingKeyResolver();
         SnapshotTypeRegistry registry = CompatibilityTestData.Registry();
-        if (outcome == "cancellation")
+        if (outcome is "cancellation" or "out-of-memory" or "foreign-cancellation")
         {
             var options = new JsonSerializerOptions { TypeInfoResolver = CompatibilityTestJsonContext.Default };
-            options.Converters.Add(new CancellingSnapshotConverter(source));
+            options.Converters.Add(outcome switch
+            {
+                "cancellation" => new CancellingSnapshotConverter(source),
+                "out-of-memory" => new ThrowingSnapshotConverter(new OutOfMemoryException()),
+                _ => new ThrowingSnapshotConverter(new OperationCanceledException()),
+            });
             registry = new SnapshotTypeRegistry(
                 [new SnapshotTypeRegistration(CompatibilityTestData.SnapshotTypeId, options.GetTypeInfo(typeof(PartySnapshotState)))]);
         }
@@ -187,6 +194,10 @@ public sealed class CompatibilitySnapshotRoutingTests
         {
             await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadSnapshotAsync(record, source.Token));
         }
+        else if (outcome == "out-of-memory")
+        {
+            await Should.ThrowAsync<OutOfMemoryException>(async () => await router.ReadSnapshotAsync(record));
+        }
         else
         {
             CompatibilitySnapshotReadResult result = await router.ReadSnapshotAsync(record);
@@ -203,6 +214,32 @@ public sealed class CompatibilitySnapshotRoutingTests
 
         resolver.Calls.ShouldBe(1);
         observer.Observed.ShouldBe([SensitiveBufferKind.DecryptedPlaintext]);
+    }
+
+    /// <summary>Caller cancellation after a failed core read wins over the unreadable snapshot result.</summary>
+    [Fact]
+    public async Task V118_CancellationAfterUnreadableV2CoreCompletion_PropagatesAsync()
+    {
+        using var source = new CancellationTokenSource();
+        var coreObserver = new RecordingBufferObserver(kind =>
+        {
+            if (kind == SensitiveBufferKind.DataEncryptionKey)
+            {
+                source.Cancel();
+            }
+        });
+        var resolver = new CountingKeyResolver(static _ => new byte[32]);
+        var router = new PayloadCompatibilityRouter(
+            resolver.ResolveAsync,
+            snapshotTypes: CompatibilityTestData.Registry(),
+            core: new PayloadProtectionCore(coreObserver));
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadSnapshotAsync(
+            CompatibilityTestData.Snapshot(CompatibilityTestData.ProtectSnapshot(), CompatibilityTestData.V2Metadata()),
+            source.Token));
+
+        coreObserver.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        resolver.Calls.ShouldBe(1);
     }
 
     /// <summary>The registry resolves exact current identifiers and aliases only.</summary>

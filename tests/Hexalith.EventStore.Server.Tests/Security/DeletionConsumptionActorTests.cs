@@ -356,6 +356,53 @@ public sealed class DeletionConsumptionActorTests
         await fixture.Provider.DidNotReceive().ConsumeAsync(Arg.Any<DeletionBatchConsumptionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Retained-stage recover and verify use the original actor deadline token and cannot release a late read or mutation.</summary>
+    [Theory]
+    [InlineData("recover")][InlineData("verify")]
+    public async Task SuspendedRetainedStageProofUsesEntryDeadline(string phase)
+    {
+        var f = new DeletionConsumptionFixture();
+        if (phase == "recover")
+        {
+            f.JournalAvailable = false;
+            await Should.ThrowAsync<InvalidOperationException>(() => f.Actor.RegisterAsync(DeletionConsumptionFixture.Request()));
+            f.JournalAvailable = true;
+        }
+        else
+        {
+            var prior = new DeletionConsumptionLedger("tenant-a", 0, 0, [], [], []);
+            var candidate = prior with { Revision = 1 };
+            var staged = RecoverableAnchoredState.Prepare(DeletionConsumptionActor.GetActorId("tenant-a") + "|deletion-consumption-v23", 0, 1, prior, candidate);
+            await f.Backend.SetStateAsync("deletion-consumption-v23-pending-transition-v1", staged);
+            await f.Backend.SaveStateAsync();
+        }
+        var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var actor = DeletionConsumptionFixture.Create(f.Backend, f.Authority, f.Provider, clock);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken supplied = default;
+        if (phase == "recover")
+        {
+            f.Authority.RecoverTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
+        }
+        else
+        {
+            f.Authority.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            { supplied = call.Arg<CancellationToken>(); entered.TrySetResult(); return CompleteAsync(); });
+        }
+        async Task<bool> CompleteAsync() { bool result = await release.Task; completed.TrySetResult(); return result; }
+        string before = JsonSerializer.Serialize(f.Backend.CommittedState);
+        var pending = actor.RegisterAsync(DeletionConsumptionFixture.Request());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        supplied.CanBeCanceled.ShouldBeTrue(); clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        supplied.IsCancellationRequested.ShouldBeTrue();
+        release.SetResult(false); await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        JsonSerializer.Serialize(f.Backend.CommittedState).ShouldBe(before);
+    }
+
     /// <summary>A state task remains turn-owned after deadline release; later entries wait for its actual completion.</summary>
     [Fact]
     public async Task SuspendedStateReadExcludesLaterTurnUntilCompletion()
@@ -381,7 +428,13 @@ public sealed class DeletionConsumptionActorTests
         clock.Advance(TimeSpan.FromSeconds(30));
         (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
         (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldBeNull();
+        var postMethod = typeof(Actor).GetMethod("OnPostActorMethodAsyncInternal", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var runtimePost = (Task)postMethod.Invoke(actor, [default(ActorMethodContext)])!;
+        runtimePost.IsCompleted.ShouldBeFalse();
+        await manager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
         f.Backend.CommittedState.ShouldBeEmpty(); release.SetResult();
+        await runtimePost.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await manager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
         (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldNotBeNull();
         f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Revocations.Count.ShouldBe(1);
     }
