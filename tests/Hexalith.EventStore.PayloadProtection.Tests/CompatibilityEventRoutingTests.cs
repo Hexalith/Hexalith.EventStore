@@ -471,6 +471,8 @@ public sealed class CompatibilityEventRoutingTests
     [InlineData("{\"state\":\"Protected, Protected\",\"metadataVersion\":1,\"scheme\":\"hexalith-pdenc-v2\",\"contentHint\":\"application/json\",\"compatibilityFlags\":{\"format\":\"json+pdenc-v2\",\"envelope\":\"pdenc-v2\"}}")]
     [InlineData("{\"state\":\"Protected \",\"metadataVersion\":1,\"scheme\":\"hexalith-pdenc-v2\",\"contentHint\":\"application/json\",\"compatibilityFlags\":{\"format\":\"json+pdenc-v2\",\"envelope\":\"pdenc-v2\"}}")]
     [InlineData("{\"state\":1,\"metadataVersion\":1}")]
+    [InlineData("{\"metadataVersion\":2,\"state\":\"7\"}")]
+    [InlineData("{\"state\":1,\"metadataVersion\":2}")]
     [InlineData("{\"state\":\"Unprotected\",\"metadataVersion\":\"1\"}")]
     [InlineData("{\"state\":\"Unprotected\",\"metadataVersion\":1,\"state\":\"Unprotected\"}")]
     [InlineData("{\"state\":\"Unprotected\",\"metadataVersion\":2,\"metadataVersion\":1}")]

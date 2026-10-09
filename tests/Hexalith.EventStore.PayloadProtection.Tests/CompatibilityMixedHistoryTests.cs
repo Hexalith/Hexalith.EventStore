@@ -65,6 +65,25 @@ public sealed class CompatibilityMixedHistoryTests
         reader.EventCalls.ShouldBe(0);
     }
 
+    /// <summary>Cancellation is observed before stream shape validation, including an empty stream.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task V119_PrevalidationObservesCancellationAsync(bool empty)
+    {
+        using var source = new CancellationTokenSource();
+        (PayloadCompatibilityRouter router, CountingKeyResolver resolver, FakeLegacyPayloadReader reader) = CreateRouter();
+        IReadOnlyList<CompatibilityEventRecord> records = empty
+            ? []
+            : [CompatibilityTestData.V2Event(1), null!];
+        source.Cancel();
+
+        await Should.ThrowAsync<OperationCanceledException>(async () => await router.ReadStreamAsync(records, source.Token));
+
+        resolver.Calls.ShouldBe(0);
+        reader.EventCalls.ShouldBe(0);
+    }
+
     /// <summary>The stream stops at the first unreadable sequence and no later record is examined.</summary>
     [Theory]
     [InlineData("missing-key", UnreadableProtectedDataReason.MissingKey)]
