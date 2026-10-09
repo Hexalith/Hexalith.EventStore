@@ -2,7 +2,8 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '6-6-event-versioning-and-upcasting-implementation'
@@ -52,11 +53,11 @@ Path shorthand: `Contracts`, `Client`, `DomainService` and `Server` mean the mat
 
 **Execution:**
 
-- [ ] `src/Hexalith.EventStore.{Client,Server,DomainService,Contracts}/`, matching `tests/`, `scripts/{verify-dapr-logical-*,verify-event-evolution*,prepare-event-evolution-candidates*}`, `.github/workflows/{event-evolution-local-guards.yml,ci.yml}`: remove dormant groups/tests/guards, retain live code and obsolete public shells. Archive first-attempt 6.6 docs under `_bmad-output/implementation-artifacts/archive/story-6-6-first-attempt/` with the last containing commit; remove tracked `evidence/story-6-6/` from HEAD.
-- [ ] Contracts/Client/DomainService/Server files in Code Map: implement version declaration/carriers, discovery and explicit registration, startup validation, shared read pipeline and V1/V2 fences on every read path.
-- [ ] Contracts `Events/` and Server append/read plus Client subscription paths: validate identity before staging/apply; apply strict AD-32 reads and writes.
-- [ ] Projection/registration/aggregate files in Code Map: add token default method, keyed async registration and preferred Handle token overload.
-- [ ] `tests/Hexalith.EventStore.{Contracts,Client,DomainService,Server}.Tests/`, `docs/concepts/event-versioning.md`: cover AC1–AC7, invalid chains, retry/no-effect, JSON actor round-trip and deployment order; document Dapr retry/dead-letter configuration.
+- [x] `src/Hexalith.EventStore.{Client,Server,DomainService,Contracts}/`, matching `tests/`, `scripts/{verify-dapr-logical-*,verify-event-evolution*,prepare-event-evolution-candidates*}`, `.github/workflows/{event-evolution-local-guards.yml,ci.yml}`: remove dormant groups/tests/guards, retain live code and obsolete public shells. Archive first-attempt 6.6 docs under `_bmad-output/implementation-artifacts/archive/story-6-6-first-attempt/` with the last containing commit; remove tracked `evidence/story-6-6/` from HEAD.
+- [x] Contracts/Client/DomainService/Server files in Code Map: implement version declaration/carriers, discovery and explicit registration, startup validation, shared read pipeline and V1/V2 fences on every read path.
+- [x] Contracts `Events/` and Server append/read plus Client subscription paths: validate identity before staging/apply; apply strict AD-32 reads and writes.
+- [x] Projection/registration/aggregate files in Code Map: add token default method, keyed async registration and preferred Handle token overload.
+- [x] `tests/Hexalith.EventStore.{Contracts,Client,DomainService,Server}.Tests/`, `docs/concepts/event-versioning.md`: cover AC1–AC7, invalid chains, retry/no-effect, JSON actor round-trip and deployment order; document Dapr retry/dead-letter configuration.
 
 **Acceptance Criteria:**
 
@@ -74,6 +75,10 @@ Path shorthand: `Contracts`, `Client`, `DomainService` and `Server` mean the mat
 ## Review Triage Log
 
 ## Verification
+
+**Observed (2026-10-09):** Release solution build succeeded with zero warnings/errors. Contracts: 2,308 passed, 2 skipped (package inventory environment variable absent). Client: 1,448 passed. DomainService: 523 passed. Server: 4,279 passed, 25 skipped. `git diff --cached --check` passed. The full Contracts test run initially hit a transient executable-file lock while other suites ran; the affected test passed directly, and the isolated full rerun passed.
+
+**Matrix audit:** The actor JSON round-trip and registry tests cover legacy unstamped bytes and ordered chains; registry and projection tests cover rename, invalid versions, failed upcasters and no handler effect; Contracts identity tests cover named components and legacy GUID reads; projection, keyed processor and aggregate tests cover caller-token forwarding. These covering tests ran in the successful project suites above.
 
 **Commands:**
 
