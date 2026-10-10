@@ -2,12 +2,16 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Subscriptions;
+using Hexalith.EventStore.Client.Tests.Events;
 using Hexalith.EventStore.Contracts.Events;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -337,6 +341,45 @@ public class EventStoreDomainEventProcessorTests {
 
         EventStoreDomainEventProcessingResult duplicate = await processor.ProcessAsync(envelope);
         duplicate.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_RenamedV1Event_ReachesCurrentHandlerAndCompletesMarker()
+    {
+        string oldName = "Historical.VersionedTestEvent";
+        string currentName = typeof(VersionedTestEvent).FullName!;
+        var handler = Substitute.For<IEventStoreDomainEventHandler<VersionedTestEvent>>();
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton(handler)
+            .BuildServiceProvider();
+        var markers = new InMemoryEventStoreDomainEventMarkerStore();
+        var evolution = new EventPayloadEvolutionRegistry(
+            [typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster(oldName, 1, currentName, payload =>
+            {
+                payload["Value"] = payload["Amount"]!.GetValue<int>();
+                payload.Remove("Amount");
+                return payload;
+            }),
+            new TestPayloadUpcaster(currentName, 2, null, payload =>
+            {
+                payload["Value"] = payload["Value"]!.GetValue<int>() + 1;
+                return payload;
+            })]);
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type> { [currentName] = typeof(VersionedTestEvent) },
+            markers,
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            evolution: evolution);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", "{\"Amount\":4}"u8.ToArray())
+            with { EventTypeName = "VersionedTestEvent", PayloadVersion = 1 };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        await handler.Received(1).HandleAsync(
+            Arg.Is<VersionedTestEvent>(value => value.Value == 5),
+            Arg.Any<EventStoreDomainEventContext>(), Arg.Any<CancellationToken>());
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
     }
 
     [Fact]

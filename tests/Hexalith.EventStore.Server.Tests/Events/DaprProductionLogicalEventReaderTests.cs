@@ -103,6 +103,34 @@ public sealed class DaprProductionLogicalEventReaderTests
         _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Verifies the live logical reader forwards stamped metadata V1 for the client JSON pipeline.</summary>
+    [Fact]
+    public async Task StampedMetadataV1ReadRetainsVersionAndDigestWithoutActivatingMetadataV2()
+    {
+        using EventDomainRegistry registry = CreateRegistry();
+        (IActorStateManager stateManager, EventEnvelope original) = StoreCurrentV1();
+        EventEnvelope stamped = original with { PayloadVersion = 2 };
+        stamped = stamped with
+        {
+            ApplicationPayloadDigest = EventLogicalDigest.Compute(
+                stamped, "json", EventLogicalDigest.HashPayload(stamped.Payload)),
+        };
+        Store(stateManager, stamped);
+        var reader = CreateReader(registry, stateManager, registry.Fingerprint);
+        var streamReader = new EventStreamReader(stateManager, NullLogger<EventStreamReader>.Instance);
+
+        RehydrationResult result = (await streamReader.RehydrateAsync(
+            Identity, snapshot: null, CancellationToken.None, reader, "r")).ShouldNotBeNull();
+
+        EventEnvelope read = result.Events.ShouldHaveSingleItem();
+        read.MetadataVersion.ShouldBe(1);
+        read.EventContractType.ShouldBeNull();
+        read.PayloadVersion.ShouldBe(2);
+        read.Payload.ShouldBe(original.Payload);
+        read.ApplicationPayloadDigest.ShouldBe(stamped.ApplicationPayloadDigest);
+        result.EffectiveEvents.ShouldBeNull();
+    }
+
     /// <summary>Verifies historical V1 history without an additive digest remains readable.</summary>
     [Fact]
     public async Task HistoricalV1WithoutDigestStaysReadable()

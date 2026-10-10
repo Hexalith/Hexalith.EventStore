@@ -439,6 +439,47 @@ public sealed class DeletionConsumptionActorTests
         f.Backend.CommittedState.Single().Value.ShouldBeOfType<DeletionConsumptionLedger>().Revocations.Count.ShouldBe(1);
     }
 
+    /// <summary>Failed-method cleanup waits for unfinished state I/O, including a fault, before ClearCacheAsync.</summary>
+    [Fact]
+    public async Task FailedMethodCleanupWaitsForFaultedStateIoBeforeClearCache()
+    {
+        var f = new DeletionConsumptionFixture(); var clock = new RetainedHistoryTimeProvider(DateTimeOffset.UtcNow);
+        var manager = Substitute.For<IActorStateManager>();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int clears = 0; int resetClears = 0;
+        manager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (Interlocked.Increment(ref clears) == 1) { entered.TrySetResult(); return FaultAfterRelease(); }
+            Interlocked.Increment(ref resetClears);
+            return f.Backend.ClearCacheAsync(call.Arg<CancellationToken>());
+            async Task FaultAfterRelease()
+            {
+                await release.Task;
+                throw new InvalidOperationException("Unfinished state I/O faulted.");
+            }
+        });
+        manager.TryGetStateAsync<DeletionConsumptionLedger>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<DeletionConsumptionLedger>(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.TryGetStateAsync<AnchoredStateTransition>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryGetStateAsync<AnchoredStateTransition>(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<DeletionConsumptionLedger>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<DeletionConsumptionLedger>(), call.Arg<CancellationToken>()));
+        manager.SetStateAsync(Arg.Any<string>(), Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.SetStateAsync(call.Arg<string>(), call.Arg<AnchoredStateTransition>(), call.Arg<CancellationToken>()));
+        manager.TryRemoveStateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => f.Backend.TryRemoveStateAsync(call.Arg<string>(), call.Arg<CancellationToken>()));
+        manager.SaveStateAsync(Arg.Any<CancellationToken>()).Returns(call => f.Backend.SaveStateAsync(call.Arg<CancellationToken>()));
+        var actor = DeletionConsumptionFixture.Create(manager, f.Authority, f.Provider, clock);
+        var pending = actor.LookupAsync("tenant-a", "batch-1");
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        (await pending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        var failedMethod = typeof(Actor).GetMethod("OnActorMethodFailedInternalAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var runtimeFailed = (Task)failedMethod.Invoke(actor, [default(ActorMethodContext), new InvalidOperationException("turn failed")])!;
+        runtimeFailed.IsCompleted.ShouldBeFalse();
+        resetClears.ShouldBe(0);
+        release.SetResult();
+        await runtimeFailed.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        resetClears.ShouldBe(1);
+        (await actor.RegisterRevocationAsync(DeletionConsumptionFixture.Revocation("other-key"))).ShouldNotBeNull();
+    }
+
     /// <summary>Consumed/blocked receipts remain immutable while missing or withdrawn current exact private lookup credentials deny release.</summary>
     [Fact]
     public async Task ImmutableOwnerOutcomeDoesNotGrantReadAuthority()

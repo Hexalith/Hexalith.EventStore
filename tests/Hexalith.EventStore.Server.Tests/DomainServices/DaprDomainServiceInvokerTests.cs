@@ -135,6 +135,28 @@ public class DaprDomainServiceInvokerTests {
     }
 
     [Fact]
+    public async Task InvokeAsync_VersionedV1ResponsePreservesVersionAndPayloadThroughSerializedWrapper()
+    {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        byte[] payload = "{\"Value\":7}"u8.ToArray();
+        var wire = new DomainServiceWireResult(false,
+            [new DomainServiceWireEvent("Domain.VersionedEvent", payload) { PayloadVersion = 2 }]);
+        using var httpClient = new HttpClient(new StaticResponseHandler(JsonSerializer.Serialize(wire, JsonSerializerOptions.Web)));
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, _resolver, _options, TimeProvider.System, _logger);
+
+        DomainResult result = await invoker.InvokeAsync(CreateTestEnvelope(), null);
+
+        ISerializedEventPayload serialized = result.Events.ShouldHaveSingleItem().ShouldBeAssignableTo<ISerializedEventPayload>();
+        serialized.EventTypeName.ShouldBe("Domain.VersionedEvent");
+        serialized.PayloadVersion.ShouldBe(2);
+        serialized.PayloadBytes.ShouldBe(payload);
+    }
+
+    [Fact]
     public async Task InvokeAsync_UnsolicitedV2_RejectsBeforeReturningAnAdmittedResult() {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
