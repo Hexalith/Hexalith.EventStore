@@ -1,0 +1,14 @@
+{
+  "consumer_cleanup": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/receipts/6229aeb9aaf54d58b9ad808bed375af0.json",
+  "errors": [
+    "command failed: dotnet build /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj --no-restore -c Release -m:1 -p:EventStoreVersion=3.110.0 -p:NuGetAudit=false; exit=1"
+  ],
+  "executor_source_sha256": "00b3c7607f90058ae6e1608b2475502ab97236c019a69bc28b2389ff7cb10423",
+  "finished_utc": "2026-10-10T06:41:42.772686+00:00",
+  "inputs_sha256": null,
+  "invocation": "bba682b532a742f8b09dfedd6257b6bf",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-10T06:41:31.884061+00:00"
+}

@@ -1,0 +1,39 @@
+{
+  "errors": [],
+  "executor_source_sha256": "d6d9377a500847c055b7e1e668e5b98679893094261648af83fff0db8a2a574f",
+  "finished_utc": "2026-10-10T07:38:51.916672+00:00",
+  "inputs_sha256": "c3e489f2d7507fd52bf4b65e593976cf8af013cfd14a4b3c698760d31bb190cf",
+  "invocation": "3b30446bd81046b2b079d0f16cadd7b3",
+  "owned_containers": {
+    "15f75fc4eb12440f7ff9c4fb17dfa71dc3e1e5c3b8ba43163944a2b6caddd468": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-3b30446bd81046b2b079d0f16cadd7b3-placement-60801b11",
+      "port": 24065,
+      "role": "placement"
+    },
+    "37a5a09da3359d47fd9e04afac2c50286bbe1255f9737119e7b3468802f4510b": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-3b30446bd81046b2b079d0f16cadd7b3-scheduler-7801fe67",
+      "port": 29398,
+      "role": "scheduler"
+    },
+    "9f4c83c1215426d16151b1f1654796003d9a7f28ba606c1053e542bb852c493d": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-3b30446bd81046b2b079d0f16cadd7b3-pubsub-0f9682aa",
+      "port": 21063,
+      "role": "pubsub"
+    },
+    "cac4b7b0bd6d34872db1f4cba64bb8ae1bb01e30d17ed7f58bfc7c2bcb07d0c0": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-3b30446bd81046b2b079d0f16cadd7b3-source-9cfc225a",
+      "port": 15033,
+      "role": "source"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/development-smoke-reminder-fixed-91bb8210d379413ba13be0b312bc1d4f/receipts/ba54089084c046ff90755e19165cea04.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-10T07:38:03.528050+00:00"
+}

@@ -75,6 +75,14 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+class PostgresqlComponentTests(unittest.TestCase):
+    def testNonStringRenderedHashIsInvalidPacket(self):
+        content = (q.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text()
+        file = {"content": content, "credential_redacted": True, "rendered_sha256": 7}
+        with self.assertRaisesRegex(q.InvalidPacket, "PostgreSQL component template"):
+            q.validate_postgresql_component(file)
+
+
 def at(second):
     return f"2026-10-06T00:{second // 60:02d}:{second % 60:02d}+00:00"
 

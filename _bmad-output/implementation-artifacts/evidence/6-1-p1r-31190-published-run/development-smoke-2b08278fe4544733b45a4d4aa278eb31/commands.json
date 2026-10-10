@@ -1,0 +1,1692 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:25.558672+00:00",
+    "id": 1,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 97872,
+        "pid": 97872,
+        "session": 97872,
+        "start_ticks": 13667591
+      }
+    ],
+    "process": {
+      "pgid": 97872,
+      "pid": 97872,
+      "session": 97872,
+      "start_ticks": 13667591
+    },
+    "started_utc": "2026-10-10T06:53:25.349629+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:25.887283+00:00",
+    "id": 2,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 98020,
+        "pid": 98020,
+        "session": 98020,
+        "start_ticks": 13667612
+      }
+    ],
+    "process": {
+      "pgid": 98020,
+      "pid": 98020,
+      "session": 98020,
+      "start_ticks": 13667612
+    },
+    "started_utc": "2026-10-10T06:53:25.559131+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:26.092426+00:00",
+    "id": 3,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 98142,
+        "pid": 98142,
+        "session": 98142,
+        "start_ticks": 13667645
+      }
+    ],
+    "process": {
+      "pgid": 98142,
+      "pid": 98142,
+      "session": 98142,
+      "start_ticks": 13667645
+    },
+    "started_utc": "2026-10-10T06:53:25.889079+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:26.275342+00:00",
+    "id": 4,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 98158,
+        "pid": 98158,
+        "session": 98158,
+        "start_ticks": 13667666
+      }
+    ],
+    "process": {
+      "pgid": 98158,
+      "pid": 98158,
+      "session": 98158,
+      "start_ticks": 13667666
+    },
+    "started_utc": "2026-10-10T06:53:26.093594+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/p1r-8bba95c276bf49b48e245651faa311c0-placement-ca712255.cid",
+      "--name",
+      "p1r-8bba95c276bf49b48e245651faa311c0-placement-ca712255",
+      "--label",
+      "hexalith.p1r.invocation=8bba95c276bf49b48e245651faa311c0",
+      "-p",
+      "127.0.0.1:16549:50005",
+      "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "./placement",
+      "--port",
+      "50005"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:26.554077+00:00",
+    "id": 5,
+    "output": "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\n",
+    "output_sha256": "2079884a7be5da4e8deaa783c0a08ba68e37cf1886e1739afc7e71d2608d8af9",
+    "owned_processes": [
+      {
+        "pgid": 98194,
+        "pid": 98194,
+        "session": 98194,
+        "start_ticks": 13667684
+      }
+    ],
+    "process": {
+      "pgid": 98194,
+      "pid": 98194,
+      "session": 98194,
+      "start_ticks": 13667684
+    },
+    "started_utc": "2026-10-10T06:53:26.276014+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:26.739664+00:00",
+    "id": 6,
+    "output": "{\"Id\":\"b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-placement-ca712255\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "b995fe9be09a26e1dbcf9abbe364fa1131a2619312f9064464674b19a068e92f",
+    "owned_processes": [
+      {
+        "pgid": 98226,
+        "pid": 98226,
+        "session": 98226,
+        "start_ticks": 13667712
+      }
+    ],
+    "process": {
+      "pgid": 98226,
+      "pid": 98226,
+      "session": 98226,
+      "start_ticks": 13667712
+    },
+    "started_utc": "2026-10-10T06:53:26.555751+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:27.257782+00:00",
+    "id": 7,
+    "output": "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\n",
+    "output_sha256": "2079884a7be5da4e8deaa783c0a08ba68e37cf1886e1739afc7e71d2608d8af9",
+    "owned_processes": [
+      {
+        "pgid": 98286,
+        "pid": 98286,
+        "session": 98286,
+        "start_ticks": 13667730
+      }
+    ],
+    "process": {
+      "pgid": 98286,
+      "pid": 98286,
+      "session": 98286,
+      "start_ticks": 13667730
+    },
+    "started_utc": "2026-10-10T06:53:26.742055+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/p1r-8bba95c276bf49b48e245651faa311c0-scheduler-beae6cbf.cid",
+      "--name",
+      "p1r-8bba95c276bf49b48e245651faa311c0-scheduler-beae6cbf",
+      "--label",
+      "hexalith.p1r.invocation=8bba95c276bf49b48e245651faa311c0",
+      "-p",
+      "127.0.0.1:25909:50006",
+      "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "./scheduler",
+      "--port",
+      "50006",
+      "--override-broadcast-host-port",
+      "127.0.0.1:25909",
+      "--etcd-data-dir",
+      "/tmp/p1r-etcd",
+      "--etcd-client-listen-address",
+      "0.0.0.0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:27.542458+00:00",
+    "id": 8,
+    "output": "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\n",
+    "output_sha256": "3e203c266a2b451e2e6f12b65756f657774600802e0c45816ee01d476f5015f6",
+    "owned_processes": [
+      {
+        "pgid": 98502,
+        "pid": 98502,
+        "session": 98502,
+        "start_ticks": 13667782
+      }
+    ],
+    "process": {
+      "pgid": 98502,
+      "pid": 98502,
+      "session": 98502,
+      "start_ticks": 13667782
+    },
+    "started_utc": "2026-10-10T06:53:27.259385+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:27.747278+00:00",
+    "id": 9,
+    "output": "{\"Id\":\"38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-scheduler-beae6cbf\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "c9ee598c3f8bed4bd3d57ab41f7438037a99c0e83089b3d631d93c1a215cb7bf",
+    "owned_processes": [
+      {
+        "pgid": 98645,
+        "pid": 98645,
+        "session": 98645,
+        "start_ticks": 13667811
+      }
+    ],
+    "process": {
+      "pgid": 98645,
+      "pid": 98645,
+      "session": 98645,
+      "start_ticks": 13667811
+    },
+    "started_utc": "2026-10-10T06:53:27.543476+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:28.482888+00:00",
+    "id": 10,
+    "output": "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\n",
+    "output_sha256": "3e203c266a2b451e2e6f12b65756f657774600802e0c45816ee01d476f5015f6",
+    "owned_processes": [
+      {
+        "pgid": 98660,
+        "pid": 98660,
+        "session": 98660,
+        "start_ticks": 13667831
+      }
+    ],
+    "process": {
+      "pgid": 98660,
+      "pid": 98660,
+      "session": 98660,
+      "start_ticks": 13667831
+    },
+    "started_utc": "2026-10-10T06:53:27.751446+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/p1r-8bba95c276bf49b48e245651faa311c0-pubsub-db20cd90.cid",
+      "--name",
+      "p1r-8bba95c276bf49b48e245651faa311c0-pubsub-db20cd90",
+      "--label",
+      "hexalith.p1r.invocation=8bba95c276bf49b48e245651faa311c0",
+      "-p",
+      "127.0.0.1:23375:6379",
+      "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:29.018055+00:00",
+    "id": 11,
+    "output": "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\n",
+    "output_sha256": "c1d8d6d00c37260639320b4713206def1ddb9b9a028debccac69eb10f4bd251e",
+    "owned_processes": [
+      {
+        "pgid": 98757,
+        "pid": 98757,
+        "session": 98757,
+        "start_ticks": 13667905
+      }
+    ],
+    "process": {
+      "pgid": 98757,
+      "pid": 98757,
+      "session": 98757,
+      "start_ticks": 13667905
+    },
+    "started_utc": "2026-10-10T06:53:28.483903+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:29.365101+00:00",
+    "id": 12,
+    "output": "{\"Id\":\"91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-pubsub-db20cd90\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "1a93160fb2999218a8d2c533a60dc8f7ad46397e732292a5a13110650f897544",
+    "owned_processes": [
+      {
+        "pgid": 98787,
+        "pid": 98787,
+        "session": 98787,
+        "start_ticks": 13667958
+      }
+    ],
+    "process": {
+      "pgid": 98787,
+      "pid": 98787,
+      "session": 98787,
+      "start_ticks": 13667958
+    },
+    "started_utc": "2026-10-10T06:53:29.019080+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:29.890583+00:00",
+    "id": 13,
+    "output": "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\n",
+    "output_sha256": "c1d8d6d00c37260639320b4713206def1ddb9b9a028debccac69eb10f4bd251e",
+    "owned_processes": [
+      {
+        "pgid": 98858,
+        "pid": 98858,
+        "session": 98858,
+        "start_ticks": 13667993
+      }
+    ],
+    "process": {
+      "pgid": 98858,
+      "pid": 98858,
+      "session": 98858,
+      "start_ticks": 13667993
+    },
+    "started_utc": "2026-10-10T06:53:29.367039+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/p1r-8bba95c276bf49b48e245651faa311c0-source-b84ac698.cid",
+      "--name",
+      "p1r-8bba95c276bf49b48e245651faa311c0-source-b84ac698",
+      "--label",
+      "hexalith.p1r.invocation=8bba95c276bf49b48e245651faa311c0",
+      "-p",
+      "127.0.0.1:21816:5432",
+      "-e",
+      "POSTGRES_PASSWORD",
+      "-e",
+      "POSTGRES_DB=eventstore",
+      "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:30.144389+00:00",
+    "id": 14,
+    "output": "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\n",
+    "output_sha256": "0f6aa44628e8a5892899353607087dc07ea86078c820161dadf1d40136c85393",
+    "owned_processes": [
+      {
+        "pgid": 98938,
+        "pid": 98938,
+        "session": 98938,
+        "start_ticks": 13668045
+      }
+    ],
+    "process": {
+      "pgid": 98938,
+      "pid": 98938,
+      "session": 98938,
+      "start_ticks": 13668045
+    },
+    "started_utc": "2026-10-10T06:53:29.891455+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:30.340078+00:00",
+    "id": 15,
+    "output": "{\"Id\":\"130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-source-b84ac698\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "2227a025ca61d5753484376a3c7aff34531f344bc9099fea04bfd8d850a1b2db",
+    "owned_processes": [
+      {
+        "pgid": 99006,
+        "pid": 99006,
+        "session": 99006,
+        "start_ticks": 13668071
+      }
+    ],
+    "process": {
+      "pgid": 99006,
+      "pid": 99006,
+      "session": 99006,
+      "start_ticks": 13668071
+    },
+    "started_utc": "2026-10-10T06:53:30.146102+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:30.779546+00:00",
+    "id": 16,
+    "output": "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\n",
+    "output_sha256": "0f6aa44628e8a5892899353607087dc07ea86078c820161dadf1d40136c85393",
+    "owned_processes": [
+      {
+        "pgid": 99110,
+        "pid": 99110,
+        "session": 99110,
+        "start_ticks": 13668090
+      }
+    ],
+    "process": {
+      "pgid": 99110,
+      "pid": 99110,
+      "session": 99110,
+      "start_ticks": 13668090
+    },
+    "started_utc": "2026-10-10T06:53:30.341017+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 2,
+    "finished_utc": "2026-10-10T06:53:31.067134+00:00",
+    "id": 17,
+    "output": "127.0.0.1:5432 - no response\n",
+    "output_sha256": "16ee3d174b642b39bda2af4b9be5ba53306922e073f3f9750a7f4b458cdfde1a",
+    "owned_processes": [
+      {
+        "pgid": 99248,
+        "pid": 99248,
+        "session": 99248,
+        "start_ticks": 13668134
+      }
+    ],
+    "process": {
+      "pgid": 99248,
+      "pid": 99248,
+      "session": 99248,
+      "start_ticks": 13668134
+    },
+    "started_utc": "2026-10-10T06:53:30.780388+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 2,
+    "finished_utc": "2026-10-10T06:53:31.902438+00:00",
+    "id": 18,
+    "output": "127.0.0.1:5432 - no response\n",
+    "output_sha256": "16ee3d174b642b39bda2af4b9be5ba53306922e073f3f9750a7f4b458cdfde1a",
+    "owned_processes": [
+      {
+        "pgid": 99714,
+        "pid": 99714,
+        "session": 99714,
+        "start_ticks": 13668213
+      }
+    ],
+    "process": {
+      "pgid": 99714,
+      "pid": 99714,
+      "session": 99714,
+      "start_ticks": 13668213
+    },
+    "started_utc": "2026-10-10T06:53:31.569455+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:32.958638+00:00",
+    "id": 19,
+    "output": "127.0.0.1:5432 - accepting connections\n",
+    "output_sha256": "f65a06d12c78be4ce11dc662c4ebf525a1da13786331065f0fe973c6df5ddd29",
+    "owned_processes": [
+      {
+        "pgid": 335,
+        "pid": 335,
+        "session": 335,
+        "start_ticks": 13668297
+      }
+    ],
+    "process": {
+      "pgid": 335,
+      "pid": 335,
+      "session": 335,
+      "start_ticks": 13668297
+    },
+    "started_utc": "2026-10-10T06:53:32.408824+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "cp",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e:/daprd",
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/daprd"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:34.469036+00:00",
+    "id": 20,
+    "output": "",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "owned_processes": [
+      {
+        "pgid": 366,
+        "pid": 366,
+        "session": 366,
+        "start_ticks": 13668352
+      }
+    ],
+    "process": {
+      "pgid": 366,
+      "pid": 366,
+      "session": 366,
+      "start_ticks": 13668352
+    },
+    "started_utc": "2026-10-10T06:53:32.960399+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan/daprd",
+      "--version"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:34.855079+00:00",
+    "id": 21,
+    "output": "1.18.2\n",
+    "output_sha256": "0a1b17e91d514c0c9e88520e6091e2d52a6faf8296892cad7355ff0723a42914",
+    "owned_processes": [
+      {
+        "pgid": 490,
+        "pid": 490,
+        "session": 490,
+        "start_ticks": 13668503
+      }
+    ],
+    "process": {
+      "pgid": 490,
+      "pid": 490,
+      "session": 490,
+      "start_ticks": 13668503
+    },
+    "started_utc": "2026-10-10T06:53:34.470554+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:35.618533+00:00",
+    "id": 22,
+    "output": "{\"Id\":\"b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-placement-ca712255\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:26.86692338Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n{\"Id\":\"38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-scheduler-beae6cbf\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:27.885108288Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n{\"Id\":\"91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-pubsub-db20cd90\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:29.51746577Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n{\"Id\":\"130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-source-b84ac698\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:30.461392188Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "2dd4f20ff6e0ba4516d82432efcf6e6e35259731c9b0925c1951000dc544107d",
+    "owned_processes": [
+      {
+        "pgid": 591,
+        "pid": 591,
+        "session": 591,
+        "start_ticks": 13668587
+      }
+    ],
+    "process": {
+      "pgid": 591,
+      "pid": 591,
+      "session": 591,
+      "start_ticks": 13668587
+    },
+    "started_utc": "2026-10-10T06:53:35.311435+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "-i",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      "-"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:36.177970+00:00",
+    "id": 23,
+    "output": "DO\n",
+    "output_sha256": "c14aee5b62ffd744902b84a24398e930998597dda300e71334862f0ef148e50a",
+    "owned_processes": [
+      {
+        "pgid": 651,
+        "pid": 651,
+        "session": 651,
+        "start_ticks": 13668618
+      }
+    ],
+    "process": {
+      "pgid": 651,
+      "pid": 651,
+      "session": 651,
+      "start_ticks": 13668618
+    },
+    "started_utc": "2026-10-10T06:53:35.620038+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:24536/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:53:36.205544+00:00",
+    "id": 24,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:53:36.189191+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:24536/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:53:36.357707+00:00",
+    "id": 25,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:53:36.357055+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:24536/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-8bba95c276bf49b48e245651faa311c0-i_fjbcan",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:53:36.517664+00:00",
+    "id": 26,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:53:36.517223+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:36.846443+00:00",
+    "id": 27,
+    "output": "{\"Id\":\"b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-placement-ca712255\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:26.86692338Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "d4698ccc9ea9892bffddc0d2c01dc8c310c25e5315b90457f08c50cb36d2788d",
+    "owned_processes": [
+      {
+        "pgid": 981,
+        "pid": 981,
+        "session": 981,
+        "start_ticks": 13668723
+      }
+    ],
+    "process": {
+      "pgid": 981,
+      "pid": 981,
+      "session": 981,
+      "start_ticks": 13668723
+    },
+    "started_utc": "2026-10-10T06:53:36.669645+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:37.565196+00:00",
+    "id": 28,
+    "output": "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\n",
+    "output_sha256": "2079884a7be5da4e8deaa783c0a08ba68e37cf1886e1739afc7e71d2608d8af9",
+    "owned_processes": [
+      {
+        "pgid": 1163,
+        "pid": 1163,
+        "session": 1163,
+        "start_ticks": 13668741
+      }
+    ],
+    "process": {
+      "pgid": 1163,
+      "pid": 1163,
+      "session": 1163,
+      "start_ticks": 13668741
+    },
+    "started_utc": "2026-10-10T06:53:36.848518+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:37.794938+00:00",
+    "id": 29,
+    "output": "{\"Id\":\"38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-scheduler-beae6cbf\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:27.885108288Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "93f66ee2513be0410954f1d72e26d1226514a4dbb947890808f39190d3aa9d6c",
+    "owned_processes": [
+      {
+        "pgid": 1728,
+        "pid": 1728,
+        "session": 1728,
+        "start_ticks": 13668813
+      }
+    ],
+    "process": {
+      "pgid": 1728,
+      "pid": 1728,
+      "session": 1728,
+      "start_ticks": 13668813
+    },
+    "started_utc": "2026-10-10T06:53:37.568289+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:38.556573+00:00",
+    "id": 30,
+    "output": "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\n",
+    "output_sha256": "3e203c266a2b451e2e6f12b65756f657774600802e0c45816ee01d476f5015f6",
+    "owned_processes": [
+      {
+        "pgid": 2086,
+        "pid": 2086,
+        "session": 2086,
+        "start_ticks": 13668836
+      }
+    ],
+    "process": {
+      "pgid": 2086,
+      "pid": 2086,
+      "session": 2086,
+      "start_ticks": 13668836
+    },
+    "started_utc": "2026-10-10T06:53:37.796908+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:38.765700+00:00",
+    "id": 31,
+    "output": "{\"Id\":\"91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-pubsub-db20cd90\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:29.51746577Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "af4b924c570e2aad9a3b9ae8a3e2e6dd1bcb6644170b3097cb865db3308f0333",
+    "owned_processes": [
+      {
+        "pgid": 2348,
+        "pid": 2348,
+        "session": 2348,
+        "start_ticks": 13668912
+      }
+    ],
+    "process": {
+      "pgid": 2348,
+      "pid": 2348,
+      "session": 2348,
+      "start_ticks": 13668912
+    },
+    "started_utc": "2026-10-10T06:53:38.557550+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:39.547957+00:00",
+    "id": 32,
+    "output": "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\n",
+    "output_sha256": "c1d8d6d00c37260639320b4713206def1ddb9b9a028debccac69eb10f4bd251e",
+    "owned_processes": [
+      {
+        "pgid": 2407,
+        "pid": 2407,
+        "session": 2407,
+        "start_ticks": 13668933
+      }
+    ],
+    "process": {
+      "pgid": 2407,
+      "pid": 2407,
+      "session": 2407,
+      "start_ticks": 13668933
+    },
+    "started_utc": "2026-10-10T06:53:38.767325+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:39.816550+00:00",
+    "id": 33,
+    "output": "{\"Id\":\"130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-8bba95c276bf49b48e245651faa311c0-source-b84ac698\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:30.461392188Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"8bba95c276bf49b48e245651faa311c0\"}}}\n",
+    "output_sha256": "02f1f7870038ce1b328ce80f35f59743de99a3c22b8ec7f7075eb241052136cc",
+    "owned_processes": [
+      {
+        "pgid": 3039,
+        "pid": 3039,
+        "session": 3039,
+        "start_ticks": 13669011
+      }
+    ],
+    "process": {
+      "pgid": 3039,
+      "pid": 3039,
+      "session": 3039,
+      "start_ticks": 13669011
+    },
+    "started_utc": "2026-10-10T06:53:39.549153+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:40.479610+00:00",
+    "id": 34,
+    "output": "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\n",
+    "output_sha256": "0f6aa44628e8a5892899353607087dc07ea86078c820161dadf1d40136c85393",
+    "owned_processes": [
+      {
+        "pgid": 3104,
+        "pid": 3104,
+        "session": 3104,
+        "start_ticks": 13669038
+      }
+    ],
+    "process": {
+      "pgid": 3104,
+      "pid": 3104,
+      "session": 3104,
+      "start_ticks": 13669038
+    },
+    "started_utc": "2026-10-10T06:53:39.817769+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:53:40.897228+00:00",
+    "id": 35,
+    "output": "\nerror: no such object: b5dbad9d701a5326169241a66749f525d767d642f96b82eaaa3b6c3bed0e529e\n",
+    "output_sha256": "7184d7c3fa24fe1a562edf78bf1c899df50a97f36ba104d0e5b6cf6537c3d8ae",
+    "owned_processes": [
+      {
+        "pgid": 3489,
+        "pid": 3489,
+        "session": 3489,
+        "start_ticks": 13669116
+      }
+    ],
+    "process": {
+      "pgid": 3489,
+      "pid": 3489,
+      "session": 3489,
+      "start_ticks": 13669116
+    },
+    "started_utc": "2026-10-10T06:53:40.584817+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:53:41.359803+00:00",
+    "id": 36,
+    "output": "\nerror: no such object: 38cfed8845db4d7b9f7b91a781296c677103af0348cd73522bbe16fbbb9a7d90\n",
+    "output_sha256": "f2df6d9dbb4d7c3d78b9dae73da0ba873886207811684787a96f8383826f02fd",
+    "owned_processes": [
+      {
+        "pgid": 3574,
+        "pid": 3574,
+        "session": 3574,
+        "start_ticks": 13669146
+      }
+    ],
+    "process": {
+      "pgid": 3574,
+      "pid": 3574,
+      "session": 3574,
+      "start_ticks": 13669146
+    },
+    "started_utc": "2026-10-10T06:53:40.898345+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:53:41.734006+00:00",
+    "id": 37,
+    "output": "\nerror: no such object: 91b61e517cdc9b82ec74b1d20eed3c94d93b37b067b98869667b9d6626706306\n",
+    "output_sha256": "e10cefbae041a9bf8c1febbec62ab9d7ba7496d615126c14bad8a518bf5ba6fb",
+    "owned_processes": [
+      {
+        "pgid": 3722,
+        "pid": 3722,
+        "session": 3722,
+        "start_ticks": 13669193
+      }
+    ],
+    "process": {
+      "pgid": 3722,
+      "pid": 3722,
+      "session": 3722,
+      "start_ticks": 13669193
+    },
+    "started_utc": "2026-10-10T06:53:41.361080+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:53:42.160695+00:00",
+    "id": 38,
+    "output": "\nerror: no such object: 130433db0d1ea27667aced44c09390799a880d8f9769a7e788410ad9815ccbf0\n",
+    "output_sha256": "e8d1d4601c16d1d17dac9fe63f450524f7f1ffa4550e91401a3ae8a53cfc310b",
+    "owned_processes": [
+      {
+        "pgid": 3846,
+        "pid": 3846,
+        "session": 3846,
+        "start_ticks": 13669230
+      }
+    ],
+    "process": {
+      "pgid": 3846,
+      "pid": 3846,
+      "session": 3846,
+      "start_ticks": 13669230
+    },
+    "started_utc": "2026-10-10T06:53:41.735151+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:42.456192+00:00",
+    "id": 39,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 3965,
+        "pid": 3965,
+        "session": 3965,
+        "start_ticks": 13669273
+      }
+    ],
+    "process": {
+      "pgid": 3965,
+      "pid": 3965,
+      "session": 3965,
+      "start_ticks": 13669273
+    },
+    "started_utc": "2026-10-10T06:53:42.162638+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:42.804924+00:00",
+    "id": 40,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 4188,
+        "pid": 4188,
+        "session": 4188,
+        "start_ticks": 13669302
+      }
+    ],
+    "process": {
+      "pgid": 4188,
+      "pid": 4188,
+      "session": 4188,
+      "start_ticks": 13669302
+    },
+    "started_utc": "2026-10-10T06:53:42.457040+00:00",
+    "timeout_seconds": 180
+  }
+]

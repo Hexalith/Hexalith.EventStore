@@ -1,0 +1,12 @@
+{
+  "consumer_cleanup": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/receipts/9ee3ec0136c5478886d213d2527bf560.json",
+  "errors": [],
+  "executor_source_sha256": "710afd50a504e4ab6184fbb23316dba560b361f4a1fe82280c70596fc218597e",
+  "finished_utc": "2026-10-10T08:38:58.145964+00:00",
+  "inputs_sha256": "7920375b2d30ef21072e023a443eabf03a2c958251e95cff7f616620d9e8338d",
+  "invocation": "af799e2aa60340b3883e293054c400fd",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-10T08:38:22.470977+00:00"
+}

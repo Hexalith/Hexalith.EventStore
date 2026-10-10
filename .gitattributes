@@ -56,3 +56,8 @@ _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/**/*.
 _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/**/*.raw binary
 _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/**/*.dll binary
 _bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/**/*.pdb binary
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/** text eol=lf
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/**/*.nupkg binary
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/**/*.raw binary
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/**/*.dll binary
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/**/*.pdb binary

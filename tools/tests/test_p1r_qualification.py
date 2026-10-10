@@ -16,6 +16,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import p1r_qualification as p
 
 
+class TimestampTests(unittest.TestCase):
+    def testUtcStampKeepsAllEvidencePairsOrderedAcrossClockReversals(self):
+        base = p.dt.datetime.fromisoformat("2026-10-10T12:00:00+00:00")
+        milliseconds = p.dt.timedelta(milliseconds=1.3)
+        moments = [base + p.dt.timedelta(seconds=second) - (milliseconds if reverse else p.dt.timedelta())
+                   for second in range(5) for reverse in (False, True)]
+        clock = mock.Mock()
+        clock.datetime.now.side_effect = moments
+        clock.timezone = p.dt.timezone
+        with mock.patch.object(p, "dt", clock), mock.patch.object(p, "_last_stamp_utc", None):
+            stamps = [p.stamp() for _ in moments]
+        for surface, start, finish in zip(("command", "lane", "cleanup attempt", "execution", "prepare"),
+                                          stamps[::2], stamps[1::2]):
+            with self.subTest(surface=surface):
+                self.assertEqual(start, finish)
+                p.validate_times({"started_utc": start, "finished_utc": finish})
+        self.assertEqual(stamps, sorted(stamps))
+
+
 class PacketTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

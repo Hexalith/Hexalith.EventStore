@@ -1,0 +1,436 @@
+{
+  "decisions": {
+    "path": "decisions.json",
+    "scope": "owner-selected",
+    "sha256": "01bb5ab0167a660f52a6007b4d266fdca3c4cbc07c4a65fe441111c17f221dc4"
+  },
+  "downstream_gates": {
+    "deployment": "separately-authorized",
+    "dw-35": "retained",
+    "dw-68": "retained",
+    "fixed-p1r-acceptance-v1": "retained",
+    "g-6": "retained",
+    "independent-readiness": "NOT_READY",
+    "p0-stage-1": "retained",
+    "p2": "retained",
+    "p3": "retained",
+    "p4": "retained",
+    "pins": "unchanged",
+    "publication": "separately-authorized",
+    "story-6.1": "blocked",
+    "story-8.11": "terminal-release-decision"
+  },
+  "errors": [
+    "PostgreSQL component template or private rendering binding missing"
+  ],
+  "evaluation": {
+    "capable_rollback_qualified": false,
+    "decisions_complete": false,
+    "p1r_usable": false,
+    "qualified": false,
+    "recovery": "mutation-freeze-and-forward-recovery",
+    "required_lanes": 31,
+    "technically_qualified": false,
+    "unsatisfied": [
+      "scenarios/legacy-metadata",
+      "scenarios/metadata-read",
+      "scenarios/metadata-write",
+      "scenarios/full-replay",
+      "scenarios/snapshot-tail",
+      "scenarios/retained-covered",
+      "scenarios/retained-uncovered",
+      "scenarios/missing-event",
+      "scenarios/invalid-evidence",
+      "scenarios/query-wire",
+      "scenarios/projection-wire",
+      "scenarios/mixed-api",
+      "scenarios/checkout",
+      "scenarios/post-upgrade-restore",
+      "scenarios/pre-upgrade-restore",
+      "scenarios/failure-cleanup",
+      "families/metadata-read",
+      "families/metadata-write",
+      "families/invalid-evidence",
+      "families/query-wire",
+      "families/projection-wire",
+      "families/mixed-api",
+      "families/checkout",
+      "additions/reminder-recovery",
+      "additions/logical-event-evolution",
+      "recovery/candidate-restore",
+      "recovery/container-cleanup"
+    ],
+    "usability_authority": "separately validated coordinated fixed-record-v1/guard/catalog/Stack/pin transition after P0/P2/P3/P4 and independent readiness"
+  },
+  "finished_utc": "2026-10-10T07:33:43.481068+00:00",
+  "inputs": {
+    "path": "inputs.json",
+    "scope": "owner-selected",
+    "sha256": "7920375b2d30ef21072e023a443eabf03a2c958251e95cff7f616620d9e8338d"
+  },
+  "invocation": "e2a7e58e2764491bb238c873d5b18fc6",
+  "lanes": {
+    "additions": [
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "reminder-recovery",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "logical-event-evolution",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      }
+    ],
+    "families": [
+      {
+        "assertions": {
+          "attempted": 48,
+          "failed": 4,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-read",
+        "reason": null,
+        "receipts": [
+          "receipts/5ede5c6f5b514a0089623d82a5db8776.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "metadata-write",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "invalid-evidence",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "query-wire",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "projection-wire",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "mixed-api",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "checkout",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      }
+    ],
+    "packages": [
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "candidate-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/0360597716dd424e912ecc88d88f993e.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "rollback-packages",
+        "reason": "capable rollback not selected; mutation freeze and forward recovery retained",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.70.1-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/73907782c25047d7a3e2285138a49c17.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.110.0-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/c3855a9579ae466c9dec79fb4201aacf.json"
+        ],
+        "scope": "published-package"
+      }
+    ],
+    "recovery": [
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "candidate-restore",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "rollback-restore",
+        "reason": "capable rollback not selected; mutation freeze and forward recovery retained",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "container-cleanup",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      }
+    ],
+    "scenarios": [
+      {
+        "assertions": {
+          "attempted": 33,
+          "failed": 0,
+          "passed": 33
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "provenance",
+        "reason": null,
+        "receipts": [
+          "receipts/d524d012109147c19f7768e96ca7cdcd.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 24,
+          "failed": 2,
+          "passed": 22
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "legacy-metadata",
+        "reason": null,
+        "receipts": [
+          "receipts/d2a41f0db606433c88316f4c85e3adbd.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": {
+          "attempted": 48,
+          "failed": 4,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "id": "metadata-read",
+        "reason": null,
+        "receipts": [
+          "receipts/5ede5c6f5b514a0089623d82a5db8776.json"
+        ],
+        "scope": "published-package"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "metadata-write",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "full-replay",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "snapshot-tail",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "retained-covered",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "retained-uncovered",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "missing-event",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "invalid-evidence",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "query-wire",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "projection-wire",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "mixed-api",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "checkout",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "post-upgrade-restore",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "pre-upgrade-restore",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "failure-cleanup",
+        "reason": "execution evidence not supplied in this invocation",
+        "receipts": [],
+        "scope": null
+      }
+    ]
+  },
+  "process_controls": null,
+  "refusals": [
+    "capable rollback not selected; mutation freeze and forward recovery retained",
+    "eventstore-owner decision pending",
+    "builds-owner decision pending",
+    "solution-owner decision pending",
+    "test-owner decision pending",
+    "same-baseline conformance pending"
+  ],
+  "schema": "hexalith.p1r.published-qualification.v1",
+  "source_binding": "source-binding.json",
+  "source_binding_sha256": "30985314c2fa9c482e6f225008bcc8ffaebad5197236167ad0ab0c24b1766e73",
+  "started_utc": "2026-10-10T07:33:32.004372+00:00"
+}

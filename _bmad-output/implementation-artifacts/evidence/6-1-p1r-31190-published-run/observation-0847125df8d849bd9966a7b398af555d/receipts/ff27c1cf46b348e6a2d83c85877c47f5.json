@@ -1,0 +1,453 @@
+{
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "attempts": [
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T06:43:01.521362+00:00",
+      "remaining": [],
+      "removed": [
+        "process:93939:13600581",
+        "process:93993:13600611",
+        "process:94089:13600636",
+        "process:94450:13600834",
+        "process:94823:13601008",
+        "process:95176:13601083",
+        "process:95743:13601260",
+        "process:95989:13601455",
+        "process:96123:13601547",
+        "process:96467:13601786",
+        "process:96880:13601958",
+        "process:97070:13601984",
+        "process:97470:13602050",
+        "process:97609:13602119",
+        "process:97908:13602207",
+        "process:98057:13602276",
+        "process:98298:13602339",
+        "process:98770:13602625",
+        "process:99293:13602797",
+        "process:99470:13602881",
+        "process:99756:13603051",
+        "process:469:13603253",
+        "process:740:13603353",
+        "process:1114:13603606",
+        "process:1485:13603818",
+        "process:1508:13603845",
+        "process:1728:13603916",
+        "process:1839:13603991",
+        "process:2055:13604065",
+        "process:2188:13604141",
+        "process:2267:13604216",
+        "process:2520:13604439",
+        "process:2947:13604640",
+        "process:3165:13604742",
+        "process:4079:13604941",
+        "process:4601:13605124",
+        "/tmp/p1r-published-95507b679b774824a6108b64317850b0-lopqlm6t"
+      ],
+      "started_utc": "2026-10-10T06:43:01.520697+00:00",
+      "targeted": [
+        "process:93939:13600581",
+        "process:93993:13600611",
+        "process:94089:13600636",
+        "process:94450:13600834",
+        "process:94823:13601008",
+        "process:95176:13601083",
+        "process:95743:13601260",
+        "process:95989:13601455",
+        "process:96123:13601547",
+        "process:96467:13601786",
+        "process:96880:13601958",
+        "process:97070:13601984",
+        "process:97470:13602050",
+        "process:97609:13602119",
+        "process:97908:13602207",
+        "process:98057:13602276",
+        "process:98298:13602339",
+        "process:98770:13602625",
+        "process:99293:13602797",
+        "process:99470:13602881",
+        "process:99756:13603051",
+        "process:469:13603253",
+        "process:740:13603353",
+        "process:1114:13603606",
+        "process:1485:13603818",
+        "process:1508:13603845",
+        "process:1728:13603916",
+        "process:1839:13603991",
+        "process:2055:13604065",
+        "process:2188:13604141",
+        "process:2267:13604216",
+        "process:2520:13604439",
+        "process:2947:13604640",
+        "process:3165:13604742",
+        "process:4079:13604941",
+        "process:4601:13605124",
+        "/tmp/p1r-published-95507b679b774824a6108b64317850b0-lopqlm6t"
+      ]
+    },
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T06:43:01.521607+00:00",
+      "remaining": [],
+      "removed": [
+        "process:93939:13600581",
+        "process:93993:13600611",
+        "process:94089:13600636",
+        "process:94450:13600834",
+        "process:94823:13601008",
+        "process:95176:13601083",
+        "process:95743:13601260",
+        "process:95989:13601455",
+        "process:96123:13601547",
+        "process:96467:13601786",
+        "process:96880:13601958",
+        "process:97070:13601984",
+        "process:97470:13602050",
+        "process:97609:13602119",
+        "process:97908:13602207",
+        "process:98057:13602276",
+        "process:98298:13602339",
+        "process:98770:13602625",
+        "process:99293:13602797",
+        "process:99470:13602881",
+        "process:99756:13603051",
+        "process:469:13603253",
+        "process:740:13603353",
+        "process:1114:13603606",
+        "process:1485:13603818",
+        "process:1508:13603845",
+        "process:1728:13603916",
+        "process:1839:13603991",
+        "process:2055:13604065",
+        "process:2188:13604141",
+        "process:2267:13604216",
+        "process:2520:13604439",
+        "process:2947:13604640",
+        "process:3165:13604742",
+        "process:4079:13604941",
+        "process:4601:13605124",
+        "/tmp/p1r-published-95507b679b774824a6108b64317850b0-lopqlm6t"
+      ],
+      "started_utc": "2026-10-10T06:43:01.521380+00:00",
+      "targeted": [
+        "process:93939:13600581",
+        "process:93993:13600611",
+        "process:94089:13600636",
+        "process:94450:13600834",
+        "process:94823:13601008",
+        "process:95176:13601083",
+        "process:95743:13601260",
+        "process:95989:13601455",
+        "process:96123:13601547",
+        "process:96467:13601786",
+        "process:96880:13601958",
+        "process:97070:13601984",
+        "process:97470:13602050",
+        "process:97609:13602119",
+        "process:97908:13602207",
+        "process:98057:13602276",
+        "process:98298:13602339",
+        "process:98770:13602625",
+        "process:99293:13602797",
+        "process:99470:13602881",
+        "process:99756:13603051",
+        "process:469:13603253",
+        "process:740:13603353",
+        "process:1114:13603606",
+        "process:1485:13603818",
+        "process:1508:13603845",
+        "process:1728:13603916",
+        "process:1839:13603991",
+        "process:2055:13604065",
+        "process:2188:13604141",
+        "process:2267:13604216",
+        "process:2520:13604439",
+        "process:2947:13604640",
+        "process:3165:13604742",
+        "process:4079:13604941",
+        "process:4601:13605124",
+        "/tmp/p1r-published-95507b679b774824a6108b64317850b0-lopqlm6t"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "first-attempt-targets-every-owned",
+      "passed": true
+    },
+    {
+      "id": "repeated-cleanup",
+      "passed": true
+    },
+    {
+      "id": "later-attempts-continue",
+      "passed": true
+    },
+    {
+      "id": "no-owned-remaining",
+      "passed": true
+    },
+    {
+      "id": "no-cleanup-errors",
+      "passed": true
+    },
+    {
+      "id": "shared-discovery-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-preserved",
+      "passed": true
+    }
+  ],
+  "compatibility": "unverified",
+  "execution": "passed",
+  "fixture": {
+    "id": "p1r-95507b679b774824a6108b64317850b0",
+    "synthetic": false
+  },
+  "id": "ff27c1cf46b348e6a2d83c85877c47f5",
+  "inputs_sha256": null,
+  "invocation": "95507b679b774824a6108b64317850b0",
+  "owned": [
+    {
+      "id": "process:93939:13600581",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:93993:13600611",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:94089:13600636",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:94450:13600834",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:94823:13601008",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:95176:13601083",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:95743:13601260",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:95989:13601455",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:96123:13601547",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:96467:13601786",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:96880:13601958",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:97070:13601984",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:97470:13602050",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:97609:13602119",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:97908:13602207",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:98057:13602276",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:98298:13602339",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:98770:13602625",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:99293:13602797",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:99470:13602881",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:99756:13603051",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:469:13603253",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:740:13603353",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:1114:13603606",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:1485:13603818",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:1508:13603845",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:1728:13603916",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:1839:13603991",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:2055:13604065",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:2188:13604141",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:2267:13604216",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:2520:13604439",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:2947:13604640",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:3165:13604742",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:4079:13604941",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "process:4601:13605124",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    },
+    {
+      "id": "/tmp/p1r-published-95507b679b774824a6108b64317850b0-lopqlm6t",
+      "kind": "scratch",
+      "label": "hexalith.p1r.invocation=95507b679b774824a6108b64317850b0"
+    }
+  ],
+  "profile": null,
+  "schema": "hexalith.p1r.consumer-cleanup.v1",
+  "scope": "local-process-control",
+  "shared": {
+    "after": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "before": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "complete": true
+  }
+}

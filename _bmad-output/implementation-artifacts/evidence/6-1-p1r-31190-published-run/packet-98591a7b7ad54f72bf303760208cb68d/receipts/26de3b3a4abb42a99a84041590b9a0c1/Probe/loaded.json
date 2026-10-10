@@ -1,0 +1,34 @@
+{
+  "assemblies": [
+    {
+      "name": "Hexalith.EventStore.Client",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "71458f16119675aeb605848021634e89e379a087afe16d448c5a36c7fbeaa813",
+      "version": "3.119.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "1100a477a35035996b918ca53603bd60a67a06cc821efe592fa4d085b663ec99",
+      "version": "3.119.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Server",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "483210fc63c8eecb1856cb94d2232ce17e5b42602e3d2bdd63aa39f80ebd67a6",
+      "version": "3.119.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.DomainService",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "babf95cc0313a464ae16ca3abfec659661bf11bb6ffb7bf6915d0d2d6dce16a8",
+      "version": "3.119.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.ServiceDefaults",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-502d99c039f44c22bc2d2948178d453c/consumers/candidate/probe/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "f405043db8362b031c89df031e6bf99b273e18e31ce7ef3f1fa757bbef6c4cc4",
+      "version": "3.119.0.0"
+    }
+  ]
+}

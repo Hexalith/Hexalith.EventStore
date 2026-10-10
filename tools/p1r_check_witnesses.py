@@ -327,7 +327,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
     require(incomplete or bound == set(by_id), 'rendered configuration lacks executed sidecar binding')
     if not incomplete and lane == 'checkout' and row['id'] != 'current-build':
         comparison = observation.get('comparison')
-        require(isinstance(comparison,dict) and comparison.get('selected_version') == '3.115.0', 'source case lacks actual selected-package comparison')
+        require(isinstance(comparison,dict) and comparison.get('selected_version') == '3.119.0', 'source case lacks actual selected-package comparison')
         def normalize(branch):
             value = paired[branch]
             result = {'outcome': 'refusal' if value.get('primary',value.get('actor',{})).get('accepted') is False else 'effect'}

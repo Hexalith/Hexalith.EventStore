@@ -7,7 +7,7 @@ import sys
 
 # -I inventory invocations retain their literal command and require an explicit tools path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from p1r_published_executor import Executor, InvalidPacket, canonical, qualification, redis_inventory
+from p1r_published_executor import Executor, InvalidPacket, canonical, qualification, postgres_inventory, redis_inventory
 
 
 def main(arguments=None):
@@ -20,14 +20,16 @@ def main(arguments=None):
     execute = commands.add_parser("run", help="run all canonical families and selected additions")
     execute.add_argument("--out", type=Path, required=True)
     execute.add_argument("--inputs", type=Path, required=True)
-    inventory = commands.add_parser("inventory", help="read an exactly owned Redis fixture; no runtime application access")
+    inventory = commands.add_parser("inventory", help="read an exactly owned state fixture; no runtime application access")
     inventory.add_argument("--container", required=True)
     inventory.add_argument("--invocation", required=True)
+    inventory.add_argument("--backend", choices=("state.postgresql", "state.redis"), default="state.postgresql")
     args = parser.parse_args(arguments)
     worker = None
     try:
         if args.command == "inventory":
-            sys.stdout.buffer.write(canonical(redis_inventory(args.container, args.invocation)))
+            reader = postgres_inventory if args.backend == "state.postgresql" else redis_inventory
+            sys.stdout.buffer.write(canonical(reader(args.container, args.invocation)))
             return 0
         if args.command == "observe":
             worker = Executor(args.out)

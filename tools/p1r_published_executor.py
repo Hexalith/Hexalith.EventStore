@@ -32,10 +32,14 @@ from p1r_qualification import InvalidPacket, canonical, checks_counter, digest, 
 ROOT = preparation.ROOT
 CONSUMERS = ROOT / "tools/p1r-published-consumers"
 MECHANISM = "p1r-executed-checks-v1"
-CANDIDATE = "3.115.0"
+CANDIDATE = "3.119.0"
 VERSIONS = ("3.110.0", "3.70.1", CANDIDATE)
 REDIS = "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf"
-DAPR_IMAGE = "daprio/dapr@sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e"
+POSTGRES = "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+DAPR_IMAGE = "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+TAG_COMMIT = "f463442cca19e4199982a23a08bae4a490767d4a"
+BUILDS_COMMIT = "2cf00028bbe563d80d4d12b5fb2054914f14fcb6"
+TAG_BUILDS_COMMIT = "468fdbba04e2d9a27d251298875125b57fa6d836"
 PROJECTS = ("Host", "Domain", "Probe")
 STATUS_RETRYABILITY = (None, False, True)
 DOCKER_FORMAT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
@@ -63,6 +67,16 @@ def docker_observations(data):
     return [json.loads(line) for line in data.decode().splitlines() if line.strip()]
 
 
+def postgres_value(value):
+    """Decode PostgreSQL v1's base64 JSONB string to the original Dapr state bytes."""
+    if isinstance(value, str):
+        try:
+            return base64.b64decode(value, validate=True)
+        except (ValueError, base64.binascii.Error):
+            pass
+    return canonical(value)
+
+
 def redis_inventory(container, invocation):
     """Read bounded fixture diagnostics only after independently verifying container ownership."""
     def command(*args):
@@ -84,6 +98,37 @@ def redis_inventory(container, invocation):
         elif key.endswith(":snapshot"):
             kind, sequence = "snapshot", value.get("sequenceNumber")
         rows.append({"key": key, "tenant": tenant, "kind": kind, "sha256": digest(data), "sequence": sequence, "floor": floor})
+    rows.sort(key=lambda row: row["key"])
+    runtime.validate_rows(rows)
+    return rows
+
+
+def postgres_inventory(container, invocation):
+    """Read structural fixture state from an exactly owned PostgreSQL v1 container."""
+    observed = docker_observations(subprocess.check_output(safe_inspect_argv(container)))[0]
+    require(observed["Id"] == container and observed["Config"]["Labels"].get("hexalith.p1r.invocation") == invocation,
+            "unowned provider inventory")
+    query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
+    data = subprocess.check_output(["docker", "exec", container, "psql", "-U", "postgres", "-d", "eventstore",
+                                    "-At", "-v", "ON_ERROR_STOP=1", "-c", query])
+    rows = []
+    for key, value in json.loads(data):
+        raw_data = postgres_value(value)
+        try:
+            value = json.loads(raw_data)
+        except (ValueError, UnicodeError):
+            value = None
+        tenant = "tenant-a" if "tenant-a" in key else "tenant-b" if "tenant-b" in key else "infrastructure"
+        kind, sequence, floor = "bookkeeping", None, None
+        if key.endswith(":metadata"):
+            require(isinstance(value, dict), "invalid persisted metadata content")
+            kind, sequence, floor = "metadata", value.get("currentSequence"), value.get("retainedFloor", 1)
+        elif ":events:" in key:
+            kind, sequence = "event", int(key.rsplit(":", 1)[1])
+        elif key.endswith(":snapshot"):
+            require(isinstance(value, dict), "invalid persisted snapshot content")
+            kind, sequence = "snapshot", value.get("sequenceNumber")
+        rows.append({"key": key, "tenant": tenant, "kind": kind, "sha256": digest(raw_data), "sequence": sequence, "floor": floor})
     rows.sort(key=lambda row: row["key"])
     runtime.validate_rows(rows)
     return rows
@@ -138,13 +183,13 @@ def validate_execution_inputs(inputs):
     """Refuse a substituted approved tuple before any consumer or operational resource starts."""
     require(qualification.validate_inputs(inputs) == "owner-selected", "synthetic inputs cannot execute published operations")
     candidate, profile = inputs["candidate"], inputs["operational_profile"]
-    require(candidate["version"] == CANDIDATE and candidate["tag"] == "v3.115.0"
-            and candidate["tag_commit"] == "283b07a52c9c70e1c940164a7011ee8c3ad98b2d"
-            and candidate["builds"] == {"version": "4.29.1-22-gba4ca78", "commit": "ba4ca78c3868a4757cb92d912a54c8a237871b54"}
+    require(candidate["version"] == CANDIDATE and candidate["tag"] == "v3.119.0"
+            and candidate["tag_commit"] == TAG_COMMIT
+            and candidate["builds"] == {"version": "4.30.1-20-g2cf0002", "commit": BUILDS_COMMIT}
             and inputs["rollback"] is None and inputs["assertion_instrumentation"]["mechanism"] == MECHANISM
             and [row["version"] for row in inputs.get("comparisons", [])] == list(qualification.COMPARISON_VERSIONS)
-            and profile["runtime"] == "dapr" and profile["runtime_version"] == "1.18.4"
-            and profile["backend"] == "state.redis" and profile["backend_image"] == REDIS
+            and profile["runtime"] == "dapr" and profile["runtime_version"] == "1.18.2"
+            and profile["backend"] == "state.postgresql" and profile["backend_image"] == POSTGRES
             and inputs["selected_additions"] == list(qualification.ADDITIONS), "execution selections substituted")
 
 
@@ -223,7 +268,7 @@ class Executor:
     def record(self, argv, cwd, started, code, data, retain=True, ownership=None, cleanup=None, timeout=None):
         output = data.decode("utf-8", "replace") if retain else None
         row = {"id": len(self.commands) + 1, "argv": [str(arg) for arg in argv], "cwd": str(cwd),
-               "started_utc": started, "finished_utc": stamp(), "exit_code": code,
+               "started_utc": started, "finished_utc": max(started, stamp()), "exit_code": code,
                "output_sha256": digest(output.encode() if retain else data), "output": output}
         if timeout is not None:
             row["timeout_seconds"] = timeout
@@ -318,20 +363,21 @@ class Executor:
         return {row["Id"]: {"image": row["Image"], "running": row["State"]["Running"], "started": row["State"]["StartedAt"]}
                 for row in rows if row["Id"] not in self.containers}
 
-    def container(self, role, image, arguments=(), port=6379, restore=None, start=True, host_port=None):
+    def container(self, role, image, arguments=(), port=6379, start=True, host_port=None, environment=None):
         name = "p1r-" + self.invocation + "-" + role + "-" + uuid.uuid4().hex[:8]
         host_port = host_port or reserve_port()
         cidfile = self.scratch / (name + ".cid")
         argv = ["docker", "create", "--cidfile", str(cidfile), "--name", name, "--label",
-                "hexalith.p1r.invocation=" + self.invocation, "-p", f"127.0.0.1:{host_port}:{port}", image, *arguments]
+                "hexalith.p1r.invocation=" + self.invocation, "-p", f"127.0.0.1:{host_port}:{port}"]
+        if image == POSTGRES:
+            argv += ["-e", "POSTGRES_PASSWORD", "-e", "POSTGRES_DB=eventstore"]
+        argv += [image, *arguments]
         self.pending_containers[name] = {"name": name, "image": image, "role": role, "port": host_port}
         try:
-            self.run(argv)
+            self.run(argv, env=environment)
         finally:
             identity = self.recover_container(name, cidfile)
         require(identity is not None, "created owned container identity unavailable")
-        if restore is not None:
-            self.run(["docker", "cp", str(restore), identity + ":/data/dump.rdb"])
         if start:
             self.run(["docker", "start", identity])
         return identity, host_port
@@ -425,7 +471,7 @@ class Executor:
                                    dict(environment, ASPNETCORE_URLS=f"http://127.0.0.1:{app_port}", ASPNETCORE_ENVIRONMENT="Development"))
                 try:
                     ready = self.wait(f"http://127.0.0.1:{app_port}/ready", item)
-                    identity = ready["identity"] if source and project == "Domain" else self.http("GET", f"http://127.0.0.1:{app_port}/identity")
+                    identity = ready["identity"] if (source or version == CANDIDATE) and project == "Domain" else self.http("GET", f"http://127.0.0.1:{app_port}/identity")
                 finally:
                     self.stop_nodes()
             loaded = "loaded/" + project + ".json"
@@ -440,8 +486,10 @@ class Executor:
     def observe_inputs(self, planning, reference):
         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
         candidate = planning["candidate_proposed"]
-        require(candidate["version"] == CANDIDATE and candidate["tag_commit"] == "283b07a52c9c70e1c940164a7011ee8c3ad98b2d"
-                and candidate["builds"]["commit"] == "ba4ca78c3868a4757cb92d912a54c8a237871b54", "candidate selection substituted")
+        require(candidate["version"] == CANDIDATE and candidate["tag_commit"] == TAG_COMMIT
+                and candidate["builds"]["commit"] == BUILDS_COMMIT, "candidate selection substituted")
+        tag_builds = preparation.git(ROOT, "ls-tree", "v" + CANDIDATE, "references/Hexalith.Builds").decode().split()
+        require(len(tag_builds) == 4 and tag_builds[2] == TAG_BUILDS_COMMIT, "candidate package-build provenance substituted")
         selections = {}
         for version in VERSIONS:
             root = self.build_consumers(version)
@@ -481,11 +529,11 @@ class Executor:
             selections[version] = {"version": version, "tag": "v" + version, "tag_commit": tag_commit,
                                    "builds": builds, "feed": candidate["feed"], "packages": selected}
         inputs = {"schema": qualification.INPUTS_SCHEMA, "fixture": None,
-                  "authority": {"owner": "user", "reference": reference, "date": "2026-10-07"},
+                  "authority": {"owner": "user", "reference": reference, "date": "2026-10-10"},
                   "candidate": selections[CANDIDATE], "rollback": None,
                   "comparisons": [selections[version] for version in qualification.COMPARISON_VERSIONS],
-                  "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.4", "backend": "state.redis",
-                                          "backend_image": REDIS, "selected_by": "user", "reference": reference},
+                  "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2", "backend": "state.postgresql",
+                                          "backend_image": POSTGRES, "selected_by": "user", "reference": reference},
                   "assertion_instrumentation": {"mechanism": MECHANISM, "accepted_by": "test-owner", "reference": reference},
                   "selected_additions": list(qualification.ADDITIONS)}
         qualification.validate_inputs(inputs)
@@ -502,8 +550,8 @@ class Executor:
         return inputs
 
     def topology(self):
-        require(self.inputs["operational_profile"]["backend_image"] == REDIS
-                and self.inputs["operational_profile"]["runtime_version"] == "1.18.4", "selected operational profile substituted")
+        require(self.inputs["operational_profile"]["backend_image"] == POSTGRES
+                and self.inputs["operational_profile"]["runtime_version"] == "1.18.2", "selected operational profile substituted")
         self.shared_before = self.shared()
         self.placement, self.placement_port = self.container("placement", DAPR_IMAGE, ["./placement", "--port", "50005"], 50005)
         self.scheduler_port = reserve_port()
@@ -511,33 +559,60 @@ class Executor:
             ["./scheduler", "--port", "50006", "--override-broadcast-host-port", f"127.0.0.1:{self.scheduler_port}",
              "--etcd-data-dir", "/tmp/p1r-etcd", "--etcd-client-listen-address", "0.0.0.0"], 50006, host_port=self.scheduler_port)
         self.pubsub, self.pubsub_port = self.container("pubsub", REDIS)
-        self.redis, self.redis_port = self.container("source", REDIS)
+        self.postgres_password = uuid.uuid4().hex
+        self.redis, self.redis_port = self.postgres_container("source")
         self.daprd = self.scratch / "daprd"
         self.run(["docker", "cp", self.placement + ":/daprd", self.daprd])
         self.daprd.chmod(0o700)
         version = self.run([self.daprd, "--version"]).decode()
-        require("1.18.4" in version, "Dapr runtime substituted")
+        require("1.18.2" in version, "Dapr runtime substituted")
         self.operational_started = True
         write_json(self.output / "runtime-identity.json", {"profile": self.inputs["operational_profile"],
                    "daprd_sha256": digest(regular(self.daprd)), "dapr_version": version.strip(),
                    "images": docker_observations(self.run(safe_inspect_argv(self.placement, self.scheduler, self.pubsub, self.redis)))})
+
+    def postgres_container(self, role, start=True):
+        environment = dict(os.environ, POSTGRES_PASSWORD=self.postgres_password)
+        identity, port = self.container(role, POSTGRES,
+                                        port=5432, start=start, environment=environment)
+        if start:
+            self.postgres_wait(identity)
+        return identity, port
+
+    def postgres_wait(self, identity):
+        for _ in range(60):
+            self.run(["docker", "exec", identity, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "eventstore"], check=False)
+            if self.commands[-1]["exit_code"] == 0:
+                return
+            time.sleep(.5)
+        raise TimeoutError("owned PostgreSQL fixture startup timeout")
 
     def start_nodes(self, version, redis=None, port=None, interval=1000):
         self.stop_nodes()
         resources = self.scratch / "resources"
         resources.mkdir(exist_ok=True)
         redis, port = redis or self.redis, port or self.redis_port
-        (resources / "state.yaml").write_text(f'apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: "127.0.0.1:{port}"\n    - name: actorStateStore\n      value: "true"\nscopes:\n  - eventstore\n')
+        tracked_state = regular(ROOT / "deploy/dapr/statestore-postgresql.yaml")
+        require(b'type: state.postgresql' in tracked_state and b'version: v1' in tracked_state
+                and b'{env:POSTGRES_CONNECTION_STRING}' in tracked_state, "tracked PostgreSQL v1 component substituted")
+        connection = (f"host=127.0.0.1 port={port} user=postgres password={self.postgres_password} "
+                      "dbname=eventstore sslmode=disable connect_timeout=10")
+        (resources / "state.yaml").write_bytes(tracked_state.replace(b'{env:POSTGRES_CONNECTION_STRING}', connection.encode()))
         (resources / "pubsub.yaml").write_text(f'apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: "127.0.0.1:{self.pubsub_port}"\nscopes:\n  - eventstore\n')
         config = self.scratch / "discovery.yaml"
         config.write_text(f'apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: "{self.scratch / "discovery.sqlite"}"\n')
         configuration = {
-            "id": uuid.uuid4().hex, "version": version, "redis_container": redis, "snapshot_interval": interval,
-            "backend_image": REDIS, "runtime_version": self.inputs["operational_profile"]["runtime_version"],
+            "id": uuid.uuid4().hex, "version": version, "state_container": redis, "snapshot_interval": interval,
+            "state_component_sha256": digest(tracked_state), "backend_image": POSTGRES,
+            "runtime_version": self.inputs["operational_profile"]["runtime_version"],
             "observed_utc": stamp(),
             "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version == "source" else None,
             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
-            "files": [{"name": path.name, "path": str(path), "sha256": digest(regular(path)), "content": path.read_text()}
+            "files": [{"name": path.name, "path": str(path),
+                       "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
+                       "content": tracked_state.decode() if path.name == "state.yaml" else path.read_text(),
+                       **({"rendered_sha256": digest(regular(path)), "credential_redacted": True}
+                          if path.name == "state.yaml" else {})}
                       for path in (config, resources / "state.yaml", resources / "pubsub.yaml")]}
         write_json(self.output / "configurations" / (configuration["id"] + ".json"), configuration)
         self.configurations.append(configuration)
@@ -554,10 +629,11 @@ class Executor:
                 P1R_REMINDER_DUE=getattr(self, "reminder_due", "2030-01-01T00:00:00+00:00"),
                 EventStore__Actors__AggregateActorTypeName="AggregateActor", EventStore__Snapshots__DefaultInterval=str(interval),
                 EventStore__DomainServices__Registrations__counter__AppId="counter")
+            environment.pop("POSTGRES_CONNECTION_STRING", None)
             registration = "EventStore__DomainServices__Registrations__*|counter|v1__"
             environment.update({registration + key: value for key, value in
                                 {"AppId": "counter", "MethodName": "process", "TenantId": "*", "Domain": "counter", "Version": "v1"}.items()})
-            if version == "source":
+            if version in ("source", CANDIDATE):
                 environment.update(Authentication__JwtBearer__Issuer="p1r-" + self.invocation,
                     Authentication__JwtBearer__Audience="counter", Authentication__JwtBearer__SigningKey=self.workload_key,
                     Authentication__Workload__Audience="counter", Authentication__Workload__AllowedCallers__0="eventstore",
@@ -591,14 +667,50 @@ class Executor:
         return self.run(["docker", "exec", *( ["-i"] if input_bytes is not None else [] ), container,
                          "redis-cli", "--raw", *arguments], input_bytes=input_bytes)
 
+    def postgres_query(self, container, query, retain=True):
+        require(container in self.containers and self.containers[container]["image"] == POSTGRES,
+                "unowned PostgreSQL diagnostic")
+        return self.run(["docker", "exec", "-i", container, "psql", "-U", "postgres", "-d", "eventstore",
+                         "-At", "-v", "ON_ERROR_STOP=1", "-f", "-"], input_bytes=query.encode(), retain=retain)
+
+    def postgres_state(self, container):
+        data = self.postgres_query(container, "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state")
+        return {key: postgres_value(value) for key, value in json.loads(data)}
+
+    def postgres_audits(self, container):
+        data = self.postgres_query(container, "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') "
+                                   "FROM state WHERE key LIKE 'eventstore||p1r-qualification-audit-%'")
+        records = []
+        for key, value in json.loads(data):
+            try:
+                record = json.loads(postgres_value(value))
+            except (ValueError, UnicodeError):
+                record = None
+            records.append({"key": key, "record": {name.lower(): item for name, item in record.items()}
+                            if isinstance(record, dict) else {}})
+        return records
+
+    def postgres_delete(self, container, key):
+        encoded = key.encode().hex()
+        self.postgres_query(container, f"DELETE FROM state WHERE key=convert_from(decode('{encoded}','hex'),'UTF8');")
+
+    def postgres_write(self, container, key, value):
+        encoded_key = key.encode().hex()
+        encoded_value = canonical(value).hex()
+        self.postgres_query(container, "UPDATE state SET value=convert_from(decode('" + encoded_value
+                            + "','hex'),'UTF8')::jsonb WHERE key=convert_from(decode('" + encoded_key + "','hex'),'UTF8');")
+
     def raw_state(self, container):
+        if self.inputs["operational_profile"]["backend"] == "state.postgresql":
+            return self.postgres_state(container)
         values = json.loads(self.redis_command(container, "EVAL", REDIS_DIAGNOSTIC, "0"))
         return {key: data.encode() for key, data in values}
 
     def inventory(self, container=None):
         container = container or self.redis
         return json.loads(self.run([sys.executable, "-I", ROOT / "tools/p1r-published-executor.py", "inventory",
-                                   "--container", container, "--invocation", self.invocation]))
+                                   "--container", container, "--invocation", self.invocation,
+                                   "--backend", self.inputs["operational_profile"]["backend"]]))
 
     def mutate(self, kind, variant=None):
         """Bounded diagnostics modify only the stopped writer's invocation-owned test fixture."""
@@ -616,7 +728,7 @@ class Executor:
                 sequence = int(key.rsplit(":", 1)[1])
                 remove = (kind == "retained" and sequence < 5) or (kind == "missing" and sequence == (7 if variant == "interior" else 12))
                 if remove:
-                    self.redis_command(self.redis, "DEL", key)
+                    self.postgres_delete(self.redis, key)
                     continue
                 if sequence == 7 and kind in ("unreadable", "protected", "unknown-type", "unknown-version"):
                     if kind == "unreadable":
@@ -629,7 +741,7 @@ class Executor:
                     changed = True
             if key.endswith(":snapshot") and kind == "uncovered":
                 if variant == "absent":
-                    self.redis_command(self.redis, "DEL", key)
+                    self.postgres_delete(self.redis, key)
                     continue
                 value["sequenceNumber"], value["state"] = 2, {"count": 2}
                 changed = True
@@ -640,14 +752,14 @@ class Executor:
                 state[count_key] = 9
                 changed = True
             if changed:
-                self.redis_command(self.redis, "-x", "HSET", key, "data", input_bytes=canonical(value))
+                self.postgres_write(self.redis, key, value)
 
     def actor(self, version, tenant, expected, kind, checks, prefix):
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
     def seed(self, version, interval, checks):
         self.stop_nodes()
-        self.redis_command(self.redis, "FLUSHALL")
+        self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
         self.start_nodes(version, interval=interval)
         for tenant, count in (("tenant-a", 12), ("tenant-b", 3)):
             result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(count)], checks, tenant + ":")
@@ -970,10 +1082,22 @@ class Executor:
         self.stop_nodes()
         after = self.inventory()
         checks.check("second-tenant-preserved", runtime.domain(before, "tenant-b") == runtime.domain(after, "tenant-b"))
+        audits = None
+        if version == CANDIDATE and operation in ("trusted-effect", "unauthorized-effect"):
+            audits = self.postgres_audits(self.redis)
+            expected = {"action": "submission" if operation == "trusted-effect" else "gateway-proof",
+                        "tenant": "tenant-a", "workload": "p1r-fixture", "purpose": "published-qualification",
+                        "disposition": "authorized" if operation == "trusted-effect" else "denied"}
+            matches = [row for row in audits if all(row["record"].get(name) == value for name, value in expected.items())
+                       and (isinstance(row["record"].get("effectid"), str) and bool(row["record"]["effectid"])
+                            if operation == "trusted-effect" else row["record"].get("effectid") is None)]
+            checks.check("candidate-trusted-effect-audit-persisted" if operation == "trusted-effect"
+                         else "candidate-unauthorized-effect-audit-persisted", len(matches) == 1)
         if operation in ("stale-fence", "unauthorized-effect"):
             checks.check("refusal-domain-preserved", [row for row in before if row["kind"] != "bookkeeping"]
                          == [row for row in after if row["kind"] != "bookkeeping"])
         return {"before": before, "after": after, "operation": observed,
+                **({"audit_records": audits} if audits is not None else {}),
                 "authority_scope": "bounded Test fixture; no production identity or P2 acceptance"}, outcome, "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def recovery_command(self, commands, step, command, database=None, processes=None, input_data=None, output_data=None):
@@ -986,6 +1110,18 @@ class Executor:
         commands.append(row)
         return row["id"]
 
+    def postgres_backup(self, container):
+        name = "p1r-" + uuid.uuid4().hex + ".dump"
+        self.run(["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", "eventstore", "-Fc", "-f", "/tmp/" + name])
+        target = self.scratch / name
+        self.run(["docker", "cp", container + ":/tmp/" + name, target])
+        return target
+
+    def postgres_restore(self, container, backup):
+        self.run(["docker", "cp", backup, container + ":/tmp/p1r-restore.dump"])
+        self.run(["docker", "exec", container, "pg_restore", "-U", "postgres", "-d", "eventstore",
+                  "--clean", "--if-exists", "--no-owner", "/tmp/p1r-restore.dump"])
+
     def restore_case(self, identifier, checks):
         self.seed(CANDIDATE, 10, checks)
         self.mutate("retained")
@@ -994,19 +1130,15 @@ class Executor:
         source = self.inventory()
         index = self.recovery_command(commands, "inventory", self.commands[-1], source_db)
         inventories["source"] = {"command": index, "rows": source, "sha256": digest(canonical(source))}
-        self.redis_command(self.redis, "SAVE")
-        backup_path = self.scratch / (uuid.uuid4().hex + ".rdb")
-        self.run(["docker", "cp", self.redis + ":/data/dump.rdb", backup_path])
+        backup_path = self.postgres_backup(self.redis)
         backup = regular(backup_path)
         backup_id = self.recovery_command(commands, "backup", self.commands[-1], source_db, output_data=backup)
-        restored, port = self.container("restored", REDIS, start=False)
+        restored, port = self.postgres_container("restored")
         restored_db = digest(restored.encode())
         self.recovery_command(commands, "create-database", self.commands[-1], restored_db)
-        self.run(["docker", "cp", backup_path, restored + ":/data/dump.rdb"])
-        # Starting this fresh database physically loads the copied backup, rather than reading old source state.
-        self.run(["docker", "start", restored])
+        self.postgres_restore(restored, backup_path)
         self.recovery_command(commands, "restore", self.commands[-1], restored_db, input_data=backup)
-        self.run(["docker", "exec", restored, "redis-cli", "--raw", "PING"])
+        self.postgres_wait(restored)
         copied = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["restored"] = {"command": index, "rows": copied, "sha256": digest(canonical(copied))}
@@ -1058,16 +1190,15 @@ class Executor:
     def containment_case(self, identifier, checks):
         self.seed("3.70.1", 1000, checks)
         before = self.inventory()
-        self.redis_command(self.redis, "SAVE")
-        backup = self.scratch / (uuid.uuid4().hex + ".rdb")
-        self.run(["docker", "cp", self.redis + ":/data/dump.rdb", backup])
+        backup = self.postgres_backup(self.redis)
         self.start_nodes(CANDIDATE)
         appended = self.actor(CANDIDATE, "tenant-a", 12, "IncrementCounter", checks, "new-write:")
         checks.check("post-backup-write-committed", appended.get("accepted") is True)
         self.stop_nodes()
         advanced = self.inventory()
-        restored, port = self.container("containment", REDIS, restore=backup)
-        self.run(["docker", "exec", restored, "redis-cli", "PING"])
+        restored, port = self.postgres_container("containment")
+        self.postgres_restore(restored, backup)
+        self.postgres_wait(restored)
         copied = self.inventory(restored)
         checks.check("containment-backup-restored", before == copied)
         checks.check("later-write-absent-from-pre-upgrade-backup", runtime.domain(advanced, "tenant-a") != runtime.domain(copied, "tenant-a"))

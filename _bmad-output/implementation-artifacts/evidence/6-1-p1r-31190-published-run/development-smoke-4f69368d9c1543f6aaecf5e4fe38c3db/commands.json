@@ -1,0 +1,2427 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:51.277900+00:00",
+    "id": 1,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 8248,
+        "pid": 8248,
+        "session": 8248,
+        "start_ticks": 13670165
+      }
+    ],
+    "process": {
+      "pgid": 8248,
+      "pid": 8248,
+      "session": 8248,
+      "start_ticks": 13670165
+    },
+    "started_utc": "2026-10-10T06:53:51.084362+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:51.449903+00:00",
+    "id": 2,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 8287,
+        "pid": 8287,
+        "session": 8287,
+        "start_ticks": 13670184
+      }
+    ],
+    "process": {
+      "pgid": 8287,
+      "pid": 8287,
+      "session": 8287,
+      "start_ticks": 13670184
+    },
+    "started_utc": "2026-10-10T06:53:51.278851+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:51.752582+00:00",
+    "id": 3,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 8300,
+        "pid": 8300,
+        "session": 8300,
+        "start_ticks": 13670202
+      }
+    ],
+    "process": {
+      "pgid": 8300,
+      "pid": 8300,
+      "session": 8300,
+      "start_ticks": 13670202
+    },
+    "started_utc": "2026-10-10T06:53:51.451244+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:51.929722+00:00",
+    "id": 4,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 8347,
+        "pid": 8347,
+        "session": 8347,
+        "start_ticks": 13670232
+      }
+    ],
+    "process": {
+      "pgid": 8347,
+      "pid": 8347,
+      "session": 8347,
+      "start_ticks": 13670232
+    },
+    "started_utc": "2026-10-10T06:53:51.753465+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9.cid",
+      "--name",
+      "p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9",
+      "--label",
+      "hexalith.p1r.invocation=60d468f054dd40f8b0672a405a4936b2",
+      "-p",
+      "127.0.0.1:16072:50005",
+      "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "./placement",
+      "--port",
+      "50005"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:52.204032+00:00",
+    "id": 5,
+    "output": "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\n",
+    "output_sha256": "4bde686a187ba64068d5feb4c14891d9ed5a998004cc5dab5a9b67c385cd71ab",
+    "owned_processes": [
+      {
+        "pgid": 8374,
+        "pid": 8374,
+        "session": 8374,
+        "start_ticks": 13670250
+      }
+    ],
+    "process": {
+      "pgid": 8374,
+      "pid": 8374,
+      "session": 8374,
+      "start_ticks": 13670250
+    },
+    "started_utc": "2026-10-10T06:53:51.931093+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:52.381813+00:00",
+    "id": 6,
+    "output": "{\"Id\":\"382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "9d4862b3735b2e273033afe3506298fc78f9e774c08528ca677c771998085c50",
+    "owned_processes": [
+      {
+        "pgid": 8435,
+        "pid": 8435,
+        "session": 8435,
+        "start_ticks": 13670277
+      }
+    ],
+    "process": {
+      "pgid": 8435,
+      "pid": 8435,
+      "session": 8435,
+      "start_ticks": 13670277
+    },
+    "started_utc": "2026-10-10T06:53:52.205478+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:52.941949+00:00",
+    "id": 7,
+    "output": "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\n",
+    "output_sha256": "4bde686a187ba64068d5feb4c14891d9ed5a998004cc5dab5a9b67c385cd71ab",
+    "owned_processes": [
+      {
+        "pgid": 8571,
+        "pid": 8571,
+        "session": 8571,
+        "start_ticks": 13670295
+      }
+    ],
+    "process": {
+      "pgid": 8571,
+      "pid": 8571,
+      "session": 8571,
+      "start_ticks": 13670295
+    },
+    "started_utc": "2026-10-10T06:53:52.382827+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27.cid",
+      "--name",
+      "p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27",
+      "--label",
+      "hexalith.p1r.invocation=60d468f054dd40f8b0672a405a4936b2",
+      "-p",
+      "127.0.0.1:21544:50006",
+      "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "./scheduler",
+      "--port",
+      "50006",
+      "--override-broadcast-host-port",
+      "127.0.0.1:21544",
+      "--etcd-data-dir",
+      "/tmp/p1r-etcd",
+      "--etcd-client-listen-address",
+      "0.0.0.0"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:53.462476+00:00",
+    "id": 8,
+    "output": "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\n",
+    "output_sha256": "0ca1a08b10bd7d02a325e5b2397ba0b196c7ed1d73415e9b4f77bfc5a389bba5",
+    "owned_processes": [
+      {
+        "pgid": 8738,
+        "pid": 8738,
+        "session": 8738,
+        "start_ticks": 13670351
+      }
+    ],
+    "process": {
+      "pgid": 8738,
+      "pid": 8738,
+      "session": 8738,
+      "start_ticks": 13670351
+    },
+    "started_utc": "2026-10-10T06:53:52.943235+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:53.692317+00:00",
+    "id": 9,
+    "output": "{\"Id\":\"d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "3b287eb160e5dedc2bc17ae67e382a76b375d4cb7464e2fa0ea9e01d98e24dac",
+    "owned_processes": [
+      {
+        "pgid": 8872,
+        "pid": 8872,
+        "session": 8872,
+        "start_ticks": 13670404
+      }
+    ],
+    "process": {
+      "pgid": 8872,
+      "pid": 8872,
+      "session": 8872,
+      "start_ticks": 13670404
+    },
+    "started_utc": "2026-10-10T06:53:53.472794+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:54.233150+00:00",
+    "id": 10,
+    "output": "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\n",
+    "output_sha256": "0ca1a08b10bd7d02a325e5b2397ba0b196c7ed1d73415e9b4f77bfc5a389bba5",
+    "owned_processes": [
+      {
+        "pgid": 9314,
+        "pid": 9314,
+        "session": 9314,
+        "start_ticks": 13670426
+      }
+    ],
+    "process": {
+      "pgid": 9314,
+      "pid": 9314,
+      "session": 9314,
+      "start_ticks": 13670426
+    },
+    "started_utc": "2026-10-10T06:53:53.693752+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55.cid",
+      "--name",
+      "p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55",
+      "--label",
+      "hexalith.p1r.invocation=60d468f054dd40f8b0672a405a4936b2",
+      "-p",
+      "127.0.0.1:18563:6379",
+      "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:54.551880+00:00",
+    "id": 11,
+    "output": "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\n",
+    "output_sha256": "cacf46280083d0fde9044152c9a21e8156a14f05024dedcc7e850c0685600c1b",
+    "owned_processes": [
+      {
+        "pgid": 9528,
+        "pid": 9528,
+        "session": 9528,
+        "start_ticks": 13670480
+      }
+    ],
+    "process": {
+      "pgid": 9528,
+      "pid": 9528,
+      "session": 9528,
+      "start_ticks": 13670480
+    },
+    "started_utc": "2026-10-10T06:53:54.235505+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:54.761944+00:00",
+    "id": 12,
+    "output": "{\"Id\":\"94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "e979d82c077286fa69166414f00704b072c9e4f1f233f5edac20a910e82bdbe2",
+    "owned_processes": [
+      {
+        "pgid": 9627,
+        "pid": 9627,
+        "session": 9627,
+        "start_ticks": 13670512
+      }
+    ],
+    "process": {
+      "pgid": 9627,
+      "pid": 9627,
+      "session": 9627,
+      "start_ticks": 13670512
+    },
+    "started_utc": "2026-10-10T06:53:54.552715+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:55.340526+00:00",
+    "id": 13,
+    "output": "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\n",
+    "output_sha256": "cacf46280083d0fde9044152c9a21e8156a14f05024dedcc7e850c0685600c1b",
+    "owned_processes": [
+      {
+        "pgid": 9650,
+        "pid": 9650,
+        "session": 9650,
+        "start_ticks": 13670533
+      }
+    ],
+    "process": {
+      "pgid": 9650,
+      "pid": 9650,
+      "session": 9650,
+      "start_ticks": 13670533
+    },
+    "started_utc": "2026-10-10T06:53:54.765167+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "create",
+      "--cidfile",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9.cid",
+      "--name",
+      "p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9",
+      "--label",
+      "hexalith.p1r.invocation=60d468f054dd40f8b0672a405a4936b2",
+      "-p",
+      "127.0.0.1:27218:5432",
+      "-e",
+      "POSTGRES_PASSWORD",
+      "-e",
+      "POSTGRES_DB=eventstore",
+      "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:55.655041+00:00",
+    "id": 14,
+    "output": "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\n",
+    "output_sha256": "06988645c19695d17fc769bf60051c18b873573e922295608b34b61871512b9d",
+    "owned_processes": [
+      {
+        "pgid": 10216,
+        "pid": 10216,
+        "session": 10216,
+        "start_ticks": 13670591
+      }
+    ],
+    "process": {
+      "pgid": 10216,
+      "pid": 10216,
+      "session": 10216,
+      "start_ticks": 13670591
+    },
+    "started_utc": "2026-10-10T06:53:55.342695+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:55.828750+00:00",
+    "id": 15,
+    "output": "{\"Id\":\"710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9\",\"State\":{\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "15cb590be422e735af20f03ca579dfeee2ab7a13b4cdf79b8fa0c7192d77fd3d",
+    "owned_processes": [
+      {
+        "pgid": 10296,
+        "pid": 10296,
+        "session": 10296,
+        "start_ticks": 13670622
+      }
+    ],
+    "process": {
+      "pgid": 10296,
+      "pid": 10296,
+      "session": 10296,
+      "start_ticks": 13670622
+    },
+    "started_utc": "2026-10-10T06:53:55.656229+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "start",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:56.647881+00:00",
+    "id": 16,
+    "output": "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\n",
+    "output_sha256": "06988645c19695d17fc769bf60051c18b873573e922295608b34b61871512b9d",
+    "owned_processes": [
+      {
+        "pgid": 10342,
+        "pid": 10342,
+        "session": 10342,
+        "start_ticks": 13670640
+      }
+    ],
+    "process": {
+      "pgid": 10342,
+      "pid": 10342,
+      "session": 10342,
+      "start_ticks": 13670640
+    },
+    "started_utc": "2026-10-10T06:53:55.830368+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 2,
+    "finished_utc": "2026-10-10T06:53:56.993177+00:00",
+    "id": 17,
+    "output": "127.0.0.1:5432 - no response\n",
+    "output_sha256": "16ee3d174b642b39bda2af4b9be5ba53306922e073f3f9750a7f4b458cdfde1a",
+    "owned_processes": [
+      {
+        "pgid": 10419,
+        "pid": 10419,
+        "session": 10419,
+        "start_ticks": 13670721
+      }
+    ],
+    "process": {
+      "pgid": 10419,
+      "pid": 10419,
+      "session": 10419,
+      "start_ticks": 13670721
+    },
+    "started_utc": "2026-10-10T06:53:56.648839+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 2,
+    "finished_utc": "2026-10-10T06:53:57.868088+00:00",
+    "id": 18,
+    "output": "127.0.0.1:5432 - no response\n",
+    "output_sha256": "16ee3d174b642b39bda2af4b9be5ba53306922e073f3f9750a7f4b458cdfde1a",
+    "owned_processes": [
+      {
+        "pgid": 10654,
+        "pid": 10654,
+        "session": 10654,
+        "start_ticks": 13670806
+      }
+    ],
+    "process": {
+      "pgid": 10654,
+      "pid": 10654,
+      "session": 10654,
+      "start_ticks": 13670806
+    },
+    "started_utc": "2026-10-10T06:53:57.494236+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:58.724176+00:00",
+    "id": 19,
+    "output": "127.0.0.1:5432 - accepting connections\n",
+    "output_sha256": "f65a06d12c78be4ce11dc662c4ebf525a1da13786331065f0fe973c6df5ddd29",
+    "owned_processes": [
+      {
+        "pgid": 11023,
+        "pid": 11023,
+        "session": 11023,
+        "start_ticks": 13670894
+      }
+    ],
+    "process": {
+      "pgid": 11023,
+      "pid": 11023,
+      "session": 11023,
+      "start_ticks": 13670894
+    },
+    "started_utc": "2026-10-10T06:53:58.369152+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "cp",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1:/daprd",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/daprd"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:53:59.874023+00:00",
+    "id": 20,
+    "output": "",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "owned_processes": [
+      {
+        "pgid": 11085,
+        "pid": 11085,
+        "session": 11085,
+        "start_ticks": 13670929
+      }
+    ],
+    "process": {
+      "pgid": 11085,
+      "pid": 11085,
+      "session": 11085,
+      "start_ticks": 13670929
+    },
+    "started_utc": "2026-10-10T06:53:58.725700+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/daprd",
+      "--version"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:00.292199+00:00",
+    "id": 21,
+    "output": "1.18.2\n",
+    "output_sha256": "0a1b17e91d514c0c9e88520e6091e2d52a6faf8296892cad7355ff0723a42914",
+    "owned_processes": [
+      {
+        "pgid": 11315,
+        "pid": 11315,
+        "session": 11315,
+        "start_ticks": 13671044
+      }
+    ],
+    "process": {
+      "pgid": 11315,
+      "pid": 11315,
+      "session": 11315,
+      "start_ticks": 13671044
+    },
+    "started_utc": "2026-10-10T06:53:59.875238+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:01.020141+00:00",
+    "id": 22,
+    "output": "{\"Id\":\"382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:52.502110338Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n{\"Id\":\"d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:53.835179975Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n{\"Id\":\"94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:54.943349427Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n{\"Id\":\"710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:55.952646057Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "d341d528c4a5fdf2cd09e37a37b95fe2852e26a6b790fedbee8d88c917fdccb0",
+    "owned_processes": [
+      {
+        "pgid": 11471,
+        "pid": 11471,
+        "session": 11471,
+        "start_ticks": 13671123
+      }
+    ],
+    "process": {
+      "pgid": 11471,
+      "pid": 11471,
+      "session": 11471,
+      "start_ticks": 13671123
+    },
+    "started_utc": "2026-10-10T06:54:00.668512+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "-i",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      "-"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:01.299431+00:00",
+    "id": 23,
+    "output": "DO\n",
+    "output_sha256": "c14aee5b62ffd744902b84a24398e930998597dda300e71334862f0ef148e50a",
+    "owned_processes": [
+      {
+        "pgid": 11617,
+        "pid": 11617,
+        "session": 11617,
+        "start_ticks": 13671159
+      }
+    ],
+    "process": {
+      "pgid": 11617,
+      "pid": 11617,
+      "session": 11617,
+      "start_ticks": 13671159
+    },
+    "started_utc": "2026-10-10T06:54:01.021016+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:01.314700+00:00",
+    "id": 24,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:01.302058+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:01.472396+00:00",
+    "id": 25,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:01.470062+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:01.625095+00:00",
+    "id": 26,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:01.624513+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:01.776972+00:00",
+    "id": 27,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:01.776570+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:01.930866+00:00",
+    "id": 28,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:01.930408+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:02.084971+00:00",
+    "id": 29,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:02.084170+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:02.247113+00:00",
+    "id": 30,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:02.246581+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:15277/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:02.652597+00:00",
+    "id": 31,
+    "output": "{\"ready\":true,\"identity\":{\"assemblies\":[{\"name\":\"Hexalith.EventStore.Client\",\"version\":\"3.119.0.0\",\"path\":\"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Client.dll\",\"sha256\":\"71458f16119675aeb605848021634e89e379a087afe16d448c5a36c7fbeaa813\"},{\"name\":\"Hexalith.EventStore.Contracts\",\"version\":\"3.119.0.0\",\"path\":\"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll\",\"sha256\":\"1100a477a35035996b918ca53603bd60a67a06cc821efe592fa4d085b663ec99\"},{\"name\":\"Hexalith.EventStore.Server\",\"version\":\"3.119.0.0\",\"path\":\"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.Server.dll\",\"sha256\":\"483210fc63c8eecb1856cb94d2232ce17e5b42602e3d2bdd63aa39f80ebd67a6\"},{\"name\":\"Hexalith.EventStore.DomainService\",\"version\":\"3.119.0.0\",\"path\":\"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.DomainService.dll\",\"sha256\":\"babf95cc0313a464ae16ca3abfec659661bf11bb6ffb7bf6915d0d2d6dce16a8\"},{\"name\":\"Hexalith.EventStore.ServiceDefaults\",\"version\":\"3.119.0.0\",\"path\":\"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Hexalith.EventStore.ServiceDefaults.dll\",\"sha256\":\"f405043db8362b031c89df031e6bf99b273e18e31ce7ef3f1fa757bbef6c4cc4\"}]},\"evolution_registration\":{\"manifest_registered\":false,\"bounded_v1_serializer_registered\":true,\"write_alias\":\"P1R.Counter.CounterIncremented\"}}",
+    "output_sha256": "0bd53a5b55f7524f44c79ff6fb9e71be2589e53c99dcb635d086d2cf7d3f5a4f",
+    "started_utc": "2026-10-10T06:54:02.398556+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:19179/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:02.665478+00:00",
+    "id": 32,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:02.665177+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:19179/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:02.818853+00:00",
+    "id": 33,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:02.818406+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:19179/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:02.974289+00:00",
+    "id": 34,
+    "output": "",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-10T06:54:02.972346+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:02.983371+00:00",
+    "id": 35,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:02.982767+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.139249+00:00",
+    "id": 36,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.138742+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.299209+00:00",
+    "id": 37,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.298495+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.454944+00:00",
+    "id": 38,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.454543+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.610815+00:00",
+    "id": 39,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.610463+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.763354+00:00",
+    "id": 40,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.762791+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:03.915431+00:00",
+    "id": 41,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:03.915011+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:04.082800+00:00",
+    "id": 42,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:04.082391+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:04.238851+00:00",
+    "id": 43,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:04.238448+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:21914/ready",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:04.613213+00:00",
+    "id": 44,
+    "output": "{\"ready\":true}",
+    "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+    "started_utc": "2026-10-10T06:54:04.394409+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17623/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:04.623670+00:00",
+    "id": 45,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:04.622527+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17623/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 124,
+    "finished_utc": "2026-10-10T06:54:04.775342+00:00",
+    "id": 46,
+    "output": "URLError",
+    "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+    "started_utc": "2026-10-10T06:54:04.774843+00:00"
+  },
+  {
+    "argv": [
+      "HTTP",
+      "GET",
+      "http://127.0.0.1:17623/v1.0/healthz/outbound",
+      "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:04.931351+00:00",
+    "id": 47,
+    "output": "",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "started_utc": "2026-10-10T06:54:04.930235+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+      "seed",
+      "http://127.0.0.1:17623",
+      "tenant-a",
+      "fixture",
+      "12"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:07.030049+00:00",
+    "id": 48,
+    "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"append-1-accepted\",\"passed\":false},{\"id\":\"append-1-one-event\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":0,\"failed\":2}},\"observation\":{\"accepted\":false,\"event_count\":0,\"committed\":0,\"error\":\"Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing.\"}}\n",
+    "output_sha256": "5c997639d08ffcebaa5881200356c983e6f8fc449a1c979235f8203221eb1cd8",
+    "owned_processes": [
+      {
+        "pgid": 13432,
+        "pid": 13432,
+        "session": 13432,
+        "start_ticks": 13671650
+      }
+    ],
+    "process": {
+      "pgid": 13432,
+      "pid": 13432,
+      "session": 13432,
+      "start_ticks": 13671650
+    },
+    "started_utc": "2026-10-10T06:54:05.932502+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+      "seed",
+      "http://127.0.0.1:17623",
+      "tenant-b",
+      "fixture",
+      "3"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:08.086974+00:00",
+    "id": 49,
+    "output": "{\"instrumentation\":\"p1r-executed-checks-v1\",\"measurement\":{\"checks\":[{\"id\":\"append-1-accepted\",\"passed\":false},{\"id\":\"append-1-one-event\",\"passed\":false}],\"assertions\":{\"attempted\":2,\"passed\":0,\"failed\":2}},\"observation\":{\"accepted\":false,\"event_count\":0,\"committed\":0,\"error\":\"Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing.\"}}\n",
+    "output_sha256": "5c997639d08ffcebaa5881200356c983e6f8fc449a1c979235f8203221eb1cd8",
+    "owned_processes": [
+      {
+        "pgid": 13859,
+        "pid": 13859,
+        "session": 13859,
+        "start_ticks": 13671766
+      }
+    ],
+    "process": {
+      "pgid": 13859,
+      "pid": 13859,
+      "session": 13859,
+      "start_ticks": 13671766
+    },
+    "started_utc": "2026-10-10T06:54:07.088897+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/daprd",
+      "--app-id",
+      "eventstore",
+      "--app-port",
+      "21914",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "17623",
+      "--dapr-grpc-port",
+      "11775",
+      "--dapr-internal-grpc-port",
+      "14188",
+      "--metrics-port",
+      "20981",
+      "--profile-port",
+      "14800",
+      "--resources-path",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/resources",
+      "--config",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/discovery.yaml",
+      "--placement-host-address",
+      "127.0.0.1:16072",
+      "--scheduler-host-address",
+      "127.0.0.1:21544",
+      "--log-level",
+      "warn"
+    ],
+    "cleanup": [
+      {
+        "before": [
+          {
+            "pgid": 13071,
+            "pid": 13071,
+            "session": 13071,
+            "start_ticks": 13671518
+          }
+        ],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:08.378876+00:00",
+    "id": 50,
+    "output": "time=\"2026-10-10T08:54:04.707361306+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.2\ntime=\"2026-10-10T08:54:04.708256734+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.2\ntime=\"2026-10-10T08:54:04.809237596+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.2\ntime=\"2026-10-10T08:54:04.809966347+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.2\ntime=\"2026-10-10T08:54:08.272571492+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.2\n",
+    "output_sha256": "516107d174d600dd457800506bbec44e4c578260e2a87f29bbafcf7b01a21251",
+    "owned_processes": [
+      {
+        "pgid": 13071,
+        "pid": 13071,
+        "session": 13071,
+        "start_ticks": 13671518
+      }
+    ],
+    "process": {
+      "pgid": 13071,
+      "pid": 13071,
+      "session": 13071,
+      "start_ticks": 13671518
+    },
+    "runtime_configuration": "a9df1a4585c940c492857cfdb2b33ebf",
+    "runtime_configuration_sha256": "9d375df3752bd36d131fb9fb935fb129de718e4ee5ceac4a86a93cab3c4d7cdd",
+    "started_utc": "2026-10-10T06:54:04.614866+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/host/bin/Release/net10.0/Host.dll"
+    ],
+    "cleanup": [
+      {
+        "before": [
+          {
+            "pgid": 11924,
+            "pid": 11924,
+            "session": 11924,
+            "start_ticks": 13671354
+          }
+        ],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:08.697587+00:00",
+    "id": 51,
+    "output": "info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]\n      Projection discovery: domain 'counter' -> immediate mode (fire-and-forget after persistence)\ninfo: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]\n      Projection discovery complete: 1 domains discovered. Default refresh interval: 0ms (0=immediate).\ninfo: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]\n      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted\nwarn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]\n      Reminder reconciliation is disabled; readiness stays degraded\ninfo: Microsoft.Hosting.Lifetime[14]\n      Now listening on: http://127.0.0.1:21914\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application started. Press Ctrl+C to shut down.\ninfo: Microsoft.Hosting.Lifetime[0]\n      Hosting environment: Development\ninfo: Microsoft.Hosting.Lifetime[0]\n      Content root path: /tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:21914/ready - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[1]\n      Setting HTTP status code 200.\ninfo: Microsoft.AspNetCore.Http.Result.OkObjectResult[3]\n      Writing value of type '<>f__AnonymousType1`1' as Json.\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'HTTP: GET /ready'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:21914/ready - 200 - application/json;+charset=utf-8 140.0556ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:21914/dapr/config - application/json -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'Dapr Actors Config'\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'Dapr Actors Config'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:21914/dapr/config - 200 - application/json 12.5016ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 GET http://127.0.0.1:21914/dapr/subscribe - application/json -\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 GET http://127.0.0.1:21914/dapr/subscribe - 404 0 - 2.2561ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[16]\n      Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://127.0.0.1:21914/dapr/subscribe, Response status code: 404\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 PUT http://127.0.0.1:21914/actors/AggregateActor/tenant-a:counter:fixture/method/ProcessCommandAsync - application/octet-stream;+charset=utf-8 527\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'Dapr Actors Invoke'\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[2001]\n      Stage transition: ActorId=tenant-a:counter:fixture, Stage=Processing, CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304, CausationId=01M4J9E7R9086GJ3WDTSE9Z304, TenantId=tenant-a, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, DurationMs=72.9056\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[0]\n      State rehydrated: null for ActorId=tenant-a:counter:fixture, CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304\ninfo: Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker[3003]\n      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304\ninfo: System.Net.Http.HttpClient.domain-service-invocation.LogicalHandler[100]\n      Start processing HTTP request POST http://localhost:17623/v1.0/invoke/counter/method/process\nwarn: Hexalith.EventStore.ServiceDefaults.Authentication.JwtWorkloadAssertionIssuer[5511]\n      Workload assertion could not be issued: Reason=contract-unusable. Outbound internal calls will be denied by their receivers.\nwarn: Hexalith.EventStore.Server.DomainServices.DomainServiceWorkloadAssertionHandler[5541]\n      Domain-service invocation sent without a workload assertion; the receiver will deny it. Operation=domain-service:process\ninfo: System.Net.Http.HttpClient.domain-service-invocation.ClientHandler[100]\n      Sending HTTP request POST http://localhost:17623/v1.0/invoke/counter/method/process\ninfo: System.Net.Http.HttpClient.domain-service-invocation.ClientHandler[101]\n      Received HTTP response headers after 25.7851ms - 401\ninfo: System.Net.Http.HttpClient.domain-service-invocation.LogicalHandler[101]\n      End processing HTTP request after 42.0459ms - 401\nfail: Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker[3005]\n      Domain service invocation failed: AppId=counter, Method=process, TenantId=tenant-a, Domain=counter, CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304\n      System.Net.Http.HttpRequestException: Response status code does not indicate success: 401 (Unauthorized).\n         at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()\n         at Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker.InvokeAsync(CommandEnvelope command, Object currentState, CancellationToken cancellationToken)\nfail: Hexalith.EventStore.Server.Actors.AggregateActor[2003]\n      Infrastructure failure: CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304, CausationId=01M4J9E7R9086GJ3WDTSE9Z304, TenantId=tenant-a, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, FailureStage=Processing, ExceptionType=DomainServiceException, ErrorMessage=Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing., Stage=InfrastructureFailure\nwarn: Hexalith.EventStore.Server.Events.DeadLetterPublisher[3200]\n      Dead-letter published: CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304, CausationId=01M4J9E7R9086GJ3WDTSE9Z304, TenantId=tenant-a, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, FailureStage=Processing, ExceptionType=DomainServiceException, ErrorMessage=Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing., DeadLetterTopic=deadletter.tenant-a.counter.events, Stage=DeadLetterPublished\nwarn: Hexalith.EventStore.Server.Actors.AggregateActor[2002]\n      Stage transition (rejection): ActorId=tenant-a:counter:fixture, Stage=Rejected, CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304, CausationId=01M4J9E7R9086GJ3WDTSE9Z304, TenantId=tenant-a, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, DurationMs=228.0877\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[2004]\n      Command completed summary: CorrelationId=01M4J9E7R9086GJ3WDTSE9Z304, CausationId=01M4J9E7R9086GJ3WDTSE9Z304, TenantId=tenant-a, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, Status=Rejected, DurationMs=228.9457, Stage=CommandCompleted\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'Dapr Actors Invoke'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 PUT http://127.0.0.1:21914/actors/AggregateActor/tenant-a:counter:fixture/method/ProcessCommandAsync - 200 - - 415.4182ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 PUT http://127.0.0.1:21914/actors/AggregateActor/tenant-b:counter:fixture/method/ProcessCommandAsync - application/octet-stream;+charset=utf-8 527\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'Dapr Actors Invoke'\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[2001]\n      Stage transition: ActorId=tenant-b:counter:fixture, Stage=Processing, CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B, CausationId=01M4J9E94A9HXY4RNVW4Q31Q2B, TenantId=tenant-b, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, DurationMs=11.5171\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[0]\n      State rehydrated: null for ActorId=tenant-b:counter:fixture, CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B\ninfo: Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker[3003]\n      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-b, Domain=counter, CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B\ninfo: System.Net.Http.HttpClient.domain-service-invocation.LogicalHandler[100]\n      Start processing HTTP request POST http://localhost:17623/v1.0/invoke/counter/method/process\nwarn: Hexalith.EventStore.ServiceDefaults.Authentication.JwtWorkloadAssertionIssuer[5511]\n      Workload assertion could not be issued: Reason=contract-unusable. Outbound internal calls will be denied by their receivers.\nwarn: Hexalith.EventStore.Server.DomainServices.DomainServiceWorkloadAssertionHandler[5541]\n      Domain-service invocation sent without a workload assertion; the receiver will deny it. Operation=domain-service:process\ninfo: System.Net.Http.HttpClient.domain-service-invocation.ClientHandler[100]\n      Sending HTTP request POST http://localhost:17623/v1.0/invoke/counter/method/process\ninfo: System.Net.Http.HttpClient.domain-service-invocation.ClientHandler[101]\n      Received HTTP response headers after 4.8538ms - 401\ninfo: System.Net.Http.HttpClient.domain-service-invocation.LogicalHandler[101]\n      End processing HTTP request after 5.1772ms - 401\nfail: Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker[3005]\n      Domain service invocation failed: AppId=counter, Method=process, TenantId=tenant-b, Domain=counter, CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B\n      System.Net.Http.HttpRequestException: Response status code does not indicate success: 401 (Unauthorized).\n         at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()\n         at Hexalith.EventStore.Server.DomainServices.DaprDomainServiceInvoker.InvokeAsync(CommandEnvelope command, Object currentState, CancellationToken cancellationToken)\nfail: Hexalith.EventStore.Server.Actors.AggregateActor[2003]\n      Infrastructure failure: CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B, CausationId=01M4J9E94A9HXY4RNVW4Q31Q2B, TenantId=tenant-b, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, FailureStage=Processing, ExceptionType=DomainServiceException, ErrorMessage=Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing., Stage=InfrastructureFailure\nwarn: Hexalith.EventStore.Server.Events.DeadLetterPublisher[3200]\n      Dead-letter published: CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B, CausationId=01M4J9E94A9HXY4RNVW4Q31Q2B, TenantId=tenant-b, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, FailureStage=Processing, ExceptionType=DomainServiceException, ErrorMessage=Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing., DeadLetterTopic=deadletter.tenant-b.counter.events, Stage=DeadLetterPublished\nwarn: Hexalith.EventStore.Server.Actors.AggregateActor[2002]\n      Stage transition (rejection): ActorId=tenant-b:counter:fixture, Stage=Rejected, CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B, CausationId=01M4J9E94A9HXY4RNVW4Q31Q2B, TenantId=tenant-b, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, DurationMs=33.4468\ninfo: Hexalith.EventStore.Server.Actors.AggregateActor[2004]\n      Command completed summary: CorrelationId=01M4J9E94A9HXY4RNVW4Q31Q2B, CausationId=01M4J9E94A9HXY4RNVW4Q31Q2B, TenantId=tenant-b, Domain=counter, AggregateId=fixture, CommandType=P1R.Counter.IncrementCounter, Status=Rejected, DurationMs=33.5608, Stage=CommandCompleted\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'Dapr Actors Invoke'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 PUT http://127.0.0.1:21914/actors/AggregateActor/tenant-b:counter:fixture/method/ProcessCommandAsync - 200 - - 69.4440ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 DELETE http://127.0.0.1:21914/actors/AggregateActor/tenant-b:counter:fixture - application/x-protobuf -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'Dapr Actors Deactivation'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[1]\n      Request starting HTTP/1.1 DELETE http://127.0.0.1:21914/actors/AggregateActor/tenant-a:counter:fixture - application/x-protobuf -\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]\n      Executing endpoint 'Dapr Actors Deactivation'\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'Dapr Actors Deactivation'\ninfo: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]\n      Executed endpoint 'Dapr Actors Deactivation'\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 DELETE http://127.0.0.1:21914/actors/AggregateActor/tenant-a:counter:fixture - 200 0 - 16.4080ms\ninfo: Microsoft.AspNetCore.Hosting.Diagnostics[2]\n      Request finished HTTP/1.1 DELETE http://127.0.0.1:21914/actors/AggregateActor/tenant-b:counter:fixture - 200 0 - 17.9644ms\ninfo: Microsoft.Hosting.Lifetime[0]\n      Application is shutting down...\n",
+    "output_sha256": "da7089d4bc1a9600f8439198ceffea623e41724c346432bf0d9a8c4db1ff9e36",
+    "owned_processes": [
+      {
+        "pgid": 11924,
+        "pid": 11924,
+        "session": 11924,
+        "start_ticks": 13671354
+      }
+    ],
+    "process": {
+      "pgid": 11924,
+      "pid": 11924,
+      "session": 11924,
+      "start_ticks": 13671354
+    },
+    "started_utc": "2026-10-10T06:54:02.975792+00:00"
+  },
+  {
+    "argv": [
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/daprd",
+      "--app-id",
+      "counter",
+      "--app-port",
+      "15277",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "19179",
+      "--dapr-grpc-port",
+      "15758",
+      "--dapr-internal-grpc-port",
+      "27178",
+      "--metrics-port",
+      "23726",
+      "--profile-port",
+      "29349",
+      "--resources-path",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/resources",
+      "--config",
+      "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt/discovery.yaml",
+      "--placement-host-address",
+      "127.0.0.1:16072",
+      "--scheduler-host-address",
+      "127.0.0.1:21544",
+      "--log-level",
+      "warn"
+    ],
+    "cleanup": [
+      {
+        "before": [
+          {
+            "pgid": 11895,
+            "pid": 11895,
+            "session": 11895,
+            "start_ticks": 13671322
+          }
+        ],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:08.837636+00:00",
+    "id": 52,
+    "output": "time=\"2026-10-10T08:54:02.81077801+02:00\" level=warning msg=\"mTLS is disabled. Skipping certificate request and tls validation\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.2\ntime=\"2026-10-10T08:54:02.811695091+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.diagnostics type=log ver=1.18.2\ntime=\"2026-10-10T08:54:02.880676843+02:00\" level=warning msg=\"The default value for 'spec.metric.http.increasedCardinality' will change to 'false' in Dapr 1.15 or later\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.http type=log ver=1.18.2\ntime=\"2026-10-10T08:54:02.882808073+02:00\" level=warning msg=\"Graceful shutdown timeout is infinite, will wait indefinitely to shutdown\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actor type=log ver=1.18.2\ntime=\"2026-10-10T08:54:08.759351852+02:00\" level=warning msg=\"Error receiving from stream: rpc error: code = Canceled desc = context canceled\" app_id=counter instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.2\n",
+    "output_sha256": "baa79933c37d5331abf58eac697ea9d16449e0b61cc5ba9d69772459b99842a2",
+    "owned_processes": [
+      {
+        "pgid": 11895,
+        "pid": 11895,
+        "session": 11895,
+        "start_ticks": 13671322
+      }
+    ],
+    "process": {
+      "pgid": 11895,
+      "pid": 11895,
+      "session": 11895,
+      "start_ticks": 13671322
+    },
+    "runtime_configuration": "a9df1a4585c940c492857cfdb2b33ebf",
+    "runtime_configuration_sha256": "9d375df3752bd36d131fb9fb935fb129de718e4ee5ceac4a86a93cab3c4d7cdd",
+    "started_utc": "2026-10-10T06:54:02.654280+00:00"
+  },
+  {
+    "argv": [
+      "dotnet",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-a8318299841d4bb2a0a6bb7d96918064/consumers/candidate/domain/bin/Release/net10.0/Domain.dll"
+    ],
+    "cleanup": [
+      {
+        "before": [
+          {
+            "pgid": 11706,
+            "pid": 11706,
+            "session": 11706,
+            "start_ticks": 13671187
+          }
+        ],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:09.129366+00:00",
+    "id": 53,
+    "output": "{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Hexalith.EventStore.Client.Registration.EventStoreHostExtensions\",\"Message\":\"EventStore activated: 1 domains (counter [Aggregate: CounterAggregate])\",\"State\":{\"DomainCount\":1,\"DomainDetails\":\"counter [Aggregate: CounterAggregate]\",\"{OriginalFormat}\":\"EventStore activated: {DomainCount} domains ({DomainDetails})\"}}\n{\"EventId\":62,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager\",\"Message\":\"User profile is available. Using \\u0027/home/administrator/.aspnet/DataProtection-Keys\\u0027 as key repository; keys will not be encrypted at rest.\",\"State\":{\"FullName\":\"/home/administrator/.aspnet/DataProtection-Keys\",\"{OriginalFormat}\":\"User profile is available. Using \\u0027{FullName}\\u0027 as key repository; keys will not be encrypted at rest.\"}}\n{\"EventId\":5531,\"LogLevel\":\"Warning\",\"Category\":\"Hexalith.EventStore.DomainService.EventStoreDomainServiceSecurityStartupValidator\",\"Message\":\"Domain-service internal credential configuration is incomplete in Development (1 gap(s)); configure APP_API_TOKEN, Authentication:JwtBearer, and Authentication:Workload before exposing this host. Protected requests the configuration cannot verify are denied.\",\"State\":{\"Message\":\"FailureCount=1,{OriginalFormat}=Domain-service internal credential configuration is incomplete in Development ({FailureCount} gap(s)); configure APP_API_TOKEN, Authentication:JwtBearer, and Authentication:Workload before exposing this host. Protected requests the configuration cannot verify are denied.\",\"FailureCount\":1,\"{OriginalFormat}\":\"Domain-service internal credential configuration is incomplete in Development ({FailureCount} gap(s)); configure APP_API_TOKEN, Authentication:JwtBearer, and Authentication:Workload before exposing this host. Protected requests the configuration cannot verify are denied.\"}}\n{\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Now listening on: http://127.0.0.1:15277\",\"State\":{\"address\":\"http://127.0.0.1:15277\",\"{OriginalFormat}\":\"Now listening on: {address}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application started. Press Ctrl\\u002BC to shut down.\",\"State\":{\"{OriginalFormat}\":\"Application started. Press Ctrl\\u002BC to shut down.\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Hosting environment: Development\",\"State\":{\"EnvName\":\"Development\",\"{OriginalFormat}\":\"Hosting environment: {EnvName}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Content root path: /tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt\",\"State\":{\"ContentRoot\":\"/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt\",\"{OriginalFormat}\":\"Content root path: {ContentRoot}\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:15277/ready - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":7,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"EventStoreWorkload was not authenticated. Failure message: verifier-unconfigured\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"FailureMessage\":\"verifier-unconfigured\",\"{OriginalFormat}\":\"{AuthenticationScheme} was not authenticated. Failure message: {FailureMessage}\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executing endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executing endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Setting HTTP status code 200.\",\"State\":{\"StatusCode\":200,\"{OriginalFormat}\":\"Setting HTTP status code {StatusCode}.\"}}\n{\"EventId\":3,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Http.Result.OkObjectResult\",\"Message\":\"Writing value of type \\u0027\\u003C\\u003Ef__AnonymousType1\\u00603\\u0027 as Json.\",\"State\":{\"Type\":\"\\u003C\\u003Ef__AnonymousType1\\u00603\",\"{OriginalFormat}\":\"Writing value of type \\u0027{Type}\\u0027 as Json.\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Routing.EndpointMiddleware\",\"Message\":\"Executed endpoint \\u0027HTTP: GET /ready\\u0027\",\"State\":{\"EndpointName\":\"HTTP: GET /ready\",\"{OriginalFormat}\":\"Executed endpoint \\u0027{EndpointName}\\u0027\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:15277/ready - 200 - application/json;\\u002Bcharset=utf-8 221.1619ms\",\"State\":{\"ElapsedMilliseconds\":221.1619,\"StatusCode\":200,\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/ready\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 GET http://127.0.0.1:15277/dapr/config - application/json -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"ContentType\":\"application/json\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":7,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"EventStoreWorkload was not authenticated. Failure message: verifier-unconfigured\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"FailureMessage\":\"verifier-unconfigured\",\"{OriginalFormat}\":\"{AuthenticationScheme} was not authenticated. Failure message: {FailureMessage}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authorization.DefaultAuthorizationService\",\"Message\":\"Authorization failed. These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation\",\"State\":{\"Reason\":\"These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation\",\"{OriginalFormat}\":\"Authorization failed. {Reason}\"}}\n{\"EventId\":5501,\"LogLevel\":\"Warning\",\"Category\":\"Hexalith.EventStore.ServiceDefaults.Authentication.WorkloadJwtBearerEvents\",\"Message\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme=EventStoreWorkload, Reason=verifier-unconfigured, StatusCode=401, Path=/dapr/config, CorrelationId=5da5e843944e95fc32d40e54a077516b\",\"State\":{\"Message\":\"CorrelationId=5da5e843944e95fc32d40e54a077516b,Path=/dapr/config,StatusCode=401,Reason=verifier-unconfigured,Scheme=EventStoreWorkload,{OriginalFormat}=Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\",\"CorrelationId\":\"5da5e843944e95fc32d40e54a077516b\",\"Path\":\"/dapr/config\",\"StatusCode\":401,\"Reason\":\"verifier-unconfigured\",\"Scheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\"}}\n{\"EventId\":12,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"AuthenticationScheme: EventStoreWorkload was challenged.\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"AuthenticationScheme: {AuthenticationScheme} was challenged.\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 GET http://127.0.0.1:15277/dapr/config - 401 0 - 20.9750ms\",\"State\":{\"ElapsedMilliseconds\":20.975,\"StatusCode\":401,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"GET\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/dapr/config\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 POST http://127.0.0.1:15277/process - application/json;\\u002Bcharset=utf-8 -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"POST\",\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/process\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":7,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"EventStoreWorkload was not authenticated. Failure message: verifier-unconfigured\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"FailureMessage\":\"verifier-unconfigured\",\"{OriginalFormat}\":\"{AuthenticationScheme} was not authenticated. Failure message: {FailureMessage}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authorization.DefaultAuthorizationService\",\"Message\":\"Authorization failed. These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation and Claim.Value is one of the following values: (domain-service:process)\",\"State\":{\"Reason\":\"These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation and Claim.Value is one of the following values: (domain-service:process)\",\"{OriginalFormat}\":\"Authorization failed. {Reason}\"}}\n{\"EventId\":5501,\"LogLevel\":\"Warning\",\"Category\":\"Hexalith.EventStore.ServiceDefaults.Authentication.WorkloadJwtBearerEvents\",\"Message\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme=EventStoreWorkload, Reason=verifier-unconfigured, StatusCode=401, Path=/process, CorrelationId=e4c24cbc66f60a4f70a6f0a70a1aaf17\",\"State\":{\"Message\":\"CorrelationId=e4c24cbc66f60a4f70a6f0a70a1aaf17,Path=/process,StatusCode=401,Reason=verifier-unconfigured,Scheme=EventStoreWorkload,{OriginalFormat}=Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\",\"CorrelationId\":\"e4c24cbc66f60a4f70a6f0a70a1aaf17\",\"Path\":\"/process\",\"StatusCode\":401,\"Reason\":\"verifier-unconfigured\",\"Scheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\"}}\n{\"EventId\":12,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"AuthenticationScheme: EventStoreWorkload was challenged.\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"AuthenticationScheme: {AuthenticationScheme} was challenged.\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 POST http://127.0.0.1:15277/process - 401 0 - 4.1869ms\",\"State\":{\"ElapsedMilliseconds\":4.1869,\"StatusCode\":401,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"POST\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/process\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":1,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request starting HTTP/1.1 POST http://127.0.0.1:15277/process - application/json;\\u002Bcharset=utf-8 -\",\"State\":{\"Protocol\":\"HTTP/1.1\",\"Method\":\"POST\",\"ContentType\":\"application/json; charset=utf-8\",\"ContentLength\":null,\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/process\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request starting {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {ContentType} {ContentLength}\"}}\n{\"EventId\":7,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"EventStoreWorkload was not authenticated. Failure message: verifier-unconfigured\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"FailureMessage\":\"verifier-unconfigured\",\"{OriginalFormat}\":\"{AuthenticationScheme} was not authenticated. Failure message: {FailureMessage}\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authorization.DefaultAuthorizationService\",\"Message\":\"Authorization failed. These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation and Claim.Value is one of the following values: (domain-service:process)\",\"State\":{\"Reason\":\"These requirements were not met:\\nDenyAnonymousAuthorizationRequirement: Requires an authenticated user.\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:workload\\nClaimsAuthorizationRequirement:Claim.Type=eventstore:operation and Claim.Value is one of the following values: (domain-service:process)\",\"{OriginalFormat}\":\"Authorization failed. {Reason}\"}}\n{\"EventId\":5501,\"LogLevel\":\"Warning\",\"Category\":\"Hexalith.EventStore.ServiceDefaults.Authentication.WorkloadJwtBearerEvents\",\"Message\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme=EventStoreWorkload, Reason=verifier-unconfigured, StatusCode=401, Path=/process, CorrelationId=6dd082c5ac07fd35552ebabb3dac37ad\",\"State\":{\"Message\":\"CorrelationId=6dd082c5ac07fd35552ebabb3dac37ad,Path=/process,StatusCode=401,Reason=verifier-unconfigured,Scheme=EventStoreWorkload,{OriginalFormat}=Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\",\"CorrelationId\":\"6dd082c5ac07fd35552ebabb3dac37ad\",\"Path\":\"/process\",\"StatusCode\":401,\"Reason\":\"verifier-unconfigured\",\"Scheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"Internal credential denied: SecurityEvent=InternalAuthenticationDenied, Scheme={Scheme}, Reason={Reason}, StatusCode={StatusCode}, Path={Path}, CorrelationId={CorrelationId}\"}}\n{\"EventId\":12,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler\",\"Message\":\"AuthenticationScheme: EventStoreWorkload was challenged.\",\"State\":{\"AuthenticationScheme\":\"EventStoreWorkload\",\"{OriginalFormat}\":\"AuthenticationScheme: {AuthenticationScheme} was challenged.\"}}\n{\"EventId\":2,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.AspNetCore.Hosting.Diagnostics\",\"Message\":\"Request finished HTTP/1.1 POST http://127.0.0.1:15277/process - 401 0 - 1.6672ms\",\"State\":{\"ElapsedMilliseconds\":1.6672,\"StatusCode\":401,\"ContentType\":null,\"ContentLength\":0,\"Protocol\":\"HTTP/1.1\",\"Method\":\"POST\",\"Scheme\":\"http\",\"Host\":\"127.0.0.1:15277\",\"PathBase\":\"\",\"Path\":\"/process\",\"QueryString\":\"\",\"{OriginalFormat}\":\"Request finished {Protocol} {Method} {Scheme}://{Host}{PathBase}{Path}{QueryString} - {StatusCode} {ContentLength} {ContentType} {ElapsedMilliseconds}ms\"}}\n{\"EventId\":0,\"LogLevel\":\"Information\",\"Category\":\"Microsoft.Hosting.Lifetime\",\"Message\":\"Application is shutting down...\",\"State\":{\"{OriginalFormat}\":\"Application is shutting down...\"}}\n",
+    "output_sha256": "b3e1cd36dde7d940483a315cf8fb7894b5686ee7b683cc135c704ca7085c2ffa",
+    "owned_processes": [
+      {
+        "pgid": 11706,
+        "pid": 11706,
+        "session": 11706,
+        "start_ticks": 13671187
+      }
+    ],
+    "process": {
+      "pgid": 11706,
+      "pid": 11706,
+      "session": 11706,
+      "start_ticks": 13671187
+    },
+    "started_utc": "2026-10-10T06:54:01.301184+00:00"
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "-i",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "eventstore",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      "-"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:09.653172+00:00",
+    "id": 54,
+    "output": "[[\"eventstore||AggregateActor||tenant-a:counter:fixture||pending_command_count\", 0], [\"eventstore||AggregateActor||tenant-b:counter:fixture||pending_command_count\", 0], [\"eventstore||tenant-a:01M4J9E7R9086GJ3WDTSE9Z304:status\", \"eyJzdGF0dXMiOjUsInRpbWVzdGFtcCI6IjIwMjYtMTAtMTBUMDY6NTQ6MDYuNzY5MjAzNCswMDowMCIsImFnZ3JlZ2F0ZUlkIjoiZml4dHVyZSIsImV2ZW50Q291bnQiOm51bGwsInJlamVjdGlvbkV2ZW50VHlwZSI6bnVsbCwiZmFpbHVyZVJlYXNvbiI6IlByb3RlY3RlZCBkYXRhIGRpYWdub3N0aWMgZGV0YWlscyB3ZXJlIHJlZGFjdGVkLiBSZWFzb25Db2RlPXByb3RlY3RlZC1kYXRhLWRpYWdub3N0aWMtcmVkYWN0ZWQ7IFN0YWdlPVByb2Nlc3NpbmcuIiwidGltZW91dER1cmF0aW9uIjpudWxsLCJtZXNzYWdlSWQiOiIwMU00SjlFN1I5MDg2R0ozV0RUU0U5WjMwNCIsImNvcnJlbGF0aW9uSWQiOiIwMU00SjlFN1I5MDg2R0ozV0RUU0U5WjMwNCIsInJldHJ5YWJsZSI6bnVsbCwicmVjb3ZlcnlSZWFzb25Db2RlIjpudWxsLCJkcmFpbkF0dGVtcHRDb3VudCI6bnVsbCwiY29tbWl0dGVkRXZlbnRTZXF1ZW5jZSI6bnVsbCwiZG9tYWluIjoiY291bnRlciJ9\"], [\"eventstore||tenant-b:01M4J9E94A9HXY4RNVW4Q31Q2B:status\", \"eyJzdGF0dXMiOjUsInRpbWVzdGFtcCI6IjIwMjYtMTAtMTBUMDY6NTQ6MDcuNzEyNzkxMyswMDowMCIsImFnZ3JlZ2F0ZUlkIjoiZml4dHVyZSIsImV2ZW50Q291bnQiOm51bGwsInJlamVjdGlvbkV2ZW50VHlwZSI6bnVsbCwiZmFpbHVyZVJlYXNvbiI6IlByb3RlY3RlZCBkYXRhIGRpYWdub3N0aWMgZGV0YWlscyB3ZXJlIHJlZGFjdGVkLiBSZWFzb25Db2RlPXByb3RlY3RlZC1kYXRhLWRpYWdub3N0aWMtcmVkYWN0ZWQ7IFN0YWdlPVByb2Nlc3NpbmcuIiwidGltZW91dER1cmF0aW9uIjpudWxsLCJtZXNzYWdlSWQiOiIwMU00SjlFOTRBOUhYWTRSTlZXNFEzMVEyQiIsImNvcnJlbGF0aW9uSWQiOiIwMU00SjlFOTRBOUhYWTRSTlZXNFEzMVEyQiIsInJldHJ5YWJsZSI6bnVsbCwicmVjb3ZlcnlSZWFzb25Db2RlIjpudWxsLCJkcmFpbkF0dGVtcHRDb3VudCI6bnVsbCwiY29tbWl0dGVkRXZlbnRTZXF1ZW5jZSI6bnVsbCwiZG9tYWluIjoiY291bnRlciJ9\"]]\n",
+    "output_sha256": "a7b79332d1a557ab2bcd71f3ecdee86080ee8913ef7526fcc12871a63480f54a",
+    "owned_processes": [
+      {
+        "pgid": 14123,
+        "pid": 14123,
+        "session": 14123,
+        "start_ticks": 13671970
+      }
+    ],
+    "process": {
+      "pgid": 14123,
+      "pid": 14123,
+      "session": 14123,
+      "start_ticks": 13671970
+    },
+    "started_utc": "2026-10-10T06:54:09.131720+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "/home/administrator/projects/hexalith/eventstore/.oq8-python/bin/python3",
+      "-I",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-published-executor.py",
+      "inventory",
+      "--container",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "--invocation",
+      "60d468f054dd40f8b0672a405a4936b2",
+      "--backend",
+      "state.postgresql"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-60d468f054dd40f8b0672a405a4936b2-crf5dfzt",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:10.375414+00:00",
+    "id": 55,
+    "output": "[{\"floor\":null,\"key\":\"eventstore||AggregateActor||tenant-a:counter:fixture||pending_command_count\",\"kind\":\"bookkeeping\",\"sequence\":null,\"sha256\":\"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9\",\"tenant\":\"tenant-a\"},{\"floor\":null,\"key\":\"eventstore||AggregateActor||tenant-b:counter:fixture||pending_command_count\",\"kind\":\"bookkeeping\",\"sequence\":null,\"sha256\":\"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9\",\"tenant\":\"tenant-b\"},{\"floor\":null,\"key\":\"eventstore||tenant-a:01M4J9E7R9086GJ3WDTSE9Z304:status\",\"kind\":\"bookkeeping\",\"sequence\":null,\"sha256\":\"8c6af1f2b445ce44982063404901775e6e67655b476026b0141f473d45eacdac\",\"tenant\":\"tenant-a\"},{\"floor\":null,\"key\":\"eventstore||tenant-b:01M4J9E94A9HXY4RNVW4Q31Q2B:status\",\"kind\":\"bookkeeping\",\"sequence\":null,\"sha256\":\"ec65b723d0da63ab4b4d7581ecda8f8c0f33736823354cc6adb19b1c7b7769b3\",\"tenant\":\"tenant-b\"}]",
+    "output_sha256": "7a822aefd160298c60519c50fe8bc0b27fb569ee26095c7b3d46b92080a09766",
+    "owned_processes": [
+      {
+        "pgid": 14543,
+        "pid": 14543,
+        "session": 14543,
+        "start_ticks": 13672022
+      },
+      {
+        "pgid": 14543,
+        "pid": 14547,
+        "session": 14543,
+        "start_ticks": 13672033
+      },
+      {
+        "pgid": 14543,
+        "pid": 14561,
+        "session": 14543,
+        "start_ticks": 13672037
+      }
+    ],
+    "process": {
+      "pgid": 14543,
+      "pid": 14543,
+      "session": 14543,
+      "start_ticks": 13672022
+    },
+    "started_utc": "2026-10-10T06:54:09.655329+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:10.706118+00:00",
+    "id": 56,
+    "output": "{\"Id\":\"382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:52.502110338Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "330250b8c5cb3f94e826a590a51033f7a02b44f51b7587695c330d5371e7a708",
+    "owned_processes": [
+      {
+        "pgid": 14714,
+        "pid": 14714,
+        "session": 14714,
+        "start_ticks": 13672098
+      }
+    ],
+    "process": {
+      "pgid": 14714,
+      "pid": 14714,
+      "session": 14714,
+      "start_ticks": 13672098
+    },
+    "started_utc": "2026-10-10T06:54:10.410561+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:11.550395+00:00",
+    "id": 57,
+    "output": "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\n",
+    "output_sha256": "4bde686a187ba64068d5feb4c14891d9ed5a998004cc5dab5a9b67c385cd71ab",
+    "owned_processes": [
+      {
+        "pgid": 14819,
+        "pid": 14819,
+        "session": 14819,
+        "start_ticks": 13672128
+      }
+    ],
+    "process": {
+      "pgid": 14819,
+      "pid": 14819,
+      "session": 14819,
+      "start_ticks": 13672128
+    },
+    "started_utc": "2026-10-10T06:54:10.709150+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:11.766655+00:00",
+    "id": 58,
+    "output": "{\"Id\":\"d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\",\"Image\":\"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:53.835179975Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "d0e0c702346de35215269d0c4681c85722893c23a82d0ed4894acfbf578130ff",
+    "owned_processes": [
+      {
+        "pgid": 14952,
+        "pid": 14952,
+        "session": 14952,
+        "start_ticks": 13672212
+      }
+    ],
+    "process": {
+      "pgid": 14952,
+      "pid": 14952,
+      "session": 14952,
+      "start_ticks": 13672212
+    },
+    "started_utc": "2026-10-10T06:54:11.552209+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:12.514175+00:00",
+    "id": 59,
+    "output": "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\n",
+    "output_sha256": "0ca1a08b10bd7d02a325e5b2397ba0b196c7ed1d73415e9b4f77bfc5a389bba5",
+    "owned_processes": [
+      {
+        "pgid": 14979,
+        "pid": 14979,
+        "session": 14979,
+        "start_ticks": 13672234
+      }
+    ],
+    "process": {
+      "pgid": 14979,
+      "pid": 14979,
+      "session": 14979,
+      "start_ticks": 13672234
+    },
+    "started_utc": "2026-10-10T06:54:11.769239+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:12.780883+00:00",
+    "id": 60,
+    "output": "{\"Id\":\"94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:54.943349427Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "f247c437738aae4a2fa2041eb8dfea83f38d0365c4c583f925fecaf2edd77781",
+    "owned_processes": [
+      {
+        "pgid": 15347,
+        "pid": 15347,
+        "session": 15347,
+        "start_ticks": 13672308
+      }
+    ],
+    "process": {
+      "pgid": 15347,
+      "pid": 15347,
+      "session": 15347,
+      "start_ticks": 13672308
+    },
+    "started_utc": "2026-10-10T06:54:12.516707+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:13.527243+00:00",
+    "id": 61,
+    "output": "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\n",
+    "output_sha256": "cacf46280083d0fde9044152c9a21e8156a14f05024dedcc7e850c0685600c1b",
+    "owned_processes": [
+      {
+        "pgid": 15865,
+        "pid": 15865,
+        "session": 15865,
+        "start_ticks": 13672335
+      }
+    ],
+    "process": {
+      "pgid": 15865,
+      "pid": 15865,
+      "session": 15865,
+      "start_ticks": 13672335
+    },
+    "started_utc": "2026-10-10T06:54:12.783310+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:13.723895+00:00",
+    "id": 62,
+    "output": "{\"Id\":\"710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\",\"Image\":\"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636\",\"Name\":\"/p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-10T06:53:55.952646057Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":\"60d468f054dd40f8b0672a405a4936b2\"}}}\n",
+    "output_sha256": "299525c3168bc8fd9de896db25577670c18ece523c84a8d5a7a3a9562a5103a3",
+    "owned_processes": [
+      {
+        "pgid": 16046,
+        "pid": 16046,
+        "session": 16046,
+        "start_ticks": 13672410
+      }
+    ],
+    "process": {
+      "pgid": 16046,
+      "pid": 16046,
+      "session": 16046,
+      "start_ticks": 13672410
+    },
+    "started_utc": "2026-10-10T06:54:13.528636+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:14.652226+00:00",
+    "id": 63,
+    "output": "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\n",
+    "output_sha256": "06988645c19695d17fc769bf60051c18b873573e922295608b34b61871512b9d",
+    "owned_processes": [
+      {
+        "pgid": 16078,
+        "pid": 16078,
+        "session": 16078,
+        "start_ticks": 13672429
+      }
+    ],
+    "process": {
+      "pgid": 16078,
+      "pid": 16078,
+      "session": 16078,
+      "start_ticks": 13672429
+    },
+    "started_utc": "2026-10-10T06:54:13.725919+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:54:15.155271+00:00",
+    "id": 64,
+    "output": "\nerror: no such object: 382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1\n",
+    "output_sha256": "d547ba672a24dbfc489c19e3af43fcbb333908bc68ac6a271a28accfd88bf5da",
+    "owned_processes": [
+      {
+        "pgid": 16125,
+        "pid": 16125,
+        "session": 16125,
+        "start_ticks": 13672533
+      }
+    ],
+    "process": {
+      "pgid": 16125,
+      "pid": 16125,
+      "session": 16125,
+      "start_ticks": 13672533
+    },
+    "started_utc": "2026-10-10T06:54:14.763284+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:54:15.502439+00:00",
+    "id": 65,
+    "output": "\nerror: no such object: d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a\n",
+    "output_sha256": "4a7d699703be26eeda8358247960871b993c39c9656b9539b5204167fec21674",
+    "owned_processes": [
+      {
+        "pgid": 16154,
+        "pid": 16154,
+        "session": 16154,
+        "start_ticks": 13672572
+      }
+    ],
+    "process": {
+      "pgid": 16154,
+      "pid": 16154,
+      "session": 16154,
+      "start_ticks": 13672572
+    },
+    "started_utc": "2026-10-10T06:54:15.157503+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:54:15.785786+00:00",
+    "id": 66,
+    "output": "\nerror: no such object: 94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687\n",
+    "output_sha256": "080e146ef474b719c10788a88e5f922d8f4caef0aa09a92f5d584298100f8688",
+    "owned_processes": [
+      {
+        "pgid": 16174,
+        "pid": 16174,
+        "session": 16174,
+        "start_ticks": 13672607
+      }
+    ],
+    "process": {
+      "pgid": 16174,
+      "pid": 16174,
+      "session": 16174,
+      "start_ticks": 13672607
+    },
+    "started_utc": "2026-10-10T06:54:15.505008+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:54:16.105505+00:00",
+    "id": 67,
+    "output": "\nerror: no such object: 710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e\n",
+    "output_sha256": "9bc9378af5bf58c7296f2bbb33f2470a460eb633feb22ba8634e71190aed287f",
+    "owned_processes": [
+      {
+        "pgid": 16344,
+        "pid": 16344,
+        "session": 16344,
+        "start_ticks": 13672636
+      }
+    ],
+    "process": {
+      "pgid": 16344,
+      "pid": 16344,
+      "session": 16344,
+      "start_ticks": 13672636
+    },
+    "started_utc": "2026-10-10T06:54:15.788262+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:16.446179+00:00",
+    "id": 68,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 16521,
+        "pid": 16521,
+        "session": 16521,
+        "start_ticks": 13672668
+      }
+    ],
+    "process": {
+      "pgid": 16521,
+      "pid": 16521,
+      "session": 16521,
+      "start_ticks": 13672668
+    },
+    "started_utc": "2026-10-10T06:54:16.108243+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:54:16.935679+00:00",
+    "id": 69,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 17139,
+        "pid": 17139,
+        "session": 17139,
+        "start_ticks": 13672702
+      }
+    ],
+    "process": {
+      "pgid": 17139,
+      "pid": 17139,
+      "session": 17139,
+      "start_ticks": 13672702
+    },
+    "started_utc": "2026-10-10T06:54:16.450102+00:00",
+    "timeout_seconds": 180
+  }
+]

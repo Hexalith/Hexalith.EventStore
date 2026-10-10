@@ -70,8 +70,18 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+_stamp_lock = threading.Lock()
+_last_stamp_utc = None
+
+
 def stamp():
-    return dt.datetime.now(dt.timezone.utc).isoformat()
+    """Keep UTC evidence timestamps ordered when the wall clock briefly reverses."""
+    global _last_stamp_utc
+    observed = dt.datetime.now(dt.timezone.utc)
+    with _stamp_lock:
+        if _last_stamp_utc is None or observed > _last_stamp_utc:
+            _last_stamp_utc = observed
+        return _last_stamp_utc.isoformat()
 
 
 def write_json(path, value):

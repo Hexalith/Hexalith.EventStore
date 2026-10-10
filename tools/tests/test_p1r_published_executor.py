@@ -20,6 +20,110 @@ import p1r_qualification_runtime as runtime
 
 
 class MeasurementTests(unittest.TestCase):
+    def testHttpCommandRecordClampsEarlierFinish(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.commands, worker.configurations = [], []
+        worker.save = mock.Mock()
+        started = "2026-10-10T12:00:00.001300+00:00"
+        with mock.patch.object(executor, "stamp", return_value="2026-10-10T12:00:00+00:00"):
+            row = worker.record(["HTTP", "GET", "http://127.0.0.1:1/ready"], Path("/tmp"), started, 0, b"ready")
+        self.assertEqual(row["finished_utc"], started)
+        preparation.validate_times(row)
+
+    def testPostgresqlV1InventoryKeepsActorJsonAndDecodesBookkeeping(self):
+        identity = "a" * 64
+        observed = {"Id": identity, "Config": {"Labels": {"hexalith.p1r.invocation": "owned"}}}
+        rows = [
+            ["eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:12",
+             {"sequenceNumber": 12}],
+            ["eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:metadata",
+             {"currentSequence": 12, "retainedFloor": 5}],
+            ["eventstore||tenant-a:message:status", "eyJzdGF0dXMiOjV9"],
+        ]
+        with mock.patch.object(executor.subprocess, "check_output", side_effect=[
+                (json.dumps(observed) + "\n").encode(), (json.dumps(rows) + "\n").encode()]):
+            inventory = executor.postgres_inventory(identity, "owned")
+        self.assertEqual([row["kind"] for row in inventory], ["event", "metadata", "bookkeeping"])
+        self.assertEqual(inventory[1]["floor"], 5)
+        self.assertEqual(inventory[0]["sha256"], executor.digest(executor.canonical({"sequenceNumber": 12})))
+        self.assertEqual(executor.postgres_value("eyJzdGF0dXMiOjV9"), b'{"status":5}')
+
+    def testPostgresqlMutationRetainsJsonObjectShape(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.containers = {"owned": {"image": executor.POSTGRES}}
+        worker.run = mock.Mock(return_value=b"UPDATE 1\n")
+        worker.postgres_write("owned", "tenant-a:counter:fixture:metadata", {"currentSequence": 12, "retainedFloor": 5})
+        sql = worker.run.call_args.kwargs["input_bytes"].decode()
+        self.assertIn(executor.canonical({"currentSequence": 12, "retainedFloor": 5}).hex(), sql)
+        self.assertIn("::jsonb", sql)
+
+    def testPostgresqlInventoryNormalizesDatabaseCollationOrder(self):
+        identity = "a" * 64
+        observed = {"Id": identity, "Config": {"Labels": {"hexalith.p1r.invocation": "owned"}}}
+        rows = [["eventstore||eventstore:reminders:v1:control", {}],
+                ["eventstore||GlobalPositionActor||global||current-global-position", {}]]
+        with mock.patch.object(executor.subprocess, "check_output", side_effect=[
+                (json.dumps(observed) + "\n").encode(), (json.dumps(rows) + "\n").encode()]):
+            inventory = executor.postgres_inventory(identity, "owned")
+        self.assertEqual([row["key"] for row in inventory], sorted(row[0] for row in rows))
+
+    def testPostgresqlInventoryRejectsMalformedStreamState(self):
+        identity = "a" * 64
+        observed = {"Id": identity, "Config": {"Labels": {"hexalith.p1r.invocation": "owned"}}}
+        for suffix in (":metadata", ":snapshot"):
+            with self.subTest(suffix), mock.patch.object(executor.subprocess, "check_output", side_effect=[
+                    (json.dumps(observed) + "\n").encode(),
+                    (json.dumps([["eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture" + suffix,
+                                  ["malformed"]]]) + "\n").encode()]):
+                with self.assertRaisesRegex(preparation.InvalidPacket, "invalid persisted .* content"):
+                    executor.postgres_inventory(identity, "owned")
+
+    def testCandidateTrustedEffectsRequirePersistedAudit(self):
+        for operation, observed, check_id in (
+                ("trusted-effect", {"accepted": True, "sequence": 13, "replayed": True},
+                 "candidate-trusted-effect-audit-persisted"),
+                ("unauthorized-effect", {"accepted": False, "sequence": 12, "unexpected": False,
+                                         "unauthorized_refused": True, "denial": "invalid-gateway-proof"},
+                 "candidate-unauthorized-effect-audit-persisted")):
+            with self.subTest(operation):
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.redis, worker.host_port = "owned", 12345
+                with mock.patch.object(worker, "probe", return_value={"actor_methods": ["ProcessTrustedEffectAsync"]}), \
+                     mock.patch.object(worker, "seed"), mock.patch.object(worker, "inventory", side_effect=[[], []]), \
+                     mock.patch.object(worker, "start_nodes"), mock.patch.object(worker, "stop_nodes"), \
+                     mock.patch.object(worker, "http", return_value=observed), \
+                     mock.patch.object(worker, "postgres_audits", return_value=[]):
+                    checks = executor.Measurements()
+                    worker.mixed_case("3.119.0-" + operation, checks)
+                self.assertIn({"id": check_id, "passed": False}, checks.checks)
+
+    def testRenderedPostgresqlCredentialIsAbsentFromAppEnvironments(self):
+        with tempfile.TemporaryDirectory() as temporary, \
+             mock.patch.dict(os.environ, {"POSTGRES_CONNECTION_STRING": "inherited-secret"}), \
+             mock.patch.object(executor, "reserve_port", side_effect=range(12000, 12012)), \
+             mock.patch.object(executor.time, "sleep"):
+            root = Path(temporary)
+            (root / "configurations").mkdir()
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.output = worker.scratch = root
+            worker.inputs = {"operational_profile": {"runtime_version": "1.18.2"}}
+            worker.redis, worker.redis_port, worker.pubsub_port = "owned", 15432, 16379
+            worker.postgres_password = "private-secret"
+            worker.invocation = "a" * 32
+            worker.digest_key = worker.delegation = worker.app_token = worker.workload_key = "fixture"
+            worker.evidence = {"candidate": root}
+            worker.daprd, worker.placement_port, worker.scheduler_port = root / "daprd", 50005, 50006
+            worker.configurations, worker.active = [], []
+            environments = []
+            worker.stop_nodes = mock.Mock()
+            worker.wait = mock.Mock()
+            worker.launch = lambda argv, environment: environments.append(environment) or {"ownership": mock.Mock(root={})}
+            worker.start_nodes(executor.CANDIDATE)
+            self.assertEqual(len(environments), 4)
+            self.assertTrue(all("POSTGRES_CONNECTION_STRING" not in value for value in environments))
+            self.assertIn("password=private-secret", (root / "resources/state.yaml").read_text())
+            self.assertNotIn("private-secret", json.dumps(worker.configurations))
+
     def testDockerDiscoverySelectsOnlyPreservationAndOwnershipFields(self):
         argv = executor.safe_inspect_argv("synthetic-id")
         self.assertEqual(argv[:3], ["docker", "inspect", "--format"])
@@ -58,13 +162,13 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(checks.counter, {"attempted": 1, "passed": 0, "failed": 1})
 
     def testExecutionRefusesSubstitutedApprovedTupleBeforeOperations(self):
-        inputs = {"candidate": {"version": "3.115.0", "tag": "v3.115.0",
-            "tag_commit": "283b07a52c9c70e1c940164a7011ee8c3ad98b2d",
-            "builds": {"version": "4.29.1-22-gba4ca78", "commit": "ba4ca78c3868a4757cb92d912a54c8a237871b54"}},
+        inputs = {"candidate": {"version": "3.119.0", "tag": "v3.119.0",
+            "tag_commit": "f463442cca19e4199982a23a08bae4a490767d4a",
+            "builds": {"version": "4.30.1-20-g2cf0002", "commit": "2cf00028bbe563d80d4d12b5fb2054914f14fcb6"}},
             "rollback": None, "assertion_instrumentation": {"mechanism": executor.MECHANISM},
             "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS],
-            "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.4",
-                "backend": "state.redis", "backend_image": executor.REDIS},
+            "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2",
+                "backend": "state.postgresql", "backend_image": executor.POSTGRES},
             "selected_additions": list(qualification.ADDITIONS)}
         # Isolate the executor's exact approved-selection guard from the input schema.
         # This tooling fixture cannot create a package or operational qualification.
@@ -72,7 +176,7 @@ class MeasurementTests(unittest.TestCase):
             executor.validate_execution_inputs(inputs)
             for mutation in (lambda value: value["candidate"].update(tag_commit="0" * 40),
                              lambda value: value["candidate"]["builds"].update(version="4.30.0"),
-                             lambda value: value["operational_profile"].update(runtime_version="1.18.2"),
+                             lambda value: value["operational_profile"].update(runtime_version="1.18.4"),
                              lambda value: value["operational_profile"].update(backend_image="redis:latest"),
                              lambda value: value.update(rollback={"version": "3.110.0"}),
                              lambda value: value["selected_additions"].pop(),
@@ -89,7 +193,7 @@ class MeasurementTests(unittest.TestCase):
     def testMissingRequiredDirectionIsRefusedEvenWithConsistentCounts(self):
         from test_p1r_published_qualification import lane_case, lane_receipt, synthetic_inputs, synthetic_evidence
         with tempfile.TemporaryDirectory() as scratch:
-            _, candidate = synthetic_evidence(Path(scratch) / "candidate", version="3.115.0")
+            _, candidate = synthetic_evidence(Path(scratch) / "candidate", version="3.119.0")
             inputs = synthetic_inputs(candidate, fixture=None)
             inputs["assertion_instrumentation"]["mechanism"] = executor.MECHANISM
             cases = [lane_case(identity) for identity in qualification.executed_case_inventory(inputs)["full-replay"][:-1]]
@@ -158,16 +262,16 @@ class MeasurementTests(unittest.TestCase):
             executor.Measurements().import_probe(value, "probe:")
 
     def testFiniteInventoryIncludesActualHistoricalAndCandidateDirections(self):
-        selection = {"candidate": {"version": "3.115.0"}}
+        selection = {"candidate": {"version": "3.119.0"}}
         inventory = qualification.executed_case_inventory(selection)
         for lane in ("metadata-write", "full-replay", "snapshot-tail", "retained-covered"):
             self.assertIn("3.110.0-to-3.70.1", inventory[lane])
             self.assertIn("3.70.1-to-3.110.0", inventory[lane])
-            self.assertIn("3.115.0-to-3.70.1", inventory[lane])
-            self.assertIn("3.70.1-to-3.115.0", inventory[lane])
+            self.assertIn("3.119.0-to-3.70.1", inventory[lane])
+            self.assertIn("3.70.1-to-3.119.0", inventory[lane])
         self.assertEqual(set(inventory), set(qualification.SCENARIOS + qualification.ADDITIONS))
-        self.assertIn("3.115.0-fenced-effect", inventory["mixed-api"])
-        self.assertIn("3.115.0-trusted-effect", inventory["mixed-api"])
+        self.assertIn("3.119.0-fenced-effect", inventory["mixed-api"])
+        self.assertIn("3.119.0-trusted-effect", inventory["mixed-api"])
 
     def testComparisonPolicyDoesNotGrantRollback(self):
         from test_p1r_published_qualification import synthetic_inputs, synthetic_evidence
@@ -362,7 +466,7 @@ class CorrectionTests(unittest.TestCase):
 
     def testExecutorSourceSubstitutionRefusedAfterOuterHashRecomputation(self):
         from test_p1r_published_qualification import lane_case,lane_receipt
-        selected={"candidate":{"version":"3.115.0"},"comparisons":[{"version":v} for v in qualification.COMPARISON_VERSIONS],
+        selected={"candidate":{"version":"3.119.0"},"comparisons":[{"version":v} for v in qualification.COMPARISON_VERSIONS],
             "assertion_instrumentation":{"mechanism":executor.MECHANISM},"selected_additions":[]}
         receipt=lane_receipt("provenance",scope="published-package",compatibility="compatible",
             cases=[lane_case(case) for case in qualification.executed_case_inventory(selected)["provenance"]])
@@ -463,14 +567,14 @@ class CorrectionTests(unittest.TestCase):
 
     def testSharedSourceCaseMeasuresActualPackageDelta(self):
         with tempfile.TemporaryDirectory() as scratch:
-            worker=self.worker(scratch);worker.inputs={'candidate':{'version':'3.115.0'}}
+            worker=self.worker(scratch);worker.inputs={'candidate':{'version':'3.119.0'}}
             def metadata(lane,identity,measurements):
                 floor=5 if identity.startswith('source') else 1
                 measurements.check('floor-one',floor == 1)
                 return {'metadata':{'sequence':12,'floor':floor}},'effect','compatible'
             with mock.patch.object(worker,'metadata_case',side_effect=metadata):
                 measured=executor.Measurements();observed,outcome,disposition=worker.checkout_case('legacy-metadata',measured)
-            self.assertEqual(observed['comparison']['selected_case'],'3.115.0-pascal-floor-None')
+            self.assertEqual(observed['comparison']['selected_case'],'3.119.0-pascal-floor-None')
             self.assertEqual(observed['comparison']['source_case'],'source-pascal-floor-None')
             self.assertFalse(measured.checks[-1]['passed'])
             self.assertEqual(disposition,'incompatible')
@@ -486,20 +590,21 @@ class CorrectionTests(unittest.TestCase):
                 Path(arguments[4]).write_bytes(executor.canonical(original))
                 return {'handling':'executed','fields':original}
             with mock.patch.object(worker,'probe',side_effect=probe):
-                measured=executor.Measurements();_,_,disposition=worker.wire_case('query-wire','3.115.0-3.110.0-json-dual',measured)
+                measured=executor.Measurements();_,_,disposition=worker.wire_case('query-wire','3.119.0-3.110.0-json-dual',measured)
             self.assertIn({'id':'preserved:identityAdmissionProof','passed':False},measured.checks)
             self.assertEqual(disposition,'incompatible')
 
     def testUnexpectedProofFailureRetainsAfterInventoryAndRemainsError(self):
         with tempfile.TemporaryDirectory() as scratch:
-            worker=self.worker(scratch);worker.host_port=12345
+            worker=self.worker(scratch);worker.host_port=12345;worker.redis='owned'
             observed={'accepted':False,'unexpected':True,'unauthorized_refused':False,'denial':None,'sequence':12,
                 'diagnostic':[{'denial_message':'Trusted effect denial audit is unavailable.'}]}
             with mock.patch.object(worker,'seed'),mock.patch.object(worker,'inventory',return_value=[]), \
                  mock.patch.object(worker,'start_nodes'),mock.patch.object(worker,'stop_nodes'), \
                  mock.patch.object(worker,'probe',return_value={'actor_methods':['ProcessTrustedEffectAsync']}), \
-                 mock.patch.object(worker,'http',return_value=observed):
-                measured=executor.Measurements();result,outcome,_=worker.mixed_case('3.115.0-unauthorized-effect',measured)
+                 mock.patch.object(worker,'http',return_value=observed), \
+                 mock.patch.object(worker,'postgres_audits',return_value=[]):
+                measured=executor.Measurements();result,outcome,_=worker.mixed_case('3.119.0-unauthorized-effect',measured)
             self.assertEqual(outcome,'error')
             self.assertEqual(result['after'],[])
             self.assertIn({'id':'execution-completed','passed':False},measured.checks)
@@ -520,8 +625,8 @@ class CorrectionTests(unittest.TestCase):
                  mock.patch.object(worker,'inventory',side_effect=[rows(12),rows(13),rows(13)]), \
                  mock.patch.object(worker,'start_nodes',side_effect=lambda version,**kwargs:starts.append(version)), \
                  mock.patch.object(worker,'stop_nodes'),mock.patch.object(worker,'actor',side_effect=actor):
-                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.115.0',measured)
-            self.assertEqual(starts,['3.115.0','3.115.0'])
+                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.119.0',measured)
+            self.assertEqual(starts,['3.119.0','3.119.0'])
             self.assertEqual(observation['replay']['sequence'],13)
             self.assertIn({'id':'supported-append-restart-rehydrates-thirteen','passed':True},measured.checks)
 
@@ -540,7 +645,7 @@ class CorrectionTests(unittest.TestCase):
                 'checks':[{'id':'contract-type-present','passed':True},{'id':'wire-output-nonempty','passed':True}],
                 'assertions':{'attempted':2,'passed':2,'failed':0}},'observation':{'handling':'executed','fields':fields}}
             data=executor.canonical(value);worker.record(argv,worker.scratch,preparation.stamp(),0,data);return data
-        identifier='3.115.0-3.110.0-json-'+('dual' if lane=='query-wire' else 'positive')
+        identifier='3.119.0-3.110.0-json-'+('dual' if lane=='query-wire' else 'positive')
         with mock.patch.object(worker,'run',side_effect=run):
             row,evidence=worker.case(lane,identifier,lambda checks:worker.wire_case(lane,identifier,checks),False)
         binding={'repository':str(preparation.ROOT),'main':{'files':[{'path':'tools/p1r_published_executor.py',
@@ -611,7 +716,7 @@ class CorrectionTests(unittest.TestCase):
                         checks.check('status:'+label+':'+name,name in value and value[name] == value[name])
                     observed.append({'retryability_case':label,'input':value,'readback':value})
                 return {'operation':observed},'effect','compatible'
-            row,evidence=worker.case('mixed-api','3.115.0-status',action,False)
+            row,evidence=worker.case('mixed-api','3.119.0-status',action,False)
             binding={'repository':str(preparation.ROOT),'main':{'files':[{'path':'tools/tests/test_p1r_published_executor.py',
                      'sha256':executor.digest(Path(__file__).read_bytes())}]}}
             retained=list(worker.witness_sources.values())

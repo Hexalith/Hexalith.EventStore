@@ -1,0 +1,460 @@
+{
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "attempts": [
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T06:55:39.878562+00:00",
+      "remaining": [],
+      "removed": [
+        "c89ea4f150eea9f26a4a197a8bfde289baa64ac2552544b499b48ff0f9fb9d19",
+        "c88f9e3d01f36cb4ddcc3f2f43a431bd043b4bb7c84b1dc39d2ceeb43ebf8e64",
+        "aa826c35c44b64e56d11a602f94b3d93e057eb87b6dbbc9543d629ec6a73059f",
+        "37ee342137badc02d44a8bdd63afa86e483baa0b03bfe605b5750f2488897056",
+        "process:40778:13678140",
+        "process:40871:13678168",
+        "process:40911:13678194",
+        "process:40985:13678217",
+        "process:41012:13678244",
+        "process:41385:13678332",
+        "process:41711:13678368",
+        "process:41926:13678434",
+        "process:41993:13678495",
+        "process:42047:13678520",
+        "process:42149:13678585",
+        "process:42203:13678622",
+        "process:42289:13678648",
+        "process:42431:13678712",
+        "process:42538:13678753",
+        "process:42731:13678781",
+        "process:43006:13678844",
+        "process:43499:13678960",
+        "process:44015:13679058",
+        "process:44136:13679101",
+        "process:44643:13679243",
+        "process:45211:13679353",
+        "process:45471:13679418",
+        "process:45593:13679500",
+        "process:46337:13679776",
+        "process:46571:13679808",
+        "process:47360:13679964",
+        "process:47538:13680112",
+        "process:47878:13680348",
+        "process:48605:13680508",
+        "process:48712:13680552",
+        "process:48983:13680596",
+        "/tmp/p1r-published-7d47bfd4803b4b82999d27f664a31a58-f040stot"
+      ],
+      "started_utc": "2026-10-10T06:55:36.000260+00:00",
+      "targeted": [
+        "c89ea4f150eea9f26a4a197a8bfde289baa64ac2552544b499b48ff0f9fb9d19",
+        "c88f9e3d01f36cb4ddcc3f2f43a431bd043b4bb7c84b1dc39d2ceeb43ebf8e64",
+        "aa826c35c44b64e56d11a602f94b3d93e057eb87b6dbbc9543d629ec6a73059f",
+        "37ee342137badc02d44a8bdd63afa86e483baa0b03bfe605b5750f2488897056",
+        "process:40778:13678140",
+        "process:40871:13678168",
+        "process:40911:13678194",
+        "process:40985:13678217",
+        "process:41012:13678244",
+        "process:41385:13678332",
+        "process:41711:13678368",
+        "process:41926:13678434",
+        "process:41993:13678495",
+        "process:42047:13678520",
+        "process:42149:13678585",
+        "process:42203:13678622",
+        "process:42289:13678648",
+        "process:42431:13678712",
+        "process:42538:13678753",
+        "process:42731:13678781",
+        "process:43006:13678844",
+        "process:43499:13678960",
+        "process:44015:13679058",
+        "process:44136:13679101",
+        "process:44643:13679243",
+        "process:45211:13679353",
+        "process:45471:13679418",
+        "process:45593:13679500",
+        "process:46337:13679776",
+        "process:46571:13679808",
+        "process:47360:13679964",
+        "process:47538:13680112",
+        "process:47878:13680348",
+        "process:48605:13680508",
+        "process:48712:13680552",
+        "process:48983:13680596",
+        "/tmp/p1r-published-7d47bfd4803b4b82999d27f664a31a58-f040stot"
+      ]
+    },
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T06:55:41.137031+00:00",
+      "remaining": [],
+      "removed": [
+        "c89ea4f150eea9f26a4a197a8bfde289baa64ac2552544b499b48ff0f9fb9d19",
+        "c88f9e3d01f36cb4ddcc3f2f43a431bd043b4bb7c84b1dc39d2ceeb43ebf8e64",
+        "aa826c35c44b64e56d11a602f94b3d93e057eb87b6dbbc9543d629ec6a73059f",
+        "37ee342137badc02d44a8bdd63afa86e483baa0b03bfe605b5750f2488897056",
+        "process:40778:13678140",
+        "process:40871:13678168",
+        "process:40911:13678194",
+        "process:40985:13678217",
+        "process:41012:13678244",
+        "process:41385:13678332",
+        "process:41711:13678368",
+        "process:41926:13678434",
+        "process:41993:13678495",
+        "process:42047:13678520",
+        "process:42149:13678585",
+        "process:42203:13678622",
+        "process:42289:13678648",
+        "process:42431:13678712",
+        "process:42538:13678753",
+        "process:42731:13678781",
+        "process:43006:13678844",
+        "process:43499:13678960",
+        "process:44015:13679058",
+        "process:44136:13679101",
+        "process:44643:13679243",
+        "process:45211:13679353",
+        "process:45471:13679418",
+        "process:45593:13679500",
+        "process:46337:13679776",
+        "process:46571:13679808",
+        "process:47360:13679964",
+        "process:47538:13680112",
+        "process:47878:13680348",
+        "process:48605:13680508",
+        "process:48712:13680552",
+        "process:48983:13680596",
+        "/tmp/p1r-published-7d47bfd4803b4b82999d27f664a31a58-f040stot"
+      ],
+      "started_utc": "2026-10-10T06:55:39.878615+00:00",
+      "targeted": [
+        "c89ea4f150eea9f26a4a197a8bfde289baa64ac2552544b499b48ff0f9fb9d19",
+        "c88f9e3d01f36cb4ddcc3f2f43a431bd043b4bb7c84b1dc39d2ceeb43ebf8e64",
+        "aa826c35c44b64e56d11a602f94b3d93e057eb87b6dbbc9543d629ec6a73059f",
+        "37ee342137badc02d44a8bdd63afa86e483baa0b03bfe605b5750f2488897056",
+        "process:40778:13678140",
+        "process:40871:13678168",
+        "process:40911:13678194",
+        "process:40985:13678217",
+        "process:41012:13678244",
+        "process:41385:13678332",
+        "process:41711:13678368",
+        "process:41926:13678434",
+        "process:41993:13678495",
+        "process:42047:13678520",
+        "process:42149:13678585",
+        "process:42203:13678622",
+        "process:42289:13678648",
+        "process:42431:13678712",
+        "process:42538:13678753",
+        "process:42731:13678781",
+        "process:43006:13678844",
+        "process:43499:13678960",
+        "process:44015:13679058",
+        "process:44136:13679101",
+        "process:44643:13679243",
+        "process:45211:13679353",
+        "process:45471:13679418",
+        "process:45593:13679500",
+        "process:46337:13679776",
+        "process:46571:13679808",
+        "process:47360:13679964",
+        "process:47538:13680112",
+        "process:47878:13680348",
+        "process:48605:13680508",
+        "process:48712:13680552",
+        "process:48983:13680596",
+        "/tmp/p1r-published-7d47bfd4803b4b82999d27f664a31a58-f040stot"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "first-attempt-targets-every-owned",
+      "passed": true
+    },
+    {
+      "id": "repeated-cleanup",
+      "passed": true
+    },
+    {
+      "id": "later-attempts-continue",
+      "passed": true
+    },
+    {
+      "id": "no-owned-remaining",
+      "passed": true
+    },
+    {
+      "id": "no-cleanup-errors",
+      "passed": true
+    },
+    {
+      "id": "shared-discovery-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-preserved",
+      "passed": true
+    }
+  ],
+  "compatibility": "compatible",
+  "execution": "passed",
+  "fixture": {
+    "id": "p1r-7d47bfd4803b4b82999d27f664a31a58",
+    "synthetic": false
+  },
+  "id": "a4d48d0b117e428c9415b4cfecd37eef",
+  "inputs_sha256": "c3e489f2d7507fd52bf4b65e593976cf8af013cfd14a4b3c698760d31bb190cf",
+  "invocation": "7d47bfd4803b4b82999d27f664a31a58",
+  "owned": [
+    {
+      "id": "c89ea4f150eea9f26a4a197a8bfde289baa64ac2552544b499b48ff0f9fb9d19",
+      "kind": "container",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "c88f9e3d01f36cb4ddcc3f2f43a431bd043b4bb7c84b1dc39d2ceeb43ebf8e64",
+      "kind": "container",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "aa826c35c44b64e56d11a602f94b3d93e057eb87b6dbbc9543d629ec6a73059f",
+      "kind": "container",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "37ee342137badc02d44a8bdd63afa86e483baa0b03bfe605b5750f2488897056",
+      "kind": "container",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:40778:13678140",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:40871:13678168",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:40911:13678194",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:40985:13678217",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:41012:13678244",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:41385:13678332",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:41711:13678368",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:41926:13678434",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:41993:13678495",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42047:13678520",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42149:13678585",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42203:13678622",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42289:13678648",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42431:13678712",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42538:13678753",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:42731:13678781",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:43006:13678844",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:43499:13678960",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:44015:13679058",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:44136:13679101",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:44643:13679243",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:45211:13679353",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:45471:13679418",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:45593:13679500",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:46337:13679776",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:46571:13679808",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:47360:13679964",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:47538:13680112",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:47878:13680348",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:48605:13680508",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:48712:13680552",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "process:48983:13680596",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    },
+    {
+      "id": "/tmp/p1r-published-7d47bfd4803b4b82999d27f664a31a58-f040stot",
+      "kind": "scratch",
+      "label": "hexalith.p1r.invocation=7d47bfd4803b4b82999d27f664a31a58"
+    }
+  ],
+  "profile": {
+    "backend": "state.postgresql",
+    "backend_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31190-requalification.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.2",
+    "selected_by": "user"
+  },
+  "schema": "hexalith.p1r.cleanup-receipt.v1",
+  "scope": "operational",
+  "shared": {
+    "after": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "before": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "complete": true
+  }
+}

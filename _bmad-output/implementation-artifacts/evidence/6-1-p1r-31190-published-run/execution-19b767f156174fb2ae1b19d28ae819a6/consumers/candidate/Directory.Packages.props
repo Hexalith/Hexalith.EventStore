@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup>
+  <Import Project="$(EventStoreSourceRoot)/Directory.Packages.props" Condition="'$(UseCurrentSource)' == 'true'" />
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true'">
+    <PackageVersion Include="Hexalith.EventStore.Server" Version="[$(EventStoreVersion)]" />
+    <PackageVersion Include="Hexalith.EventStore.DomainService" Version="[$(EventStoreVersion)]" />
+    <PackageVersion Include="Hexalith.EventStore.Client" Version="[$(EventStoreVersion)]" />
+    <PackageVersion Include="Hexalith.EventStore.Contracts" Version="[$(EventStoreVersion)]" />
+    <PackageVersion Include="Hexalith.EventStore.ServiceDefaults" Version="[$(EventStoreVersion)]" />
+  </ItemGroup>
+</Project>

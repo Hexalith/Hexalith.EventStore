@@ -99,6 +99,16 @@ NAME = re.compile(r"[A-Za-z0-9_.-]{1,128}")
 text, pattern = runtime.text, runtime.pattern
 
 
+def validate_postgresql_component(file):
+    require(file.get("credential_redacted") is True
+            and isinstance(file.get("rendered_sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", file["rendered_sha256"]) is not None
+            and "type: state.postgresql" in file["content"] and "version: v1" in file["content"]
+            and "{env:POSTGRES_CONNECTION_STRING}" in file["content"]
+            and file["content"].encode() == regular(ROOT / "deploy/dapr/statestore-postgresql.yaml"),
+            "PostgreSQL component template or private rendering binding missing")
+
+
 def parse_json(data):
     """Parse exact retained bytes; duplicate members and nonfinite numbers are refused."""
     def pairs(items):
@@ -896,6 +906,8 @@ def bind_lane(receipt, outcome, context):
                     require(isinstance(file, dict) and isinstance(file.get("content"), str)
                             and digest(file["content"].encode()) == file.get("sha256"),
                             "executed configuration content differs from its hash")
+                    if file.get("name") == "state.yaml" and selection["operational_profile"]["backend"] == "state.postgresql":
+                        validate_postgresql_component(file)
             require(isinstance(case.get("commands"), list) and bool(case["commands"]),
                     "executed case lacks literal command evidence")
             for command in case["commands"]:

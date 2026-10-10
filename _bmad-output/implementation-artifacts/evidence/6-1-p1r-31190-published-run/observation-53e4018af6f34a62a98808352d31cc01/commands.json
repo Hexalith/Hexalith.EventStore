@@ -1,0 +1,266 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-bba682b532a742f8b09dfedd6257b6bf-jq6h3znh",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:41:34.696735+00:00",
+    "id": 1,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 79704,
+        "pid": 79704,
+        "session": 79704,
+        "start_ticks": 13596489
+      }
+    ],
+    "process": {
+      "pgid": 79704,
+      "pid": 79704,
+      "session": 79704,
+      "start_ticks": 13596489
+    },
+    "started_utc": "2026-10-10T06:41:34.373184+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-bba682b532a742f8b09dfedd6257b6bf-jq6h3znh",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:41:34.884763+00:00",
+    "id": 2,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 79726,
+        "pid": 79726,
+        "session": 79726,
+        "start_ticks": 13596521
+      }
+    ],
+    "process": {
+      "pgid": 79726,
+      "pid": 79726,
+      "session": 79726,
+      "start_ticks": 13596521
+    },
+    "started_utc": "2026-10-10T06:41:34.697571+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:41:38.405521+00:00",
+    "id": 3,
+    "output": "  Determining projects to restore...\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj (in 2.24 sec).\n",
+    "output_sha256": "2e3861723b22017377246fb21c0be66a831fbd55a8d77561e6cf426cc4079774",
+    "owned_processes": [
+      {
+        "pgid": 79857,
+        "pid": 79857,
+        "session": 79857,
+        "start_ticks": 13596540
+      }
+    ],
+    "process": {
+      "pgid": 79857,
+      "pid": 79857,
+      "session": 79857,
+      "start_ticks": 13596540
+    },
+    "started_utc": "2026-10-10T06:41:34.891289+00:00",
+    "timeout_seconds": 300
+  },
+  {
+    "argv": [
+      "dotnet",
+      "build",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj",
+      "--no-restore",
+      "-c",
+      "Release",
+      "-m:1",
+      "-p:EventStoreVersion=3.110.0",
+      "-p:NuGetAudit=false"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0",
+    "exit_code": 1,
+    "finished_utc": "2026-10-10T06:41:42.083825+00:00",
+    "id": 4,
+    "output": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/FixtureEffectAdmission.cs(41,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/FixtureEffectAdmission.cs(42,15): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(22,11): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(28,11): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(32,25): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(39,29): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(44,29): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(83,63): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(84,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(85,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(86,62): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(95,48): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(110,49): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(125,42): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(128,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(129,56): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(130,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(132,38): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(142,53): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(143,35): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(150,51): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(162,198): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(165,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(166,19): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(167,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(169,64): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n\nBuild FAILED.\n\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/FixtureEffectAdmission.cs(41,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/FixtureEffectAdmission.cs(42,15): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(22,11): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(28,11): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(32,25): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(39,29): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Program.cs(44,29): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(83,63): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(84,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(85,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(86,62): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(95,48): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(110,49): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(125,42): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(128,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(129,56): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(130,23): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(132,38): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(142,53): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(143,35): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(150,51): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(162,198): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(165,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(166,19): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(167,50): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/QualificationCapabilities.cs(169,64): error CA2007: Consider calling ConfigureAwait on the awaited task (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/observation-53e4018af6f34a62a98808352d31cc01/consumers/comparison-3.110.0/host/Host.csproj]\n    0 Warning(s)\n    26 Error(s)\n\nTime Elapsed 00:00:02.99\n",
+    "output_sha256": "b2e02887e0446263497e5a55e154b0f7c3ba353e5cc9d3452213f9fe2e0ec5f1",
+    "owned_processes": [
+      {
+        "pgid": 80658,
+        "pid": 80658,
+        "session": 80658,
+        "start_ticks": 13596892
+      }
+    ],
+    "process": {
+      "pgid": 80658,
+      "pid": 80658,
+      "session": 80658,
+      "start_ticks": 13596892
+    },
+    "started_utc": "2026-10-10T06:41:38.406484+00:00",
+    "timeout_seconds": 300
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:41:42.372365+00:00",
+    "id": 5,
+    "output": "9d57dbed126b\nbaede0aec916\n8d0788f8322f\ncb7c12622c18\n",
+    "output_sha256": "805cab1150686cd7ee8aaa1290ea0f6053ad1a70c95018bbb943b9c651e225f7",
+    "owned_processes": [
+      {
+        "pgid": 81052,
+        "pid": 81052,
+        "session": 81052,
+        "start_ticks": 13597260
+      }
+    ],
+    "process": {
+      "pgid": 81052,
+      "pid": 81052,
+      "session": 81052,
+      "start_ticks": 13597260
+    },
+    "started_utc": "2026-10-10T06:41:42.085554+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "9d57dbed126b",
+      "baede0aec916",
+      "8d0788f8322f",
+      "cb7c12622c18"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-10T06:41:42.771331+00:00",
+    "id": 6,
+    "output": "{\"Id\":\"9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_placement\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.402626747Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077\",\"Image\":\"sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e\",\"Name\":\"/dapr_scheduler\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.401026321Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/dapr_redis\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.399325324Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n{\"Id\":\"cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488\",\"Image\":\"sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb\",\"Name\":\"/dapr_zipkin\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-08T16:57:37.404292466Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "aa7bd702d58ef4b44317339c4a52f73be5a1ac3fe0b9fe6fe33142b47f735ff1",
+    "owned_processes": [
+      {
+        "pgid": 81072,
+        "pid": 81072,
+        "session": 81072,
+        "start_ticks": 13597289
+      }
+    ],
+    "process": {
+      "pgid": 81072,
+      "pid": 81072,
+      "session": 81072,
+      "start_ticks": 13597289
+    },
+    "started_utc": "2026-10-10T06:41:42.374327+00:00",
+    "timeout_seconds": 180
+  }
+]

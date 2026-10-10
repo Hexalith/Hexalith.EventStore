@@ -1,0 +1,532 @@
+{
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "attempts": [
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T09:12:33.565772+00:00",
+      "remaining": [],
+      "removed": [
+        "process:7517:14497936",
+        "process:7530:14497951",
+        "process:7569:14497967",
+        "process:7915:14498275",
+        "process:7980:14498429",
+        "process:8072:14498496",
+        "process:8201:14498623",
+        "process:8412:14498757",
+        "process:8527:14498834",
+        "process:8766:14499020",
+        "process:8946:14499150",
+        "process:9014:14499177",
+        "process:9129:14499227",
+        "process:9240:14499285",
+        "process:9320:14499337",
+        "process:9389:14499398",
+        "process:9459:14499454",
+        "process:9846:14499762",
+        "process:9981:14499933",
+        "process:10085:14499988",
+        "process:10244:14500117",
+        "process:10385:14500279",
+        "process:10424:14500357",
+        "process:10551:14500559",
+        "process:10709:14500729",
+        "process:10721:14500754",
+        "process:10774:14500811",
+        "process:10815:14500859",
+        "process:10883:14500916",
+        "process:10935:14500971",
+        "process:11144:14501021",
+        "process:11359:14501203",
+        "process:11495:14501348",
+        "process:11537:14501412",
+        "process:11681:14501545",
+        "process:11867:14501690",
+        "process:11979:14501772",
+        "process:12088:14501959",
+        "process:12192:14502102",
+        "process:12217:14502128",
+        "process:12295:14502181",
+        "process:12621:14502242",
+        "process:12818:14502302",
+        "process:12923:14502394",
+        "/tmp/p1r-published-6326c3932f41439e956a3e4c4c2b18bb-mv4aos7b"
+      ],
+      "started_utc": "2026-10-10T09:12:33.565146+00:00",
+      "targeted": [
+        "process:7517:14497936",
+        "process:7530:14497951",
+        "process:7569:14497967",
+        "process:7915:14498275",
+        "process:7980:14498429",
+        "process:8072:14498496",
+        "process:8201:14498623",
+        "process:8412:14498757",
+        "process:8527:14498834",
+        "process:8766:14499020",
+        "process:8946:14499150",
+        "process:9014:14499177",
+        "process:9129:14499227",
+        "process:9240:14499285",
+        "process:9320:14499337",
+        "process:9389:14499398",
+        "process:9459:14499454",
+        "process:9846:14499762",
+        "process:9981:14499933",
+        "process:10085:14499988",
+        "process:10244:14500117",
+        "process:10385:14500279",
+        "process:10424:14500357",
+        "process:10551:14500559",
+        "process:10709:14500729",
+        "process:10721:14500754",
+        "process:10774:14500811",
+        "process:10815:14500859",
+        "process:10883:14500916",
+        "process:10935:14500971",
+        "process:11144:14501021",
+        "process:11359:14501203",
+        "process:11495:14501348",
+        "process:11537:14501412",
+        "process:11681:14501545",
+        "process:11867:14501690",
+        "process:11979:14501772",
+        "process:12088:14501959",
+        "process:12192:14502102",
+        "process:12217:14502128",
+        "process:12295:14502181",
+        "process:12621:14502242",
+        "process:12818:14502302",
+        "process:12923:14502394",
+        "/tmp/p1r-published-6326c3932f41439e956a3e4c4c2b18bb-mv4aos7b"
+      ]
+    },
+    {
+      "errors": [],
+      "finished_utc": "2026-10-10T09:12:33.566040+00:00",
+      "remaining": [],
+      "removed": [
+        "process:7517:14497936",
+        "process:7530:14497951",
+        "process:7569:14497967",
+        "process:7915:14498275",
+        "process:7980:14498429",
+        "process:8072:14498496",
+        "process:8201:14498623",
+        "process:8412:14498757",
+        "process:8527:14498834",
+        "process:8766:14499020",
+        "process:8946:14499150",
+        "process:9014:14499177",
+        "process:9129:14499227",
+        "process:9240:14499285",
+        "process:9320:14499337",
+        "process:9389:14499398",
+        "process:9459:14499454",
+        "process:9846:14499762",
+        "process:9981:14499933",
+        "process:10085:14499988",
+        "process:10244:14500117",
+        "process:10385:14500279",
+        "process:10424:14500357",
+        "process:10551:14500559",
+        "process:10709:14500729",
+        "process:10721:14500754",
+        "process:10774:14500811",
+        "process:10815:14500859",
+        "process:10883:14500916",
+        "process:10935:14500971",
+        "process:11144:14501021",
+        "process:11359:14501203",
+        "process:11495:14501348",
+        "process:11537:14501412",
+        "process:11681:14501545",
+        "process:11867:14501690",
+        "process:11979:14501772",
+        "process:12088:14501959",
+        "process:12192:14502102",
+        "process:12217:14502128",
+        "process:12295:14502181",
+        "process:12621:14502242",
+        "process:12818:14502302",
+        "process:12923:14502394",
+        "/tmp/p1r-published-6326c3932f41439e956a3e4c4c2b18bb-mv4aos7b"
+      ],
+      "started_utc": "2026-10-10T09:12:33.565790+00:00",
+      "targeted": [
+        "process:7517:14497936",
+        "process:7530:14497951",
+        "process:7569:14497967",
+        "process:7915:14498275",
+        "process:7980:14498429",
+        "process:8072:14498496",
+        "process:8201:14498623",
+        "process:8412:14498757",
+        "process:8527:14498834",
+        "process:8766:14499020",
+        "process:8946:14499150",
+        "process:9014:14499177",
+        "process:9129:14499227",
+        "process:9240:14499285",
+        "process:9320:14499337",
+        "process:9389:14499398",
+        "process:9459:14499454",
+        "process:9846:14499762",
+        "process:9981:14499933",
+        "process:10085:14499988",
+        "process:10244:14500117",
+        "process:10385:14500279",
+        "process:10424:14500357",
+        "process:10551:14500559",
+        "process:10709:14500729",
+        "process:10721:14500754",
+        "process:10774:14500811",
+        "process:10815:14500859",
+        "process:10883:14500916",
+        "process:10935:14500971",
+        "process:11144:14501021",
+        "process:11359:14501203",
+        "process:11495:14501348",
+        "process:11537:14501412",
+        "process:11681:14501545",
+        "process:11867:14501690",
+        "process:11979:14501772",
+        "process:12088:14501959",
+        "process:12192:14502102",
+        "process:12217:14502128",
+        "process:12295:14502181",
+        "process:12621:14502242",
+        "process:12818:14502302",
+        "process:12923:14502394",
+        "/tmp/p1r-published-6326c3932f41439e956a3e4c4c2b18bb-mv4aos7b"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "first-attempt-targets-every-owned",
+      "passed": true
+    },
+    {
+      "id": "repeated-cleanup",
+      "passed": true
+    },
+    {
+      "id": "later-attempts-continue",
+      "passed": true
+    },
+    {
+      "id": "no-owned-remaining",
+      "passed": true
+    },
+    {
+      "id": "no-cleanup-errors",
+      "passed": true
+    },
+    {
+      "id": "shared-discovery-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-preserved",
+      "passed": true
+    }
+  ],
+  "compatibility": "unverified",
+  "execution": "passed",
+  "fixture": {
+    "id": "p1r-6326c3932f41439e956a3e4c4c2b18bb",
+    "synthetic": false
+  },
+  "id": "d46342ade3dd42daa709ecc22718bddf",
+  "inputs_sha256": "7920375b2d30ef21072e023a443eabf03a2c958251e95cff7f616620d9e8338d",
+  "invocation": "6326c3932f41439e956a3e4c4c2b18bb",
+  "owned": [
+    {
+      "id": "process:7517:14497936",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:7530:14497951",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:7569:14497967",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:7915:14498275",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:7980:14498429",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8072:14498496",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8201:14498623",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8412:14498757",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8527:14498834",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8766:14499020",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:8946:14499150",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9014:14499177",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9129:14499227",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9240:14499285",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9320:14499337",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9389:14499398",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9459:14499454",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9846:14499762",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:9981:14499933",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10085:14499988",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10244:14500117",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10385:14500279",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10424:14500357",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10551:14500559",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10709:14500729",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10721:14500754",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10774:14500811",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10815:14500859",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10883:14500916",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:10935:14500971",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11144:14501021",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11359:14501203",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11495:14501348",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11537:14501412",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11681:14501545",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11867:14501690",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:11979:14501772",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12088:14501959",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12192:14502102",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12217:14502128",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12295:14502181",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12621:14502242",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12818:14502302",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "process:12923:14502394",
+      "kind": "process",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    },
+    {
+      "id": "/tmp/p1r-published-6326c3932f41439e956a3e4c4c2b18bb-mv4aos7b",
+      "kind": "scratch",
+      "label": "hexalith.p1r.invocation=6326c3932f41439e956a3e4c4c2b18bb"
+    }
+  ],
+  "profile": {
+    "backend": "state.postgresql",
+    "backend_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31190-requalification.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.2",
+    "selected_by": "user"
+  },
+  "schema": "hexalith.p1r.consumer-cleanup.v1",
+  "scope": "local-process-control",
+  "shared": {
+    "after": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "before": {
+      "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922": {
+        "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "running": true,
+        "started": "2026-10-08T16:57:37.399325324Z"
+      },
+      "9d57dbed126bc65317a061dfdd63278e3d2103386b081cedd298bf12fc92b523": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.402626747Z"
+      },
+      "baede0aec9163cf5980047628c359728a2e8ed3afb74bb35eff7d504439ae077": {
+        "image": "sha256:68bb6057abbd3cc1267ad895a73415426ba77f2b451de99693aac54b45ea7d0e",
+        "running": true,
+        "started": "2026-10-08T16:57:37.401026321Z"
+      },
+      "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488": {
+        "image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+        "running": true,
+        "started": "2026-10-08T16:57:37.404292466Z"
+      }
+    },
+    "complete": true
+  }
+}

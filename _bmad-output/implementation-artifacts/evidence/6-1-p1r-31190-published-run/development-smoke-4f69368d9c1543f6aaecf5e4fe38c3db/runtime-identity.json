@@ -1,0 +1,70 @@
+{
+  "dapr_version": "1.18.2",
+  "daprd_sha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+  "images": [
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "60d468f054dd40f8b0672a405a4936b2"
+        }
+      },
+      "Id": "382d4355d7d54a15d84b83d6dac864244bee6ab5c2854665c3bca7b9f641d0b1",
+      "Image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "Name": "/p1r-60d468f054dd40f8b0672a405a4936b2-placement-e4c1aae9",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-10T06:53:52.502110338Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "60d468f054dd40f8b0672a405a4936b2"
+        }
+      },
+      "Id": "d5e6d355f4d22c9ee2f39e971dda59899875f9e9aefbf8f7763777153892186a",
+      "Image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "Name": "/p1r-60d468f054dd40f8b0672a405a4936b2-scheduler-02270c27",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-10T06:53:53.835179975Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "60d468f054dd40f8b0672a405a4936b2"
+        }
+      },
+      "Id": "94534861ac5c13f2f2e3ed5d2bb5122ee4705ccc5884102045eaaf9fe6490687",
+      "Image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "Name": "/p1r-60d468f054dd40f8b0672a405a4936b2-pubsub-ba1e3e55",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-10T06:53:54.943349427Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": "60d468f054dd40f8b0672a405a4936b2"
+        }
+      },
+      "Id": "710b7350d5ed29a5994ad5938797742b434d4a51e8a2a519afb18c83690d908e",
+      "Image": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "Name": "/p1r-60d468f054dd40f8b0672a405a4936b2-source-ab7169e9",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-10T06:53:55.952646057Z"
+      }
+    }
+  ],
+  "profile": {
+    "backend": "state.postgresql",
+    "backend_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "reference": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31190-requalification.md",
+    "runtime": "dapr",
+    "runtime_version": "1.18.2",
+    "selected_by": "user"
+  }
+}

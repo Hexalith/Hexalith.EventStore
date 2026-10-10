@@ -1,0 +1,45 @@
+{
+  "errors": [],
+  "executor_source_sha256": "8a7a21ff639fc731a9bf411e13654065cc3914c36c67916d086f60a6c07abfb8",
+  "finished_utc": "2026-10-10T06:58:54.459229+00:00",
+  "inputs_sha256": "c3e489f2d7507fd52bf4b65e593976cf8af013cfd14a4b3c698760d31bb190cf",
+  "invocation": "55de79a8b0ee40988d11b8eae8eb4397",
+  "owned_containers": {
+    "0f83634f7165a5c2c77f59b72a6c1434d6b8a2fd2bd406fdcce88d7e5c6515c9": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-55de79a8b0ee40988d11b8eae8eb4397-placement-63625148",
+      "port": 15492,
+      "role": "placement"
+    },
+    "5ec4accfd73566ac788ef9511318e4f2107d9d6465573ec7f8c861e7b1fc49dd": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-55de79a8b0ee40988d11b8eae8eb4397-pubsub-1022e989",
+      "port": 25730,
+      "role": "pubsub"
+    },
+    "8604d056c14d13e228460b234ef80c5fb078331f4e042ee2880cb3dec6a1dcbf": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-55de79a8b0ee40988d11b8eae8eb4397-restored-616047d2",
+      "port": 12932,
+      "role": "restored"
+    },
+    "b018222c87beb32cc2131fb69e0ec28c23f4b211575f604969e1facccdb7fe72": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-55de79a8b0ee40988d11b8eae8eb4397-scheduler-9e6993ac",
+      "port": 29542,
+      "role": "scheduler"
+    },
+    "c3428070e5af17cc5f81d06ed11ffc1f42866fed2602bbfaa8523dcf05644978": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-55de79a8b0ee40988d11b8eae8eb4397-source-dbc47ded",
+      "port": 24788,
+      "role": "source"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/development-smoke-restore-e0549c4767774612ac06dce0856b16e9/receipts/7defec39965145c794414fc2282a4faa.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-10T06:58:07.153178+00:00"
+}
