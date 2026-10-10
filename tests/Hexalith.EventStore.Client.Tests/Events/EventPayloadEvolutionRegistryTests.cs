@@ -48,7 +48,7 @@ public sealed class EventPayloadEvolutionRegistryTests
     }
 
     [Fact]
-    public void Read_RenamesShortAliasAndRunsOrderedStepsOnce()
+    public void Read_RenamesExactHistoricalNameAndRunsOrderedStepsOnce()
     {
         int firstCalls = 0;
         int secondCalls = 0;
@@ -381,6 +381,33 @@ public sealed class EventPayloadEvolutionRegistryTests
 
         result.EventType.ShouldBe(typeof(LegacyTestEvent));
         result.PayloadVersion.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Read_KnownCurrentShortNameWinsOverLongerHistoricalRename()
+    {
+        int renameCalls = 0;
+        var registry = new EventPayloadEvolutionRegistry(
+            [typeof(LegacyTestEvent), typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster(OldName, 1, typeof(VersionTwoTestEvent).FullName, payload =>
+            {
+                renameCalls++;
+                payload["Value"] = payload["Amount"]!.GetValue<int>();
+                payload.Remove("Amount");
+                return payload;
+            })]);
+        byte[] stored = "{\"Amount\":4}"u8.ToArray();
+
+        ResolvedEventPayload known = registry.Read(nameof(LegacyTestEvent), 1, stored);
+        ResolvedEventPayload historical = registry.Read(OldName, 1, stored);
+
+        known.EventType.ShouldBe(typeof(LegacyTestEvent));
+        known.PayloadVersion.ShouldBe(1);
+        known.Payload.ShouldBeSameAs(stored);
+        historical.EventType.ShouldBe(typeof(VersionTwoTestEvent));
+        historical.PayloadVersion.ShouldBe(2);
+        JsonNode.Parse(historical.Payload)!["Value"]!.GetValue<int>().ShouldBe(4);
+        renameCalls.ShouldBe(1);
     }
 
     [Fact]

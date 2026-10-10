@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-review'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -49,7 +49,7 @@ Path shorthand: `Contracts`, `Client`, `DomainService` and `Server` mean the mat
 - Client `Registration/EventEvolutionServiceCollectionExtensions.cs` activates Server `DaprProductionLogicalEventReader` via `AggregateActor`; preserve this live opt-in group and document the cleanup exception.
 - Server tests: round-trip committed actor state through JSON; existing helpers retain object references.
 - Server `DomainServices/{BoundedV1DomainResponseParser,PendingV1WireEvent,DaprDomainServiceInvoker}.cs` and `Events/EventPersister.cs`: admit and retain a standalone numeric V1 `PayloadVersion` (1–1024) through the real bounded HTTP response and serialized wrapper. Keep the V2 `EventContractType` fence. A wire wrapper has no event-version declaration of its own; do not compare its CLR version 1 to the supplied event version or relabel the supplied version. Require JSON for a versioned serialized payload.
-- Client `Events/{EventPayloadEvolutionRegistry,EventLogicalViewResolver}.cs` and registration: distinguish registered Apply/projection/subscriber event types from unrelated payload classes in a scanned assembly. Resolve short/full/alias names symmetrically for upcaster lookup; a recognized historical alias remains known when a particular version step is missing. Prefer a registered rename step over an old CLR type's terminal version, turn ambiguous lookup into a typed safe failure, and reject malformed current-version JSON before a projection handler can report completion. The live opt-in Dapr logical reader must accept stamped metadata V1 as a stored source and hand it to the JSON upcast path without activating metadata V2 or losing protection/digest checks.
+- Client `Events/{EventPayloadEvolutionRegistry,EventLogicalViewResolver}.cs` and registration: distinguish registered Apply/projection/subscriber event types from unrelated payload classes in a scanned assembly. Resolve full, short and anchored alias names by tier for upcaster lookup; a recognized historical alias remains known when a particular version step is missing. Prefer an exact registered step; at a known CLR type's declared version, prefer its unique short name over a longer historical-name suffix, while earlier versions may use anchored aliases. Turn ambiguous lookup into a typed safe failure, and reject malformed current-version JSON before a projection handler can report completion. The live opt-in Dapr logical reader must accept stamped metadata V1 as a stored source and hand it to the JSON upcast path without activating metadata V2 or losing protection/digest checks.
 - Server `Events/EventPublisher.cs` and `Projections/ProjectionEventWireBuilder.cs`, Client `Subscriptions/EventStoreDomainEventProcessor.cs`: add positive boundary tests for a V2 stamped publication, projection DTO version propagation into `/project` and `/project/v2`, and a renamed V1 subscription that reaches the current handler without completing a marker as unknown.
 
 ## Tasks & Acceptance
@@ -387,6 +387,8 @@ The eleven pass-2 patch items above are implemented in `34087860effaab223bc4c2c0
 
 **Owner gate decision, 2026-10-10:** The owner approved the passing focused Story 6.6 tests as this story's completion gate despite the two unrelated broad-suite failures above, and approved reviewing only the Story 6.6 change. The prior Story 6.1 test failures remain open. The story moves to `in-review` for the scoped review pass.
 
-## Review 4 Pending Short-Name Decision — 2026-10-10
+## Review 4 Short-Name Decision — 2026-10-10
 
-The review patches build cleanly and pass Client 1,459/1,459, DomainService 554/554, and focused Server boundary tests 77/77. The new known-type precedence rule changes the pre-existing `Read_RenamesShortAliasAndRunsOrderedStepsOnce` behavior: a stored `LegacyTestEvent` short name now resolves to its known CLR type rather than the upcaster declared for `Historical.LegacyTestEvent`. Both meanings are possible from the stored name alone. The owner was asked to choose whether the known type or registered rename wins before the review is closed. No final disposition is recorded yet.
+The review patches build cleanly and pass Client 1,459/1,459, DomainService 554/554, and focused Server boundary tests 77/77. The known-type precedence rule changes the pre-existing `Read_RenamesShortAliasAndRunsOrderedStepsOnce` behavior: a stored `LegacyTestEvent` short name now resolves to its known CLR type rather than the upcaster declared for `Historical.LegacyTestEvent`. Both meanings are possible from the stored name alone. The owner chose known-type precedence on 2026-10-10. Exact historical names still run their registered rename; an exact registered short-name step still takes priority. The renamed chain test and a focused collision test pin both outcomes, and the public guide states the rule.
+
+**Decision verification:** `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Release --no-restore --filter FullyQualifiedName~EventPayloadEvolutionRegistryTests -p:HexalithTenantsFromSource=true -p:NuGetAudit=false` passed 34/34. `git diff --check` passed. Review 4 findings were triaged above; its applicable patches are complete, with no new deferrals from this decision.

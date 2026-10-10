@@ -266,7 +266,7 @@ development_status:
   6-5c-publication-subscription-and-rollout-spec: done
   6-5d-hold-lifecycle-resume-and-legacy-admission-spec: done
   # Rescoped 2026-10-09 (sprint-change-proposal-2026-10-09): pragmatic upcasting, identity validation, cancellation seams; first-attempt scaffolding retired by Task 1.
-  6-6-event-versioning-and-upcasting-implementation: in-progress
+  6-6-event-versioning-and-upcasting-implementation: review
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): NFR18/G-NFR18 owner.
   6-7-aot-and-trimming-posture-reference: backlog
   epic-6-retrospective: optional

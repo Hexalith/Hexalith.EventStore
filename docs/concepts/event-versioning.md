@@ -56,7 +56,7 @@ public int FromVersion => 1;
 public string TargetEventTypeName => typeof(CounterIncremented).FullName!;
 ```
 
-A later step uses the target name. Keep historical names in the upcaster chain even if the old CLR type has been retired. The SDK resolves full, short, and anchored alias names and runs a registered rename before treating an old CLR type as terminal.
+A later step uses the target name. Keep historical names in the upcaster chain even if the old CLR type has been retired. An exact registered upcaster name takes priority. At a known event type's declared version, its unique short name takes priority over a longer historical name with the same suffix. Earlier versions can still use anchored aliases. A rename that needs to distinguish those names requires the full historical name in stored events; check existing history before relying on it.
 
 ## Apply method resolution
 
