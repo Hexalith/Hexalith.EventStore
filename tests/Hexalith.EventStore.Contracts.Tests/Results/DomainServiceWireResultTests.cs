@@ -75,4 +75,16 @@ public class DomainServiceWireResultTests {
         json.ShouldNotContain("eventContractType");
         json.ShouldNotContain("payloadVersion");
     }
+
+    [Fact]
+    public void FromDomainResult_StampsTypedVersionTwoAndLeavesTypedVersionOneUnstamped() {
+        DomainServiceWireResult produced = DomainServiceWireResult.FromDomainResult(
+            DomainResult.Success([new VersionedWireResultTestEvent(2), new LegacyWireResultTestEvent(1)]));
+
+        produced.Events[0].PayloadVersion.ShouldBe(2);
+        produced.Events[0].MetadataVersion.ShouldBeNull();
+        produced.Events[0].EventTypeName.ShouldBe(typeof(VersionedWireResultTestEvent).FullName);
+        produced.Events[1].PayloadVersion.ShouldBeNull();
+        produced.Events[1].EventTypeName.ShouldBe(typeof(LegacyWireResultTestEvent).FullName);
+    }
 }

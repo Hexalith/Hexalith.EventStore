@@ -17,6 +17,10 @@ An event without the attribute, or with `[EventPayloadVersion(1)]`, remains vers
 
 The server stores and forwards the declared version without upcasting. Stream and admin views display stored events. Neither the original payload bytes nor its event identity change during a read.
 
+## Changes that need no new version
+
+Changes that preserve the meaning and JSON shape consumed by every deployed reader, such as internal refactoring, can keep the current version. An added property needs both directions of compatibility: old readers must safely ignore it in new events, and new readers must supply a safe default when reading old stored events that lack it. Rename a property, change its type or meaning, or remove a property only with a new version and a complete upcaster chain. Check every Apply, projection, and subscription consumer before deciding that a shape change is safe.
+
 ## Write a pure upcaster
 
 Each `IEventPayloadUpcaster` transforms one version to the next. Register one step for every historical version up to the current declaration. The SDK discovers public and non-public upcasters with parameterless constructors from the assemblies it scans for aggregate and projection types or subscriber contracts. You can also register one explicitly with `AddEventPayloadUpcaster<T>()`. Discovery and explicit registration of the same type count once.
@@ -54,6 +58,10 @@ public string TargetEventTypeName => typeof(CounterIncremented).FullName!;
 
 A later step uses the target name. Keep historical names in the upcaster chain even if the old CLR type has been retired. The SDK resolves full, short, and anchored alias names and runs a registered rename before treating an old CLR type as terminal.
 
+## Apply method resolution
+
+The SDK resolves `Apply(TEvent)` by an exact CLR full name, then an exact short name, then the longest boundary-anchored suffix of a stored name. A short-name collision can still resolve through exact full names. If a stored name remains ambiguous, `AmbiguousApplyMethodException` names the conflicting event; give the events distinct full names in the stored stream and avoid new ambiguous aliases. An upcaster rename can route an old stored name to one unambiguous current type.
+
 ## Domain service version routing
 
 The resolver checks registrations in this order for the requested domain service version:
@@ -67,13 +75,17 @@ The resolver checks registrations in this order for the requested domain service
 
 See the [configuration reference](../guides/configuration-reference.md#domain-services) for supported key formats and deployment settings.
 
+For a staged rollout, register the old and new domain service versions at the same time and route each caller to its intended version. Retain the old route until callers have moved. A rollback can select that route only while the old service can read every event it may encounter; after version 2 events are written, roll back to a release that understands payload versions and has the required upcasters. Do not send version 2 writes to an older server replica.
+
 ## Deploy in order
 
-1. Deploy the Story 6.6 EventStore server release to **every server replica**. Older replicas can discard a new `PayloadVersion` permanently or reject its write.
-2. Deploy the Story 6.6 SDK to **every consumer replica**: domain services, projections, and subscriber hosts.
+1. Deploy the EventStore server release that supports payload versions to **every server replica**. Older replicas can discard a new `PayloadVersion` permanently or reject its write.
+2. Deploy the matching SDK release to **every consumer replica**: domain services, projections, and subscriber hosts.
 3. Deploy the new event declaration and complete upcaster chain. A consumer replica still on the previous release refuses a versioned event and retries until it is upgraded.
 
 A subscription that cannot upcast returns HTTP 503 and leaves the event uncompleted. Configure Dapr resiliency `maxRetries` and a dead-letter topic so a persistent incompatibility is visible and can be redelivered after correction. Do not acknowledge an unreadable known event as successful.
+
+An unreadable known event raises `EventPayloadEvolutionException`. Command replay reports `UnsupportedVersion`. Projection dispatch stops before invoking the handler or advancing its checkpoint; `/project/v2` surfaces the failure as HTTP 500. Deploy a corrected consumer and retry the event.
 
 ## Identity and compatibility
 

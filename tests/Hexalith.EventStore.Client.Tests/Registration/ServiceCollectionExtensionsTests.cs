@@ -115,6 +115,9 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         IDomainProcessor processor = provider.GetRequiredService<IDomainProcessor>();
 
         _ = Assert.IsType<AggregateProcessor>(processor);
+        string domain = NamingConventionEngine.GetDomainName(typeof(AggregateProcessor));
+        IAsyncDomainProcessor asyncProcessor = provider.GetRequiredKeyedService<IAsyncDomainProcessor>(domain);
+        Assert.Same(processor, asyncProcessor);
 
         CommandEnvelope command = new(
             MessageId: Guid.NewGuid().ToString(),

@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -13,6 +14,41 @@ namespace Hexalith.EventStore.DomainService.Tests;
 public sealed class DomainSharedProjectionRebuildDispatcherTests {
     private const string IndexKey = "widget:shared-index";
     private const string StoreName = "statestore";
+
+    [Fact]
+    public async Task Accumulate_UpcastsRenamedHistoryBeforeHandlerAndDoesNotAdvanceOnFailure() {
+        var store = new InMemoryReadModelStore();
+        var handler = new SharedIndexHandler();
+        var registry = new EventPayloadEvolutionRegistry(
+            [typeof(VersionedProjectionDispatchTests.RenamedEvent)],
+            [new VersionedProjectionDispatchTests.RenameStep()]);
+        using ServiceProvider provider = BuildProvider(store, store, handler, registry);
+        DomainSharedProjectionRebuildIdentity identity = CreateIdentity("operation-versioned");
+        _ = await DispatchAsync(provider, Begin(identity));
+        var stored = new ProjectionEventDto("Old.Contracts.CounterRaised", "{\"Amount\":5}"u8.ToArray(),
+            "json", 1, DateTimeOffset.UnixEpoch, "correlation-1")
+        { MetadataVersion = 1, StoredPayloadVersion = 1 };
+
+        DomainSharedProjectionRebuildResponse accepted = await DispatchAsync(provider,
+            Accumulate(identity, 0, "aggregate-a", false, stored));
+
+        accepted.AcceptedAggregateCount.ShouldBe(1);
+        ProjectionEventDto delivered = handler.LastHistory.ShouldNotBeNull().Events.ShouldHaveSingleItem();
+        delivered.EventTypeName.ShouldBe(typeof(VersionedProjectionDispatchTests.RenamedEvent).FullName);
+        JsonSerializer.Deserialize<VersionedProjectionDispatchTests.RenamedEvent>(delivered.Payload)!.Value.ShouldBe(5);
+        stored.Payload.ShouldBe("{\"Amount\":5}"u8.ToArray());
+
+        var unreadable = stored with { Payload = "{"u8.ToArray() };
+        DomainSharedProjectionRebuildResponse invalid = await DispatchAsync(provider,
+            Accumulate(identity, 1, "aggregate-b", false, unreadable));
+        invalid.Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
+        invalid.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.HandlerFailure);
+        handler.AccumulateCalls.ShouldBe(1);
+        DomainSharedProjectionRebuildResponse afterFailure = await DispatchAsync(provider,
+            Accumulate(identity, 0, "aggregate-a", false, stored));
+        afterFailure.AcceptedAggregateCount.ShouldBe(1);
+        afterFailure.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+    }
 
     [Fact]
     public async Task Session_MultiAggregateErasedDuplicateAndCommit_ProducesVerifiedAtomicReplacement() {
@@ -153,11 +189,15 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
     private static ServiceProvider BuildProvider(
         IReadModelStore sessionStore,
         IReadModelBatchStagingStore stagingStore,
-        IAsyncDomainProjectionHandler handler) {
+        IAsyncDomainProjectionHandler handler,
+        EventPayloadEvolutionRegistry? evolution = null) {
         var services = new ServiceCollection();
         _ = services.AddSingleton(sessionStore);
         _ = services.AddSingleton(stagingStore);
         _ = services.AddScoped<IAsyncDomainProjectionHandler>(_ => handler);
+        if (evolution is not null) {
+            _ = services.AddSingleton(evolution);
+        }
         return services.BuildServiceProvider();
     }
 
@@ -242,6 +282,8 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
 
         public int AccumulateCalls { get; private set; }
 
+        public ProjectionRequest? LastHistory { get; private set; }
+
         public int CompletionCalls { get; private set; }
 
         public List<string> ObservedCompletionStates { get; } = [];
@@ -260,6 +302,7 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
             cancellationToken.ThrowIfCancellationRequested();
             CandidateState state = JsonSerializer.Deserialize<CandidateState>(candidate.State.Span)!;
             AccumulateCalls++;
+            LastHistory = aggregateHistory;
             return Task.FromResult(new DomainSharedProjectionRebuildCandidate(
                 JsonSerializer.SerializeToUtf8Bytes(new CandidateState([.. state.AggregateIds, aggregateHistory.AggregateId]))));
         }

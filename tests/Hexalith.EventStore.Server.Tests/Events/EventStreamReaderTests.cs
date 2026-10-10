@@ -2,6 +2,7 @@
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
+using EventIdentityValidationException = Hexalith.EventStore.Contracts.Events.EventIdentityValidationException;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -69,6 +70,21 @@ public class EventStreamReaderTests {
 
     private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int count)
         => ConfigureEvents(stateManager, identity, 1, count);
+
+    [Fact]
+    public async Task RehydrateAsync_MalformedStoredIdentityFailsBeforeReturningHistory() {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        ConfigureMetadata(state, TestIdentity, 1);
+        _ = state.TryGetStateAsync<EventEnvelope>($"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true,
+                CreateTestEvent(1) with { CorrelationId = "bad_id" }));
+
+        EventIdentityValidationException failure = await Should.ThrowAsync<EventIdentityValidationException>(() =>
+            reader.RehydrateAsync(TestIdentity));
+
+        failure.ComponentName.ShouldBe("CorrelationId");
+        _ = state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
 
     /// <summary>Malformed floor evidence is rejected before an event can be read or any state staged.</summary>
     [Theory]

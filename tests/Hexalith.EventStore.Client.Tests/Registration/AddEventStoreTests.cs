@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
@@ -173,6 +174,10 @@ public class AddEventStoreTests : IDisposable {
         IEnumerable<IDomainProcessor> processors = provider.GetServices<IDomainProcessor>();
 
         Assert.NotEmpty(processors);
+        using IServiceScope scope = provider.CreateScope();
+        var aggregate = scope.ServiceProvider.GetRequiredService<SmokeTestAggregate>();
+        Assert.Same(scope.ServiceProvider.GetRequiredService<EventPayloadEvolutionRegistry>(),
+            ((IEventPayloadEvolutionAware)aggregate).EvolutionRegistry);
     }
 
     [Fact]

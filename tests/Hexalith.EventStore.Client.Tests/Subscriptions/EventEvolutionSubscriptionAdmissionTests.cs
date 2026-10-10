@@ -85,6 +85,10 @@ public sealed class EventEvolutionSubscriptionAdmissionTests
         result.MetadataVersion.ShouldBe(2);
         result.EventContractType.ShouldBe("evt");
         result.PayloadVersion.ShouldBe(3);
+        string versionTwoWire = JsonSerializer.Serialize(Envelope() with { MetadataVersion = 1, PayloadVersion = 2 }, options);
+        EventStoreDomainEventEnvelope versionTwo = JsonSerializer.Deserialize<EventStoreDomainEventEnvelope>(versionTwoWire, options)!;
+        versionTwo.MetadataVersion.ShouldBe(1);
+        versionTwo.PayloadVersion.ShouldBe(2);
     }
 
     private static EventStoreDomainEventEnvelope Envelope()

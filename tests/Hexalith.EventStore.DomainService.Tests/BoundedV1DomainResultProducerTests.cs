@@ -8,6 +8,27 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// <summary>Checks once-only bounded V1 production and complete response admission before output.</summary>
 public sealed class BoundedV1DomainResultProducerTests
 {
+    [Fact]
+    public async Task TypedVersionTwoProducerStampsVersionAndLegacyProducerLeavesItAbsent()
+    {
+        var producer = new BoundedV1DomainResultProducer([
+            new(typeof(VersionedProjectionDispatchTests.RenamedEvent),
+                typeof(VersionedProjectionDispatchTests.RenamedEvent).FullName!, "json", 64,
+                static (_, sink, _) => { sink.Write("{\"Value\":2}"u8); return Task.CompletedTask; }),
+            new(typeof(BoundedProducerTestEvent), "legacy", "json", 64,
+                static (_, sink, _) => { sink.Write("{}"u8); return Task.CompletedTask; }),
+        ]);
+
+        DomainServiceWireResult result = await producer.ProduceAsync(DomainResult.Success([
+            new VersionedProjectionDispatchTests.RenamedEvent(2), new BoundedProducerTestEvent(),
+        ]), CancellationToken.None);
+
+        result.Events[0].PayloadVersion.ShouldBe(2);
+        result.Events[1].PayloadVersion.ShouldBeNull();
+        BoundedV1WireResultAdmission.Admit(result, CancellationToken.None)
+            .Events[0].PayloadVersion.ShouldBe(2);
+    }
+
     /// <summary>Checks enriched payload callbacks cannot replace an event reference after whole-result capture.</summary>
     [Fact]
     public async Task ResultGetterCannotSubstituteLaterEventBeforeAdmission()

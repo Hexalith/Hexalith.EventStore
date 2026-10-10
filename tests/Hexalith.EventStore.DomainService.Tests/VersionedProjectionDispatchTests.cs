@@ -18,7 +18,7 @@ public sealed class VersionedProjectionDispatchTests
     [EventPayloadVersion(2)]
     public sealed record RenamedEvent(int Value) : IEventPayload;
 
-    private sealed class RenameStep : IEventPayloadUpcaster
+    internal sealed class RenameStep : IEventPayloadUpcaster
     {
         public string EventTypeName => "Old.Contracts.CounterRaised";
         public int FromVersion => 1;
@@ -73,6 +73,20 @@ public sealed class VersionedProjectionDispatchTests
         delivered.StoredPayloadVersion.ShouldBe(1);
         JsonSerializer.Deserialize<RenamedEvent>(delivered.Payload).ShouldBe(new RenamedEvent(5));
         stored.Payload.ShouldBe(JsonSerializer.SerializeToUtf8Bytes(new { Amount = 5 }));
+    }
+
+    [Fact]
+    public async Task LegacyAdapter_PassesCallerTokenIntoHandler()
+    {
+        var handler = new CapturingHandler();
+        var adapter = new LegacyDomainProjectionHandlerAdapter(handler, "counter", "counter");
+        using var source = new CancellationTokenSource();
+
+        DomainProjectionHandlerResult result = await adapter.ProjectAsync(
+            new ProjectionRequest("tenant-1", "counter", "counter-1", []), "dispatch-1", source.Token);
+
+        result.Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        handler.LastToken.ShouldBe(source.Token);
     }
 
     [Fact]

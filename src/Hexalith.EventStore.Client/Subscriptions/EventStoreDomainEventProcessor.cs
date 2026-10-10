@@ -181,8 +181,9 @@ public class EventStoreDomainEventProcessor {
             }
             catch (EventPayloadEvolutionException error)
             {
-                _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}; UpcasterType={UpcasterType}",
-                    error.EventTypeName, error.StoredVersion, error.SequenceNumber, error.UpcasterTypeName);
+                _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}; Reason={Reason}; UpcasterType={UpcasterType}; InnerExceptionType={InnerExceptionType}",
+                    error.EventTypeName, error.StoredVersion, error.SequenceNumber, error.Reason,
+                    error.UpcasterTypeName, error.InnerExceptionTypeName);
                 await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
             }
@@ -190,6 +191,13 @@ public class EventStoreDomainEventProcessor {
             Type? eventType = resolved.EventType;
             if (eventType is null) {
                 _ = _eventTypeRegistry.TryGetValue(envelope.EventTypeName, out eventType);
+                if (eventType is not null
+                    && (envelope.PayloadVersion ?? 1) != EventPayloadVersionResolver.GetDeclaredVersion(eventType)) {
+                    _logger.LogWarning("Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}: current version differs.",
+                        envelope.EventTypeName, envelope.PayloadVersion ?? 1, envelope.SequenceNumber);
+                    await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                    return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
+                }
             }
 
             if (eventType is null

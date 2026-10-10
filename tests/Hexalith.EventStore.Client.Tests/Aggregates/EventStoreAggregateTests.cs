@@ -4,6 +4,8 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Tests.Events;
 using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -15,6 +17,67 @@ using Shouldly;
 namespace Hexalith.EventStore.Client.Tests.Aggregates;
 
 public class EventStoreAggregateTests : IDisposable {
+    [Fact]
+    public async Task ProcessAsync_PrefersTokenAwareHandleAndPassesSameCallerToken()
+    {
+        var aggregate = new TokenAwareTestAggregate();
+        var envelopeAggregate = new EnvelopeTokenTestAggregate();
+        var command = new CommandEnvelope("01ARZ3NDEKTSV4RRFFQ69G5FAX", "tenant-1", "version", "aggregate-1",
+            nameof(TokenAwareTestCommand), "{}"u8.ToArray(), "trace-1", "cause-1", "user-1", null);
+        using var source = new CancellationTokenSource();
+
+        _ = await aggregate.ProcessAsync(command, null, source.Token);
+        _ = await envelopeAggregate.ProcessAsync(command, null, source.Token);
+
+        aggregate.ObservedToken.ShouldBe(source.Token);
+        aggregate.LegacyCalled.ShouldBeFalse();
+        envelopeAggregate.ObservedToken.ShouldBe(source.Token);
+        envelopeAggregate.ObservedEnvelope.ShouldBeSameAs(command);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UpcastsRenamedEventEmbeddedInSnapshotBeforeHandle()
+    {
+        var aggregate = new VersionTwoTestAggregate();
+        var old = new EventEnvelope(new EventMetadata("01ARZ3NDEKTSV4RRFFQ69G5FAV", "aggregate-1",
+            "VersionTwoTest", "tenant-1", "version", 1, 1, DateTimeOffset.UnixEpoch,
+            "trace-1", "cause-1", "user-1", "v1", "Old.Contracts.ValueRaised", 1, "json"),
+            "{\"Amount\":2}"u8.ToArray(), null);
+        var current = new EventEnvelope(new EventMetadata("01ARZ3NDEKTSV4RRFFQ69G5FAW", "aggregate-1",
+            "VersionTwoTest", "tenant-1", "version", 2, 2, DateTimeOffset.UnixEpoch,
+            "trace-1", "cause-1", "user-1", "v2", typeof(VersionTwoTestEvent).FullName!, 1, "json")
+        { PayloadVersion = 2 }, "{\"Value\":3}"u8.ToArray(), null);
+        var snapshot = new DomainServiceCurrentState(null, [old], 0, 1);
+        var state = new DomainServiceCurrentState(snapshot, [current], 1, 2);
+        var command = new CommandEnvelope("01ARZ3NDEKTSV4RRFFQ69G5FAX", "tenant-1", "version", "aggregate-1",
+            nameof(VersionTwoTestCommand), "{}"u8.ToArray(), "trace-1", "cause-1", "user-1", null);
+
+        DomainResult result = await aggregate.ProcessAsync(command, state);
+
+        result.IsNoOp.ShouldBeTrue();
+        aggregate.ObservedValue.ShouldBe(5);
+        old.Payload.ShouldBe("{\"Amount\":2}"u8.ToArray());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_MissingHistoricalRenameStepFailsBeforeHandle()
+    {
+        var aggregate = new VersionTwoTestAggregate();
+        var old = new EventEnvelope(new EventMetadata("01ARZ3NDEKTSV4RRFFQ69G5FAV", "aggregate-1",
+            "VersionTwoTest", "tenant-1", "version", 1, 1, DateTimeOffset.UnixEpoch,
+            "trace-1", "cause-1", "user-1", "v1", "Old.Contracts.ValueRaised", 1, "json")
+        { PayloadVersion = 2 }, "{\"Amount\":2}"u8.ToArray(), null);
+        var command = new CommandEnvelope("01ARZ3NDEKTSV4RRFFQ69G5FAX", "tenant-1", "version", "aggregate-1",
+            nameof(VersionTwoTestCommand), "{}"u8.ToArray(), "trace-1", "cause-1", "user-1", null);
+
+        EventPayloadEvolutionException failure = await Should.ThrowAsync<EventPayloadEvolutionException>(() =>
+            aggregate.ProcessAsync(command, new DomainServiceCurrentState(null, [old], 0, 1)));
+
+        failure.EventTypeName.ShouldBe("Old.Contracts.ValueRaised");
+        failure.StoredVersion.ShouldBe(2);
+        aggregate.ObservedValue.ShouldBe(0);
+    }
+
     public EventStoreAggregateTests() {
         AssemblyScanner.ClearCache();
         NamingConventionEngine.ClearCache();
@@ -72,7 +135,14 @@ public class EventStoreAggregateTests : IDisposable {
         var command = new CommandEnvelope("p1r-command", "tenant-1", "counter", "agg-1",
             nameof(CancellationReplayEvent), "{}"u8.ToArray(), "corr", null, "user", null);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(() => aggregate.ProcessAsync(command, currentState));
+        if (invalid == "payload")
+        {
+            _ = await Should.ThrowAsync<EventPayloadEvolutionException>(() => aggregate.ProcessAsync(command, currentState));
+        }
+        else
+        {
+            _ = await Should.ThrowAsync<InvalidOperationException>(() => aggregate.ProcessAsync(command, currentState));
+        }
 
         scope.Applied.ShouldBe(0);
         scope.Handled.ShouldBe(0);
@@ -789,7 +859,7 @@ public class EventStoreAggregateTests : IDisposable {
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithInvalidPayloadShape_ThrowsInvalidOperationException() {
+    public async Task ProcessAsync_JsonElementArray_WithInvalidPayloadShape_ThrowsTypedEvolutionFailure() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -799,7 +869,7 @@ public class EventStoreAggregateTests : IDisposable {
         JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
         CommandEnvelope command = CreateCommand(new ResetItems());
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+        _ = await Assert.ThrowsAsync<EventPayloadEvolutionException>(
             () => aggregate.ProcessAsync(command, jsonArray));
     }
 

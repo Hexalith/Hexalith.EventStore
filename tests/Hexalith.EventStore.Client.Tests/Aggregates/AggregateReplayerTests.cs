@@ -2,7 +2,11 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Tests.Events;
 using Hexalith.EventStore.Contracts.Aggregates;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Replay;
 
@@ -17,6 +21,83 @@ namespace Hexalith.EventStore.Client.Tests.Aggregates;
 /// duplicate guard, all 7 failure categories), and the side-effect-free contract.
 /// </summary>
 public class AggregateReplayerTests {
+    [Fact]
+    public void Replay_RenamedV1AndCurrentV2ReachSameStateAsCurrentHistory()
+    {
+        ReplayEventEnvelope old = BuildEnvelope(1, "Old.Contracts.ValueRaised", "{\"Amount\":2}");
+        ReplayEventEnvelope current = BuildEnvelope(2, typeof(VersionTwoTestEvent).FullName!, "{\"Value\":3}")
+            with { StoredPayloadVersion = 2 };
+        ReplayEventEnvelope equivalent = BuildEnvelope(1, typeof(VersionTwoTestEvent).FullName!, "{\"Value\":2}")
+            with { StoredPayloadVersion = 2 };
+
+        AggregateReconstructionResult historical = AggregateReplayer.Replay<VersionTwoTestState>(
+            BuildRequest([old, current], 2));
+        AggregateReconstructionResult allCurrent = AggregateReplayer.Replay<VersionTwoTestState>(
+            BuildRequest([equivalent, current], 2));
+
+        historical.Status.ShouldBe(AggregateReconstructionStatus.Succeeded);
+        historical.StateJson.ShouldBe(allCurrent.StateJson);
+        System.Text.Json.JsonDocument.Parse(historical.StateJson!).RootElement.GetProperty("value").GetInt32().ShouldBe(5);
+        old.Payload.ShouldBe("{\"Amount\":2}"u8.ToArray());
+    }
+
+    [Fact]
+    public void Replay_MissingHistoricalRenameStepFailsTypedBeforeApply()
+    {
+        ReplayEventEnvelope old = BuildEnvelope(1, "Old.Contracts.ValueRaised", "{\"Amount\":2}")
+            with { StoredPayloadVersion = 2 };
+
+        AggregateReconstructionResult result = AggregateReplayer.Replay<VersionTwoTestState>(
+            BuildRequest([old], 1));
+
+        result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.StateJson.ShouldBeNull();
+        result.Message.ShouldContain("Old.Contracts.ValueRaised version 2");
+    }
+
+    [Fact]
+    public void Replay_ThrowingUpcasterReportsSafeTypeNames()
+    {
+        string name = typeof(VersionTwoTestEvent).FullName!;
+        var evolution = new EventPayloadEvolutionRegistry([typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null, static _ => throw new InvalidOperationException("secret payload detail"))]);
+        ReplayEventEnvelope stored = BuildEnvelope(1, name, "{\"Amount\":2}");
+
+        AggregateReconstructionResult result = AggregateReplayer.Replay<VersionTwoTestState>(
+            BuildRequest([stored], 1), CancellationToken.None, evolution);
+
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
+        result.Message.ShouldContain(typeof(TestPayloadUpcaster).FullName!);
+        result.Message.ShouldContain(nameof(InvalidOperationException));
+        result.Message.ShouldNotContain("secret payload detail");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Rehydration_NotSupportedDeserializerFailsTypedForBothEventShapes(bool inlineJson)
+    {
+        string name = typeof(UnsupportedDeserializerEvent).FullName!;
+        byte[] payload = "{\"value\":\"System.String\"}"u8.ToArray();
+        object history = inlineJson
+            ? JsonSerializer.SerializeToElement(new[] { new { eventTypeName = name, payload = new { value = "System.String" } } })
+            : new DomainServiceCurrentState(null,
+                [new EventEnvelope(new EventMetadata("msg-1", "counter-1", "Counter", "tenant-a", "counter",
+                    1, 1, DateTimeOffset.UnixEpoch, "corr-1", "cause-1", "user", "v1", name, 1, "json"), payload, null)],
+                0, 1);
+        var evolution = new EventPayloadEvolutionRegistry([typeof(UnsupportedDeserializerEvent)], []);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            DomainProcessorStateRehydrator.RehydrateState<UnsupportedDeserializerState>(history,
+                DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(UnsupportedDeserializerState)), evolution: evolution));
+
+        failure.EventTypeName.ShouldBe(name);
+        failure.InnerExceptionTypeName.ShouldBe(nameof(NotSupportedException));
+        failure.InnerException.ShouldBeNull();
+    }
+
     /// <summary>Checks a versioned later event refuses the complete eligible batch before an earlier Apply can run.</summary>
     [Fact]
     public void Replay_VersionedLaterEventRefusesBeforeApplyAndRevealsNoPartialTimeline() {

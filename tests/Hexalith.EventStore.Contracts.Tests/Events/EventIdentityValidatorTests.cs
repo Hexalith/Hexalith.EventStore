@@ -51,6 +51,34 @@ public sealed class EventIdentityValidatorTests
             .ComponentName.ShouldBe("MessageId");
     }
 
+    [Theory]
+    [InlineData("TenantId", "bad:tenant")]
+    [InlineData("Domain", "bad_domain")]
+    [InlineData("AggregateId", "bad:id")]
+    [InlineData("AggregateType", " ")]
+    [InlineData("EventTypeName", " ")]
+    [InlineData("MessageId", "not-an-id")]
+    [InlineData("CorrelationId", "bad_id")]
+    [InlineData("CausationId", "bad/id")]
+    [InlineData("SequenceNumber", "0")]
+    public void Read_ReportsMalformedComponent(string component, string invalid)
+    {
+        EventIdentityValidationException failure = Should.Throw<EventIdentityValidationException>(() =>
+            EventIdentityValidator.ValidateForRead(
+                component == "TenantId" ? invalid : "tenant-a",
+                component == "Domain" ? invalid : "orders",
+                component == "AggregateId" ? invalid : "order-1",
+                component == "AggregateType" ? invalid : "Order",
+                component == "EventTypeName" ? invalid : "OrderChanged",
+                component == "MessageId" ? invalid : Ulid,
+                component == "CorrelationId" ? invalid : "trace-1",
+                component == "CausationId" ? invalid : "cause-1",
+                component == "SequenceNumber" ? 0 : 1));
+
+        failure.ComponentName.ShouldBe(component);
+        failure.Message.ShouldNotContain("payload");
+    }
+
     [Fact]
     public void Subscription_ValidatesOptionalFieldsWhenPresent()
     {

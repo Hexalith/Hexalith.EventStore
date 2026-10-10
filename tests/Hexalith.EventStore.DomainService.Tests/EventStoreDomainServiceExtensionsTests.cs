@@ -1312,6 +1312,36 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     [Fact]
+    public async Task NamedProjectionEndpoint_ForwardsLiveCallerToken() {
+        using var cancellation = new CancellationTokenSource();
+        CancellationToken observed = default;
+        IAsyncDomainProjectionHandler handler = CreateNamedProjectionHandler("token-probe", "token-summary");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => {
+                observed = call.ArgAt<CancellationToken>(2);
+                return DomainProjectionHandlerResult.Completed(JsonSerializer.SerializeToElement(new { count = 1 }));
+            });
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "sample";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddSingleton(handler);
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("sample", "v1",
+            [new ProjectionDispatchRoute("token-probe", "token-summary")]);
+        var dispatch = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "token-probe", "probe-1", []),
+            ["token-summary"], "dispatch-1", fingerprint);
+
+        (int status, string body) = await InvokeEndpointAsync(app, "/project/v2", dispatch, cancellation.Token);
+
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        observed.ShouldBe(cancellation.Token);
+        observed.CanBeCanceled.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task NamedMetadataEndpoint_RejectsCallerSelectedAppIdentity() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Configuration["EventStore:DomainService:AppId"] = "authoritative-app";
@@ -1494,13 +1524,15 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     private static async Task<(int StatusCode, string Body)> InvokeEndpointAsync<TRequest>(
         WebApplication app,
         string route,
-        TRequest request) {
+        TRequest request,
+        CancellationToken cancellationToken = default) {
         RouteEndpoint endpoint = GetRouteEndpoints(app).Single(candidate =>
             string.Equals(candidate.RoutePattern.RawText, route, StringComparison.Ordinal));
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(request, JsonSerializerOptions.Web);
         var context = new DefaultHttpContext {
             RequestServices = app.Services,
         };
+        context.RequestAborted = cancellationToken;
         IHttpRequestBodyDetectionFeature bodyDetection = Substitute.For<IHttpRequestBodyDetectionFeature>();
         bodyDetection.CanHaveBody.Returns(true);
         context.Features.Set(bodyDetection);

@@ -3,6 +3,7 @@ using Hexalith.EventStore.Contracts.Events;
 namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Downserializes a current payload to one explicitly registered V1 alias.</summary>
+[Obsolete("Legacy downserialization compatibility contract; no new downserialization API is provided.")]
 public interface IV1Downserializer {
     /// <summary>Downserializes an immutable payload using bounded output and scratch buffers.</summary>
     /// <param name="input">The privately owned immutable input view.</param>

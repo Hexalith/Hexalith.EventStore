@@ -58,6 +58,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     options,
                     cancellationToken).ConfigureAwait(false),
                 DomainSharedProjectionRebuildAction.Accumulate => await AccumulateAsync(
+                    serviceProvider,
                     sessionStore,
                     handler,
                     request,
@@ -184,6 +185,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
     }
 
     private static async Task<DomainSharedProjectionRebuildResponse> AccumulateAsync(
+        IServiceProvider serviceProvider,
         IReadModelStore sessionStore,
         IAsyncDomainSharedProjectionRebuildHandler handler,
         DomainSharedProjectionRebuildRequest request,
@@ -233,7 +235,8 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     .AccumulateAsync(
                         identity,
                         candidate,
-                        new ProjectionRequest(identity.TenantId, identity.Domain, request.AggregateId!, request.Events!),
+                        DomainProjectionDispatcher.UpcastRequest(serviceProvider,
+                            new ProjectionRequest(identity.TenantId, identity.Domain, request.AggregateId!, request.Events!)),
                         cancellationToken)
                     .ConfigureAwait(false);
                 candidateState = CopyAndValidateCandidate(accumulated, options);

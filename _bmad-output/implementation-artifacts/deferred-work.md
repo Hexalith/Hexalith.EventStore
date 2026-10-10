@@ -5737,3 +5737,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
   summary: Optional — give each event in `ProjectionEventWireBuilderTests.CreateEnvelope` a distinct ULID `MessageId`.
   evidence: Story 6.6 code review (Edge 25, low, outside the ACs). Commit `7e8ad7d0` replaced `message-{n}` with the constant `01ARZ3NDEKTSV4RRFFQ69G5FAV` (`ProjectionEventWireBuilderTests.cs:107`), although its message claims distinct IDs. The three-event batches therefore cannot detect per-event `MessageId` mix-ups.
+
+- source_spec: `spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Shared projection rebuild should report the last durable accepted count after a later accumulate failure.
+  evidence: The pre-existing generic dispatcher catch returns count zero after an earlier aggregate was accepted; a new upcast failure can reach the same catch. A rebuild protocol correction must read and report the persisted session state.

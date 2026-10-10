@@ -15,6 +15,21 @@ namespace Hexalith.EventStore.Client.Tests.Handlers;
 /// <summary>Exercises JSON admission before private replay allocation and application callbacks.</summary>
 public sealed class LegacyCommandReplayJsonAdmissionTests
 {
+    /// <summary>Checks the JSON admission boundary retains a valid version 2 stamp.</summary>
+    [Fact]
+    public void VersionTwoEnvelopePassesJsonAdmission()
+    {
+        EventEnvelope original = Event(new Dictionary<string, string>());
+        EventEnvelope versioned = new(original.Metadata with { PayloadVersion = 2 }, original.Payload, original.Extensions);
+        using JsonDocument source = JsonDocument.Parse(JsonSerializer.Serialize(
+            new DomainServiceCurrentState(null, [versioned], 0, 1), new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        using var owner = new LegacyCommandReplayInput(CancellationToken.None);
+
+        JsonElement captured = owner.CaptureJson(source.RootElement, reserveEvents: true);
+
+        captured.GetProperty("events")[0].GetProperty("metadata").GetProperty("payloadVersion").GetInt32().ShouldBe(2);
+    }
+
     /// <summary>Checks whole-array count admission before private copying or state construction.</summary>
     [Fact]
     public void JsonArrayCountRefusesBeforeStateConstruction()

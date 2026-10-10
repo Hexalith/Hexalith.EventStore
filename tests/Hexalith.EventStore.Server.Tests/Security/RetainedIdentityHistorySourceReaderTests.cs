@@ -381,6 +381,21 @@ public sealed class RetainedIdentityHistorySourceReaderTests
         await _custody.DidNotReceiveWithAnyArgs().UnprotectEventAsync(default!, default!, default!, default!, default);
     }
 
+    /// <summary>A valid stored version 2 survives retained history admission.</summary>
+    [Fact]
+    public async Task StoredVersionTwoPassesHistoryAdmission()
+    {
+        RetainedIdentityHistorySourceReader reader = Arrange();
+        EventEnvelope history = Stored(2, typeof(HistoryCustodyProbeEvent).FullName!, "sealed-history")
+            with { PayloadVersion = 2 };
+        _actor.ReadEventsRangeAsync(0, 2, 100).Returns([Stored(1, "Profile", "sealed"), history]);
+
+        RetainedIdentityHistoryReadResult result = await reader.ReadAsync(_principal, Request(), TestContext.Current.CancellationToken);
+
+        result.IsAuthoritative.ShouldBeTrue();
+        result.Stream!.Events.Single().PayloadVersion.ShouldBe(2);
+    }
+
     /// <summary>Custody receives a copy so a mutating provider cannot overwrite sealed source bytes.</summary>
     [Fact]
     public async Task CustodyMutation_CannotOverwriteStoredSourcePayload()

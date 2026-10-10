@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 namespace Hexalith.EventStore.Contracts.Events;
 
 /// <summary>Contains one addressed bounded raw-event page and its provider readback proof.</summary>
+[Obsolete("Legacy event evolution compatibility contract.")]
 public sealed class AuthenticatedRawEventPage : IDisposable {
     private const int MaximumEvents = 256;
     private const int MaximumReadbackProofBytes = 1024 * 1024;

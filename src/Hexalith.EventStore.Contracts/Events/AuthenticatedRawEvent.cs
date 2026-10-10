@@ -10,6 +10,7 @@ namespace Hexalith.EventStore.Contracts.Events;
 /// <param name="ActorIntentCertificate">The immutable actor intent certificate, when present.</param>
 /// <param name="ActorCommitReceipt">The immutable committed provider receipt, when present.</param>
 /// <remarks>Returned values are untrusted until their page proof and cross hashes are authenticated.</remarks>
+[Obsolete("Legacy event evolution compatibility contract.")]
 public sealed record AuthenticatedRawEvent(
     string StorageKey,
     long SequenceNumber,

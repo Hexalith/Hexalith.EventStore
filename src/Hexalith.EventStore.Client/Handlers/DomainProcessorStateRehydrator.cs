@@ -377,26 +377,17 @@ internal static class DomainProcessorStateRehydrator {
         try {
             using JsonDocument payloadDoc = input.ParsePayload(effective.Payload);
             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
-                ?? throw new InvalidOperationException(
-                    string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Unable to rehydrate aggregate state '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
-                        typeof(TState).Name,
-                        envelope.Metadata.EventTypeName,
-                        eventType.Name));
+                ?? throw new EventPayloadEvolutionException(envelope.Metadata.EventTypeName,
+                    envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber,
+                    "current payload deserialized to null");
 
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (JsonException ex) {
-            throw new InvalidOperationException(
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
-                    typeof(TState).Name,
-                    envelope.Metadata.EventTypeName,
-                    eventType.Name),
-                ex);
+        catch (Exception ex) when (ex is JsonException or NotSupportedException) {
+            throw new EventPayloadEvolutionException(envelope.Metadata.EventTypeName,
+                envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber,
+                "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
         }
     }
 
@@ -432,15 +423,9 @@ internal static class DomainProcessorStateRehydrator {
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (JsonException ex) {
-            throw new InvalidOperationException(
-                string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Unable to rehydrate aggregate state '{0}'. Event '{1}' could not be deserialized to '{2}'.",
-                    typeof(TState).Name,
-                    eventTypeName,
-                    eventType.Name),
-                ex);
+        catch (Exception ex) when (ex is JsonException or NotSupportedException) {
+            throw new EventPayloadEvolutionException(eventTypeName, storedVersion ?? 1, sequence,
+                "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
         }
     }
 

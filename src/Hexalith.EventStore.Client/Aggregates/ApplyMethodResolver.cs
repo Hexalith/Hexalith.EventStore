@@ -225,7 +225,7 @@ internal static class ApplyMethodResolver {
     /// <c>Apply(Arg)</c> — a silent wrong bind. Because both the registered key and the stored name pass
     /// through this same function, matching stays consistent even for shapes it normalizes only partially.
     /// </remarks>
-    private static string NormalizeTypeName(string typeName) {
+    internal static string NormalizeTypeName(string typeName) {
         if (typeName.IndexOf(',', StringComparison.Ordinal) < 0) {
             return typeName;
         }

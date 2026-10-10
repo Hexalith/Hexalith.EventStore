@@ -18,7 +18,7 @@ namespace Hexalith.EventStore.DomainService;
 public static class DomainProjectionDispatcher {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
-    private static ProjectionRequest UpcastRequest(IServiceProvider serviceProvider, ProjectionRequest request)
+    internal static ProjectionRequest UpcastRequest(IServiceProvider serviceProvider, ProjectionRequest request)
     {
         EventPayloadEvolutionRegistry? evolution = serviceProvider.GetService<EventPayloadEvolutionRegistry>();
         if (evolution is null || request.Events.Length == 0)

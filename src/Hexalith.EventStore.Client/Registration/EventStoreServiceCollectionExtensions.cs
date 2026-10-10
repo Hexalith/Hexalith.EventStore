@@ -114,7 +114,15 @@ public static class EventStoreServiceCollectionExtensions {
     public static IServiceCollection AddEventStoreClient<TProcessor>(this IServiceCollection services)
         where TProcessor : class, IDomainProcessor {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddScoped<TProcessor>();
+        services.TryAddScoped<TProcessor>(provider =>
+        {
+            TProcessor instance = ActivatorUtilities.CreateInstance<TProcessor>(provider);
+            if (instance is IEventPayloadEvolutionAware aware)
+            {
+                aware.EvolutionRegistry = provider.GetService<EventPayloadEvolutionRegistry>();
+            }
+            return instance;
+        });
         services.AddScoped<IDomainProcessor>(provider => provider.GetRequiredService<TProcessor>());
         if (typeof(IAsyncDomainProcessor).IsAssignableFrom(typeof(TProcessor)))
         {

@@ -115,6 +115,27 @@ public class EventPersisterTests {
         state.ReceivedCalls().Count().ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData("CorrelationId")]
+    [InlineData("CausationId")]
+    public async Task PersistEventsAsync_MalformedIdentityRefusesBeforeStaging(string component) {
+        (EventPersister persister, IActorStateManager state, FakeGlobalPositionAllocator allocator) =
+            CreatePersisterWithAllocator();
+        ConfigureNoMetadata(state);
+        CommandEnvelope command = component == "CorrelationId"
+            ? CreateTestCommand(correlationId: "bad_id")
+            : CreateTestCommand(causationId: "bad/id");
+
+        EventIdentityValidationException failure = await Should.ThrowAsync<EventIdentityValidationException>(() =>
+            persister.PersistEventsAsync(TestIdentity, "test-domain", command,
+                DomainResult.Success([new TestEvent()]), "v1"));
+
+        failure.ComponentName.ShouldBe(component);
+        allocator.CallCount.ShouldBe(0);
+        _ = state.DidNotReceiveWithAnyArgs().SetStateAsync(default!, default(EventEnvelope)!, default);
+        _ = state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
     private static void ConfigureExistingMetadata(IActorStateManager stateManager, long currentSequence) {
         var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())

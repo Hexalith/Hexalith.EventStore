@@ -4,6 +4,7 @@ using Dapr.Actors.Runtime;
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
@@ -16,6 +17,7 @@ using Hexalith.EventStore.Server.Tests.Actors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
@@ -47,10 +49,18 @@ public sealed class VersionedWireRoundTripTests
             $"{identity.EventStreamKeyPrefix}2", Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>()))
             .Do(call => newJson = JsonSerializer.Serialize(call.ArgAt<EventEnvelope>(1), JsonSerializerOptions.Web));
 
-        byte[] newPayload = "{\"Value\":2}"u8.ToArray();
-        var wire = new DomainServiceWireResult(false,
-            [new DomainServiceWireEvent(typeof(VersionedActorEvent).FullName!, newPayload) { PayloadVersion = 2 }]);
-        var responseHandler = new VersionedActorResponseHandler(JsonSerializer.Serialize(wire, JsonSerializerOptions.Web));
+        var aggregate = new VersionedActorAggregate();
+        using ServiceProvider domainServices = new ServiceCollection()
+            .AddKeyedSingleton<IAsyncDomainProcessor>(identity.Domain, aggregate)
+            .BuildServiceProvider();
+        var responseHandler = new VersionedActorResponseHandler(async (requestJson, token) =>
+        {
+            DomainServiceRequest request = JsonSerializer.Deserialize<DomainServiceRequest>(requestJson,
+                JsonSerializerOptions.Web)!;
+            DomainServiceWireResult response = await DomainServiceRequestRouter.ProcessAsync(domainServices,
+                request, token);
+            return JsonSerializer.Serialize(response, JsonSerializerOptions.Web);
+        });
         using var httpClient = new HttpClient(responseHandler);
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
@@ -68,12 +78,20 @@ public sealed class VersionedWireRoundTripTests
             .Returns(new ConditionalValue<AggregateMetadata>(true,
                 new AggregateMetadata(1, DateTimeOffset.UtcNow, null)));
 
-        CommandProcessingResult result = await actor.Actor.ProcessCommandAsync(
-            AggregateActorTestHelper.CreateTestEnvelope());
+        CommandEnvelope command = AggregateActorTestHelper.CreateTestEnvelope() with
+        {
+            CommandType = nameof(VersionedActorCommand),
+            Payload = "{}"u8.ToArray(),
+            CorrelationId = "corr-1",
+            CausationId = "cause-1",
+        };
+        CommandProcessingResult result = await actor.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
+        aggregate.ObservedValue.ShouldBe(1);
         responseHandler.RequestJson.ShouldNotBeNull().ShouldContain(Convert.ToBase64String(oldPayload));
         EventEnvelope written = JsonSerializer.Deserialize<EventEnvelope>(newJson.ShouldNotBeNull(), JsonSerializerOptions.Web)!;
+        byte[] newPayload = "{\"Value\":2}"u8.ToArray();
         written.PayloadVersion.ShouldBe(2);
         written.MetadataVersion.ShouldBe(1);
         written.EventContractType.ShouldBeNull();
@@ -105,13 +123,13 @@ public sealed class VersionedWireRoundTripTests
         history.Events[0].Payload.ShouldBe(oldPayload);
         history.Events[1].PayloadVersion.ShouldBe(2);
         history.Events[1].Payload.ShouldBe(newPayload);
-        var step = new VersionedActorUpcaster();
-        var evolution = new EventPayloadEvolutionRegistry([typeof(VersionedActorEvent)], [step]);
-        int rehydratedValue = history.Events.Sum(stored => JsonSerializer.Deserialize<VersionedActorEvent>(
-            evolution.Read(stored.EventTypeName, stored.PayloadVersion, stored.Payload, stored.SequenceNumber).Payload,
-            JsonSerializerOptions.Web)!.Value);
-        rehydratedValue.ShouldBe(new VersionedActorEvent(1).Value + new VersionedActorEvent(2).Value);
-        step.Calls.ShouldBe(1);
+        var currentState = new DomainServiceCurrentState(null,
+            [.. history.Events.Select(AggregateActor.ToContractEventEnvelope)], 0, 2);
+        DomainServiceWireResult replayed = await DomainServiceRequestRouter.ProcessAsync(domainServices,
+            new DomainServiceRequest(command, currentState));
+        aggregate.ObservedValue.ShouldBe(3);
+        replayed.Events.ShouldHaveSingleItem().PayloadVersion.ShouldBe(2);
+        JsonSerializer.Deserialize<VersionedActorEvent>(replayed.Events[0].Payload)!.Value.ShouldBe(4);
     }
 
     [Fact]

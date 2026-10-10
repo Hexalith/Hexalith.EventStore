@@ -6,6 +6,7 @@ namespace Hexalith.EventStore.Client.Events;
 /// <param name="EventTypeName">The exact registered legacy alias.</param>
 /// <param name="SourcePayloadVersion">The alias's declared source payload version.</param>
 /// <param name="SerializationFormat">The output serialization format.</param>
+[Obsolete("Legacy downserialization compatibility contract; no new downserialization API is provided.")]
 public sealed record V1DownserializeResult(
     string Domain,
     string EventContractType,

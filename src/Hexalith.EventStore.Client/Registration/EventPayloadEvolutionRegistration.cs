@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Aggregates;
 
 namespace Hexalith.EventStore.Client.Registration;
 
@@ -23,8 +24,8 @@ internal sealed class EventPayloadEvolutionRegistration
         IEventPayloadUpcaster[] explicitSteps = _upcasterTypes.Select(static type =>
             Activator.CreateInstance(type, nonPublic: true) as IEventPayloadUpcaster
                 ?? throw new InvalidOperationException($"Upcaster {type.FullName} has no parameterless constructor.")).ToArray();
-        var relevantNames = new HashSet<string>(_knownTypes.SelectMany(static type =>
-            new[] { type.FullName ?? type.Name, type.Name }), StringComparer.Ordinal);
+        var relevantNames = new HashSet<string>(_knownTypes.Select(static type =>
+            type.FullName ?? type.Name), StringComparer.Ordinal);
         var selected = new List<IEventPayloadUpcaster>(explicitSteps);
         foreach (IEventPayloadUpcaster step in explicitSteps) { relevantNames.Add(step.EventTypeName); }
         bool changed;
@@ -33,8 +34,8 @@ internal sealed class EventPayloadEvolutionRegistration
             changed = false;
             foreach (IEventPayloadUpcaster step in discovered)
             {
-                if (selected.Contains(step) || !relevantNames.Any(name => NamesMatch(name, step.EventTypeName)
-                    || (step.TargetEventTypeName is { } target && NamesMatch(name, target))))
+                if (selected.Contains(step) || !relevantNames.Any(name => RelevantStepName(name, step.EventTypeName)
+                    || (step.TargetEventTypeName is { } target && RelevantStepName(name, target))))
                 {
                     continue;
                 }
@@ -47,10 +48,12 @@ internal sealed class EventPayloadEvolutionRegistration
         return new EventPayloadEvolutionRegistry(_knownTypes, selected);
     }
 
-    private static bool NamesMatch(string left, string right)
-        => string.Equals(left, right, StringComparison.Ordinal)
-            || (left.Length > right.Length && left.EndsWith(right, StringComparison.Ordinal)
-                && left[left.Length - right.Length - 1] is '.' or '+')
-            || (right.Length > left.Length && right.EndsWith(left, StringComparison.Ordinal)
-                && right[right.Length - left.Length - 1] is '.' or '+');
+    private static bool RelevantStepName(string knownName, string stepName)
+    {
+        knownName = ApplyMethodResolver.NormalizeTypeName(knownName);
+        stepName = ApplyMethodResolver.NormalizeTypeName(stepName);
+        return string.Equals(knownName, stepName, StringComparison.Ordinal)
+            || (knownName.Length > stepName.Length && knownName.EndsWith(stepName, StringComparison.Ordinal)
+                && knownName[knownName.Length - stepName.Length - 1] is '.' or '+');
+    }
 }

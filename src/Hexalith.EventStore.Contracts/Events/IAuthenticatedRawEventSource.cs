@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.Contracts.Events;
 
 /// <summary>Reads exact addressed source bytes and provider evidence before typed event materialization.</summary>
+[Obsolete("Legacy event evolution compatibility contract.")]
 public interface IAuthenticatedRawEventSource
 {
     /// <summary>Reads one bounded addressed raw page from the authoritative provider.</summary>
