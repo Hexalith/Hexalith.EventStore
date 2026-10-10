@@ -35,7 +35,7 @@ public sealed class EventIdentityValidatorTests
                 eventType, message, correlation, causation, sequence));
 
         failure.ComponentName.ShouldBe(component);
-        failure.Message.ShouldNotContain("payload");
+        failure.Message.ShouldBe($"Invalid event identity component: {component}. (Parameter '{component}')");
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class EventIdentityValidatorTests
                 component == "SequenceNumber" ? 0 : 1));
 
         failure.ComponentName.ShouldBe(component);
-        failure.Message.ShouldNotContain("payload");
+        failure.Message.ShouldBe($"Invalid event identity component: {component}. (Parameter '{component}')");
     }
 
     [Fact]

@@ -60,7 +60,7 @@ A later step uses the target name. Keep historical names in the upcaster chain e
 
 ## Apply method resolution
 
-The SDK resolves `Apply(TEvent)` by an exact CLR full name, then an exact short name, then the longest boundary-anchored suffix of a stored name. A short-name collision can still resolve through exact full names. If a stored name remains ambiguous, `AmbiguousApplyMethodException` names the conflicting event; give the events distinct full names in the stored stream and avoid new ambiguous aliases. An upcaster rename can route an old stored name to one unambiguous current type.
+The SDK resolves `Apply(TEvent)` by an exact CLR full name, then an exact short name, then the longest boundary-anchored suffix of a stored name. A short-name collision can still resolve through exact full names. For known `IEventPayload` types, ambiguous resolution raises `EventPayloadEvolutionException` and replay reports `UnsupportedVersion`. Other Apply types can raise `AmbiguousApplyMethodException`. Use distinct full names in the stored stream and avoid ambiguous aliases. An upcaster rename can route an old stored name to one unambiguous current type. Subscription reads accept exact full names and registered historical upcaster aliases; an unrelated event with the same short name stays unknown.
 
 ## Domain service version routing
 
@@ -85,7 +85,7 @@ For a staged rollout, register the old and new domain service versions at the sa
 
 A subscription that cannot upcast returns HTTP 503 and leaves the event uncompleted. Configure Dapr resiliency `maxRetries` and a dead-letter topic so a persistent incompatibility is visible and can be redelivered after correction. Do not acknowledge an unreadable known event as successful.
 
-An unreadable known event raises `EventPayloadEvolutionException`. Command replay reports `UnsupportedVersion`. Projection dispatch stops before invoking the handler or advancing its checkpoint; `/project/v2` surfaces the failure as HTTP 500. Deploy a corrected consumer and retry the event.
+An unreadable known event raises `EventPayloadEvolutionException`. Replay reports `UnsupportedVersion` for version or upcaster failures; a malformed current-version payload found during replay deserialization reports `DeserializationFailed`. Live `/process` surfaces an uncaught evolution error as HTTP 500. Projection dispatch stops before invoking the handler or advancing its checkpoint, and `/project/v2` surfaces the failure as HTTP 500. A shared rebuild accumulate failure returns `Indeterminate` with reason `HandlerFailure` and does not advance. Deploy a corrected consumer and retry the event.
 
 ## Identity and compatibility
 

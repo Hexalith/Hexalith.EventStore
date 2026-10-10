@@ -74,7 +74,7 @@ public class EventStreamReaderTests {
     [Fact]
     public async Task RehydrateAsync_MalformedStoredIdentityFailsBeforeReturningHistory() {
         (EventStreamReader reader, IActorStateManager state) = CreateReader();
-        ConfigureMetadata(state, TestIdentity, 1);
+        ConfigureMetadata(state, TestIdentity, 2);
         _ = state.TryGetStateAsync<EventEnvelope>($"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<EventEnvelope>(true,
                 CreateTestEvent(1) with { CorrelationId = "bad_id" }));
@@ -83,7 +83,8 @@ public class EventStreamReaderTests {
             reader.RehydrateAsync(TestIdentity));
 
         failure.ComponentName.ShouldBe("CorrelationId");
-        _ = state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        _ = state.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>());
     }
 
     /// <summary>Malformed floor evidence is rejected before an event can be read or any state staged.</summary>

@@ -96,15 +96,27 @@ public sealed class EventPayloadEvolutionRegistry
         => ReadCore(eventTypeName, storedPayloadVersion, payload, sequenceNumber, validateDeserialization: false,
             deferCurrentPayloadValidation: true);
 
+    /// <summary>Reads a subscription event without binding unrelated full names by a CLR short name.</summary>
+    internal ResolvedEventPayload ReadForSubscription(string eventTypeName, int? storedPayloadVersion, byte[] payload,
+        long sequenceNumber = 0)
+        => ReadCore(eventTypeName, storedPayloadVersion, payload, sequenceNumber, validateDeserialization: true,
+            deferCurrentPayloadValidation: false, subscription: true);
+
     private ResolvedEventPayload ReadCore(string eventTypeName, int? storedPayloadVersion, byte[] payload,
-        long sequenceNumber, bool validateDeserialization, bool deferCurrentPayloadValidation)
+        long sequenceNumber, bool validateDeserialization, bool deferCurrentPayloadValidation, bool subscription = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
         ArgumentNullException.ThrowIfNull(payload);
         int version = storedPayloadVersion ?? 1;
+        string normalizedName = ApplyMethodResolver.NormalizeTypeName(eventTypeName);
+        if (subscription && !_knownTypes.ContainsKey(normalizedName)
+            && !_steps.Any(step => StepNameMatchesSubscriptionAlias(normalizedName, step.EventTypeName)))
+        {
+            return new ResolvedEventPayload(eventTypeName, null, payload, version);
+        }
         IEventPayloadUpcaster? initialStep = FindStep(eventTypeName, version, eventTypeName, version, sequenceNumber);
         Type? knownType = initialStep is null ? ResolveType(eventTypeName, version, sequenceNumber) : null;
-        bool historicalAlias = _steps.Any(step => NamesMatch(eventTypeName, step.EventTypeName));
+        bool historicalAlias = _steps.Any(step => NameMatchTier(eventTypeName, step.EventTypeName) != 0);
         if (knownType is null && !historicalAlias)
         {
             return new ResolvedEventPayload(eventTypeName, null, payload, version);
@@ -148,7 +160,7 @@ public sealed class EventPayloadEvolutionRegistry
                     if (!deferCurrentPayloadValidation)
                     {
                         ValidateCurrentJson(effective, terminal, eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
-                            validateDeserialization);
+                            validateDeserialization, lastUpcasterType);
                     }
                     return new ResolvedEventPayload(terminal.FullName ?? terminal.Name, terminal, effective, version);
                 }
@@ -187,7 +199,7 @@ public sealed class EventPayloadEvolutionRegistry
                 throw new InvalidOperationException($"Upcaster {step.GetType().FullName} for event type {step.EventTypeName} has invalid version {step.FromVersion}.");
             }
             if (admitted.Any(prior => prior.FromVersion == step.FromVersion
-                && NamesMatch(prior.EventTypeName, step.EventTypeName)))
+                && NameMatchTier(prior.EventTypeName, step.EventTypeName) != 0))
             {
                 throw new InvalidOperationException($"Overlapping upcaster for {step.EventTypeName} version {step.FromVersion}.");
             }
@@ -202,12 +214,12 @@ public sealed class EventPayloadEvolutionRegistry
             string outputName = step.TargetEventTypeName ?? step.EventTypeName;
             int outputVersion = step.FromVersion + 1;
             Type? target = ResolveType(outputName, outputVersion, 0);
-            if (target is null && !_steps.Any(next => next.FromVersion == outputVersion && NamesMatch(next.EventTypeName, outputName)))
+            if (target is null && FindStep(outputName, outputVersion, outputName, outputVersion, 0) is null)
             {
                 throw new InvalidOperationException($"Dangling upcaster {step.EventTypeName} output version {outputVersion}.");
             }
             if (target is not null && outputVersion != EventPayloadVersionResolver.GetDeclaredVersion(target)
-                && !_steps.Any(next => next.FromVersion == outputVersion && NamesMatch(next.EventTypeName, outputName)))
+                && FindStep(outputName, outputVersion, outputName, outputVersion, 0) is null)
             {
                 throw new InvalidOperationException($"Incomplete upcaster {step.EventTypeName} version {outputVersion}.");
             }
@@ -229,10 +241,9 @@ public sealed class EventPayloadEvolutionRegistry
     {
         for (int hops = 0; hops < 1024; hops++)
         {
-            IEventPayloadUpcaster[] candidates = _steps.Where(step => step.FromVersion == version
-                && RelevantStepName(name, step.EventTypeName)).ToArray();
-            if (candidates.Length != 1) { return false; }
-            name = candidates[0].TargetEventTypeName ?? name;
+            IEventPayloadUpcaster? step = FindStep(name, version, name, version, 0);
+            if (step is null) { return false; }
+            name = step.TargetEventTypeName ?? name;
             version++;
             string output = ApplyMethodResolver.NormalizeTypeName(name);
             string target = ApplyMethodResolver.NormalizeTypeName(targetName);
@@ -253,11 +264,10 @@ public sealed class EventPayloadEvolutionRegistry
     {
         string normalized = ApplyMethodResolver.NormalizeTypeName(name);
         IEventPayloadUpcaster[] versionSteps = _steps.Where(step => step.FromVersion == version).ToArray();
-        IEventPayloadUpcaster[] matches = versionSteps.Where(step =>
-            string.Equals(normalized, ApplyMethodResolver.NormalizeTypeName(step.EventTypeName), StringComparison.Ordinal)).ToArray();
+        IEventPayloadUpcaster[] matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 1).ToArray();
         if (matches.Length == 0)
         {
-            matches = versionSteps.Where(step => Anchored(normalized, ApplyMethodResolver.NormalizeTypeName(step.EventTypeName))).ToArray();
+            matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 2).ToArray();
         }
         if (matches.Length == 0 && !normalized.Contains('.') && !normalized.Contains('+'))
         {
@@ -268,11 +278,10 @@ public sealed class EventPayloadEvolutionRegistry
                 matches = versionSteps.Where(step => string.Equals(
                     knownName, ApplyMethodResolver.NormalizeTypeName(step.EventTypeName), StringComparison.Ordinal)).ToArray();
             }
-            if (matches.Length == 0)
-            {
-                matches = versionSteps.Where(step => step.TargetEventTypeName is not null
-                    && Anchored(ApplyMethodResolver.NormalizeTypeName(step.EventTypeName), normalized)).ToArray();
-            }
+        }
+        if (matches.Length == 0 && !_knownTypes.ContainsKey(normalized))
+        {
+            matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 3).ToArray();
         }
         if (matches.Length > 1)
         {
@@ -317,13 +326,17 @@ public sealed class EventPayloadEvolutionRegistry
         return matches[0];
     }
 
-    private static bool NamesMatch(string left, string right)
+    private static int NameMatchTier(string storedName, string stepName)
     {
-        left = ApplyMethodResolver.NormalizeTypeName(left);
-        right = ApplyMethodResolver.NormalizeTypeName(right);
-        if (string.Equals(left, right, StringComparison.Ordinal)) { return true; }
-        return Anchored(left, right) || Anchored(right, left);
+        storedName = ApplyMethodResolver.NormalizeTypeName(storedName);
+        stepName = ApplyMethodResolver.NormalizeTypeName(stepName);
+        if (string.Equals(storedName, stepName, StringComparison.Ordinal)) { return 1; }
+        if (Anchored(storedName, stepName)) { return 2; }
+        return Anchored(stepName, storedName) ? 3 : 0;
     }
+
+    private static bool StepNameMatchesSubscriptionAlias(string storedName, string stepName)
+        => NameMatchTier(storedName, stepName) is 1 or 3;
 
     private static bool RelevantStepName(string knownName, string stepName)
     {
@@ -354,7 +367,7 @@ public sealed class EventPayloadEvolutionRegistry
     }
 
     private static void ValidateCurrentJson(byte[] payload, Type type, string name, int version, long sequence,
-        bool validateDeserialization)
+        bool validateDeserialization, string? upcasterTypeName)
     {
         if (payload.Length > MaximumPayloadBytes)
         {
@@ -372,7 +385,8 @@ public sealed class EventPayloadEvolutionRegistry
         }
         catch (Exception error) when (error is not OperationCanceledException and not EventPayloadEvolutionException)
         {
-            throw Failure(name, version, sequence, "current payload cannot deserialize", innerExceptionTypeName: error.GetType().Name);
+            throw Failure(name, version, sequence, "current payload cannot deserialize", upcasterTypeName,
+                error.GetType().Name);
         }
     }
 

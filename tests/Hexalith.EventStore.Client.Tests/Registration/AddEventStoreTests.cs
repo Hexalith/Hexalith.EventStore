@@ -11,6 +11,8 @@ using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Discovery;
+using Hexalith.EventStore.Client.Tests.Aggregates;
+using Hexalith.EventStore.Client.Tests.Events;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -178,6 +180,24 @@ public class AddEventStoreTests : IDisposable {
         var aggregate = scope.ServiceProvider.GetRequiredService<SmokeTestAggregate>();
         Assert.Same(scope.ServiceProvider.GetRequiredService<EventPayloadEvolutionRegistry>(),
             ((IEventPayloadEvolutionAware)aggregate).EvolutionRegistry);
+    }
+
+    [Fact]
+    public void AddEventStoreClient_AloneRegistersApplyEventsInHostRegistry() {
+        var services = new ServiceCollection();
+        _ = services.AddKnownEventPayload<LegacyTestEvent>();
+        _ = services.AddEventStoreClient<CancellationFixtureAggregate>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+        var aggregate = scope.ServiceProvider.GetRequiredService<CancellationFixtureAggregate>();
+        EventPayloadEvolutionRegistry registry = scope.ServiceProvider.GetRequiredService<EventPayloadEvolutionRegistry>();
+
+        Assert.Same(registry, ((IEventPayloadEvolutionAware)aggregate).EvolutionRegistry);
+        EventPayloadEvolutionException failure = Assert.Throws<EventPayloadEvolutionException>(() =>
+            registry.Read(typeof(CancellationReplayEvent).FullName!, 2, "{}"u8.ToArray(), 7));
+        Assert.Equal(2, failure.StoredVersion);
+        Assert.Equal(7, failure.SequenceNumber);
     }
 
     [Fact]

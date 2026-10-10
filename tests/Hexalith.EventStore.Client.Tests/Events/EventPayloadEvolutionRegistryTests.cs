@@ -260,6 +260,70 @@ public sealed class EventPayloadEvolutionRegistryTests
     }
 
     [Fact]
+    public void Read_ShortStoredNameUsesFullNameStepOfUniqueKnownType()
+    {
+        string name = typeof(VersionTwoTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null, payload =>
+            {
+                payload["Value"] = payload["Amount"]!.GetValue<int>();
+                payload.Remove("Amount");
+                return payload;
+            })]);
+
+        ResolvedEventPayload result = registry.Read(nameof(VersionTwoTestEvent), 1,
+            "{\"Amount\":4}"u8.ToArray());
+
+        result.EventType.ShouldBe(typeof(VersionTwoTestEvent));
+        System.Text.Json.JsonSerializer.Deserialize<VersionTwoTestEvent>(result.Payload)!.Value.ShouldBe(4);
+    }
+
+    [Fact]
+    public void Registration_AcceptsRenameTargetingUniqueShortName()
+    {
+        string name = typeof(VersionTwoTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster("Historical.ValueRaised", 1, nameof(VersionTwoTestEvent),
+                payload => { payload["Value"] = 4; return payload; })]);
+
+        registry.Read("Historical.ValueRaised", 1, "{}"u8.ToArray()).EventType
+            .ShouldBe(typeof(VersionTwoTestEvent));
+    }
+
+    [Theory]
+    [InlineData("VersionedTestEvent")]
+    [InlineData("Contracts.VersionedTestEvent")]
+    public void Read_HistoricalAliasMatchesLongerStepNameAtEveryVersion(string storedName)
+    {
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster("Old.Contracts.VersionedTestEvent", 1, null,
+                payload => { payload["Value"] = 3; return payload; }),
+             new TestPayloadUpcaster("Old.Contracts.VersionedTestEvent", 2, typeof(VersionedTestEvent).FullName,
+                static payload => payload)]);
+
+        ResolvedEventPayload result = registry.Read(storedName, 1, "{}"u8.ToArray());
+
+        result.EventType.ShouldBe(typeof(VersionedTestEvent));
+        result.PayloadVersion.ShouldBe(3);
+    }
+
+    [Fact]
+    public void Read_PostUpcastDeserializationFailureKeepsUpcasterType()
+    {
+        string name = typeof(VersionTwoTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null,
+                payload => { payload["Value"] = "not a number"; return payload; })]);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            registry.Read(name, 1, "{}"u8.ToArray(), 6));
+
+        failure.UpcasterTypeName.ShouldBe(typeof(TestPayloadUpcaster).FullName);
+        failure.SequenceNumber.ShouldBe(6);
+        failure.InnerExceptionTypeName.ShouldBe(nameof(System.Text.Json.JsonException));
+    }
+
+    [Fact]
     public void Read_ExactFullNameWinsOverAnotherTypesShortName()
     {
         string name = typeof(VersionedTestEvent).FullName!;

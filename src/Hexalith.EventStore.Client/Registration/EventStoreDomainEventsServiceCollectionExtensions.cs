@@ -39,7 +39,8 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
         Action<EventStoreDomainEventsOptions>? configure = null) {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(eventContractsAssembly);
-        EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services).AddAssembly(eventContractsAssembly);
+        EventPayloadEvolutionRegistration evolution = EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services);
+        evolution.AddAssembly(eventContractsAssembly);
 
         OptionsBuilder<EventStoreDomainEventsOptions> optionsBuilder = services.AddOptions<EventStoreDomainEventsOptions>();
         if (configure is not null) {
@@ -47,6 +48,10 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
         }
 
         IReadOnlyDictionary<string, Type> registry = BuildEventTypeRegistry(eventContractsAssembly);
+        foreach (Type eventType in registry.Values)
+        {
+            evolution.AddKnownType(eventType);
+        }
 
         services.TryAddSingleton<IEventStoreDomainEventMarkerStore, InMemoryEventStoreDomainEventMarkerStore>();
         services.TryAddSingleton(sp => new EventStoreDomainEventProcessor(

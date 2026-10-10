@@ -176,7 +176,7 @@ public class EventStoreDomainEventProcessor {
             ResolvedEventPayload resolved;
             try
             {
-                resolved = _evolution.Read(envelope.EventTypeName, envelope.PayloadVersion, envelope.Payload,
+                resolved = _evolution.ReadForSubscription(envelope.EventTypeName, envelope.PayloadVersion, envelope.Payload,
                     envelope.SequenceNumber);
             }
             catch (EventPayloadEvolutionException error)

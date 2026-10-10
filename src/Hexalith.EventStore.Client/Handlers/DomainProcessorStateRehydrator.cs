@@ -384,7 +384,7 @@ internal static class DomainProcessorStateRehydrator {
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException) {
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
             throw new EventPayloadEvolutionException(envelope.Metadata.EventTypeName,
                 envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber,
                 "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
@@ -423,7 +423,7 @@ internal static class DomainProcessorStateRehydrator {
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException) {
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
             throw new EventPayloadEvolutionException(eventTypeName, storedVersion ?? 1, sequence,
                 "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
         }

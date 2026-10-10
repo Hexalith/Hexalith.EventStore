@@ -54,6 +54,40 @@ public sealed class EventEvolutionLegacyIntakeTests
             captured => captured.UpToSequence == request.UpToSequence && captured.Events.Count == 0), cancellation.Token);
     }
 
+    /// <summary>Metadata V1 carries a version-two payload through both legacy replay route shapes.</summary>
+    [Fact]
+    public async Task ReplayAcceptsStampedMetadataV1ForSyncAndAsyncRoutes()
+    {
+        var stamped = new ReplayEventEnvelope(1, "legacy", "{}"u8.ToArray(), "json", 1, "message", null, null)
+        {
+            StoredPayloadVersion = 2,
+        };
+        var request = new AggregateReconstructionRequest("tenant", "d", "aggregate", "id", 1,
+            [stamped], false, null);
+        AggregateReconstructionResult expected = AggregateReconstructionResult.Succeeded("{}", 1);
+
+        IAggregateReplay sync = Substitute.For<IAggregateReplay>();
+        _ = sync.CanReplayAggregateType("aggregate").Returns(true);
+        _ = sync.Replay(Arg.Any<AggregateReconstructionRequest>()).Returns(expected);
+        using (ServiceProvider provider = new ServiceCollection().AddKeyedSingleton("d", sync).BuildServiceProvider())
+        {
+            DomainServiceRequestRouter.Replay(provider, request).ShouldBe(expected);
+            _ = sync.Received(1).Replay(Arg.Is<AggregateReconstructionRequest>(value =>
+                value.Events.Single().StoredPayloadVersion == 2));
+        }
+
+        IAsyncAggregateReplay asyncReplay = Substitute.For<IAsyncAggregateReplay>();
+        _ = asyncReplay.CanReplayAggregateType("aggregate").Returns(true);
+        _ = asyncReplay.ReplayAsync(Arg.Any<AggregateReconstructionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+        using (ServiceProvider provider = new ServiceCollection().AddKeyedSingleton("d", asyncReplay).BuildServiceProvider())
+        {
+            (await DomainServiceRequestRouter.ReplayAsync(provider, request)).ShouldBe(expected);
+            _ = await asyncReplay.Received(1).ReplayAsync(Arg.Is<AggregateReconstructionRequest>(value =>
+                value.Events.Single().StoredPayloadVersion == 2), Arg.Any<CancellationToken>());
+        }
+    }
+
     /// <summary>Checks full, named, staged, reconciliation and shared rebuild routes refuse before resolving state or handlers.</summary>
     [Theory]
     [InlineData(2, "evt", 1)]

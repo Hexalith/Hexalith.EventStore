@@ -28,7 +28,7 @@ public sealed class EventStoreDomainEventsServiceCollectionExtensionsTests {
         var services = new ServiceCollection();
         _ = services.AddLogging();
 
-        _ = services.AddEventStoreDomainEvents(typeof(RegistrationTestEvent).Assembly);
+        _ = services.AddEventStoreDomainEvents(typeof(IEventPayload).Assembly);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         _ = provider.GetRequiredService<EventStoreDomainEventProcessor>();

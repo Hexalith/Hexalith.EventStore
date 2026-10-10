@@ -114,6 +114,22 @@ public static class EventStoreServiceCollectionExtensions {
     public static IServiceCollection AddEventStoreClient<TProcessor>(this IServiceCollection services)
         where TProcessor : class, IDomainProcessor {
         ArgumentNullException.ThrowIfNull(services);
+        EventPayloadEvolutionRegistration evolution = EventEvolutionServiceCollectionExtensions.GetOrCreateRegistration(services);
+        evolution.AddAssembly(typeof(TProcessor).Assembly);
+        Type? aggregateBase = typeof(TProcessor).BaseType;
+        while (aggregateBase is not null
+            && (!aggregateBase.IsGenericType || aggregateBase.GetGenericTypeDefinition() != typeof(EventStoreAggregate<>)))
+        {
+            aggregateBase = aggregateBase.BaseType;
+        }
+        Type? stateType = aggregateBase?.GetGenericArguments()[0];
+        if (stateType is not null)
+        {
+            foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(stateType).ByType.Keys)
+            {
+                evolution.AddKnownType(eventType);
+            }
+        }
         services.TryAddScoped<TProcessor>(provider =>
         {
             TProcessor instance = ActivatorUtilities.CreateInstance<TProcessor>(provider);

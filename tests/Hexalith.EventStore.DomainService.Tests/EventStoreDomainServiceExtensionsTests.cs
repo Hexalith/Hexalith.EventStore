@@ -1342,6 +1342,33 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     [Fact]
+    public async Task ProjectionEndpoint_ForwardsLiveCallerToken() {
+        using var cancellation = new CancellationTokenSource();
+        CancellationToken observed = default;
+        IDomainProjectionHandler handler = Substitute.For<IDomainProjectionHandler>();
+        handler.Domain.Returns("token-probe");
+        handler.Project(Arg.Any<ProjectionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call => {
+                observed = call.ArgAt<CancellationToken>(1);
+                return new ProjectionResponse("token-summary", JsonSerializer.SerializeToElement(new { count = 1 }));
+            });
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "sample";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddSingleton(handler);
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        var request = new ProjectionRequest("tenant-a", "token-probe", "probe-1", []);
+
+        (int status, string body) = await InvokeEndpointAsync(app, "/project", request, cancellation.Token);
+
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        observed.ShouldBe(cancellation.Token);
+        observed.CanBeCanceled.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task NamedMetadataEndpoint_RejectsCallerSelectedAppIdentity() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Configuration["EventStore:DomainService:AppId"] = "authoritative-app";
