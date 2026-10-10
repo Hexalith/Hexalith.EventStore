@@ -13,6 +13,7 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Discovery;
 using Hexalith.EventStore.Client.Tests.Aggregates;
 using Hexalith.EventStore.Client.Tests.Events;
+using Hexalith.EventStore.Contracts.Replay;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -198,6 +199,13 @@ public class AddEventStoreTests : IDisposable {
             registry.Read(typeof(CancellationReplayEvent).FullName!, 2, "{}"u8.ToArray(), 7));
         Assert.Equal(2, failure.StoredVersion);
         Assert.Equal(7, failure.SequenceNumber);
+
+        var stored = new ReplayEventEnvelope(1, typeof(CancellationReplayEvent).FullName!,
+            "{}"u8.ToArray(), "json", 1, "message", null, null) { StoredPayloadVersion = 2 };
+        var request = new AggregateReconstructionRequest("tenant", "domain", "aggregate", "id", 1,
+            [stored], false, null);
+        Assert.Equal(AggregateReconstructionErrorCategory.UnsupportedVersion,
+            aggregate.Replay(request).ErrorCategory);
     }
 
     [Fact]

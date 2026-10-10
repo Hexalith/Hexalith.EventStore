@@ -1,6 +1,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Registration;
+using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Contracts.Events;
 
@@ -48,6 +49,20 @@ public sealed class EventStoreDomainEventsServiceCollectionExtensionsTests {
         using ServiceProvider provider = services.BuildServiceProvider();
         IEventStoreDomainEventMarkerStore markerStore = provider.GetRequiredService<IEventStoreDomainEventMarkerStore>();
         _ = markerStore.ShouldBeOfType<DaprEventStoreDomainEventMarkerStore>();
+    }
+
+    [Fact]
+    public void AddEventStoreDomainEvents_ValidatesUnobservedContractTypes() {
+        var services = new ServiceCollection();
+        _ = services.AddLogging();
+        _ = services.AddEventStoreDomainEvents(typeof(RegistrationTestEvent).Assembly);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ArgumentOutOfRangeException failure = Should.Throw<ArgumentOutOfRangeException>(() =>
+            provider.GetRequiredService<EventPayloadEvolutionRegistry>());
+
+        failure.Message.ShouldContain("Invalid");
+        failure.Message.ShouldContain("VersionTestEvent");
     }
 
     [Fact]
