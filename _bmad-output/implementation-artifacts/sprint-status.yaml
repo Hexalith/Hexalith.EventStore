@@ -268,7 +268,7 @@ development_status:
   # Rescoped 2026-10-09 (sprint-change-proposal-2026-10-09): pragmatic upcasting, identity validation, cancellation seams; first-attempt scaffolding retired by Task 1.
   6-6-event-versioning-and-upcasting-implementation: done
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): NFR18/G-NFR18 owner.
-  6-7-aot-and-trimming-posture-reference: review
+  6-7-aot-and-trimming-posture-reference: done
   epic-6-retrospective: optional
 
   epic-7: backlog

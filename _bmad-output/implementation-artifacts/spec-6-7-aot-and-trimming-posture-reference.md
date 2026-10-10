@@ -133,5 +133,11 @@ The inventory omissions share one incomplete inventory root cause and were corre
 - Second review corrections: Contracts.Tests Release build passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 8 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues; page links: 4 OK; `git diff --check`: passed. `bash scripts/validate-docs.sh` remains blocked at Markdown linting by the same 9 issues in the same 5 unchanged files listed above.
 - Current page SHA-256 after second review corrections: `babd1cd1fb70596996417410ddf03eb71a411832f456a21cd01de2877d2cc77d`.
 - Owner review: `single-maintainer-attested` on 2026-10-10. The owner confirmed "I reviewed it today" in response to the review request for `docs/reference/aot-and-trimming-posture.md` at SHA-256 `babd1cd1fb70596996417410ddf03eb71a411832f456a21cd01de2877d2cc77d`. This is an owner review, not an independent review.
+- Post-closure follow-up 2026-10-10 (owner-requested; addresses review findings the closing triage did not cover):
+  - The test now uses Shouldly instead of raw `Assert.*`.
+  - `MissingOrDisplacedPostureMarkerFailsClosed` now runs through `EvaluateViolations`. A mutation check that removed the marker check from the guard path turned it red.
+  - The page gained a single-file-publish note (`Assembly.Location`) and a sentence on the guard's MSBuild-only scope. `nuget-packages.md` now links the page.
+  - Verification: Release build with `-warnaserror` passed with 0 warnings and 0 errors. `AotTrimmingPostureTests`: 8 passed. `ReleasePackageManifestTests`: 127 passed. markdownlint on the touched pages: 0 issues. Offline lychee: 0 errors.
+  - The page SHA-256 is now `99395b0adf8f86c8c18bf58f57e863c52f91bf03d068eca7f000965972126a61`. The owner attestation above covers `babd1cd1…`, so re-attestation of this digest is pending.
 
 ## Implementation Notes

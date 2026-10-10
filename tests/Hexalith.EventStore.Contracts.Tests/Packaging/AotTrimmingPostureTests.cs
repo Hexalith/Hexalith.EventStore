@@ -14,11 +14,7 @@ public sealed class AotTrimmingPostureTests
     [Fact]
     public void PostureDocumentStatesTheCurrentContract()
     {
-        string root = FindRepositoryRoot();
-        string path = Path.Combine(root, PostureDocumentPath);
-        Assert.True(File.Exists(path), $"The posture document is missing: {PostureDocumentPath}.");
-
-        string text = File.ReadAllText(path);
+        string text = ReadPostureDocument(FindRepositoryRoot());
         AssertPostureMarker(text);
         AssertInventoryRows(text);
     }
@@ -29,7 +25,7 @@ public sealed class AotTrimmingPostureTests
     {
         string root = FindRepositoryRoot();
         string[] projects = LoadReleasePackageProjects(root);
-        AssertNoCompatibilityClaims(EvaluateViolations(root, projects, propertyOverride: null));
+        AssertNoCompatibilityClaims(EvaluateViolations(root, ReadPostureDocument(root), projects, propertyOverride: null));
     }
 
     /// <summary>Proves explicit and SDK-implied compatibility claims fail the same guard.</summary>
@@ -47,20 +43,19 @@ public sealed class AotTrimmingPostureTests
     {
         string root = FindRepositoryRoot();
         string project = LoadReleasePackageProjects(root)[0];
-        string[] violations = EvaluateViolations(root, [project], (propertyName, propertyValue));
+        string[] violations = EvaluateViolations(root, ReadPostureDocument(root), [project], (propertyName, propertyValue));
 
-        Exception? failure = Record.Exception(() => AssertNoCompatibilityClaims(violations));
-        Assert.NotNull(failure);
-        Assert.Contains(project, failure.Message, StringComparison.Ordinal);
-        Assert.Contains(propertyName, failure.Message, StringComparison.Ordinal);
+        ShouldAssertException failure = Should.Throw<ShouldAssertException>(() => AssertNoCompatibilityClaims(violations));
+        failure.Message.ShouldContain(project, Case.Sensitive);
+        failure.Message.ShouldContain(propertyName, Case.Sensitive);
         if (expectImpliedTrimming)
         {
-            Assert.Contains("IsTrimmable", failure.Message, StringComparison.Ordinal);
-            Assert.Equal(2, violations.Length);
+            failure.Message.ShouldContain("IsTrimmable", Case.Sensitive);
+            violations.Length.ShouldBe(2);
         }
         else
         {
-            Assert.Single(violations);
+            violations.ShouldHaveSingleItem();
         }
     }
 
@@ -70,24 +65,25 @@ public sealed class AotTrimmingPostureTests
     {
         string root = FindRepositoryRoot();
         string[] projects = LoadReleasePackageProjects(root);
-        Assert.Contains("src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj", projects);
+        projects.ShouldContain("src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj");
 
-        string[] violations = EvaluateViolations(root, projects, ("IsAotCompatible", "true"));
-        Exception? failure = Record.Exception(() => AssertNoCompatibilityClaims(violations));
+        string[] violations = EvaluateViolations(root, ReadPostureDocument(root), projects, ("IsAotCompatible", "true"));
+        ShouldAssertException failure = Should.Throw<ShouldAssertException>(() => AssertNoCompatibilityClaims(violations));
 
-        Assert.NotNull(failure);
-        Assert.Equal(projects.Length * 2, violations.Length);
+        violations.Length.ShouldBe(projects.Length * 2);
         foreach (string project in projects)
         {
-            Assert.Contains($"{project}: IsAotCompatible=true", failure.Message, StringComparison.Ordinal);
-            Assert.Contains($"{project}: IsTrimmable=true", failure.Message, StringComparison.Ordinal);
+            failure.Message.ShouldContain($"{project}: IsAotCompatible=true", Case.Sensitive);
+            failure.Message.ShouldContain($"{project}: IsTrimmable=true", Case.Sensitive);
         }
     }
 
-    /// <summary>Proves a missing or displaced marker stops the guard before evaluating projects.</summary>
+    /// <summary>Proves a missing or displaced marker stops the release guard before it evaluates projects.</summary>
     [Fact]
     public void MissingOrDisplacedPostureMarkerFailsClosed()
     {
+        string root = FindRepositoryRoot();
+        string[] projects = LoadReleasePackageProjects(root);
         string[] invalidPages =
         [
             "## Reflection Convention Inventory",
@@ -97,9 +93,9 @@ public sealed class AotTrimmingPostureTests
         ];
         foreach (string page in invalidPages)
         {
-            Exception? failure = Record.Exception(() => AssertPostureMarker(page));
-            Assert.NotNull(failure);
-            Assert.Contains(PostureDocumentPath, failure.Message, StringComparison.Ordinal);
+            ShouldAssertException failure = Should.Throw<ShouldAssertException>(
+                () => EvaluateViolations(root, page, projects, propertyOverride: null));
+            failure.Message.ShouldContain(PostureDocumentPath, Case.Sensitive);
         }
     }
 
@@ -108,24 +104,25 @@ public sealed class AotTrimmingPostureTests
     public void InventoryHeadingWithoutRowsFailsClosed()
     {
         const string page = "## Reflection Convention Inventory\n\n| Convention | Where | Reflection or dynamic behavior used |\n| --- | --- | --- |\n\n## Consumer Guidance";
-        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertInventoryRows(page));
+        Should.Throw<ShouldAssertException>(() => AssertInventoryRows(page));
     }
 
     private static void AssertNoCompatibilityClaims(IReadOnlyCollection<string> violations)
-        => Assert.True(
-            violations.Count == 0,
+        => violations.ShouldBeEmpty(
             "Release packages claim unsupported Native AOT or IL trimming compatibility:" + Environment.NewLine
                 + string.Join(Environment.NewLine, violations));
 
     private static void AssertInventoryRows(string text)
     {
-        Assert.Contains("## Reflection Convention Inventory", text, StringComparison.Ordinal);
+        text.ShouldContain("## Reflection Convention Inventory", Case.Sensitive);
         string inventory = text.Replace("\r\n", "\n", StringComparison.Ordinal)
             .Split("## Reflection Convention Inventory", 2, StringSplitOptions.None)[1]
             .Split("\n## ", 2, StringSplitOptions.None)[0];
-        Assert.Contains(inventory.Split('\n'), line => line.StartsWith("| ", StringComparison.Ordinal)
-            && !line.StartsWith("| Convention |", StringComparison.Ordinal)
-            && !line.StartsWith("| --- |", StringComparison.Ordinal));
+        inventory.Split('\n').ShouldContain(
+            line => line.StartsWith("| ", StringComparison.Ordinal)
+                && !line.StartsWith("| Convention |", StringComparison.Ordinal)
+                && !line.StartsWith("| --- |", StringComparison.Ordinal),
+            $"The reflection convention inventory in {PostureDocumentPath} has no rows.");
     }
 
     private static void AssertPostureMarker(string text)
@@ -158,20 +155,25 @@ public sealed class AotTrimmingPostureTests
             break;
         }
 
-        Assert.True(markerFound,
+        markerFound.ShouldBeTrue(
             $"The posture marker is missing from the Current Posture section of {PostureDocumentPath}.");
+    }
+
+    private static string ReadPostureDocument(string root)
+    {
+        string path = Path.Combine(root, PostureDocumentPath);
+        File.Exists(path).ShouldBeTrue($"The posture document is missing: {PostureDocumentPath}.");
+        return File.ReadAllText(path);
     }
 
     private static string[] EvaluateViolations(
         string root,
+        string postureDocument,
         IReadOnlyCollection<string> projects,
         (string Name, string Value)? propertyOverride)
     {
-        string document = Path.Combine(root, PostureDocumentPath);
-        Assert.True(File.Exists(document), $"The posture document is missing: {PostureDocumentPath}.");
-        string text = File.ReadAllText(document);
-        AssertPostureMarker(text);
-        Assert.NotEmpty(projects);
+        AssertPostureMarker(postureDocument);
+        projects.ShouldNotBeEmpty();
 
         List<string> violations = [];
         foreach (string project in projects)
@@ -218,7 +220,7 @@ public sealed class AotTrimmingPostureTests
             process.StartInfo.ArgumentList.Add($"-p:{seeded.Name}={seeded.Value}");
         }
 
-        Assert.True(process.Start(), $"Could not start dotnet msbuild for {project}.");
+        process.Start().ShouldBeTrue($"Could not start dotnet msbuild for {project}.");
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
         Task<string> errorTask = process.StandardError.ReadToEndAsync();
         if (!process.WaitForExit((int)MsBuildEvaluationTimeout.TotalMilliseconds))
@@ -229,7 +231,7 @@ public sealed class AotTrimmingPostureTests
 
         string output = outputTask.GetAwaiter().GetResult();
         string error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.ExitCode == 0, $"dotnet msbuild property evaluation failed for {project}: {error}");
+        process.ExitCode.ShouldBe(0, $"dotnet msbuild property evaluation failed for {project}: {error}");
         return JsonDocument.Parse(output);
     }
 
@@ -240,7 +242,7 @@ public sealed class AotTrimmingPostureTests
             .EnumerateArray()
             .Select(package => package.GetProperty("project").GetString()!)
             .ToArray();
-        Assert.NotEmpty(projects);
+        projects.ShouldNotBeEmpty();
         return projects;
     }
 

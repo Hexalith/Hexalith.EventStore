@@ -30,9 +30,11 @@ The release package sources have no `RequiresUnreferencedCode`, `RequiresDynamic
 
 Use the release packages with the normal managed .NET runtime and without trimming. Do not treat a consumer application's `PublishAot`, `PublishTrimmed`, or analyzer settings as evidence that these packages support either mode. Keep reflection-dependent domain types, handlers, upcasters, and payload contracts available to the runtime; a consumer-specific workaround does not change the package posture.
 
+Single-file publishing is not supported for hosts that register event upcasters either. A bundled assembly reports an empty `Assembly.Location`, so `RegisteredEventUpcaster` cannot hash the upcaster's implementation file and registration throws.
+
 ## Release Guard
 
-Story 6.7 owns `AotTrimmingPostureTests` in the blocking `contracts` CI job. The guard reads `tools/release-packages.json` and evaluates each listed project through MSBuild in Release package-reference mode. It fails if effective `IsAotCompatible` or `IsTrimmable` is `true` (case-insensitively), or if this page loses its posture marker. Seeded tests exercise explicit properties and the SDK's implied `IsTrimmable` value.
+Story 6.7 owns `AotTrimmingPostureTests` in the blocking `contracts` CI job. The guard reads `tools/release-packages.json` and evaluates each listed project through MSBuild in Release package-reference mode. It fails if effective `IsAotCompatible` or `IsTrimmable` is `true` (case-insensitively), or if this page loses its posture marker. Seeded tests exercise explicit properties and the SDK's implied `IsTrimmable` value. The guard reads evaluated MSBuild properties only and does not inspect compiled assemblies, so it would not detect a hand-written `[assembly: AssemblyMetadata("IsTrimmable", "True")]` attribute.
 
 Maintainers can run the focused guard after building the Contracts.Tests project:
 

@@ -6,6 +6,8 @@ Guide to the manifest-driven Hexalith.EventStore NuGet package set — their pur
 
 > **Prerequisites:** [Architecture Overview](../concepts/architecture-overview.md) — you should understand the system topology before choosing packages.
 
+Native AOT and IL trimming are not supported for these packages. See [Native AOT and IL Trimming Posture](aot-and-trimming-posture.md).
+
 ## Package Overview
 
 The current `tools/release-packages.json` manifest contains 14 packages, all versioned and validated as one release inventory. The package IDs are the rows in this table; packages outside this manifest are not release outputs.
@@ -594,4 +596,4 @@ Browse all published packages on [NuGet.org](https://www.nuget.org/packages?q=He
 
 **Next:** [Command API Reference](command-api.md) — look up write-side endpoints with request/response examples
 
-**Related:** [Query & Projection API Reference](query-api.md) | [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md)
+**Related:** [Query & Projection API Reference](query-api.md) | [API Reference](api/index.md) — auto-generated type documentation for all public APIs | [Architecture Overview](../concepts/architecture-overview.md) | [First Domain Service](../getting-started/first-domain-service.md) | [Quickstart](../getting-started/quickstart.md) | [Native AOT and IL Trimming Posture](aot-and-trimming-posture.md)
