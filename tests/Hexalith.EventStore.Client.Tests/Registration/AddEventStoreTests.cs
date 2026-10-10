@@ -13,6 +13,7 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Discovery;
 using Hexalith.EventStore.Client.Tests.Aggregates;
 using Hexalith.EventStore.Client.Tests.Events;
+using Hexalith.EventStore.Client.TestContracts;
 using Hexalith.EventStore.Contracts.Replay;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -206,6 +207,20 @@ public class AddEventStoreTests : IDisposable {
             [stored], false, null);
         Assert.Equal(AggregateReconstructionErrorCategory.UnsupportedVersion,
             aggregate.Replay(request).ErrorCategory);
+    }
+
+    [Fact]
+    public void AddEventStoreClient_DiscoversUpcasterInApplyEventAssembly() {
+        var services = new ServiceCollection();
+        _ = services.AddEventStoreClient<ExternalEventAggregate>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventPayloadEvolutionRegistry registry = provider.GetRequiredService<EventPayloadEvolutionRegistry>();
+
+        ResolvedEventPayload result = registry.Read(typeof(ExternalVersionedEvent).FullName!, 1,
+            "{\"Amount\":8}"u8.ToArray());
+        Assert.Equal(typeof(ExternalVersionedEvent), result.EventType);
+        Assert.Equal(2, result.PayloadVersion);
     }
 
     [Fact]

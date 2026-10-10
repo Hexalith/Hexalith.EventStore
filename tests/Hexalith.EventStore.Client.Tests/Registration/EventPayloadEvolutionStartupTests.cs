@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Tests.Events;
+using Hexalith.EventStore.Client.TestContracts;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -61,6 +62,20 @@ public sealed class EventPayloadEvolutionStartupTests
 
         registry.Read(typeof(VersionTwoTestEvent).FullName!, 1, "{\"Amount\":7}"u8.ToArray())
             .PayloadVersion.ShouldBe(2);
+    }
+
+    [Fact]
+    public void DiscoveryIncludesVersionLinkedLongerHistoricalPredecessor()
+    {
+        var registration = new EventPayloadEvolutionRegistration();
+        registration.AddKnownType(typeof(ChainedEvent));
+        registration.AddAssembly(typeof(ChainedEvent).Assembly);
+
+        EventPayloadEvolutionRegistry registry = registration.Build();
+
+        ResolvedEventPayload result = registry.Read("Historical.ChainedEvent", 1, "{\"Value\":7}"u8.ToArray());
+        result.EventType.ShouldBe(typeof(ChainedEvent));
+        result.PayloadVersion.ShouldBe(3);
     }
 
     [Fact]

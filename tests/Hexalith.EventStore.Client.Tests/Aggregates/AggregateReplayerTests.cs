@@ -98,6 +98,41 @@ public class AggregateReplayerTests {
         failure.InnerException.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Rehydration_ConstructorArgumentExceptionFailsTypedForBothEventShapes(bool inlineJson)
+        => AssertConstructorFailure<ConstructorArgumentEvent>(inlineJson, nameof(ArgumentException));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Rehydration_ConstructorInvalidOperationExceptionFailsTypedForBothEventShapes(bool inlineJson)
+        => AssertConstructorFailure<ConstructorInvalidOperationEvent>(inlineJson, nameof(InvalidOperationException));
+
+    private static void AssertConstructorFailure<TEvent>(bool inlineJson, string innerTypeName)
+        where TEvent : IEventPayload
+    {
+        string name = typeof(TEvent).FullName!;
+        byte[] payload = "{\"value\":\"secret\"}"u8.ToArray();
+        object history = inlineJson
+            ? JsonSerializer.SerializeToElement(new[] { new { eventTypeName = name, payload = new { value = "secret" } } })
+            : new DomainServiceCurrentState(null,
+                [new EventEnvelope(new EventMetadata("msg-1", "counter-1", "Counter", "tenant-a", "counter",
+                    1, 1, DateTimeOffset.UnixEpoch, "corr-1", "cause-1", "user", "v1", name, 1, "json"), payload, null)],
+                0, 1);
+        var evolution = new EventPayloadEvolutionRegistry([typeof(TEvent)], []);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            DomainProcessorStateRehydrator.RehydrateState<ConstructorFailureState>(history,
+                DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(ConstructorFailureState)), evolution: evolution));
+
+        failure.EventTypeName.ShouldBe(name);
+        failure.InnerExceptionTypeName.ShouldBe(innerTypeName);
+        failure.InnerException.ShouldBeNull();
+        failure.Message.ShouldNotContain("secret");
+    }
+
     /// <summary>Checks a versioned later event refuses the complete eligible batch before an earlier Apply can run.</summary>
     [Fact]
     public void Replay_VersionedLaterEventRefusesBeforeApplyAndRevealsNoPartialTimeline() {

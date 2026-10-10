@@ -69,7 +69,7 @@ public sealed class EventPayloadEvolutionRegistryTests
             })]);
         byte[] stored = "{\"Amount\":1}"u8.ToArray();
 
-        ResolvedEventPayload resolved = registry.Read(nameof(LegacyTestEvent), null, stored, 7);
+        ResolvedEventPayload resolved = registry.Read(OldName, null, stored, 7);
 
         resolved.EventType.ShouldBe(typeof(VersionedTestEvent));
         resolved.PayloadVersion.ShouldBe(3);
@@ -111,6 +111,25 @@ public sealed class EventPayloadEvolutionRegistryTests
 
         failure.EventTypeName.ShouldBe(name);
         failure.SequenceNumber.ShouldBe(4);
+        failure.UpcasterTypeName.ShouldBe(typeof(TestPayloadUpcaster).FullName);
+        failure.Message.ShouldContain("payload exceeds the readable limit");
+    }
+
+    [Fact]
+    public void Read_ImmediateSizeFailureReportsLastUpcaster()
+    {
+        string name = typeof(VersionTwoTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null, static payload =>
+            {
+                payload["Value"] = new string('x', 64 * 1024 * 1024);
+                return payload;
+            })]);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            registry.Read(name, 1, "{}"u8.ToArray(), 5));
+
+        failure.UpcasterTypeName.ShouldBe(typeof(TestPayloadUpcaster).FullName);
         failure.Message.ShouldContain("payload exceeds the readable limit");
     }
 
@@ -348,6 +367,38 @@ public sealed class EventPayloadEvolutionRegistryTests
 
         result.EventType.ShouldBe(typeof(LegacyTestEvent));
         result.PayloadVersion.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Read_UniqueKnownShortNameIgnoresUnrelatedLongerUpcaster()
+    {
+        var registry = new EventPayloadEvolutionRegistry(
+            [typeof(LegacyTestEvent), typeof(VersionTwoTestEvent)],
+            [new TestPayloadUpcaster("Unrelated.LegacyTestEvent", 1,
+                typeof(VersionTwoTestEvent).FullName, static payload => payload)]);
+
+        ResolvedEventPayload result = registry.Read(nameof(LegacyTestEvent), 1, "{\"Amount\":4}"u8.ToArray());
+
+        result.EventType.ShouldBe(typeof(LegacyTestEvent));
+        result.PayloadVersion.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Read_KnownShortNameCollisionCannotChooseOneOfTwoLongerRenames()
+    {
+        string currentName = typeof(VersionedTestEvent).FullName!;
+        string otherName = typeof(Other.VersionedTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry(
+            [typeof(VersionedTestEvent), typeof(Other.VersionedTestEvent)],
+            [new TestPayloadUpcaster(currentName, 1, currentName, static payload => payload),
+             new TestPayloadUpcaster(otherName, 1, currentName, static payload => payload),
+             new TestPayloadUpcaster(currentName, 2, null, static payload => payload)]);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            registry.Read(nameof(VersionedTestEvent), 1, "{}"u8.ToArray(), 13));
+
+        failure.SequenceNumber.ShouldBe(13);
+        failure.Message.ShouldContain("ambiguous event type");
     }
 
     [Fact]

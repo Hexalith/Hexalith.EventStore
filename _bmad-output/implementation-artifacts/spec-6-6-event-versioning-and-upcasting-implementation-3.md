@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -285,6 +285,18 @@ The surviving parser, persister, logical-reader, registry and boundary-test grou
 | Review 3 Gap 1: discovery masked by explicit registration | medium | The explicit registration test would pass if discovery broke. Added discovery-only coverage; full Client suite passes. |
 | Review 3 Gap 2: replay message type names unasserted | low | The replay path copies only the exception message. Added a throwing-upcaster diagnostic test for safe type names; full Client suite passes. |
 | Review 3 Gap other: subscription log omits safe diagnostics | low | The log omitted reason and inner exception type. Patched structured fields without logging payload or exception text and added coverage. |
+| Review 4 Edge 1: colliding known short names select one step | high | `FindStep` reaches its tier-three fallback when two known event types share a short name, allowing a single longer step to select one before `ResolveType` can report ambiguity. A subscription can dispatch to the wrong handler. Patch short-name precedence and ambiguity. |
+| Review 4 Edge 2: mixed-name discovered predecessor disappears | medium | `EventPayloadEvolutionRegistration.Build` selects a later short-named step, but its one-way relevance check drops a longer-named predecessor that `FindStep` can use at the preceding version. Host startup then refuses a valid chain. Patch version-linked predecessor selection. |
+| Review 4 Gap 1: no foreign-name test with short-named steps | medium | The existing foreign-event test uses full-name steps. Changing subscription admission to accept tier two would misdispatch a foreign full-name event while that test stays green. Add a short-step foreign-event test. |
+| Review 4 Gap 2: constructor validation lacks typed-error tests | medium | Both rehydration shapes now catch `ArgumentException`, but the tests exercise only `NotSupportedException`. A constructor that rejects stored data reaches this catch directly. Add both-shape assertions for `InnerExceptionTypeName`. |
+| Review 4 Blind 1: unique known short name is hijacked | high | A longer unrelated step can win tier three after no exact step for the unique known short name, before `ResolveType` can bind it. This is the same precedence defect as Edge 1; patch both with one known-short-name rule. |
+| Review 4 Blind 2: namespace-free foreign short name binds | false | A namespace-free stored name matching a registered longer step is indistinguishable from the supported historical short alias. The existing symmetric alias contract admits it by design; the finding supplies no separate identity signal that the SDK could use to classify it as foreign. |
+| Review 4 Blind 3: processor discovery misses event assembly | medium | `AddEventStoreClient<TProcessor>` enrolls Apply event types as known but scans only the processor assembly. A separately built Contracts assembly can own the upcaster, so a valid event fails startup unless manually registered. Patch by enrolling the known event assemblies. |
+| Review 4 Blind 4: discovered mixed-name chain rejected | medium | The longer predecessor is dropped by one-way relevance despite runtime tier-three lookup; this is the same defect as Edge 2. Patch discovery without admitting unrelated same-version steps. |
+| Review 4 Blind 5: size failure loses upcaster name | low | After an upcast, both the immediate validation size check and deferred-read size check omit the known last upcaster type from the typed error. Pass that name through these two direct failure sites. |
+| Review 4 Blind 6: other constructor errors escape typed replay | medium | A constructor or converter may throw `FormatException` or `InvalidOperationException` while deserializing stored data. The two narrow filters leave these raw. Translate non-cancellation, non-evolution deserialization errors to a safe typed failure and test them. |
+| Review 4 Blind 7: replay route test uses a substitute | false | The focused route test verifies the router admits stamped metadata V1 and forwards it; existing `VersionedWireRoundTripTests.ActorWriteAndRead_RoundTripsV1AndV2ThroughJsonStateAndDomainRouting` runs a real aggregate through domain routing and asserts reconstructed state. The tests jointly cover this boundary. |
+| Review 4 Blind 8: subscriber registration success untested | medium | The stamped subscriber test constructs a registry and processor directly, while the change enrolls all contract types through `AddEventStoreDomainEvents`. A host-resolved processor with a directly registered handler and discovered upcaster needs a success test. Patch that verification gap. |
 
 ## Verification
 
@@ -371,4 +383,10 @@ The eleven pass-2 patch items above are implemented in `34087860effaab223bc4c2c0
 - Full Client suite after the staged assertions: 1,449/1,449 passed. Full DomainService suite: 554/554 passed. Focused Story 6.6 Server boundary classes: 77/77 passed. Focused Contracts identity tests: 20/20 passed. The frozen matrix rows have passing coverage in these runs and the earlier actor round-trip, registry, projection, and token tests.
 - Full Contracts suite: 2,328 total, one failed, two existing skips. The failing `SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync` reproduced alone in 3.173 seconds. Its shared PowerShell validator throws `You cannot call a method on a null-valued expression` at line 291 while parsing six empty, tracked Story 6.1 evidence MSBuild files added in `73c4b4f32e033f8ee2b2cca9678c84394eeebc2a`. Those files and the validator are outside the Story 6.6 patch.
 - Full Server suite: 4,334 total, one failed, 25 existing skips. The sole failure was confirmed in isolation as `SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets`: 152 findings in tracked Story 6.1 P1R receipts and two Python test lines. The earlier Story 6.6 alternative gate approval cited 19 findings, so it does not establish acceptance of this expanded result.
-- `git diff --cached --check` passed. The story remains `in-progress` pending correction of these unrelated broad gates or an owner-approved alternative gate for their current results. The Story 6.1 evidence, package validator, and secrets scanner were not edited.
+- `git diff --cached --check` passed. The Story 6.1 evidence, package validator, and secrets scanner were not edited.
+
+**Owner gate decision, 2026-10-10:** The owner approved the passing focused Story 6.6 tests as this story's completion gate despite the two unrelated broad-suite failures above, and approved reviewing only the Story 6.6 change. The prior Story 6.1 test failures remain open. The story moves to `in-review` for the scoped review pass.
+
+## Review 4 Pending Short-Name Decision — 2026-10-10
+
+The review patches build cleanly and pass Client 1,459/1,459, DomainService 554/554, and focused Server boundary tests 77/77. The new known-type precedence rule changes the pre-existing `Read_RenamesShortAliasAndRunsOrderedStepsOnce` behavior: a stored `LegacyTestEvent` short name now resolves to its known CLR type rather than the upcaster declared for `Historical.LegacyTestEvent`. Both meanings are possible from the stored name alone. The owner was asked to choose whether the known type or registered rename wins before the review is closed. No final disposition is recorded yet.

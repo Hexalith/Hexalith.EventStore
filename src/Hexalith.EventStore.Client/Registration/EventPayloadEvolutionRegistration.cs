@@ -35,7 +35,9 @@ internal sealed class EventPayloadEvolutionRegistration
             foreach (IEventPayloadUpcaster step in discovered)
             {
                 if (selected.Contains(step) || !relevantNames.Any(name => RelevantStepName(name, step.EventTypeName)
-                    || (step.TargetEventTypeName is { } target && RelevantStepName(name, target))))
+                    || (step.TargetEventTypeName is { } target && RelevantStepName(name, target)))
+                    && !selected.Any(next => next.FromVersion == step.FromVersion + 1
+                        && RelevantStepName(step.TargetEventTypeName ?? step.EventTypeName, next.EventTypeName)))
                 {
                     continue;
                 }

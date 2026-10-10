@@ -2,7 +2,9 @@ using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Subscriptions;
+using Hexalith.EventStore.Client.TestContracts;
 using Hexalith.EventStore.Client.Tests.Events;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -91,8 +93,8 @@ public sealed class VersionedSubscriptionTests
             .BuildServiceProvider();
         string currentName = typeof(VersionedTestEvent).FullName!;
         var registry = new EventPayloadEvolutionRegistry([typeof(VersionedTestEvent)],
-            [new TestPayloadUpcaster(currentName, 1, null, static json => json),
-             new TestPayloadUpcaster(currentName, 2, null, static json => json)]);
+            [new TestPayloadUpcaster(nameof(VersionedTestEvent), 1, null, static json => json),
+             new TestPayloadUpcaster(nameof(VersionedTestEvent), 2, null, static json => json)]);
         var processor = new EventStoreDomainEventProcessor(provider.GetRequiredService<IServiceScopeFactory>(),
             new Dictionary<string, Type> { [currentName] = typeof(VersionedTestEvent) },
             new InMemoryEventStoreDomainEventMarkerStore(),
@@ -100,10 +102,29 @@ public sealed class VersionedSubscriptionTests
         var envelope = new EventStoreDomainEventEnvelope(
             UniqueIdHelper.GenerateSortableUniqueStringId(), "account-1", "tenant-1",
             "Totally.Foreign.VersionedTestEvent", 1, DateTimeOffset.UnixEpoch,
-            "correlation-1", "json", "{\"Value\":7}"u8.ToArray()) { PayloadVersion = 3 };
+            "correlation-1", "json", "{\"Value\":7}"u8.ToArray()) { PayloadVersion = 1 };
 
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedUnknownEventType);
         handler.Values.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task HostRegisteredSubscriberUsesDiscoveredUpcaster()
+    {
+        var handler = new ExternalCapturingHandler();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IEventStoreDomainEventHandler<ExternalVersionedEvent>>(handler);
+        services.AddEventStoreDomainEvents(typeof(ExternalVersionedEvent).Assembly);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventStoreDomainEventProcessor processor = provider.GetRequiredService<EventStoreDomainEventProcessor>();
+        var envelope = new EventStoreDomainEventEnvelope(
+            UniqueIdHelper.GenerateSortableUniqueStringId(), "account-1", "tenant-1",
+            typeof(ExternalVersionedEvent).FullName!, 1, DateTimeOffset.UnixEpoch,
+            "correlation-1", "json", "{\"Amount\":9}"u8.ToArray()) { PayloadVersion = 1 };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Values.ShouldBe([9]);
     }
 
     [Fact]

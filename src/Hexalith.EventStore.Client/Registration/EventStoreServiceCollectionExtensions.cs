@@ -128,6 +128,7 @@ public static class EventStoreServiceCollectionExtensions {
             foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(stateType).ByType.Keys)
             {
                 evolution.AddKnownType(eventType);
+                evolution.AddAssembly(eventType.Assembly);
             }
         }
         services.TryAddScoped<TProcessor>(provider =>

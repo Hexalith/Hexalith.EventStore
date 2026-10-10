@@ -374,8 +374,9 @@ internal static class DomainProcessorStateRehydrator {
                 aggregateId: envelope.Metadata.AggregateId);
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
+        using JsonDocument payloadDoc = ParseReplayPayload(input, effective.Payload,
+            envelope.Metadata.EventTypeName, envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber);
         try {
-            using JsonDocument payloadDoc = input.ParsePayload(effective.Payload);
             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
                 ?? throw new EventPayloadEvolutionException(envelope.Metadata.EventTypeName,
                     envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber,
@@ -384,7 +385,7 @@ internal static class DomainProcessorStateRehydrator {
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
+        catch (Exception ex) when (ex is not OperationCanceledException and not EventPayloadEvolutionException) {
             throw new EventPayloadEvolutionException(envelope.Metadata.EventTypeName,
                 envelope.Metadata.PayloadVersion ?? 1, envelope.Metadata.SequenceNumber,
                 "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
@@ -415,17 +416,32 @@ internal static class DomainProcessorStateRehydrator {
                 eventTypeName: eventTypeName);
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
+        using JsonDocument payloadDoc = ParseReplayPayload(input, effective.Payload,
+            eventTypeName, storedVersion ?? 1, sequence);
         try {
-            using JsonDocument payloadDoc = input.ParsePayload(effective.Payload);
             object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, EventStorePayloadSerialization.Options)
                 ?? throw new EventPayloadEvolutionException(eventTypeName, storedVersion ?? 1, sequence,
                     "current payload deserialized to null");
             cancellationToken.ThrowIfCancellationRequested();
             return (applyMethod, deserializedEvent);
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
+        catch (Exception ex) when (ex is not OperationCanceledException and not EventPayloadEvolutionException) {
             throw new EventPayloadEvolutionException(eventTypeName, storedVersion ?? 1, sequence,
                 "current payload cannot deserialize", innerExceptionTypeName: ex.GetType().Name);
+        }
+    }
+
+    private static JsonDocument ParseReplayPayload(LegacyCommandReplayInput input, byte[] payload,
+        string eventTypeName, int version, long sequence)
+    {
+        try
+        {
+            return input.ParsePayload(payload);
+        }
+        catch (JsonException error)
+        {
+            throw new EventPayloadEvolutionException(eventTypeName, version, sequence,
+                "current payload cannot deserialize", innerExceptionTypeName: error.GetType().Name);
         }
     }
 

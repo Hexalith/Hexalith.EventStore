@@ -155,7 +155,7 @@ public sealed class EventPayloadEvolutionRegistry
                     if (deferCurrentPayloadValidation && effective.Length > MaximumPayloadBytes)
                     {
                         throw Failure(eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
-                            "payload exceeds the readable limit");
+                            "payload exceeds the readable limit", lastUpcasterType);
                     }
                     if (!deferCurrentPayloadValidation)
                     {
@@ -269,17 +269,29 @@ public sealed class EventPayloadEvolutionRegistry
         {
             matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 2).ToArray();
         }
-        if (matches.Length == 0 && !normalized.Contains('.') && !normalized.Contains('+'))
+        bool shortName = !normalized.Contains('.') && !normalized.Contains('+');
+        Type[] knownShortMatches = shortName
+            ? _knownTypes.Values.Where(type => string.Equals(type.Name, normalized, StringComparison.Ordinal)).Distinct().ToArray()
+            : [];
+        if (matches.Length == 0 && knownShortMatches.Length == 1)
         {
-            Type[] knownShortMatches = _knownTypes.Values.Where(type => string.Equals(type.Name, normalized, StringComparison.Ordinal)).ToArray();
-            if (knownShortMatches.Length == 1)
-            {
-                string knownName = ApplyMethodResolver.NormalizeTypeName(knownShortMatches[0].FullName ?? knownShortMatches[0].Name);
-                matches = versionSteps.Where(step => string.Equals(
-                    knownName, ApplyMethodResolver.NormalizeTypeName(step.EventTypeName), StringComparison.Ordinal)).ToArray();
-            }
+            string knownName = ApplyMethodResolver.NormalizeTypeName(knownShortMatches[0].FullName ?? knownShortMatches[0].Name);
+            matches = versionSteps.Where(step => string.Equals(
+                knownName, ApplyMethodResolver.NormalizeTypeName(step.EventTypeName), StringComparison.Ordinal)).ToArray();
         }
-        if (matches.Length == 0 && !_knownTypes.ContainsKey(normalized))
+        if (matches.Length == 0 && knownShortMatches.Length > 1)
+        {
+            IEventPayloadUpcaster[] renames = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 3
+                && step.TargetEventTypeName is not null).ToArray();
+            if (renames.Length == 1) { matches = renames; }
+            else { throw Failure(storedName, storedVersion, sequence, "ambiguous event type"); }
+        }
+        if (matches.Length == 0 && knownShortMatches.Length == 0 && !_knownTypes.ContainsKey(normalized))
+        {
+            matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 3).ToArray();
+        }
+        if (matches.Length == 0 && knownShortMatches.Length == 1
+            && version < EventPayloadVersionResolver.GetDeclaredVersion(knownShortMatches[0]))
         {
             matches = versionSteps.Where(step => NameMatchTier(normalized, step.EventTypeName) == 3).ToArray();
         }
@@ -371,7 +383,7 @@ public sealed class EventPayloadEvolutionRegistry
     {
         if (payload.Length > MaximumPayloadBytes)
         {
-            throw Failure(name, version, sequence, "payload exceeds the readable limit");
+            throw Failure(name, version, sequence, "payload exceeds the readable limit", upcasterTypeName);
         }
         try
         {
