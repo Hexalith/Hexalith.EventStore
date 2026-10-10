@@ -9,7 +9,7 @@ Use `createRequestFilter` and `noOpRequestFilter` from `@seontechnologies/pactjs
 ### Problems with manual request filters
 
 - **Express type gymnastics**: Pact's `requestFilter` expects `(req, res, next) => void` with Express-compatible types — but Pact doesn't re-export these types
-- **Double-Bearer bug**: Easy to write `Authorization: <duplicated-bearer-token>` when the token generator already includes the prefix
+- **Double-Bearer bug**: Easy to write `Authorization: Bearer Bearer ${token}` when the token generator already includes the prefix
 - **Inline complexity**: Auth logic mixed with verifier config makes tests harder to read
 - **No-op boilerplate**: Providers without auth still need a pass-through function or `undefined`
 
@@ -35,18 +35,18 @@ const opts = buildVerifierOptions({
   },
   requestFilter: createRequestFilter({
     // tokenGenerator returns raw token — filter adds "Bearer " prefix
-    tokenGenerator: () => '<test-token>',
+    tokenGenerator: () => 'test-auth-token-123',
   }),
 });
 
 // Every request during verification will have:
-// Authorization: Bearer <test-token>
+// Authorization: Bearer test-auth-token-123
 ```
 
 **Key Points**:
 
 - `tokenGenerator` is **synchronous** (`() => string`) — if you need async token fetching, resolve the token before creating the filter
-- Return the raw token value, NOT `"Bearer <runtime-token>"` — the filter adds the prefix
+- Return the raw token value, NOT `"Bearer ..."` — the filter adds the prefix
 - Filter sets `Authorization` header on every request during verification
 
 ### Example 2: Dynamic Token (Pre-resolved)
@@ -160,9 +160,9 @@ await new Verifier(opts).verifyProvider();
 ### Wrong: Manual Bearer prefix with double-prefix risk
 
 ```typescript
-// ❌ Risk of double-prefix: "Bearer Bearer <test-token>"
+// ❌ Risk of double-prefix: "Bearer Bearer token"
 requestFilter: (req, res, next) => {
-  const token = getToken(); // What if getToken() returns "Bearer <runtime-token>"?
+  const token = getToken(); // What if getToken() returns "Bearer abc123"?
   req.headers['authorization'] = `Bearer ${token}`;
   next();
 };
@@ -173,7 +173,7 @@ requestFilter: (req, res, next) => {
 ```typescript
 // ✅ tokenGenerator returns raw value — filter handles prefix
 requestFilter: createRequestFilter({
-  tokenGenerator: () => getToken(), // Returns "<runtime-token>", not "Bearer <runtime-token>"
+  tokenGenerator: () => getToken(), // Returns "abc123", not "Bearer abc123"
 });
 ```
 

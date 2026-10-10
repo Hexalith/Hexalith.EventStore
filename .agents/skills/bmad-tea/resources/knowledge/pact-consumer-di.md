@@ -83,7 +83,7 @@ import type { ApiContext } from '../../src/types.js';
 
 export function createTestContext(mockServerUrl: string): ApiContext {
   return {
-    jwtToken: '<test-token>',
+    jwtToken: 'test-jwt-token',
     customerId: 1,
     baseUrl: `${mockServerUrl}/api/v2`,
   };
@@ -109,7 +109,7 @@ export function createTestContext(mockServerUrl: string): ApiContext {
     `${mockServer.url}/api/v2/common/fields?ruleType=!&ignoreFeatureFlags=true`,
     {
       headers: {
-        Authorization: "Bearer <test-token>",
+        Authorization: "Bearer test-jwt-token",
         "Content-Type": "application/json",
       },
     },
@@ -247,7 +247,7 @@ describe('Transaction Statistics - Count Endpoint', () => {
 const response = await fetch(`${mockServer.url}/api/v2/transactions`, {
   method: 'GET',
   headers: {
-    Authorization: 'Bearer <test-token>',
+    Authorization: 'Bearer test-jwt-token',
     'Content-Type': 'application/json',
   },
 });

@@ -219,7 +219,7 @@ export const test = base.extend<EmailAuthFixture>({
 
       if (isAuthenticated) {
         console.log(`✅ Reusing cached session for ${testEmail}`);
-        await use({ email: testEmail, token: '<cached-session-token>' });
+        await use({ email: testEmail, token: 'cached' });
         return;
       }
     } catch (error) {
