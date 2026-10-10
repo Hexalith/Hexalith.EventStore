@@ -2,7 +2,7 @@
 title: '6.1-P1R published-candidate requalification'
 type: 'feature'
 created: '2026-10-10'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '785260fa233880e403bf80bd1bc2f1d53b1f4836'
@@ -67,11 +67,18 @@ context:
 
 ## Implementation Notes
 
-The final execution is recorded in [the 3.119.0 evidence index](evidence/6-1-p1r-31190-published-run/README.md). All 17 canonical scenarios and both adopted additions ran against the selected PostgreSQL/Dapr profile; the packet retains earlier failed attempts at distinct paths. The final executor reported no errors and completed owned cleanup. Independent preparation and validation accepted the packet structure while reporting `technically_qualified=false`, `decisions_complete=false`, and `p1r_usable=false`. Historical incompatibilities, candidate stale-fence denial, logical alias execution, and four startup-failure seed checks remain nonpassing. No capable rollback or owner decision was selected; mutation freeze and forward recovery remain in force.
+The final execution is recorded in [the 3.119.0 evidence index](evidence/6-1-p1r-31190-published-run/README.md). After the second review, `execution-822c180c8b1942d9bfba2601e2b5202e` reran all 17 canonical scenarios and both adopted additions against the selected PostgreSQL/Dapr profile. It ran on the committed first-review patches plus the second-review patches, with no executor errors and with owned cleanup completed. `packet-677345025f7b42449cbf8ce4afb43813` was prepared only from its receipts; independent validation accepted it as `valid=true` with `technically_qualified=false`, `decisions_complete=false`, and `p1r_usable=false`. The earlier `execution-64d7…`/`packet-7e1d…` pair was sealed before the first-review patches and is superseded; all attempts stay at unique paths.
+
+Registering the fixture audit sink for 3.110.0 turned that direction's former fixture error into a measured, compatible unauthorized-effect refusal. The candidate audit records persist and match. Failure cleanup now passes 115/115. Historical metadata, invalid-evidence, query/projection wire and status incompatibilities remain nonpassing, as do the 3.110.0/3.119.0 stale-fence denial, the 3.70.1 unsupported methods, pre-upgrade containment restore, and logical alias execution. No capable rollback or owner decision was selected; mutation freeze and forward recovery remain in force.
 
 ## Spec Change Log
 
 - 2026-10-10: Implemented the selected published-candidate run and retained its nonqualifying result without changing Projects pins or status.
+- 2026-10-10: Second review patched without amending frozen intent or scope:
+  - the 3.110.0 fixture audit sink, candidate workload-authority disclosure, exact Dapr runtime match, and backup wording;
+  - regression tests for audit matching, the component validator, ownership refusals, and backend substitution.
+
+  The run was repeated on the patched source, and the evidence README was corrected. One recovery-attribution finding was deferred.
 
 ## Review Triage Log
 
@@ -95,6 +102,46 @@ The final execution is recorded in [the 3.119.0 evidence index](evidence/6-1-p1r
 | Edge 4: obsolete Redis restore branch | low; patch | No current caller passes `restore=` to `container`; the branch still copies an RDB into `/data/dump.rdb` and is dead under the PostgreSQL profile. Direct deletion removes an untested path. |
 | Gap 1: persisted trusted-effect audit | medium; patch | `FixtureTrustedEffectAuditSink` is newly registered, but `mixed_case` checks effect/refusal and domain state only; bookkeeping audit rows are excluded. A no-op sink would pass those checks. |
 | Gap 2: packet line endings | medium; patch | The 31190 source-binding JSON lacks the 31150 sibling's LF checkout rule, so a `core.autocrlf=true` checkout can invalidate the sealed index. Same root cause as Blind 1. |
+| R2 Blind 1: `postgres_value` ignores `isbinary` | low; reject | All 1,741 string rows in execution-f3d07's 118 PostgreSQL dumps decode as base64 JSON, and metadata/event/snapshot rows are always JSONB objects, so no fixture row is misdecoded. The fix adds a selected column and branch. |
+| R2 Blind 2: zero-row UPDATE/DELETE | false; reject | carried — Blind 8: the only mutation caller iterates keys from a stopped writer's `raw_state`. |
+| R2 Blind 3: recovery steps bind wrong command | low; defer | `create-database` binds the last `pg_isready` probe and `backup` binds `docker cp`, but the baseline Redis path already bound the `docker inspect` and `docker cp` rows: a pre-existing `commands[-1]` attribution pattern. |
+| R2 Blind 4: candidate workload authority undisclosed | medium; patch | `start_nodes` now applies the private Development JWT to `source` and 3.119.0, yet `source_workload_authority` is set only for `source`, so candidate configuration receipts record `None`. |
+| R2 Blind 5: partial Redis migration | false; reject | `validate_execution_inputs` refuses any backend except `state.postgresql` before operations, so no Redis profile reaches mutation; attribute naming harms no caller. |
+| R2 Blind 6: Builds commit divergence | low; patch | The frozen decision records both Builds commits but the evidence README omits them; routed with R2 Blind 13c. Error wording and a loud unfetched-tag failure are not defects. |
+| R2 Blind 7: hard-coded candidate literals | false; reject | `check_current_source` lets packets validate only against their captured workspace, and every retained run carries its own consumer copy, so current literals never re-validate or rebuild 31150 evidence. |
+| R2 Blind 8: template compared to working tree | false; reject | `check_current_source` already binds every tracked file, including the template, so any template edit invalidates the packet before `bind_lane`. Test gaps route under R2 Gap 2. |
+| R2 Blind 9: monotonic stamp hides reversals | low; reject | Cross-process ordering violations still fail closed during validation; reversal diagnostics would add persisted cross-process state. |
+| R2 Blind 10: audit check only negatively tested | medium; patch | Same root cause as R2 Gap 3. |
+| R2 Blind 11: audit sink in actor state store | false; reject | A fixed number of effect operations bounds the rows; they are bookkeeping, excluded from domain comparisons and copied identically by restore; a wrong key prefix yields no audits and fails the check closed. |
+| R2 Blind 12: binary evidence treated as text | false; reject | No `.png`, `.p7s`, `.dump` or `.nupkg` file is tracked under the 31190 tree; `*.nupkg` is ignored repository-wide and archives are bound by hash. |
+| R2 Blind 13a: "physical" backup wording | low; patch | `tools/p1r-published-consumers/README.md:14` calls the `pg_dump -Fc` logical backup physical. |
+| R2 Blind 13b: password in container environment | false; reject | argv carries only `-e POSTGRES_PASSWORD` without a value, evidence uses the bounded inspect format, and retained commands contain zero `POSTGRES_PASSWORD=` occurrences. |
+| R2 Blind 13c: evidence README omissions | low; patch | The README lacks pinned identities, Builds divergence, failed direction and seed-check ids, and pending decisions; routed with the R2 Gap 1 rewrite. |
+| R2 Blind 13d: Dapr version substring | low; patch | `"1.18.2" in version` also accepts 1.18.20; the recorded output is exactly `1.18.2`, so an exact comparison is a direct correction. |
+| R2 Blind 14: nested EditorConfig | low; reject | carried — Blind 2: `root=true` deliberately isolates copied consumer sources; no style failure is demonstrated. |
+| R2 Blind 15: `postgres_wait` evidence clutter | low; reject | Probe rows are accurate records and the timeout fails loudly; no caller is harmed. |
+| R2 Edge 1: base64 JSON string misdecoded | low; reject | Same root cause and evidence as R2 Blind 1. |
+| R2 Edge 2: unguarded `json.loads` in `mutate` | false; reject | Unchanged baseline loop; every tenant-a row in executed dumps decodes to JSON (object, integer or base64 JSON). |
+| R2 Edge 3: `isbinary` left set on UPDATE | false; reject | `mutate` writes only metadata, event and snapshot rows, which are JSONB objects in every executed dump. |
+| R2 Edge 4: Redis mutation paths | false; reject | Same root cause and evidence as R2 Blind 5. |
+| R2 Edge 5: Dapr version substring | low; patch | Same root cause as R2 Blind 13d. |
+| R2 Edge 6: polling an exited PostgreSQL container | low; reject | Startup still fails loudly with a timeout; only diagnostic precision is affected. |
+| R2 Edge 7: `create-database` binds probe | low; defer | Same root cause as R2 Blind 3. |
+| R2 Edge 8: psql stderr merged into stdout | low; reject | Parsed queries are plain SELECTs that emit no notices; any notice fails loudly as an executor error. |
+| R2 Edge 9: template from working tree | false; reject | Same root cause and evidence as R2 Blind 8. |
+| R2 Edge 10: cross-process clock reversal | low; reject | Same root cause and evidence as R2 Blind 9. |
+| R2 Edge 11: 3.110.0 build lacks audit sink | medium; patch | 3.110.0 and 3.119.0 share the `ITrustedEffectAuditSink` contract and both throw `Trusted effect denial audit is unavailable.` without one; the fixture registers it only under `P1R_CANDIDATE`. |
+| R2 Edge 12: removed 3.115.0 literals | false; reject | Same root cause and evidence as R2 Blind 7. |
+| R2 Edge 13: designated evidence predates committed code | medium; patch | Same root cause as R2 Gap 1. |
+| R2 Edge 14: 3.110.0 refusal direction unmeasured | medium; patch | execution-64d7 command 3526 and execution-f3d07 command 3416 record the 3.110.0 audit-unavailable error while 3.119.0 refuses; same root cause as R2 Edge 11. |
+| R2 Edge 15: ignored archives cannot be re-verified | false; reject | Archives are bound by SHA-256 and remain retrievable at their exact published versions; the README claim is binding, not retention. |
+| R2 Gap 1: final evidence predates committed source | medium; patch | Pre-verified. execution-64d7 and packet-7e1d bind pre-patch executor and fixture hashes, and `validate` at HEAD returns `source/configuration inputs changed`. packet-98591a7b failed on timestamps. execution-4b93 matches HEAD but stopped after 13 receipts with four exited owned containers left behind. |
+| R2 Gap 2: PostgreSQL component validator untested | medium; patch | Pre-verified: disabling the hook and its redaction and template clauses leaves every test passing. |
+| R2 Gap 3: audit match only tested empty | medium; patch | Pre-verified: dropping `action` and `disposition` from the match leaves the tests passing. |
+| R2 Gap 4: ownership refusals untested | medium; patch | Pre-verified: no-op `postgres_inventory` and `postgres_query` ownership guards leave every test passing. |
+| R2 Gap 5: backend substitution untested | medium; patch | Pre-verified: the substitution loop never mutates `operational_profile.backend`. |
+| R2 Gap other 1: `isbinary` ignored | low; reject | Same root cause and evidence as R2 Blind 1. |
+| R2 Gap other 2: README contradicts later runs | medium; patch | Same root cause as R2 Gap 1. |
 
 ## Verification
 
@@ -102,3 +149,7 @@ The final execution is recorded in [the 3.119.0 evidence index](evidence/6-1-p1r
 - `PYTHONPATH=tools python -m unittest discover -s tools/tests -p 'test_p1r_published_*.py'`: 84 passed.
 - Final full executor: exit 0, all 17 scenarios and two additions recorded, zero executor errors; selected packet `prepare` and `validate`: exit 0, `valid=true` and technical qualification false.
 - Four matrix rows checked against the final packet and restore receipt; `git diff --check` passed.
+- Second review: `PYTHONPATH=tools python -m unittest discover -s tools/tests -p 'test_p1r_published_*.py'` passed 95 tests, and all 130 `test_p1r_*.py` tests passed. Disabling each of 10 newly covered guards in a scratch copy made its targeted test fail.
+- Final full executor `execution-822c180c8b1942d9bfba2601e2b5202e`: exit 0, 21 receipts, zero executor errors, every owned container removed.
+- `prepare` and `validate` of `packet-677345025f7b42449cbf8ce4afb43813`: exit 0 at 2026-10-10T12:46:46Z, `valid=true`, technical qualification false.
+- After these spec and README updates, `validate` still exits 0. It binds HEAD, gitlinks and bound source/configuration files, so after any commit it reports `source/configuration inputs changed` by design. Validate only against the captured workspace.

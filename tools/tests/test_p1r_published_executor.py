@@ -1,4 +1,5 @@
 """Executor tooling controls; no fixture in this suite grants operational qualification."""
+import base64
 import copy
 import json
 import os
@@ -97,6 +98,67 @@ class MeasurementTests(unittest.TestCase):
                     worker.mixed_case("3.119.0-" + operation, checks)
                 self.assertIn({"id": check_id, "passed": False}, checks.checks)
 
+    def testCandidateAuditMatchRequiresExactlyOneMatchingRecord(self):
+        trusted = {"action": "submission", "tenant": "tenant-a", "effectid": "effect-1", "workload": "p1r-fixture",
+                   "purpose": "published-qualification", "disposition": "authorized"}
+        denied = dict(trusted, action="gateway-proof", effectid=None, disposition="denied")
+        observed = {"trusted-effect": {"accepted": True, "sequence": 13, "replayed": True},
+                    "unauthorized-effect": {"accepted": False, "sequence": 12, "unexpected": False,
+                                            "unauthorized_refused": True, "denial": "invalid-gateway-proof"}}
+        for operation, records, passed in (
+                ("trusted-effect", [trusted], True),
+                ("trusted-effect", [trusted, dict(trusted)], False),
+                ("trusted-effect", [dict(trusted, action="gateway-proof")], False),
+                ("trusted-effect", [dict(trusted, disposition="denied")], False),
+                ("trusted-effect", [dict(trusted, tenant="tenant-b")], False),
+                ("trusted-effect", [dict(trusted, workload="other-workload")], False),
+                ("trusted-effect", [dict(trusted, purpose="other-purpose")], False),
+                ("trusted-effect", [dict(trusted, effectid=None)], False),
+                ("unauthorized-effect", [denied], True),
+                ("unauthorized-effect", [dict(denied, effectid="effect-1")], False),
+                ("unauthorized-effect", [trusted], False)):
+            with self.subTest(operation=operation, records=records):
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.redis, worker.host_port = "owned", 12345
+                with mock.patch.object(worker, "probe", return_value={"actor_methods": ["ProcessTrustedEffectAsync"]}), \
+                     mock.patch.object(worker, "seed"), mock.patch.object(worker, "inventory", side_effect=[[], []]), \
+                     mock.patch.object(worker, "start_nodes"), mock.patch.object(worker, "stop_nodes"), \
+                     mock.patch.object(worker, "http", return_value=observed[operation]), \
+                     mock.patch.object(worker, "postgres_audits",
+                                       return_value=[{"key": "audit", "record": record} for record in records]):
+                    checks = executor.Measurements()
+                    worker.mixed_case("3.119.0-" + operation, checks)
+                self.assertIn({"id": "candidate-" + operation + "-audit-persisted", "passed": passed}, checks.checks)
+
+    def testPostgresqlAuditsDecodeDaprBinaryRowsAndFoldFieldNames(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.containers = {"owned": {"image": executor.POSTGRES}}
+        rows = [["eventstore||p1r-qualification-audit-1",
+                 base64.b64encode(json.dumps({"action": "submission", "effectId": "effect-1"}).encode()).decode()],
+                ["eventstore||p1r-qualification-audit-2", base64.b64encode(b"not-json").decode()]]
+        worker.run = mock.Mock(return_value=json.dumps(rows).encode())
+        audits = worker.postgres_audits("owned")
+        self.assertEqual([row["record"] for row in audits], [{"action": "submission", "effectid": "effect-1"}, {}])
+        self.assertIn("p1r-qualification-audit-%", worker.run.call_args.kwargs["input_bytes"].decode())
+
+    def testPostgresqlDiagnosticsRefuseUnownedContainers(self):
+        identity = "a" * 64
+        for observed in ({"Id": identity, "Config": {"Labels": {"hexalith.p1r.invocation": "other"}}},
+                         {"Id": "b" * 64, "Config": {"Labels": {"hexalith.p1r.invocation": "owned"}}}):
+            with self.subTest(observed=observed), mock.patch.object(
+                    executor.subprocess, "check_output", return_value=(json.dumps(observed) + "\n").encode()) as check_output:
+                with self.assertRaisesRegex(preparation.InvalidPacket, "unowned provider inventory"):
+                    executor.postgres_inventory(identity, "owned")
+                self.assertEqual(check_output.call_count, 1)
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.run = mock.Mock()
+        for containers in ({}, {"owned": {"image": executor.REDIS}}):
+            worker.containers = containers
+            with self.subTest(containers=containers), \
+                 self.assertRaisesRegex(preparation.InvalidPacket, "unowned PostgreSQL diagnostic"):
+                worker.postgres_query("owned", "TRUNCATE TABLE state;")
+        worker.run.assert_not_called()
+
     def testRenderedPostgresqlCredentialIsAbsentFromAppEnvironments(self):
         with tempfile.TemporaryDirectory() as temporary, \
              mock.patch.dict(os.environ, {"POSTGRES_CONNECTION_STRING": "inherited-secret"}), \
@@ -123,6 +185,9 @@ class MeasurementTests(unittest.TestCase):
             self.assertTrue(all("POSTGRES_CONNECTION_STRING" not in value for value in environments))
             self.assertIn("password=private-secret", (root / "resources/state.yaml").read_text())
             self.assertNotIn("private-secret", json.dumps(worker.configurations))
+            self.assertIsNotNone(worker.configurations[0]["source_workload_authority"])
+            qualification.validate_postgresql_component(
+                next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"))
 
     def testDockerDiscoverySelectsOnlyPreservationAndOwnershipFields(self):
         argv = executor.safe_inspect_argv("synthetic-id")
@@ -178,6 +243,7 @@ class MeasurementTests(unittest.TestCase):
                              lambda value: value["candidate"]["builds"].update(version="4.30.0"),
                              lambda value: value["operational_profile"].update(runtime_version="1.18.4"),
                              lambda value: value["operational_profile"].update(backend_image="redis:latest"),
+                             lambda value: value["operational_profile"].update(backend="state.redis"),
                              lambda value: value.update(rollback={"version": "3.110.0"}),
                              lambda value: value["selected_additions"].pop(),
                              lambda value: value["comparisons"].reverse()):
@@ -211,6 +277,32 @@ class MeasurementTests(unittest.TestCase):
             # The direction guard precedes the archive trust boundary; no synthetic archive can qualify.
             inputs["comparisons"] = [{"version": version} for version in qualification.COMPARISON_VERSIONS]
             with self.assertRaisesRegex(preparation.InvalidPacket, "required direction"):
+                qualification.bind_lane(receipt, {"scope": "published-package"}, context)
+
+    def testExecutedPostgresqlConfigurationMustRetainRedactedTrackedTemplate(self):
+        from test_p1r_published_qualification import lane_case, lane_receipt, synthetic_inputs, synthetic_evidence
+        with tempfile.TemporaryDirectory() as scratch:
+            _, candidate = synthetic_evidence(Path(scratch) / "candidate", version="3.119.0")
+            inputs = synthetic_inputs(candidate, fixture=None)
+            inputs["assertion_instrumentation"]["mechanism"] = executor.MECHANISM
+            inputs["comparisons"] = [{"version": version} for version in qualification.COMPARISON_VERSIONS]
+            inputs["operational_profile"]["backend"] = "state.postgresql"
+            cases = [lane_case(identity) for identity in qualification.executed_case_inventory(inputs)["full-replay"]]
+            receipt = lane_receipt("full-replay", cases=cases, scope="published-package", compatibility="compatible")
+            receipt["inputs_sha256"], receipt["instrumentation"] = "a" * 64, executor.MECHANISM
+            rendered = (executor.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text().replace(
+                "{env:POSTGRES_CONNECTION_STRING}", "host=127.0.0.1 password=private-secret")
+            configuration = {"backend_image": inputs["operational_profile"]["backend_image"],
+                             "runtime_version": inputs["operational_profile"]["runtime_version"],
+                             "files": [{"name": "state.yaml", "content": rendered, "sha256": executor.digest(rendered.encode()),
+                                        "rendered_sha256": "a" * 64, "credential_redacted": True}]}
+            receipt["execution_evidence"] = {"mechanism": executor.MECHANISM, "executor_source": {"fixture": qualification.SYNTHETIC},
+                "cases": [{"id": case["id"], "configurations": [configuration]} for case in cases]}
+            receipt["execution_evidence"]["executor_source_sha256"] = executor.digest(
+                json.dumps(receipt["execution_evidence"]["executor_source"], indent=2, sort_keys=True).encode() + b"\n")
+            context = {"inputs": {"scope": "owner-selected", "value": inputs, "sha256": "a" * 64},
+                       "source_binding": {"fixture": qualification.SYNTHETIC}, "verified": {}}
+            with self.assertRaisesRegex(preparation.InvalidPacket, "PostgreSQL component template"):
                 qualification.bind_lane(receipt, {"scope": "published-package"}, context)
 
     def testComparisonArchivesHaveIndependentPacketLanes(self):

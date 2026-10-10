@@ -71,11 +71,31 @@ def tearDownModule():
     _patcher.stop()
 
 
+MISSING = object()
+
+
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
 class PostgresqlComponentTests(unittest.TestCase):
+    def component(self, **changes):
+        file = {"content": (q.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text(),
+                "credential_redacted": True, "rendered_sha256": "a" * 64, **changes}
+        return {key: value for key, value in file.items() if value is not MISSING}
+
+    def testTrackedTemplateWithPrivateRenderingHashIsAccepted(self):
+        q.validate_postgresql_component(self.component())
+
+    def testRenderedSubstitutedOrUnredactedComponentIsInvalidPacket(self):
+        template = self.component()["content"]
+        for changes in ({"content": template.replace("{env:POSTGRES_CONNECTION_STRING}", "host=127.0.0.1 password=secret")},
+                        {"content": template + "# substituted\n"},
+                        {"credential_redacted": MISSING}, {"credential_redacted": False},
+                        {"rendered_sha256": MISSING}, {"rendered_sha256": "A" * 64}):
+            with self.subTest(changes=changes), self.assertRaisesRegex(q.InvalidPacket, "PostgreSQL component template"):
+                q.validate_postgresql_component(self.component(**changes))
+
     def testNonStringRenderedHashIsInvalidPacket(self):
         content = (q.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text()
         file = {"content": content, "credential_redacted": True, "rendered_sha256": 7}

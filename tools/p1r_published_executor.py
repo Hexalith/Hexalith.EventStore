@@ -565,7 +565,7 @@ class Executor:
         self.run(["docker", "cp", self.placement + ":/daprd", self.daprd])
         self.daprd.chmod(0o700)
         version = self.run([self.daprd, "--version"]).decode()
-        require("1.18.2" in version, "Dapr runtime substituted")
+        require(version.strip() == "1.18.2", "Dapr runtime substituted")
         self.operational_started = True
         write_json(self.output / "runtime-identity.json", {"profile": self.inputs["operational_profile"],
                    "daprd_sha256": digest(regular(self.daprd)), "dapr_version": version.strip(),
@@ -606,7 +606,7 @@ class Executor:
             "state_component_sha256": digest(tracked_state), "backend_image": POSTGRES,
             "runtime_version": self.inputs["operational_profile"]["runtime_version"],
             "observed_utc": stamp(),
-            "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version == "source" else None,
+            "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", CANDIDATE) else None,
             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
             "files": [{"name": path.name, "path": str(path),
                        "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
