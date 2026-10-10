@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -150,6 +150,73 @@ Code review 2026-10-10 (`/bmad-code-review 6.6`, Blind Hunter + Edge Case Hunter
 - low — `GetDomainName` can throw in `AddEventStoreClient<T>` (Edge 20): only degenerate type names trigger it, and `AddEventStore` scanning already rejects them.
 - low — a fractional replay `sequenceNumber` throws `FormatException` (Edge 21): this is corrupt replay JSON, and `metadataVersion` is already read the same way.
 - low — duplicate known `FullName` throws a raw `ArgumentException` (Edge 22): it requires the same type loaded twice in one host.
+
+#### Review pass 2 — 2026-10-10 (patch-resolution delta)
+
+Code review 2026-10-10, pass 2 (`/bmad-code-review 6.6`, Blind Hunter + Edge Case Hunter + Verification Gap + Acceptance Auditor). Scope: `83987f22..770eaa04`, the commit that closed the 17 pass-1 patches; tracking files excluded. Totals: 1 decision-needed (resolved by the owner as option a, now a patch), 10 patch, 0 defer, 19 rejected.
+
+- [ ] [Review][Patch] (medium; owner decision D1 = option a, 2026-10-10) Subscriber hosts know only handler-registered event types [src/Hexalith.EventStore.Client/Registration/EventStoreDomainEventsServiceCollectionExtensions.cs:41] — the subscriber's evolution registry gets known types only from `AddEventStoreDomainEventHandler<TEvent, THandler>`. The processor's `_eventTypeRegistry` holds every `IEventPayload` in the contracts assembly. The pass-1 fallback version check (`EventStoreDomainEventProcessor.cs:194`) bridges the two crudely, which causes two problems:
+  - It runs before the handler lookup. A version-1 event of a version-2-declared type that this subscriber does not handle used to end as `SkippedNoHandlers`. It now returns `RetryableCapabilityMismatch` until it is dead-lettered. This is reachable during the step-3 rolling deployment and on any redelivery of older events.
+  - Handlers registered directly in DI never get upcasting, even when a valid upcaster sits in the contracts assembly. They retry version-1 history forever, against AC2 ("…or handles a subscription").
+
+  Options:
+  - (a) **Recommended.** `AddEventStoreDomainEvents` registers every contracts-assembly event type as known. All of them get upcast and validated at startup, unhandled events end as `SkippedNoHandlers` after upcasting, and the fallback check becomes unreachable for contract types.
+  - (b) Keep known types handler-only and move the fallback check after the handler lookup. Unhandled events skip as before. Handlers registered directly in DI stay fail-closed; document that `AddEventStoreDomainEventHandler` is required for upcasting.
+- [ ] [Review][Patch] (high) `AddEventStoreClient<TProcessor>` injects a host registry that does not know the processor's event types [src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:116]
+  - **Problem:** the new factory sets `EvolutionRegistry` from DI, but it never adds `TProcessor`'s Apply event types (or its assembly) to the shared registration. `AddEventStoreCore` does this at `:218-226`. When any other call creates the registry (`AddEventStoreDomainEvents`, `AddKnownEventPayload`, `AddEventPayloadUpcaster`, or `AddEventStore` over other assemblies), `ReadCore` treats the aggregate's events as unknown and passes the raw bytes through. A version-2 stamp on a version-1 type is applied silently (Verification Gap probe: state 7). Version-1 bytes of a version-2 type would be deserialized as the new shape. Before this delta, the null registry fell back to `ForApplyState`, which failed closed.
+  - **Missing test:** nothing exercises this factory. `AddEventStoreClient_StillWorksAlongsideAddEventStore` resolves the aggregate through `AddEventStore`'s factory, so `TryAddScoped` is a no-op there. Deleting lines 120-123 keeps Client and DomainService green.
+  - **Fix:** mirror `AddEventStoreCore` for `TProcessor`: add its assembly for discovery and its state's Apply event types as known. Then add a test that uses `AddEventStoreClient<T>()` alone plus another registry-creating registration and asserts that a stored mismatched version fails typed.
+- [ ] [Review][Patch] (high) Subscriptions bind foreign events by short name or suffix, and pass-1 patch 3 (second bullet) is marked fixed but is not [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:301]
+  - **Problem:** the new `ResolveType` suffix scan adds short-name keys, and the subscription processor trusts `resolved.EventType` before its exact-full-name `_eventTypeRegistry` lookup. A stored `Hexalith.Tenants.GlobalAdministrators.Events.UserAdded` therefore binds to a handled `Hexalith.Tenants.Events.UserAdded`, is deserialized into it, and dispatched. Before 6.6 the subscription matched by exact name and skipped it as unknown. The Acceptance Auditor probe confirmed `Totally.Foreign.LegacyTestEvent` binds to the local `LegacyTestEvent`.
+  - **Second symptom:** when two local types share a short name, any unrelated `*.ShortName` throws "ambiguous event type" and retries forever.
+  - **Fix:** subscription reads bind a type only by its exact full name or through a registered upcaster step (alias or rename). Every other name stays unknown, which was the behaviour before 6.6. Implement this as an internal subscription read mode, and add a foreign-name skip test.
+- [ ] [Review][Patch] (medium) Step lookup no longer matches aliases symmetrically, while `historicalAlias` and startup validation still do [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:252]
+  - **Problem:** pass-1 patch 3 said "Keep the symmetric alias match for step lookup". `FindStep` now matches only when the stored name ends with the step name, plus two narrow short-name fallbacks. `historicalAlias` (`:107`) and `ValidateRegistration` (`:189`, `:205`, `:210`) still use the two-way `NamesMatch`.
+  - **Regression:** a short-named stored `ValueRaised` v1, whose retired historical chain `Old.Contracts.ValueRaised` starts with a non-rename step, now fails with "missing step". The same input resolved to v3 at `770eaa04^` (Verification Gap probe).
+  - **Other symptoms:** a partially qualified alias is treated as known but its step is never found (Auditor: `Contracts.ValueRaised`). An unknown name that is a suffix of a longer step name fails instead of being skipped. Startup can accept chains that fail at runtime.
+  - **Fix:** use one tiered matcher in `FindStep`: exact, then "stored name ends with step name", then "step name ends with stored name", with a typed ambiguity failure inside a tier. Derive `historicalAlias` and the validation checks from that same matcher.
+- [ ] [Review][Patch] (medium) The new short-name branches have no tests [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:262]
+  - **`FindStep:262-270`** (short stored name → the full-name step of the unique known type): untested. Removing it keeps all suites green, and a short-named version-1 read of a newly versioned type then fails replay.
+  - **`Reaches:239-243`** (a rename that targets the type's unique short name): untested. Forcing it to false keeps all suites green, and such registries are then refused at startup.
+  - **Fix:** add `Read_ShortStoredNameUsesFullNameStepOfUniqueKnownType` and `Registration_AcceptsRenameTargetingUniqueShortName` (Verification Gap, mutation-verified).
+- [ ] [Review][Patch] (medium) Pass-1 test items marked done but incomplete (AC7/AC8) [src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs:344]
+  - **Router replay:** `RefuseVersionedReplay` has only refusal rows in `EventEvolutionLegacyIntakeTests`. No `StoredPayloadVersion = 2` replay passes `Replay`/`ReplayAsync`.
+  - **Subscription processor:** no processor test delivers a `PayloadVersion >= 2` envelope through admission to a handler. The delta only round-trips the envelope as JSON.
+  - **`/project` endpoint:** no test checks its caller-token forwarding. The new test covers `/project/v2` only. The adapter and dispatcher overload are covered.
+- [ ] [Review][Patch] (low) Pass-1 doc patch 16 is inaccurate or incomplete [docs/concepts/event-versioning.md:63]
+  - The restored "Apply method resolution" section says an ambiguous stored name raises `AmbiguousApplyMethodException`. For `IEventPayload` types, the registry throws `EventPayloadEvolutionException` ("ambiguous event type") first, and replay reports `UnsupportedVersion`. The existing ambiguity tests use non-`IEventPayload` fixtures.
+  - `docs/guides/upgrade-path.md:48` still cites this page for envelope-schema major-bump guidance that it no longer contains.
+- [ ] [Review][Patch] (low) The failure-surface paragraph does not match the code [docs/concepts/event-versioning.md:88] — it says command replay reports `UnsupportedVersion`. Several cases differ:
+  - A malformed current-version payload reports `DeserializationFailed`, because `ReadForReplay` defers validation.
+  - On live `/process`, `EventPayloadEvolutionException` is not handled and returns HTTP 500.
+  - A shared-rebuild accumulate step returns `Indeterminate`/`HandlerFailure`.
+- [ ] [Review][Patch] (low) The rehydrator's typed-failure filter misses `ArgumentException` [src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs:387] — event records that validate in their constructor (`ArgumentException.ThrowIfNullOrWhiteSpace`) throw raw exceptions out of command rehydration (`:387`, `:426`). `AggregateReplayer.cs:253` already classifies `ArgumentException`. Add it to both filters.
+- [ ] [Review][Patch] (low) A post-upcast validation failure omits the upcaster type [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:150] — `ValidateCurrentJson` gets no `lastUpcasterType`, so "current payload cannot deserialize" after a chain loses the AC5 upcaster field on the `Read` path. Pass `lastUpcasterType` through. The deferred replay path would need a new `ResolvedEventPayload` field; leave it.
+- [ ] [Review][Patch] (low) Two new assertions can never fail [tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs:86]
+  - `DidNotReceive().SaveStateAsync`: `EventStreamReader` never saves.
+  - `EventIdentityValidatorTests.Read_ReportsMalformedComponent`: `Message.ShouldNotContain("payload")` checks against a fixed format. Assert instead that the message does not echo the invalid value.
+
+**Rejected (pass 2)** (one line per finding):
+
+- low — a shorter-suffix step hijacks a stored name that is exactly a known type (Blind 3a / Edge 4 / Edge 18): this needs a step declared under a partial suffix of a current type's full name, and the fix adds a branch. The tiered matcher patch also reduces it.
+- low — the rename fallback runs for a unique short-name known type with no step (Blind 3b / Edge 5): this needs short-named history that a rename source and an unrelated current type share, and the fix adds a branch.
+- low — upcaster selection is duplicated in `ForApplyState` and `Registration.Build` (Blind 6): this predates the delta, and the fix is a refactor.
+- low — `TryAddScoped` silently keeps an earlier plain `TProcessor` registration (Blind 7 / Edge 9): hosts that register it first are unlikely, and the fix needs `Replace` logic. The duplicate `IDomainProcessor` alias predates the delta, and `GetService` is deliberate because the registry is optional.
+- low — a shared-rebuild upcast failure is reported as `Indeterminate`/`HandlerFailure` with an empty inventory (Blind 8 / Edge 10): this is the existing generic catch, nothing advances, and a new reason-code mapping adds a branch.
+- false — `UpcastRequest` keeps the stored `StoredPayloadVersion` (Blind 9 / Edge 11): by design, as pass 1 settled. No SDK path upcasts a delivered DTO again.
+- low — "Deploy in order" names no server package version (Blind 10, part): the version is unknown until semantic-release publishes it.
+- low — `[Obsolete]` has no `DiagnosticId`, replacement or removal timeline (Blind 11): the marker is spec-mandated, these dormant types are unlikely to have consumers, and choosing an ID scheme is a design choice.
+- false — a corrupt version-1 payload is reported as a typed evolution error (Blind 12): AC5 requires a typed error for unreadable known events. The `OperationCanceledException` filter in `ValidateCurrentJson` guards nothing reachable.
+- false — the end-to-end rewrite lost the "each step runs once" check (Blind 13c / Auditor 8): `EventPayloadEvolutionRegistryTests.cs:78-79` asserts it.
+- low — the end-to-end second read runs the router in memory with a bare aggregate (Auditor 8): the first hop runs actor → invoker → HTTP JSON → router → real aggregate, and `DaprAggregateStateReconstructorTests`/`DaprDomainServiceInvokerTests` cover the stamped request and response hops. Restructuring the actor mocks is more than a direct fix.
+- false — the fallback warning omits Reason/Upcaster/InnerException (Blind 14): that branch has no upcaster or inner exception, and the warning carries the type, version, sequence and reason.
+- low — startup ambiguity surfaces as an evolution exception "at sequence 0" (Edge 6): startup still fails and names the type and version; wrapping it adds a branch.
+- low — `GetDeclaredVersion` throws for an invalid attribute in the fallback (Edge 8): the outer catch releases the marker and rethrows, so the delivery is retried with the same outcome. The domain host fails at startup on this authoring error.
+- false — deleting the compatibility fixtures dropped a binary-ABI probe (Edge 13): after Task 1 no script or CI job called them, so no running check was removed.
+- low — discovery drops a historical step whose name is longer than a later step's alias (Verification Gap, other 3): this needs a chain declared with mixed full and short step names, and the fix changes relevance matching.
+- low — `AuthenticatedRawEventPage`/`AuthenticatedRawEvent` keep their behaviour (Auditor 10a): they have no production caller, and gutting a public type before the major release is more than a direct fix.
+- rejected — AC4 "a non-JSON versioned type fails startup" is still unimplemented (Auditor 10b): pass 1 rejected it and the owner left it unchanged. Re-raising it would change an accepted disposition, so the owner may reopen it.
+- low — three open `deferred-work.md` entries (around line 5563) track the retired evolution guards and compiled-consumer job (Blind 15): they belong to another source spec, and `bmad-loop-sweep` classifies retired-tooling entries as already resolved.
 
 ## Implementation Notes
 
