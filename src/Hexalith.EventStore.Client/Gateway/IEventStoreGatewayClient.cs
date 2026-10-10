@@ -8,6 +8,20 @@ namespace Hexalith.EventStore.Client.Gateway;
 /// High-level HTTP client for the EventStore command and query gateway.
 /// </summary>
 public interface IEventStoreGatewayClient {
+    /// <summary>Submits through the workload-only command channel.</summary>
+    Task<SubmitCommandResponse> SubmitWorkloadCommandAsync(
+        SubmitCommandRequest request, CancellationToken cancellationToken = default)
+        => Task.FromException<SubmitCommandResponse>(new InvalidOperationException("Workload command transport is unavailable."));
+
+    /// <summary>Reads one message-primary status through the workload-only channel.</summary>
+    Task<CommandStatusQueryResponse?> GetWorkloadCommandStatusAsync(
+        string tenant, string messageId, CancellationToken cancellationToken = default)
+        => Task.FromException<CommandStatusQueryResponse?>(new InvalidOperationException("Workload status transport is unavailable."));
+
+    /// <summary>Reads one tenant-bound stream page through the workload-only channel.</summary>
+    Task<StreamReadPage> ReadWorkloadStreamAsync(
+        StreamReadRequest request, CancellationToken cancellationToken = default)
+        => Task.FromException<StreamReadPage>(new InvalidOperationException("Workload stream transport is unavailable."));
     /// <summary>
     /// Submits a command through <c>POST /api/v1/commands</c>.
     /// </summary>

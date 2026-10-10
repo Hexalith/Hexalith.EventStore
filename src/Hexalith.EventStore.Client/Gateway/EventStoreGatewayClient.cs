@@ -29,6 +29,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private readonly HttpClient _httpClient;
     private readonly EventStoreGatewayClientOptions _options;
+    private readonly IEventStoreGatewayWorkloadAssertionSource? _workloadAssertions;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreGatewayClient"/> class.
@@ -56,9 +57,13 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     /// but not optimal under multi-tenant DI configuration.
     /// </para>
     /// </remarks>
-    public EventStoreGatewayClient(HttpClient httpClient, IOptions<EventStoreGatewayClientOptions> options) {
+    public EventStoreGatewayClient(
+        HttpClient httpClient,
+        IOptions<EventStoreGatewayClientOptions> options,
+        IEventStoreGatewayWorkloadAssertionSource? workloadAssertions = null) {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _workloadAssertions = workloadAssertions;
         if (_options.MaxStreamReadResponseBytes <= 0) {
             throw new ArgumentOutOfRangeException(nameof(options), "MaxStreamReadResponseBytes must be greater than zero.");
         }
@@ -78,6 +83,90 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         if (_options.MaxStreamReadResponseBytes < _httpClient.MaxResponseContentBufferSize) {
             _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<SubmitCommandResponse> SubmitWorkloadCommandAsync(
+        SubmitCommandRequest request, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        using HttpResponseMessage response = await SendWorkloadAsync(
+            HttpMethod.Post, _options.WorkloadCommandPath, request,
+            EventStoreGatewayWorkloadOperations.CommandSubmit, request.Tenant, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        SubmitCommandResponse? result = await response.Content
+            .ReadFromJsonAsync<SubmitCommandResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        return result is { CorrelationId.Length: > 0, MessageId.Length: > 0 }
+            ? result
+            : throw new EventStoreGatewayException((int)response.StatusCode, "Invalid workload command receipt");
+    }
+
+    /// <inheritdoc />
+    public async Task<CommandStatusQueryResponse?> GetWorkloadCommandStatusAsync(
+        string tenant, string messageId, CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+        string path = $"{_options.WorkloadCommandStatusPath.TrimEnd('/')}/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(messageId)}";
+        using HttpResponseMessage response = await SendWorkloadAsync(
+            HttpMethod.Get, path, null, EventStoreGatewayWorkloadOperations.CommandStatus,
+            tenant, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        CommandStatusQueryResponse? result = await response.Content
+            .ReadFromJsonAsync<CommandStatusQueryResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        return IsValidCommandStatus(result, messageId)
+            && string.Equals(result!.TenantId, tenant, StringComparison.Ordinal)
+                ? result
+                : throw new EventStoreGatewayException((int)response.StatusCode, "Invalid workload status receipt");
+    }
+
+    /// <inheritdoc />
+    public async Task<StreamReadPage> ReadWorkloadStreamAsync(
+        StreamReadRequest request, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        using HttpResponseMessage response = await SendWorkloadAsync(
+            HttpMethod.Post, _options.WorkloadStreamReadPath, request,
+            EventStoreGatewayWorkloadOperations.StreamRead, request.Tenant, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        StreamReadPage? result = await response.Content
+            .ReadFromJsonAsync<StreamReadPage>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        return result is not null
+            && string.Equals(result.Tenant, request.Tenant, StringComparison.Ordinal)
+            && string.Equals(result.Domain, request.Domain, StringComparison.Ordinal)
+            && string.Equals(result.AggregateId, request.AggregateId, StringComparison.Ordinal)
+            ? result
+            : throw new EventStoreGatewayException((int)response.StatusCode, "Invalid workload stream response");
+    }
+
+    private async Task<HttpResponseMessage> SendWorkloadAsync(
+        HttpMethod method, string path, object? body, string operation, string tenant,
+        CancellationToken cancellationToken) {
+        string? assertion = _workloadAssertions is null
+            ? null
+            : await _workloadAssertions.IssueAsync(operation, tenant, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(assertion)) {
+            throw new InvalidOperationException("EventStore workload credentials are unavailable.");
+        }
+
+        using var request = new HttpRequestMessage(method, CreateRelativeUri(path));
+        request.Headers.TryAddWithoutValidation("X-Hexalith-Workload-Assertion", assertion);
+        if (body is not null) {
+            request.Content = JsonContent.Create(body, options: JsonOptions);
+        }
+
+        return await SendTranslatingAsync(
+            () => _httpClient.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

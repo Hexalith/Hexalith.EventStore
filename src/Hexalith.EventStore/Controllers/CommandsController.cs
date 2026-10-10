@@ -6,9 +6,12 @@ using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Client.Security;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Server.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Validation;
 
@@ -20,7 +23,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace Hexalith.EventStore.Controllers;
 
 [ApiController]
-[Authorize]
 [Route("api/v1/commands")]
 [Consumes("application/json")]
 [Tags("Commands")]
@@ -61,6 +63,7 @@ public class CommandsController(
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     /// <response code="503">Service unavailable. The processing pipeline is temporarily down.</response>
     [HttpPost]
+    [Authorize]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -71,12 +74,41 @@ public class CommandsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
-    public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken) {
+    public Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken)
+        => SubmitCoreAsync(request, workloadOnly: false, cancellationToken);
+
+    /// <summary>Submits a command authenticated by a workload assertion with a tenant binding.</summary>
+    [HttpPost("workload")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayCommandSubmitPolicy)]
+    [RequestSizeLimit(1_048_576)]
+    public Task<IActionResult> SubmitWorkload([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken)
+        => SubmitCoreAsync(request, workloadOnly: true, cancellationToken);
+
+    private async Task<IActionResult> SubmitCoreAsync(SubmitCommandRequest request, bool workloadOnly, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.Extensions?.Keys.Any(key => key.StartsWith("identity:", StringComparison.OrdinalIgnoreCase)) == true)
+        if (request.Extensions?.Keys.Any(key => key.StartsWith("identity:", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, EventStoreGatewayVerifiedOrigin.ExtensionKey, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, EventStoreGatewayVerifiedOrigin.ActorExtensionKey, StringComparison.OrdinalIgnoreCase)) == true)
         {
             return BadRequest("Gateway identity evidence is reserved.");
+        }
+
+        string? workload = workloadOnly
+            ? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value
+            : null;
+        if (workloadOnly && (string.IsNullOrWhiteSpace(workload)
+            || request.Extensions is { Count: > 0 }
+            || !string.Equals(
+                User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
+                request.Tenant,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
+                request.Domain,
+                StringComparison.Ordinal)))
+        {
+            return Forbid();
         }
 
         string messageId = request.MessageId ?? string.Empty;
@@ -94,7 +126,9 @@ public class CommandsController(
         }
 
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
-        string? userId = User.FindFirst("sub")?.Value;
+        string? userId = workloadOnly
+            ? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value ?? workload
+            : User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(userId)) {
             logger.LogWarning(
                 "JWT 'sub' claim missing for command submission. Rejecting request as unauthorized. CorrelationId={CorrelationId}.",
@@ -126,7 +160,9 @@ public class CommandsController(
             return sanitizationResponse;
         }
 
-        (Dictionary<string, string>? extensions, string? rejectedExtensionKey) = BuildTrustedExtensions(request);
+        (Dictionary<string, string>? extensions, string? rejectedExtensionKey) = workloadOnly
+            ? (null, null)
+            : BuildTrustedExtensions(request);
         if (rejectedExtensionKey is not null) {
             logger.LogWarning(
                 "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, ExtensionKey={ExtensionKey}",
@@ -174,6 +210,17 @@ public class CommandsController(
             extensions[IdentityAdmissionProof.ExtensionKey] = proof;
         }
 
+        if (workloadOnly)
+        {
+            extensions ??= new Dictionary<string, string>(StringComparer.Ordinal);
+            extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] = workload!;
+            string? verifiedActor = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value;
+            if (!string.IsNullOrWhiteSpace(verifiedActor))
+            {
+                extensions[EventStoreGatewayVerifiedOrigin.ActorExtensionKey] = verifiedActor;
+            }
+        }
+
         var command = new SubmitCommand(
             MessageId: messageId,
             Tenant: request.Tenant,
@@ -187,11 +234,23 @@ public class CommandsController(
             IsGlobalAdmin: IsGlobalAdministrator(User),
             IdempotencyKey: request.IdempotencyKey);
 
+        if (workloadOnly)
+        {
+            // The workload policy and signed tenant binding were checked at this gateway.
+            // The MediatR human tenant/RBAC behavior must not reinterpret a workload as a user.
+            HttpContext.Items[AuthorizationBehavior<SubmitCommand, SubmitCommandResult>.PrevalidatedAuthorizationContextKey]
+                = new GatewayAuthorizationContext(request.Tenant, request.Domain, request.CommandType,
+                    "command", request.AggregateId, SubjectId: null);
+        }
+
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
         // RFC 7231: Location header should be absolute URI
         string statusKey = result.MessageId ?? command.MessageId;
-        string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{statusKey}";
+        string statusPath = workloadOnly
+            ? $"/api/v1/commands/status/workload/{Uri.EscapeDataString(request.Tenant)}/{Uri.EscapeDataString(statusKey)}"
+            : $"/api/v1/commands/status/{Uri.EscapeDataString(statusKey)}";
+        string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}{statusPath}";
         Response.Headers["Location"] = absoluteLocationUri;
         Response.Headers["Retry-After"] = "1";
 

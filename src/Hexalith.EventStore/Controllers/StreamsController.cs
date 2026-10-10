@@ -11,6 +11,8 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +26,6 @@ namespace Hexalith.EventStore.Controllers;
 /// Public downstream stream read/replay endpoints.
 /// </summary>
 [ApiController]
-[Authorize]
 [Route("api/v1/streams")]
 [Consumes("application/json")]
 [Produces("application/json")]
@@ -56,6 +57,7 @@ public sealed partial class StreamsController(
     /// Reads a public EventStore stream page for downstream replay/rebuild use.
     /// </summary>
     [HttpPost("read")]
+    [Authorize]
     [RequestSizeLimit(1_048_576)]
     [ProducesResponseType(typeof(StreamReadPage), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -63,9 +65,24 @@ public sealed partial class StreamsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError, "application/problem+json")]
-    public async Task<IActionResult> ReadStreamAsync(
+    public Task<IActionResult> ReadStreamAsync(
         [FromBody] StreamReadRequest request,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default)
+        => ReadStreamCoreAsync(request, workloadOnly: false, cancellationToken);
+
+    /// <summary>Reads a stream under an authenticated, tenant-bound workload grant.</summary>
+    [HttpPost("read/workload")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayStreamReadPolicy)]
+    [RequestSizeLimit(1_048_576)]
+    public Task<IActionResult> ReadWorkloadStreamAsync(
+        [FromBody] StreamReadRequest request,
+        CancellationToken cancellationToken = default)
+        => ReadStreamCoreAsync(request, workloadOnly: true, cancellationToken);
+
+    private async Task<IActionResult> ReadStreamCoreAsync(
+        StreamReadRequest request,
+        bool workloadOnly,
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
         IActionResult? validationFailure = ValidateRequest(request);
@@ -73,35 +90,32 @@ public sealed partial class StreamsController(
             return validationFailure;
         }
 
-        TenantValidationResult tenantResult = await tenantValidator
-            .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
-            .ConfigureAwait(false) ?? throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
-        if (!tenantResult.IsAuthorized) {
-            return ProblemWithReason(
-                StatusCodes.Status403Forbidden,
-                ProblemTypeUris.Forbidden,
-                "Forbidden",
-                "Tenant is not authorized for stream replay.",
-                StreamReplayReasonCodes.UnauthorizedTenant);
+        if (workloadOnly) {
+            if (string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)
+                || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
+                    request.Tenant, StringComparison.Ordinal)
+                || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
+                    request.Domain, StringComparison.Ordinal)) {
+                return Forbid();
+            }
         }
+        else {
+            TenantValidationResult tenantResult = await tenantValidator
+                .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
+                .ConfigureAwait(false) ?? throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
+            if (!tenantResult.IsAuthorized) {
+                return ProblemWithReason(StatusCodes.Status403Forbidden, ProblemTypeUris.Forbidden,
+                    "Forbidden", "Tenant is not authorized for stream replay.", StreamReplayReasonCodes.UnauthorizedTenant);
+            }
 
-        RbacValidationResult rbacResult = await rbacValidator
-            .ValidateAsync(
-                User,
-                request.Tenant,
-                request.Domain,
-                _streamReadMessageType,
-                _streamReadMessageCategory,
-                cancellationToken,
-                request.AggregateId)
-            .ConfigureAwait(false) ?? throw new InvalidOperationException("IRbacValidator.ValidateAsync returned null. Server bug.");
-        if (!rbacResult.IsAuthorized) {
-            return ProblemWithReason(
-                StatusCodes.Status403Forbidden,
-                ProblemTypeUris.Forbidden,
-                "Forbidden",
-                "Replay scope is not authorized.",
-                StreamReplayReasonCodes.ForbiddenReplayScope);
+            RbacValidationResult rbacResult = await rbacValidator
+                .ValidateAsync(User, request.Tenant, request.Domain, _streamReadMessageType,
+                    _streamReadMessageCategory, cancellationToken, request.AggregateId)
+                .ConfigureAwait(false) ?? throw new InvalidOperationException("IRbacValidator.ValidateAsync returned null. Server bug.");
+            if (!rbacResult.IsAuthorized) {
+                return ProblemWithReason(StatusCodes.Status403Forbidden, ProblemTypeUris.Forbidden,
+                    "Forbidden", "Replay scope is not authorized.", StreamReplayReasonCodes.ForbiddenReplayScope);
+            }
         }
 
         try {

@@ -34,6 +34,15 @@ public sealed class DaprInternalAuthenticationOptions : AuthenticationSchemeOpti
     /// <summary>Gets the policy requiring an internal workload granted the trusted-effect operation.</summary>
     public const string TrustedEffectPolicy = SchemeName + ":" + EventStoreWorkloadOperations.TrustedEffect;
 
+    /// <summary>Policy for workload-only command submission.</summary>
+    public const string GatewayCommandSubmitPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayCommandSubmit;
+
+    /// <summary>Policy for workload-only command status reads.</summary>
+    public const string GatewayCommandStatusPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayCommandStatus;
+
+    /// <summary>Policy for workload-only stream reads.</summary>
+    public const string GatewayStreamReadPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayStreamRead;
+
     /// <summary>Gets or sets the internal workload identities allowed to call this host.</summary>
     public IList<string> AllowedCallers { get; init; } = [];
 }

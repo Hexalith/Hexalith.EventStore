@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.HealthChecks;
@@ -45,6 +46,88 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
     private const string AllowedCaller = "reactor";
     private const string TrustedEffectsRoute = "/api/v1/trusted-effects";
     private const string CommandsRoute = "/api/v1/commands";
+
+    /// <summary>Every workload gateway route admits only its signed operation through the real middleware.</summary>
+    [Theory]
+    [InlineData("/api/v1/commands/workload", EventStoreWorkloadOperations.GatewayCommandSubmit, true)]
+    [InlineData("/api/v1/commands/status/workload/tenant-a/!", EventStoreWorkloadOperations.GatewayCommandStatus, false)]
+    [InlineData("/api/v1/streams/read/workload", EventStoreWorkloadOperations.GatewayStreamRead, true)]
+    public async Task WorkloadGatewayRoutesRequireTheirSignedOperation(string route, string operation, bool post)
+    {
+        using HttpClient client = _factory.CreateClient();
+        var bindings = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = "tenant-a",
+            [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = "timesheets"
+        };
+        using HttpRequestMessage admitted = new(post ? HttpMethod.Post : HttpMethod.Get, route);
+        if (post)
+        {
+            admitted.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+
+        AddInternalHeaders(admitted, WorkloadAssertionTestTokens.Create(
+            Audience, AllowedCaller, [operation], bindings: bindings), includeChannelToken: true);
+        using HttpResponseMessage admittedResponse = await client.SendAsync(admitted, TestContext.Current.CancellationToken);
+        admittedResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        using HttpRequestMessage wrongOperation = new(post ? HttpMethod.Post : HttpMethod.Get, route);
+        if (post)
+        {
+            wrongOperation.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+
+        AddInternalHeaders(wrongOperation, WorkloadAssertionTestTokens.Create(
+            Audience, AllowedCaller, [EventStoreWorkloadOperations.TrustedEffect], bindings: bindings), includeChannelToken: true);
+        using HttpResponseMessage denied = await client.SendAsync(wrongOperation, TestContext.Current.CancellationToken);
+        denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    /// <summary>A valid signed workload command crosses the real MediatR authorization pipeline.</summary>
+    [Fact]
+    public async Task ValidSignedWorkloadCommandReachesRouter()
+    {
+        _ = _factory.CommandRouter.RouteCommandAsync(
+                Arg.Any<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new Hexalith.EventStore.Server.Actors.CommandProcessingResult(
+                Accepted: true, CorrelationId: "workload-correlation"));
+        using HttpClient client = _factory.CreateClient();
+        var bindings = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = "tenant-a",
+            [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = "timesheets"
+        };
+        string assertion = WorkloadAssertionTestTokens.Create(
+            Audience, AllowedCaller, [EventStoreWorkloadOperations.GatewayCommandSubmit], bindings: bindings);
+        var body = new
+        {
+            MessageId = "01JWORKLOADCOMMAND0000000000",
+            Tenant = "tenant-a",
+            Domain = "timesheets",
+            AggregateId = "time-entry-1",
+            CommandType = "CommitMagicLinkUse",
+            Payload = new { capabilityId = "capability-1" },
+            CorrelationId = "workload-correlation"
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands/workload")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body, JsonSerializerOptions.Web), Encoding.UTF8, "application/json")
+        };
+        AddInternalHeaders(request, assertion, includeChannelToken: true);
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        _ = await _factory.CommandRouter.Received(1).RouteCommandAsync(
+            Arg.Is<Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand>(command =>
+                command.Tenant == "tenant-a"
+                && command.Domain == "timesheets"
+                && command.CommandType == "CommitMagicLinkUse"
+                && command.Extensions != null
+                && command.Extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] == AllowedCaller),
+            Arg.Any<CancellationToken>());
+    }
 
     private readonly InternalBoundaryFactory _factory;
 

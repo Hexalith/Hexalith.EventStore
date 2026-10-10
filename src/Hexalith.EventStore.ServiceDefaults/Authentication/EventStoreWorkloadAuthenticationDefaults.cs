@@ -60,6 +60,12 @@ public static class EventStoreWorkloadAuthenticationDefaults
     /// <summary>Gets the claim binding an assertion to one tenant.</summary>
     public const string TenantBindingClaimType = BindingClaimPrefix + "tenant";
 
+    /// <summary>Gets the claim binding an assertion to one aggregate domain.</summary>
+    public const string DomainBindingClaimType = BindingClaimPrefix + "domain";
+
+    /// <summary>Gets the claim binding an assertion to the originating authenticated actor.</summary>
+    public const string ActorBindingClaimType = BindingClaimPrefix + "actor";
+
     /// <summary>Gets the claim binding an assertion to one projection type.</summary>
     public const string ProjectionTypeBindingClaimType = BindingClaimPrefix + "projection-type";
 

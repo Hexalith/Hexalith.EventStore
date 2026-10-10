@@ -6,4 +6,4 @@ internal sealed record GatewayAuthorizationContext(
     string MessageType,
     string MessageCategory,
     string? AggregateId,
-    string SubjectId);
+    string? SubjectId);

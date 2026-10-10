@@ -14,6 +14,9 @@ public sealed class EventStoreGatewayClientOptions {
     /// </summary>
     public string CommandPath { get; set; } = "api/v1/commands";
 
+    /// <summary>Gets or sets the workload-only command submission path.</summary>
+    public string WorkloadCommandPath { get; set; } = "api/v1/commands/workload";
+
     /// <summary>
     /// Gets or sets the relative query endpoint path.
     /// </summary>
@@ -25,10 +28,16 @@ public sealed class EventStoreGatewayClientOptions {
     /// </summary>
     public string CommandStatusPath { get; set; } = "api/v1/commands/status";
 
+    /// <summary>Gets or sets the workload-only status path, followed by tenant and message ID.</summary>
+    public string WorkloadCommandStatusPath { get; set; } = "api/v1/commands/status/workload";
+
     /// <summary>
     /// Gets or sets the relative public stream read endpoint path.
     /// </summary>
     public string StreamReadPath { get; set; } = "api/v1/streams/read";
+
+    /// <summary>Gets or sets the workload-only stream read path.</summary>
+    public string WorkloadStreamReadPath { get; set; } = "api/v1/streams/read/workload";
 
     /// <summary>
     /// Gets or sets the maximum buffered stream-read response size in bytes.

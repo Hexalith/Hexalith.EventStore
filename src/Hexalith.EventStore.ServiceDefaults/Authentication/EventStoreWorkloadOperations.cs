@@ -25,4 +25,13 @@ public static class EventStoreWorkloadOperations
 
     /// <summary>Submit a target-receipted trusted effect to EventStore.</summary>
     public const string TrustedEffect = "eventstore:trusted-effect";
+
+    /// <summary>Submit a command through the workload-only gateway.</summary>
+    public const string GatewayCommandSubmit = "eventstore:command-submit";
+
+    /// <summary>Read a command status through the workload-only gateway.</summary>
+    public const string GatewayCommandStatus = "eventstore:command-status";
+
+    /// <summary>Read an event stream through the workload-only gateway.</summary>
+    public const string GatewayStreamRead = "eventstore:stream-read";
 }

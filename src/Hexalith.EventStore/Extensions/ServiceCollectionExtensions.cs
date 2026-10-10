@@ -100,7 +100,10 @@ public static class EventStoreServiceCollectionExtensions {
             .AddEventStoreSidecarChannelScheme();
         _ = services.AddEventStoreWorkloadPolicies(
             DaprInternalAuthenticationOptions.SchemeName,
-            [EventStoreWorkloadOperations.TrustedEffect]);
+            [EventStoreWorkloadOperations.TrustedEffect,
+             EventStoreWorkloadOperations.GatewayCommandSubmit,
+             EventStoreWorkloadOperations.GatewayCommandStatus,
+             EventStoreWorkloadOperations.GatewayStreamRead]);
 
         _ = services.AddAuthorization();
 

@@ -9,6 +9,8 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Telemetry;
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +21,6 @@ namespace Hexalith.EventStore.Controllers;
 /// Route matches the Location header set by <see cref="CommandsController"/> (H5).
 /// </summary>
 [ApiController]
-[Authorize]
 [Route("api/v1/commands/status")]
 [Tags("Commands")]
 public class CommandStatusController(
@@ -56,6 +57,7 @@ public class CommandStatusController(
     /// <response code="404">No command status found for the given message or correlation identifier.</response>
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     [HttpGet("{messageId}")]
+    [Authorize]
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -184,6 +186,35 @@ public class CommandStatusController(
             ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "command-status");
             throw;
         }
+    }
+
+    /// <summary>Reads one tenant-bound, message-primary status for an authenticated workload.</summary>
+    [HttpGet("workload/{tenant}/{messageId}")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayCommandStatusPolicy)]
+    public async Task<IActionResult> GetWorkloadStatus(string tenant, string messageId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)
+            || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
+                tenant, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value))
+        {
+            return Forbid();
+        }
+
+        if (!CorrelationIdMiddleware.IsValidIdentifier(messageId))
+        {
+            return BadRequest();
+        }
+
+        CommandStatusRecord? record = await statusStore.ReadStatusAsync(tenant, messageId, cancellationToken)
+            .ConfigureAwait(false);
+        return record is not null
+            && string.Equals(record.MessageId, messageId, StringComparison.Ordinal)
+            && string.Equals(record.Domain,
+                User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
+                StringComparison.Ordinal)
+            ? Ok(CommandStatusResponse.FromRecord(messageId, record, tenant))
+            : NotFound();
     }
 
     private IActionResult CreateStatusResult(
