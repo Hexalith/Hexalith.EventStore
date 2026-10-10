@@ -128,6 +128,7 @@ Full documentation index: [Documentation](docs/index.md)
 - [Command API Reference](docs/reference/command-api.md) — command submission, status, replay, and preflight validation
 - [Query & Projection API Reference](docs/reference/query-api.md) — query execution, ETag caching, projection notifications, and SignalR
 - [NuGet Packages Guide](docs/reference/nuget-packages.md) — package roles, dependencies, and installation guidance
+- [Native AOT and IL Trimming Posture](docs/reference/aot-and-trimming-posture.md) — current compatibility posture and reflection convention inventory
 - [Generated API Reference](docs/reference/api/) — auto-generated public type documentation
 
 ### Community

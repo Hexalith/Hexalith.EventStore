@@ -57,6 +57,7 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 - [Command API](reference/command-api.md) — command submission, status, replay, and preflight validation
 - [Query & Projection API](reference/query-api.md) — query execution, ETag caching, projection notifications, and SignalR
 - [NuGet Packages](reference/nuget-packages.md) — package roles, dependencies, and installation guidance
+- [Native AOT and IL Trimming Posture](reference/aot-and-trimming-posture.md) — current compatibility posture and reflection convention inventory
 - [Error Reference](reference/problems/index.md) — RFC 9457 problem detail types and HTTP error responses
 - [Generated API Reference](reference/api/index.md) — auto-generated public type documentation
 

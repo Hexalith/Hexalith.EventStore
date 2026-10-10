@@ -2,7 +2,8 @@
 title: 'Story 6.7: AOT And Trimming Posture Reference'
 type: 'chore'
 created: '2026-10-10'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_commit: 'c7af92d8e96c5a81bd4dc39184a06f96c14fe05a'
 route: 'dispatch'
 review_loop_iteration: 0
 story_key: '6-7-aot-and-trimming-posture-reference'
@@ -68,12 +69,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `docs/reference/aot-and-trimming-posture.md` -- create per the page template:
+- [x] `docs/reference/aot-and-trimming-posture.md` -- create per the page template:
   - the posture marker line `**Posture:** Native AOT and IL trimming are not targets for Hexalith.EventStore release packages.`
   - why the posture holds, the inventory table (convention, where, reflection used), consumer guidance, and the guard with its validation command and owner Story 6.7
   - what must change before the posture can change
-- [ ] `docs/index.md`, `README.md` -- link the page in the reference lists.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/AotTrimmingPostureTests.cs` -- one class, private helpers:
+- [x] `docs/index.md`, `README.md` -- link the page in the reference lists.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/AotTrimmingPostureTests.cs` -- one class, private helpers:
   - a document test: page exists, marker line and inventory heading present
   - a manifest guard: non-empty set, one multi-property evaluation per project, all violators listed
   - a seeded-violation theory per matrix row through the same evaluation path
@@ -93,5 +94,14 @@ context:
 - Run the built test assembly in place with `-class Hexalith.EventStore.Contracts.Tests.Packaging.AotTrimmingPostureTests`, then `-class ...ReleasePackageManifestTests` -- expected: all pass.
 - `scripts/validate-docs.sh` (or markdownlint-cli2 on the page if lychee is unavailable) -- expected: clean.
 - `sha256sum docs/reference/aot-and-trimming-posture.md` -- record the digest here with the owner review date.
+
+**Observed 2026-10-10:**
+- Release Contracts.Tests build: passed, 0 warnings and 0 errors.
+- `AotTrimmingPostureTests`: 7 passed, including explicit AOT/trimming claims, case-insensitive `True`, SDK-implied trimming, multi-project aggregation, and missing-marker rejection.
+- `ReleasePackageManifestTests`: 127 passed.
+- `npx markdownlint-cli2 docs/reference/aot-and-trimming-posture.md docs/index.md README.md`: 0 issues. `lychee --config /dev/null docs/reference/aot-and-trimming-posture.md`: 4 links OK. `lychee --config lychee.toml` could not parse line 48 with installed lychee 0.24.2.
+- `bash scripts/validate-docs.sh`: blocked at Markdown linting by 9 issues in 5 unchanged files: `docs/brownfield/architecture.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/guides/deployment-docker-compose.md`, and `docs/guides/trusted-effects.md`.
+- Page SHA-256: `65fd929e99115fd59abccc50358050c9b027ef4b34480cc1d9394dbbb7669e9f`.
+- Owner review: pending. The owner must review this digest and record a dated `single-maintainer-attested` attestation; this implementation does not claim an independent review.
 
 ## Implementation Notes
