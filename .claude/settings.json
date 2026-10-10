@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.bmad-loop/bmad_loop_hook.py SessionStart"
+            "command": "/home/administrator/.local/bin/bmad-loop relay SessionStart"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.bmad-loop/bmad_loop_hook.py Stop"
+            "command": "/home/administrator/.local/bin/bmad-loop relay Stop"
           }
         ]
       }
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.bmad-loop/bmad_loop_hook.py SessionEnd"
+            "command": "/home/administrator/.local/bin/bmad-loop relay SessionEnd"
           }
         ]
       }
@@ -63,7 +63,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.bmad-loop/bmad_loop_hook.py PreCompact"
+            "command": "/home/administrator/.local/bin/bmad-loop relay PreCompact"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/administrator/.local/bin/bmad-loop relay Notification"
           }
         ]
       }

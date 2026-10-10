@@ -1,21 +1,21 @@
 {
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 /home/administrator/projects/hexalith/eventstore/.bmad-loop/bmad_loop_hook.py Stop"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/administrator/projects/hexalith/eventstore/.bmad-loop/bmad_loop_hook.py SessionStart"
+            "command": "/home/administrator/.local/bin/bmad-loop relay SessionStart"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/administrator/.local/bin/bmad-loop relay Stop"
           }
         ]
       }

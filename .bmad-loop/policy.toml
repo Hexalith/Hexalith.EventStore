@@ -50,7 +50,7 @@ spec_folder = ""
 
 [adapter]
 name = "codex"              # claude | codex | gemini | <custom .bmad-loop/profiles/*.toml>
-model = "gpt-5.6-sol"                   # empty = CLI default model
+model = "gpt-6.1-sol"                   # empty = CLI default model
 cleanup_session_on_finish = true  # kill the run's tmux session when it finishes (false keeps it for inspection)
 # extra_args replaces the profile's default permission-bypass flags when set:
 # extra_args = ["--permission-mode", "bypassPermissions"]
