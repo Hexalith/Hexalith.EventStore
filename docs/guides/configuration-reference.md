@@ -859,7 +859,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `1`-`3600` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventSizeBytes` | int | `1048576` | Integer `> 0` | Application |
-| `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |
+| `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant\|domain\|version`, `tenant:domain:version`, `*\|domain\|version`, or `wildcard_{domain}_{version}` | Application |
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
 | `EventStore:Admin:OpenApi:Enabled` | bool | `false` | `true` maps Admin discovery only in Development; Production always omits it | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
