@@ -489,9 +489,10 @@ for `channel-token-missing` or `channel-token-invalid`, also check that the
 submitter uses Dapr service invocation rather than a direct gateway call.
 In the documented service invocation, the submitter sends its `DAPR_API_TOKEN`
 to its own sidecar, which relays the call to EventStore's sidecar; EventStore's
-sidecar then presents EventStore's `APP_API_TOKEN` to the gateway. A direct gateway call presents the submitter's `DAPR_API_TOKEN` (or no token),
-which EventStore rejects. Route through Dapr service invocation rather than
-aligning the tokens.
+sidecar then presents EventStore's `APP_API_TOKEN` to the gateway. A direct
+gateway call presents the submitter's `DAPR_API_TOKEN` (or no token), which
+EventStore rejects. Route through Dapr service invocation rather than aligning
+the tokens.
 `verifier-unconfigured` points to EventStore's `Authentication:JwtBearer` and
 `Authentication:DaprInternal` receiver settings. For `caller-not-allowed`,
 check `Authentication:DaprInternal:AllowedCallers`; for `audience-invalid`, check
@@ -505,8 +506,8 @@ assertion issuer and signing algorithm for `issuer-invalid` and
 `algorithm-invalid`. In symmetric mode (Development, or a non-Production
 environment with `Authentication:JwtBearer:AllowInsecureSymmetricKey=true`),
 compare the submitter's `Authentication:JwtBearer` issuer with EventStore's
-issuer for `issuer-invalid`. For `algorithm-invalid`, check that the submitter and
-EventStore use the same signing mode; a symmetric submitter always signs
+issuer for `issuer-invalid`. For `algorithm-invalid`, check that the submitter
+and EventStore use the same signing mode; a symmetric submitter always signs
 `HS256`. A mismatched symmetric signing key yields `signature-invalid`.
 In authority mode, compare the external authority's issuer and signing mode
 with EventStore's `Authentication:JwtBearer` issuer and allowed algorithms.
