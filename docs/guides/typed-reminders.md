@@ -312,6 +312,9 @@ retained. Provision three things for each submitting domain service:
    `Authentication:WorkloadIssuer:AudienceScopePrefix` and
    `Authentication:WorkloadIssuer:OperationScopePrefix` forms), and the authority
    must declare both scopes, each with exactly one mapper. If
+   `Authentication:WorkloadIssuer:AudienceScopePrefix` is customized, request
+   and declare `<AudienceScopePrefix><audience>` even when the audience remains
+   `eventstore`. If
    `Authentication:DaprInternal:Audience` is changed from `eventstore`, pass the
    new audience to `AddEventStoreTrustedEffectWorkloadAssertion(gatewayAudience)`
    and request the matching audience scope formed from the configured
@@ -344,7 +347,7 @@ no internal caller.
 | --- | --- | --- |
 | `ActorTypeName` | none; required | Dapr actor type, unique to this application because actor types are global under Dapr placement. It also scopes every persisted key, so changing it abandons existing state |
 | `StateStoreName` | `statestore` | State store for witnesses, index, and dispositions |
-| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context and delegation; it must equal the submitting workload assertion's caller identity. Set it explicitly to that identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting |
+| `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context and delegation; it must equal the submitting workload assertion's caller identity. Set it explicitly to that identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting. `AddEventStoreDomainModule` sets `EventStore:DomainService:AppId` but not `DAPR_APP_ID`, so an Aspire-composed reminder host must set `EventStore__Reminders__Workload` to its Dapr app ID |
 | `Purposes:<kind>` | none | Named delegated purpose per kind. A kind without one is denied |
 | `ReconciliationEnabled` | `true` | Runs the periodic reconciler |
 | `ReconciliationInterval` | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
@@ -472,22 +475,39 @@ firing or convergence retries that operation.
 
 A credential `401`, an admission or delegation `403`, a verifier-unavailable
 `503`, and a transient submission failure can all surface as `Retrying` with
-`submission-uncertain` and an `HttpRequestException`; an `HttpClient` timeout
-can surface with a `TaskCanceledException`. If the condition persists, check
-gateway event `5501` for `StatusCode` and `Reason`: assertion `401` denials,
-`403` refusals, and `503` with `Reason=verifier-unavailable`. A `403` with
-`Reason=operation-not-granted` can mean a missing operation grant or an
+`submission-uncertain` and an `HttpRequestException`. With the standard
+resilience handler installed by `AddEventStoreDomainService`, a timeout can
+surface as `TimeoutRejectedException` and an open circuit as
+`BrokenCircuitException`. A custom client without that handler can report an
+`HttpClient` timeout as `TaskCanceledException`. An open circuit is local to
+the submitter and produces no gateway event. For requests that reach the
+gateway, check event `5501` for `StatusCode` and `Reason`. For a `401`, a
+`channel-*` reason points to EventStore's own `APP_API_TOKEN` and its sidecar;
+for `channel-token-missing`, also check that the submitter uses Dapr service
+invocation rather than a direct gateway call. `verifier-unconfigured` points
+to EventStore's `Authentication:JwtBearer` and
+`Authentication:DaprInternal` receiver settings. For `caller-not-allowed`,
+check `Authentication:DaprInternal:AllowedCallers`; for `audience-invalid`, check
+`Authentication:DaprInternal:Audience`; for `issuer-invalid`, check
+`Authentication:JwtBearer:Issuer`; for `algorithm-invalid`, check
+`Authentication:JwtBearer:AllowedAlgorithms`. For other `401` reasons, check
+the workload assertion handler on the submitter client and the assertion
+lifetime provisioning described under
+[Trusted-effect submission credentials](#trusted-effect-submission-credentials).
+A `503` with `Reason=verifier-unavailable` points to issuer metadata or
+signing-key discovery that is unavailable or unusable, including malformed
+metadata. A retrieved key that does not validate the assertion yields a `401`
+with `Reason=signature-invalid`; compare the assertion's signer with EventStore's
+trusted signing key or issuer JWKS. A `403` with `Reason=operation-not-granted`
+can mean a missing operation grant or an
 admission or delegation refusal. A payload-free `denied` record in the
 trusted-effect audit sink identifies an admission or delegation refusal when
 present; if there is no record, check admission component registration and
 audit-sink configuration before attributing the `403` to a missing grant.
-Check the workload assertion handler on the submitter client,
-`Authentication:DaprInternal:AllowedCallers`,
-and the assertion lifetime provisioning described under
-[Trusted-effect submission credentials](#trusted-effect-submission-credentials).
 Reminder diagnostics retain the exception type, not the HTTP status. For a
-`403`, also check the delegation token provider and the
-[trusted-effect production admission gate](trusted-effects.md#production-admission-gate).
+`403`, also check the delegation token provider against the
+[delegation claim contract](trusted-effects.md#delegation-claim-contract) and
+the [trusted-effect production admission gate](trusted-effects.md#production-admission-gate).
 
 ### Quarantine
 
@@ -547,6 +567,10 @@ Works adopts this seam in Story 4.15:
 - Call `IReminderRegistrar.ConvergeAsync` from the committed-event handlers that
   change a schedule.
 - Set `ActorTypeName` to `WorkItemReminderActor` and configure both purposes.
+- When the host uses `AddEventStoreDomainModule`, set
+  `EventStore__Reminders__Workload` to the Works Dapr app ID. That helper sets
+  `EventStore__DomainService__AppId` but not `DAPR_APP_ID`, so the reminder
+  workload otherwise falls back to the application name.
 - Replace the host's own `MapActorsHandlers()` with `MapEventStoreReminders()`,
   which `UseEventStoreDomainService` also calls when reminders are registered, or
   keep a self-mapping that carries `.RequireEventStoreSidecarChannel()` and runs

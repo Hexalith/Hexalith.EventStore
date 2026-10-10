@@ -368,7 +368,7 @@ Configuration section: `EventStore:Reminders`
 |---------|------|---------|-------------|
 | `ActorTypeName` | string | none; required | Dapr actor type of the reminder actor. It must be unique to one application, because actor types are global under Dapr placement, and it scopes every persisted reminder key |
 | `StateStoreName` | string | `"statestore"` | State store for reminder witnesses, index, and dispositions |
-| `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions. Set it explicitly to the submitting assertion's caller identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting |
+| `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions. Set it explicitly to the submitting assertion's caller identity when `EventStore:DomainService:AppId` or `Authentication:WorkloadIssuer:Workload` is set, because this default reads neither setting. `AddEventStoreDomainModule` sets `EventStore:DomainService:AppId` but not `DAPR_APP_ID`, so an Aspire-composed reminder host must set `EventStore__Reminders__Workload` to its Dapr app ID |
 | `Purposes:{kind}` | string | none | Named delegated purpose for `works.date-resume.v1` or `works.expiry.v1`. A kind without a purpose is denied at callback admission |
 | `ReconciliationEnabled` | bool | `true` | Runs the periodic reconciler |
 | `ReconciliationInterval` | TimeSpan | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
@@ -501,7 +501,7 @@ Configuration section: `Authentication:WorkloadIssuer` (EventStore gateway, and 
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `Workload` | string | `"eventstore"` on EventStore; `EventStore:DomainService:AppId` on a domain service | Workload identity (`azp`) placed in symmetric-mode assertions |
+| `Workload` | string | `"eventstore"` on EventStore; `EventStore:DomainService:AppId` on a domain service | Workload identity (`azp`) placed in symmetric-mode assertions. On a symmetric-mode reminder host, it must equal `EventStore:Reminders:Workload`; in authority mode, `EventStore:Reminders:Workload` must equal the client token's `azp` |
 | `ClientId` | string | (none) | Confidential, service-account-only OIDC client used with the client-credentials grant in authority mode. Its `azp` must be the workload identity the receivers allow-list. Required on EventStore in authority mode: EventStore fails startup without it |
 | `ClientSecret` | string | (none) | Client secret. Supply it from a secret store or environment variable; never commit it. Required with `ClientId` |
 | `TokenEndpoint` | string | (discovered) | Explicit token endpoint; otherwise discovered from `Authentication:JwtBearer:Authority`. Must be HTTPS outside `Development`. A discovered endpoint is reused only after it passes the same check |
