@@ -1,0 +1,39 @@
+{
+  "errors": [],
+  "executor_source_sha256": "9347834222de116f3d7dac188fdc5d5e23b54adf233f9ba4d7333b2e5a2d572d",
+  "finished_utc": "2026-10-10T18:38:47.990253+00:00",
+  "inputs_sha256": "5c5974696849d7d665c1e7be6e71d95b6c1ea61180e67f811896934e2ae750ee",
+  "invocation": "5b9fbc73aa9742f78867d5a63e6c1ed2",
+  "owned_containers": {
+    "8c20561b1782c922e5a9df9bc9261c7167e83105c610e3a1557eeba6aa5cd265": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-5b9fbc73aa9742f78867d5a63e6c1ed2-scheduler-9e2101d3",
+      "port": 28513,
+      "role": "scheduler"
+    },
+    "ab5c66e89cb47f80e43fc9975ea079d1b9d60e9acff04710cdd459377da35d3d": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-5b9fbc73aa9742f78867d5a63e6c1ed2-placement-0d71a52e",
+      "port": 11478,
+      "role": "placement"
+    },
+    "dc1c8f9e21f473e16ddb8a8f5686fa6930a67814f2d24c0057385fbaf60da704": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-5b9fbc73aa9742f78867d5a63e6c1ed2-source-68859fc4",
+      "port": 14004,
+      "role": "source"
+    },
+    "f4f6f9b0fb25a33bb7260df80b0cff5fe2ca5b77b141429b865c4c34df6b23f0": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-5b9fbc73aa9742f78867d5a63e6c1ed2-pubsub-fdd51d11",
+      "port": 25173,
+      "role": "pubsub"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-current-source-04f403c165f5424bbc29ff05f731d08a/receipts/17d7f3e2a04540bcb1bd32aed8df73d6.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-10T18:37:32.371851+00:00"
+}

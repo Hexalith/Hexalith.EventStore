@@ -5,10 +5,16 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
+#if P1R_CANDIDATE
+using P1R.Counter;
+#endif
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton(new DaprClientBuilder().Build());
 builder.Services.AddEventStoreServer(builder.Configuration);
+#if P1R_CANDIDATE
+FixtureEvolutionManifest.Register(builder.Services);
+#endif
 builder.Services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
 #if P1R_CAPABILITIES
 QualificationCapabilities.Configure(builder);

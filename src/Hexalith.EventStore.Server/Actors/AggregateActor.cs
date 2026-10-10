@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 
 using Dapr;
+using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Grpc.Core;
@@ -4787,7 +4788,18 @@ public partial class AggregateActor(
 
         IdempotencyExecutionContextProtector protector = executionContextProtector
             ?? throw new InvalidOperationException("Idempotency execution-fence validation is unavailable.");
-        await protector.ValidateAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await protector.ValidateAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ActorInvokeException error) when (
+            error.ActualExceptionType == typeof(InvalidOperationException).FullName
+            && error.Message == "The idempotency execution authority is no longer current.")
+        {
+            // Preserve the admission actor's exact safe denial across this second actor boundary.
+            // Other transport failures remain opaque and fail closed.
+            throw new InvalidOperationException("The idempotency execution authority is no longer current.", error);
+        }
     }
 
     private Task RecordIdempotencyAsync(

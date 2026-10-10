@@ -1,0 +1,53 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "c050b3ef05893a94dba237a1db0d8b080a3766f4eefe7acdb79f885453d9b344"
+    },
+    {
+      "path": "diagnostic-type-reaudit.json",
+      "sha256": "b6bd4505e29022af8c808203da76f78ba3c050051dc5f6e4b2038a9cc26890f7"
+    },
+    {
+      "path": "execution.json",
+      "sha256": "6ee4dead6c7f75c08a8a8f0c314da9c872fb0b6e0440c2df793151d1d855ae5a"
+    },
+    {
+      "path": "executor-source.json",
+      "sha256": "9347834222de116f3d7dac188fdc5d5e23b54adf233f9ba4d7333b2e5a2d572d"
+    },
+    {
+      "path": "predicate-sources.json",
+      "sha256": "4d52b0756e42635637a5afe44797f798293f4eecc8421a429e56bee46ce082f3"
+    },
+    {
+      "path": "receipts/17d7f3e2a04540bcb1bd32aed8df73d6.json",
+      "sha256": "f474abdd38cf1c5688ff859c46a43e1dde5d83852fd2a5c7b379ed57ceef676f"
+    },
+    {
+      "path": "runtime-identity.json",
+      "sha256": "06ca06e4de9a0a2e25832f300caac3764118ad2099fb3b3d234a49b7cf7aee7b"
+    },
+    {
+      "path": "source-cases/legacy-alias-replay.json",
+      "sha256": "e797f4f30592f07897e62fd32fd5509eb342c5ef06f06633c05412d6a7ed3511"
+    },
+    {
+      "path": "source-cases/original-envelope-preserved.json",
+      "sha256": "bd0b1c556f96276a6b679e72ae7c862c7a22f054f9925d52c8e179d20cd61f9d"
+    },
+    {
+      "path": "source-cases/source-stale-fence.json",
+      "sha256": "b5c371398ca5f334e14b370a14df4182aafafffbb0382b26d96a5f66420a0e2f"
+    },
+    {
+      "path": "source-cases/unknown-version-refusal.json",
+      "sha256": "ed4941d3dc52c195d5ece8e9341f98a902b7f092ec732d359f2cde69953d6720"
+    },
+    {
+      "path": "verify-diagnostic-type-reaudit.py",
+      "sha256": "744743bff1d8d26b90a66dcad28abec99c701516802392fc06e1e2bb1764f532"
+    }
+  ],
+  "schema": "hexalith.p1r.source-repair-files.v1"
+}

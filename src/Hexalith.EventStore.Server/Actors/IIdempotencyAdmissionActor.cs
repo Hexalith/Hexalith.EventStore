@@ -23,6 +23,9 @@ public interface IIdempotencyAdmissionActor : IActor
     /// <summary>Fails closed unless durable state still authorizes the exact protected operation.</summary>
     Task ValidateAuthorityAsync(IdempotencyAdmissionAuthorityRequest request);
 
+    /// <summary>Returns the exact current/stale authority decision without exception transport loss.</summary>
+    Task<IdempotencyAdmissionAuthorityDecision> EvaluateAuthorityAsync(IdempotencyAdmissionAuthorityRequest request);
+
     /// <summary>Durably prepares a copied target record that remains non-executable.</summary>
     Task PreparePromotionAsync(IdempotencyAdmissionPromotionImportRequest request);
 

@@ -404,6 +404,23 @@ public class IdempotencyAdmissionExpiryTests
         await context.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(IdempotencyAdmissionState.Pending, IdempotencyAdmissionAuthorityDecision.Current)]
+    [InlineData(IdempotencyAdmissionState.Recoverable, IdempotencyAdmissionAuthorityDecision.Stale)]
+    public async Task EvaluateAuthorityAsync_ReturnsExactDecisionWithoutLosingActorDenial(
+        IdempotencyAdmissionState state,
+        IdempotencyAdmissionAuthorityDecision expected)
+    {
+        TestContext context = CreateActor();
+        ConfigureState(context.StateManager, Record(state), compacted: null);
+
+        IdempotencyAdmissionAuthorityDecision actual = await context.Actor.EvaluateAuthorityAsync(Authority());
+
+        actual.ShouldBe(expected);
+        await context.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task ValidateAuthorityAsync_UnknownOutcomeAcceptsOnlyExactReconciliationAuthorityWithoutMutation()
     {

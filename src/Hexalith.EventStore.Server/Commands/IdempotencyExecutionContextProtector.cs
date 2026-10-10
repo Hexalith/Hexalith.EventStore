@@ -99,7 +99,8 @@ public sealed class IdempotencyExecutionContextProtector(
         await ValidateProofAndAuthorityAsync(
             context,
             IdempotencyExecutionPurpose.Execute,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            useActorDecision: true).ConfigureAwait(false);
     }
 
     internal async ValueTask ValidateReconciliationAsync(
@@ -148,7 +149,8 @@ public sealed class IdempotencyExecutionContextProtector(
         IdempotencyExecutionContext context,
         IdempotencyExecutionPurpose purpose,
         CancellationToken cancellationToken,
-        bool proofAlreadyValidated = false)
+        bool proofAlreadyValidated = false,
+        bool useActorDecision = false)
     {
         if (!proofAlreadyValidated)
         {
@@ -161,13 +163,29 @@ public sealed class IdempotencyExecutionContextProtector(
         IIdempotencyAdmissionActor authority = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
             new ActorId(context.AdmissionActorId),
             IdempotencyAdmissionActor.ActorTypeName);
-        await authority.ValidateAuthorityAsync(
-            new IdempotencyAdmissionAuthorityRequest(
-                context.FencingToken,
-                context.DigestKeyVersion,
-                context.MessageId,
-                context.CorrelationId,
-                purpose)).ConfigureAwait(false);
+        var request = new IdempotencyAdmissionAuthorityRequest(
+            context.FencingToken,
+            context.DigestKeyVersion,
+            context.MessageId,
+            context.CorrelationId,
+            purpose);
+        if (useActorDecision)
+        {
+            IdempotencyAdmissionAuthorityDecision decision = await authority
+                .EvaluateAuthorityAsync(request).ConfigureAwait(false);
+            if (decision == IdempotencyAdmissionAuthorityDecision.Stale)
+            {
+                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+            }
+
+            if (decision == IdempotencyAdmissionAuthorityDecision.Current)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return;
+            }
+        }
+
+        await authority.ValidateAuthorityAsync(request).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
     }
 

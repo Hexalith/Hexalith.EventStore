@@ -589,7 +589,7 @@ class Executor:
             time.sleep(.5)
         raise TimeoutError("owned PostgreSQL fixture startup timeout")
 
-    def start_nodes(self, version, redis=None, port=None, interval=1000):
+    def start_nodes(self, version, redis=None, port=None, interval=1000, write_alias=None):
         self.stop_nodes()
         resources = self.scratch / "resources"
         resources.mkdir(exist_ok=True)
@@ -640,6 +640,10 @@ class Executor:
                     Authentication__JwtBearer__Audience="counter", Authentication__JwtBearer__SigningKey=self.workload_key,
                     Authentication__Workload__Audience="counter", Authentication__Workload__AllowedCallers__0="eventstore",
                     Authentication__WorkloadIssuer__Workload=appid, EventStore__DomainService__AppId=appid)
+            if project == "Domain" and write_alias is not None:
+                environment["P1R_EVOLUTION_WRITE_ALIAS"] = write_alias
+            else:
+                environment.pop("P1R_EVOLUTION_WRITE_ALIAS", None)
             item = self.launch(["dotnet", root / project.lower() / "bin" / configuration / "net10.0" / (project + ".dll")], environment)
             self.wait(f"http://127.0.0.1:{app}/ready", item)
             sidecar = self.launch([self.daprd, "--app-id", appid, "--app-port", str(app), "--app-channel-address", "127.0.0.1",
@@ -759,10 +763,10 @@ class Executor:
     def actor(self, version, tenant, expected, kind, checks, prefix):
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
-    def seed(self, version, interval, checks):
+    def seed(self, version, interval, checks, write_alias=None):
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
-        self.start_nodes(version, interval=interval)
+        self.start_nodes(version, interval=interval, write_alias=write_alias)
         for tenant, count in (("tenant-a", 12), ("tenant-b", 3)):
             result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(count)], checks, tenant + ":")
             checks.check(tenant + ":committed-count", result.get("committed") == count)
@@ -1069,8 +1073,16 @@ class Executor:
                 checks.check("protected-operation-refused", observed.get("accepted") is False)
                 checks.check("protected-refusal-preserves-sequence-twelve", observed.get("sequence") == 12)
                 if operation == "stale-fence":
-                    checks.check("stale-context-refused", observed.get("stale_refused") is True and observed.get("stale_denial") == "stale-or-invalid-fence")
-                    checks.check("forged-proof-refused", observed.get("forged_refused") is True and observed.get("forged_denial") == "stale-or-invalid-fence")
+                    checks.check("stale-context-refused", observed.get("stale_refused") is True and observed.get("stale_denial") == "stale-fencing-token"
+                                 and observed.get("stale_actor_method") == "ProcessFencedCommandAsync"
+                                 and any(item.get("actual_exception_type") == "System.InvalidOperationException"
+                                         and item.get("denial_message") == "The idempotency execution authority is no longer current."
+                                         for item in observed.get("stale_diagnostic", [])))
+                    checks.check("forged-proof-refused", observed.get("forged_refused") is True and observed.get("forged_denial") == "stale-or-invalid-fence"
+                                 and observed.get("forged_actor_method") == "ProcessFencedCommandAsync"
+                                 and any(item.get("actual_exception_type") == "System.InvalidOperationException"
+                                         and item.get("denial_message") == "The idempotency execution fence is missing, stale, or invalid."
+                                         for item in observed.get("forged_diagnostic", [])))
                 else:
                     checks.check("unauthorized-proof-refused", observed.get("unauthorized_refused") is True and observed.get("denial") == "invalid-gateway-proof")
                 checks.check("execution-completed", observed.get("unexpected") is not True)
@@ -1284,39 +1296,61 @@ class Executor:
                 "natural_scheduler_effect": natural, "repeated_or_stale": repeated,
                 "fixture_authority": "bounded Test authority; P2 acceptance pending"}, "refusal" if revision == 2 else "effect", "compatible"
 
-    def evolution_case(self, identifier, checks):
-        self.seed(CANDIDATE, 1000, checks)
+    def evolution_case(self, identifier, checks, version=CANDIDATE):
+        legacy_alias = "P1R.Legacy.CounterIncremented"
+        self.seed(version, 1000, checks, write_alias="old")
+        unknown_input = None
         if identifier == "unknown-version-refusal":
             self.mutate("unknown-version")
+            event_key = "tenant-a:counter:fixture:events:7"
+            raw_event = next((value for key, value in self.raw_state(self.redis).items() if key.endswith(event_key)), None)
+            unknown_input = {"key_suffix": event_key, "sha256": digest(raw_event),
+                             "metadata_version": json.loads(raw_event)["metadataVersion"]} if raw_event else None
+            checks.check("unknown-version-fixture-persisted", unknown_input is not None
+                         and unknown_input["metadata_version"] == 987)
         before = self.inventory()
-        self.start_nodes(CANDIDATE)
+        self.start_nodes(version)
         registration = self.http("GET", f"http://127.0.0.1:{self.domain_port}/ready")["evolution_registration"]
-        actor = self.actor(CANDIDATE, "tenant-a", 12, "AssertCounter", checks, "logical:")
+        actor = self.actor(version, "tenant-a", 12, "AssertCounter", checks, "logical:")
         expected = identifier != "unknown-version-refusal"
-        checks.check("legacy-clr-hydration-disposition", actor.get("accepted") is expected)
-        # A bounded V1 FullName serializer and legacy hydration do not exercise the
-        # registered logical alias/evolution reader. Keep the selected gap nonpassing.
+        checks.check("logical-hydration-disposition", actor.get("accepted") is expected)
+        checks.check("unknown-version-refused-before-application", expected or (
+            actor.get("accepted") is False and actor.get("event_count") == 0 and actor.get("sequence") == 12
+            and actor.get("error") == "Protected data diagnostic details were redacted. ReasonCode=logical-event-read-rejected; Stage=Processing."))
         checks.check("bounded-v1-clr-serializer-registration-observed", registration.get("bounded_v1_serializer_registered") is True
                      and registration.get("write_alias") == "P1R.Counter.CounterIncremented")
-        checks.check("registered-logical-alias-evolution-executed", registration.get("manifest_registered") is True)
         # Independently read actual application envelopes through the Dapr actor-state API.
         readback = []
         for sequence in range(1, 13):
             actor_id = urllib.parse.quote("tenant-a:counter:fixture", safe="")
             key = urllib.parse.quote("tenant-a:counter:fixture:events:" + str(sequence), safe="")
-            value = self.http("GET", f"http://127.0.0.1:{self.sidecar_port}/v1.0/actors/AggregateActor/{actor_id}/state/{key}")
+            url = f"http://127.0.0.1:{self.sidecar_port}/v1.0/actors/AggregateActor/{actor_id}/state/{key}"
+            value = self.http("GET", url)
             checks.check("logical-envelope-sequence-" + str(sequence), value.get("sequenceNumber") == sequence)
-            readback.append({"sequence": sequence, "sha256": digest(canonical(value))})
+            checks.check("logical-envelope-alias-" + str(sequence), value.get("eventTypeName") == legacy_alias)
+            readback.append({"sequence": sequence, "url": url, "sha256": digest(canonical(value)),
+                             "event_type_name": value.get("eventTypeName"), "payload_sha256": digest(base64.b64decode(value["payload"]))})
         self.stop_nodes()
         after = self.inventory()
         checks.check("logical-readback-original-domain-inventory-preserved", [row for row in before if row["kind"] != "bookkeeping"]
                      == [row for row in after if row["kind"] != "bookkeeping"])
+        original_events = {row["key"]: row["sha256"] for row in before if row["kind"] == "event"}
+        retained_events = {row["key"]: row["sha256"] for row in after if row["kind"] == "event"}
+        checks.check("logical-original-event-bytes-preserved", original_events == retained_events and len(original_events) == 15)
+        executed = actor.get("accepted") is True and actor.get("sequence") == 12 and expected and all(
+            item["event_type_name"] == legacy_alias for item in readback)
+        checks.check("registered-logical-alias-evolution-executed", registration.get("manifest_registered") is True
+                     and registration.get("fixture_manifest_fingerprint") == "5a5748913258b5832b333fe507bc689f1ac9e53a9201b4bb5cb983b535da933b"
+                     and registration.get("fixture_manifest_test_only") is True and registration.get("gateway_authority") is False
+                     and (executed or not expected))
         return {"before": before, "after": after, "dapr_application_readback": readback,
-                "coverage": "bounded V1 CLR-name serialization, typed legacy hydration and application-envelope readback",
+                "coverage": "bounded V1 old-alias serialization, registered logical hydration and application-envelope readback",
+                "actor": actor, "legacy_alias": legacy_alias,
+                "unknown_version_input": unknown_input,
                 "domain_registration_observation": registration,
-                "registered_logical_alias_evolution": {"executed": False,
-                    "reason": "No authoritative manifest pin or registered logical alias/evolution reader is bound by this fixture; V1 CLR-name replay cannot substitute."}}, \
-            "effect" if actor.get("accepted") else "refusal", "incompatible"
+                "registered_logical_alias_evolution": {"executed": executed,
+                    "gateway_authority": False}}, \
+            "effect" if actor.get("accepted") else "refusal", "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def checkout_case(self, identifier, checks):
         if identifier == "current-build":

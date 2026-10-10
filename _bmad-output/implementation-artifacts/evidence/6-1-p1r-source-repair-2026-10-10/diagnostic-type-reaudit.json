@@ -1,0 +1,42 @@
+{
+  "current_check_source": {
+    "executor_path": "tools/p1r_published_executor.py",
+    "executor_sha256": "0ef684d6b011689d9c2ea76c99e7c7518500d5442b24f73cdc74d4b67105ab0f",
+    "witness_path": "tools/p1r_check_witnesses.py",
+    "witness_sha256": "9ad402a0c78cbf4539a42b82df36267f17a3c8d511780bfc1c094b01a77a917c"
+  },
+  "historical_executor_binding_sha256": "9347834222de116f3d7dac188fdc5d5e23b54adf233f9ba4d7333b2e5a2d572d",
+  "matched_diagnostics": {
+    "forged_diagnostic": {
+      "actual_exception_type": "System.InvalidOperationException",
+      "denial_message": "The idempotency execution fence is missing, stale, or invalid.",
+      "message_disclosed": true,
+      "wrapper_type": "Dapr.Actors.ActorInvokeException"
+    },
+    "stale_diagnostic": {
+      "actual_exception_type": "System.InvalidOperationException",
+      "denial_message": "The idempotency execution authority is no longer current.",
+      "message_disclosed": true,
+      "wrapper_type": "Dapr.Actors.ActorInvokeException"
+    }
+  },
+  "result": "both exact denial messages and System.InvalidOperationException types retained",
+  "retained_case": "source-cases/source-stale-fence.json",
+  "retained_case_sha256": "b5c371398ca5f334e14b370a14df4182aafafffbb0382b26d96a5f66420a0e2f",
+  "retained_http_command_id": 78,
+  "schema": "hexalith.p1r.source-repair-diagnostic-reaudit.v1",
+  "scope": "post-run verification of retained source response; no new runtime execution or published qualification",
+  "verification": {
+    "argv": [
+      "env",
+      "PYTHONPATH=tools",
+      "python3",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-source-repair-2026-10-10/verify-diagnostic-type-reaudit.py"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "{\"cases_revalidated\": 4, \"result\": \"pass\", \"typed_denials_matched\": 2}\n",
+    "timeout_seconds": 30
+  }
+}

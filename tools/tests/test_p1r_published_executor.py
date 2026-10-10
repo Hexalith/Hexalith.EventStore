@@ -816,7 +816,8 @@ class CorrectionTests(unittest.TestCase):
             binding={'repository':str(preparation.ROOT),'main':{'files':[{'path':'tools/tests/test_p1r_published_executor.py',
                      'sha256':executor.digest(Path(__file__).read_bytes())}]}}
             retained=list(worker.witness_sources.values())
-            executor.witnesses.validate_case(row,evidence,binding,'logical-event-evolution',retained)
+            with self.assertRaisesRegex(preparation.InvalidPacket,'independent test-only pin'):
+                executor.witnesses.validate_case(row,evidence,binding,'logical-event-evolution',retained)
             self.assertEqual(evidence['commands'][0]['output'],'URLError')
             for output,status in (('URLError',0),('[]',0),(evidence['commands'][1]['output'],124)):
                 with self.subTest(output=output,status=status):
@@ -825,16 +826,201 @@ class CorrectionTests(unittest.TestCase):
                     failed['commands'][1]['exit_code']=status
                     with self.assertRaisesRegex(preparation.InvalidPacket,'Domain readiness'):
                         executor.witnesses.validate_case(row,failed,binding,'logical-event-evolution',retained)
-            evidence['observations']['domain_registration_observation']['manifest_registered']=True
-            evidence['observations']['registered_logical_alias_evolution']['executed']=True
-            row['checks'][0]['passed']=True
-            evidence['check_witnesses'][0]['predicate']['operands'][0]=True
-            row['assertions']=preparation.checks_counter(row['checks'])
-            row['disposition']='compatible'
-            sha=executor.digest(executor.canonical(evidence['observations']))
-            row['inventory']={'before_sha256':sha,'after_sha256':sha}
-            with self.assertRaisesRegex(preparation.InvalidPacket,'Domain readiness'):
-                executor.witnesses.validate_case(row,evidence,binding,'logical-event-evolution',retained)
+
+    def testCompatibleLogicalWitnessBindsExactActorUrlAndInventory(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            worker=self.worker(scratch)
+            alias='P1R.Legacy.CounterIncremented'
+            registration={'manifest_registered':True,'fixture_manifest_fingerprint':
+                '5a5748913258b5832b333fe507bc689f1ac9e53a9201b4bb5cb983b535da933b',
+                'fixture_manifest_test_only':True,'gateway_authority':False}
+            actor={'accepted':True,'event_count':0,'sequence':12,'error':None}
+            events=[]
+            for sequence in range(1,13):
+                value={'sequenceNumber':sequence,'eventTypeName':alias,'payload':'e30='}
+                key=f'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:{sequence}'
+                events.append({'key':key,'tenant':'tenant-a','kind':'event','sha256':executor.digest(executor.canonical(value)),
+                               'sequence':sequence,'floor':None})
+            for sequence in range(1,4):
+                value={'sequenceNumber':sequence,'eventTypeName':alias,'payload':'e30='}
+                key=f'eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:{sequence}'
+                events.append({'key':key,'tenant':'tenant-b','kind':'event','sha256':executor.digest(executor.canonical(value)),
+                               'sequence':sequence,'floor':None})
+            events.sort(key=lambda item:item['key'])
+            def record(argv,value):
+                worker.record(argv,worker.scratch,preparation.stamp(),0,executor.canonical(value))
+            def action(checks):
+                config={'id':'synthetic-runtime','files':[{'path':'/owned/config.yaml'},
+                    {'path':'/owned/resources/state.yaml'},{'path':'/owned/resources/pubsub.yaml'}]}
+                worker.configurations.append(config)
+                record(['daprd','--config','/owned/config.yaml','--resources-path','/owned/resources'],{})
+                record(['synthetic','inventory'],events)
+                record(['HTTP','GET','http://127.0.0.1:12345/ready'],{'evolution_registration':registration})
+                record(['dotnet','Probe.dll','actor','http://127.0.0.1:12345','tenant-a','fixture','12','AssertCounter'],
+                    {'instrumentation':executor.MECHANISM,
+                    'measurement':{'checks':[],'assertions':{'attempted':0,'passed':0,'failed':0}},'observation':actor})
+                readback=[]
+                for sequence in range(1,13):
+                    value={'sequenceNumber':sequence,'eventTypeName':alias,'payload':'e30='}
+                    url=(f'http://127.0.0.1:12345/v1.0/actors/AggregateActor/'
+                         f'tenant-a%3Acounter%3Afixture/state/tenant-a%3Acounter%3Afixture%3Aevents%3A{sequence}')
+                    record(['HTTP','GET',url],value)
+                    readback.append({'sequence':sequence,'url':url,'sha256':executor.digest(executor.canonical(value)),
+                                     'event_type_name':alias,'payload_sha256':executor.digest(b'{}')})
+                record(['synthetic','inventory'],events)
+                checks.check('tenant-a:committed-count',True)
+                checks.check('tenant-b:committed-count',True)
+                checks.check('seed-persisted-fifteen-events',len(events)==15)
+                checks.check('unknown-version-refused-before-application',True)
+                checks.check('registered-logical-alias-evolution-executed',True)
+                return {'before':events,'after':events,'actor':actor,'legacy_alias':alias,
+                    'domain_registration_observation':registration,'dapr_application_readback':readback,
+                    'registered_logical_alias_evolution':{'executed':True,'gateway_authority':False}},'effect','compatible'
+            row,evidence=worker.case('logical-event-evolution','legacy-alias-replay',action,False)
+            binding={'repository':str(preparation.ROOT),'main':{'files':[{'path':'tools/tests/test_p1r_published_executor.py',
+                     'sha256':executor.digest(Path(__file__).read_bytes())}]}}
+            retained=list(worker.witness_sources.values())
+            executor.witnesses.validate_case(row,evidence,binding,'logical-event-evolution',retained)
+            for name,mutation in (
+                ('url',lambda value:value['observations']['dapr_application_readback'][0].update(url='http://127.0.0.1:12345/state/wrong')),
+                ('sidecar',lambda value:value['observations']['dapr_application_readback'][0].update(
+                    url=value['observations']['dapr_application_readback'][0]['url'].replace(':12345/',':12346/'))),
+                ('payload-sha',lambda value:value['observations']['dapr_application_readback'][0].update(payload_sha256='f'*64)),
+                ('missing-probe-argument',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].pop()),
+                ('wrong-tenant',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].__setitem__(4,'tenant-b')),
+                ('wrong-aggregate',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].__setitem__(5,'other')),
+                ('wrong-count',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].__setitem__(6,'11')),
+                ('wrong-command',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].__setitem__(7,'OtherCommand')),
+                ('wrong-executable',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv'])['argv'].__setitem__(0,'python')),
+                ('failed-probe',lambda value:next(command for command in value['commands']
+                    if 'actor' in command['argv']).update(exit_code=1)),
+                ('inventory',lambda value:value['observations']['after'][0].update(sha256='f'*64)),
+                ('actor',lambda value:value['observations']['actor'].update(accepted=False))):
+                with self.subTest(name=name):
+                    altered=copy.deepcopy(evidence)
+                    mutation(altered)
+                    with self.assertRaises(preparation.InvalidPacket):
+                        executor.witnesses.validate_case(row,altered,binding,'logical-event-evolution',retained)
+            altered=copy.deepcopy(evidence)
+            changed=copy.deepcopy(row)
+            key=events[0]['key']
+            for name in ('before','after'):
+                next(item for item in altered['observations'][name] if item['key']==key)['sha256']='f'*64
+            for command in altered['commands']:
+                if 'inventory' in command['argv']:
+                    inventory=json.loads(command['output'])
+                    next(item for item in inventory if item['key']==key)['sha256']='f'*64
+                    command['output']=executor.canonical(inventory).decode()
+                    command['output_sha256']=executor.digest(command['output'].encode())
+            changed['inventory']={name+'_sha256':executor.digest(executor.canonical(
+                [item for item in altered['observations'][name] if item['kind']!='bookkeeping']))
+                for name in ('before','after')}
+            with self.assertRaisesRegex(preparation.InvalidPacket,'exact provider event inventory'):
+                executor.witnesses.validate_case(changed,altered,binding,'logical-event-evolution',retained)
+
+    def testUnknownVersionWitnessRejectsWrongActorProviderKey(self):
+        artifact=Path(__file__).resolve().parents[2]/'_bmad-output/implementation-artifacts/evidence/6-1-p1r-source-repair-2026-10-10'
+        original=json.loads((artifact/'source-cases/unknown-version-refusal.json').read_text())
+        binding=json.loads((artifact/'executor-source.json').read_text())
+        sources=json.loads((artifact/'predicate-sources.json').read_text())
+        executor.witnesses.validate_case(original['case'],original['evidence'],binding,original['lane'],sources)
+        altered=copy.deepcopy(original['evidence'])
+        exact='eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:7'
+        changed=0
+        for command in altered['commands']:
+            try:
+                pairs=json.loads(command.get('output') or '')
+            except (ValueError,TypeError):
+                continue
+            if not isinstance(pairs,list):
+                continue
+            for pair in pairs:
+                if isinstance(pair,list) and len(pair)==2 and pair[0]==exact:
+                    pair[0]=exact.replace('||AggregateActor||','||OtherActor||')
+                    changed+=1
+            if any(isinstance(pair,list) and len(pair)==2 and pair[0].startswith('eventstore||OtherActor||')
+                   for pair in pairs):
+                command['output']=executor.canonical(pairs).decode()
+                command['output_sha256']=executor.digest(command['output'].encode())
+        self.assertGreater(changed,0)
+        with self.assertRaisesRegex(preparation.InvalidPacket,'retained provider diagnostic'):
+            executor.witnesses.validate_case(original['case'],altered,binding,original['lane'],sources)
+
+    def testCompatibleStaleFenceWitnessRejectsAlteredDenialAndInventory(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            worker=self.worker(scratch)
+            rows=[{'key':'tenant-a:counter:fixture:metadata','tenant':'tenant-a','kind':'metadata',
+                   'sha256':'a'*64,'sequence':12,'floor':1}]
+            operation={'accepted':False,'unexpected':False,'sequence':12,'stale_refused':True,
+                'stale_denial':'stale-fencing-token','stale_actor_method':'ProcessFencedCommandAsync',
+                'stale_diagnostic':[{'actual_exception_type':'System.InvalidOperationException',
+                                     'denial_message':'The idempotency execution authority is no longer current.'}],
+                'forged_refused':True,'forged_denial':'stale-or-invalid-fence',
+                'forged_actor_method':'ProcessFencedCommandAsync',
+                'forged_diagnostic':[{'actual_exception_type':'System.InvalidOperationException',
+                                      'denial_message':'The idempotency execution fence is missing, stale, or invalid.'}]}
+            url='http://127.0.0.1:12345/qualification/stale-fence'
+            def action(checks):
+                worker.record(['synthetic','inventory'],worker.scratch,preparation.stamp(),0,executor.canonical(rows))
+                worker.record(['HTTP','POST',url],worker.scratch,preparation.stamp(),0,executor.canonical(operation))
+                worker.record(['synthetic','inventory'],worker.scratch,preparation.stamp(),0,executor.canonical(rows))
+                for identity in ('tenant-a:committed-count','tenant-b:committed-count','seed-persisted-fifteen-events',
+                                 'stale-context-refused','forged-proof-refused','refusal-domain-preserved'):
+                    checks.check(identity,True)
+                return {'before':rows,'after':rows,'operation':operation},'refusal','compatible'
+            row,evidence=worker.case('mixed-api','source-stale-fence',action,False)
+            binding={'repository':str(preparation.ROOT),'main':{'files':[{'path':'tools/tests/test_p1r_published_executor.py',
+                     'sha256':executor.digest(Path(__file__).read_bytes())}]}}
+            retained=list(worker.witness_sources.values())
+            executor.witnesses.validate_case(row,evidence,binding,'mixed-api',retained)
+            for name,mutation in (
+                ('denial',lambda value:value['observations']['operation']['stale_diagnostic'][0].update(denial_message='opaque')),
+                ('stale-type',lambda value:value['observations']['operation']['stale_diagnostic'][0].update(
+                    actual_exception_type='System.Exception')),
+                ('forged-type',lambda value:value['observations']['operation']['forged_diagnostic'][0].update(
+                    actual_exception_type='System.Exception')),
+                ('inventory',lambda value:value['observations']['after'][0].update(sha256='b'*64))):
+                with self.subTest(name=name):
+                    altered=copy.deepcopy(evidence)
+                    mutation(altered)
+                    with self.assertRaises(preparation.InvalidPacket):
+                        executor.witnesses.validate_case(row,altered,binding,'mixed-api',retained)
+
+    def testStaleFenceExecutorRejectsWrongDiagnosticExceptionTypes(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            worker=self.worker(scratch)
+            worker.host_port=12345
+            baseline={'accepted':False,'unexpected':False,'sequence':12,'stale_refused':True,
+                'stale_denial':'stale-fencing-token','stale_actor_method':'ProcessFencedCommandAsync',
+                'stale_diagnostic':[{'actual_exception_type':'System.InvalidOperationException',
+                                     'denial_message':'The idempotency execution authority is no longer current.'}],
+                'forged_refused':True,'forged_denial':'stale-or-invalid-fence',
+                'forged_actor_method':'ProcessFencedCommandAsync',
+                'forged_diagnostic':[{'actual_exception_type':'System.InvalidOperationException',
+                                      'denial_message':'The idempotency execution fence is missing, stale, or invalid.'}]}
+            def evaluate(observation):
+                checks=executor.Measurements()
+                with mock.patch.object(worker,'probe',return_value={'actor_methods':['ProcessFencedCommandAsync']}), \
+                     mock.patch.object(worker,'seed'), mock.patch.object(worker,'inventory',return_value=[]), \
+                     mock.patch.object(worker,'start_nodes'), mock.patch.object(worker,'stop_nodes'), \
+                     mock.patch.object(worker,'http',return_value=observation):
+                    _,_,disposition=worker.mixed_case('source-stale-fence',checks)
+                return disposition,{item['id']:item['passed'] for item in checks.checks}
+            self.assertEqual(evaluate(baseline)[0],'compatible')
+            for diagnostic,check in (('stale_diagnostic','stale-context-refused'),
+                                     ('forged_diagnostic','forged-proof-refused')):
+                with self.subTest(diagnostic=diagnostic):
+                    altered=copy.deepcopy(baseline)
+                    altered[diagnostic][0]['actual_exception_type']='System.Exception'
+                    disposition,checks=evaluate(altered)
+                    self.assertEqual(disposition,'incompatible')
+                    self.assertFalse(checks[check])
 
     def testStatusBindingRetainsStartupFailuresAndRequiresSuccessfulJsonReadback(self):
         with tempfile.TemporaryDirectory() as scratch:

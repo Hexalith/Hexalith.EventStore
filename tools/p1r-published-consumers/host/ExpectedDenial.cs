@@ -7,6 +7,9 @@ internal static class ExpectedDenial
     /// <summary>The exact existing fence denial.</summary>
     internal const string Fence = "The idempotency execution fence is missing, stale, or invalid.";
 
+    /// <summary>The exact admission actor denial of superseded execution authority.</summary>
+    internal const string StaleAuthority = "The idempotency execution authority is no longer current.";
+
     /// <summary>The exact existing gateway-proof denial.</summary>
     internal const string GatewayProof = "Trusted effect gateway proof is invalid.";
 
@@ -33,7 +36,7 @@ internal static class ExpectedDenial
         List<object> records = [];
         for (Exception? current = error; current is not null; current = current.InnerException)
         {
-            string? message = current.Message is Fence or GatewayProof or "Trusted effect denial audit is unavailable."
+            string? message = current.Message is Fence or StaleAuthority or GatewayProof or "Trusted effect denial audit is unavailable."
                 ? current.Message : null;
             records.Add(new
             {

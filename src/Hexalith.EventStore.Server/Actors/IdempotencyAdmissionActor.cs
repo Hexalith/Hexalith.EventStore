@@ -501,6 +501,22 @@ public sealed partial class IdempotencyAdmissionActor(
     }
 
     /// <inheritdoc/>
+    public async Task<IdempotencyAdmissionAuthorityDecision> EvaluateAuthorityAsync(
+        IdempotencyAdmissionAuthorityRequest request)
+    {
+        try
+        {
+            await ValidateAuthorityAsync(request).ConfigureAwait(false);
+            return IdempotencyAdmissionAuthorityDecision.Current;
+        }
+        catch (InvalidOperationException error) when (
+            error.Message == "The idempotency execution authority is no longer current.")
+        {
+            return IdempotencyAdmissionAuthorityDecision.Stale;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task PreparePromotionAsync(IdempotencyAdmissionPromotionImportRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

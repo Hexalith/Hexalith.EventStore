@@ -1375,6 +1375,15 @@ class EvaluationTests(unittest.TestCase):
         synthetic = dict(inputs, scope="tooling-synthetic")
         self.assertFalse(q.evaluate(self.satisfied_lanes(inputs["value"]), synthetic, None)["technically_qualified"])
 
+    def testAbsentRequiredLaneCannotProduceAQualification(self):
+        inputs = self.owner_selected(self.selection)
+        for group, name in (("scenarios", "mixed-api"), ("additions", "logical-event-evolution")):
+            with self.subTest(group=group, name=name):
+                lanes = self.satisfied_lanes(inputs["value"])
+                lanes[group] = [row for row in lanes[group] if row["id"] != name]
+                with self.assertRaises(KeyError):
+                    q.evaluate(lanes, inputs, None)
+
     def testUnselectedAdditionsAndRollbackAreNotRequired(self):
         selection = self.selection
         value = synthetic_inputs(selection, additions=("logical-event-evolution",))

@@ -96,6 +96,100 @@ public class AggregateActorFencingTests
     }
 
     [Fact]
+    public async Task ProcessFencedCommandAsync_TransportedStaleAuthorityPreservesExactDenial()
+    {
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns<Task>(_ => throw new ActorInvokeException(
+                typeof(InvalidOperationException).FullName!,
+                "The idempotency execution authority is no longer current."));
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(executionContextProtector: protector);
+        CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-stale");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest", 7, "v1", ToSubmitCommand(envelope));
+
+        InvalidOperationException denial = await Should.ThrowAsync<InvalidOperationException>(() =>
+            actorContext.Actor.ProcessFencedCommandAsync(new FencedCommandEnvelope(envelope, executionContext)));
+
+        denial.Message.ShouldBe("The idempotency execution authority is no longer current.");
+        denial.InnerException.ShouldBeOfType<ActorInvokeException>();
+        actorContext.StateManager.ReceivedCalls().ShouldBeEmpty();
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ProcessFencedCommandAsync_AdmissionDecisionRefusesStaleAuthorityInsideAggregate()
+    {
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.EvaluateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns(IdempotencyAdmissionAuthorityDecision.Stale);
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(executionContextProtector: protector);
+        CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-stale-decision");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest", 7, "v1", ToSubmitCommand(envelope));
+
+        InvalidOperationException denial = await Should.ThrowAsync<InvalidOperationException>(() =>
+            actorContext.Actor.ProcessFencedCommandAsync(new FencedCommandEnvelope(envelope, executionContext)));
+
+        denial.Message.ShouldBe("The idempotency execution authority is no longer current.");
+        await authority.Received(1).EvaluateAuthorityAsync(Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+            request.FencingToken == 7 && request.Purpose == IdempotencyExecutionPurpose.Execute));
+        await authority.DidNotReceive().ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>());
+        actorContext.StateManager.ReceivedCalls().ShouldBeEmpty();
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ProcessFencedCommandAsync_CurrentAdmissionDecisionPassesFenceWithoutStateMutation()
+    {
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.EvaluateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns(IdempotencyAdmissionAuthorityDecision.Current);
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(
+            executionContextProtector: protector,
+            actorId: "other-tenant:test-domain:agg-001");
+        CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-current-decision");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest", 7, "v1", ToSubmitCommand(envelope));
+
+        CommandProcessingResult result = await actorContext.Actor.ProcessFencedCommandAsync(
+            new FencedCommandEnvelope(envelope, executionContext));
+
+        result.Accepted.ShouldBeFalse(); // Tenant rejection occurs after the Current admission decision.
+        await authority.Received(1).EvaluateAuthorityAsync(Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+            request.FencingToken == 7 && request.Purpose == IdempotencyExecutionPurpose.Execute));
+        await authority.DidNotReceive().ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>());
+        actorContext.StateManager.ReceivedCalls().ShouldBeEmpty();
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ProcessFencedCommandAsync_AdmissionDecisionTransportFailureDoesNotReachState()
+    {
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.EvaluateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns(_ => Task.FromException<IdempotencyAdmissionAuthorityDecision>(
+                new ActorInvokeException(typeof(TimeoutException).FullName!, "opaque actor transport")));
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(executionContextProtector: protector);
+        CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-transport-failure");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest", 7, "v1", ToSubmitCommand(envelope));
+
+        _ = await Should.ThrowAsync<ActorInvokeException>(() =>
+            actorContext.Actor.ProcessFencedCommandAsync(new FencedCommandEnvelope(envelope, executionContext)));
+
+        await authority.Received(1).EvaluateAuthorityAsync(Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+            request.FencingToken == 7 && request.Purpose == IdempotencyExecutionPurpose.Execute));
+        await authority.DidNotReceive().ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>());
+        actorContext.StateManager.ReceivedCalls().ShouldBeEmpty();
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
     public async Task ReconcileFencedCommandAsync_ExactResult_ReadsOnlyIdempotencyState()
     {
         IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();

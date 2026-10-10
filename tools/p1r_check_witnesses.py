@@ -4,6 +4,8 @@ Only the executor evaluates source expressions. Importers interpret bounded
 comparison predicates and bind probe witnesses to retained literal outputs.
 """
 import ast
+import base64
+import binascii
 import inspect
 from functools import lru_cache
 from pathlib import Path
@@ -367,12 +369,24 @@ def validate_case(row, evidence, binding, lane, retained_sources):
         require(isinstance(value,dict) and any(command['argv'][:2] == ['HTTP','POST'] and '/qualification/' in command['argv'][2]
                     and response == value for command,response in successful_http),
                 'protected refusal differs from retained HTTP observation')
-        identities = [('stale-context-refused','stale_refused','stale_denial','stale-or-invalid-fence'),
+        identities = [('stale-context-refused','stale_refused','stale_denial','stale-fencing-token'),
                       ('forged-proof-refused','forged_refused','forged_denial','stale-or-invalid-fence')] if row['id'].endswith('stale-fence') else [
                       ('unauthorized-proof-refused','unauthorized_refused','denial','invalid-gateway-proof')]
         for identity,refused,reason,expected in identities:
-            require(identity in checks and checks[identity] is (value.get(refused) is True and value.get(reason) == expected),
+            diagnostic = 'stale_diagnostic' if refused == 'stale_refused' else 'forged_diagnostic'
+            denial_message = ('The idempotency execution authority is no longer current.' if refused == 'stale_refused'
+                              else 'The idempotency execution fence is missing, stale, or invalid.')
+            specific = value.get(refused) is True and value.get(reason) == expected
+            if row['id'].endswith('stale-fence'):
+                specific = specific and value.get('stale_actor_method' if refused == 'stale_refused' else 'forged_actor_method') == 'ProcessFencedCommandAsync'
+                specific = specific and any(item.get('actual_exception_type') == 'System.InvalidOperationException'
+                                            and item.get('denial_message') == denial_message
+                                            for item in value.get(diagnostic, []))
+            require(identity in checks and checks[identity] is specific,
                     'refusal check lacks the specific expected denial')
+        require(value.get('accepted') is False and value.get('unexpected') is False and value.get('sequence') == 12
+                and checks.get('refusal-domain-preserved') is True,
+                'protected refusal lacks unchanged persisted domain state')
 
     if not incomplete and lane == 'mixed-api' and row['id'].endswith('-status'):
         status_rows = observation.get('operation')
@@ -397,9 +411,91 @@ def validate_case(row, evidence, binding, lane, retained_sources):
                     and response.get('evolution_registration') == registration
                     for command,response in successful_http),
                 'logical evolution registration contradicts retained Domain readiness response')
-        require(identity in checks and isinstance(registration,dict) and checks[identity] is (registration.get('manifest_registered') is True),
-                'logical evolution drops or contradicts required registered execution')
-        require(observation.get('registered_logical_alias_evolution',{}).get('executed') is True or row['disposition'] == 'incompatible',
+        require(isinstance(registration,dict) and registration.get('manifest_registered') is True
+                and registration.get('fixture_manifest_fingerprint') == '5a5748913258b5832b333fe507bc689f1ac9e53a9201b4bb5cb983b535da933b'
+                and registration.get('fixture_manifest_test_only') is True and registration.get('gateway_authority') is False,
+                'logical evolution registration lacks independent test-only pin')
+        actor = observation.get('actor')
+        actor_probes = [command for command,value in probes if 'actor' in command['argv'] and value['observation'] == actor]
+        require(isinstance(actor,dict) and len(actor_probes) == 1,
+                'logical evolution lacks retained aggregate response')
+        actor_command = actor_probes[0]
+        actor_argv = actor_command['argv']
+        require(actor_command.get('exit_code') == 0 and len(actor_argv) == 8
+                and actor_argv[0] == 'dotnet' and Path(actor_argv[1]).name == 'Probe.dll'
+                and actor_argv[2] == 'actor'
+                and actor_argv[4:] == ['tenant-a','fixture','12','AssertCounter'],
+                'logical evolution lacks exact successful actor probe command')
+        actor_base = actor_argv[3]
+        require(isinstance(actor_base,str) and actor_base.startswith('http://127.0.0.1:')
+                and '/' not in actor_base[len('http://'):], 'logical evolution lacks retained actor sidecar URL')
+        unknown = row['id'] == 'unknown-version-refusal'
+        if unknown:
+            version_input = observation.get('unknown_version_input')
+            require(isinstance(version_input,dict) and version_input.get('key_suffix') == 'tenant-a:counter:fixture:events:7'
+                    and version_input.get('metadata_version') == 987
+                    and checks.get('unknown-version-fixture-persisted') is True,
+                    'unknown version lacks persisted diagnostic input')
+            persisted = []
+            for command in evidence['commands']:
+                if command.get('exit_code') != 0 or command.get('output') is None:
+                    continue
+                try:
+                    pairs = json.loads(command['output'])
+                except (ValueError,TypeError):
+                    continue
+                if not isinstance(pairs,list):
+                    continue
+                for pair in pairs:
+                    if (isinstance(pair,list) and len(pair) == 2
+                            and pair[0] == 'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:7'):
+                        persisted.append(base64.b64decode(pair[1]) if isinstance(pair[1],str) else canonical(pair[1]))
+            require(any(digest(data) == version_input.get('sha256')
+                        and json.loads(data).get('metadataVersion') == 987 for data in persisted),
+                    'unknown version input differs from retained provider diagnostic')
+        require(checks.get('unknown-version-refused-before-application') is (not unknown or (
+                    actor.get('accepted') is False and actor.get('event_count') == 0 and actor.get('sequence') == 12
+                    and actor.get('error') == 'Protected data diagnostic details were redacted. ReasonCode=logical-event-read-rejected; Stage=Processing.')),
+                'unknown version lacks actor logical-read refusal')
+        alias = observation.get('legacy_alias')
+        readbacks = observation.get('dapr_application_readback')
+        require(alias == 'P1R.Legacy.CounterIncremented' and isinstance(readbacks,list) and len(readbacks) == 12,
+                'logical alias readback inventory incomplete')
+        before_events = {item['sequence']:item for item in observation['before']
+                         if item['kind'] == 'event' and item['tenant'] == 'tenant-a'}
+        require(len(before_events) == 12 and [item for item in observation['before'] if item['kind'] != 'bookkeeping']
+                == [item for item in observation['after'] if item['kind'] != 'bookkeeping'],
+                'logical evolution changed persisted inventory')
+        for sequence, item in enumerate(readbacks, 1):
+            actor_id = 'tenant-a%3Acounter%3Afixture'
+            event_key = f'tenant-a%3Acounter%3Afixture%3Aevents%3A{sequence}'
+            expected_path = f'/v1.0/actors/AggregateActor/{actor_id}/state/{event_key}'
+            require(item.get('sequence') == sequence and item.get('url') == actor_base + expected_path,
+                    'logical readback has wrong actor state URL')
+            matches = [value for command,value in successful_http if command['argv'][:3] == ['HTTP','GET',item['url']]]
+            require(len(matches) == 1 and isinstance(matches[0],dict)
+                    and matches[0].get('sequenceNumber') == sequence
+                    and matches[0].get('eventTypeName') == alias
+                    and digest(canonical(matches[0])) == item.get('sha256'),
+                    'logical readback differs from exact retained actor state')
+            provider = before_events.get(sequence)
+            require(provider is not None
+                    and provider['key'] == f'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:{sequence}'
+                    and provider['sha256'] == item['sha256'],
+                    'logical readback differs from exact provider event inventory')
+            payload = matches[0].get('payload')
+            require(isinstance(payload,str), 'logical readback lacks retained payload')
+            try:
+                payload_bytes = base64.b64decode(payload, validate=True)
+            except (ValueError,binascii.Error):
+                require(False, 'logical readback has invalid retained payload')
+            require(digest(payload_bytes) == item.get('payload_sha256'),
+                    'logical readback payload digest differs from retained HTTP payload')
+        executed = actor.get('accepted') is True and actor.get('sequence') == 12 and not unknown
+        require(identity in checks and checks[identity] is True
+                and observation.get('registered_logical_alias_evolution',{}).get('executed') is executed,
+                'logical evolution execution contradicts routed aggregate readback')
+        require(executed or unknown or row['disposition'] == 'incompatible',
                 'missing registered logical evolution cannot claim compatibility')
 
     if not incomplete and lane == 'reminder-recovery':

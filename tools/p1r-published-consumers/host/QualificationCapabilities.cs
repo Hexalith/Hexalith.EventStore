@@ -95,7 +95,7 @@ internal static class QualificationCapabilities
                     {
                         staleAccepted = (await router.RouteFencedCommandAsync(execution, original.ExecutionContext!)).Accepted;
                     }
-                    catch (Exception error) when (ExpectedDenial.Matches(error, ExpectedDenial.Fence))
+                    catch (Exception error) when (ExpectedDenial.Matches(error, ExpectedDenial.StaleAuthority))
                     {
                         staleRefused = true;
                         staleDiagnostic = ExpectedDenial.Describe(error);
@@ -122,7 +122,8 @@ internal static class QualificationCapabilities
                     }
                     return Results.Ok(new { accepted = staleAccepted || forgedAccepted, unexpected,
                         stale_diagnostic = staleDiagnostic, forged_diagnostic = forgedDiagnostic, stale_refused = staleRefused, forged_refused = forgedRefused,
-                        stale_denial = staleRefused ? "stale-or-invalid-fence" : null, forged_denial = forgedRefused ? "stale-or-invalid-fence" : null,
+                        stale_denial = staleRefused ? "stale-fencing-token" : null, forged_denial = forgedRefused ? "stale-or-invalid-fence" : null,
+                        stale_actor_method = "ProcessFencedCommandAsync", forged_actor_method = "ProcessFencedCommandAsync",
                         sequence = await actor.GetCurrentSequenceAsync() });
                 }
 
