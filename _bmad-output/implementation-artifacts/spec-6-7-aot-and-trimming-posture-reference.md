@@ -89,7 +89,7 @@ context:
 
 | Layer and finding | Verdict | Evidence and route |
 | --- | --- | --- |
-| Blind: owner review pending | high | Verification still says pending, so the first AC cannot close. Rejected from code triage because its fix is an owner attestation in this spec; keep the review request open. |
+| Blind: owner review pending | high | carried: Verification still says pending, so the first AC cannot close. Rejected from code triage because its fix is an owner attestation in this spec; keep the review request open. |
 | Blind: Server retained-history deserialization omitted | medium | `RetainedIdentityHistorySourceReader.ReadAsync` deserializes with a runtime `Type`. Patched the JSON inventory row. |
 | Blind: Server governance property walk omitted | medium | `GovernanceScopeGuardOwner.ValidateStrings` calls `GetProperties` and `GetValue` recursively. Patched with a governance inventory row. |
 | Blind: Admin.Server operational reflection omitted | medium | `DaprConsistencyCommandService.TryExtractLong` reads runtime properties. Patched the platform inventory row. |
@@ -100,8 +100,19 @@ context:
 | Edge: marker can appear only in a fenced example | medium | The prior substring check accepted a fenced example. Same marker-placement patch; the seeded test now rejects this case. |
 | Edge: an MSBuild evaluation failure hides later claims | false | An evaluation failure already fails the CI guard, and no effective property value exists for that failed project to report. |
 | Edge: running the assembly outside the checkout cannot find the root | low | `FindRepositoryRoot` walks from the current directory, so this manual invocation fails; the documented command and CI run from the checkout root. Rejected: adding another search path for this unsupported invocation would add fallback logic. |
+| Blind: Contracts anchored-state JSON omitted | medium | `RecoverableAnchoredState` serializes and deserializes generic state without generated metadata. Patched the JSON inventory row. |
+| Blind: ServiceDefaults health JSON omitted | medium | `Extensions.cs` serializes health data using each runtime value's `Type`. Patched the JSON inventory row. |
+| Blind: Testing reflection omitted | medium | `FakeEventPersister` serializes by runtime event type and `TerminatableComplianceAssertions` reflects on `Apply`. Patched the JSON and Apply rows. |
+| Blind: Testing.Integration benchmark JSON omitted | medium | `BenchmarkDatasetBuilder` serializes state with `value.GetType()`. Patched the JSON inventory row. |
+| Blind: Admin.Server exception status reflection omitted | medium | Four Dapr command services read an exception's `StatusCode` property via reflection. Patched the platform row. |
+| Blind: generated REST payload JSON omitted | medium | `RestApiControllerEmitter` emits `SerializeToElement` for commands and queries with reflection-mode options. Patched the JSON row. |
+| Blind: Admin.Cli input JSON omitted | medium | `AdminApiClient` and `ProfileManager` deserialize through `JsonDefaults.Options`. Patched the JSON row. |
+| Edge: fenced heading can satisfy posture guard | medium | The old substring check accepted `## Current Posture` and the marker inside one code fence. Patched the guard to ignore fenced headings and seeded that case. |
+| Edge: empty inventory passes document test | medium | The old test asserted only the inventory heading, so all rows could be removed. Patched it to require a data row and seeded an empty table. |
+| Edge: gateway validation and admin exception reflection omitted | medium | `ValidateModelFilter` closes `IValidator<>` and reflects on `Tenant`; four admin services inspect exception status. Patched the platform row. |
+| Verification gap: later packages lack seeded claims | medium | The old seeded checks used only the first two manifest entries, so a truncated loader could pass them. The aggregate seeded test now exercises the full manifest and requires the later Admin.Server project. |
 
-The five inventory omissions share one incomplete inventory root cause and were corrected together. The two displaced-marker findings share one guard root cause and were corrected together.
+The inventory omissions share one incomplete inventory root cause and were corrected together. The displaced-marker findings share one guard root cause and were corrected together.
 
 ## Verification
 
@@ -119,6 +130,8 @@ The five inventory omissions share one incomplete inventory root cause and were 
 - `bash scripts/validate-docs.sh`: blocked at Markdown linting by 9 issues in 5 unchanged files: `docs/brownfield/architecture.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/guides/deployment-docker-compose.md`, and `docs/guides/trusted-effects.md`.
 - Page SHA-256 after review fixes: `a3df87f8bdf3d73fc4560738d8659b69dd6d06947f33cad9b207681d62171912`.
 - Post-review focused build: passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 7 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues.
+- Second review corrections: Contracts.Tests Release build passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 8 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues; page links: 4 OK; `git diff --check`: passed. `bash scripts/validate-docs.sh` remains blocked at Markdown linting by the same 9 issues in the same 5 unchanged files listed above.
+- Current page SHA-256 after second review corrections: `babd1cd1fb70596996417410ddf03eb71a411832f456a21cd01de2877d2cc77d`.
 - Owner review: pending. The owner must review this digest and record a dated `single-maintainer-attested` attestation; this implementation does not claim an independent review.
 
 ## Implementation Notes

@@ -20,7 +20,7 @@ public sealed class AotTrimmingPostureTests
 
         string text = File.ReadAllText(path);
         AssertPostureMarker(text);
-        Assert.Contains("## Reflection Convention Inventory", text, StringComparison.Ordinal);
+        AssertInventoryRows(text);
     }
 
     /// <summary>Checks every release package using its evaluated MSBuild properties.</summary>
@@ -64,19 +64,19 @@ public sealed class AotTrimmingPostureTests
         }
     }
 
-    /// <summary>Reports every violating project and property in one failure.</summary>
+    /// <summary>Reports every violating release project and property in one failure.</summary>
     [Fact]
     public void MultipleReleasePackageClaimsAreReportedTogether()
     {
         string root = FindRepositoryRoot();
-        string[] projects = LoadReleasePackageProjects(root).Take(2).ToArray();
-        Assert.Equal(2, projects.Length);
+        string[] projects = LoadReleasePackageProjects(root);
+        Assert.Contains("src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj", projects);
 
         string[] violations = EvaluateViolations(root, projects, ("IsAotCompatible", "true"));
         Exception? failure = Record.Exception(() => AssertNoCompatibilityClaims(violations));
 
         Assert.NotNull(failure);
-        Assert.Equal(4, violations.Length);
+        Assert.Equal(projects.Length * 2, violations.Length);
         foreach (string project in projects)
         {
             Assert.Contains($"{project}: IsAotCompatible=true", failure.Message, StringComparison.Ordinal);
@@ -93,6 +93,7 @@ public sealed class AotTrimmingPostureTests
             "## Reflection Convention Inventory",
             $"## Previous Posture\n\n{PostureMarker}\n",
             $"## Current Posture\n\n```markdown\n{PostureMarker}\n```",
+            $"```markdown\n## Current Posture\n\n{PostureMarker}\n```",
         ];
         foreach (string page in invalidPages)
         {
@@ -102,16 +103,64 @@ public sealed class AotTrimmingPostureTests
         }
     }
 
+    /// <summary>Proves an empty reflection inventory does not satisfy the document guard.</summary>
+    [Fact]
+    public void InventoryHeadingWithoutRowsFailsClosed()
+    {
+        const string page = "## Reflection Convention Inventory\n\n| Convention | Where | Reflection or dynamic behavior used |\n| --- | --- | --- |\n\n## Consumer Guidance";
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertInventoryRows(page));
+    }
+
     private static void AssertNoCompatibilityClaims(IReadOnlyCollection<string> violations)
         => Assert.True(
             violations.Count == 0,
             "Release packages claim unsupported Native AOT or IL trimming compatibility:" + Environment.NewLine
                 + string.Join(Environment.NewLine, violations));
 
+    private static void AssertInventoryRows(string text)
+    {
+        Assert.Contains("## Reflection Convention Inventory", text, StringComparison.Ordinal);
+        string inventory = text.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split("## Reflection Convention Inventory", 2, StringSplitOptions.None)[1]
+            .Split("\n## ", 2, StringSplitOptions.None)[0];
+        Assert.Contains(inventory.Split('\n'), line => line.StartsWith("| ", StringComparison.Ordinal)
+            && !line.StartsWith("| Convention |", StringComparison.Ordinal)
+            && !line.StartsWith("| --- |", StringComparison.Ordinal));
+    }
+
     private static void AssertPostureMarker(string text)
-        => Assert.True(text.Replace("\r\n", "\n", StringComparison.Ordinal)
-                .Contains($"\n## Current Posture\n\n{PostureMarker}\n", StringComparison.Ordinal),
+    {
+        string[] lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        bool inCodeFence = false;
+        bool markerFound = false;
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            if (line.TrimStart().StartsWith("```", StringComparison.Ordinal)
+                || line.TrimStart().StartsWith("~~~", StringComparison.Ordinal))
+            {
+                inCodeFence = !inCodeFence;
+                continue;
+            }
+
+            if (inCodeFence || line != "## Current Posture")
+            {
+                continue;
+            }
+
+            int paragraph = index + 1;
+            while (paragraph < lines.Length && string.IsNullOrWhiteSpace(lines[paragraph]))
+            {
+                paragraph++;
+            }
+
+            markerFound = paragraph < lines.Length && lines[paragraph] == PostureMarker;
+            break;
+        }
+
+        Assert.True(markerFound,
             $"The posture marker is missing from the Current Posture section of {PostureDocumentPath}.");
+    }
 
     private static string[] EvaluateViolations(
         string root,
