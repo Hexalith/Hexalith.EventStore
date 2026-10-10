@@ -375,12 +375,14 @@ class Executor:
         self.pending_containers[name] = {"name": name, "image": image, "role": role, "port": host_port}
         try:
             self.run(argv, env=environment)
+            command_id = self.commands[-1]["id"]
         finally:
             identity = self.recover_container(name, cidfile)
         require(identity is not None, "created owned container identity unavailable")
         if start:
             self.run(["docker", "start", identity])
-        return identity, host_port
+            command_id = self.commands[-1]["id"]
+        return identity, host_port, command_id
 
     def recover_container(self, name, cidfile=None):
         """Recover interrupted creation only through exact name AND invocation label."""
@@ -553,14 +555,14 @@ class Executor:
         require(self.inputs["operational_profile"]["backend_image"] == POSTGRES
                 and self.inputs["operational_profile"]["runtime_version"] == "1.18.2", "selected operational profile substituted")
         self.shared_before = self.shared()
-        self.placement, self.placement_port = self.container("placement", DAPR_IMAGE, ["./placement", "--port", "50005"], 50005)
+        self.placement, self.placement_port, _ = self.container("placement", DAPR_IMAGE, ["./placement", "--port", "50005"], 50005)
         self.scheduler_port = reserve_port()
-        self.scheduler, self.scheduler_port = self.container("scheduler", DAPR_IMAGE,
+        self.scheduler, self.scheduler_port, _ = self.container("scheduler", DAPR_IMAGE,
             ["./scheduler", "--port", "50006", "--override-broadcast-host-port", f"127.0.0.1:{self.scheduler_port}",
              "--etcd-data-dir", "/tmp/p1r-etcd", "--etcd-client-listen-address", "0.0.0.0"], 50006, host_port=self.scheduler_port)
-        self.pubsub, self.pubsub_port = self.container("pubsub", REDIS)
+        self.pubsub, self.pubsub_port, _ = self.container("pubsub", REDIS)
         self.postgres_password = uuid.uuid4().hex
-        self.redis, self.redis_port = self.postgres_container("source")
+        self.redis, self.redis_port, _ = self.postgres_container("source")
         self.daprd = self.scratch / "daprd"
         self.run(["docker", "cp", self.placement + ":/daprd", self.daprd])
         self.daprd.chmod(0o700)
@@ -573,11 +575,11 @@ class Executor:
 
     def postgres_container(self, role, start=True):
         environment = dict(os.environ, POSTGRES_PASSWORD=self.postgres_password)
-        identity, port = self.container(role, POSTGRES,
+        identity, port, command_id = self.container(role, POSTGRES,
                                         port=5432, start=start, environment=environment)
         if start:
             self.postgres_wait(identity)
-        return identity, port
+        return identity, port, command_id
 
     def postgres_wait(self, identity):
         for _ in range(60):
@@ -1101,6 +1103,8 @@ class Executor:
                 "authority_scope": "bounded Test fixture; no production identity or P2 acceptance"}, outcome, "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def recovery_command(self, commands, step, command, database=None, processes=None, input_data=None, output_data=None):
+        if isinstance(command, int):
+            command = self.commands[command - 1]
         row = {"id": len(commands) + 1, "step": step, **{key: command[key] for key in
                ("argv", "cwd", "started_utc", "finished_utc", "exit_code", "output_sha256")},
                "database": database, "processes": processes, "input_sha256": digest(input_data) if input_data else None,
@@ -1113,9 +1117,10 @@ class Executor:
     def postgres_backup(self, container):
         name = "p1r-" + uuid.uuid4().hex + ".dump"
         self.run(["docker", "exec", container, "pg_dump", "-U", "postgres", "-d", "eventstore", "-Fc", "-f", "/tmp/" + name])
+        command_id = self.commands[-1]["id"]
         target = self.scratch / name
         self.run(["docker", "cp", container + ":/tmp/" + name, target])
-        return target
+        return target, command_id
 
     def postgres_restore(self, container, backup):
         self.run(["docker", "cp", backup, container + ":/tmp/p1r-restore.dump"])
@@ -1130,12 +1135,12 @@ class Executor:
         source = self.inventory()
         index = self.recovery_command(commands, "inventory", self.commands[-1], source_db)
         inventories["source"] = {"command": index, "rows": source, "sha256": digest(canonical(source))}
-        backup_path = self.postgres_backup(self.redis)
+        backup_path, backup_command_id = self.postgres_backup(self.redis)
         backup = regular(backup_path)
-        backup_id = self.recovery_command(commands, "backup", self.commands[-1], source_db, output_data=backup)
-        restored, port = self.postgres_container("restored")
+        backup_id = self.recovery_command(commands, "backup", backup_command_id, source_db, output_data=backup)
+        restored, port, create_command_id = self.postgres_container("restored")
         restored_db = digest(restored.encode())
-        self.recovery_command(commands, "create-database", self.commands[-1], restored_db)
+        self.recovery_command(commands, "create-database", create_command_id, restored_db)
         self.postgres_restore(restored, backup_path)
         self.recovery_command(commands, "restore", self.commands[-1], restored_db, input_data=backup)
         self.postgres_wait(restored)
@@ -1190,13 +1195,13 @@ class Executor:
     def containment_case(self, identifier, checks):
         self.seed("3.70.1", 1000, checks)
         before = self.inventory()
-        backup = self.postgres_backup(self.redis)
+        backup, _ = self.postgres_backup(self.redis)
         self.start_nodes(CANDIDATE)
         appended = self.actor(CANDIDATE, "tenant-a", 12, "IncrementCounter", checks, "new-write:")
         checks.check("post-backup-write-committed", appended.get("accepted") is True)
         self.stop_nodes()
         advanced = self.inventory()
-        restored, port = self.postgres_container("containment")
+        restored, port, _ = self.postgres_container("containment")
         self.postgres_restore(restored, backup)
         self.postgres_wait(restored)
         copied = self.inventory(restored)

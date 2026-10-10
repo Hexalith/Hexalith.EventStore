@@ -21,6 +21,49 @@ import p1r_qualification_runtime as runtime
 
 
 class MeasurementTests(unittest.TestCase):
+    def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
+        with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
+            worker = CleanupTests.worker(self, scratch)
+            worker.redis = "source-id"
+            worker.postgres_password = "fixture-password"
+            worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
+
+            def run(argv, **kwargs):
+                output = b""
+                if argv[:2] == ["docker", "inspect"]:
+                    name = argv[-1]
+                    output = (json.dumps({"Id": "restored-id", "Name": "/" + name,
+                        "Config": {"Labels": {"hexalith.p1r.invocation": worker.invocation}}}) + "\n").encode()
+                elif argv[:2] == ["docker", "cp"] and ":/tmp/" in str(argv[2]):
+                    Path(argv[3]).write_bytes(b"synthetic-backup")
+                worker.record(argv, worker.scratch, executor.stamp(), 0, output)
+                return output
+
+            def inventory(*args):
+                run(["synthetic-inventory"])
+                return []
+
+            def actor(*args):
+                run(["synthetic-actor"])
+                return {"accepted": True, "event_count": 1}
+
+            worker.run = run
+            worker.inventory = inventory
+            worker.actor = actor
+            worker.seed = worker.mutate = worker.stop_nodes = mock.Mock()
+            worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
+                {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
+
+            worker.restore_case("synthetic-restore", executor.Measurements())
+            commands = {row["step"]: row for row in worker.pending_restore["commands"]}
+            self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
+            self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])
+            self.assertEqual(commands["backup"]["output_sha256"], executor.digest(b"synthetic-backup"))
+            for step in ("backup", "create-database"):
+                recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
+                for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
+                    self.assertEqual(commands[step][field], recorded[field])
+
     def testHttpCommandRecordClampsEarlierFinish(self):
         worker = executor.Executor.__new__(executor.Executor)
         worker.commands, worker.configurations = [], []
