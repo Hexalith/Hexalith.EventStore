@@ -480,17 +480,29 @@ resilience handler installed by `AddEventStoreDomainService`, a timeout can
 surface as `TimeoutRejectedException` and an open circuit as
 `BrokenCircuitException`. A custom client without that handler can report an
 `HttpClient` timeout as `TaskCanceledException`. An open circuit is local to
-the submitter and produces no gateway event. For requests that reach the
-gateway, check event `5501` for `StatusCode` and `Reason`. For a `401`, a
+the submitter and produces no gateway event. Event `5501` records internal
+credential denials only: `401`, `403`, and `503` with
+`Reason=verifier-unavailable`. A `400`, `413`, or `500` has no `5501` entry.
+For those credential denials, check `StatusCode` and `Reason`. For a `401`, a
 `channel-*` reason points to EventStore's own `APP_API_TOKEN` and its sidecar;
-for `channel-token-missing`, also check that the submitter uses Dapr service
-invocation rather than a direct gateway call. `verifier-unconfigured` points
-to EventStore's `Authentication:JwtBearer` and
+for `channel-token-missing` or `channel-token-invalid`, also check that the
+submitter uses Dapr service invocation rather than a direct gateway call.
+The documented service invocation forwards the submitter's `DAPR_API_TOKEN`.
+`verifier-unconfigured` points to EventStore's `Authentication:JwtBearer` and
 `Authentication:DaprInternal` receiver settings. For `caller-not-allowed`,
 check `Authentication:DaprInternal:AllowedCallers`; for `audience-invalid`, check
 `Authentication:DaprInternal:Audience`; for `issuer-invalid`, check
 `Authentication:JwtBearer:Issuer`; for `algorithm-invalid`, check
-`Authentication:JwtBearer:AllowedAlgorithms`. For other `401` reasons, check
+`Authentication:JwtBearer:AllowedAlgorithms`. Match those receiver values to
+what the submitter presents: its `Authentication:WorkloadIssuer:Workload` or
+client `azp` for `caller-not-allowed`, the `gatewayAudience` passed to
+`AddEventStoreTrustedEffectWorkloadAssertion` for `audience-invalid`, and the
+assertion issuer and signing algorithm for `issuer-invalid` and
+`algorithm-invalid`. In symmetric Development mode, compare the submitter's
+`Authentication:JwtBearer` issuer and signing key with EventStore's settings.
+In authority mode, compare the external authority's issuer and signing mode
+with EventStore's `Authentication:JwtBearer` issuer and allowed algorithms.
+For other `401` reasons, check
 the workload assertion handler on the submitter client and the assertion
 lifetime provisioning described under
 [Trusted-effect submission credentials](#trusted-effect-submission-credentials).
