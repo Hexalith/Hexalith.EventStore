@@ -178,6 +178,10 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
 
             string commandTypeName = commandType.Name;
             if (methods.TryGetValue(commandTypeName, out AggregateCommandHandleMethod? existingHandle)) {
+                if (existingHandle.CommandType != commandType) {
+                    throw new InvalidOperationException(
+                        $"Multiple Handle methods found for distinct command types named '{commandTypeName}' on aggregate '{aggregateType.Name}'.");
+                }
                 if (existingHandle.HasCancellationToken && !hasCancellationToken) { continue; }
                 if (existingHandle.HasCancellationToken == hasCancellationToken) {
                     throw new InvalidOperationException(

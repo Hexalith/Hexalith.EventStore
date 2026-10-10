@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -103,6 +103,24 @@ KEEP from the reviewed first attempt: the frozen intent and baseline; targeted r
 | Gap 1: versioned publisher positive path untested | medium | `EventPublisherTests` cover V2 rejection and unstamped success but never assert that metadata V1 with `PayloadVersion=2` reaches `PublishEventAsync` retaining the stamp. Pre-verified gap; keep, bad_spec. |
 | Gap 2: projection wire version untested | medium | Builder tests do not assert `StoredPayloadVersion`; dispatcher tests construct DTOs directly. Removing the copy would cause current V2 events to be upcast again. Pre-verified gap; keep, bad_spec. |
 | Gap 3: subscriber rename/upcast untested | medium | Processor tests do not deliver a legacy name with a registry step. Without the registry read, the processor can mark it unknown and complete its marker. Pre-verified gap; keep, bad_spec. |
+| Review 2 Blind 1: typed versioned scalar write | medium | `EventPersister` checks serialized payload JSON shape but serializes typed payloads after preflight. A custom converter can persist a scalar that the upcaster reader refuses. Patch writer validation on the produced bytes. |
+| Review 2 Blind 2: projection format label | medium | `UpcastRequest` runs a known event through JSON evolution without checking `SerializationFormat`; valid JSON labelled `avro` reaches a handler with a contradictory label. Patch known-event admission. |
+| Review 2 Blind 3: upcast output serialization | high | `JsonSerializer.SerializeToUtf8Bytes` is outside typed-failure conversion. A user upcaster returning an unsupported `JsonValue` can escape the retryable `EventPayloadEvolutionException` path. Patch safe translation. |
+| Review 2 Blind 4: serialization allocation before limit | low | The upcaster already holds the expanded `JsonObject` in memory and the 64 MiB byte limit is checked immediately after serialization. A streaming cap would add a new writer abstraction for a rare developer-supplied oversized output; reject at this review. |
+| Review 2 Blind 5: overlapping alias steps | medium | Exact-name duplicate validation misses `Old.Event` and `Event` at the same version, though both match a stored full name. Runtime fails typed but startup should reject the ambiguous registration. Patch validation. |
+| Review 2 Blind 6: unrelated upcaster constructor | low | Assembly discovery instantiates each `IEventPayloadUpcaster`; an unrelated type with a throwing constructor can fail host startup before relevance filtering. The design discovers all implementations in scanned assemblies, and excluding one without instantiation needs a new declaration contract; reject this uncommon configuration in this story. |
+| Review 2 Blind 7: protection router has no caller | medium | `PayloadCompatibilityRouter` is used only by Story 8.4 tests, not runtime source. This is separate payload-protection work introduced after the 6.6 baseline; defer to Story 8.4. |
+| Review 2 Blind 8: internal legacy payload reader | medium | `ILegacyPayloadReader` is internal and has no production implementation; separate Story 8.4 compatibility work cannot be supplied from Parties as claimed. Defer to Story 8.4. |
+| Review 2 Blind 9: mutable ciphertext input | medium | `PayloadCompatibilityRouter` passes caller-owned bytes to the legacy reader, which could mutate them. This is Story 8.4 code and does not run in Story 6.6 paths; defer. |
+| Review 2 Blind 10: deletion actor completion I/O | medium | Actor completion hooks await Dapr state operations without an outer deadline. This Story 8.4 security code is outside Story 6.6 runtime paths; defer. |
+| Review 2 Blind 11: upcaster cancellation | low | The synchronous pure `IEventPayloadUpcaster` contract has no cancellation seam; AC7 requires caller tokens at handlers and aggregate Handle methods, which are covered. Mid-step cancellation would require a new public contract; reject for this story. |
+| Review 2 Blind 12: compiled consumer job | false | The removed job verified an obsolete drain-record consumer with retired `verify-event-evolution-compiled-consumer.py`; Task 1 expressly removes that first-attempt CI group. It was not a general binary-compatibility gate for the new event-version contracts. |
+| Review 2 Edge 1: wire-result wrapper version | false | `DomainServiceWireResult.FromDomainResult` handles domain-authored payloads, and the governing design requires pre-serialized payload versions to equal their CLR declaration. The server-internal `SerializedDomainEventPayload` exception is created after wire parsing and never enters this producer. |
+| Review 2 Edge 2: bounded producer wrapper version | false | `BoundedV1DomainResultProducer` receives domain-authored payloads and applies the same declared-version contract. The unannotated server-internal wrapper is constructed after this producer, so the claimed valid version-2 wrapper is not a supported input here. |
+| Review 2 Edge 3: short command-name collision | medium | Two different CLR command types with the same short name but different token-overload shape can replace one another in `EventStoreAggregate` discovery. Patch the collision check before token preference. |
+| Review 2 Edge 4: reconstructor identity bypass | false | The only production caller is `AggregateActor`, which reads through `LegacyEventReadGuard` and `DaprProductionLogicalEventReader` before `ReconstructAsync`; both validate stored identity. The cited method is not an independent stored-event read chokepoint under AC6. |
+| Review 2 Gap 1: named projection version test | medium | Pre-verified: versioned projection tests cover `Project` only, so removing `UpcastRequest` from `DispatchAsync` would leave them green. Add named-dispatch coverage for renamed V1 payloads. |
+| Review 2 Gap 2: reconstruction version test | medium | Pre-verified: no positive stamped metadata-V1 test captures `StoredPayloadVersion` in the replay request from `DaprAggregateStateReconstructor`. Add a request-capture assertion. |
 
 The surviving parser, persister, logical-reader, registry and boundary-test groups are all defects in this story's implementation. The parser and persister findings have distinct failure points; only the noted duplicate findings share root causes. They route to `bad_spec` because a full production path and the known-type/alias rules need to be explicit in the non-frozen implementation instructions before re-derivation. No surviving finding is deferred.
 
@@ -143,3 +161,27 @@ The Task 1 reachability audit retired unregistered logical replay/checkpoint act
 - Focused final-tree checks: Server logical readers 86/86 passed; Server actor wire, publisher and projection boundary classes 38/38 passed; Client registry/upcaster/manifest 30/30 passed; Contracts identity/metadata/wire 34/34 passed; Security retirement/report tests 2/2 passed. All four frozen I/O matrix rows have passing coverage: actor V1/V2 JSON round-trip and legacy GUID read; ordered rename/alias upcast; named-component identity rejection; projection and aggregate caller-token propagation.
 - Full Contracts `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-build -p:HexalithTenantsFromSource=true -p:NuGetAudit=false` did not finish after more than five minutes. Direct `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll` was bounded at 361 seconds after 2,257 tests had executed; the interruption caused its OQ8 child validator to exit 130. That interruption is not a Story 6.6 assertion failure.
 - `git diff --cached --check`: passed. The story remains `in-progress` because the broad Server scanner gate fails outside this story and the final-tree full Contracts suite has not completed. No project-approved alternative gate is recorded.
+
+## Current-Tree Verification — 2026-10-10
+
+The subscription processor now resolves known event types and registered historical aliases before deciding what to do with unsupported or blank serialization formats and empty payloads. Known unreadable events release their marker and return `RetryableCapabilityMismatch`; unknown names keep their legacy disposition. Tests cover corrected redelivery, rename aliases, and a subscription registration whose event type is absent from a supplied evolution registry.
+
+- The Release solution build passed with zero warnings and errors after the subscription correction. The corrected Client test project also built in Release with zero warnings and errors. Focused `EventStoreDomainEventProcessorTests` passed 30/30; the full Client suite passed 1,408/1,408.
+- The full DomainService suite passed 546/546. The full Contracts suite completed under `timeout 420s`: 2,316 passed, two existing package-inventory skips, zero failed. This supersedes the earlier incomplete Contracts run.
+- The full Server suite ran 4,327 tests: 4,301 passed, 25 existing skips, and one failure in `SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets`. It reports 19 matches in tracked Story 6.1 P1R receipt files outside this story. Neither the receipts nor the scanner were changed.
+- `git diff --check` passed. The story remains `in-progress` until the repository-wide Server gate is resolved or a project-approved alternative gate is established.
+
+## Alternative Server Gate Approval — 2026-10-10
+
+The user approved an alternative Story 6.6 completion gate after reviewing the current-tree results: accept the passing Story 6.6 Server tests and the full Server suite result with its single unrelated `SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets` failure. The approval applies only to this story's completion gate. The 19 tracked Story 6.1 P1R receipt findings remain unresolved; neither the receipts nor the scanner were changed.
+
+## Review 2 Resolution And Final Verification — 2026-10-10
+
+The review corrections validate typed versioned payload bytes before staging, reject unsupported known projection formats, translate upcaster output serialization failures to typed safe errors, reject overlapping step aliases and colliding command short names, and pin the named projection and admin reconstruction version paths with positive tests. The subscription retry correction remains in place. Review findings on concurrent Story 8.4 work were recorded in `deferred-work.md`; the 6.6 review triage is above.
+
+- `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -p:HexalithTenantsFromSource=true -p:NuGetAudit=false`: passed with zero warnings and errors.
+- Full Client suite: 1,411 passed. Full DomainService suite: 548 passed. The full Contracts suite passed before these review corrections (2,316 passed, two existing skips); no Contracts source or tests changed during review.
+- Full Server suite after review: 4,304 passed, 25 existing skips, one failure in `SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets` on the same 19 tracked Story 6.1 P1R receipt lines. The approved alternative gate applies to this unchanged scanner failure. All Story 6.6 Server tests passed.
+- `git diff --check`: passed before the workflow's final local commit.
+
+The approved alternative Server gate, passing affected tests, and review corrections close Story 6.6. The sprint tracking entry moves to `review` for the next human review step.

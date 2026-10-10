@@ -5710,3 +5710,18 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
   summary: When Story 8.7 passes live request tokens into the compatibility router, pin the v1 legacy-reader foreign-cancellation filters at `PayloadCompatibilityRouter.cs:401` (event) and `:519` (snapshot) with a live, uncancelled caller token and a reader that throws `OperationCanceledException` carrying an already-cancelled foreign token, expecting `RegisteredV1` / `ProviderUnavailable`.
   evidence: Story 8.4 review pass 9 (VG1, BH1, low, optional). `V111_ReaderForeignCancellation_MapsToProviderUnavailableAsync` throws a token-less exception with `CancellationToken.None`, and no v1 snapshot test throws a foreign cancellation. At `:401`, `when (cancellationToken.CanBeCanceled)` and `when (oce.CancellationToken.IsCancellationRequested)` pass 635/635; at `:519` those two mutants and removing the filter also pass. With live tokens, a stray cancellation inside the parties-pdenc-v1 reader could then abort a stream or snapshot load instead of returning `ProviderUnavailable`. The pass-7 fix closed the same gap for the v2 snapshot deserializer filter at `:479`.
+
+## Deferred from: Story 6.6 review of concurrent Story 8.4 changes (2026-10-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Connect the Story 8.4 payload compatibility router to a production event and snapshot read path.
+  evidence: Review of the shared baseline-to-current diff found `PayloadCompatibilityRouter` referenced only from Story 8.4 tests; no runtime caller was found.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Provide a production-accessible legacy payload reader contract and implementation for the Parties V1 route.
+  evidence: `ILegacyPayloadReader` is internal and only a test fake implements it, so a separate Parties package cannot supply the reader described by Story 8.4.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Protect caller-owned ciphertext bytes from mutation by a Story 8.4 legacy reader.
+  evidence: `PayloadCompatibilityRouter` passes the original byte array to the reader; a mutating reader can alter that buffer before the router returns.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Bound Dapr state I/O in the Story 8.4 deletion actor completion hooks.
+  evidence: `DeletionConsumptionActor` awaits completion-hook state calls without an outer deadline, so an unfinished call can block the actor after its entry timeout.

@@ -344,7 +344,23 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_RenamedV1Event_ReachesCurrentHandlerAndCompletesMarker()
+    public async Task ProcessAsync_UnknownEventWithUnsupportedFormat_KeepsLegacyDisposition() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with {
+            EventTypeName = "Not.A.Known.Type",
+            SerializationFormat = "xml",
+        };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        (await processor.ProcessAsync(envelope with { SerializationFormat = "json" }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        handler.Handled.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("xml")]
+    [InlineData("")]
+    public async Task ProcessAsync_RenamedV1Event_UnsupportedFormatRetriesThenReachesCurrentHandler(string unsupportedFormat)
     {
         string oldName = "Historical.VersionedTestEvent";
         string currentName = typeof(VersionedTestEvent).FullName!;
@@ -375,6 +391,10 @@ public class EventStoreDomainEventProcessorTests {
         EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", "{\"Amount\":4}"u8.ToArray())
             with { EventTypeName = "VersionedTestEvent", PayloadVersion = 1 };
 
+        (await processor.ProcessAsync(envelope with { SerializationFormat = unsupportedFormat }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        await handler.DidNotReceive().HandleAsync(
+            Arg.Any<VersionedTestEvent>(), Arg.Any<EventStoreDomainEventContext>(), Arg.Any<CancellationToken>());
         (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
         await handler.Received(1).HandleAsync(
             Arg.Is<VersionedTestEvent>(value => value.Value == 5),
@@ -603,7 +623,7 @@ public class EventStoreDomainEventProcessorTests {
     [InlineData("EventTypeName")]
     [InlineData("CorrelationId")]
     [InlineData("SerializationFormat")]
-    public async Task ProcessAsync_BlankEnvelopeIdentity_ReturnsRetryableCapabilityMismatch(string propertyName) {
+    public async Task ProcessAsync_BlankEnvelopeField_ReturnsRetryableCapabilityMismatch(string propertyName) {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         EventStoreDomainEventEnvelope envelope = propertyName switch {
             "MessageId" => Envelope(" ", "t1", PayloadFor("t1", 1)),
@@ -616,9 +636,7 @@ public class EventStoreDomainEventProcessorTests {
 
         EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
 
-        result.ShouldBe(propertyName == "SerializationFormat"
-            ? EventStoreDomainEventProcessingResult.FailedInvalidPayload
-            : EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
         handler.Handled.ShouldBeEmpty();
     }
 
@@ -635,17 +653,50 @@ public class EventStoreDomainEventProcessorTests {
         handler.Handled.Count.ShouldBe(1);
     }
 
-    [Fact]
-    public async Task ProcessAsync_UnsupportedSerializationFormat_ReturnsFailedInvalidPayloadAndCompletesMarker() {
+    [Theory]
+    [InlineData("xml")]
+    [InlineData("")]
+    public async Task ProcessAsync_KnownUnsupportedSerializationFormat_RetriesWithoutCompletingMarker(string unsupportedFormat) {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
-        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { SerializationFormat = "xml" };
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { SerializationFormat = unsupportedFormat };
 
         EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
         EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope with { SerializationFormat = "json" });
 
-        result.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
-        retry.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
-        handler.Handled.ShouldBeEmpty();
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_KnownEmptyPayload_RetriesWithoutCompletingMarker() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", []);
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        (await processor.ProcessAsync(envelope with { Payload = PayloadFor("t1", 1) }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SubscriptionKnownTypeRetriesWhenEvolutionRegistryDoesNotListIt() {
+        var handler = new CapturingHandler();
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type> { [typeof(TestEvent).FullName!] = typeof(TestEvent) },
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            evolution: new EventPayloadEvolutionRegistry([], []));
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1));
+
+        (await processor.ProcessAsync(envelope with { SerializationFormat = "xml" }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
     }
 
     [Fact]

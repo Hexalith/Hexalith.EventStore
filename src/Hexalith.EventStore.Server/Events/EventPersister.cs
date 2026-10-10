@@ -91,19 +91,7 @@ public partial class EventPersister(
                 }
                 if (eventPayload is ISerializedEventPayload serializedJson)
                 {
-                    try
-                    {
-                        using JsonDocument document = JsonDocument.Parse(serializedJson.PayloadBytes,
-                            new JsonDocumentOptions { MaxDepth = 64 });
-                        if (document.RootElement.ValueKind != JsonValueKind.Object)
-                        {
-                            throw new JsonException("Event payload must be a JSON object.");
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        throw new InvalidOperationException($"Versioned event {eventTypeName} has invalid JSON.");
-                    }
+                    ValidateVersionedJsonObject(serializedJson.PayloadBytes, eventTypeName);
                 }
             }
             if (metadataVersion == 2) {
@@ -161,6 +149,10 @@ public partial class EventPersister(
                 byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
                     ? serialized.PayloadBytes
                     : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
+                if (payloadVersion is not null)
+                {
+                    ValidateVersionedJsonObject(payloadBytes, eventTypeName);
+                }
                 byte[] applicationPayloadHash = EventLogicalDigest.HashPayload(payloadBytes);
 
                 try {
@@ -295,6 +287,22 @@ public partial class EventPersister(
 
         if (!string.Equals(eventTypeName, eventContractType, StringComparison.Ordinal)) {
             throw new ArgumentException("V2 EventTypeName must exactly match EventContractType.", nameof(eventTypeName));
+        }
+    }
+
+    private static void ValidateVersionedJsonObject(byte[] payloadBytes, string eventTypeName)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(payloadBytes, new JsonDocumentOptions { MaxDepth = 64 });
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new JsonException("Event payload must be a JSON object.");
+            }
+        }
+        catch (JsonException)
+        {
+            throw new InvalidOperationException($"Versioned event {eventTypeName} has invalid JSON.");
         }
     }
 

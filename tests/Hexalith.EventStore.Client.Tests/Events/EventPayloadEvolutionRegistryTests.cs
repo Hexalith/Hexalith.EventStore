@@ -11,6 +11,43 @@ public sealed class EventPayloadEvolutionRegistryTests
     private const string OldName = "Historical.LegacyTestEvent";
 
     [Fact]
+    public void Registration_RejectsOverlappingFullAndShortStepNamesAtSameVersion()
+    {
+        string fullName = typeof(VersionedTestEvent).FullName!;
+        InvalidOperationException failure = Should.Throw<InvalidOperationException>(() =>
+            new EventPayloadEvolutionRegistry([typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster(fullName, 1, null, static payload => payload),
+             new TestPayloadUpcaster(nameof(VersionedTestEvent), 1, null, static payload => payload),
+             new TestPayloadUpcaster(fullName, 2, null, static payload => payload)]));
+
+        failure.Message.ShouldContain("version 1");
+        failure.Message.ShouldContain(nameof(VersionedTestEvent));
+    }
+
+    [Fact]
+    public void Read_UpcastPayloadSerializationFailureIsTypedAndSupportSafe()
+    {
+        string name = typeof(VersionedTestEvent).FullName!;
+        var registry = new EventPayloadEvolutionRegistry([typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster(name, 1, null, static payload =>
+             {
+                 payload["Value"] = double.NaN;
+                 return payload;
+             }),
+             new TestPayloadUpcaster(name, 2, null, static payload => payload)]);
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            registry.Read(name, 1, "{}"u8.ToArray(), 11));
+
+        failure.SequenceNumber.ShouldBe(11);
+        failure.UpcasterTypeName.ShouldBe(typeof(TestPayloadUpcaster).FullName);
+        failure.InnerExceptionTypeName.ShouldNotBeNull();
+        failure.InnerException.ShouldBeNull();
+        failure.Message.ShouldContain("upcast payload serialization failed");
+        failure.Message.ShouldNotContain("NaN");
+    }
+
+    [Fact]
     public void Read_RenamesShortAliasAndRunsOrderedStepsOnce()
     {
         int firstCalls = 0;

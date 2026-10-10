@@ -173,15 +173,6 @@ public class EventStoreDomainEventProcessor {
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
-            if (!IsSupportedSerializationFormat(envelope.SerializationFormat)) {
-                _logger.LogWarning(
-                    "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
-                    envelope.MessageId,
-                    envelope.SerializationFormat);
-                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
-                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
-            }
-
             ResolvedEventPayload resolved;
             try
             {
@@ -197,7 +188,34 @@ public class EventStoreDomainEventProcessor {
             }
 
             Type? eventType = resolved.EventType;
-            if (eventType is null && !_eventTypeRegistry.TryGetValue(envelope.EventTypeName, out eventType)) {
+            if (eventType is null) {
+                _ = _eventTypeRegistry.TryGetValue(envelope.EventTypeName, out eventType);
+            }
+
+            if (eventType is null
+                && (envelope.Payload.Length == 0 || string.IsNullOrWhiteSpace(envelope.SerializationFormat))) {
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+            }
+
+            if (!IsSupportedSerializationFormat(envelope.SerializationFormat)) {
+                if (eventType is not null) {
+                    _logger.LogWarning(
+                        "Cannot read known event {EventTypeName} version {PayloadVersion} at sequence {SequenceNumber}: unsupported serialization format.",
+                        envelope.EventTypeName, envelope.PayloadVersion ?? 1, envelope.SequenceNumber);
+                    await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                    return EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch;
+                }
+
+                _logger.LogWarning(
+                    "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
+                    envelope.MessageId,
+                    envelope.SerializationFormat);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+            }
+
+            if (eventType is null) {
                 _logger.LogWarning("Unknown event type '{EventTypeName}' — skipping", envelope.EventTypeName);
                 await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedUnknownEventType;
@@ -297,9 +315,7 @@ public class EventStoreDomainEventProcessor {
         => !string.IsNullOrWhiteSpace(envelope.AggregateId)
         && !string.IsNullOrWhiteSpace(envelope.TenantId)
         && !string.IsNullOrWhiteSpace(envelope.EventTypeName)
-        && !string.IsNullOrWhiteSpace(envelope.CorrelationId)
-        && !string.IsNullOrWhiteSpace(envelope.SerializationFormat)
-        && envelope.Payload is { Length: > 0 };
+        && !string.IsNullOrWhiteSpace(envelope.CorrelationId);
 
     private static bool IsSupportedSerializationFormat(string serializationFormat)
         => string.Equals(serializationFormat, "json", StringComparison.OrdinalIgnoreCase);

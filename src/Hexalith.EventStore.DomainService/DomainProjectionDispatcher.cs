@@ -32,6 +32,12 @@ public static class DomainProjectionDispatcher {
             ProjectionEventDto item = request.Events[index];
             ResolvedEventPayload effective = evolution.Read(item.EventTypeName, item.StoredPayloadVersion,
                 item.Payload, item.SequenceNumber);
+            if (effective.EventType is not null
+                && !string.Equals(item.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new EventPayloadEvolutionException(item.EventTypeName, item.StoredPayloadVersion ?? 1,
+                    item.SequenceNumber, "unsupported serialization format");
+            }
             events[index] = item with
             {
                 EventTypeName = effective.EventTypeName,

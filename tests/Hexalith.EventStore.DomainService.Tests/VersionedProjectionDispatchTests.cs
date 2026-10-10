@@ -1,10 +1,13 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Projections;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -89,5 +92,64 @@ public sealed class VersionedProjectionDispatchTests
 
         error.SequenceNumber.ShouldBe(2);
         handler.LastRequest.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Project_RenamedKnownEventWithUnsupportedFormatFailsBeforeHandler()
+    {
+        var handler = new CapturingHandler();
+        var registry = new EventPayloadEvolutionRegistry([typeof(RenamedEvent)], [new RenameStep()]);
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<IDomainProjectionHandler>(handler)
+            .AddSingleton(registry)
+            .BuildServiceProvider();
+        var stored = new ProjectionEventDto("Old.Contracts.CounterRaised",
+            "{\"Amount\":5}"u8.ToArray(), "xml", 4, DateTimeOffset.UnixEpoch, "correlation-1")
+        { MetadataVersion = 1, StoredPayloadVersion = 1 };
+
+        EventPayloadEvolutionException failure = Should.Throw<EventPayloadEvolutionException>(() =>
+            DomainProjectionDispatcher.Project(services,
+                new ProjectionRequest("tenant-1", "counter", "counter-1", [stored])));
+
+        failure.SequenceNumber.ShouldBe(4);
+        failure.StoredVersion.ShouldBe(1);
+        failure.Message.ShouldContain("unsupported serialization format");
+        handler.LastRequest.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task DispatchAsync_RenamedV1EventReachesNamedHandlerWithCurrentPayload()
+    {
+        IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
+        handler.Domain.Returns("counter");
+        handler.ProjectionType.Returns("counter-summary");
+        ProjectionRequest? delivered = null;
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                delivered = call.ArgAt<ProjectionRequest>(0);
+                return DomainProjectionHandlerResult.Completed(JsonSerializer.SerializeToElement(new { count = 1 }));
+            });
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(handler)
+            .AddSingleton(new EventPayloadEvolutionRegistry([typeof(RenamedEvent)], [new RenameStep()]))
+            .BuildServiceProvider();
+        var catalog = new DomainProjectionCatalogRegistry();
+        catalog.Register("fingerprint-1", [new ProjectionDispatchRoute("counter", "counter-summary")]);
+        byte[] original = "{\"Amount\":5}"u8.ToArray();
+        var stored = new ProjectionEventDto("Old.Contracts.CounterRaised", original, "json", 1,
+            DateTimeOffset.UnixEpoch, "correlation-1") { MetadataVersion = 1, StoredPayloadVersion = 1 };
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(services,
+            new ProjectionDispatchRequest(
+                new ProjectionRequest("tenant-1", "counter", "counter-1", [stored]),
+                ["counter-summary"], "dispatch-1", "fingerprint-1"),
+            new ProjectionDispatchOptions(), catalog, CancellationToken.None);
+
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        ProjectionEventDto deliveredEvent = delivered.ShouldNotBeNull().Events.ShouldHaveSingleItem();
+        deliveredEvent.EventTypeName.ShouldBe(typeof(RenamedEvent).FullName);
+        JsonSerializer.Deserialize<RenamedEvent>(deliveredEvent.Payload).ShouldBe(new RenamedEvent(5));
+        stored.Payload.ShouldBe(original);
     }
 }

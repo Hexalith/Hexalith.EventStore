@@ -1,4 +1,7 @@
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
@@ -24,6 +27,28 @@ public class EventPersisterTests {
     private sealed record TestEvent(string Name = "test") : IEventPayload;
 
     private sealed record TestRejectionEvent(string Reason = "rejected") : IRejectionEvent;
+
+    [EventPayloadVersion(2)]
+    [JsonConverter(typeof(NonObjectVersionedEventConverter))]
+    public sealed record NonObjectVersionedEvent(bool WriteArray) : IEventPayload;
+
+    public sealed class NonObjectVersionedEventConverter : JsonConverter<NonObjectVersionedEvent> {
+        public override NonObjectVersionedEvent? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, NonObjectVersionedEvent value, JsonSerializerOptions options) {
+            ArgumentNullException.ThrowIfNull(writer);
+            ArgumentNullException.ThrowIfNull(value);
+            if (value.WriteArray) {
+                writer.WriteStartArray();
+                writer.WriteNumberValue(1);
+                writer.WriteEndArray();
+            }
+            else {
+                writer.WriteNumberValue(1);
+            }
+        }
+    }
 
     private sealed class FakeGlobalPositionAllocator(long nextPosition = 1) : IGlobalPositionAllocator {
         private long _nextPosition = nextPosition;
@@ -70,6 +95,25 @@ public class EventPersisterTests {
 
     private static void ConfigureNoMetadata(IActorStateManager stateManager) => stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PersistEventsAsync_ConverterProducedNonObjectVersionedPayloadRefusesBeforeEffects(bool writeArray) {
+        IActorStateManager state = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var allocator = new FakeGlobalPositionAllocator();
+        ConfigureNoMetadata(state);
+        var writer = new EventPersister(state, Substitute.For<ILogger<EventPersister>>(), protection, allocator);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => writer.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(),
+            DomainResult.Success([new NonObjectVersionedEvent(writeArray)]), "v1"));
+
+        protection.ReceivedCalls().ShouldBeEmpty();
+        allocator.CallCount.ShouldBe(0);
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
 
     private static void ConfigureExistingMetadata(IActorStateManager stateManager, long currentSequence) {
         var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);

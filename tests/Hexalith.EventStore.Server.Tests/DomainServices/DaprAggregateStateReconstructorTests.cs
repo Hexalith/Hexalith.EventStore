@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -123,6 +124,31 @@ public class DaprAggregateStateReconstructorTests {
         result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.UnsupportedVersion);
         result.FailedSequenceNumber.ShouldBe(1);
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task ReconstructAsync_StampedMetadataV1ForwardsStoredPayloadVersionToReplay()
+    {
+        var responseHandler = new VersionedActorResponseHandler(JsonSerializer.Serialize(
+            AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Unexpected, "fixture"),
+            JsonSerializerOptions.Web));
+        using var httpClient = new HttpClient(responseHandler);
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient().Returns(httpClient);
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync("tenant-a", "counter", "v1", Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("test-app", "process", "tenant-a", "counter", "v1"));
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        var reconstructor = new DaprAggregateStateReconstructor(
+            daprClient, factory, resolver, NullLogger<DaprAggregateStateReconstructor>.Instance);
+        ServerEventEnvelope source = BuildEnvelope(1) with { PayloadVersion = 2 };
+
+        _ = await reconstructor.ReconstructAsync(Identity, "Counter", [source], upToSequence: 1);
+
+        AggregateReconstructionRequest request = JsonSerializer.Deserialize<AggregateReconstructionRequest>(
+            responseHandler.RequestJson.ShouldNotBeNull(), JsonSerializerOptions.Web).ShouldNotBeNull();
+        request.Events.ShouldHaveSingleItem().StoredPayloadVersion.ShouldBe(2);
+        request.Events[0].MetadataVersion.ShouldBe(1);
     }
 
     [Fact]

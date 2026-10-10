@@ -401,6 +401,22 @@ public class EventStoreAggregateTests : IDisposable {
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{envelope.UserId}:{command.Name}" } });
     }
 
+    private static class FirstCommands {
+        public sealed record SameNameCommand;
+    }
+
+    private static class SecondCommands {
+        public sealed record SameNameCommand;
+    }
+
+    private sealed class CollidingCommandAggregate : EventStoreAggregate<TestState> {
+        public static DomainResult Handle(FirstCommands.SameNameCommand command, TestState? state, CancellationToken cancellationToken)
+            => DomainResult.NoOp();
+
+        public static DomainResult Handle(SecondCommands.SameNameCommand command, TestState? state)
+            => DomainResult.NoOp();
+    }
+
     // --- Test Aggregate with INSTANCE (non-static) Handle methods ---
     private sealed class InstanceHandleAggregate : EventStoreAggregate<TestState> {
         private readonly string _prefix = "instance";
@@ -1388,6 +1404,17 @@ public class EventStoreAggregateTests : IDisposable {
         Assert.Contains("Multiple Handle methods found", ex.Message);
         Assert.Contains("AddItem", ex.Message);
         Assert.Contains("DuplicateHandleAggregate", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DistinctCommandTypesWithSameShortNameRejectBeforeTokenPreference() {
+        var aggregate = new CollidingCommandAggregate();
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() =>
+            aggregate.ProcessAsync(CreateCommand(new FirstCommands.SameNameCommand()), null));
+
+        failure.Message.ShouldContain("distinct command types");
+        failure.Message.ShouldContain(nameof(FirstCommands.SameNameCommand));
     }
 
     // --- R1-A6: MissingApplyMethodException coverage for snapshot-aware EventEnvelope replay ---

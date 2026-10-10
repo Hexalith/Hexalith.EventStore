@@ -115,6 +115,7 @@ public sealed class EventPayloadEvolutionRegistry
 
         string name = eventTypeName;
         JsonObject? json = null;
+        string? lastUpcasterType = null;
         try
         {
             for (int hops = 0; hops < 1024; hops++)
@@ -128,7 +129,16 @@ public sealed class EventPayloadEvolutionRegistry
                         throw Failure(eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
                             $"missing step from {name} version {version}");
                     }
-                    byte[] effective = json is null ? payload : JsonSerializer.SerializeToUtf8Bytes(json, EventStorePayloadSerialization.Options);
+                    byte[] effective;
+                    try
+                    {
+                        effective = json is null ? payload : JsonSerializer.SerializeToUtf8Bytes(json, EventStorePayloadSerialization.Options);
+                    }
+                    catch (Exception error) when (error is not OperationCanceledException)
+                    {
+                        throw Failure(eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
+                            "upcast payload serialization failed", lastUpcasterType, error.GetType().Name);
+                    }
                     if (deferCurrentPayloadValidation && effective.Length > MaximumPayloadBytes)
                     {
                         throw Failure(eventTypeName, storedPayloadVersion ?? 1, sequenceNumber,
@@ -144,6 +154,7 @@ public sealed class EventPayloadEvolutionRegistry
 
                 json ??= ParseObject(payload, eventTypeName, storedPayloadVersion ?? 1, sequenceNumber);
                 string stepType = step.GetType().FullName ?? step.GetType().Name;
+                lastUpcasterType = stepType;
                 try
                 {
                     json = step.Upcast(json)
@@ -167,17 +178,19 @@ public sealed class EventPayloadEvolutionRegistry
 
     private void ValidateRegistration()
     {
-        var keys = new HashSet<(string Name, int Version)>();
+        var admitted = new List<IEventPayloadUpcaster>();
         foreach (IEventPayloadUpcaster step in _steps)
         {
             if (string.IsNullOrWhiteSpace(step.EventTypeName) || step.FromVersion is < 1 or >= 1024)
             {
                 throw new InvalidOperationException($"Upcaster {step.GetType().FullName} has invalid event type or version {step.FromVersion}.");
             }
-            if (!keys.Add((step.EventTypeName, step.FromVersion)))
+            if (admitted.Any(prior => prior.FromVersion == step.FromVersion
+                && NamesMatch(prior.EventTypeName, step.EventTypeName)))
             {
-                throw new InvalidOperationException($"Duplicate upcaster for {step.EventTypeName} version {step.FromVersion}.");
+                throw new InvalidOperationException($"Overlapping upcaster for {step.EventTypeName} version {step.FromVersion}.");
             }
+            admitted.Add(step);
             if (step.TargetEventTypeName is { } target && ResolveType(target, step.FromVersion, 0) is null)
             {
                 throw new InvalidOperationException($"Upcaster {step.GetType().FullName} version {step.FromVersion} targets unknown event type {target}.");
