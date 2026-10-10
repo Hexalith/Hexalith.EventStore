@@ -125,11 +125,7 @@ public static class EventStoreServiceCollectionExtensions {
         Type? stateType = aggregateBase?.GetGenericArguments()[0];
         if (stateType is not null)
         {
-            foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(stateType).ByType.Keys)
-            {
-                evolution.AddKnownType(eventType);
-                evolution.AddAssembly(eventType.Assembly);
-            }
+            evolution.AddApplyEventTypes(stateType);
         }
         services.TryAddScoped<TProcessor>(provider =>
         {
@@ -236,10 +232,7 @@ public static class EventStoreServiceCollectionExtensions {
         foreach (Assembly assembly in assemblies) { evolution.AddAssembly(assembly); }
         foreach (DiscoveredDomain domain in discoveryResult.Aggregates.Concat(discoveryResult.Projections))
         {
-            foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(domain.StateType).ByType.Keys)
-            {
-                evolution.AddKnownType(eventType);
-            }
+            evolution.AddApplyEventTypes(domain.StateType);
         }
 
         // Register DiscoveryResult as singleton

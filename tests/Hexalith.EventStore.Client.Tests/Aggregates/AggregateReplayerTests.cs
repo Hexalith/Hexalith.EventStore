@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.TestContracts;
 using Hexalith.EventStore.Client.Tests.Events;
 using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
@@ -131,6 +132,39 @@ public class AggregateReplayerTests {
         failure.InnerExceptionTypeName.ShouldBe(innerTypeName);
         failure.InnerException.ShouldBeNull();
         failure.Message.ShouldNotContain("secret");
+    }
+
+    [Fact]
+    public void Replay_ConstructorArgumentExceptionReportsDeserializationFailed()
+        => AssertReplayConstructorFailure<ConstructorArgumentEvent>();
+
+    [Fact]
+    public void Replay_ConstructorInvalidOperationExceptionReportsDeserializationFailed()
+        => AssertReplayConstructorFailure<ConstructorInvalidOperationEvent>();
+
+    private static void AssertReplayConstructorFailure<TEvent>()
+        where TEvent : IEventPayload
+    {
+        string name = typeof(TEvent).FullName!;
+        var evolution = new EventPayloadEvolutionRegistry([typeof(TEvent)], []);
+
+        AggregateReconstructionResult result = AggregateReplayer.Replay<ConstructorFailureState>(
+            BuildRequest([BuildEnvelope(1, name, "{\"value\":\"secret\"}")], 1), CancellationToken.None, evolution);
+
+        result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.DeserializationFailed);
+        result.LastAppliedSequenceNumber.ShouldBe(0);
+        result.Message.ShouldNotContain("secret");
+    }
+
+    [Fact]
+    public void Replay_WithoutHostRegistryDiscoversUpcasterInApplyEventAssembly()
+    {
+        ReplayEventEnvelope stored = BuildEnvelope(1, typeof(ExternalVersionedEvent).FullName!, "{\"Amount\":8}");
+
+        AggregateReconstructionResult result = new ExternalEventAggregate().Replay(BuildRequest([stored], 1));
+
+        result.Status.ShouldBe(AggregateReconstructionStatus.Succeeded);
+        System.Text.Json.JsonDocument.Parse(result.StateJson!).RootElement.GetProperty("value").GetInt32().ShouldBe(8);
     }
 
     /// <summary>Checks a versioned later event refuses the complete eligible batch before an earlier Apply can run.</summary>

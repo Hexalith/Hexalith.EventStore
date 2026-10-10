@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.TestContracts;
 
 using Shouldly;
 
@@ -276,6 +277,18 @@ public sealed class EventPayloadEvolutionRegistryTests
         result.EventType.ShouldBe(typeof(VersionTwoTestEvent));
         result.PayloadVersion.ShouldBe(2);
         System.Text.Json.JsonSerializer.Deserialize<VersionTwoTestEvent>(result.Payload)!.Value.ShouldBe(4);
+    }
+
+    [Fact]
+    public void Read_ShortStoredNamePrefersFullNameStepOverLongerHistoricalStep()
+    {
+        var registry = new EventPayloadEvolutionRegistry([typeof(ChainedEvent)],
+            [new ChainedEventCurrentUpcaster(), new ChainedEventHistoricalUpcaster(), new ChainedEventNextUpcaster()]);
+
+        ResolvedEventPayload result = registry.Read(nameof(ChainedEvent), 1, "{\"Value\":4}"u8.ToArray());
+
+        result.EventType.ShouldBe(typeof(ChainedEvent));
+        result.PayloadVersion.ShouldBe(3);
     }
 
     [Fact]

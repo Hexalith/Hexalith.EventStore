@@ -23,7 +23,7 @@ Changes that preserve the meaning and JSON shape consumed by every deployed read
 
 ## Write a pure upcaster
 
-Each `IEventPayloadUpcaster` transforms one version to the next. Register one step for every historical version up to the current declaration. The SDK discovers public and non-public upcasters with parameterless constructors from the assemblies it scans for aggregate and projection types or subscriber contracts. You can also register one explicitly with `AddEventPayloadUpcaster<T>()`. Discovery and explicit registration of the same type count once.
+Each `IEventPayloadUpcaster` transforms one version to the next. Register one step for every historical version up to the current declaration. The SDK discovers public and non-public upcasters with parameterless constructors from the assemblies it scans for aggregate and projection types or subscriber contracts, and from the assemblies that define each aggregate or projection `Apply` event type. You can also register one explicitly with `AddEventPayloadUpcaster<T>()`. Discovery and explicit registration of the same type count once.
 
 A projection handler that consumes `ProjectionEventDto` directly and has no typed `Apply` method can register its consumed event type with `AddKnownEventPayload<T>()`, so the registry validates and upcasts it before the handler runs.
 

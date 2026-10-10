@@ -250,7 +250,7 @@ public static class AggregateReplayer {
                     : JsonDocument.Parse("{}");
                 deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, EventStorePayloadSerialization.Options);
             }
-            catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
+            catch (Exception ex) when (ex is not OperationCanceledException and not EventPayloadEvolutionException) {
                 cancellationToken.ThrowIfCancellationRequested();
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.DeserializationFailed,

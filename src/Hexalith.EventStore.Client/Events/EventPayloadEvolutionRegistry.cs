@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Serialization;
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Registration;
 
 namespace Hexalith.EventStore.Client.Events;
 
@@ -61,26 +62,10 @@ public sealed class EventPayloadEvolutionRegistry
         ArgumentNullException.ThrowIfNull(stateType);
         return s_applyRegistries.GetOrAdd(stateType, static type =>
         {
-            Type[] knownTypes = [.. ApplyMethodResolver.GetOrBuildTable(type).ByType.Keys];
-            IEventPayloadUpcaster[] candidates = [.. DiscoverUpcasters(type.Assembly)];
-            var relevantNames = new HashSet<string>(knownTypes.Select(static known => known.FullName ?? known.Name), StringComparer.Ordinal);
-            var selected = new HashSet<IEventPayloadUpcaster>();
-            bool added;
-            do
-            {
-                added = false;
-                foreach (IEventPayloadUpcaster step in candidates)
-                {
-                    if (!selected.Contains(step) && relevantNames.Any(name => RelevantStepName(name, step.TargetEventTypeName ?? step.EventTypeName)))
-                    {
-                        selected.Add(step);
-                        relevantNames.Add(step.EventTypeName);
-                        added = true;
-                    }
-                }
-            }
-            while (added);
-            return new EventPayloadEvolutionRegistry(knownTypes, selected);
+            var registration = new EventPayloadEvolutionRegistration();
+            registration.AddAssembly(type.Assembly);
+            registration.AddApplyEventTypes(type);
+            return registration.Build();
         });
     }
 
@@ -349,13 +334,6 @@ public sealed class EventPayloadEvolutionRegistry
 
     private static bool StepNameMatchesSubscriptionAlias(string storedName, string stepName)
         => NameMatchTier(storedName, stepName) is 1 or 3;
-
-    private static bool RelevantStepName(string knownName, string stepName)
-    {
-        knownName = ApplyMethodResolver.NormalizeTypeName(knownName);
-        stepName = ApplyMethodResolver.NormalizeTypeName(stepName);
-        return string.Equals(knownName, stepName, StringComparison.Ordinal) || Anchored(knownName, stepName);
-    }
 
     private static bool Anchored(string full, string suffix)
         => full.Length > suffix.Length && full.EndsWith(suffix, StringComparison.Ordinal)

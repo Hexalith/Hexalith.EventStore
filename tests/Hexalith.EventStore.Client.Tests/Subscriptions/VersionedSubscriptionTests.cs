@@ -128,6 +128,23 @@ public sealed class VersionedSubscriptionTests
     }
 
     [Fact]
+    public async Task HostRegisteredSubscriberSkipsUnhandledUpcastContractEvent()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddEventStoreDomainEvents(typeof(ExternalVersionedEvent).Assembly);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventStoreDomainEventProcessor processor = provider.GetRequiredService<EventStoreDomainEventProcessor>();
+        var envelope = new EventStoreDomainEventEnvelope(
+            UniqueIdHelper.GenerateSortableUniqueStringId(), "account-1", "tenant-1",
+            typeof(ExternalVersionedEvent).FullName!, 1, DateTimeOffset.UnixEpoch,
+            "correlation-1", "json", "{\"Amount\":9}"u8.ToArray()) { PayloadVersion = 1 };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.SkippedNoHandlers);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+    }
+
+    [Fact]
     public async Task CurrentVersionStampedEnvelopeReachesHandler()
     {
         var handler = new CapturingHandler();

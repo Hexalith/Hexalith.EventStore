@@ -1149,7 +1149,7 @@ public sealed class ReleasePackageManifestTests
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
-        string[] ignoredProjects = ["tests/Hexalith.EventStore.TestSubscriber"];
+        string[] ignoredProjects = ["tests/Hexalith.EventStore.Client.TestContracts", "tests/Hexalith.EventStore.TestSubscriber"];
         string[] discovered = Directory
             .EnumerateFiles(Path.Combine(root, "tests"), "*.csproj", SearchOption.AllDirectories)
             .Select(path => Path.GetDirectoryName(Path.GetRelativePath(root, path))!.Replace('\\', '/'))

@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Contracts.Events;
 
 namespace Hexalith.EventStore.Client.Registration;
 
@@ -17,6 +18,17 @@ internal sealed class EventPayloadEvolutionRegistration
     internal void AddAssembly(Assembly assembly) => _assemblies.Add(assembly);
 
     internal void AddUpcaster(Type type) => _upcasterTypes.Add(type);
+
+    /// <summary>Adds a state's Apply event payload types and scans the assemblies that define them.</summary>
+    internal void AddApplyEventTypes(Type stateType)
+    {
+        foreach (Type eventType in ApplyMethodResolver.GetOrBuildTable(stateType).ByType.Keys)
+        {
+            if (!typeof(IEventPayload).IsAssignableFrom(eventType)) { continue; }
+            _ = _knownTypes.Add(eventType);
+            _ = _assemblies.Add(eventType.Assembly);
+        }
+    }
 
     internal EventPayloadEvolutionRegistry Build()
     {

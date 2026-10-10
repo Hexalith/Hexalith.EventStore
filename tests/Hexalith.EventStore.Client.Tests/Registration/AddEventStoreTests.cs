@@ -224,6 +224,20 @@ public class AddEventStoreTests : IDisposable {
     }
 
     [Fact]
+    public void AddEventStore_DiscoversUpcasterInApplyEventAssembly() {
+        var services = new ServiceCollection();
+        _ = services.AddEventStore(typeof(SmokeTestProjection).Assembly);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        EventPayloadEvolutionRegistry registry = provider.GetRequiredService<EventPayloadEvolutionRegistry>();
+
+        ResolvedEventPayload result = registry.Read(typeof(ExternalVersionedEvent).FullName!, 1,
+            "{\"Amount\":8}"u8.ToArray());
+        Assert.Equal(typeof(ExternalVersionedEvent), result.EventType);
+        Assert.Equal(2, result.PayloadVersion);
+    }
+
+    [Fact]
     public void AddEventStore_AggregateResolvesAsIDomainProcessor() {
         var services = new ServiceCollection();
 
