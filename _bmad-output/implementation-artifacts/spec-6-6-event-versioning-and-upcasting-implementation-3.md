@@ -2,7 +2,7 @@
 title: 'Story 6.6: Event Versioning And Upcasting Implementation'
 type: 'feature'
 created: '2026-10-09'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '75a08f0069d8c2495d9dff20a0deb84edb6cc638'
 route: 'dispatch'
 review_loop_iteration: 1
@@ -70,6 +70,86 @@ Path shorthand: `Contracts`, `Client`, `DomainService` and `Server` mean the mat
 - Given malformed identity, when appending/reading, then fail with named component before staging/apply; only legacy GUID `MessageId` remains readable.
 - Given a live caller token, when legacy projection, keyed async processor or aggregate Handle runs, then user code gets that token; existing sync contracts still compile.
 - Given a real actor write/read test, when V1 history and a V2 write round-trip through JSON state and domain routing, then persisted/published envelopes, V1 bytes and rehydrated state match expectations.
+
+### Review Findings
+
+Code review 2026-10-10 (`/bmad-code-review 6.6`, Blind Hunter + Edge Case Hunter + Verification Gap + Acceptance Auditor). Scope: `75a08f00..83987f22`, limited to files touched by the Story 6.6 commits `7a2fbcce`, `7e8ad7d0`, `36a99504`, `882a0761`, `83987f22`. The Story 8.4 and governance files swept into `7a2fbcce` were excluded. Totals: 0 decision-needed, 17 patch, 3 defer, 22 rejected.
+
+- [ ] [Review][Patch] (high) Shared projection rebuild admits versioned events but never upcasts them [src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs:233] — `RequireLegacyEvents` (`:889`) now admits `StoredPayloadVersion` 1–1024. `AccumulateAsync` then passes the raw stored `request.Events` to the handler. A version-1 payload of a type declared at version 2 is therefore folded as the new shape. Run the same upcast as `DomainProjectionDispatcher.UpcastRequest`. On `EventPayloadEvolutionException`, fail the accumulate step without advancing. Add a versioned/renamed accumulate test.
+- [ ] [Review][Patch] (high) Subscription fallback deserializes versioned payloads with no upcast and no version check [src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProcessor.cs:192] — this happens when the evolution registry does not know a type but `_eventTypeRegistry` (every `IEventPayload` in the contracts assembly) does. An example is a handler registered directly in DI, as `VersionedSubscriptionTests` does. Stored version-1 (or too-new) bytes are then handled as the current type, against AC5 and deployment-order step 3. When the fallback supplies the type and `(PayloadVersion ?? 1)` differs from `EventPayloadVersionResolver.GetDeclaredVersion(eventType)`, release the marker and return `RetryableCapabilityMismatch`. Add a test.
+- [ ] [Review][Patch] (medium) Registry and registration name matching diverge from `ApplyMethodResolver` [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:251] — `ResolveType` uses bidirectional anchored `NamesMatch` with no precedence and no `NormalizeTypeName`. Because `ReadCore` resolves every known event, even unversioned hosts are affected:
+  - An exact stored `Orders.X` next to a known `Legacy.Orders.X` fails as "ambiguous event type", although Apply resolution binds it exactly.
+  - In subscriptions, a foreign `Billing.Orders.Placed` now binds to a known `Orders.Placed`; it previously matched exactly or was skipped.
+  - Assembly-qualified or generic stored names skip the chain, and `ApplyMethodResolver` then binds the raw bytes.
+  - `EventPayloadEvolutionRegistration.Build` (`EventPayloadEvolutionRegistration.cs:26`) adds short `type.Name` keys. These select an unrelated scanned chain (`Other.Foo` for a known `Ns.Foo`), which then fails startup as dangling.
+
+  Fix: make `ResolveType` follow `ApplyMethodResolver` (exact full name, then exact short name, then the longest suffix where the stored name ends with the key, all after normalization). Keep the symmetric alias match for step lookup. Drop the short names from registration relevance.
+- [ ] [Review][Patch] (medium) `AddEventStoreClient<TProcessor>` disconnects aggregates from the host registry [src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:117] — `services.AddScoped<TProcessor>()` overrides the registry-injecting factory from `AddEventStore`. This is the supported pattern in `AddEventStoreClient_StillWorksAlongsideAddEventStore`, and its keyed aliases resolve that type. Processors registered only this way never receive the registry either. They fall back to `ForApplyState`, which:
+  - ignores `AddEventPayloadUpcaster<T>()` and upcasters outside the state assembly;
+  - validates only on the first command;
+  - throws an untyped `InvalidOperationException` (`AggregateReplayer.cs:73`, outside the typed try; `DomainProcessorStateRehydrator.cs:28`), even for empty streams, and does not cache the failure.
+
+  Fix: register `TProcessor` with `TryAdd` and use a factory that sets `EvolutionRegistry` from `GetService<EventPayloadEvolutionRegistry>()`. Add a DI test that resolves the aggregate and asserts the host registry.
+- [ ] [Review][Patch] (medium) AC2/AC8: no test runs the chain through the SDK command and replay paths, and the end-to-end test does not rehydrate an aggregate [tests/Hexalith.EventStore.Server.Tests/DomainServices/VersionedWireRoundTripTests.cs:29] — `VersionedActorResponseHandler` returns a canned wire result with `PayloadVersion = 2` set by hand. The "state" is the test summing `evolution.Read(...)` outputs. No `EventStoreAggregate`, Apply, `DomainProcessorStateRehydrator`, `AggregateReplayer` or snapshot-embedded case runs with an `[EventPayloadVersion(2)]` event. Add `EventStoreAggregateTests`/`AggregateReplayerTests` cases: version-1 history including a snapshot-embedded event, a rename, and a missing step returning a typed failure. Make the end-to-end response come from a real aggregate through `DomainServiceRequestRouter` and assert the rehydrated aggregate state.
+- [ ] [Review][Patch] (medium) AC1/AC8: producer stamping and positive version-2 passage of relaxed sites are untested [src/Hexalith.EventStore.Contracts/Results/DomainServiceWireResult.cs:55] — every `PayloadVersion == 2` assertion starts from a hand-built `DomainServiceWireEvent`. Deleting the stamp in `FromDomainResult` or `BoundedV1DomainResultProducer.cs:114` would keep every test green. Add producer tests from a typed `[EventPayloadVersion(2)]` event (2 and null), plus positive version-2 cases for:
+  - `DomainServiceRequestRouter.RefuseVersionedReplay`
+  - `BoundedV1WireResultAdmission`
+  - `LegacyCommandReplayJsonAdmission`
+  - `RetainedIdentityHistorySourceReader`
+  - the subscription envelope (only `PayloadVersion = 1` is tested today)
+- [ ] [Review][Patch] (medium) AC4/AC8: startup-validation and chain unit cases are missing [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:179] — only the overlap and incomplete-chain cases are tested. Add:
+  - `FromVersion` 0 and output above 1024
+  - attribute 0/1025
+  - a dangling step and an unknown `TargetEventTypeName`
+  - the same upcaster found by discovery and registered explicitly, counted once (`Build()`)
+  - `EventPayloadEvolutionStartupValidation` failing host start
+  - a null-returning upcaster and a single-step chain
+- [ ] [Review][Patch] (medium) AC6/AC8: identity checks are untested at append and at read chokepoints [src/Hexalith.EventStore.Server/Events/EventPersister.cs:129] — `EventIdentityValidatorTests` covers one write case per component but only the legacy GUID on read. Removing the `EventPersister` call or the `LegacyEventReadGuard.RequireUnversioned` call keeps every test green. Add:
+  - a persister rejection with nothing staged (malformed correlation or causation)
+  - a read-chokepoint rejection (`EventStreamReader`)
+  - one `ValidateForRead` case per component
+- [ ] [Review][Patch] (medium) AC7/AC8: two cancellation seams and the adapter's token forwarding have no token assertions [src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs:163] — add tests that:
+  - the same token instance reaches `Handle(cmd, state, ct)` and `Handle(cmd, state, envelope, ct)`, and the token-aware overload wins;
+  - `GetRequiredKeyedService<IAsyncDomainProcessor>(domain)` resolves after `AddEventStoreClient<T>()` (`EventStoreServiceCollectionExtensions.cs:122`);
+  - `LegacyDomainProjectionHandlerAdapter` (`:54`) and the `/project` endpoint pass the live caller token, using cancel-during-execution or an instance check, not a pre-cancelled token.
+- [ ] [Review][Patch] (low) Rehydration deserialization failures are not typed AC5 errors [src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs:391] — both prepare paths wrap `JsonException` in an `InvalidOperationException` that chains the inner exception and names no version. The null result throws `InvalidOperationException` at `:379` but `EventPayloadEvolutionException` at `:428`. Throw `EventPayloadEvolutionException` with the inner type name only, in both paths (`:391`, `:435`).
+- [ ] [Review][Patch] (low) `EventPayloadEvolutionException.Message` omits the upcaster type and the inner exception type [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionException.cs:9] — `AggregateReplayer` copies only `error.Message` into the reconstruction result, and the subscription warning omits the reason and inner type. The AC5 fields are therefore lost at those boundaries. Append the two type names to the message.
+- [ ] [Review][Patch] (low) The invalid-`FromVersion` startup error names the upcaster CLR type, not the event type [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:186] — AC4 requires the event type and version. Include `step.EventTypeName`.
+- [ ] [Review][Patch] (low) An upcaster that throws `OperationCanceledException` escapes the typed failure [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:163] — upcasters receive no token, so this exception is never request cancellation. Drop the `when` filter on the upcaster catch.
+- [ ] [Review][Patch] (low) Task 1: the retained public compatibility types are not `[Obsolete]`, and the archive README does not record which stay unmarked [src/Hexalith.EventStore.Client/Events/IV1Downserializer.cs:1] — `git grep "\[Obsolete" src` finds nothing.
+  - Mark the types with no remaining internal references obsolete: `IV1Downserializer`, `V1DownserializeResult`, `AuthenticatedRawEvent`, `AuthenticatedRawEventPage`, and both `IAuthenticatedRawEventSource`.
+  - In the README, list the types still referenced by the live opt-in reader and why they stay unmarked: `IEventUpcaster`, `EventUpcastResult`, `IBoundedPayloadWriter`, `IBoundedScratchAllocator`, `IReadOnlyPayload`, `ScratchSpanAction`.
+- [ ] [Review][Patch] (low) Task 1: the `tools/event-evolution-compatibility/` fixtures are orphaned [tools/event-evolution-compatibility/LegacyConsumer/LegacyConsumer.csproj:1] — they belonged to the deleted `verify-event-evolution-compiled-consumer.py` and the removed CI job, and nothing references them now. Delete them with the other script fixtures.
+- [ ] [Review][Patch] (low) The event-versioning doc rewrite dropped guidance that other docs still link to [docs/concepts/event-envelope.md:316] — `event-envelope.md:316` promises "safe/unsafe change classifications". `configuration-reference.md:300` promises "deployment patterns and rollback strategy" at `#domain-service-version-routing`. `upgrade-path.md:48` cites envelope-versioning guidance. The Apply resolution / `AmbiguousApplyMethodException` remediation is now documented nowhere. Restore a short "changes that need no new version" section and the Apply resolution section, or correct the referring sentences. Note: the `upgrade-path.md:174` anchor was already broken at baseline.
+- [ ] [Review][Patch] (low) The deployment steps name "Story 6.6" releases, and the failure surfacing is undocumented [docs/concepts/event-versioning.md:72] — replace the internal story number with release wording. Say how projection failures surface (no checkpoint advance, `/project/v2` returns 500) and how replay failures surface (`UnsupportedVersion`). Name `EventPayloadEvolutionException`.
+- [x] [Review][Defer] (low) Known version-1 events with no step reach projection handlers under the CLR full name instead of the stored name [src/Hexalith.EventStore.Client/Events/EventPayloadEvolutionRegistry.cs:152] — deferred: outside the Story 6.6 ACs (optional, per the owner's scope rule). The name differs only for stored short names or aliases, and the bytes are unchanged.
+- [x] [Review][Defer] (low) The new default method on `IDomainProjectionHandler` makes substitutes configured on the old overload return null [src/Hexalith.EventStore.DomainService/IDomainProjectionHandler.cs:35] — deferred: outside the ACs (optional upgrade note). Real implementations behave unchanged; `ProjectionRebuildProductionHarness` had to be rewritten for this.
+- [x] [Review][Defer] (low) `ProjectionEventWireBuilderTests` uses one constant `MessageId` for every event, despite `7e8ad7d0` claiming distinct IDs [tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionEventWireBuilderTests.cs:107] — deferred: outside the ACs (optional test-hygiene fix).
+
+**Rejected** (one line per finding):
+
+- low — AC4 "a versioned type not serialized as JSON fails startup" (VG/Blind/Auditor): `FromDomainResult`, `BoundedV1DomainResultProducer` and `EventPersister` already refuse the write before anything is stored. Only non-JSON bounded serializers for versioned types reach it, and a startup hook would be new machinery. The AC4 bullet is unmet by design choice; reopen it if you want startup detection.
+- low — a discovered step whose source and target both miss every known name is silently ignored (Blind 5): such a step cannot be told apart from another host's step in a shared assembly; detecting typos needs a new declaration contract.
+- low — double deserialization and linear name scans (Blind 11): this is CPU cost only. The validation pass rejects malformed current JSON before a handler completes (review 1 Edge 5), and caching would be a refactor.
+- low — `/project/v2` upcast failure is an opaque 500 (Blind 12b / Edge 10): it fails closed (no handler runs, no checkpoint moves), and a typed outcome needs a new reason-code mapping.
+- maybe-false/low — `EventIdentityValidationException : ArgumentException` is misclassified as a 400 (Blind 13): stored-event guards run inside the actor, behind remoting, and the owner states no malformed history exists.
+- false — the diff mixes in non-6.6 changes (Blind 17 / Auditor 15): the `ci.yml` timeout and endpoint-inventory tests come from other commits that the file-scoped review diff pulled in. This is not a 6.6 code defect.
+- low — the `VersionedProjectionDispatchTests.CapturingHandler` test double is picked up by assembly scanning (Blind 18): this is test-only, and its token-aware overload returns normally.
+- low — flat legacy JSON history entries hand their metadata to upcasters (Blind 19): this is a legacy entry shape only, and stripping the metadata needs a new parsing rule.
+- false — `FromDomainResult` passes `ISerializedEventPayload` name, bytes and format through (Auditor 12): before 6.6 this input was stored as the wrapper object's own JSON, not as the event. Review 2 Edge 1 already settled the version contract.
+- low — a version-1 known event serialized as non-object JSON now fails validation (Edge 4): this needs a custom converter that writes a scalar event.
+- low — an empty-payload marker fails "invalid JSON" once a step exists (Edge 6): the SDK writers never store empty event bytes.
+- false — the dispatcher without a registry passes payloads raw (Edge 11): `AddEventStoreDomainService` always calls `AddEventStore`, and the Design does not support custom `/project` mappings.
+- false — retaining `StoredPayloadVersion` causes a double upcast (Edge 12): no SDK code re-reads a delivered `ProjectionEventDto` through the registry, and the field is by design the stored version.
+- false — invalid subscription identity is retried forever (Edge 14): AC6 mandates the AC5 retryable disposition.
+- false — a blank `CausationId` is rejected late (Edge 15): AC6 requires a non-blank causation ID, and null still falls back to `CorrelationId`.
+- rejected — stored events that predate the grammar fail on read (Edge 16): this is frozen owner decision B (no legacy exception for correlation or causation), and the fix would edit the spec.
+- false — the public processor constructor throws for version-2 types (Edge 17): `[EventPayloadVersion]` is new, so no caller that worked before can pass one. Throwing without a chain is the fail-closed contract.
+- maybe-false/low — the logical resolver ignores the stamp in favour of the catalog alias version (Edge 18): production pins bind no catalog upcasters, so a stamped event either passes unchanged to the JSON path or fails closed in `RequireChain`.
+- low — the token `Handle` overload overrides an envelope overload (Edge 19): AC7 mandates token-aware preference, and declaring both shapes is rare.
+- low — `GetDomainName` can throw in `AddEventStoreClient<T>` (Edge 20): only degenerate type names trigger it, and `AddEventStore` scanning already rejects them.
+- low — a fractional replay `sequenceNumber` throws `FormatException` (Edge 21): this is corrupt replay JSON, and `metadataVersion` is already read the same way.
+- low — duplicate known `FullName` throws a raw `ArgumentException` (Edge 22): it requires the same type loaded twice in one host.
 
 ## Implementation Notes
 

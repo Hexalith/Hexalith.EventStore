@@ -5725,3 +5725,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
   summary: Bound Dapr state I/O in the Story 8.4 deletion actor completion hooks.
   evidence: `DeletionConsumptionActor` awaits completion-hook state calls without an outer deadline, so an unfinished call can block the actor after its entry timeout.
+
+## Deferred from: code review of spec-6-6-event-versioning-and-upcasting-implementation-3.md (2026-10-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Optional — when no upcaster step runs, deliver a known version-1 event to projection handlers under its stored `EventTypeName` instead of the resolved CLR full name.
+  evidence: Story 6.6 code review (Auditor 11, low, outside the ACs). `EventPayloadEvolutionRegistry.ReadCore` returns `terminal.FullName` for every known type (`EventPayloadEvolutionRegistry.cs:152`), and `DomainProjectionDispatcher.UpcastRequest` copies that name into the DTO. Only stored short names or aliases differ; payload bytes are unchanged.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Optional — add an upgrade note that test substitutes of `IDomainProjectionHandler` must configure `Project(ProjectionRequest, CancellationToken)`.
+  evidence: Story 6.6 code review (Blind 10, low, outside the ACs). The new default interface method is intercepted by NSubstitute/Castle proxies, so a substitute configured only on `Project(ProjectionRequest)` returns null, and the endpoint maps that to 404. `ProjectionRebuildProductionHarness` had to be rewritten for this. Real implementations behave unchanged.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation-3.md`
+  summary: Optional — give each event in `ProjectionEventWireBuilderTests.CreateEnvelope` a distinct ULID `MessageId`.
+  evidence: Story 6.6 code review (Edge 25, low, outside the ACs). Commit `7e8ad7d0` replaced `message-{n}` with the constant `01ARZ3NDEKTSV4RRFFQ69G5FAV` (`ProjectionEventWireBuilderTests.cs:107`), although its message claims distinct IDs. The three-event batches therefore cannot detect per-event `MessageId` mix-ups.
