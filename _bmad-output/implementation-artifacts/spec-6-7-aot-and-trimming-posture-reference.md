@@ -2,7 +2,7 @@
 title: 'Story 6.7: AOT And Trimming Posture Reference'
 type: 'chore'
 created: '2026-10-10'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c7af92d8e96c5a81bd4dc39184a06f96c14fe05a'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -132,6 +132,6 @@ The inventory omissions share one incomplete inventory root cause and were corre
 - Post-review focused build: passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 7 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues.
 - Second review corrections: Contracts.Tests Release build passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 8 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues; page links: 4 OK; `git diff --check`: passed. `bash scripts/validate-docs.sh` remains blocked at Markdown linting by the same 9 issues in the same 5 unchanged files listed above.
 - Current page SHA-256 after second review corrections: `babd1cd1fb70596996417410ddf03eb71a411832f456a21cd01de2877d2cc77d`.
-- Owner review: pending. The owner must review this digest and record a dated `single-maintainer-attested` attestation; this implementation does not claim an independent review.
+- Owner review: `single-maintainer-attested` on 2026-10-10. The owner confirmed "I reviewed it today" in response to the review request for `docs/reference/aot-and-trimming-posture.md` at SHA-256 `babd1cd1fb70596996417410ddf03eb71a411832f456a21cd01de2877d2cc77d`. This is an owner review, not an independent review.
 
 ## Implementation Notes
