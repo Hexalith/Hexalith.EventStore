@@ -84,13 +84,22 @@ public sealed class AotTrimmingPostureTests
         }
     }
 
-    /// <summary>Proves a missing marker stops the guard before evaluating projects.</summary>
+    /// <summary>Proves a missing or displaced marker stops the guard before evaluating projects.</summary>
     [Fact]
-    public void MissingPostureMarkerFailsClosed()
+    public void MissingOrDisplacedPostureMarkerFailsClosed()
     {
-        Exception? failure = Record.Exception(() => AssertPostureMarker("## Reflection Convention Inventory"));
-        Assert.NotNull(failure);
-        Assert.Contains(PostureDocumentPath, failure.Message, StringComparison.Ordinal);
+        string[] invalidPages =
+        [
+            "## Reflection Convention Inventory",
+            $"## Previous Posture\n\n{PostureMarker}\n",
+            $"## Current Posture\n\n```markdown\n{PostureMarker}\n```",
+        ];
+        foreach (string page in invalidPages)
+        {
+            Exception? failure = Record.Exception(() => AssertPostureMarker(page));
+            Assert.NotNull(failure);
+            Assert.Contains(PostureDocumentPath, failure.Message, StringComparison.Ordinal);
+        }
     }
 
     private static void AssertNoCompatibilityClaims(IReadOnlyCollection<string> violations)
@@ -100,8 +109,9 @@ public sealed class AotTrimmingPostureTests
                 + string.Join(Environment.NewLine, violations));
 
     private static void AssertPostureMarker(string text)
-        => Assert.True(text.Contains(PostureMarker, StringComparison.Ordinal),
-            $"The posture marker is missing from {PostureDocumentPath}.");
+        => Assert.True(text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Contains($"\n## Current Posture\n\n{PostureMarker}\n", StringComparison.Ordinal),
+            $"The posture marker is missing from the Current Posture section of {PostureDocumentPath}.");
 
     private static string[] EvaluateViolations(
         string root,

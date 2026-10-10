@@ -87,6 +87,22 @@ context:
 
 ## Review Triage Log
 
+| Layer and finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| Blind: owner review pending | high | Verification still says pending, so the first AC cannot close. Rejected from code triage because its fix is an owner attestation in this spec; keep the review request open. |
+| Blind: Server retained-history deserialization omitted | medium | `RetainedIdentityHistorySourceReader.ReadAsync` deserializes with a runtime `Type`. Patched the JSON inventory row. |
+| Blind: Server governance property walk omitted | medium | `GovernanceScopeGuardOwner.ValidateStrings` calls `GetProperties` and `GetValue` recursively. Patched with a governance inventory row. |
+| Blind: Admin.Server operational reflection omitted | medium | `DaprConsistencyCommandService.TryExtractLong` reads runtime properties. Patched the platform inventory row. |
+| Blind: Admin.Cli JSON serialization omitted | medium | `JsonOutputFormatter` uses `SerializeToNode` with `JsonDefaults.Options` and no generated context. Patched the JSON inventory row. |
+| Blind: Gateway MVC controller discovery omitted | medium | `Gateway.csproj` compiles `src/Hexalith.EventStore/Controllers` and the host maps controllers. Patched the platform inventory row. |
+| Blind: inventory rows can be removed while the document test passes | low | The test checks the required marker and heading, and this AC also requires owner review of the inventory. Rejected: proving full inventory coverage in a test would mirror the document and source. |
+| Blind: marker can appear in historical text | medium | The prior substring check accepted the marker outside Current Posture. Patched the guard to require the marker directly under that heading. |
+| Edge: marker can appear only in a fenced example | medium | The prior substring check accepted a fenced example. Same marker-placement patch; the seeded test now rejects this case. |
+| Edge: an MSBuild evaluation failure hides later claims | false | An evaluation failure already fails the CI guard, and no effective property value exists for that failed project to report. |
+| Edge: running the assembly outside the checkout cannot find the root | low | `FindRepositoryRoot` walks from the current directory, so this manual invocation fails; the documented command and CI run from the checkout root. Rejected: adding another search path for this unsupported invocation would add fallback logic. |
+
+The five inventory omissions share one incomplete inventory root cause and were corrected together. The two displaced-marker findings share one guard root cause and were corrected together.
+
 ## Verification
 
 **Commands:**
@@ -101,7 +117,8 @@ context:
 - `ReleasePackageManifestTests`: 127 passed.
 - `npx markdownlint-cli2 docs/reference/aot-and-trimming-posture.md docs/index.md README.md`: 0 issues. `lychee --config /dev/null docs/reference/aot-and-trimming-posture.md`: 4 links OK. `lychee --config lychee.toml` could not parse line 48 with installed lychee 0.24.2.
 - `bash scripts/validate-docs.sh`: blocked at Markdown linting by 9 issues in 5 unchanged files: `docs/brownfield/architecture.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/guides/deployment-docker-compose.md`, and `docs/guides/trusted-effects.md`.
-- Page SHA-256: `65fd929e99115fd59abccc50358050c9b027ef4b34480cc1d9394dbbb7669e9f`.
+- Page SHA-256 after review fixes: `a3df87f8bdf3d73fc4560738d8659b69dd6d06947f33cad9b207681d62171912`.
+- Post-review focused build: passed with 0 warnings and 0 errors; `AotTrimmingPostureTests`: 7 passed; `ReleasePackageManifestTests`: 127 passed; touched-page markdownlint: 0 issues.
 - Owner review: pending. The owner must review this digest and record a dated `single-maintainer-attested` attestation; this implementation does not claim an independent review.
 
 ## Implementation Notes
