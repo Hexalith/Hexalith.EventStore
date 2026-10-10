@@ -74,34 +74,6 @@ public sealed class EventEvolutionManifestRegistrationTests
             .Registry.GetCurrentVersion("evt").ShouldBe(1);
     }
 
-    /// <summary>Checks supplied local closure while leaving deployment readiness unavailable.</summary>
-    [Fact]
-    public void RegisteredCandidateChecksSuppliedClosureButDoesNotGrantReadiness()
-    {
-        string directory = Path.Combine(Path.GetTempPath(), "event-registry-candidate-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        try
-        {
-            string dependencyFile = Path.Combine(directory, "domain.dll");
-            File.WriteAllBytes(dependencyFile, [1, 2, 3]);
-            ReadOnlyMemory<byte>[] rows = [.. FixtureRows(), DependencyRow(File.ReadAllBytes(dependencyFile))];
-            string fingerprint = Convert.ToHexStringLower(EventRegistryFingerprintCodec.Compute("d", rows));
-            var services = new ServiceCollection();
-            _ = services.AddEventStoreEventEvolutionManifestCandidate("d", rows, fingerprint);
-            using ServiceProvider provider = services.BuildServiceProvider();
-            EventEvolutionManifestCandidate candidate = provider.GetRequiredKeyedService<EventEvolutionManifestCandidate>("d");
-            var root = new EventDependencyIdentity("domain", "managed");
-            EventResolvedDependency[] graph = [new(root, "1.0", "locked", dependencyFile, [])];
-
-            candidate.RequireSuppliedLocalClosure(graph, [root], CancellationToken.None);
-            Should.Throw<InvalidOperationException>(() => candidate.RequireSuppliedLocalClosure(
-                graph, [new EventDependencyIdentity("missing", "managed")], CancellationToken.None));
-            File.WriteAllBytes(dependencyFile, [1, 2, 4]);
-            Should.Throw<InvalidOperationException>(() => candidate.RequireSuppliedLocalClosure(graph, [root], CancellationToken.None));
-        }
-        finally { Directory.Delete(directory, recursive: true); }
-    }
-
     private static ReadOnlyMemory<byte>[] FixtureRows()
     {
         Dictionary<string, string> fixture = JsonSerializer.Deserialize<Dictionary<string, string>>(

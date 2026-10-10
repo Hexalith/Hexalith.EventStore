@@ -38,14 +38,6 @@ public static class DomainServiceRequestRouter {
         return await ProcessCoreAsync(serviceProvider, request, null, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Routes only privately verified completed logical state through the actual owner's current authority.</summary>
-    internal static async Task<DomainServiceWireResult> ProcessCompletedLogicalAsync(IServiceProvider serviceProvider,
-        DomainServiceRequest request, PrivateLogicalCommandState completed, CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(serviceProvider); ArgumentNullException.ThrowIfNull(request); ArgumentNullException.ThrowIfNull(completed);
-        object state = await completed.AdmitAsync(request, cancellationToken).ConfigureAwait(false);
-        return await ProcessCoreAsync(serviceProvider, request with { Command = completed.Command, CurrentState = state }, completed.RequireCurrentAsync, cancellationToken, completed.Budget, completed.RequireStateGraphAsync).ConfigureAwait(false);
-    }
-
     private static async Task<DomainServiceWireResult> ProcessCoreAsync(IServiceProvider serviceProvider,
         DomainServiceRequest request, Func<CancellationToken, Task>? fence, CancellationToken cancellationToken, EventBufferBudget? budget = null, Func<object, CancellationToken, Task>? stateFence = null) {
         async Task RequireCurrentAsync() {

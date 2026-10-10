@@ -36,7 +36,7 @@ internal sealed class EventUpcastChainExecutor
         _requireVersionBindings = requireVersionBindings;
         foreach (((string type, int source), RegisteredEventUpcaster binding) in _upcasters)
         {
-            binding.RequireDescriptor(registry.GetEdge(type, source), registry.CapabilityLoss);
+            binding.RequireDescriptor(registry.GetEdge(type, source));
         }
     }
 
@@ -101,7 +101,7 @@ internal sealed class EventUpcastChainExecutor
                         cancellationToken.ThrowIfCancellationRequested();
                         _registry.RequireActive(cancellationToken);
                         _registry.CapabilityLoss.RequireNoObservedLoss();
-                        binding.RequireDescriptor(edge, _registry.CapabilityLoss);
+                        binding.RequireDescriptor(edge);
                         if (!CryptographicOperations.FixedTimeEquals(before, owned.ComputeSha256()))
                         {
                             throw new InvalidOperationException("UpcasterContractViolation: immutable input changed during invocation.");
@@ -179,7 +179,7 @@ internal sealed class EventUpcastChainExecutor
 
         for (int version = sourceVersion; version < current; version++)
         {
-            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version), _registry.CapabilityLoss);
+            GetBinding(canonicalType, version).RequireDescriptor(_registry.GetEdge(canonicalType, version));
         }
 
         return current;

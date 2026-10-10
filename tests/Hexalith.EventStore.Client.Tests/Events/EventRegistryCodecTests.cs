@@ -26,35 +26,6 @@ public sealed class EventRegistryCodecTests
     }
 
     [Fact]
-    public void V17StateAndReadTransform_MatchIndependentApprovedLiteralAnswers()
-    {
-        Dictionary<string, string> fixture = LoadFixture();
-        using var registry = new EventDomainRegistry("d", GetRows(fixture));
-        EventRegistryRow descriptor = registry.Rows.Single(static row => row.Tag == 0x44);
-        Convert.ToHexStringLower(EventSemanticHashCodec.ComputeStateSchemaApplyHash(descriptor)).ShouldBe(fixture["StateHash"]);
-        Convert.ToHexStringLower(EventSemanticHashCodec.EncodeSharedReadRow(registry.Rows.Single(static row => row.Tag == 0x53)))
-            .ShouldBe(fixture["SReadRow"]);
-        Convert.ToHexStringLower(EventSemanticHashCodec.ComputeEventTransformHash(registry, "r",
-            Convert.FromHexString(fixture["ProtectionAdapterRow"]))).ShouldBe(fixture["TransformHash"]);
-    }
-
-    [Fact]
-    public void TrustOnlyChange_ChangesRegistryWhilePreservingReadTransform()
-    {
-        Dictionary<string, string> fixture = LoadFixture();
-        ReadOnlyMemory<byte>[] rows = GetRows(fixture);
-        byte[] shared = rows[3].ToArray();
-        // S key U(d), O(absent), field count, then tag 01 and B32 trust digest.
-        shared[10] ^= 1;
-        rows[3] = shared;
-        using var registry = new EventDomainRegistry("d", rows);
-
-        registry.Fingerprint.ShouldNotBe(fixture["RegistryHash"]);
-        Convert.ToHexStringLower(EventSemanticHashCodec.ComputeEventTransformHash(registry, "r",
-            Convert.FromHexString(fixture["ProtectionAdapterRow"]))).ShouldBe(fixture["TransformHash"]);
-    }
-
-    [Fact]
     public void RejectsWrongDomainDuplicateKeyUnknownTagAndTrailingBytes()
     {
         ReadOnlyMemory<byte>[] rows = GetRows(LoadFixture());

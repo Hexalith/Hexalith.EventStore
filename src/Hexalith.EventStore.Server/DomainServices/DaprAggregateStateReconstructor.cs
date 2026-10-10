@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Security.Cryptography;
-using System.Text;
 
 using Dapr.Client;
 
@@ -272,109 +270,6 @@ public sealed class DaprAggregateStateReconstructor(
                 includeTimeline,
                 requestId,
                 cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>Runs dormant event-only fixed-head reconstruction through canonical state/page/final participant readback.</summary>
-    /// <remarks>Supplied local owners and keys establish no serving registration, command-state or snapshot authority.</remarks>
-    internal static async Task<AggregateReconstructionResult> ReconstructAddressedAsync(AggregateIdentity identity,
-        string aggregateType, DaprLogicalReplaySource source, DaprLogicalSourceBinding binding,
-        DaprLogicalClaimTrust trust, ECDsa signingKey, DaprReplayOperationOwner operation, string ownerId,
-        string requestId, int pageSize, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
-        if (binding.Identity != identity || binding.AggregateType != aggregateType || !operation.HasReconstructionBinding)
-        {
-            return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Conflict, "Logical replay scope or canonical binding differs.")
-                with
-            {
-                ReasonCode = "ReplayRestartRequired"
-            };
-        }
-        try
-        {
-            using DaprReplayOperationResult begin = await operation.BeginAsync(source, binding, trust, ownerId, null, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (begin.Outcome != DaprReplayCommitOutcome.Proven || begin.ResponseUnavailable)
-            {
-                return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Hold, "Canonical replay admission is unavailable.")
-                    with
-                {
-                    ReasonCode = "ReplayRestartRequired"
-                };
-            }
-            for (long ordinal = 1; ordinal <= 65536; ordinal++)
-            {
-                using DaprReplayOperationResult page = await operation.ExecutePageAsync(source, binding, trust, signingKey,
-                    ownerId, begin.Generation, ordinal, requestId, pageSize, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                if (page.Outcome != DaprReplayCommitOutcome.Proven || page.Response is null || page.CanonicalState is null)
-                {
-                    return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Hold, "Canonical replay readback is unavailable.")
-                        with
-                    {
-                        ReasonCode = "ReplayRestartRequired"
-                    };
-                }
-                if (page.IsComplete)
-                {
-                    await source.RequireCurrentAsync(binding, trust, cancellationToken).ConfigureAwait(false);
-                    string json = new UTF8Encoding(false, true).GetString(page.CanonicalState.Bytes.Span);
-                    operation.RequireReconstructionCurrent(binding, cancellationToken);
-                    await source.RequireCurrentAsync(binding, trust, cancellationToken).ConfigureAwait(false);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    trust.RequireCurrent(cancellationToken);
-                    return AggregateReconstructionResult.Succeeded(json, binding.TargetSequence);
-                }
-            }
-            return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Limit, "Canonical replay exceeds the operation page limit.") with
-            {
-                ReasonCode = "ProofLimit"
-            };
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (DaprLogicalReplayApplyException exception)
-        {
-            return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.ApplyFailed,
-                "Apply failed; the canonical replay page did not commit.", exception.Sequence, exception.CanonicalType)
-                with
-            {
-                ReasonCode = "ApplyFailed"
-            };
-        }
-        catch (Exception exception) when (exception is JsonException or ArgumentException)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Conflict,
-                "Canonical replay bytes or codec are invalid.") with
-            {
-                ReasonCode = "ReplayRestartRequired"
-            };
-        }
-        catch (InvalidOperationException exception)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (exception.Message.StartsWith("ProofLimit:", StringComparison.Ordinal)
-                || exception.Message.StartsWith("ScratchLimit:", StringComparison.Ordinal)
-                || exception.Message.StartsWith("ReadableLimit:", StringComparison.Ordinal))
-            {
-                return AggregateReconstructionResult.Failed(AggregateReconstructionErrorCategory.Limit,
-                    "Canonical replay exceeds its admitted bounded capacity.") with
-                {
-                    ReasonCode = "ProofLimit"
-                };
-            }
-            bool apply = exception.Message.StartsWith("ApplyFailed:", StringComparison.Ordinal);
-            return AggregateReconstructionResult.Failed(apply ? AggregateReconstructionErrorCategory.ApplyFailed : AggregateReconstructionErrorCategory.Hold,
-                apply ? "Apply failed; the canonical replay page did not commit." : "Canonical replay evidence is unavailable.")
-                with
-            {
-                ReasonCode = apply ? "ApplyFailed" : "ReplayRestartRequired"
-            };
         }
     }
 

@@ -2,8 +2,7 @@ namespace Hexalith.EventStore.Client.Events;
 
 /// <summary>Owns a validated, caller-pinned domain manifest before any readiness decision.</summary>
 /// <remarks>
-/// A caller-supplied graph check cannot establish the complete reviewed catalog, immutable execution
-/// binding, loader observations or deployment authority.
+/// A caller-supplied graph check cannot establish the complete reviewed catalog or deployment authority.
 /// </remarks>
 internal sealed class EventEvolutionManifestCandidate : IDisposable
 {
@@ -35,13 +34,6 @@ internal sealed class EventEvolutionManifestCandidate : IDisposable
 
     /// <summary>Gets the caller-supplied registry pin. It is not a provider attestation.</summary>
     internal string PinnedFingerprint { get; }
-
-    /// <summary>Checks a supplied local dependency graph without advertising registry readiness.</summary>
-    internal void RequireSuppliedLocalClosure(
-        IReadOnlyList<EventResolvedDependency> resolvedGraph,
-        IReadOnlyList<EventDependencyIdentity> executedRoots,
-        CancellationToken cancellationToken)
-        => EventDependencyClosureVerifier.RequireResolvedGraph(Registry, resolvedGraph, executedRoots, cancellationToken);
 
     /// <inheritdoc/>
     public void Dispose() => Registry.Dispose();

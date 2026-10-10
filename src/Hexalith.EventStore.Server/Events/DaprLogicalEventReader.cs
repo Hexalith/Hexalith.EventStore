@@ -20,15 +20,6 @@ internal sealed class DaprLogicalEventReader
     private readonly EventLogicalViewResolver _resolver;
     private readonly int _maximumReadablePageBytes;
 
-    /// <summary>Uses the same composed registry, validators, transforms and current deserializers for addressed logical pages.</summary>
-    internal DaprLogicalEventReader(IActorStateManager stateManager,
-        IEventPayloadProtectionService protection, EventEvolutionService evolution,
-        int maximumReadablePageBytes = 64 * 1024 * 1024)
-        : this(stateManager, protection,
-            (evolution ?? throw new ArgumentNullException(nameof(evolution))).Resolver, maximumReadablePageBytes)
-    {
-    }
-
     /// <summary>Creates the shared actor-state logical reader without provider-specific access.</summary>
     internal DaprLogicalEventReader(IActorStateManager stateManager,
         IEventPayloadProtectionService protection, EventLogicalViewResolver resolver,
@@ -299,7 +290,7 @@ internal sealed class DaprLogicalEventReader
         long startSequence, int maxCount, CancellationToken cancellationToken,
         long? expectedActorHead = null, long? expectedRetainedFloor = null, EventBufferBudget? sharedBudget = null,
         bool requireUnversioned = false, LegacyEventArrayBudget? arrayBudget = null,
-        DaprLogicalSourceBinding? expectedSourceBinding = null, Func<CancellationToken, Task>? sourceFence = null)
+        Func<CancellationToken, Task>? sourceFence = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
@@ -314,10 +305,6 @@ internal sealed class DaprLogicalEventReader
         ConditionalValue<AggregateMetadata> before = await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
         long head = before.HasValue ? before.Value.CurrentSequence : 0;
         long floor = before.HasValue ? before.Value.RetainedFloor : 1;
-        if (expectedSourceBinding is not null)
-        {
-            RequireBindingMetadata(identity, aggregateType, expectedSourceBinding, before);
-        }
         if (head < 0 || floor < 1 || (head > 0 && floor > head && floor - head > 1)
             || (head == 0 && floor != 1)
             || (expectedActorHead.HasValue && expectedActorHead.Value != head)
@@ -330,7 +317,7 @@ internal sealed class DaprLogicalEventReader
             throw new InvalidOperationException("ReplayRestartRequired: the requested prefix is below the retained floor.");
         }
 
-        long target = expectedSourceBinding?.TargetSequence ?? head;
+        long target = head;
         int count = startSequence > target ? 0 : (int)Math.Min(maxCount, target - startSequence + 1);
         var views = new DaprLogicalEventView[count];
         var prepared = new DaprLogicalEventPreparation[count];
@@ -345,7 +332,7 @@ internal sealed class DaprLogicalEventReader
                 DaprLogicalEventPreparation input = await PrepareCoreAsync(identity, startSequence + index,
                     cancellationToken, aggregateType, budget,
                     128L * 1024 * 1024 - storedBytes, _maximumReadablePageBytes - readableBytes,
-                    requireUnversioned, arrayBudget, computeApplicationLogicalDigest: expectedSourceBinding is not null).ConfigureAwait(false);
+                    requireUnversioned, arrayBudget).ConfigureAwait(false);
                 prepared[index] = input;
                 storedBytes = checked(storedBytes + input.Source.Payload.Length);
                 if (storedBytes > 128L * 1024 * 1024)
@@ -429,28 +416,6 @@ internal sealed class DaprLogicalEventReader
         {
             throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during the logical page read.");
         }
-    }
-
-    /// <summary>Rechecks the fixed source and shared capability after catalog calls and before signing/return.</summary>
-    internal async Task RequireSourceBindingAsync(DaprLogicalSourceBinding binding, CancellationToken cancellationToken)
-    {
-        _resolver.RequireNoObservedLoss(cancellationToken);
-        ConditionalValue<AggregateMetadata> metadata = await ReadMetadataAsync(binding.Identity, cancellationToken).ConfigureAwait(false);
-        RequireBindingMetadata(binding.Identity, binding.AggregateType, binding, metadata);
-        _resolver.RequireNoObservedLoss(cancellationToken);
-    }
-
-    private static void RequireBindingMetadata(AggregateIdentity identity, string aggregateType,
-        DaprLogicalSourceBinding binding, ConditionalValue<AggregateMetadata> metadata)
-    {
-        long head = metadata.HasValue ? metadata.Value.CurrentSequence : 0;
-        long floor = metadata.HasValue ? metadata.Value.RetainedFloor : 1;
-        string? etag = metadata.HasValue ? metadata.Value.ETag : null;
-        DateTimeOffset modified = metadata.HasValue ? metadata.Value.LastModified : DateTimeOffset.UnixEpoch;
-        if (binding.MetadataPresent != metadata.HasValue || binding.Identity != identity || binding.AggregateType != aggregateType || binding.ActorHead != head
-            || binding.RetainedFloor != floor || floor != 1 || binding.TargetSequence < 0 || binding.TargetSequence > head
-            || binding.MetadataETag != etag || binding.MetadataLastModified.UtcTicks != modified.UtcTicks
-            || binding.MetadataLastModified.Offset != modified.Offset) { throw new InvalidOperationException("SourceHeadChanged: fixed logical source binding disagrees with actor readback."); }
     }
 
     private static EventEnvelope SnapshotMetadata(EventEnvelope source, out int metadataBytes)

@@ -23,13 +23,6 @@ public sealed partial class SecretsProtectionTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/source-candidate.diff";
     private const string SealedP1RRemediationSourceCaptureSha256 =
         "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa";
-    private const string SealedCounterSerializationTestResults =
-        "_bmad-output/implementation-artifacts/evidence/story-6-6/counter-v1-serialization-2026-10-07/sample-full.xml";
-    private const string SealedCounterSerializationTestResultsSha256 =
-        "cd94c23807386ef2a245b9f7e81e5243a36b00449de3d19579484989afa82622";
-
-    private const string RetiredCallbackOtlpCapture = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-callback-fences-2026-10-08/story66-callback-aspire-baseline.json";
-    private const string RetiredCommandStateOtlpCapture = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/earlier-attempts/story66-command-state-aspire-baseline.json";
 
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
@@ -658,27 +651,6 @@ public sealed partial class SecretsProtectionTests
         => FindViolations(SealedP1RRemediationSourceCapture)
             .ShouldBe([SealedP1RRemediationSourceCapture + ":2590"]);
 
-    [Fact]
-    public void SealedCounterSerializationResults_ExemptionRequiresExactPathAndContent()
-    {
-        IsExplicitGeneratedPath(SealedCounterSerializationTestResults).ShouldBeTrue();
-        IsExplicitGeneratedPath(SealedCounterSerializationTestResults + ".orig").ShouldBeFalse();
-        IsExplicitGeneratedPath("tools/sample-full.xml").ShouldBeFalse();
-        string fullPath = Path.Combine(RepoRoot, SealedCounterSerializationTestResults);
-        if (File.Exists(fullPath))
-        {
-            ReadTrackedText(SealedCounterSerializationTestResults).ShouldBeNull();
-            byte[] bytes = File.ReadAllBytes(fullPath);
-            Should.Throw<ShouldAssertException>(() => VerifySealedCounterSerializationTestResults([.. bytes, (byte)'\n']));
-            FindViolations(SealedCounterSerializationTestResults).ShouldBe([SealedCounterSerializationTestResults + ":1"]);
-        }
-        else
-        {
-            GetTrackedFiles().ShouldNotContain(SealedCounterSerializationTestResults);
-            Should.Throw<ShouldAssertException>(() => VerifySealedCounterSerializationTestResults([0]));
-        }
-    }
-
     /// <summary>Only empty framework cancellation sources in executable C# are noncredential expressions.</summary>
     [Theory]
     [InlineData(".cs", "CancellationTokenSource")]
@@ -739,23 +711,6 @@ public sealed partial class SecretsProtectionTests
         string changed = line.Replace("=", "= \"" + RandomSecret() + "\" +", StringComparison.Ordinal);
         FindViolations(path, changed).ShouldNotBeEmpty();
         FindViolations(path, line + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":2"]);
-    }
-
-    /// <summary>Historical cancellation fixtures retain executable-source classification without seal changes.</summary>
-    [Fact]
-    public void HistoricalCancellationFixtures_RemainScannedAsSource()
-    {
-        const string path = "_bmad-output/implementation-artifacts/evidence/story-6-6/dapr-logical-command-state-2026-10-08/owned-source-snapshot/tests/Hexalith.EventStore.Server.Tests/Events/DaprLogicalCommandStateTests.cs";
-        if (File.Exists(Path.Combine(RepoRoot, path)))
-        {
-            FindViolations(path).ShouldBeEmpty();
-        }
-        else
-        {
-            GetTrackedFiles().ShouldNotContain(path);
-            FindViolations(path, "using var cancellation = new CancellationTokenSource();").ShouldBeEmpty();
-        }
-        FindViolations(path, Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":1"]);
     }
 
     /// <summary>Only the exact known synthetic name in valid TRX test metadata is recognized.</summary>
@@ -892,28 +847,19 @@ public sealed partial class SecretsProtectionTests
         FindViolations(path, content + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldNotBeEmpty();
     }
 
-    /// <summary>Candidate receipts and sanitized replacements are scanned even before Git tracks them.</summary>
+    /// <summary>Candidate receipts are scanned even before Git tracks them.</summary>
     [Fact]
-    public void DatedCandidateReportsAndSanitizedCaptures_AreScannedDirectly()
+    public void DatedCandidateReports_AreScannedDirectly()
     {
         string receipts = Path.Combine(RepoRoot, "_bmad-output/implementation-artifacts/evidence/story-8-3");
         string[] reports = Directory.GetFiles(receipts, "*.trx.xml", SearchOption.AllDirectories);
         reports.ShouldNotBeEmpty();
-        string[] captures =
-        [
-            "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-callback-aspire-baseline.json",
-            "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-command-state-aspire-baseline.json",
-        ];
-        string[] datedDirectories =
-        [
-            Path.Combine(receipts, "closure-2026-10-09"),
-            Path.Combine(RepoRoot, "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09"),
-        ];
+        string[] datedDirectories = [Path.Combine(receipts, "closure-2026-10-09")];
         IEnumerable<string> metadata = datedDirectories.Where(Directory.Exists).SelectMany(directory =>
             Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
                 .Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
                     || path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)));
-        foreach (string path in reports.Concat(metadata).Select(path => Path.GetRelativePath(RepoRoot, path).Replace('\\', '/')).Concat(captures).Distinct(StringComparer.Ordinal))
+        foreach (string path in reports.Concat(metadata).Select(path => Path.GetRelativePath(RepoRoot, path).Replace('\\', '/')).Distinct(StringComparer.Ordinal))
         {
             if (File.Exists(Path.Combine(RepoRoot, path)))
             {
@@ -924,23 +870,6 @@ public sealed partial class SecretsProtectionTests
                 GetTrackedFiles().ShouldNotContain(path);
             }
         }
-    }
-
-    /// <summary>Only the two owner-authorized OTLP originals are eligible for governed retirement.</summary>
-    [Fact]
-    public void OtlpRetirementEligibility_IsLimitedToExactOriginalPaths()
-    {
-        foreach (string path in new[] { RetiredCallbackOtlpCapture, RetiredCommandStateOtlpCapture })
-        {
-            IsGovernedRetirementPath(path).ShouldBeTrue();
-            IsExplicitGeneratedPath(path).ShouldBeFalse();
-            IsGovernedRetirementPath(path + ".orig").ShouldBeFalse();
-            IsGovernedRetirementPath(path.Replace("2026-10-08", "2026-10-09", StringComparison.Ordinal)).ShouldBeFalse();
-            // Path eligibility alone never removes credential detection from the raw capture.
-            FindViolations(path, Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":1"]);
-        }
-        IsGovernedRetirementPath("_bmad-output/implementation-artifacts/evidence/story-6-6/arbitrary.json").ShouldBeFalse();
-        IsGovernedRetirementPath("_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/story66-callback-aspire-baseline.json").ShouldBeFalse();
     }
 
     [Theory]
@@ -1665,11 +1594,6 @@ public sealed partial class SecretsProtectionTests
             {
                 VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
             }
-            else if (string.Equals(path, SealedCounterSerializationTestResults, StringComparison.Ordinal))
-            {
-                VerifySealedCounterSerializationTestResults(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
-            }
-
             return null;
         }
 
@@ -1774,9 +1698,7 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsGovernedRetirementPath(string path)
         => GovernedEvidenceCapturePathPattern().IsMatch(path)
-            || OwnerApprovedProofPacketPathPattern().IsMatch(path)
-            || string.Equals(path, RetiredCallbackOtlpCapture, StringComparison.Ordinal)
-            || string.Equals(path, RetiredCommandStateOtlpCapture, StringComparison.Ordinal);
+            || OwnerApprovedProofPacketPathPattern().IsMatch(path);
 
     private static bool HasKnownBinarySignature(ReadOnlySpan<byte> bytes)
     {
@@ -1798,13 +1720,7 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsExplicitGeneratedPath(string path)
         => ExplicitUiTestArtifactPathPattern().IsMatch(path)
-            || ExplicitEvidenceArtifactPathPattern().IsMatch(path)
-            || string.Equals(path, SealedCounterSerializationTestResults, StringComparison.Ordinal);
-
-    private static void VerifySealedCounterSerializationTestResults(byte[] bytes)
-        => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant().ShouldBe(
-            SealedCounterSerializationTestResultsSha256,
-            "The sealed serialization test results changed; their scan exemption no longer applies.");
+            || ExplicitEvidenceArtifactPathPattern().IsMatch(path);
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
