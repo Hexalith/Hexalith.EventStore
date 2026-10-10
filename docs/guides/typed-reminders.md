@@ -487,9 +487,9 @@ For those credential denials, check `StatusCode` and `Reason`. For a `401`, a
 `channel-*` reason points to EventStore's own `APP_API_TOKEN` and its sidecar;
 for `channel-token-missing` or `channel-token-invalid`, also check that the
 submitter uses Dapr service invocation rather than a direct gateway call.
-The documented service invocation sends the submitter's `DAPR_API_TOKEN` to
-its sidecar, which presents EventStore's app-channel credential to the gateway.
-A direct gateway call presents the submitter's `DAPR_API_TOKEN` (or no token),
+In the documented service invocation, the submitter sends its `DAPR_API_TOKEN`
+to its own sidecar, which relays the call to EventStore's sidecar; EventStore's
+sidecar then presents EventStore's `APP_API_TOKEN` to the gateway. A direct gateway call presents the submitter's `DAPR_API_TOKEN` (or no token),
 which EventStore rejects. Route through Dapr service invocation rather than
 aligning the tokens.
 `verifier-unconfigured` points to EventStore's `Authentication:JwtBearer` and
@@ -503,9 +503,9 @@ client `azp` for `caller-not-allowed`, the `gatewayAudience` passed to
 `AddEventStoreTrustedEffectWorkloadAssertion` for `audience-invalid`, and the
 assertion issuer and signing algorithm for `issuer-invalid` and
 `algorithm-invalid`. In symmetric mode (Development, or a non-Production
-environment with `AllowInsecureSymmetricKey=true`), compare the submitter's
-`Authentication:JwtBearer` issuer with EventStore's issuer for
-`issuer-invalid`. For `algorithm-invalid`, check that the submitter and
+environment with `Authentication:JwtBearer:AllowInsecureSymmetricKey=true`),
+compare the submitter's `Authentication:JwtBearer` issuer with EventStore's
+issuer for `issuer-invalid`. For `algorithm-invalid`, check that the submitter and
 EventStore use the same signing mode; a symmetric submitter always signs
 `HS256`. A mismatched symmetric signing key yields `signature-invalid`.
 In authority mode, compare the external authority's issuer and signing mode
