@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-09
+# last_updated: 2026-10-10
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-10-09'
+last_updated: '2026-10-10'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -309,7 +309,7 @@ development_status:
   # groups 2-6 remain for follow-up review; Stories 8.4-8.11 remain predecessor/evidence gated.
   8-2-payload-protection-contracts-and-golden-vectors: done
   8-3-pdenc-v2-core-cryptographic-engine: done
-  8-4-compatibility-readers-and-mixed-history-routing: review
+  8-4-compatibility-readers-and-mixed-history-routing: done
   8-5-policy-and-key-lifecycle-mechanics: backlog
   8-6-azure-key-vault-production-adapter-conformance: backlog
   8-7-server-persistence-and-snapshot-integration: backlog

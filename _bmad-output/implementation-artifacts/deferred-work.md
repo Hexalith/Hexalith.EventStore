@@ -5704,3 +5704,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
   summary: Reconfirmed (EC5/EC7): legacy `json`/`json-redacted` events and legacy snapshots beyond the core JSON bounds become `BytesMetadataMismatch`.
   evidence: Story 8.4 review pass 3 reproduced the stop with a 70,000-element legacy array. The existing pass-1 entry above (stored legacy-history bounds scan before Story 8.7) covers it, so no new work is needed.
+
+## Deferred from: code review of spec-8-4-compatibility-readers-and-mixed-history-routing.md (2026-10-10, pass 9)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-4-compatibility-readers-and-mixed-history-routing.md`
+  summary: When Story 8.7 passes live request tokens into the compatibility router, pin the v1 legacy-reader foreign-cancellation filters at `PayloadCompatibilityRouter.cs:401` (event) and `:519` (snapshot) with a live, uncancelled caller token and a reader that throws `OperationCanceledException` carrying an already-cancelled foreign token, expecting `RegisteredV1` / `ProviderUnavailable`.
+  evidence: Story 8.4 review pass 9 (VG1, BH1, low, optional). `V111_ReaderForeignCancellation_MapsToProviderUnavailableAsync` throws a token-less exception with `CancellationToken.None`, and no v1 snapshot test throws a foreign cancellation. At `:401`, `when (cancellationToken.CanBeCanceled)` and `when (oce.CancellationToken.IsCancellationRequested)` pass 635/635; at `:519` those two mutants and removing the filter also pass. With live tokens, a stray cancellation inside the parties-pdenc-v1 reader could then abort a stream or snapshot load instead of returning `ProviderUnavailable`. The pass-7 fix closed the same gap for the v2 snapshot deserializer filter at `:479`.

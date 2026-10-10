@@ -274,6 +274,30 @@ Scope: the pass-5 fix delta `9ebccd38` only (152 diff lines); the owner chose de
   - The "one bounded unreadable reason" wording on `ReadSnapshotAsync` already covers `ConsistencyMismatch`.
   - The summary of `V119_EmptyStream_IsReadableAsync` accurately describes its uncancelled scenario.
 
+#### Pass 9 (2026-10-10)
+
+Scope: the pass-7 fix delta `bc3a8dd8` only (`src/` and `tests/`, 181 diff lines, test-only). Pass 8 was build-internal. Layers: blind hunter (BH), edge-case hunter (EC), verification gap (VG), acceptance auditor (AA). 15 raw findings: 0 decision, 0 patch, 1 defer, 13 rejected. The auditor found no acceptance-criterion violation: Release build 0 warnings, 635/635 passing, zero skips. Three reviewers ran mutants independently. Each of the four pass-7 survivors (router `:164`, `:365`, both `:479` filter mutants, and the classifier `:87`/`:92` swap) now fails exactly its intended new test, as do token-less throws at `:164` and `:367`.
+
+- [x] [Review][Defer] The v1 legacy-reader foreign-cancellation filters are still tested with a token-less exception and `CancellationToken.None` (VG1, BH1) [src/Hexalith.EventStore.PayloadProtection/PayloadCompatibilityRouter.cs:401] — deferred: pre-existing and outside the ACs. `V111_ReaderForeignCancellation_MapsToProviderUnavailableAsync` predates the delta, and no v1 snapshot test throws a foreign cancellation. At `:401` the mutants `when (cancellationToken.CanBeCanceled)` and `when (oce.CancellationToken.IsCancellationRequested)` pass 635/635; at `:519` those two mutants and removing the filter also pass. The router has no production consumer yet. Story 8.7, which first passes live request tokens, owns the two pins (see deferred-work).
+
+##### Rejected (pass 9)
+
+- BH2, BH3 (`low`): four older cancellation tests accept any `OperationCanceledException`. They are `V118_CancellationAfterUnreadableV2CoreCompletion_PropagatesAsync`, `V113_CancellationAfterCoreCompletion_ClearsOutputAsync`, the `cancellation` row of `V118_V2SnapshotPlaintext_IsZeroedForEveryOutcomeAsync`, and the pre-cancelled `V119_PrevalidationObservesCancellationAsync`.
+  - Every one of those router sites throws through `cancellationToken.ThrowIfCancellationRequested()`. A regression to a token-less throw changes only the token carried, and no caller compares it.
+  - Sweeping the assertion across older tests extends coverage rather than correcting a defect.
+- EC1, BH5 (`low`): when the caller is already cancelled and a v1 reader or converter raises its own `OperationCanceledException`, it propagates with the component's token. The rethrow happens at `:401` and `:519` (`throw;`), and at `:479`, where the filter is false.
+  - The caller still receives cancellation, so only the token's identity differs.
+  - Normalizing it would add catch branches for a rare race.
+- EC2 (`low`, pre-existing): `ReadStreamAsync` re-reads `records[index]` after prevalidation, so a non-idempotent `IReadOnlyList` indexer could route records that skipped validation.
+  - The method is internal. Its only future caller (Story 8.7) passes materialized history, and this is not a trust boundary.
+  - A defensive copy adds an allocation per stream.
+- EC3 (`low`): replacing the token-less row with the foreign-token row drops the token-less case. Both map to `ConsistencyMismatch` today, and only a contrived filter would treat them differently. Both realistic filter mutants die.
+- BH4 (`low`): `V113_CancellationAfterUnreadableCoreCompletion_PropagatesAsync`, and its pass-5 snapshot twin, reach the router branch only because the core clears the DEK after `CheckFailureCancellation`. A core refactor that reorders that cleanup would make them vacuous without failing. That needs a core change, and the proposed `MeterListener` precondition adds test machinery.
+- BH6 (`false`): the new `AllowsCorruptLegacyDeletion.ShouldBeFalse()` is not inert. It pins the spec rule that an unreadable protected snapshot must be kept against a change to the property's definition (`CompatibilitySnapshotReadResult.cs:33-34`). That it cannot fail on correct code is true of every passing assertion.
+- BH7 (`false`): the `empty: false` row of `V119_PrevalidationObservesCancellationAsync` is not redundant. Its pre-cancelled token plus a null element is the only case that pins cancellation precedence over element validation (pass-4 BH6, pass-5 BH8); the empty row has no elements to validate. Its summary is accurate.
+- BH8, AA1, AA2 (`low`): the spec says `done` while sprint-status says `review`. The pass-8 patches appear only in the pass-8 triage table, and pass-8 BH6 ("no post-fix mutation run") is now stale. Each fix edits the spec under review. This review's status sync settles the mismatch, and this section records the mutation evidence.
+- VG-other (`false`): a scratch-folder collision during the review invalidated one reviewer's intermediate mutation log. That is not a defect in the diff, and the VG and BH clean-copy runs independently reproduce every mutant result above.
+
 ## Implementation Notes
 
 - 2026-10-09: Added the listed internal types, one per file, plus a `CompatibilityClassification` helper record that carries the pure classifier output. Other core changes:
