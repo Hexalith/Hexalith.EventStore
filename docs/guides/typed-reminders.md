@@ -487,7 +487,11 @@ For those credential denials, check `StatusCode` and `Reason`. For a `401`, a
 `channel-*` reason points to EventStore's own `APP_API_TOKEN` and its sidecar;
 for `channel-token-missing` or `channel-token-invalid`, also check that the
 submitter uses Dapr service invocation rather than a direct gateway call.
-The documented service invocation forwards the submitter's `DAPR_API_TOKEN`.
+The documented service invocation sends the submitter's `DAPR_API_TOKEN` to
+its sidecar, which presents EventStore's app-channel credential to the gateway.
+A direct gateway call presents the submitter's `DAPR_API_TOKEN` (or no token),
+which EventStore rejects. Route through Dapr service invocation rather than
+aligning the tokens.
 `verifier-unconfigured` points to EventStore's `Authentication:JwtBearer` and
 `Authentication:DaprInternal` receiver settings. For `caller-not-allowed`,
 check `Authentication:DaprInternal:AllowedCallers`; for `audience-invalid`, check
@@ -498,8 +502,12 @@ what the submitter presents: its `Authentication:WorkloadIssuer:Workload` or
 client `azp` for `caller-not-allowed`, the `gatewayAudience` passed to
 `AddEventStoreTrustedEffectWorkloadAssertion` for `audience-invalid`, and the
 assertion issuer and signing algorithm for `issuer-invalid` and
-`algorithm-invalid`. In symmetric Development mode, compare the submitter's
-`Authentication:JwtBearer` issuer and signing key with EventStore's settings.
+`algorithm-invalid`. In symmetric mode (Development, or a non-Production
+environment with `AllowInsecureSymmetricKey=true`), compare the submitter's
+`Authentication:JwtBearer` issuer with EventStore's issuer for
+`issuer-invalid`. For `algorithm-invalid`, check that the submitter and
+EventStore use the same signing mode; a symmetric submitter always signs
+`HS256`. A mismatched symmetric signing key yields `signature-invalid`.
 In authority mode, compare the external authority's issuer and signing mode
 with EventStore's `Authentication:JwtBearer` issuer and allowed algorithms.
 For other `401` reasons, check
