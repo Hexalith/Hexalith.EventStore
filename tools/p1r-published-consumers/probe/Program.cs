@@ -120,6 +120,40 @@ try
             status_fields = typeof(CommandStatusRecord).GetProperties().Select(property => property.Name).Order().ToArray() };
         checks.Record("capability-inventory-observed", observation is not null);
     }
+    else if (args[0] == "admit")
+    {
+        // This is the fixture's admission boundary. No input file, actor proxy, or
+        // persisted state is opened before the capability decision is returned.
+        string lane = args[1];
+        string caseId = args[2];
+        string[] queryFields = ["OriginalActorId", "AuthenticatedWorkloadId", "IsDelegated", "DelegationId", "Scopes", "Audience", "IdentityAdmissionProof"];
+        string[] statusFields = ["Retryable", "RecoveryReasonCode", "DrainAttemptCount", "Domain", "CommittedEventSequence"];
+        string version = typeof(AggregateMetadata).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+        bool historical = version.StartsWith("3.70.1", StringComparison.Ordinal) || version.StartsWith("3.110.0", StringComparison.Ordinal);
+        Assembly contracts = Assembly.Load("Hexalith.EventStore.Contracts");
+        Type? queryType = contracts.GetType("Hexalith.EventStore.Contracts.Queries.QueryEnvelope");
+        Type? projectionType = contracts.GetType("Hexalith.EventStore.Contracts.Projections.ProjectionEventDto");
+        bool refused = lane switch
+        {
+            "legacy-metadata" or "metadata-read" or "metadata-write" => typeof(AggregateMetadata).GetProperty("RetainedFloor") is null,
+            "invalid-evidence" => historical,
+            "query-wire" => queryType is null || queryFields.Any(name => queryType.GetProperty(name) is null),
+            "projection-wire" => projectionType?.GetProperty("GlobalPosition") is null,
+            "mixed-api" when caseId.EndsWith("-status", StringComparison.Ordinal) => statusFields.Any(name => typeof(CommandStatusRecord).GetProperty(name) is null),
+            "mixed-api" when caseId.EndsWith("-cursor-scope", StringComparison.Ordinal) =>
+                typeof(Hexalith.EventStore.Client.Queries.QueryCursorScope).GetMethod("AddProjectionWatermark") is null,
+            "mixed-api" when caseId.EndsWith("-retained-floor", StringComparison.Ordinal) => typeof(IAggregateActor).GetMethod("GetRetainedFloorAsync") is null,
+            "mixed-api" when caseId.EndsWith("-stale-fence", StringComparison.Ordinal) && historical => true,
+            "mixed-api" when caseId.EndsWith("-fenced-effect", StringComparison.Ordinal) => typeof(IAggregateActor).GetMethod("ProcessFencedCommandAsync") is null,
+            "mixed-api" when caseId.EndsWith("-trusted-effect", StringComparison.Ordinal) || caseId.EndsWith("-unauthorized-effect", StringComparison.Ordinal) =>
+                typeof(IAggregateActor).GetMethod("ProcessTrustedEffectAsync") is null,
+            _ => false,
+        };
+        checks.Record("admission-refused", refused);
+        observation = new { handling = refused ? "refused" : "admitted", lane, case_id = caseId,
+            boundary = "before-protected-route", reason_code = refused ? "incapable-published-endpoint" : null,
+            protected_access = false, effect = false, write = false, loaded_version = version };
+    }
     else if (args[0] == "cursor-scope")
     {
         var scope = Hexalith.EventStore.Client.Queries.QueryCursorScope.Create().Add("tenant", "tenant-a");

@@ -889,6 +889,16 @@ class Executor:
             checks.check("preserved:" + name, actual == expected)
         return {"writer": first, "reader": second}, "effect", "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
+    def boundary_case(self, lane, identifier, checks):
+        """Run only the incapable endpoint's admission check before any protected route."""
+        version = qualification.refusal_endpoint(lane, identifier)
+        admission = self.probe(version, ["admit", lane, identifier], checks, "admission:")
+        checks.check("bounded-route-refused-before-access", admission.get("handling") == "refused"
+                     and admission.get("boundary") == "before-protected-route"
+                     and admission.get("protected_access") is False
+                     and admission.get("effect") is False and admission.get("write") is False)
+        return {"unsupported": True, "admission": admission}, "refusal" if admission.get("handling") == "refused" else "error", "incompatible"
+
     def case(self, lane, identifier, action, operational):
         checks, start_index, started = Measurements(), len(self.commands), stamp()
         start_configuration = len(getattr(self, "configurations", []))
@@ -901,6 +911,8 @@ class Executor:
         if lane == "logical-event-evolution" and identifier == "unknown-version-refusal":
             expected = "refusal"
         if lane == "checkout" and identifier in ("retained-uncovered", "missing-event", "invalid-evidence"):
+            expected = "refusal"
+        if getattr(self, "support_rules", {}).get((lane, identifier)) == "refused":
             expected = "refusal"
         observed, outcome, disposition = {}, "error", "compatible"
         try:
@@ -951,7 +963,11 @@ class Executor:
         started = stamp()
         cases, evidence = [], []
         for identifier in qualification.executed_case_inventory(self.inputs)[name]:
-            row, observed = self.case(name, identifier, lambda checks: action(identifier, checks), operational)
+            if getattr(self, "support_rules", {}).get((name, identifier)) == "refused":
+                selected = lambda checks, identifier=identifier: self.boundary_case(name, identifier, checks)
+            else:
+                selected = lambda checks, identifier=identifier: action(identifier, checks)
+            row, observed = self.case(name, identifier, selected, operational)
             cases.append(row)
             evidence.append(observed)
         identities = {"configuration": "Release", "packages": [{"id": package["id"], "sha256": package["archive_sha256"]}
@@ -1433,6 +1449,9 @@ class Executor:
 
     def execute(self):
         validate_execution_inputs(self.inputs)
+        policy = qualification.load_support_table(self.inputs)
+        self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
+                              for rule in entry["cases"]}
         try:
             for version in VERSIONS:
                 self.build_consumers(version)

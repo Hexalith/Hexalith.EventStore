@@ -1596,5 +1596,155 @@ class IntegrityAndCliTests(PacketFixture):
         self.assertTrue(signature and not any(c["passed"] for c in signature))
 
 
+class SupportBoundaryTests(unittest.TestCase):
+    def setUp(self):
+        self.selection = {"candidate": {"version": "3.119.0"},
+                          "comparisons": [{"version": version} for version in q.COMPARISON_VERSIONS]}
+        self.policy = q.load_support_table(self.selection)
+
+    def proof(self, lane="metadata-write", identifier="3.119.0-to-3.70.1"):
+        endpoint = q.refusal_endpoint(lane, identifier)
+        admission = {"handling": "refused", "lane": lane, "case_id": identifier,
+                     "boundary": "before-protected-route", "reason_code": "incapable-published-endpoint",
+                     "protected_access": False, "effect": False, "write": False, "loaded_version": endpoint + "+fixture"}
+        measured = {"instrumentation": "p1r-executed-checks-v1", "observation": admission,
+                    "measurement": {"checks": [{"id": "admission-refused", "passed": True}],
+                                    "assertions": {"attempted": 1, "passed": 1, "failed": 0}}}
+        case = {"id": identifier, "operation": "unsupported", "expected": "refusal", "outcome": "refusal",
+                "disposition": "incompatible", "inventory": {"before_sha256": "a" * 64, "after_sha256": "a" * 64},
+                "assertions": {"attempted": 1, "passed": 1, "failed": 0}}
+        evidence = {"observations": {"admission": admission}, "commands": [{"argv": ["dotnet", f"/owned/consumers/comparison-{endpoint}/probe/bin/Release/net10.0/Probe.dll", "admit", lane, identifier],
+                    "exit_code": 0, "output": json.dumps(measured)}]}
+        rule = next(row for row in self.policy["lanes"][lane]["cases"] if row["id"] == identifier)
+        return rule, case, evidence
+
+    def testPolicyBindsFullInventoryAndPreservesCandidateFailures(self):
+        self.assertEqual(set(self.policy["lanes"]), set(q.executed_case_inventory(self.selection)))
+        for lane, identifiers in q.executed_case_inventory(self.selection).items():
+            self.assertEqual([row["id"] for row in self.policy["lanes"][lane]["cases"]], list(identifiers))
+        self.assertEqual(next(row["treatment"] for row in self.policy["lanes"]["mixed-api"]["cases"]
+                              if row["id"] == "3.119.0-stale-fence"), "supported")
+        self.assertTrue(all(row["treatment"] == "supported" for row in self.policy["lanes"]["logical-event-evolution"]["cases"]))
+        self.assertEqual(self.policy["lanes"]["pre-upgrade-restore"]["cases"][0]["treatment"], "containment")
+        with self.assertRaisesRegex(q.InvalidPacket, "measured 3.119.0"):
+            q.load_support_table({"candidate": {"version": "3.120.0"}, "comparisons": self.selection["comparisons"]})
+        owner_inputs = q.parse_json((q.SUPPORT_BASELINE / "inputs.json").read_bytes())
+        for change in (lambda value: value["selected_additions"].remove("logical-event-evolution"),
+                       lambda value: value.pop("comparisons"),
+                       lambda value: value["assertion_instrumentation"].update(mechanism="substituted-checks")):
+            changed = copy.deepcopy(owner_inputs)
+            change(changed)
+            with self.assertRaisesRegex(q.InvalidPacket, "measured candidate"):
+                q.validate_inputs(changed)
+
+    def testTamperedPolicyCannotOmitSubstituteOrInventRefusals(self):
+        for mutation in (lambda p: p["lanes"]["metadata-write"]["cases"].pop(),
+                         lambda p: p.update(candidate="3.120.0"),
+                         lambda p: p["lanes"]["mixed-api"]["cases"][-1].update(treatment="refused")):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as scratch:
+                changed = copy.deepcopy(self.policy)
+                mutation(changed)
+                path = Path(scratch) / "policy.json"
+                path.write_text(json.dumps(changed))
+                with mock.patch.object(q, "SUPPORT_TABLE", path):
+                    with self.assertRaisesRegex(q.InvalidPacket, "policy changed"):
+                        q.load_support_table(self.selection)
+                    with mock.patch.object(q, "SUPPORT_TABLE_SHA256", q.digest(path.read_bytes())):
+                        with self.assertRaises(q.InvalidPacket):
+                            q.load_support_table(self.selection)
+
+    def testRefusalNeedsExactAdmissionCommandAndNoProtectedEffect(self):
+        rule, case, evidence = self.proof()
+        self.assertTrue(q.supported_case(rule, case, evidence, "metadata-write"))
+        for edit in (lambda c, e: e["commands"].clear(),
+                     lambda c, e: e["observations"]["admission"].update(write=True),
+                     lambda c, e: e["commands"][0]["argv"].__setitem__(-1, "other-case"),
+                     lambda c, e: c["inventory"].update(after_sha256="b" * 64),
+                     lambda c, e: c["assertions"].update(failed=1),
+                     lambda c, e: c.update(outcome="effect"),
+                     lambda c, e: e["observations"]["admission"].update(loaded_version="3.119.0")):
+            with self.subTest(edit=edit):
+                altered_case, altered_evidence = copy.deepcopy(case), copy.deepcopy(evidence)
+                edit(altered_case, altered_evidence)
+                self.assertFalse(q.supported_case(rule, altered_case, altered_evidence, "metadata-write"))
+
+    def testRefusalRequiresExactLoadedVersion(self):
+        rule, case, evidence = self.proof()
+        self.assertTrue(q.supported_case(rule, case, evidence, "metadata-write"))
+        for version in ("3.70.10+fixture", "3.70.1+"):
+            with self.subTest(version=version):
+                altered = copy.deepcopy(evidence)
+                altered["observations"]["admission"]["loaded_version"] = version
+                measured = json.loads(altered["commands"][0]["output"])
+                measured["observation"]["loaded_version"] = version
+                altered["commands"][0]["output"] = json.dumps(measured)
+                self.assertFalse(q.supported_case(rule, case, altered, "metadata-write"))
+        exact = copy.deepcopy(evidence)
+        exact["observations"]["admission"]["loaded_version"] = "3.70.1"
+        measured = json.loads(exact["commands"][0]["output"])
+        measured["observation"]["loaded_version"] = "3.70.1"
+        exact["commands"][0]["output"] = json.dumps(measured)
+        self.assertTrue(q.supported_case(rule, case, exact, "metadata-write"))
+
+    def testRefusalEndpointUsesFirstIncapableQueryWriter(self):
+        self.assertEqual(q.refusal_endpoint("query-wire", "3.110.0-3.70.1-json-dual"), "3.110.0")
+        self.assertEqual(q.refusal_endpoint("query-wire", "3.70.1-3.110.0-xml-dual"), "3.70.1")
+        self.assertEqual(q.refusal_endpoint("query-wire", "3.119.0-3.110.0-json-dual"), "3.110.0")
+        self.assertEqual(q.refusal_endpoint("projection-wire", "3.110.0-3.70.1-json-positive"), "3.70.1")
+
+    def testSupportedCandidateAndOldCallsStillNeedPassingChecks(self):
+        candidate = next(row for row in self.policy["lanes"]["mixed-api"]["cases"] if row["id"] == "3.119.0-stale-fence")
+        supported = {"id": candidate["id"], "operation": "supported", "expected": "refusal", "outcome": "error",
+                     "disposition": "incompatible", "checks": [], "assertions": {"attempted": 2, "passed": 0, "failed": 2}}
+        self.assertFalse(q.supported_case(candidate, supported, {}, "mixed-api"))
+        old = next(row for row in self.policy["lanes"]["query-wire"]["cases"] if row["id"].endswith("json-legacy"))
+        packet = q.parse_json((q.SUPPORT_BASELINE / "packet.json").read_bytes())
+        lane_row = next(row for row in packet["lanes"]["scenarios"] if row["id"] == "query-wire")
+        receipt = q.parse_json((q.SUPPORT_BASELINE / lane_row["receipts"][0]).read_bytes())
+        baseline = next(row for row in receipt["cases"] if row["id"] == old["id"])
+        checks = [{"id": row["id"], "passed": True} for row in baseline["checks"]]
+        compatible = {"id": old["id"], "operation": "supported", "expected": "effect", "outcome": "effect",
+                      "disposition": "compatible", "checks": checks,
+                      "assertions": {"attempted": len(checks), "passed": len(checks), "failed": 0}}
+        self.assertTrue(q.supported_case(old, compatible, {}, "query-wire"))
+        missing = copy.deepcopy(compatible)
+        missing["checks"].pop()
+        missing["assertions"]["attempted"] -= 1
+        missing["assertions"]["passed"] -= 1
+        self.assertFalse(q.supported_case(old, missing, {}, "query-wire"))
+        compatible["assertions"]["failed"] = 1
+        self.assertFalse(q.supported_case(old, compatible, {}, "query-wire"))
+
+    def testHistoricalRefusalCanSatisfyLaneButCandidateFailureStillBlocks(self):
+        selection = dict(self.selection, rollback=None, selected_additions=list(q.ADDITIONS),
+                         assertion_instrumentation={"mechanism": "p1r-executed-checks-v1"})
+        lanes = q.initial_lanes(selection)
+        for rows in lanes.values():
+            for row in rows:
+                row.update(execution="passed", compatibility="compatible", scope="operational",
+                           assertions={"attempted": 1, "passed": 1, "failed": 0}, receipts=["receipts/bound.json"], reason=None)
+        old = next(row for row in lanes["scenarios"] if row["id"] == "metadata-write")
+        old.update(execution="passed", compatibility="incompatible",
+                   assertions={"attempted": 2, "passed": 2, "failed": 0})
+        family = next(row for row in lanes["families"] if row["id"] == "metadata-write")
+        family.update(old)
+        inputs = {"scope": "owner-selected", "value": selection}
+        accepted = q.evaluate(lanes, inputs, None, {"metadata-write": True})
+        self.assertNotIn("scenarios/metadata-write", accepted["unsatisfied"])
+        self.assertNotIn("families/metadata-write", accepted["unsatisfied"])
+        self.assertFalse(accepted["p1r_usable"])
+        old["execution"] = family["execution"] = "failed"
+        failed_exit = q.evaluate(lanes, inputs, None, {"metadata-write": True})
+        self.assertIn("scenarios/metadata-write", failed_exit["unsatisfied"])
+        self.assertIn("families/metadata-write", failed_exit["unsatisfied"])
+        old["execution"] = family["execution"] = "passed"
+        candidate = next(row for row in lanes["scenarios"] if row["id"] == "mixed-api")
+        candidate.update(execution="failed", compatibility="incompatible",
+                         assertions={"attempted": 2, "passed": 0, "failed": 2})
+        blocked = q.evaluate(lanes, inputs, None, {"metadata-write": True, "mixed-api": False})
+        self.assertIn("scenarios/mixed-api", blocked["unsatisfied"])
+        self.assertFalse(blocked["technically_qualified"])
+
+
 if __name__ == "__main__":
     unittest.main()

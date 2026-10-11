@@ -28,6 +28,26 @@ Architecture IDs are repository-scoped. The handoff's repository ownership, muta
 
 The current source packet satisfies a bounded source-remediation slice. Its recorded `published_candidate=null`, `capable_published_rollback=null`, `qualified=false`, and `p1r_usable=false` keep the later gates open.
 
+## Measured 3.119.0 support boundary
+
+The fixed case table is `tools/p1r_support_boundary.json`. It names all 163 cases in the 19 scenario/addition receipts of sealed packet `packet-677345025f7b42449cbf8ce4afb43813`, whose `packet.json` SHA-256 is `1cb9d427c34db61ad250173b13016c69de7e13db522c4fa45cf478fa2d468b4c`. The table binds each original operation, expected and actual outcome, disposition, failed assertion count, assertion ID inventory, and receipt hash. Its source pin is `19892532995447336389fe98daaef19c44636942b3a33b791e13b2f534aab7e3`. The sealed receipts and every failed result remain unchanged and visible. The table applies only to the measured 3.119.0 candidate with the 3.70.1 and 3.110.0 comparisons. A different candidate needs a separately measured boundary and owner decision.
+
+All cases marked `supported` must still pass their measured effect or refusal, with positive assertions and compatible disposition. This includes every passing legacy-principal query direction, passing replay and mixed-client call, the candidate's failing stale-fence check, and all three failing logical-event-evolution checks. `containment-only-backup-restore` remains an explicitly incompatible, observed containment case; it never proves writable rollback or RPO 0. With `rollback=null`, Projects AD-17 mutation freeze and forward recovery remain mandatory.
+
+The following 39 historical cases may be treated as bounded refusals only after a new receipt proves admission at the incapable published endpoint. The original failed or incompatible case is retained in the fixed table; its new execution records an `unsupported/refusal/incompatible` case rather than claiming the old binary gained the capability.
+
+| Lane | Exact refused case IDs | Admission requirement |
+| --- | --- | --- |
+| legacy-metadata | `3.70.1-pascal-floor-None`, `3.70.1-web-floor-None` | Refuse authoritative metadata access when the loaded type lacks `RetainedFloor`. |
+| metadata-read | `3.70.1-pascal-floor-1`, `3.70.1-pascal-floor-5`, `3.70.1-web-floor-1`, `3.70.1-web-floor-5` | Refuse before reading a protected floor through the floor-losing type. |
+| metadata-write | `3.110.0-to-3.70.1`, `3.119.0-to-3.70.1` | Refuse at the 3.70.1 writer before actor dispatch, append, or retained-floor mutation. A typed metadata read is never writer proof. |
+| invalid-evidence | `3.110.0-invalid-floor`, `3.110.0-protected`, `3.110.0-unknown-version`, `3.70.1-invalid-floor`, `3.70.1-protected`, `3.70.1-unknown-version` | Refuse unsafe historical package identities before invalid persisted evidence is applied. Candidate invalid-evidence checks remain supported. |
+| query-wire | `3.110.0-3.70.1-json-dual`, `3.110.0-3.70.1-xml-dual`, `3.110.0-3.119.0-json-dual`, `3.110.0-3.119.0-xml-dual`, `3.70.1-3.110.0-json-dual`, `3.70.1-3.110.0-xml-dual`, `3.70.1-3.119.0-json-dual`, `3.70.1-3.119.0-xml-dual`, `3.119.0-3.110.0-json-dual`, `3.119.0-3.110.0-xml-dual`, `3.119.0-3.70.1-json-dual`, `3.119.0-3.70.1-xml-dual` | Refuse at the incapable endpoint before JSON or DataContract serialization can drop original actor, workload, delegation, scopes, audience, or admission proof. |
+| projection-wire | `3.110.0-3.70.1-json-positive`, `3.70.1-3.110.0-json-positive`, `3.70.1-3.119.0-json-positive`, `3.119.0-3.70.1-json-positive` | Refuse at 3.70.1 before global position 987 can be lost or used as an authoritative cursor. |
+| mixed-api | `3.110.0-status`, `3.110.0-stale-fence`, `3.70.1-status`, `3.70.1-cursor-scope`, `3.70.1-fenced-effect`, `3.70.1-stale-fence`, `3.70.1-trusted-effect`, `3.70.1-unauthorized-effect`, `3.70.1-retained-floor` | Refuse before unavailable status fields, cursor scope, actor methods, or unproved 3.110.0 stale fencing can present a protected effect or completion. |
+
+For each refusal, the receipt must bind the exact case ID, lane, physically loaded old version, literal `Probe.dll admit` command, output hash, positive measured assertion, and a typed `incapable-published-endpoint` denial at `before-protected-route`. The admission result must state `protected_access=false`, `effect=false`, and `write=false`; command execution, check witnesses, and equal before/after case digests are independently validated. Since admission performs no state read or write, those equal digests are a no-dispatch control, not persisted-state proof. Omitted/substituted cases, opaque errors, invented refusals, missing assertions, or later-stage denial do not satisfy the table. This bounded fixture admission does not grant production P2 authority or candidate qualification.
+
 ## Lossless recovery envelope
 
 - Maintain a single writer. Fence and drain incompatible ingress before any transition; no old/new dual command writes.

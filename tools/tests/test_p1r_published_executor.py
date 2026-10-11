@@ -1053,5 +1053,64 @@ class CorrectionTests(unittest.TestCase):
 
 
 
+class BoundaryAdmissionTests(unittest.TestCase):
+    def testAdmissionReceiptBindsProbeAndSourceWitness(self):
+        lane, identifier = "metadata-write", "3.119.0-to-3.70.1"
+        with tempfile.TemporaryDirectory() as scratch:
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.commands, worker.configurations, worker.errors = [], [], []
+            worker.scratch = Path(scratch)
+            worker.save = worker.stop_nodes = mock.Mock()
+            worker.witness_sources = {}
+            worker.support_rules = {(lane, identifier): "refused"}
+            admission = {"handling": "refused", "lane": lane, "case_id": identifier,
+                         "boundary": "before-protected-route", "reason_code": "incapable-published-endpoint",
+                         "protected_access": False, "effect": False, "write": False, "loaded_version": "3.70.1+fixture"}
+            value = {"instrumentation": executor.MECHANISM, "observation": admission,
+                     "measurement": {"checks": [{"id": "admission-refused", "passed": True}],
+                                     "assertions": {"attempted": 1, "passed": 1, "failed": 0}}}
+
+            def probe(version, arguments, checks, prefix):
+                command = worker.record(["dotnet", str(worker.scratch / "consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll"),
+                                         *arguments], worker.scratch, preparation.stamp(), 0, executor.canonical(value))
+                checks.import_probe(value, prefix, command["id"])
+                return admission
+
+            worker.probe = probe
+            row, evidence = worker.case(lane, identifier, lambda checks: worker.boundary_case(lane, identifier, checks), False)
+            source = Path(executor.__file__)
+            binding = {"repository": str(preparation.ROOT), "main": {"files": [
+                {"path": source.relative_to(preparation.ROOT).as_posix(), "sha256": executor.digest(source.read_bytes())}]}}
+            executor.witnesses.validate_case(row, evidence, binding, lane, list(worker.witness_sources.values()))
+            policy = qualification.load_support_table({"candidate": {"version": "3.119.0"},
+                                                        "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS]})
+            rule = next(item for item in policy["lanes"][lane]["cases"] if item["id"] == identifier)
+            self.assertTrue(qualification.supported_case(rule, row, evidence, lane))
+
+    def testUnsafeOldWriterRefusesBeforeAnyWriterOrActorCall(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.probe = mock.Mock(return_value={"handling": "refused", "boundary": "before-protected-route",
+                                              "protected_access": False, "effect": False, "write": False})
+        worker.actor = mock.Mock(side_effect=AssertionError("actor must not be reached"))
+        worker.seed = mock.Mock(side_effect=AssertionError("writer must not be reached"))
+        checks = executor.Measurements()
+        observed, outcome, disposition = worker.boundary_case("metadata-write", "3.119.0-to-3.70.1", checks)
+        worker.probe.assert_called_once_with("3.70.1", ["admit", "metadata-write", "3.119.0-to-3.70.1"],
+                                             checks, "admission:")
+        worker.actor.assert_not_called()
+        worker.seed.assert_not_called()
+        self.assertEqual((outcome, disposition), ("refusal", "incompatible"))
+        self.assertTrue(observed["unsupported"])
+        self.assertEqual(checks.counter["failed"], 0)
+
+    def testOpaqueOrLateBoundaryResponseDoesNotQualify(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.probe = mock.Mock(return_value={"handling": "refused", "boundary": "after-protected-route",
+                                              "protected_access": True, "effect": False, "write": False})
+        checks = executor.Measurements()
+        worker.boundary_case("query-wire", "3.119.0-3.70.1-json-dual", checks)
+        self.assertEqual(checks.counter["failed"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

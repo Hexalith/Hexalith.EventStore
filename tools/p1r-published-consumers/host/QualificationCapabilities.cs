@@ -73,6 +73,16 @@ internal static class QualificationCapabilities
                 return Results.BadRequest(new { error = "unknown-qualification-operation" });
             }
 
+#if !P1R_CANDIDATE
+            // 3.110.0 has the method but its stale-fence denial did not meet the
+            // measured contract. Refuse this fixture route before actor access.
+            if (operation == "stale-fence")
+            {
+                return Results.Conflict(new { accepted = false, denial = "incapable-published-endpoint",
+                    boundary = "before-protected-route", protected_access = false, effect = false, write = false });
+            }
+#endif
+
             string aggregate = "fixture";
             var identity = new AggregateIdentity("tenant-a", "counter", aggregate);
             IAggregateActor actor = ActorProxy.Create<IAggregateActor>(new ActorId(identity.ActorId), "AggregateActor");

@@ -206,7 +206,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
     checks = {item['id']: item['passed'] for item in row['checks']}
     incomplete = row['outcome'] == 'error'
     require(not incomplete or checks.get('execution-completed') is False, 'incomplete case drops executed failure')
-    if not incomplete and lane in ('legacy-metadata', 'metadata-read'):
+    if not incomplete and row['operation'] != 'unsupported' and lane in ('legacy-metadata', 'metadata-read'):
         measured = [value['observation'] for command,value in probes if 'metadata' in command['argv']]
         require(len(measured) == 1, 'metadata case lacks actual selected probe')
         version, style, _, floor = row['id'].split('-')
@@ -247,7 +247,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
         coordinate_lane = row['id'] if lane == 'checkout' else lane
         coordinate_identifier = (observation['comparison']['source_case' if prefix == 'source:' else 'selected_case']
                                  if lane == 'checkout' and row['id'] != 'current-build' else row['id'])
-        if not incomplete and coordinate_lane in ('legacy-metadata','metadata-read'):
+        if not incomplete and row['operation'] != 'unsupported' and coordinate_lane in ('legacy-metadata','metadata-read'):
             expected_floor = coordinate_identifier.rsplit('-',1)[1]
             expected_floor = 1 if expected_floor == 'None' else int(expected_floor)
             require(prefix+'retained-floor-read' in checks and checks[prefix+'retained-floor-read'] is (observed['metadata'].get('floor') == expected_floor),
@@ -277,7 +277,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
         if not incomplete and 'before' in observed:
             require(all(prefix + identity in checks for identity in ('tenant-a:committed-count','tenant-b:committed-count','seed-persisted-fifteen-events')),
                     'operational case drops a stable fixture seed check')
-        if not incomplete and coordinate_lane in ('full-replay','snapshot-tail','retained-covered','retained-uncovered','missing-event','metadata-write'):
+        if not incomplete and row['operation'] != 'unsupported' and coordinate_lane in ('full-replay','snapshot-tail','retained-covered','retained-uncovered','missing-event','metadata-write'):
             required = ('primary-expected-hydration','hydration-no-events','second-tenant-hydrates','primary-sequence-twelve','persisted-current-sequence-exact','persisted-event-sequence-set-exact',
                         'persisted-snapshot-coordinate-exact','prior-event-and-snapshot-bytes-preserved','second-tenant-state-preserved')
             require(all(prefix + identity in checks for identity in required), 'replay case drops a stable required coordinate check')
@@ -388,7 +388,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
                 and checks.get('refusal-domain-preserved') is True,
                 'protected refusal lacks unchanged persisted domain state')
 
-    if not incomplete and lane == 'mixed-api' and row['id'].endswith('-status'):
+    if not incomplete and lane == 'mixed-api' and row['id'].endswith('-status') and row['operation'] != 'unsupported':
         status_rows = observation.get('operation')
         require(isinstance(status_rows,list) and len(status_rows) == 3, 'status case drops a retryability shape')
         for status_row in status_rows:
