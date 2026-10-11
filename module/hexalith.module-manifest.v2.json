@@ -1,0 +1,171 @@
+{
+  "schema": "hexalith.module-manifest.v2",
+  "modules": [
+    {
+      "identity": {
+        "moduleId": "eventstore",
+        "servers": [
+          {
+            "id": "gateway",
+            "appId": "eventstore",
+            "resourceId": "eventstore",
+            "enabled": true,
+            "required": true
+          }
+        ],
+        "dependencies": []
+      },
+      "runtime": {
+        "dapr": [
+          {
+            "role": "state",
+            "capability": "state",
+            "recoveryClass": "authoritative-restore",
+            "configurationKey": "Dapr:StateStoreComponent"
+          },
+          {
+            "role": "events",
+            "capability": "pubsub",
+            "recoveryClass": "rebuild-only",
+            "configurationKey": "Dapr:PubSubComponent"
+          }
+        ],
+        "extensions": [
+          {
+            "packageId": "Hexalith.EventStore.Aspire",
+            "configurationInputs": [
+              {
+                "key": "EventStore:DaprConfigPath",
+                "source": "configuration",
+                "reference": "daprconfigpath"
+              },
+              {
+                "key": "EventStore:StateStoreComponentPath",
+                "source": "configuration",
+                "reference": "statestorecomponentpath"
+              }
+            ]
+          }
+        ],
+        "resources": [
+          {
+            "server": "gateway",
+            "requests": {},
+            "limits": {},
+            "volumes": []
+          }
+        ]
+      },
+      "surfaces": {
+        "interfaces": [
+          {
+            "name": "eventstore-gateway",
+            "server": "gateway",
+            "protocol": "http",
+            "routePrefix": "/api/v1",
+            "exposure": "public",
+            "surfaceClass": "service",
+            "authorization": {
+              "policy": "authenticated",
+              "permissions": []
+            },
+            "callers": [],
+            "operations": [
+              {
+                "name": "submit-command",
+                "kind": "command",
+                "authorizationPolicy": "authenticated"
+              },
+              {
+                "name": "query",
+                "kind": "query",
+                "authorizationPolicy": "authenticated"
+              },
+              {
+                "name": "command-status",
+                "kind": "query",
+                "authorizationPolicy": "authenticated"
+              },
+              {
+                "name": "stream",
+                "kind": "query",
+                "authorizationPolicy": "authenticated"
+              },
+              {
+                "name": "replay",
+                "kind": "administration",
+                "authorizationPolicy": "authenticated"
+              }
+            ]
+          }
+        ]
+      },
+      "integration": {
+        "topics": [
+          {
+            "name": "eventstore-events",
+            "role": "events",
+            "deadLetter": {
+              "strategy": "none"
+            }
+          }
+        ],
+        "secrets": [
+          {
+            "name": "app-channel-token",
+            "configurationKey": "EventStore:AppChannelToken"
+          }
+        ],
+        "dynamicSecretNamespaces": [],
+        "identityNeeds": [
+          {
+            "name": "gateway-workload",
+            "audience": "domain-services",
+            "roles": [
+              "invoker"
+            ],
+            "claims": [
+              "eventstore:operation"
+            ],
+            "applicationPrincipal": true
+          }
+        ],
+        "egress": [],
+        "providers": [],
+        "workers": []
+      },
+      "lifecycle": {
+        "readiness": [
+          {
+            "server": "gateway",
+            "kind": "http",
+            "endpoint": "/ready"
+          }
+        ],
+        "tasks": [],
+        "recoveryHooks": [],
+        "fenceHooks": [],
+        "replay": {
+          "reopenBeforeReplay": false
+        },
+        "startup": {},
+        "criticalFlows": [
+          {
+            "name": "submit-command",
+            "surface": "eventstore-gateway",
+            "operations": [
+              "submit-command",
+              "command-status"
+            ]
+          }
+        ],
+        "smokeSurfaces": [],
+        "classification": {
+          "changeClass": "additive",
+          "reason": "Declare the existing gateway minimum; admin hosts remain optional."
+        },
+        "recoveryInventory": []
+      }
+    }
+  ]
+}

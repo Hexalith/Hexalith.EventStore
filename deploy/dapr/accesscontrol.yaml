@@ -42,3 +42,12 @@ spec:
           - name: /**
             httpVerb: ['GET', 'POST', 'PUT']
             action: allow
+      # The public Tenants API checks gateway readiness before accepting traffic.
+      - appId: tenants-api
+        defaultAction: deny
+        trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
+        namespace: "{env:DAPR_NAMESPACE|hexalith}"
+        operations:
+          - name: /ready
+            httpVerb: ['GET']
+            action: allow
