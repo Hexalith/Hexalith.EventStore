@@ -1,6 +1,15 @@
 using System.Diagnostics;
 
+using Hexalith.EventStore.Client.Effects;
+using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Client.Processes;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.Testing.Fakes;
+
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -46,5 +55,39 @@ public sealed class ProcessReadDeadlineTests
             }
         }
         recovered.ShouldBe(1);
+    }
+
+    /// <summary>All adapter slots can be wedged while control reads still persist a degraded source.</summary>
+    [Fact]
+    public async Task AdapterSlotExhaustionLeavesControlReadsAvailableForSourceEvidence()
+    {
+        TaskCompletionSource<int> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<int>[] blocked = Enumerable.Range(0, 16)
+            .Select(_ => ProcessReadDeadline.RunAsync(_ => held.Task, TimeSpan.FromMilliseconds(100), CancellationToken.None))
+            .ToArray();
+        try
+        {
+            await Task.Delay(150);
+            InMemoryReadModelStore store = new();
+            EventStoreProcessOptions options = new();
+            ProcessSource source = new("tenant-a", "sample", "exhausted-slots");
+            ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+            CheckpointedProcessRunner runner = new(Substitute.For<IEventStoreGatewayClient>(), Substitute.For<IProcessTranslator>(),
+                Substitute.For<IProcessDelegationProvider>(), Substitute.For<ITrustedEffectSubmitter>(), checkpoints, Options.Create(options));
+
+            ProcessRunResult result = await runner.RunAsync(source);
+
+            result.Status.ShouldBe(ProcessSourceStatus.Retrying);
+            result.ReasonCode.ShouldBe("read-worker-exhausted");
+            ProcessSourceState persisted = await checkpoints.GetAsync(source);
+            persisted.Checkpoint.ShouldBe(0);
+            persisted.ReasonCode.ShouldBe("read-worker-exhausted");
+        }
+        finally
+        {
+            held.SetResult(1);
+            try { await Task.WhenAll(blocked); }
+            catch (TimeoutException) { }
+        }
     }
 }

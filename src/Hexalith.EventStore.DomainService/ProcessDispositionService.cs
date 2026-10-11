@@ -30,8 +30,10 @@ public sealed class ProcessDispositionService(
         source.Validate();
         if (principal.Identity?.IsAuthenticated != true)
             throw new UnauthorizedAccessException("Process disposition is not authorized.");
-        if (!await ProcessReadDeadline.RunAsync(ct => _authorizer.AuthorizeAsync(principal, source, ct),
-            _operationTimeout, cancellationToken).ConfigureAwait(false))
+        using var authorizationDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        authorizationDeadline.CancelAfter(_operationTimeout);
+        if (!await _authorizer.AuthorizeAsync(principal, source, authorizationDeadline.Token)
+            .WaitAsync(_operationTimeout, cancellationToken).ConfigureAwait(false))
         {
             throw new UnauthorizedAccessException("Process disposition is not authorized.");
         }
@@ -47,7 +49,12 @@ public sealed class ProcessDispositionService(
             .WaitAsync(_operationTimeout, cancellationToken).ConfigureAwait(false);
         long preparedGeneration = await _sweeps.PrepareDispositionAsync(source, cancellationToken).ConfigureAwait(false);
         ProcessPendingDisposition? claim = await _sweeps.ClaimDispositionAsync(source, preparedGeneration, cancellationToken).ConfigureAwait(false);
-        if (claim is null || !await _checkpoints.RevalidateAsync(claim, cancellationToken).ConfigureAwait(false)) return false;
+        if (claim is null) return false;
+        if (!await _checkpoints.RevalidateAsync(claim, cancellationToken).ConfigureAwait(false))
+        {
+            await _sweeps.ReleaseDispositionClaimAsync(claim, cancellationToken).ConfigureAwait(false);
+            return false;
+        }
         return await _sweeps.MarkDispositionAppliedAsync(claim, cancellationToken).ConfigureAwait(false);
     }
 }

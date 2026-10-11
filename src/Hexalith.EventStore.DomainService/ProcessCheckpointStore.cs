@@ -419,6 +419,7 @@ public sealed class ProcessCheckpointStore(
         int visited = 0;
         for (int restart = 0; restart < _options.WriteAttempts; restart++)
         {
+            bool followedLink = false;
             for (int page = firstPage; page < 1_000_000; page++)
             {
                 if (visited++ >= 8)
@@ -432,6 +433,11 @@ public sealed class ProcessCheckpointStore(
                 ProcessIndexPage<T>? current = entry.Value;
                 if (current is null)
                 {
+                    if (followedLink)
+                    {
+                        await _sweeps.MarkPublicationPageUnknownAsync(source, tenantPage, page + 1, cancellationToken).ConfigureAwait(false);
+                        return false;
+                    }
                     if (page != 0 && firstPage == page) return false;
                     _ = await TrySaveAsync(_options.StateStoreName, key, new ProcessIndexPage<T>(1, page, [item], null), string.Empty, cancellationToken).ConfigureAwait(false);
                     ProcessIndexPage<T>? written = await ReadPageAsync<T>(tenant, page, cancellationToken).ConfigureAwait(false);
@@ -451,6 +457,7 @@ public sealed class ProcessCheckpointStore(
                 }
                 if (current.NextPage is { } nextPage)
                 {
+                    followedLink = true;
                     page = nextPage - 1;
                     continue;
                 }

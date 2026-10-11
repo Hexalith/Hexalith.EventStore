@@ -105,12 +105,43 @@ public sealed class ProcessRecoveryTests
             .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Healthy);
     }
 
+    /// <summary>Clock lag does not make durable control state unreadable; readiness still rejects its future completion.</summary>
+    [Fact]
+    public async Task FutureCompletionRemainsReadableButDegraded()
+    {
+        DateTimeOffset completed = new(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep,
+            new ProcessSweepState(1, 1, 1, true, completed, completed, null, true, 0, 0, 0, 0, true, true,
+                0, new Dictionary<string, int>(), new Dictionary<string, ProcessPendingDisposition>(), null, null, 0));
+        ManualProcessTimeProvider lagging = new(completed.AddMinutes(-1));
+        ProcessSweepStore sweeps = new(store, Options.Create(options), lagging);
+
+        (await sweeps.GetAsync()).Complete.ShouldBeTrue();
+        (await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), lagging)
+            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+    }
+
+    /// <summary>Durable sweep cursors cannot approach the much larger index storage ceiling.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ExcessivePersistedSweepPageIsRejected(bool tenantPage)
+    {
+        ProcessSweepState state = new(1, 1, 1, false, DateTimeOffset.UtcNow, null, null, false,
+            tenantPage ? 100_000 : 0, 0, tenantPage ? 0 : 100_000, 0, false, true,
+            0, new Dictionary<string, int>(), new Dictionary<string, ProcessPendingDisposition>(), null, null, 0);
+
+        Should.Throw<InvalidOperationException>(() => state.Validate());
+    }
+
     /// <summary>Count limits alone cannot admit a multi-map record beyond the state-item byte ceiling.</summary>
     [Fact]
     public void MaximumLengthPendingIdentitiesCannotOverflowSweepRecord()
     {
         var pending = new Dictionary<string, ProcessPendingObservation>(StringComparer.Ordinal);
-        for (int index = 0; index < 600; index++)
+        for (int index = 0; index < 700; index++)
         {
             ProcessSource source = new("tenant-a", "sample", $"{index:0000}" + new string('x', 252));
             pending.Add(ProcessStateKeys.SourceId(source), new ProcessPendingObservation(source, 1, false));
@@ -729,6 +760,66 @@ public sealed class ProcessRecoveryTests
         sweep.Pending.ShouldBeEmpty();
     }
 
+    /// <summary>Neither an unpublished source nor an unfinished publication may enter operator disposition.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnpublishedSourceDispositionDoesNotAuditOrPrepare(bool pendingPublication)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        ProcessSource source = new("tenant-a", "sample", "unpublished");
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        if (pendingPublication) (await sweeps.PreparePublicationAsync(source)).ShouldBeTrue();
+        IProcessDispositionAuthorizer authorizer = Substitute.For<IProcessDispositionAuthorizer>();
+        authorizer.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), source, Arg.Any<CancellationToken>()).Returns(true);
+        IProcessDispositionAuditSink audit = Substitute.For<IProcessDispositionAuditSink>();
+        ProcessDispositionService disposition = new(authorizer, audit, checkpoints, sweeps);
+        ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "operator")], "synthetic"));
+
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => disposition.RevalidateAsync(principal, source, "retry"));
+
+        await audit.DidNotReceive().RecordAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<ProcessSource>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await sweeps.GetAsync()).Pending.ShouldBeEmpty();
+        (await store.GetAsync<ProcessSourceState>(options.StateStoreName, ProcessStateKeys.Source(source))).Value.ShouldBeNull();
+    }
+
+    /// <summary>A live source owner blocks disposition mutation until a later repair pass can claim it.</summary>
+    [Fact]
+    public async Task LiveOwnerDefersDispositionAndLaterPassAppliesIt()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 2 };
+        ProcessSource source = new("tenant-a", "sample", "busy-disposition");
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        await checkpoints.EnsureCandidateAsync(source);
+        ProcessSourceState owner = (await checkpoints.AcquireAsync(source)).ShouldNotBeNull();
+        IProcessDispositionAuthorizer authorizer = Substitute.For<IProcessDispositionAuthorizer>();
+        authorizer.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), source, Arg.Any<CancellationToken>()).Returns(true);
+        IProcessDispositionAuditSink audit = Substitute.For<IProcessDispositionAuditSink>();
+        ProcessDispositionService disposition = new(authorizer, audit, checkpoints, sweeps);
+        ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "operator")], "synthetic"));
+
+        (await disposition.RevalidateAsync(principal, source, "retry")).ShouldBeFalse();
+        ProcessSourceState beforeRelease = await checkpoints.GetAsync(source);
+        beforeRelease.Fence.ShouldBe(owner.Fence);
+        beforeRelease.Owner.ShouldBe(owner.Owner);
+        (await sweeps.GetAsync()).Pending.Values.Single().Applied.ShouldBeFalse();
+
+        await checkpoints.ReleaseAsync(owner);
+        (_, _, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]));
+        using (reconciler)
+        {
+            for (int pass = 0; pass < 8 && (await checkpoints.GetAsync(source)).LastDispositionGeneration == 0; pass++)
+                _ = await reconciler.RunPassAsync();
+        }
+
+        (await checkpoints.GetAsync(source)).LastDispositionGeneration.ShouldBeGreaterThan(0);
+        (await checkpoints.GetAsync(source)).Fence.ShouldBeGreaterThan(owner.Fence);
+    }
+
     /// <summary>Every audited revalidation gets a fresh sweep generation even while the same source is pending.</summary>
     [Fact]
     public async Task RepeatedDispositionInvalidatesPreparedAndAppliedPendingStates()
@@ -804,6 +895,40 @@ public sealed class ProcessRecoveryTests
         complete.Reasons["source-read"].ShouldBe(1);
         complete.PendingObservations.ShouldBeEmpty();
         (await checkpoints.GetAsync(source)).ObservedCycle.ShouldBe(complete.Cycle);
+    }
+
+    /// <summary>Finishing a pending marker uses the sole source turn in a one-source pass.</summary>
+    [Fact]
+    public async Task PendingObservationConsumesOneSourcePassBudget()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 1 };
+        ProcessSource prior = new("tenant-a", "sample", "prior");
+        ProcessSource later = new("tenant-b", "sample", "later");
+        ProcessSweepState seed = new(1, 1, 1, false, DateTimeOffset.UtcNow, null, null, false,
+            0, 0, 0, 0, false, true, 0, new Dictionary<string, int>(),
+            new Dictionary<string, ProcessPendingDisposition>(), null, null, 1)
+        {
+            PendingObservations = new Dictionary<string, ProcessPendingObservation>
+            {
+                [ProcessStateKeys.SourceId(prior)] = new(prior, 1, false),
+            },
+        };
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep, seed);
+        IProcessSourceCatalog catalog = Catalog([later]);
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, catalog);
+        using (reconciler)
+        {
+            _ = await reconciler.RunPassAsync();
+            await catalog.DidNotReceive().ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            (await checkpoints.GetAsync(prior)).ObservedCycle.ShouldBe(1);
+            (await sweeps.GetAsync()).PendingObservations.ShouldBeEmpty();
+
+            for (int pass = 0; pass < 8 && (await checkpoints.GetAsync(later)).Checkpoint == 0; pass++)
+                _ = await reconciler.RunPassAsync();
+        }
+
+        (await checkpoints.GetAsync(later)).Checkpoint.ShouldBe(1);
     }
 
     /// <summary>A marker write that stays unavailable leaves a pending count but does not hold later catalog sources.</summary>

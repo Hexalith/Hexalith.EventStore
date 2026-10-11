@@ -88,9 +88,8 @@ public sealed record ProcessSweepState(
     /// <summary>Validates flags, cursors, timestamps, and pending evidence together.</summary>
     public void Validate(TimeProvider? time = null)
     {
-        DateTimeOffset now = (time ?? TimeProvider.System).GetUtcNow();
         if (Version != 1 || Cycle < 0 || Generation < Cycle || Fence < 0 || Unresolved < 0 || RetainedCandidates < 0
-            || TenantPage < 0 || TenantOffset < 0 || CandidatePage < 0 || CandidateOffset < 0
+            || TenantPage is < 0 or >= 100_000 || TenantOffset < 0 || CandidatePage is < 0 or >= 100_000 || CandidateOffset < 0
             || TenantProbeMisses is < 0 or > 1_000_000 || CandidateProbeMisses is < 0 or > 1_000_000
             || Reasons is null || Pending is null || PendingObservations is null || PendingPublications is null || PendingTransitions is null
             || PublicationCandidateRepairPages is null || PublicationTenantRepairPages is null
@@ -126,7 +125,6 @@ public sealed record ProcessSweepState(
             || Cycle == 0 && (Generation != 0 || Unresolved != 0 || Reasons.Count != 0 || Pending.Count != 0 || Complete || PendingObservations.Count != 0 || PendingPublications.Count != 0 || PendingTransitions.Count != 0)
             || Cycle > 0 && CycleStartedAt is null
             || LastCompleteAt is not null && CycleStartedAt is null
-            || LastCompleteAt > now
             || Complete && (!CatalogComplete || !CandidatesComplete || Pending.Count != 0
                 || CatalogAfterKey is not null || TenantPage != 0 || TenantOffset != 0 || CandidatePage != 0 || CandidateOffset != 0
                 || ExpectedTenantPage || ExpectedCandidatePage || TenantProbeMisses != 0 || CandidateProbeMisses != 0

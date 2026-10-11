@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Hexalith.EventStore.Contracts.Identity;
 
 namespace Hexalith.EventStore.Client.Processes;
@@ -9,6 +11,7 @@ namespace Hexalith.EventStore.Client.Processes;
 public sealed record ProcessSource(string Tenant, string Domain, string Aggregate)
 {
     /// <summary>Stable ordinal key used for mutation-safe catalog continuation.</summary>
+    [JsonIgnore]
     public string CatalogKey => Tenant + "\0" + Domain + "\0" + Aggregate;
 
     /// <summary>Validates this source's canonical identity.</summary>

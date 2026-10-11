@@ -64,6 +64,92 @@ public sealed class ProcessRunnerEdgeTests
         persisted.ReasonCode.ShouldBe("invalid-evidence");
     }
 
+    /// <summary>Translator read-pool admission failure leaves a durable unresolved source at its old checkpoint.</summary>
+    [Fact]
+    public async Task TranslatorAdmissionFailurePersistsRetryEvidence()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<IReadOnlyList<ProcessEffect>>(new ProcessReadAdmissionException()));
+
+        ProcessRunResult result = await Runner(store, options, Gateway(OneEventPage()), translator, Delegation(), Submitter()).RunAsync(Source);
+
+        result.Status.ShouldBe(ProcessSourceStatus.Retrying);
+        result.ReasonCode.ShouldBe("read-worker-exhausted");
+        ProcessSourceState persisted = await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source);
+        persisted.Checkpoint.ShouldBe(0);
+        persisted.FailureSequence.ShouldBe(1);
+    }
+
+    /// <summary>Read outages retain a known failed envelope so alternating failures exhaust one retry budget.</summary>
+    [Fact]
+    public async Task AlternatingReadAndEnvelopeFailuresReachParked()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { RetryLimit = 3 };
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<IReadOnlyList<ProcessEffect>>(new TimeoutException("Synthetic translation outage.")));
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        int reads = 0;
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++reads == 2
+                ? Task.FromException<StreamReadPage>(new TimeoutException("Synthetic read outage."))
+                : Task.FromResult(OneEventPage()));
+        CheckpointedProcessRunner runner = Runner(store, options, gateway, translator, Delegation(), Submitter());
+
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Retrying);
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Retrying);
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Parked);
+
+        ProcessSourceState persisted = await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source);
+        persisted.Checkpoint.ShouldBe(0);
+        persisted.Attempts.ShouldBe(3);
+        persisted.FailureSequence.ShouldBe(1);
+    }
+
+    /// <summary>An unknown receipt enum is invalid target evidence even when its effect ID matches.</summary>
+    [Fact]
+    public async Task UndefinedReceiptDispositionQuarantinesWithoutCheckpoint()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
+        submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                TrustedEffectSubmission submission = call.Arg<TrustedEffectSubmission>();
+                return Task.FromResult(new TrustedEffectResult(EffectIdentityCodec.ComputeEffectId(submission.Identity),
+                    (TrustedEffectDisposition)999, false, null));
+            });
+
+        ProcessRunResult result = await Runner(store, options, Gateway(OneEventPage()), Translator([Effect([1])]), Delegation(), submitter).RunAsync(Source);
+
+        result.Status.ShouldBe(ProcessSourceStatus.Quarantined);
+        result.Checkpoint.ShouldBe(0);
+        (await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source)).ReasonCode.ShouldBe("invalid-receipt");
+    }
+
+    /// <summary>A lease-release store fault cannot turn a committed checkpoint into a failed run.</summary>
+    [Fact]
+    public async Task ReleaseFailureDoesNotReplaceSuccessfulRunResult()
+    {
+        InMemoryReadModelStore durable = new();
+        EventStoreProcessOptions options = new();
+        FaultInjectingProcessStore fault = new(durable, (key, value) => key == ProcessStateKeys.Source(Source)
+            && value is ProcessSourceState { Owner: null, Checkpoint: 1 });
+        ProcessCheckpointStore checkpoints = new(fault, Options.Create(options), TimeProvider.System);
+        CheckpointedProcessRunner runner = new(Gateway(OneEventPage()), Translator([]), Delegation(), Submitter(), checkpoints, Options.Create(options));
+
+        ProcessRunResult result = await runner.RunAsync(Source);
+
+        result.Status.ShouldBe(ProcessSourceStatus.Active);
+        result.Checkpoint.ShouldBe(1);
+        (await new ProcessCheckpointStore(durable, Options.Create(options), TimeProvider.System).GetAsync(Source)).Checkpoint.ShouldBe(1);
+    }
+
     /// <summary>A repeated translation failure at the same validated head consumes the hot retry budget.</summary>
     [Fact]
     public async Task SameHeadTranslationFailuresReachParked()

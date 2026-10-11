@@ -354,6 +354,33 @@ public sealed class ProcessSweepStore(IReadModelStore store, IOptions<EventStore
             && pending.ClaimUntil > _time.GetUtcNow();
     }
 
+    /// <summary>Releases an exact claim when a live source owner prevents mutation.</summary>
+    public async Task ReleaseDispositionClaimAsync(ProcessPendingDisposition claim, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(claim);
+        string key = ProcessStateKeys.SourceId(claim.Source);
+        for (int attempt = 0; attempt < _options.WriteAttempts; attempt++)
+        {
+            ReadModelEntry<ProcessSweepState> entry = await ReadAsync(cancellationToken).ConfigureAwait(false);
+            ProcessSweepState current = entry.Value ?? Initial();
+            current.Validate(_time);
+            if (!current.Pending.TryGetValue(key, out ProcessPendingDisposition? pending)
+                || pending.Source != claim.Source || pending.PreparedGeneration != claim.PreparedGeneration
+                || pending.Applied || pending.ClaimToken != claim.ClaimToken)
+                return;
+            ProcessSweepState next = current with
+            {
+                Pending = new Dictionary<string, ProcessPendingDisposition>(current.Pending, StringComparer.Ordinal)
+                {
+                    [key] = pending with { ClaimToken = null, ClaimUntil = null },
+                },
+            };
+            if (await SaveAsync(next, entry.ETag, cancellationToken).ConfigureAwait(false)) return;
+        }
+
+        throw new InvalidOperationException("Process disposition claim release CAS exhausted.");
+    }
+
     /// <summary>Marks source mutation complete and resets coverage so its later observation is mandatory.</summary>
     public async Task<bool> MarkDispositionAppliedAsync(ProcessPendingDisposition claim, CancellationToken cancellationToken = default)
     {
