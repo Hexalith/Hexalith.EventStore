@@ -95,6 +95,7 @@ def write_consumer_project(
             using Hexalith.EventStore.Contracts.Streams;
             using Hexalith.EventStore.Contracts.Effects;
             using Hexalith.EventStore.Contracts.Reminders;
+            using Hexalith.EventStore.Contracts.Processes;
 
             var effectIdentity = new EffectIdentity("tenant-a", "widget", "source-1", 1,
                 EffectKindCatalog.DateResume, "widget", "item-1", 0);
@@ -130,11 +131,15 @@ def write_consumer_project(
                 new StreamReadMetadata(0, null, null, 0, 0, false, null));
             if (StreamReadPageValidator.ValidateAndGetNextSequence(request, page) != 0)
                 throw new InvalidOperationException("The exclusive cursor contract changed.");
+            if (new ProcessEffect(EffectKindCatalog.Registry, "widget", "item-1", 0,
+                "CreateWidget", [123]).Ordinal != 0)
+                throw new InvalidOperationException("Process effect contract changed.");
             """),
         "Hexalith.EventStore.Client": textwrap.dedent("""\
             using Hexalith.EventStore.Client.Projections;
             using Hexalith.EventStore.Client.Effects;
             using Hexalith.EventStore.Client.Reminders;
+            using Hexalith.EventStore.Client.Processes;
             using Hexalith.EventStore.Contracts.Effects;
             using Hexalith.EventStore.Contracts.Reminders;
             using System.Text.Json;
@@ -215,6 +220,13 @@ def write_consumer_project(
             if (reminderIntents.Count != 1 || reminderCommand.CommandType != "ResumeWidget"
                 || reminderToken != "synthetic-delegation" || typeof(IReminderRegistrar).GetMethod("ConvergeAsync") is null)
                 throw new InvalidOperationException("Typed reminder SDK API changed.");
+            var processSource = new ProcessSource("tenant-a", "widget", "item-1");
+            processSource.Validate();
+            if (processSource.CatalogKey != "tenant-a\\0widget\\0item-1"
+                || typeof(IProcessSourceCatalog).GetMethod("ListAsync") is null
+                || typeof(IProcessTranslator).GetMethod("TranslateAsync") is null
+                || typeof(IProcessDelegationProvider).GetMethod("CreateAsync") is null)
+                throw new InvalidOperationException("Checkpointed process client API changed.");
 
             record Counter(int Value);
 
@@ -312,6 +324,14 @@ def write_consumer_project(
         "Hexalith.EventStore.DomainService": textwrap.dedent("""\
             using Dapr.Actors.Runtime;
             using Hexalith.EventStore.Client.Reminders;
+            using Hexalith.EventStore.Client.Processes;
+            using Hexalith.EventStore.Client.Gateway;
+            using Hexalith.EventStore.Client.Effects;
+            using Hexalith.EventStore.Client.Projections;
+            using Hexalith.EventStore.Contracts.Processes;
+            using Hexalith.EventStore.Contracts.Streams;
+            using Hexalith.EventStore.Contracts.Commands;
+            using Hexalith.EventStore.Contracts.Queries;
             using Hexalith.EventStore.Contracts.Effects;
             using Hexalith.EventStore.Contracts.Projections;
             using Hexalith.EventStore.Contracts.Reminders;
@@ -319,7 +339,10 @@ def write_consumer_project(
             using Microsoft.Extensions.Configuration;
             using Microsoft.Extensions.DependencyInjection;
             using Microsoft.Extensions.Diagnostics.HealthChecks;
+            using Microsoft.Extensions.Hosting;
             using Microsoft.Extensions.Options;
+            using System.Security.Claims;
+            using System.Text.Json;
 
             var request = new ProjectionRequest("tenant-a", "widget", "item-1", []);
             using var provider = new ServiceCollection().BuildServiceProvider();
@@ -360,12 +383,130 @@ def write_consumer_project(
                     throw new InvalidOperationException("A non-canonical reminder target was admitted.");
             }
 
+            var processServices = new ServiceCollection();
+            processServices.AddLogging();
+            processServices.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+            processServices.AddSingleton<IReadModelStore, SyntheticProcessStore>();
+            processServices.AddSingleton<IEventStoreGatewayClient, SyntheticProcessGateway>();
+            processServices.AddSingleton<ITrustedEffectSubmitter, SyntheticProcessSubmitter>();
+            processServices.AddSingleton<IProcessDelegationProvider, SyntheticProcessDelegation>();
+            processServices.AddSingleton<IProcessDispositionAuthorizer, SyntheticProcessAuthorizer>();
+            processServices.AddSingleton<IProcessDispositionAuditSink, SyntheticProcessAudit>();
+            processServices.AddEventStoreProcesses<SyntheticProcessCatalog, SyntheticProcessTranslator>(options => {
+                options.ReconciliationInterval = TimeSpan.FromSeconds(1);
+                options.ReadinessMaxAge = TimeSpan.FromMinutes(1);
+                options.SupportedCandidateCount = 1;
+            });
+            using (ServiceProvider processProvider = processServices.BuildServiceProvider()) {
+                var processHost = processProvider.GetServices<IHostedService>().OfType<ProcessReconciler>().Single();
+                await processHost.StartAsync(CancellationToken.None);
+                var source = new ProcessSource("tenant-a", "widget", "source-1");
+                var checkpoint = processProvider.GetRequiredService<ProcessCheckpointStore>();
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+                while ((await checkpoint.GetAsync(source)).Checkpoint < 1 && DateTimeOffset.UtcNow < deadline)
+                    await Task.Delay(20);
+                await processHost.StopAsync(CancellationToken.None);
+                if ((await checkpoint.GetAsync(source)).Checkpoint != 1)
+                    throw new InvalidOperationException("Hosted checkpointed process did not advance.");
+            }
+
             sealed class SyntheticReminderSource : IReminderIntentSource {
                 public Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(ReminderTarget target,
                     CancellationToken cancellationToken = default)
                     => Task.FromResult<IReadOnlyList<ReminderIntent>>([]);
 
                 public ReminderCommand TranslateDueIntent(ReminderIntent intent) => new("ResumeWidget", intent.Payload);
+            }
+
+            sealed class SyntheticProcessCatalog : IProcessSourceCatalog {
+                public Task<ProcessSourcePage> ListAsync(string? afterKey, int limit,
+                    CancellationToken cancellationToken = default) {
+                    var source = new ProcessSource("tenant-a", "widget", "source-1");
+                    return Task.FromResult(new ProcessSourcePage(afterKey is null ? [source] : [], null));
+                }
+            }
+
+            sealed class SyntheticProcessTranslator : IProcessTranslator {
+                public ValueTask<IReadOnlyList<ProcessEffect>> TranslateAsync(ProcessSource source,
+                    StreamReadEvent streamEvent, CancellationToken cancellationToken = default)
+                    => ValueTask.FromResult<IReadOnlyList<ProcessEffect>>([
+                        new ProcessEffect(EffectKindCatalog.Registry, "widget", "item-1", 0, "CreateWidget", [123])]);
+            }
+
+            sealed class SyntheticProcessDelegation : IProcessDelegationProvider {
+                public Task<TrustedEffectContext> CreateAsync(TrustedEffectSubmission submission,
+                    string causationId, CancellationToken cancellationToken = default)
+                    => Task.FromResult(new TrustedEffectContext("synthetic-worker", "synthetic-process",
+                        causationId, "synthetic-delegation"));
+            }
+
+            sealed class SyntheticProcessAuthorizer : IProcessDispositionAuthorizer {
+                public Task<bool> AuthorizeAsync(ClaimsPrincipal principal, ProcessSource source,
+                    CancellationToken cancellationToken = default) => Task.FromResult(false);
+            }
+
+            sealed class SyntheticProcessAudit : IProcessDispositionAuditSink {
+                public Task RecordAsync(ClaimsPrincipal principal, ProcessSource source, string reason,
+                    CancellationToken cancellationToken = default) => Task.CompletedTask;
+            }
+
+            sealed class SyntheticProcessSubmitter : ITrustedEffectSubmitter {
+                public Task<TrustedEffectResult> SubmitAsync(TrustedEffectSubmission submission,
+                    TrustedEffectContext context, CancellationToken cancellationToken = default)
+                    => Task.FromResult(new TrustedEffectResult(EffectIdentityCodec.ComputeEffectId(submission.Identity),
+                        TrustedEffectDisposition.NoOp, false, null));
+            }
+
+            sealed class SyntheticProcessGateway : IEventStoreGatewayClient {
+                public Task<StreamReadPage> ReadWorkloadStreamAsync(StreamReadRequest request,
+                    CancellationToken cancellationToken = default) {
+                    StreamReadEvent[] events = request.FromSequence == 0
+                        ? [new StreamReadEvent(1, "SyntheticEvent", [123], "json", 1, "message-1",
+                            null, null, DateTimeOffset.UtcNow, null)] : [];
+                    return Task.FromResult(new StreamReadPage(request.Tenant, request.Domain, request.AggregateId,
+                        events, new StreamReadMetadata(request.FromSequence, null,
+                            events.Length == 0 ? null : 1, 1, events.Length, false, null)));
+                }
+                public Task<SubmitCommandResponse> SubmitCommandAsync(SubmitCommandRequest request,
+                    CancellationToken cancellationToken = default) => throw new NotSupportedException();
+                public Task<EventStoreQueryResult> SubmitQueryAsync(SubmitQueryRequest request,
+                    string? ifNoneMatch = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+                public Task<EventStoreQueryResult<T>> SubmitQueryAsync<T>(SubmitQueryRequest request,
+                    string? ifNoneMatch = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+                public Task<StreamReadPage> ReadStreamAsync(StreamReadRequest request,
+                    CancellationToken cancellationToken = default) => throw new NotSupportedException();
+            }
+
+            sealed class SyntheticProcessStore : IReadModelStore {
+                private readonly Dictionary<string, (byte[] Value, string ETag)> _values = new(StringComparer.Ordinal);
+                private long _revision;
+                private readonly object _gate = new();
+                private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+                public Task<ReadModelEntry<T>> GetAsync<T>(string storeName, string key,
+                    CancellationToken cancellationToken = default) where T : class {
+                    lock (_gate) {
+                        return Task.FromResult(_values.TryGetValue(storeName + ":" + key, out var entry)
+                            ? new ReadModelEntry<T>(JsonSerializer.Deserialize<T>(entry.Value, Json), entry.ETag)
+                            : new ReadModelEntry<T>(null, null));
+                    }
+                }
+                public Task SaveAsync<T>(string storeName, string key, T value,
+                    CancellationToken cancellationToken = default) where T : class {
+                    lock (_gate) _values[storeName + ":" + key] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                        (++_revision).ToString());
+                    return Task.CompletedTask;
+                }
+                public Task<bool> TrySaveAsync<T>(string storeName, string key, T value, string etag,
+                    CancellationToken cancellationToken = default) where T : class {
+                    lock (_gate) {
+                        string stateKey = storeName + ":" + key;
+                        bool exists = _values.TryGetValue(stateKey, out var previous);
+                        if (exists ? previous.ETag != etag : etag.Length != 0) return Task.FromResult(false);
+                        _values[stateKey] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                            (++_revision).ToString());
+                        return Task.FromResult(true);
+                    }
+                }
             }
             """),
     }

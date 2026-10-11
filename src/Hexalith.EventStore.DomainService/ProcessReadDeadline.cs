@@ -1,0 +1,55 @@
+namespace Hexalith.EventStore.DomainService;
+
+/// <summary>Bounds workers used to isolate synchronous blocking in read-only adapters.</summary>
+internal static class ProcessReadDeadline
+{
+    private static readonly SemaphoreSlim AdapterSlots = new(16, 16);
+    private static readonly SemaphoreSlim ControlSlots = new(8, 8);
+
+    internal static async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> operation, TimeSpan timeout, CancellationToken cancellationToken)
+        => await RunAsync(AdapterSlots, operation, timeout, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Isolates control-state reads from exhausted domain-adapter workers.</summary>
+    internal static async Task<T> RunControlAsync<T>(Func<CancellationToken, Task<T>> operation, TimeSpan timeout, CancellationToken cancellationToken)
+        => await RunAsync(ControlSlots, operation, timeout, cancellationToken).ConfigureAwait(false);
+
+    private static async Task<T> RunAsync<T>(SemaphoreSlim slots, Func<CancellationToken, Task<T>> operation, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await slots.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+            throw new ProcessReadAdmissionException();
+        var work = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        work.CancelAfter(timeout);
+        Task<T> task = Task.Run(async () =>
+        {
+            try
+            {
+                return await operation(work.Token).ConfigureAwait(false);
+            }
+            finally
+            {
+                slots.Release();
+                work.Dispose();
+            }
+        }, CancellationToken.None);
+        try
+        {
+            return await task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (!task.IsCompleted)
+            {
+                try
+                {
+                    work.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The worker finished and disposed its cancellation source concurrently.
+                }
+            }
+            throw;
+        }
+    }
+}
