@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Client.Security;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -32,7 +33,8 @@ public class CommandsController(
     ILogger<CommandsController> logger,
     IEnumerable<ITrustedCommandExtensionPolicy>? trustedExtensionPolicies = null,
     IIdentityGatewayAdmission? identityAdmission = null,
-    IIdentityAdmissionProof? identityVerifier = null) : ControllerBase {
+    IIdentityAdmissionProof? identityVerifier = null,
+    IConfiguration? configuration = null) : ControllerBase {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
     // ES-1 DoS guard for the optional domain-service result payload.
@@ -84,7 +86,34 @@ public class CommandsController(
     public Task<IActionResult> SubmitWorkload([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken)
         => SubmitCoreAsync(request, workloadOnly: true, cancellationToken);
 
-    private async Task<IActionResult> SubmitCoreAsync(SubmitCommandRequest request, bool workloadOnly, CancellationToken cancellationToken) {
+    /// <summary>Submits an exact signed workload command while retaining its bound requester.</summary>
+    [HttpPost("bound/workload")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayCommandSubmitPolicy)]
+    [RequestSizeLimit(1_048_576)]
+    public Task<IActionResult> SubmitBoundWorkload(
+        [FromBody] BoundWorkloadCommandRequest request, CancellationToken cancellationToken) {
+        if (request?.Command is not { } command || string.IsNullOrWhiteSpace(request.PrincipalId)) {
+            return Task.FromResult<IActionResult>(Forbid());
+        }
+
+        string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
+        string? workloadSubject = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? allowed = caller is null ? null : configuration?[$"Authentication:BoundCommand:AllowedDomains:{caller}"];
+        string[] domains = allowed?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [];
+        bool signed = Request.Headers.TryGetValue(BoundWorkloadCommandProof.HeaderName, out var proof)
+            && proof.Count == 1 && caller is not null
+            && BoundWorkloadCommandProof.Verify(request, proof[0], caller,
+                configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
+        if (string.IsNullOrWhiteSpace(caller) || workloadSubject != "workload:" + caller ||
+            !domains.Contains(command.Domain, StringComparer.Ordinal) || !signed) {
+            return Task.FromResult<IActionResult>(Forbid());
+        }
+
+        return SubmitCoreAsync(command, workloadOnly: true, cancellationToken, request.PrincipalId);
+    }
+
+    private async Task<IActionResult> SubmitCoreAsync(SubmitCommandRequest request, bool workloadOnly,
+        CancellationToken cancellationToken, string? boundPrincipalId = null) {
         ArgumentNullException.ThrowIfNull(request);
 
         if (request.Extensions?.Keys.Any(key => key.StartsWith("identity:", StringComparison.OrdinalIgnoreCase)
@@ -98,12 +127,12 @@ public class CommandsController(
             ? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value
             : null;
         if (workloadOnly && (string.IsNullOrWhiteSpace(workload)
-            || request.Extensions is { Count: > 0 }
-            || !string.Equals(
+            || boundPrincipalId is null && request.Extensions is { Count: > 0 }
+            || boundPrincipalId is null && !string.Equals(
                 User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
                 request.Tenant,
                 StringComparison.Ordinal)
-            || !string.Equals(
+            || boundPrincipalId is null && !string.Equals(
                 User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
                 request.Domain,
                 StringComparison.Ordinal)))
@@ -127,7 +156,7 @@ public class CommandsController(
 
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
         string? userId = workloadOnly
-            ? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value ?? workload
+            ? boundPrincipalId ?? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value ?? workload
             : User.FindFirst("sub")?.Value;
         if (string.IsNullOrWhiteSpace(userId)) {
             logger.LogWarning(
@@ -160,7 +189,7 @@ public class CommandsController(
             return sanitizationResponse;
         }
 
-        (Dictionary<string, string>? extensions, string? rejectedExtensionKey) = workloadOnly
+        (Dictionary<string, string>? extensions, string? rejectedExtensionKey) = workloadOnly && boundPrincipalId is null
             ? (null, null)
             : BuildTrustedExtensions(request);
         if (rejectedExtensionKey is not null) {
@@ -214,7 +243,7 @@ public class CommandsController(
         {
             extensions ??= new Dictionary<string, string>(StringComparer.Ordinal);
             extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] = workload!;
-            string? verifiedActor = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value;
+            string? verifiedActor = boundPrincipalId ?? User.FindFirst(EventStoreWorkloadAuthenticationDefaults.ActorBindingClaimType)?.Value;
             if (!string.IsNullOrWhiteSpace(verifiedActor))
             {
                 extensions[EventStoreGatewayVerifiedOrigin.ActorExtensionKey] = verifiedActor;

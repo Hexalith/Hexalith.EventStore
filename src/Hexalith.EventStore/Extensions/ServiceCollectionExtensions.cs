@@ -103,7 +103,8 @@ public static class EventStoreServiceCollectionExtensions {
             [EventStoreWorkloadOperations.TrustedEffect,
              EventStoreWorkloadOperations.GatewayCommandSubmit,
              EventStoreWorkloadOperations.GatewayCommandStatus,
-             EventStoreWorkloadOperations.GatewayStreamRead]);
+             EventStoreWorkloadOperations.GatewayStreamRead,
+             EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery]);
 
         _ = services.AddAuthorization();
 

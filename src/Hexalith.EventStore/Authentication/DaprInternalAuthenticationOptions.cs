@@ -43,6 +43,9 @@ public sealed class DaprInternalAuthenticationOptions : AuthenticationSchemeOpti
     /// <summary>Policy for workload-only stream reads.</summary>
     public const string GatewayStreamReadPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayStreamRead;
 
+    /// <summary>Policy for bound owner authority queries.</summary>
+    public const string GatewayOwnerAuthorityQueryPolicy = SchemeName + ":" + EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery;
+
     /// <summary>Gets or sets the internal workload identities allowed to call this host.</summary>
     public IList<string> AllowedCallers { get; init; } = [];
 }

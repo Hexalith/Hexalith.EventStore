@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Dapr.Actors.Client;
@@ -9,6 +10,7 @@ using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Tests.Fakes;
@@ -21,6 +23,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -36,6 +39,10 @@ public sealed class WorkloadGatewayControllerTests
     public void Workload_routes_require_distinct_signed_operation_policies()
     {
         typeof(CommandsController).GetMethod(nameof(CommandsController.SubmitWorkload))!
+            .GetCustomAttributes(typeof(AuthorizeAttribute), false)
+            .Cast<AuthorizeAttribute>().ShouldHaveSingleItem().Policy
+            .ShouldBe(DaprInternalAuthenticationOptions.GatewayCommandSubmitPolicy);
+        typeof(CommandsController).GetMethod(nameof(CommandsController.SubmitBoundWorkload))!
             .GetCustomAttributes(typeof(AuthorizeAttribute), false)
             .Cast<AuthorizeAttribute>().ShouldHaveSingleItem().Policy
             .ShouldBe(DaprInternalAuthenticationOptions.GatewayCommandSubmitPolicy);
@@ -91,6 +98,71 @@ public sealed class WorkloadGatewayControllerTests
         (await controller.SubmitWorkload(forged, CancellationToken.None))
             .ShouldBeOfType<BadRequestObjectResult>();
         await mediator.DidNotReceiveWithAnyArgs().Send(default!, default);
+    }
+
+    [Fact]
+    public async Task Bound_command_requires_exact_signed_requester_and_domain()
+    {
+        using RSA signingKey = RSA.Create(2048);
+        string privateKey = Convert.ToBase64String(signingKey.ExportPkcs8PrivateKey());
+        string publicKey = Convert.ToBase64String(signingKey.ExportSubjectPublicKeyInfo());
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:BoundStreamRead:PublicKeys:chatbot"] = publicKey,
+            ["Authentication:BoundCommand:AllowedDomains:chatbot"] = "chatbot",
+        }).Build();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitCommandResult("correlation-1"));
+        var controller = new CommandsController(mediator,
+            new ExtensionMetadataSanitizer(Options.Create(new ExtensionMetadataOptions())),
+            NullLogger<CommandsController>.Instance, configuration: configuration)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "workload:chatbot"),
+                        new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "chatbot"),
+                    ], "workload")),
+                },
+            },
+        };
+        controller.HttpContext.Request.Scheme = "https";
+        controller.HttpContext.Request.Host = new HostString("localhost");
+        var command = new SubmitCommandRequest("message-123", "tenant-a", "chatbot", "entry-1", "GrantChatBotAuthority",
+            JsonSerializer.SerializeToElement(new { authorityKey = "entry-1" }), Extensions: new Dictionary<string, string>
+            {
+                ["actorId"] = "actor-alpha",
+                ["surfaceOrigin"] = "api",
+                ["chatbot.admission.v1"] = "protected-marker",
+            });
+        var bound = new BoundWorkloadCommandRequest(command, "actor-alpha");
+        controller.Request.Headers[BoundWorkloadCommandProof.HeaderName] =
+            BoundWorkloadCommandProof.Issue(bound, "chatbot", privateKey, DateTimeOffset.UtcNow);
+
+        (await controller.SubmitBoundWorkload(bound, CancellationToken.None)).ShouldBeOfType<AcceptedResult>();
+        await mediator.Received(1).Send(Arg.Is<SubmitCommand>(submitted =>
+            submitted.UserId == "actor-alpha" && submitted.Extensions != null &&
+            submitted.Extensions[EventStoreGatewayVerifiedOrigin.ExtensionKey] == "chatbot" &&
+            submitted.Extensions[EventStoreGatewayVerifiedOrigin.ActorExtensionKey] == "actor-alpha" &&
+            submitted.Extensions["chatbot.admission.v1"] == "protected-marker"), Arg.Any<CancellationToken>());
+
+        (await controller.SubmitBoundWorkload(bound with { PrincipalId = "other" }, CancellationToken.None))
+            .ShouldBeOfType<ForbidResult>();
+        (await controller.SubmitBoundWorkload(bound with { Command = command with { Domain = "projects" } }, CancellationToken.None))
+            .ShouldBeOfType<ForbidResult>();
+        (await controller.SubmitBoundWorkload(bound with
+        {
+            Command = command with { Payload = JsonSerializer.SerializeToElement(new { authorityKey = "entry-other" }) },
+        }, CancellationToken.None)).ShouldBeOfType<ForbidResult>();
+        (await controller.SubmitBoundWorkload(bound with
+        {
+            Command = command with { Extensions = new Dictionary<string, string> { ["actorId"] = "actor-other" } },
+        }, CancellationToken.None)).ShouldBeOfType<ForbidResult>();
+        await mediator.Received(1).Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -155,6 +227,41 @@ public sealed class WorkloadGatewayControllerTests
         (await controller.ReadWorkloadStreamAsync(
             new StreamReadRequest("tenant-a", "projects", "entry-1")))
             .ShouldBeOfType<ForbidResult>();
+    }
+
+    [Fact]
+    public async Task Stream_read_accepts_only_signed_exact_second_proof_when_oidc_cannot_bind_resources()
+    {
+        using RSA signingKey = RSA.Create(2048);
+        string privateKey = Convert.ToBase64String(signingKey.ExportPkcs8PrivateKey());
+        string publicKey = Convert.ToBase64String(signingKey.ExportSubjectPublicKeyInfo());
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:BoundStreamRead:PublicKeys:timesheets"] = publicKey,
+            ["Authentication:BoundStreamRead:AllowedDomains:timesheets"] = "timesheets",
+        }).Build();
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(false, 0));
+        IActorProxyFactory proxy = Substitute.For<IActorProxyFactory>();
+        proxy.CreateActorProxy<IAggregateActor>(Arg.Any<Dapr.Actors.ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>())
+            .Returns(actor);
+        var controller = new StreamsController(proxy, new FakeTenantValidator(), new FakeRbacValidator(),
+            NullLogger<StreamsController>.Instance, configuration: configuration)
+        {
+            ControllerContext = new ControllerContext { HttpContext = Context("tenant-a") },
+        };
+        ClaimsIdentity identity = (ClaimsIdentity)controller.User.Identity!;
+        identity.RemoveClaim(identity.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)!);
+        identity.RemoveClaim(identity.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)!);
+        var exact = new StreamReadRequest("tenant-a", "timesheets", "entry-1");
+        controller.Request.Headers[BoundStreamReadProof.HeaderName] = BoundStreamReadProof.Issue(exact, "timesheets", privateKey, DateTimeOffset.UtcNow);
+
+        (await controller.ReadWorkloadStreamAsync(exact)).ShouldBeOfType<ObjectResult>().StatusCode
+            .ShouldBe(StatusCodes.Status404NotFound);
+        (await controller.ReadWorkloadStreamAsync(exact with { Tenant = "tenant-b" })).ShouldBeOfType<ForbidResult>();
+        (await controller.ReadWorkloadStreamAsync(exact with { Domain = "projects" })).ShouldBeOfType<ForbidResult>();
+        controller.Request.Headers[BoundStreamReadProof.HeaderName] = "invalid";
+        (await controller.ReadWorkloadStreamAsync(exact)).ShouldBeOfType<ForbidResult>();
     }
 
     private static CommandsController CommandController(IMediator mediator, string tenant, string? actor = null)

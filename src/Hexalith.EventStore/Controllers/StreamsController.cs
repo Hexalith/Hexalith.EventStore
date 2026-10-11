@@ -7,6 +7,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Diagnostics;
@@ -35,7 +36,8 @@ public sealed partial class StreamsController(
     GatewayTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<StreamsController> logger,
-    IEventPayloadProtectionService? payloadProtectionService = null) : ControllerBase {
+    IEventPayloadProtectionService? payloadProtectionService = null,
+    IConfiguration? configuration = null) : ControllerBase {
 
     // Bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
     private const int _maxExceptionFrames = 8;
@@ -91,11 +93,19 @@ public sealed partial class StreamsController(
         }
 
         if (workloadOnly) {
-            if (string.IsNullOrWhiteSpace(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value)
-                || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
+            string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
+            bool jwtBound = string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)?.Value,
                     request.Tenant, StringComparison.Ordinal)
-                || !string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
-                    request.Domain, StringComparison.Ordinal)) {
+                && string.Equals(User.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)?.Value,
+                    request.Domain, StringComparison.Ordinal);
+            bool hasProof = Request.Headers.TryGetValue(BoundStreamReadProof.HeaderName, out var proofHeader);
+            string? allowedDomains = caller is null ? null : configuration?[$"Authentication:BoundStreamRead:AllowedDomains:{caller}"];
+            bool domainAllowed = allowedDomains?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Contains(request.Domain, StringComparer.Ordinal) == true;
+            bool proofBound = hasProof && proofHeader.Count == 1 && caller is not null && domainAllowed
+                && BoundStreamReadProof.Verify(proofHeader[0], request, caller,
+                    configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
+            if (string.IsNullOrWhiteSpace(caller) || hasProof && !proofBound || !jwtBound && !proofBound) {
                 return Forbid();
             }
         }

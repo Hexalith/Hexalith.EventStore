@@ -34,4 +34,7 @@ public static class EventStoreWorkloadOperations
 
     /// <summary>Read an event stream through the workload-only gateway.</summary>
     public const string GatewayStreamRead = "eventstore:stream-read";
+
+    /// <summary>Resolve one exact owner authority query under a signed requester binding.</summary>
+    public const string GatewayOwnerAuthorityQuery = "eventstore:owner-authority-query";
 }

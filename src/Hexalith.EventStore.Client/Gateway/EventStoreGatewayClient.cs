@@ -30,6 +30,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private readonly HttpClient _httpClient;
     private readonly EventStoreGatewayClientOptions _options;
     private readonly IEventStoreGatewayWorkloadAssertionSource? _workloadAssertions;
+    private readonly IEventStoreGatewayStreamReadProofSource? _streamReadProofs;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreGatewayClient"/> class.
@@ -60,10 +61,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     public EventStoreGatewayClient(
         HttpClient httpClient,
         IOptions<EventStoreGatewayClientOptions> options,
-        IEventStoreGatewayWorkloadAssertionSource? workloadAssertions = null) {
+        IEventStoreGatewayWorkloadAssertionSource? workloadAssertions = null,
+        IEventStoreGatewayStreamReadProofSource? streamReadProofs = null) {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _workloadAssertions = workloadAssertions;
+        _streamReadProofs = streamReadProofs;
         if (_options.MaxStreamReadResponseBytes <= 0) {
             throw new ArgumentOutOfRangeException(nameof(options), "MaxStreamReadResponseBytes must be greater than zero.");
         }
@@ -132,9 +135,16 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     public async Task<StreamReadPage> ReadWorkloadStreamAsync(
         StreamReadRequest request, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
+        string? boundProof = _streamReadProofs is null
+            ? null
+            : await _streamReadProofs.IssueAsync(request, cancellationToken).ConfigureAwait(false);
+        if (_streamReadProofs is not null && string.IsNullOrWhiteSpace(boundProof)) {
+            throw new InvalidOperationException("EventStore stream read proof is unavailable.");
+        }
         using HttpResponseMessage response = await SendWorkloadAsync(
             HttpMethod.Post, _options.WorkloadStreamReadPath, request,
-            EventStoreGatewayWorkloadOperations.StreamRead, request.Tenant, cancellationToken).ConfigureAwait(false);
+            EventStoreGatewayWorkloadOperations.StreamRead, request.Tenant, cancellationToken,
+            boundProof).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
@@ -151,7 +161,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private async Task<HttpResponseMessage> SendWorkloadAsync(
         HttpMethod method, string path, object? body, string operation, string tenant,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken, string? streamReadProof = null) {
         string? assertion = _workloadAssertions is null
             ? null
             : await _workloadAssertions.IssueAsync(operation, tenant, cancellationToken).ConfigureAwait(false);
@@ -161,6 +171,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
         using var request = new HttpRequestMessage(method, CreateRelativeUri(path));
         request.Headers.TryAddWithoutValidation("X-Hexalith-Workload-Assertion", assertion);
+        if (streamReadProof is not null) {
+            request.Headers.TryAddWithoutValidation("X-Hexalith-Bound-Stream-Read-Proof", streamReadProof);
+        }
         if (body is not null) {
             request.Content = JsonContent.Create(body, options: JsonOptions);
         }

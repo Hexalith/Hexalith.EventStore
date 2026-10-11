@@ -65,7 +65,11 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
             && string.Equals(context.MessageType, messageType, StringComparison.Ordinal)
             && string.Equals(context.MessageCategory, messageCategory, StringComparison.Ordinal)
             && string.Equals(context.AggregateId, aggregateId, StringComparison.Ordinal)
-            && string.Equals(context.SubjectId, subjectId, StringComparison.Ordinal)) {
+            && (string.Equals(context.SubjectId, subjectId, StringComparison.Ordinal)
+                || subjectId is null && context.SubjectId is not null
+                && string.Equals(context.SubjectId,
+                    user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+                    StringComparison.Ordinal))) {
             Log.AuthorizationPassed(
                 logger,
                 correlationId,

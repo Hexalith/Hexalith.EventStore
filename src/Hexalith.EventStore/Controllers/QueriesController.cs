@@ -1,10 +1,14 @@
 
+using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Client.Security;
+using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Server.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
@@ -30,10 +34,53 @@ public partial class QueriesController(
     ITenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<QueriesController> logger,
-    IIdentityGatewayAdmission? identityAdmission = null) : ControllerBase {
+    IIdentityGatewayAdmission? identityAdmission = null,
+    IConfiguration? configuration = null) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
+
+    /// <summary>Routes only configured owner evidence queries under an exact signed requester binding.</summary>
+    [HttpPost("owner-authority/workload")]
+    [Authorize(Policy = DaprInternalAuthenticationOptions.GatewayOwnerAuthorityQueryPolicy)]
+    [RequestSizeLimit(1_048_576)]
+    public async Task<IActionResult> SubmitBoundOwnerAuthorityAsync(
+        [FromBody] BoundOwnerQueryRequest request, CancellationToken cancellationToken) {
+        if (request?.Query is not { } query || query.Payload is null || query.AdditionalProperties is { Count: > 0 }
+            || query.EntityId is not null || query.ProjectionType is not null || query.ProjectionActorType is not null
+            || query.Paging is not null || query.Search is not null || query.Filters is not null || query.OrderBy is not null
+            || query.Freshness is not null || string.IsNullOrWhiteSpace(request.PrincipalId)) {
+            return Forbid();
+        }
+
+        string? caller = User.FindFirst(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType)?.Value;
+        string? workloadSubject = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? allowed = caller is null ? null : configuration?[$"Authentication:BoundOwnerQuery:AllowedQueries:{caller}"];
+        string[] permitted = allowed?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [];
+        bool allowedQuery = permitted.Contains(query.QueryType, StringComparer.Ordinal);
+        bool signed = Request.Headers.TryGetValue(BoundOwnerQueryProof.HeaderName, out var proof)
+            && proof.Count == 1 && caller is not null
+            && BoundOwnerQueryProof.Verify(request, proof[0], caller,
+                configuration?[$"Authentication:BoundStreamRead:PublicKeys:{caller}"], DateTimeOffset.UtcNow);
+        if (string.IsNullOrWhiteSpace(caller) || workloadSubject != "workload:" + caller
+            || !allowedQuery || !signed) {
+            return Forbid();
+        }
+
+        string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
+            ?? Guid.NewGuid().ToString();
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(query.Payload.Value);
+        HttpContext.Items[AuthorizationBehavior<SubmitQuery, SubmitQueryResult>.PrevalidatedAuthorizationContextKey]
+            = new GatewayAuthorizationContext(query.Tenant, query.Domain, query.QueryType, "query", query.AggregateId, workloadSubject);
+        var submitted = new SubmitQuery(query.Tenant, query.Domain, query.AggregateId, query.QueryType,
+            payload, correlationId, request.PrincipalId, EntityId: query.AggregateId,
+            ProjectionType: query.Domain, AuthenticatedWorkloadId: caller,
+            OriginalActorId: request.PrincipalId, IsDelegated: true);
+        SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,
+            Metadata: NormalizeProducerMetadata(result.Metadata)));
+    }
 
     [HttpPost]
     [RequestSizeLimit(1_048_576)]
