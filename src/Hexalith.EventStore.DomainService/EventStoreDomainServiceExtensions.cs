@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Client.Subscriptions;
@@ -372,6 +373,7 @@ public static class EventStoreDomainServiceExtensions {
              IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
              IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
              IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+             IServiceProviderIsKeyedService keyedServices,
              [FromServices] DomainProjectionCatalogRegistry catalogRegistry) => {
                 DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
                 AdminOperationalIndexMetadata.Response response;
@@ -392,7 +394,11 @@ public static class EventStoreDomainServiceExtensions {
                         namedProjectionHandlers,
                         identity.AppId,
                         identity.ServiceVersion,
-                        projectionDispatchOptions.Value);
+                        projectionDispatchOptions.Value,
+                        request.Domains
+                            .Where(domain => keyedServices.IsKeyedService(typeof(IDomainProcessor), domain)
+                                || keyedServices.IsKeyedService(typeof(IAsyncDomainProcessor), domain))
+                            .ToArray());
                 }
 
                 RegisterNamedProjectionCatalog(response, catalogRegistry);

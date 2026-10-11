@@ -20,6 +20,7 @@ public class DomainModuleAspireExtensionTests {
         DaprSidecarOptions options = GetOptions(sidecar);
         options.EnableAppHealthCheck.ShouldBe(true);
         options.AppHealthCheckPath.ShouldBe("/alive");
+        options.AppPort.ShouldBeNull();
         GetReferencedComponentNames(sidecar).ShouldBe(["pubsub", "statestore"]);
         GetReferencedResourceNames(domainModule).ShouldContain("eventstore");
         GetWaitedResourceNames(domainModule).ShouldContain("eventstore");
@@ -41,10 +42,37 @@ public class DomainModuleAspireExtensionTests {
         DaprSidecarOptions options = GetOptions(sidecar);
         options.EnableAppHealthCheck.ShouldBe(true);
         options.AppHealthCheckPath.ShouldBe("/alive");
+        options.AppPort.ShouldBeNull();
         options.ResourcesPaths.ShouldContain(IsolatedResourcesPath);
         GetReferencedComponentNames(sidecar).ShouldBe([]);
         GetReferencedResourceNames(domainModule).ShouldContain("eventstore");
         GetWaitedResourceNames(domainModule).ShouldContain("eventstore");
+    }
+
+    [Fact]
+    public void AddEventStoreDomainModule_WhenAppPortIsExplicit_PassesItToSidecar() {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
+        IResourceBuilder<ProjectResource> domainModule = builder.AddProject<EventStoreProjectMetadata>("multi-listener-domain");
+
+        _ = domainModule.AddEventStoreDomainModule(eventStoreResources, "timesheets", appPort: 8081);
+
+        GetOptions(GetSidecar(domainModule)).AppPort.ShouldBe(8081);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(65536)]
+    public void AddEventStoreDomainModule_WhenAppPortIsInvalid_RejectsIt(int appPort) {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
+        IResourceBuilder<ProjectResource> domainModule = builder.AddProject<EventStoreProjectMetadata>("invalid-port-domain");
+
+        Should.Throw<ArgumentOutOfRangeException>(() => domainModule.AddEventStoreDomainModule(
+            eventStoreResources,
+            "invalid-port-domain",
+            appPort: appPort));
     }
 
     [Theory]

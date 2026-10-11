@@ -42,9 +42,11 @@ public static class HexalithEventStoreDomainModuleExtensions {
     /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
     /// Leave <c>null</c> to use the DAPR CLI default.
     /// </param>
+    /// <param name="appPort">Optional DAPR application port for a module with multiple listeners.</param>
     /// <returns>The same domain-module resource builder for chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="domainModule"/> or <paramref name="eventStore"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="appId"/> is <c>null</c> or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="appPort"/> is outside the TCP port range.</exception>
     public static IResourceBuilder<ProjectResource> AddEventStoreDomainModule(
         this IResourceBuilder<ProjectResource> domainModule,
         HexalithEventStoreResources eventStore,
@@ -52,10 +54,14 @@ public static class HexalithEventStoreDomainModuleExtensions {
         string? daprConfigPath = null,
         string? isolatedDaprResourcesPath = null,
         string? daprPlacementHostAddress = null,
-        string? daprSchedulerHostAddress = null) {
+        string? daprSchedulerHostAddress = null,
+        int? appPort = null) {
         ArgumentNullException.ThrowIfNull(domainModule);
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        if (appPort is < 1 or > 65535) {
+            throw new ArgumentOutOfRangeException(nameof(appPort), appPort, "The DAPR application port must be between 1 and 65535.");
+        }
 
         bool isolated = !string.IsNullOrWhiteSpace(isolatedDaprResourcesPath);
 
@@ -76,6 +82,7 @@ public static class HexalithEventStoreDomainModuleExtensions {
             AppHealthCheckPath = DaprAppHealthCheckPath,
             PlacementHostAddress = daprPlacementHostAddress,
             SchedulerHostAddress = daprSchedulerHostAddress,
+            AppPort = appPort,
             }).Project;
     }
 }

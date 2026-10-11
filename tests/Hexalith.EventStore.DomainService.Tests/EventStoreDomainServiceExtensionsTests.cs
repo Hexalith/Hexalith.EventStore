@@ -705,6 +705,56 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             [new ProjectionDispatchRoute("widget", "widget-detail")]));
     }
 
+    [Fact]
+    public void AdminOperationalIndexMetadata_Create_IncludesNamedRouteForKeyedProcessorDomain() {
+        DiscoveryResult discovery = new([], []);
+        IAsyncDomainProjectionHandler handler = CreateNamedProjectionHandler("timesheets", "tenant-activity-type-catalog");
+        IDomainQueryHandler query = Substitute.For<IDomainQueryHandler>();
+        query.Domain.Returns("timesheets");
+        query.QueryType.Returns("get-timesheet");
+
+        AdminOperationalIndexMetadata.Response response = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["timesheets"],
+            [query],
+            [handler],
+            "timesheets",
+            "v1",
+            new ProjectionDispatchOptions(),
+            keyedProcessorDomains: ["timesheets"]);
+
+        AdminOperationalIndexMetadata.DomainMetadata domain = response.Domains.ShouldHaveSingleItem();
+        domain.Domain.ShouldBe("timesheets");
+        domain.QueryTypes.ShouldBe(["get-timesheet"]);
+        domain.NamedProjectionTypes.ShouldBe(["tenant-activity-type-catalog"]);
+        response.CatalogFingerprint.ShouldBe(ProjectionRouteCatalogFingerprint.Compute(
+            "timesheets", "v1", [new ProjectionDispatchRoute("timesheets", "tenant-activity-type-catalog")]));
+    }
+
+    [Fact]
+    public async Task NamedProjectionMetadata_IncludesAsyncOnlyKeyedProcessorDomain() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "timesheets";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddKeyedScoped<IAsyncDomainProcessor>(
+            "async-only",
+            static (_, _) => Substitute.For<IAsyncDomainProcessor>());
+        _ = builder.Services.AddScoped(_ => CreateNamedProjectionHandler("async-only", "async-only-index"));
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+
+        var request = new AdminOperationalIndexMetadata.Request(["async-only"]) {
+            AppId = "timesheets",
+            ServiceVersion = "v1",
+        };
+        (int status, string body) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata", request);
+
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        body.ShouldContain("async-only-index");
+        body.ShouldContain("catalogFingerprint");
+    }
+
     /// <summary>
     /// Proves <c>IDomainQueryHandler</c> implementations in the domain assembly are discovered and registered.
     /// </summary>

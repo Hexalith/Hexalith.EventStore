@@ -69,4 +69,10 @@ public sealed class AspireDaprDomainModuleOptions(
     /// Gets or sets the optional fixed DAPR HTTP port.
     /// </summary>
     public int? DaprHttpPort { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional application port used for DAPR service invocation.
+    /// When omitted, Aspire discovers the application endpoint as before.
+    /// </summary>
+    public int? AppPort { get; set; }
 }

@@ -64,6 +64,7 @@ public static class AspireDaprDomainModuleAspireExtensions {
             PlacementHostAddress = options.PlacementHostAddress,
             SchedulerHostAddress = options.SchedulerHostAddress,
             DaprHttpPort = options.DaprHttpPort,
+            AppPort = options.AppPort,
         };
     }
 }

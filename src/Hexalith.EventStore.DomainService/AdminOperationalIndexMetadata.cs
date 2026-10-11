@@ -36,7 +36,8 @@ public static class AdminOperationalIndexMetadata {
             namedProjectionHandlers: null,
             appId: null,
             serviceVersion: null,
-            options: null);
+            options: null,
+            keyedProcessorDomains: null);
 
     /// <summary>
     /// Creates capability-bound operational metadata including exact named projection routes.
@@ -48,6 +49,7 @@ public static class AdminOperationalIndexMetadata {
     /// <param name="appId">The DAPR application identity to bind to this catalog.</param>
     /// <param name="serviceVersion">The domain-service version to bind to this catalog.</param>
     /// <param name="options">The named dispatch limits.</param>
+    /// <param name="keyedProcessorDomains">Explicitly requested domains backed by a registered keyed processor.</param>
     /// <returns>The operational-index metadata response.</returns>
     public static Response Create(
         DiscoveryResult discovery,
@@ -56,7 +58,8 @@ public static class AdminOperationalIndexMetadata {
         IEnumerable<IAsyncDomainProjectionHandler>? namedProjectionHandlers,
         string appId,
         string serviceVersion,
-        ProjectionDispatchOptions options) {
+        ProjectionDispatchOptions options,
+        IReadOnlyCollection<string>? keyedProcessorDomains = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
         ArgumentNullException.ThrowIfNull(options);
@@ -68,7 +71,8 @@ public static class AdminOperationalIndexMetadata {
             namedProjectionHandlers,
             appId,
             serviceVersion,
-            options);
+            options,
+            keyedProcessorDomains);
     }
 
     private static Response CreateCore(
@@ -78,7 +82,8 @@ public static class AdminOperationalIndexMetadata {
         IEnumerable<IAsyncDomainProjectionHandler>? namedProjectionHandlers,
         string? appId,
         string? serviceVersion,
-        ProjectionDispatchOptions? options) {
+        ProjectionDispatchOptions? options,
+        IReadOnlyCollection<string>? keyedProcessorDomains) {
         ArgumentNullException.ThrowIfNull(discovery);
 
         HashSet<string> requested = requestedDomains is { Count: > 0 }
@@ -101,21 +106,38 @@ public static class AdminOperationalIndexMetadata {
             .Select(a => CreateDomainMetadata(a, discovery, queryTypesByDomain, namedProjectionTypesByDomain))
             .OrderBy(d => d.Domain, StringComparer.OrdinalIgnoreCase)];
 
+        // A domain may use a keyed processor in place of EventStoreAggregate<TState>.
+        // Admit its named projections only when the host confirms that processor registration.
+        // A handler alone remains an orphan and must not create an invokable route.
+        if (appId is not null && serviceVersion is not null && keyedProcessorDomains is not null) {
+            foreach (string domain in keyedProcessorDomains
+                .Where(requested.Contains)
+                .Where(domain => namedProjectionTypesByDomain.Contains(domain))
+                .Where(domain => domains.All(existing => !string.Equals(existing.Domain, domain, StringComparison.Ordinal)))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)) {
+                domains.Add(new DomainMetadata(domain, [], [], [], [], [], [.. queryTypesByDomain[domain]
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)]) {
+                    NamedProjectionTypes = [.. namedProjectionTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                });
+            }
+        }
+
         if (materializedNamedHandlers.Length == 0 || appId is null || serviceVersion is null) {
             return new Response(domains);
         }
 
-        // Compute the fingerprint over exactly the routes emitted in the per-domain metadata
-        // (aggregate-backed domains only). A named handler on a domain with no discovered aggregate
-        // is not emitted, so it must not contribute to the fingerprint either; otherwise the
-        // EventStore side — which recomputes the fingerprint from the emitted NamedProjectionTypes —
-        // would mismatch and reject the entire catalog, silently disabling v2 for the whole service.
+        // Compute the fingerprint over exactly the routes emitted in the per-domain metadata.
+        // Unregistered orphan handlers are omitted, so EventStore's recomputed fingerprint agrees.
         ProjectionDispatchRoute[] admittedRoutes = [.. domains
             .Where(domain => domain.NamedProjectionTypes is { Count: > 0 })
             .SelectMany(domain => domain.NamedProjectionTypes!
                 .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)))];
         if (admittedRoutes.Length == 0) {
-            // Named handlers exist but none resolve to an emitted (aggregate-backed) route. Do not
+            // Named handlers exist but none resolve to an emitted route. Do not
             // advertise a v2 capability with zero servable routes; present as a non-v2 service.
             return new Response(domains);
         }
