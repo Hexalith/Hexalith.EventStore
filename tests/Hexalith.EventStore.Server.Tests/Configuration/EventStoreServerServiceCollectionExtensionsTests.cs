@@ -25,6 +25,26 @@ namespace Hexalith.EventStore.Server.Tests.Configuration;
 public class EventStoreServerServiceCollectionExtensionsTests {
     private static readonly string _strongDigestKey = Convert.ToBase64String(Enumerable.Repeat((byte)0x2A, 32).ToArray());
 
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public void ProjectionEffectWorkersFollowRecoveryControl(string? setting, bool expected) {
+        Dictionary<string, string?> settings = [];
+        if (setting is not null) {
+            settings["EventStore:Projections:WorkersEnabled"] = setting;
+        }
+
+        using ServiceProvider provider = BuildProvider(registerDaprClient: true, settings);
+        IHostedService[] hosted = [.. provider.GetServices<IHostedService>()];
+
+        hosted.ShouldContain(service => service is ProjectionDiscoveryHostedService);
+        hosted.Any(service => service is ProjectionDeliveryRetryWorker).ShouldBe(expected);
+        hosted.Any(service => service is ProjectionActivationWorker).ShouldBe(expected);
+        hosted.Any(service => service is ActiveRebuildIndexCleanupService).ShouldBe(expected);
+        hosted.Any(service => service is ProjectionPollerService).ShouldBe(expected);
+    }
+
     [Fact]
     public void AddEventStoreServerWithoutDaprClientDoesNotActivateCleanupService() {
         using ServiceProvider provider = BuildProvider(registerDaprClient: false);

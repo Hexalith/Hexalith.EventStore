@@ -192,44 +192,48 @@ public static class EventStoreServerServiceCollectionExtensions {
             failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
             tags: ["ready"]);
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
-        _ = services.AddSingleton<IHostedService>(serviceProvider =>
-            serviceProvider.GetService<DaprClient>() is null
-                ? NoOpHostedService.Instance
-                : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
-        _ = services.AddSingleton<IHostedService>(serviceProvider =>
-            serviceProvider.GetService<DaprClient>() is null
-                ? NoOpHostedService.Instance
-                : ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider));
-        // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
-        // hosts use the same no-op pattern as the projection poller so they do not emit recurring
-        // sweep failures from DAPR-backed stores.
-        _ = services.AddSingleton<IHostedService>(serviceProvider =>
-            serviceProvider.GetService<DaprClient>() is null
-                ? NoOpHostedService.Instance
-                : ActivatorUtilities.CreateInstance<ActiveRebuildIndexCleanupService>(serviceProvider));
-        _ = services.AddSingleton<IHostedService>(serviceProvider => {
-            if (serviceProvider.GetService<DaprClient>() is null) {
-                // R2P9 — emit the disable warning via a source-generated LoggerMessage so the Stage tag
-                // surfaces as a structured log property (consistent with the other ProjectionPolling* logs).
-                // R2P10 — resolve the factory via GetService rather than the typed logger, then fall back
-                // to Console.Error so a misconfigured logging stack cannot silence this operator alert
-                // (the whole point of this branch is to surface that polling is silently disabled).
-                ILoggerFactory? loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-                if (loggerFactory is not null) {
-                    ILogger<ProjectionPollerService> logger = loggerFactory.CreateLogger<ProjectionPollerService>();
-                    ProjectionPollerDisabledLog.PollerDisabled(logger);
-                }
-                else {
-                    Console.Error.WriteLine(
-                        "[Stage=ProjectionPollerDisabled] DaprClient is not registered; projection polling is disabled. "
-                        + "Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container.");
+        // Recovery can suppress the four background projection effects without changing
+        // discovery or request-path projection behavior. Omission preserves the default.
+        if (configuration.GetValue("EventStore:Projections:WorkersEnabled", true)) {
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider));
+            // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
+            // hosts use the same no-op pattern as the projection poller so they do not emit recurring
+            // sweep failures from DAPR-backed stores.
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ActiveRebuildIndexCleanupService>(serviceProvider));
+            _ = services.AddSingleton<IHostedService>(serviceProvider => {
+                if (serviceProvider.GetService<DaprClient>() is null) {
+                    // R2P9 — emit the disable warning via a source-generated LoggerMessage so the Stage tag
+                    // surfaces as a structured log property (consistent with the other ProjectionPolling* logs).
+                    // R2P10 — resolve the factory via GetService rather than the typed logger, then fall back
+                    // to Console.Error so a misconfigured logging stack cannot silence this operator alert
+                    // (the whole point of this branch is to surface that polling is silently disabled).
+                    ILoggerFactory? loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                    if (loggerFactory is not null) {
+                        ILogger<ProjectionPollerService> logger = loggerFactory.CreateLogger<ProjectionPollerService>();
+                        ProjectionPollerDisabledLog.PollerDisabled(logger);
+                    }
+                    else {
+                        Console.Error.WriteLine(
+                            "[Stage=ProjectionPollerDisabled] DaprClient is not registered; projection polling is disabled. "
+                            + "Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container.");
+                    }
+
+                    return NoOpHostedService.Instance;
                 }
 
-                return NoOpHostedService.Instance;
-            }
-
-            return ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider);
-        });
+                return ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider);
+            });
+        }
         services.AddActors(options => {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
             if (!string.IsNullOrEmpty(daprHttpPort)) {
