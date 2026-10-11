@@ -43,6 +43,56 @@
                 "key": "EventStore:StateStoreComponentPath",
                 "source": "configuration",
                 "reference": "statestorecomponentpath"
+              },
+              {
+                "key": "EventStore:PubSubComponentPath",
+                "source": "configuration",
+                "reference": "pubsubcomponentpath"
+              },
+              {
+                "key": "Authentication:JwtBearer:Authority",
+                "source": "configuration",
+                "reference": "authority"
+              },
+              {
+                "key": "Authentication:JwtBearer:Issuer",
+                "source": "configuration",
+                "reference": "issuer"
+              },
+              {
+                "key": "Authentication:JwtBearer:Audience",
+                "source": "configuration",
+                "reference": "audience"
+              },
+              {
+                "key": "Authentication:JwtBearer:ValidAudiences",
+                "source": "configuration",
+                "reference": "validaudiences"
+              },
+              {
+                "key": "Authentication:JwtBearer:AllowedAlgorithms",
+                "source": "configuration",
+                "reference": "allowedalgorithms"
+              },
+              {
+                "key": "Authentication:JwtBearer:RequireHttpsMetadata",
+                "source": "configuration",
+                "reference": "requirehttpsmetadata"
+              },
+              {
+                "key": "Authentication:JwtBearer:AllowInsecureSymmetricKey",
+                "source": "configuration",
+                "reference": "allowinsecuresymmetrickey"
+              },
+              {
+                "key": "Authentication:JwtBearer:SigningKey",
+                "source": "secret",
+                "reference": "gateway-jwt-signing-key"
+              },
+              {
+                "key": "EventStore:AppChannelToken",
+                "source": "secret",
+                "reference": "app-channel-token"
               }
             ]
           }
@@ -114,6 +164,10 @@
           {
             "name": "app-channel-token",
             "configurationKey": "EventStore:AppChannelToken"
+          },
+          {
+            "name": "gateway-jwt-signing-key",
+            "configurationKey": "Authentication:JwtBearer:SigningKey"
           }
         ],
         "dynamicSecretNamespaces": [],

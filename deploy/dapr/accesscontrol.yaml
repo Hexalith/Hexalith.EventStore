@@ -6,6 +6,8 @@
 # Allowed callers in the production topology:
 #   - eventstore-admin: Admin REST API host. Needs GET/POST/PUT to delegate admin reads and writes
 #     to EventStore (ADR-P4).
+#   - tenants-api: Public Tenants API host. Checks readiness and forwards authenticated business calls.
+#   - tenants: Tenants domain host. Submits the configured global-administrator bootstrap command.
 #
 # Security Posture: defaultAction: deny (secure by default, D4)
 # Trust Domain: Configure for production environment (see trustDomain below)
@@ -50,4 +52,19 @@ spec:
         operations:
           - name: /ready
             httpVerb: ['GET']
+            action: allow
+          - name: /api/v1/queries
+            httpVerb: ['POST']
+            action: allow
+          - name: /api/v1/commands
+            httpVerb: ['POST']
+            action: allow
+      # Domain bootstrap is authorized by its delegated administrator bearer token in EventStore.
+      - appId: tenants
+        defaultAction: deny
+        trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"
+        namespace: "{env:DAPR_NAMESPACE|hexalith}"
+        operations:
+          - name: /api/v1/commands
+            httpVerb: ['POST']
             action: allow
