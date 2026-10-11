@@ -12,7 +12,8 @@ import json
 from pathlib import Path
 import sys
 
-from p1r_published_qualification import InvalidPacket, create_packet, validate_packet
+from p1r_published_qualification import (InvalidPacket, create_packet, load_document, measure_successor_support_table,
+                                         parse_json, regular, validate_inputs, validate_packet, write_json)
 
 
 def main(arguments=None):
@@ -28,18 +29,32 @@ def main(arguments=None):
                          help="independently verified historical comparison evidence (repeatable; never rollback)")
     prepare.add_argument("--receipt", type=Path, action="append", default=[],
                          help="lane, restore or cleanup receipt from a separately selected executor (repeatable)")
+    prepare.add_argument("--support-boundary", type=Path,
+                         help="measured, candidate-specific successor case table (required for a successor)")
     prepare.add_argument("--process-controls", action="store_true",
                          help="run the bounded local process controls (local scope only)")
     commands.add_parser("validate", help="independently validate an existing packet").add_argument("directory", type=Path)
+    measure = commands.add_parser("measure-boundary", help="draft a successor table from complete new receipts")
+    measure.add_argument("--inputs", type=Path, required=True)
+    measure.add_argument("--receipt", type=Path, action="append", required=True)
+    measure.add_argument("--out", type=Path, required=True, help="new table file (must not exist)")
     args = parser.parse_args(arguments)
     try:
         if args.command == "validate":
             result = validate_packet(args.directory)
+        elif args.command == "measure-boundary":
+            if args.out.exists() or args.out.is_symlink():
+                raise InvalidPacket("successor table output already exists")
+            selection, _, _ = load_document(args.inputs, validate_inputs)
+            table = measure_successor_support_table(selection, [parse_json(regular(path)) for path in args.receipt])
+            write_json(args.out, table)
+            result = {"out": str(args.out.absolute()), "status": table["status"], "candidate": table["candidate"],
+                      "case_count": sum(len(entry["cases"]) for entry in table["lanes"].values()), "p1r_usable": False}
         else:
             packet = create_packet(args.out, inputs=args.inputs, decisions=args.decisions,
                                    candidate_evidence=args.candidate_evidence, rollback_evidence=args.rollback_evidence,
                                    receipts=tuple(args.receipt), process_controls=args.process_controls,
-                                   comparison_evidence=tuple(args.comparison_evidence))
+                                   comparison_evidence=tuple(args.comparison_evidence), support_boundary=args.support_boundary)
             if packet["errors"]:
                 # The sealed packet retains the refusal; report its exact errors and refusals instead of validating.
                 print(json.dumps({"valid": False, "qualified": False, "p1r_usable": False,

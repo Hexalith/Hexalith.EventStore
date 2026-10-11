@@ -7,7 +7,8 @@ import sys
 
 # -I inventory invocations retain their literal command and require an explicit tools path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from p1r_published_executor import Executor, InvalidPacket, canonical, qualification, postgres_inventory, redis_inventory
+from p1r_published_executor import (Executor, InvalidPacket, canonical, qualification, postgres_inventory,
+                                    redis_inventory, validate_execution_inputs)
 
 
 def main(arguments=None):
@@ -38,6 +39,7 @@ def main(arguments=None):
         else:
             inputs, data, scope = qualification.load_document(args.inputs, qualification.validate_inputs)
             qualification.require(scope == "owner-selected", "synthetic selections cannot execute published qualification")
+            validate_execution_inputs(inputs)
             worker = Executor(args.out, inputs)
             worker.inputs_sha256 = qualification.digest(data)
             worker.result["inputs_sha256"] = worker.inputs_sha256

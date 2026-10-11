@@ -183,14 +183,41 @@ def validate_execution_inputs(inputs):
     """Refuse a substituted approved tuple before any consumer or operational resource starts."""
     require(qualification.validate_inputs(inputs) == "owner-selected", "synthetic inputs cannot execute published operations")
     candidate, profile = inputs["candidate"], inputs["operational_profile"]
-    require(candidate["version"] == CANDIDATE and candidate["tag"] == "v3.119.0"
-            and candidate["tag_commit"] == TAG_COMMIT
-            and candidate["builds"] == {"version": "4.30.1-20-g2cf0002", "commit": BUILDS_COMMIT}
-            and inputs["rollback"] is None and inputs["assertion_instrumentation"]["mechanism"] == MECHANISM
+    require(inputs["rollback"] is None and inputs["assertion_instrumentation"]["mechanism"] == MECHANISM
             and [row["version"] for row in inputs.get("comparisons", [])] == list(qualification.COMPARISON_VERSIONS)
             and profile["runtime"] == "dapr" and profile["runtime_version"] == "1.18.2"
             and profile["backend"] == "state.postgresql" and profile["backend_image"] == POSTGRES
             and inputs["selected_additions"] == list(qualification.ADDITIONS), "execution selections substituted")
+    if candidate["version"] == CANDIDATE:
+        require(candidate["tag"] == "v3.119.0" and candidate["tag_commit"] == TAG_COMMIT
+                and candidate["builds"] == {"version": "4.30.1-20-g2cf0002", "commit": BUILDS_COMMIT},
+                "execution selections substituted")
+        return
+    require(qualification.is_successor_selection(inputs) and candidate["tag_builds_commit"],
+            "unrepaired or unbound successor selection")
+    tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+    source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+    tag_builds = preparation.git(ROOT, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    require(tag_commit == source_commit == candidate["tag_commit"]
+            and len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
+            and tag_builds[2] == candidate["tag_builds_commit"],
+            "successor tag, exact source, or tag Builds identity substituted")
+
+
+def provisional_successor_execution_policy(selection):
+    """Route historically incapable old endpoints safely; this is not the successor case table."""
+    original = qualification.load_support_table({"candidate": {"version": CANDIDATE},
+        "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS]})
+    version = selection["candidate"]["version"]
+    inventory = qualification.executed_case_inventory(selection)
+    rules = {}
+    for lane, identifiers in inventory.items():
+        old = original["lanes"][lane]["cases"]
+        require([rule["id"].replace(CANDIDATE, version) for rule in old] == list(identifiers),
+                "successor execution inventory differs from the historically fenced route plan")
+        for rule in old:
+            rules[(lane, rule["id"].replace(CANDIDATE, version))] = rule["treatment"]
+    return rules
 
 
 def semantic_observation(observation, outcome):
@@ -218,6 +245,22 @@ def semantic_delta(package, source):
 class Executor:
     """Own all resources by exact identity and retain partial progress on interruption."""
 
+    @property
+    def candidate(self):
+        return getattr(self, "_candidate", CANDIDATE)
+
+    @candidate.setter
+    def candidate(self, value):
+        self._candidate = value
+
+    @property
+    def versions(self):
+        return getattr(self, "_versions", VERSIONS)
+
+    @versions.setter
+    def versions(self, value):
+        self._versions = value
+
     def __init__(self, output, inputs=None):
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
@@ -225,6 +268,8 @@ class Executor:
         self.invocation = uuid.uuid4().hex
         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
         self.inputs = inputs
+        self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
+        self.versions = ("3.110.0", "3.70.1", self.candidate)
         self.inputs_sha256 = digest(canonical(inputs)) if inputs else None
         self.commands, self.containers, self.processes, self.active = [], {}, [], []
         self.pending_containers = {}
@@ -444,7 +489,7 @@ class Executor:
         raise TimeoutError("owned endpoint startup timeout")
 
     def build_consumers(self, version, source=False):
-        role = "source" if source else "candidate" if version == CANDIDATE else "comparison-" + version
+        role = "source" if source else "candidate" if version == self.candidate else "comparison-" + version
         root = self.output / "consumers" / role
         shutil.copytree(CONSUMERS, root)
         packages = root / "packages"
@@ -473,7 +518,7 @@ class Executor:
                                    dict(environment, ASPNETCORE_URLS=f"http://127.0.0.1:{app_port}", ASPNETCORE_ENVIRONMENT="Development"))
                 try:
                     ready = self.wait(f"http://127.0.0.1:{app_port}/ready", item)
-                    identity = ready["identity"] if (source or version == CANDIDATE) and project == "Domain" else self.http("GET", f"http://127.0.0.1:{app_port}/identity")
+                    identity = ready["identity"] if (source or version == self.candidate) and project == "Domain" else self.http("GET", f"http://127.0.0.1:{app_port}/identity")
                 finally:
                     self.stop_nodes()
             loaded = "loaded/" + project + ".json"
@@ -485,18 +530,61 @@ class Executor:
         self.evidence[role] = root
         return root
 
+    def verify_selected_candidate_archives(self):
+        """Bind downloaded candidate bytes before any protected fixture route is started."""
+        candidate = self.inputs["candidate"]
+        root = self.evidence["candidate"]
+        require([package["id"] for package in candidate["packages"]] == list(PACKAGE_IDS),
+                "candidate package inventory substituted")
+        for package in candidate["packages"]:
+            identifier, version = package["id"], candidate["version"]
+            lower = identifier.lower()
+            base = root / "packages" / lower / version
+            archive = base / f"{lower}.{version}.nupkg"
+            data = regular(archive)
+            nuspec, entries, _ = qualification.inspect_archive(archive, data)
+            metadata = qualification.parse_json(regular(base / ".nupkg.metadata"))
+            require(nuspec["valid"] and nuspec["id"] == identifier and nuspec["version"] == version
+                    and entries["signature"] and not entries["synthetic_marker"]
+                    and digest(data) == package["archive_sha256"]
+                    and metadata["contentHash"] == package["content_hash"]
+                    and nuspec["repository_commit"] == package["repository_commit"] == candidate["tag_commit"],
+                    "candidate archive differs from selected published identity")
+            self.run(["dotnet", "nuget", "verify", "--all", archive, "--verbosity", "minimal"], cwd=root)
+            require(qualification.REPOSITORY_SIGNATURE in self.commands[-1]["output"],
+                    "candidate repository signature not verified")
+
     def observe_inputs(self, planning, reference):
         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
         candidate = planning["candidate_proposed"]
-        require(candidate["version"] == CANDIDATE and candidate["tag_commit"] == TAG_COMMIT
-                and candidate["builds"]["commit"] == BUILDS_COMMIT, "candidate selection substituted")
-        tag_builds = preparation.git(ROOT, "ls-tree", "v" + CANDIDATE, "references/Hexalith.Builds").decode().split()
-        require(len(tag_builds) == 4 and tag_builds[2] == TAG_BUILDS_COMMIT, "candidate package-build provenance substituted")
+        self.candidate = candidate["version"]
+        self.versions = ("3.110.0", "3.70.1", self.candidate)
+        if self.candidate == CANDIDATE:
+            require(candidate["tag_commit"] == TAG_COMMIT and candidate["builds"]["commit"] == BUILDS_COMMIT,
+                    "candidate selection substituted")
+            expected_tag_builds = TAG_BUILDS_COMMIT
+        else:
+            require(qualification.is_successor_selection({"candidate": candidate}),
+                    "unrepaired or unbound successor selection")
+            qualification.validate_selection(candidate, "candidate")
+            require([package["id"] for package in candidate["packages"]] == list(PACKAGE_IDS)
+                    and all(package["repository_commit"] == candidate["tag_commit"]
+                            for package in candidate["packages"])
+                    and "tag_builds_commit" in candidate,
+                    "successor observation lacks exact source-bound packages or tag Builds identity")
+            tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+            source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+            require(tag_commit == source_commit == candidate["tag_commit"],
+                    "successor observation source or tag substituted")
+            expected_tag_builds = candidate["tag_builds_commit"]
+        tag_builds = preparation.git(ROOT, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
+        require(len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
+                and tag_builds[2] == expected_tag_builds, "candidate tag Builds provenance substituted")
         selections = {}
-        for version in VERSIONS:
+        for version in self.versions:
             root = self.build_consumers(version)
             tag_commit = preparation.git(ROOT, "rev-parse", "v" + version + "^{commit}").decode().strip()
-            if version == CANDIDATE:
+            if version == self.candidate:
                 builds = {key: candidate["builds"][key] for key in ("version", "commit")}
                 require(tag_commit == candidate["tag_commit"], "candidate tag substituted")
             else:
@@ -519,7 +607,7 @@ class Executor:
                 metadata = qualification.parse_json(regular(base / ".nupkg.metadata"))
                 row = {"id": identifier, "archive_sha256": digest(data), "content_hash": metadata["contentHash"],
                        "repository_commit": nuspec["repository_commit"]}
-                if version == CANDIDATE:
+                if version == self.candidate:
                     expected = next(package for package in candidate["packages"] if package["id"] == identifier)
                     require(all(row[key] == expected[key] for key in row), "candidate archive differs from approved observation")
                 self.run(["dotnet", "nuget", "verify", "--all", archive, "--verbosity", "minimal"], cwd=root)
@@ -530,9 +618,12 @@ class Executor:
                 selected.append(row)
             selections[version] = {"version": version, "tag": "v" + version, "tag_commit": tag_commit,
                                    "builds": builds, "feed": candidate["feed"], "packages": selected}
+            if version == self.candidate and self.candidate != CANDIDATE:
+                selections[version]["tag_builds_commit"] = expected_tag_builds
         inputs = {"schema": qualification.INPUTS_SCHEMA, "fixture": None,
-                  "authority": {"owner": "user", "reference": reference, "date": "2026-10-10"},
-                  "candidate": selections[CANDIDATE], "rollback": None,
+                  "authority": {"owner": "user", "reference": reference,
+                                "date": datetime.datetime.now(datetime.timezone.utc).date().isoformat()},
+                  "candidate": selections[self.candidate], "rollback": None,
                   "comparisons": [selections[version] for version in qualification.COMPARISON_VERSIONS],
                   "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2", "backend": "state.postgresql",
                                           "backend_image": POSTGRES, "selected_by": "user", "reference": reference},
@@ -540,6 +631,8 @@ class Executor:
                   "selected_additions": list(qualification.ADDITIONS)}
         qualification.validate_inputs(inputs)
         self.inputs = inputs
+        self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
+        self.versions = ("3.110.0", "3.70.1", self.candidate)
         self.inputs_sha256 = digest(canonical(inputs))
         write_json(self.output / "owner-inputs.json", inputs)
         self.inputs_sha256 = digest(regular(self.output / "owner-inputs.json"))
@@ -608,7 +701,7 @@ class Executor:
             "state_component_sha256": digest(tracked_state), "backend_image": POSTGRES,
             "runtime_version": self.inputs["operational_profile"]["runtime_version"],
             "observed_utc": stamp(),
-            "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", CANDIDATE) else None,
+            "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", self.candidate) else None,
             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
             "files": [{"name": path.name, "path": str(path),
                        "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
@@ -618,7 +711,7 @@ class Executor:
                       for path in (config, resources / "state.yaml", resources / "pubsub.yaml")]}
         write_json(self.output / "configurations" / (configuration["id"] + ".json"), configuration)
         self.configurations.append(configuration)
-        role = "source" if version == "source" else "candidate" if version == CANDIDATE else "comparison-" + version
+        role = "source" if version == "source" else "candidate" if version == self.candidate else "comparison-" + version
         root = self.evidence[role]
         configuration = "Debug" if version == "source" else "Release"
         for project, appid in (("Domain", "counter"), ("Host", "eventstore")):
@@ -635,7 +728,7 @@ class Executor:
             registration = "EventStore__DomainServices__Registrations__*|counter|v1__"
             environment.update({registration + key: value for key, value in
                                 {"AppId": "counter", "MethodName": "process", "TenantId": "*", "Domain": "counter", "Version": "v1"}.items()})
-            if version in ("source", CANDIDATE):
+            if version in ("source", self.candidate):
                 environment.update(Authentication__JwtBearer__Issuer="p1r-" + self.invocation,
                     Authentication__JwtBearer__Audience="counter", Authentication__JwtBearer__SigningKey=self.workload_key,
                     Authentication__Workload__Audience="counter", Authentication__Workload__AllowedCallers__0="eventstore",
@@ -660,7 +753,7 @@ class Executor:
         return [item["ownership"].root for item in self.active]
 
     def probe(self, version, arguments, checks, prefix="probe:", timeout=180):
-        role = "source" if version == "source" else "candidate" if version == CANDIDATE else "comparison-" + version
+        role = "source" if version == "source" else "candidate" if version == self.candidate else "comparison-" + version
         root = self.evidence[role]
         configuration = "Debug" if version == "source" else "Release"
         data = self.run(["dotnet", root / "probe" / "bin" / configuration / "net10.0/Probe.dll", *arguments], check=False, timeout=timeout)
@@ -973,7 +1066,7 @@ class Executor:
         identities = {"configuration": "Release", "packages": [{"id": package["id"], "sha256": package["archive_sha256"]}
                        for selection in [self.inputs["candidate"], *self.inputs["comparisons"]] for package in selection["packages"]],
                        "loaded_assemblies": list({(row["name"], row["sha256"], row["path"]): row
-                                                  for version in VERSIONS for row in self.identities[version]}.values())}
+                                                  for version in self.versions for row in self.identities[version]}.values())}
         execution_evidence = {"mechanism": MECHANISM, "executor_source_sha256": self.result["executor_source_sha256"],
                               "executor_source": self.source_binding, "cases": evidence,
                               "predicate_sources": [self.witness_sources[path] for path in sorted({
@@ -1019,7 +1112,7 @@ class Executor:
         return {"before": before, "after": after, "actor": observed}, "refusal" if observed.get("accepted") is False else "effect", "compatible" if observed.get("accepted") is False else "incompatible"
 
     def provenance_case(self, identifier, checks):
-        role = "candidate" if identifier == CANDIDATE else "comparison-" + identifier
+        role = "candidate" if identifier == self.candidate else "comparison-" + identifier
         selection = qualification.role_selection(self.inputs, role)
         root = self.evidence[role]
         observed = self.probe(identifier, ["identity"], checks)
@@ -1113,7 +1206,7 @@ class Executor:
         after = self.inventory()
         checks.check("second-tenant-preserved", runtime.domain(before, "tenant-b") == runtime.domain(after, "tenant-b"))
         audits = None
-        if version == CANDIDATE and operation in ("trusted-effect", "unauthorized-effect"):
+        if version == self.candidate and operation in ("trusted-effect", "unauthorized-effect"):
             audits = self.postgres_audits(self.redis)
             expected = {"action": "submission" if operation == "trusted-effect" else "gateway-proof",
                         "tenant": "tenant-a", "workload": "p1r-fixture", "purpose": "published-qualification",
@@ -1156,7 +1249,7 @@ class Executor:
                   "--clean", "--if-exists", "--no-owner", "/tmp/p1r-restore.dump"])
 
     def restore_case(self, identifier, checks):
-        self.seed(CANDIDATE, 10, checks)
+        self.seed(self.candidate, 10, checks)
         self.mutate("retained")
         commands, inventories = [], {}
         source_db = digest(self.redis.encode())
@@ -1177,11 +1270,11 @@ class Executor:
         inventories["restored"] = {"command": index, "rows": copied, "sha256": digest(canonical(copied))}
         checks.check("backup-nonempty", bool(backup))
         checks.check("fresh-restore-full-inventory-identical", source == copied)
-        processes = self.start_nodes(CANDIDATE, restored, port, interval=1000)
+        processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "start-writer", self.commands[-1], restored_db, processes)
-        before = self.actor(CANDIDATE, "tenant-a", 12, "AssertCounter", checks, "restored:")
+        before = self.actor(self.candidate, "tenant-a", 12, "AssertCounter", checks, "restored:")
         checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True)
-        append = self.actor(CANDIDATE, "tenant-a", 12, "IncrementCounter", checks, "append:")
+        append = self.actor(self.candidate, "tenant-a", 12, "IncrementCounter", checks, "append:")
         self.recovery_command(commands, "append", self.commands[-1], restored_db)
         checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1)
         appended = self.inventory(restored)
@@ -1193,12 +1286,12 @@ class Executor:
                   "values=json.loads(sys.argv[2]);sys.exit(1 if any(p.same_process(v,p.process_state(v['pid'])) for v in values) else 0)",
                   str(ROOT / "tools"), canonical(processes).decode()])
         self.recovery_command(commands, "stop-writer", self.commands[-1], restored_db)
-        restarted_processes = self.start_nodes(CANDIDATE, restored, port, interval=1000)
+        restarted_processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "restart", self.commands[-1], restored_db, restarted_processes)
-        replay = self.actor(CANDIDATE, "tenant-a", 13, "AssertCounter", checks, "restart:")
+        replay = self.actor(self.candidate, "tenant-a", 13, "AssertCounter", checks, "restart:")
         self.recovery_command(commands, "replay", self.commands[-1], restored_db)
         checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True)
-        second = self.actor(CANDIDATE, "tenant-b", 3, "AssertCounter", checks, "secondary:")
+        second = self.actor(self.candidate, "tenant-b", 3, "AssertCounter", checks, "secondary:")
         checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True)
         restarted = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
@@ -1224,8 +1317,8 @@ class Executor:
         self.seed("3.70.1", 1000, checks)
         before = self.inventory()
         backup, _ = self.postgres_backup(self.redis)
-        self.start_nodes(CANDIDATE)
-        appended = self.actor(CANDIDATE, "tenant-a", 12, "IncrementCounter", checks, "new-write:")
+        self.start_nodes(self.candidate)
+        appended = self.actor(self.candidate, "tenant-a", 12, "IncrementCounter", checks, "new-write:")
         checks.check("post-backup-write-committed", appended.get("accepted") is True)
         self.stop_nodes()
         advanced = self.inventory()
@@ -1257,7 +1350,7 @@ class Executor:
         deadline_utc = (datetime.datetime.fromisoformat(started_utc) + datetime.timedelta(seconds=30)).isoformat()
         completed = False
         while time.monotonic() < deadline:
-            observation = self.probe(CANDIDATE, ["sequence", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"],
+            observation = self.probe(self.candidate, ["sequence", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"],
                                      checks, "natural-scheduler:" + str(len(observations)) + ":",
                                      timeout=max(.001, deadline - time.monotonic()))
             observations.append({"observed_utc": stamp(), "sequence": observation.get("sequence"), "command": self.commands[-1]["id"],
@@ -1271,11 +1364,11 @@ class Executor:
                 "started_utc": started_utc, "deadline_utc": deadline_utc, "budget_seconds": 30}
 
     def reminder_case(self, identifier, checks):
-        self.seed(CANDIDATE, 1000, checks)
+        self.seed(self.candidate, 1000, checks)
         before = self.inventory()
         due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=12)
         self.reminder_due = due.isoformat()
-        self.start_nodes(CANDIDATE)
+        self.start_nodes(self.candidate)
         registration = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/1", {})
         checks.check("reminder-armed", registration.get("armed") == 1 and registration.get("unresolved") == 0)
         checks.check("initial-convergence-no-direct-submission", registration.get("submitted") == 0)
@@ -1284,7 +1377,7 @@ class Executor:
             time.sleep(max(0, (due - datetime.datetime.now(datetime.timezone.utc)).total_seconds()) + .2)
             natural = self.natural_reminder(checks)
         else:
-            before_restart = self.probe(CANDIDATE, ["sequence", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"],
+            before_restart = self.probe(self.candidate, ["sequence", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"],
                                         checks, "before-restart:")
             checks.check("scheduled-effect-not-committed-before-restart", before_restart.get("sequence") == 12)
         self.stop_nodes()
@@ -1292,7 +1385,7 @@ class Executor:
         revision = 2 if identifier == "stale-generation-refusal" else 1
         if revision == 2:
             self.reminder_due = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30)).isoformat()
-        self.start_nodes(CANDIDATE)
+        self.start_nodes(self.candidate)
         rearmed = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/{revision}", {})
         checks.check("reminder-converges-after-restart", rearmed.get("unresolved") == 0 and rearmed.get("quarantined") == 0)
         checks.check("restart-convergence-no-direct-submission", rearmed.get("submitted") == 0)
@@ -1312,7 +1405,8 @@ class Executor:
                 "natural_scheduler_effect": natural, "repeated_or_stale": repeated,
                 "fixture_authority": "bounded Test authority; P2 acceptance pending"}, "refusal" if revision == 2 else "effect", "compatible"
 
-    def evolution_case(self, identifier, checks, version=CANDIDATE):
+    def evolution_case(self, identifier, checks, version=None):
+        version = self.candidate if version is None else version
         legacy_alias = "P1R.Legacy.CounterIncremented"
         self.seed(version, 1000, checks, write_alias="old")
         unknown_input = None
@@ -1376,21 +1470,21 @@ class Executor:
         lane = identifier
         cases = qualification.executed_case_inventory(self.inputs)[lane]
         if lane == "legacy-metadata":
-            selected_case = CANDIDATE + "-pascal-floor-None"
+            selected_case = self.candidate + "-pascal-floor-None"
             action = lambda version_case, measurements: self.metadata_case(lane, version_case, measurements)
         elif lane in ("query-wire", "projection-wire"):
-            selected_case = next(case for case in cases if CANDIDATE in case)
+            selected_case = next(case for case in cases if self.candidate in case)
             action = lambda version_case, measurements: self.wire_case(lane, version_case, measurements)
         elif lane == "invalid-evidence":
-            selected_case = CANDIDATE + "-unknown-version"
+            selected_case = self.candidate + "-unknown-version"
             action = self.invalid_case
         else:
-            selected_case = next(case for case in cases if "-to-" + CANDIDATE in case)
+            selected_case = next(case for case in cases if "-to-" + self.candidate in case)
             action = lambda version_case, measurements: self.live_case(lane, version_case, measurements)
         paired = {}
         outcomes = {}
         dispositions = {}
-        for version, case in (("package", selected_case), ("source", selected_case.replace(CANDIDATE, "source"))):
+        for version, case in (("package", selected_case), ("source", selected_case.replace(self.candidate, "source"))):
             measured = Measurements()
             try:
                 observation, outcome, disposition = action(case, measured)
@@ -1402,8 +1496,8 @@ class Executor:
         package_semantics = semantic_observation(paired["package"], outcomes["package"])
         source_semantics = semantic_observation(paired["source"], outcomes["source"])
         checks.check("source-package-semantics-equivalent", package_semantics == source_semantics)
-        comparison = {"selected_version": CANDIDATE, "selected_case": selected_case,
-                      "source_case": selected_case.replace(CANDIDATE, "source"),
+        comparison = {"selected_version": self.candidate, "selected_case": selected_case,
+                      "source_case": selected_case.replace(self.candidate, "source"),
                       "scope": "same fixture operations, domain outcomes and persisted coordinates; dynamic identities excluded",
                       "package": package_semantics, "source": source_semantics,
                       "delta": semantic_delta(package_semantics, source_semantics)}
@@ -1413,7 +1507,7 @@ class Executor:
 
     def failure_case(self, identifier, checks):
         before_shared = self.shared()
-        self.seed(CANDIDATE, 1000, checks)
+        self.seed(self.candidate, 1000, checks)
         before = self.inventory()
         if identifier == "startup-failure":
             environment = dict(os.environ, ASPNETCORE_URLS="invalid-owned-url", ASPNETCORE_ENVIRONMENT="Development")
@@ -1422,7 +1516,7 @@ class Executor:
             item["process"].wait(timeout=15)
             checks.check("real-consumer-startup-failed", item["process"].returncode != 0)
         else:
-            self.start_nodes(CANDIDATE)
+            self.start_nodes(self.candidate)
             command = [sys.executable, "-I", "-c", "import sys,urllib.request; urllib.request.urlopen(sys.argv[1],timeout=30).read()",
                        f"http://127.0.0.1:{self.host_port}/qualification-hold"]
             if identifier == "cancellation":
@@ -1449,12 +1543,16 @@ class Executor:
 
     def execute(self):
         validate_execution_inputs(self.inputs)
-        policy = qualification.load_support_table(self.inputs)
-        self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
-                              for rule in entry["cases"]}
+        if self.candidate == CANDIDATE:
+            policy = qualification.load_support_table(self.inputs)
+            self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
+                                  for rule in entry["cases"]}
+        else:
+            self.support_rules = provisional_successor_execution_policy(self.inputs)
         try:
-            for version in VERSIONS:
+            for version in self.versions:
                 self.build_consumers(version)
+            self.verify_selected_candidate_archives()
             self.topology()
             for lane in qualification.SCENARIOS:
                 preparation.check_current_source(self.source_binding)
@@ -1476,7 +1574,7 @@ class Executor:
                     action, operational = self.failure_case, True
                 elif lane == "checkout":
                     try:
-                        self.build_consumers(CANDIDATE, source=True)
+                        self.build_consumers(self.candidate, source=True)
                     except Exception as error:
                         self.errors.append("distinct Debug/source consumer: " + str(error))
                     action, operational = self.checkout_case, True

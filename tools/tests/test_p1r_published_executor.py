@@ -295,6 +295,59 @@ class MeasurementTests(unittest.TestCase):
                 with self.assertRaisesRegex(preparation.InvalidPacket, "selections substituted"):
                     executor.validate_execution_inputs(changed)
 
+    def testSuccessorExecutionRequiresExactTagSourceAndBuildsBeforeResources(self):
+        candidate = {"version": "3.121.0", "tag": "v3.121.0", "tag_commit": "a" * 40,
+                     "tag_builds_commit": "b" * 40, "builds": {"version": "4.31.0", "commit": "c" * 40}}
+        inputs = {"candidate": candidate, "rollback": None,
+                  "assertion_instrumentation": {"mechanism": executor.MECHANISM},
+                  "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS],
+                  "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2",
+                                          "backend": "state.postgresql", "backend_image": executor.POSTGRES},
+                  "selected_additions": list(qualification.ADDITIONS)}
+        observations = [b"a" * 40, b"a" * 40, b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
+        with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
+             mock.patch.object(preparation, "git", side_effect=observations) as git:
+            executor.validate_execution_inputs(inputs)
+            self.assertEqual(git.call_count, 3)
+        for mutation in (lambda value: value["candidate"].update(version="3.120.0"),
+                         lambda value: value["candidate"].update(tag_commit="d" * 40),
+                         lambda value: value["candidate"].update(tag_builds_commit="d" * 40)):
+            changed = copy.deepcopy(inputs)
+            mutation(changed)
+            with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
+                 mock.patch.object(preparation, "git", side_effect=observations):
+                with self.assertRaises(preparation.InvalidPacket):
+                    executor.validate_execution_inputs(changed)
+
+    def testSuccessorObservationUsesSelectedTagAndBuildsBeforeConsumers(self):
+        candidate = {"version": "3.121.0", "tag": "v3.121.0", "tag_commit": "a" * 40,
+                     "tag_builds_commit": "b" * 40, "builds": {"version": "4.31.0", "commit": "c" * 40},
+                     "feed": "https://fixture.invalid/v3/index.json",
+                     "packages": [{"id": identifier, "archive_sha256": "d" * 64,
+                                   "content_hash": base64.b64encode(b"fixture-hash" * 5 + b"xxxx").decode(),
+                                   "repository_commit": "a" * 40}
+                                  for identifier in executor.PACKAGE_IDS]}
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.build_consumers = mock.Mock(side_effect=RuntimeError("consumer boundary reached"))
+        observations = [b"a" * 40, b"a" * 40,
+                        b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
+        with mock.patch.object(preparation, "git", side_effect=observations) as git:
+            with self.assertRaisesRegex(RuntimeError, "consumer boundary reached"):
+                worker.observe_inputs({"candidate_proposed": candidate}, "selected-successor")
+        self.assertEqual(worker.candidate, "3.121.0")
+        self.assertEqual(worker.versions, ("3.110.0", "3.70.1", "3.121.0"))
+        worker.build_consumers.assert_called_once_with("3.110.0")
+        self.assertEqual(git.call_count, 3)
+
+    def testSuccessorExecutionPlanRerunsCandidateAndFencesOldRoutes(self):
+        selection = {"candidate": {"version": "3.121.0"},
+                     "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS]}
+        rules = executor.provisional_successor_execution_policy(selection)
+        self.assertEqual(rules[("mixed-api", "3.121.0-stale-fence")], "supported")
+        self.assertEqual(rules[("logical-event-evolution", "logical-alias-replay")], "supported")
+        self.assertEqual(rules[("metadata-write", "3.121.0-to-3.70.1")], "refused")
+        self.assertEqual(len(rules), sum(map(len, qualification.executed_case_inventory(selection).values())))
+
     def testStatusRetryabilityKeepsUnknownFalseAndTrueDistinct(self):
         self.assertEqual(executor.STATUS_RETRYABILITY, (None, False, True))
         self.assertEqual([type(value) for value in executor.STATUS_RETRYABILITY], [type(None), bool, bool])

@@ -13,6 +13,10 @@ public sealed class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation/";
     private const string P1rPublishedRun =
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/";
+    private const string P1r119PublishedRun =
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/";
+    private const string P1r119ProbeInventorySha256 =
+        "cf95b652ef0cbdc57772773c5b094797d97b777e378fecaf81adbe15a5bd1f43";
     private static readonly (string FileName, string Sha256)[] _sealedPackageObservations =
     [
         ("Directory.Packages.props", "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28"),
@@ -197,7 +201,8 @@ public sealed class ContractsPackageDependencyTests
         string wrapperPath = Path.Combine(root, "Directory.Packages.props");
         XDocument wrapper = XDocument.Load(wrapperPath);
         string catalogPath = ResolveSharedPackageVersionsPath(root, wrapper);
-        (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(root, root, catalogPath).ConfigureAwait(true);
+        (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(
+            root, root, catalogPath, GetSealedP1r119ProbeExclusions(root)).ConfigureAwait(true);
         exitCode.ShouldBe(
             0,
             $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
@@ -404,7 +409,36 @@ public sealed class ContractsPackageDependencyTests
         }
     }
 
-    private static async Task<(int ExitCode, string Output, string Error)> RunConsumerAuthorityValidatorAsync(string repositoryRoot, string root, string catalogPath)
+    private static string[] GetSealedP1r119ProbeExclusions(string root)
+    {
+        ProcessStartInfo start = new("git") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        start.ArgumentList.Add("ls-files");
+        start.ArgumentList.Add("-z");
+        start.ArgumentList.Add("--");
+        start.ArgumentList.Add(P1r119PublishedRun);
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit(30_000).ShouldBeTrue("Sealed P1R probe inventory timed out.");
+        process.ExitCode.ShouldBe(0, error);
+
+        string[] paths = output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Where(path => path.EndsWith(".csproj", StringComparison.Ordinal)
+                || path.EndsWith(".props", StringComparison.Ordinal)
+                || path.EndsWith(".targets", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        paths.Length.ShouldBe(300, "The standalone 3.119.0 probe inventory changed.");
+        string manifest = string.Join("\n", paths.Select(path =>
+            path + " " + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path)))).ToLowerInvariant())) + "\n";
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(manifest))).ToLowerInvariant()
+            .ShouldBe(P1r119ProbeInventorySha256, "The sealed 3.119.0 probe paths or bytes changed.");
+        return paths;
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunConsumerAuthorityValidatorAsync(
+        string repositoryRoot, string root, string catalogPath, string[]? additionalExcludedPaths = null)
     {
         string buildsRoot = VerifyCatalogRepository(repositoryRoot, catalogPath);
         foreach ((string fileName, string sha256) in _sealedPackageObservations)
@@ -438,7 +472,7 @@ public sealed class ContractsPackageDependencyTests
         process.StartInfo.ArgumentList.Add("-CatalogPath");
         process.StartInfo.ArgumentList.Add(catalogPath);
         process.StartInfo.ArgumentList.Add("-ExcludedPath");
-        process.StartInfo.ArgumentList.Add(string.Join(';', _standaloneEvidenceProbeProjects));
+        process.StartInfo.ArgumentList.Add(string.Join(';', _standaloneEvidenceProbeProjects.Concat(additionalExcludedPaths ?? [])));
 
         process.Start().ShouldBeTrue("Could not start the shared consumer package authority validator.");
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();

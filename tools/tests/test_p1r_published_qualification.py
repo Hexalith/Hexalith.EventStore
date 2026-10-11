@@ -1637,6 +1637,93 @@ class SupportBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(q.InvalidPacket, "measured candidate"):
                 q.validate_inputs(changed)
 
+    def testSuccessorSelectionHasNoInheritedOrUnrepairedBoundary(self):
+        successor = {"candidate": {"version": "3.121.0", "tag_commit": "a" * 40,
+                                  "tag_builds_commit": "b" * 40, "builds": {"commit": "c" * 40}},
+                     "comparisons": self.selection["comparisons"]}
+        with self.assertRaisesRegex(q.InvalidPacket, "measured owner disposition"):
+            q.load_support_table(successor)
+        unrepaired = copy.deepcopy(successor)
+        unrepaired["candidate"]["version"] = "3.120.0"
+        with self.assertRaisesRegex(q.InvalidPacket, "3.120.0 lacks"):
+            q.load_support_table(unrepaired)
+
+    def testSuccessorPacketKeepsInputsWhenDecisionsFollowSupportBoundary(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            inputs = q.parse_json((q.SUPPORT_BASELINE / "inputs.json").read_bytes())
+            candidate = inputs["candidate"]
+            candidate.update(version="3.121.0", tag="v3.121.0", tag_commit="a" * 40,
+                             tag_builds_commit="b" * 40, builds={"version": "4.31.0", "commit": "c" * 40})
+            for package in candidate["packages"]:
+                package["repository_commit"] = candidate["tag_commit"]
+            inputs_path = root / "inputs.json"
+            write(inputs_path, inputs)
+            decisions_path = root / "decisions.json"
+            write(decisions_path, synthetic_decisions(sha(inputs_path.read_bytes()), fixture=None))
+            table_path = root / "support-boundary.json"
+            write(table_path, {"candidate": candidate["version"]})
+            with mock.patch.object(q, "validate_successor_support_table", return_value={"candidate": candidate["version"]}) as validate:
+                packet = q.create_packet(root / "packet", inputs=inputs_path, decisions=decisions_path,
+                                         support_boundary=table_path)
+            self.assertEqual(packet["errors"], [])
+            self.assertEqual(packet["support_boundary"]["path"], "support-boundary.json")
+            validate.assert_called_once_with(inputs, {"candidate": candidate["version"]})
+
+    def testSuccessorTableRejectsSubstitutionMissingCasesAndInventedRefusals(self):
+        selection = {"candidate": {"version": "3.121.0", "tag_commit": "a" * 40,
+                                   "tag_builds_commit": "b" * 40, "builds": {"commit": "c" * 40}},
+                     "comparisons": self.selection["comparisons"]}
+        checks_sha = q.digest(q.preparation.canonical(["observed-check"]))
+        lanes = {lane: {"receipt_sha256": "d" * 64, "cases": [
+            {"id": identifier, "treatment": "supported", "measured_outcome": "effect",
+             "measured_disposition": "compatible", "measured_failed": 0, "measured_expected": "effect",
+             "measured_operation": "supported", "measured_checks_sha256": checks_sha}
+            for identifier in identifiers]}
+            for lane, identifiers in q.executed_case_inventory(selection).items()}
+        for lane, entry in lanes.items():
+            for rule, old in zip(entry["cases"], self.policy["lanes"][lane]["cases"]):
+                rule["treatment"] = old["treatment"]
+                if old["treatment"] == "refused":
+                    rule.update(measured_outcome="refusal", measured_disposition="incompatible",
+                                measured_expected="refusal", measured_operation="unsupported")
+        table = {"schema": "hexalith.p1r.successor-support-boundary.v1", "status": "dispositioned",
+                 "candidate": "3.121.0", "candidate_tag_commit": "a" * 40,
+                 "candidate_tag_builds_commit": "b" * 40, "candidate_builds_commit": "c" * 40,
+                 "selection_sha256": q.digest(q.preparation.canonical(selection)),
+                 "disposition": {"role": "solution-architect", "owner": "fixture-owner", "date": "2026-10-11",
+                                 "reference": "fixture-decision"}, "lanes": lanes}
+        self.assertIs(q.load_support_table(selection, table), table)
+        for edit in (lambda value: value.update(candidate="3.122.0"),
+                     lambda value: value["lanes"]["mixed-api"]["cases"].pop(),
+                     lambda value: value["lanes"]["mixed-api"]["cases"].__getitem__(-1).update(treatment="refused"),
+                     lambda value: value.update(disposition=None)):
+            changed = copy.deepcopy(table)
+            edit(changed)
+            with self.assertRaises(q.InvalidPacket):
+                q.load_support_table(selection, changed)
+
+    def testSuccessorCandidateFailureAndMissingAssertionsCannotPass(self):
+        identifier = "3.121.0-stale-fence"
+        check = {"id": "stale-context-refused", "passed": False}
+        case = {"id": identifier, "operation": "supported", "expected": "refusal", "outcome": "error",
+                "disposition": "incompatible", "checks": [check],
+                "assertions": {"attempted": 1, "passed": 0, "failed": 1}}
+        rule = {"id": identifier, "treatment": "supported", "measured_operation": "supported",
+                "measured_expected": "refusal", "measured_outcome": "error",
+                "measured_disposition": "incompatible", "measured_failed": 1,
+                "measured_checks_sha256": q.digest(q.preparation.canonical([check["id"]]))}
+        receipt = {"lane": "mixed-api", "cases": [case], "execution_evidence": {"cases": [{"id": identifier}]}}
+        policy = {"schema": "hexalith.p1r.successor-support-boundary.v1",
+                  "lanes": {"mixed-api": {"receipt_sha256": q.digest(q.preparation.canonical(receipt)), "cases": [rule]}}}
+        self.assertFalse(q.assess_lane(receipt, policy))
+        missing = copy.deepcopy(receipt)
+        missing["cases"][0]["assertions"] = {"attempted": 0, "passed": 0, "failed": 0}
+        rule["measured_failed"] = 0
+        policy["lanes"]["mixed-api"]["receipt_sha256"] = q.digest(q.preparation.canonical(missing))
+        with self.assertRaisesRegex(q.InvalidPacket, "no measured assertion"):
+            q.assess_lane(missing, policy)
+
     def testTamperedPolicyCannotOmitSubstituteOrInventRefusals(self):
         for mutation in (lambda p: p["lanes"]["metadata-write"]["cases"].pop(),
                          lambda p: p.update(candidate="3.120.0"),

@@ -81,6 +81,8 @@ ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts
 INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
               "assertion_instrumentation", "selected_additions")
 COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
+SUCCESSOR_PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in
+                              ("Client", "Contracts", "DomainService", "Server", "ServiceDefaults"))
 SELECTION_KEYS = ("version", "tag", "tag_commit", "builds", "feed", "packages")
 SELECTED_PACKAGE_KEYS = ("id", "archive_sha256", "content_hash", "repository_commit")
 DECISION_KEYS = ("schema", "fixture", "inputs_sha256", "decisions", "conformance")
@@ -98,6 +100,7 @@ DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 NAME = re.compile(r"[A-Za-z0-9_.-]{1,128}")
 SUPPORT_TABLE = Path(__file__).with_name("p1r_support_boundary.json")
 SUPPORT_TABLE_SHA256 = "19892532995447336389fe98daaef19c44636942b3a33b791e13b2f534aab7e3"
+SUCCESSOR_SUPPORT_TABLE = Path(__file__).with_name("p1r_successor_support_boundary.json")
 SUPPORT_BASELINE = (ROOT / "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run"
                     / "packet-677345025f7b42449cbf8ce4afb43813")
 text, pattern = runtime.text, runtime.pattern
@@ -143,14 +146,22 @@ def is_eventstore(name):
     return isinstance(name, str) and release.is_eventstore_package_id(name)
 
 
+def is_successor_selection(selection):
+    version = selection["candidate"]["version"]
+    return re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is not None and (
+        tuple(int(part) for part in version.split(".")) > (3, 120, 0))
+
+
 # Owner inputs and decisions -------------------------------------------------------------------------------------
 
 def validate_selection(value, role):
     reason = f"invalid {role} selection"
-    members(value, SELECTION_KEYS, reason)
+    members(value, SELECTION_KEYS + (("tag_builds_commit",) if "tag_builds_commit" in value else ()), reason)
     pattern(value["version"], SEMVER, reason)
     require(value["tag"] == "v" + value["version"], f"{role} tag differs from its version")
     pattern(value["tag_commit"], HEX40, reason)
+    if "tag_builds_commit" in value:
+        pattern(value["tag_builds_commit"], HEX40, reason)
     members(value["builds"], ("version", "commit"), reason)
     pattern(value["builds"]["version"], SEMVER, reason)
     pattern(value["builds"]["commit"], HEX40, reason)
@@ -179,6 +190,16 @@ def validate_inputs(value):
     date(value["authority"]["date"], "invalid execution authority")
     require(value["candidate"] is not None, "candidate selection missing")
     validate_selection(value["candidate"], "candidate")
+    if value["fixture"] is None:
+        version = value["candidate"]["version"]
+        require(version != "3.120.0", "3.120.0 lacks the stale-fence and logical-alias repairs")
+        if is_successor_selection(value):
+            require([package["id"] for package in value["candidate"]["packages"]] == list(SUCCESSOR_PACKAGE_IDS)
+                    and all(package["repository_commit"] == value["candidate"]["tag_commit"]
+                            for package in value["candidate"]["packages"]),
+                    "successor selection lacks the five exact source-bound packages")
+    if value["fixture"] is None and is_successor_selection(value):
+        require("tag_builds_commit" in value["candidate"], "successor tag Builds identity missing")
     if value["rollback"] is not None:
         validate_selection(value["rollback"], "rollback")
         require(value["rollback"]["version"] != value["candidate"]["version"], "rollback must differ from the candidate")
@@ -343,8 +364,15 @@ def executed_case_inventory(selection):
     return result
 
 
-def load_support_table(selection):
+def load_support_table(selection, successor=None):
     """Load the fixed 3.119.0 case policy and check every sealed receipt binding."""
+    require(selection is not None and isinstance(selection.get("candidate"), dict), "candidate selection missing")
+    if selection["candidate"]["version"] != "3.119.0":
+        require(selection["candidate"]["version"] != "3.120.0",
+                "3.120.0 lacks the required stale-fence and logical-alias repairs; measured 3.119.0 policy cannot transfer")
+        if successor is None:
+            successor = parse_json(regular(SUCCESSOR_SUPPORT_TABLE))
+        return validate_successor_support_table(selection, successor)
     require(selection is not None and selection["candidate"]["version"] == "3.119.0"
             and [row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
             "support boundary requires the measured 3.119.0 comparison tuple")
@@ -393,11 +421,119 @@ def load_support_table(selection):
     return policy
 
 
+def validate_successor_support_table(selection, policy):
+    """Bind a successor table to one selected published family and a complete fresh case inventory."""
+    members(policy, ("schema", "status", "candidate", "candidate_tag_commit", "candidate_tag_builds_commit",
+                     "candidate_builds_commit",
+                     "selection_sha256", "disposition", "lanes"), "successor support boundary members differ")
+    require(policy["schema"] == "hexalith.p1r.successor-support-boundary.v1", "unsupported successor support boundary")
+    require(policy["status"] == "dispositioned", "successor support boundary lacks measured owner disposition")
+    disposition = policy["disposition"]
+    members(disposition, ("role", "owner", "date", "reference"), "successor support disposition missing")
+    require(disposition["role"] == "solution-architect", "successor support disposition has wrong role")
+    text(disposition["owner"], "successor support disposition lacks owner")
+    date(disposition["date"], "successor support disposition lacks date")
+    text(disposition["reference"], "successor support disposition lacks reference")
+    candidate = selection["candidate"]
+    require(policy["candidate"] == candidate["version"]
+            and policy["candidate_tag_commit"] == candidate["tag_commit"]
+            and policy["candidate_tag_builds_commit"] == candidate["tag_builds_commit"]
+            and policy["candidate_builds_commit"] == candidate["builds"]["commit"]
+            and policy["selection_sha256"] == digest(preparation.canonical(selection)),
+            "successor support boundary selection substituted")
+    inventory = executed_case_inventory(selection)
+    require(isinstance(policy["lanes"], dict) and set(policy["lanes"]) == set(inventory),
+            "successor support boundary omits a lane")
+    historical = load_support_table({"candidate": {"version": "3.119.0"},
+                                     "comparisons": [{"version": version} for version in COMPARISON_VERSIONS]})
+    for lane, identifiers in inventory.items():
+        entry = policy["lanes"][lane]
+        members(entry, ("receipt_sha256", "cases"), "successor support lane members differ")
+        pattern(entry["receipt_sha256"], HEX64, "successor support lane lacks receipt binding")
+        require(isinstance(entry["cases"], list)
+                and [rule.get("id") for rule in entry["cases"] if isinstance(rule, dict)] == list(identifiers),
+                "successor support boundary omits or substitutes a case")
+        historical_rules = historical["lanes"][lane]["cases"]
+        for rule, old_rule in zip(entry["cases"], historical_rules):
+            members(rule, ("id", "treatment", "measured_outcome", "measured_disposition", "measured_failed",
+                           "measured_expected", "measured_operation", "measured_checks_sha256"),
+                    "successor support case members differ")
+            require(rule["treatment"] in ("supported", "refused", "containment"), "unknown successor support treatment")
+            require(old_rule["id"].replace("3.119.0", candidate["version"]) == rule["id"],
+                    "successor case differs from the protected historical route inventory")
+            if old_rule["treatment"] in ("refused", "containment"):
+                require(rule["treatment"] == old_rule["treatment"],
+                        "successor support boundary unblocks an incapable old route")
+            require(rule["measured_outcome"] in ("effect", "refusal", "error")
+                    and rule["measured_disposition"] in ("compatible", "incompatible")
+                    and type(rule["measured_failed"]) is int and rule["measured_failed"] >= 0,
+                    "invalid successor measurement")
+            pattern(rule["measured_checks_sha256"], HEX64, "successor support case lacks check binding")
+            if rule["treatment"] == "refused":
+                require(candidate["version"] not in rule["id"] or any(
+                    old in rule["id"] for old in COMPARISON_VERSIONS), "candidate-only refusal invented")
+                require(lane != "logical-event-evolution" and rule["measured_operation"] == "unsupported"
+                        and rule["measured_outcome"] == "refusal" and rule["measured_expected"] == "refusal"
+                        and rule["measured_failed"] == 0,
+                        "successor refusal lacks measured pre-effect admission")
+            elif rule["treatment"] == "containment":
+                require(lane == "pre-upgrade-restore" and rule["id"] == "containment-only-backup-restore",
+                        "invented successor containment")
+    return policy
+
+
+def measure_successor_support_table(selection, receipts):
+    """Draft a fresh case table from actual executor receipts without granting owner disposition."""
+    require(validate_inputs(selection) == "owner-selected", "successor measurement lacks owner-selected inputs")
+    require(is_successor_selection(selection),
+            "3.119.0 evidence or unrepaired 3.120.0 cannot become a successor measurement")
+    inventory = executed_case_inventory(selection)
+    require(isinstance(receipts, list) and len(receipts) == len(inventory),
+            "successor measurement lacks a complete new lane receipt set")
+    by_lane = {}
+    for receipt in receipts:
+        lane = receipt.get("lane") if isinstance(receipt, dict) else None
+        require(lane in inventory and lane not in by_lane, "successor measurement has an unknown or duplicate lane")
+        lane_outcome(receipt)
+        require([case.get("id") for case in receipt["cases"]] == list(inventory[lane]),
+                "successor measurement omits or substitutes a case")
+        evidence = receipt.get("execution_evidence", {}).get("cases", [])
+        require(isinstance(evidence, list) and [row.get("id") for row in evidence] == list(inventory[lane]),
+                "successor measurement lacks per-case execution evidence")
+        by_lane[lane] = receipt
+    lanes = {}
+    for lane in inventory:
+        receipt = by_lane[lane]
+        cases = []
+        for case, evidence in zip(receipt["cases"], receipt["execution_evidence"]["cases"]):
+            checks = case.get("checks")
+            assertions = case.get("assertions")
+            require(isinstance(checks, list) and isinstance(assertions, dict)
+                    and assertions.get("attempted", 0) > 0 and assertions == checks_counter(checks),
+                    "successor measurement lacks actual case assertions")
+            rule = {"id": case["id"], "treatment": "supported", "measured_outcome": case["outcome"],
+                    "measured_disposition": case["disposition"], "measured_failed": assertions["failed"],
+                    "measured_expected": case["expected"], "measured_operation": case["operation"],
+                    "measured_checks_sha256": digest(preparation.canonical([check["id"] for check in checks]))}
+            if lane == "pre-upgrade-restore" and case["id"] == "containment-only-backup-restore":
+                rule["treatment"] = "containment"
+            elif case["operation"] == "unsupported" and supported_case({**rule, "treatment": "refused"}, case, evidence, lane):
+                rule["treatment"] = "refused"
+            cases.append(rule)
+        lanes[lane] = {"receipt_sha256": digest(preparation.canonical(receipt)), "cases": cases}
+    candidate = selection["candidate"]
+    return {"schema": "hexalith.p1r.successor-support-boundary.v1", "status": "measured-pending-disposition",
+            "candidate": candidate["version"], "candidate_tag_commit": candidate["tag_commit"],
+            "candidate_tag_builds_commit": candidate["tag_builds_commit"],
+            "candidate_builds_commit": candidate["builds"]["commit"],
+            "selection_sha256": digest(preparation.canonical(selection)), "disposition": None, "lanes": lanes}
+
+
 def refusal_endpoint(lane, identifier):
     """The incapable binary that must reject the bounded fixture route."""
     if lane == "query-wire":
         writer, reader, _ = identifier.split("-", 2)
-        return reader if writer == "3.119.0" else writer
+        return reader if writer not in COMPARISON_VERSIONS else writer
     if lane in ("metadata-write", "projection-wire"):
         return "3.70.1" if "3.70.1" in identifier else "3.110.0"
     return identifier.split("-", 1)[0]
@@ -408,16 +544,17 @@ def supported_case(rule, case, evidence, lane):
     counter = case["assertions"]
     require(isinstance(counter, dict) and counter["attempted"] > 0, "support case has no measured assertion")
     treatment = rule["treatment"]
+    prefix = "baseline_" if "baseline_operation" in rule else "measured_"
     if treatment == "supported":
-        return (case["operation"] == rule["baseline_operation"] == "supported"
-                and case["expected"] == rule["baseline_expected"] and case["disposition"] == "compatible"
+        return (case["operation"] == rule[prefix + "operation"] == "supported"
+                and case["expected"] == rule[prefix + "expected"] and case["disposition"] == "compatible"
                 and case["outcome"] == case["expected"] and counter["failed"] == 0
-                and digest(preparation.canonical([check["id"] for check in case["checks"]])) == rule["baseline_checks_sha256"])
+                and digest(preparation.canonical([check["id"] for check in case["checks"]])) == rule[prefix + "checks_sha256"])
     if treatment == "containment":
         return (case["id"] == "containment-only-backup-restore" and case["operation"] == "supported"
                 and case["expected"] == case["outcome"] == "effect" and case["disposition"] == "incompatible"
                 and counter["failed"] == 0
-                and digest(preparation.canonical([check["id"] for check in case["checks"]])) == rule["baseline_checks_sha256"])
+                and digest(preparation.canonical([check["id"] for check in case["checks"]])) == rule[prefix + "checks_sha256"])
     if not (case["operation"] == "unsupported" and case["expected"] == case["outcome"] == "refusal"
             and case["disposition"] == "incompatible" and counter["failed"] == 0
             and case["inventory"]["before_sha256"] == case["inventory"]["after_sha256"]):
@@ -456,10 +593,21 @@ def assess_lane(receipt, policy):
     """Evaluate every required case without changing its original lane receipt."""
     lane = receipt["lane"]
     rules = policy["lanes"][lane]["cases"]
+    if policy["schema"] == "hexalith.p1r.successor-support-boundary.v1":
+        require(digest(preparation.canonical(receipt)) == policy["lanes"][lane]["receipt_sha256"],
+                "successor receipt differs from its measured support boundary")
     require([case["id"] for case in receipt["cases"]] == [rule["id"] for rule in rules],
             "support receipt omits or substitutes a case")
     evidence = receipt.get("execution_evidence", {}).get("cases", [])
     require(len(evidence) == len(rules), "support receipt lacks per-case evidence")
+    if policy["schema"] == "hexalith.p1r.successor-support-boundary.v1":
+        for rule, case in zip(rules, receipt["cases"]):
+            require((rule["measured_outcome"], rule["measured_disposition"], rule["measured_failed"],
+                     rule["measured_expected"], rule["measured_operation"], rule["measured_checks_sha256"]) ==
+                    (case["outcome"], case["disposition"], case["assertions"]["failed"],
+                     case["expected"], case["operation"],
+                     digest(preparation.canonical([check["id"] for check in case["checks"]]))),
+                    "successor support boundary rewrites a measured case")
     return all(supported_case(rule, case, proof, lane) for rule, case, proof in zip(rules, receipt["cases"], evidence))
 
 
@@ -1125,7 +1273,7 @@ def import_receipt(path, directory, lanes, context, boundary=None):
     receipt = parse_json(data)
     group, lane, outcome = receipt_outcome(receipt, context)
     if boundary is not None and group in ("scenarios", "additions") and receipt.get("instrumentation") == "p1r-executed-checks-v1":
-        boundary[lane] = assess_lane(receipt, load_support_table(context["inputs"]["value"]))
+        boundary[lane] = assess_lane(receipt, load_support_table(context["inputs"]["value"], context.get("support_boundary")))
     name = f"receipts/{receipt['id']}.json"
     target = directory / name
     require(not target.exists(), "duplicate receipt identity")
@@ -1148,7 +1296,7 @@ def public(record):
 
 
 def create_packet(directory, inputs=None, decisions=None, candidate_evidence=None, rollback_evidence=None, receipts=(),
-                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=()):
+                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None):
     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
     directory = Path(directory).absolute()
     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
@@ -1164,7 +1312,7 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
     inputs_record = decisions_record = None
     boundary = {}
     try:
-        dependent = (candidate_evidence, rollback_evidence, decisions, *receipts, *comparison_evidence)
+        dependent = (candidate_evidence, rollback_evidence, decisions, support_boundary, *receipts, *comparison_evidence)
         require(inputs is not None or all(value is None for value in dependent),
                 "dependent execution refused: " + R_INPUTS)
         binding = preparation.source_binding(root)
@@ -1175,13 +1323,25 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
             inputs_record = bound_document(directory, value, data, scope, "inputs.json")
             packet["inputs"] = public(inputs_record)
             packet["lanes"] = lanes = initial_lanes(value)
+            if scope == "tooling-synthetic" or not is_successor_selection(value):
+                require(support_boundary is None, "sealed 3.119.0 boundary cannot be replaced")
+            else:
+                require(support_boundary is not None, "successor support boundary missing")
+                support_data = regular(Path(support_boundary).absolute())
+                support_value = parse_json(support_data)
+                validate_successor_support_table(value, support_value)
+                (directory / "support-boundary.json").write_bytes(support_data)
+                packet["support_boundary"] = {"path": "support-boundary.json", "sha256": digest(support_data)}
         if decisions is not None:
             value, data, scope = load_document(decisions, validate_decisions)
             decisions_record = bound_document(directory, value, data, scope, "decisions.json")
             packet["decisions"] = public(decisions_record)
         require(rollback_evidence is None or inputs_record["value"]["rollback"] is not None,
                 "rollback execution refused: " + R_NO_ROLLBACK)
-        context = {"inputs": inputs_record, "verified": {}, "source_binding": binding}
+        context = {"inputs": inputs_record, "verified": {}, "source_binding": binding,
+                   "support_boundary": support_value if inputs_record is not None
+                   and inputs_record["scope"] == "owner-selected"
+                   and is_successor_selection(inputs_record["value"]) else None}
         supplied = dict(zip(ROLES, (candidate_evidence, rollback_evidence)))
         for evidence in comparison_evidence:
             manifest = parse_json(regular(Path(evidence).absolute() / "evidence.json"))
@@ -1261,7 +1421,8 @@ def validate_packet(directory):
     require(directory.is_dir() and directory == directory.resolve(), "packet directory unavailable or substituted")
     actual = verify_index(directory)
     packet = parse_json(regular(directory / "packet.json"))
-    members(packet, PACKET_KEYS, "packet members differ from contract")
+    members(packet, PACKET_KEYS + (("support_boundary",) if "support_boundary" in packet else ()),
+            "packet members differ from contract")
     require(packet["schema"] == SCHEMA, "unsupported packet contract")
     pattern(packet["invocation"], HEX32, "invalid invocation identity")
     start, end = validate_times(packet)
@@ -1280,6 +1441,18 @@ def validate_packet(directory):
     require(decisions is None or inputs is not None, "owner decisions lack execution inputs")
     require(packet["refusals"] == refusals(inputs, decisions), "refusals differ from bound inputs")
     selection = inputs["value"] if inputs is not None else None
+    support_value = None
+    if selection is not None and inputs["scope"] == "owner-selected" and is_successor_selection(selection):
+        record = packet.get("support_boundary")
+        members(record, ("path", "sha256"), "successor support boundary binding missing")
+        require(record["path"] == "support-boundary.json", "successor support boundary path substituted")
+        support_data = regular(directory / record["path"])
+        require(digest(support_data) == record["sha256"], "successor support boundary hash mismatch")
+        support_value = validate_successor_support_table(selection, parse_json(support_data))
+        allowed.add(record["path"])
+    else:
+        require("support_boundary" not in packet and "support-boundary.json" not in actual,
+                "sealed 3.119.0 boundary cannot be replaced")
     lanes = packet["lanes"]
     require(isinstance(lanes, dict) and set(lanes) == set(INVENTORIES), "lane groups differ from contract")
     for group, names in lane_inventory(selection).items():
@@ -1291,7 +1464,7 @@ def validate_packet(directory):
     require(lanes["families"] == [by_id[name] for name in FAMILIES], "family dispositions differ from their scenarios")
     require(inputs is not None or not any(row["receipts"] for group in INVENTORIES for row in lanes[group]),
             "dependent evidence lacks owner execution inputs")
-    context = {"inputs": inputs, "verified": {}, "source_binding": binding}
+    context = {"inputs": inputs, "verified": {}, "source_binding": binding, "support_boundary": support_value}
     boundary = {}
     for role, row in zip(package_roles(selection), lanes["packages"]):
         if not row["receipts"]:
@@ -1315,7 +1488,7 @@ def validate_packet(directory):
             receipt = parse_json(regular(directory / relative(name)))
             receipt_group, lane, outcome = receipt_outcome(receipt, context)
             if group in ("scenarios", "additions") and receipt.get("instrumentation") == "p1r-executed-checks-v1":
-                boundary[lane] = assess_lane(receipt, load_support_table(selection))
+                boundary[lane] = assess_lane(receipt, load_support_table(selection, support_value))
             require(receipt_group == group and lane == row["id"] and name == f"receipts/{receipt['id']}.json",
                     "lane receipt binding differs")
             require(row == executed_row(lane, outcome, name), "lane differs from its receipt")
