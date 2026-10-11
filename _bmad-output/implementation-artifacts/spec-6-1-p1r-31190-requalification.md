@@ -115,7 +115,7 @@ Registering the fixture audit sink for 3.110.0 turned that direction's former fi
 | R2 Blind 11: audit sink in actor state store | false; reject | A fixed number of effect operations bounds the rows; they are bookkeeping, excluded from domain comparisons and copied identically by restore; a wrong key prefix yields no audits and fails the check closed. |
 | R2 Blind 12: binary evidence treated as text | false; reject | No `.png`, `.p7s`, `.dump` or `.nupkg` file is tracked under the 31190 tree; `*.nupkg` is ignored repository-wide and archives are bound by hash. |
 | R2 Blind 13a: "physical" backup wording | low; patch | `tools/p1r-published-consumers/README.md:14` calls the `pg_dump -Fc` logical backup physical. |
-| R2 Blind 13b: password in container environment | false; reject | argv carries only `-e POSTGRES_PASSWORD` without a value, evidence uses the bounded inspect format, and retained commands contain zero `POSTGRES_PASSWORD=` occurrences. |
+| R2 Blind 13b: password in container environment | false; reject | argv carries only `-e POSTGRES_PASSWORD` without a value, evidence uses the bounded inspect format, and retained commands contain no assignment of a value to POSTGRES_PASSWORD. |
 | R2 Blind 13c: evidence README omissions | low; patch | The README lacks pinned identities, Builds divergence, failed direction and seed-check ids, and pending decisions; routed with the R2 Gap 1 rewrite. |
 | R2 Blind 13d: Dapr version substring | low; patch | `"1.18.2" in version` also accepts 1.18.20; the recorded output is exactly `1.18.2`, so an exact comparison is a direct correction. |
 | R2 Blind 14: nested EditorConfig | low; reject | carried — Blind 2: `root=true` deliberately isolates copied consumer sources; no style failure is demonstrated. |

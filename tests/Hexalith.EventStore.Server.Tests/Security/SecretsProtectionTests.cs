@@ -59,6 +59,21 @@ public sealed partial class SecretsProtectionTests
             .ShouldNotBeEmpty();
     }
 
+    [Theory]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/execution-19b767f156174fb2ae1b19d28ae819a6/receipts/00402af679c14171b325272d166f24a0.json", "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-current-source-2026-10-09/packet/receipts/21aa8408fff249f3920955bbecc804cf.json", "af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-source-repair-2026-10-10/predicate-sources.json", "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc")]
+    public void HistoricalExecutorSource_RequiresExactSealAndScansAdjacentCredentials(string path, string seal)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(seal);
+        string receipt = File.ReadAllText(Path.Combine(RepoRoot, path));
+        FindViolations(path, receipt).ShouldBeEmpty();
+        FindViolations(path, receipt.Replace(seal, new string('0', seal.Length), StringComparison.Ordinal))
+            .ShouldNotBeEmpty();
+        FindViolations(path, receipt + "\npassword='literal-credential'").ShouldNotBeEmpty();
+    }
+
     [Fact]
     public void CaptureVerifierHeaderName_DoesNotExemptAHeaderValue()
     {
@@ -1337,10 +1352,15 @@ public sealed partial class SecretsProtectionTests
 
     private static string MaskSealedPublishedExecutorSource(string path, string content)
     {
-        const string evidenceRoot = "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/";
-        if (!path.StartsWith(evidenceRoot, StringComparison.Ordinal)
-            || !path.EndsWith(".json", StringComparison.Ordinal)
-            || !content.Contains("\"predicate_sources\"", StringComparison.Ordinal))
+        const string evidenceRoot = "_bmad-output/implementation-artifacts/evidence/";
+        const string sourceRepair = evidenceRoot + "6-1-p1r-source-repair-2026-10-10/predicate-sources.json";
+        bool knownPath = path.StartsWith(evidenceRoot + "6-1-p1r-31150-published-run/", StringComparison.Ordinal)
+            || path.StartsWith(evidenceRoot + "6-1-p1r-31190-published-run/", StringComparison.Ordinal)
+            || path.StartsWith(evidenceRoot + "6-1-p1r-current-source-2026-10-09/", StringComparison.Ordinal)
+            || string.Equals(path, sourceRepair, StringComparison.Ordinal);
+        if (!knownPath || !path.EndsWith(".json", StringComparison.Ordinal)
+            || !string.Equals(path, sourceRepair, StringComparison.Ordinal)
+            && !content.Contains("\"predicate_sources\"", StringComparison.Ordinal))
         {
             return content;
         }
@@ -1357,8 +1377,13 @@ public sealed partial class SecretsProtectionTests
 
         using JsonDocument document = parsed;
         JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty("predicate_sources", out JsonElement sources)
+        JsonElement sources;
+        if (root.ValueKind == JsonValueKind.Array && string.Equals(path, sourceRepair, StringComparison.Ordinal))
+        {
+            sources = root;
+        }
+        else if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("predicate_sources", out sources)
             && (!root.TryGetProperty("execution_evidence", out JsonElement execution)
                 || execution.ValueKind != JsonValueKind.Object
                 || !execution.TryGetProperty("predicate_sources", out sources)))
@@ -1382,7 +1407,14 @@ public sealed partial class SecretsProtectionTests
                 || !sourceName.EndsWith("/tools/p1r_published_executor.py", StringComparison.Ordinal)
                 || seal.GetString() is not { } expected
                 || expected is not ("af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48"
-                    or "ccfe755af557cbbcccd6c33732253368edb1c70187e94c4fe55f4e561f58fc6c")
+                    or "ccfe755af557cbbcccd6c33732253368edb1c70187e94c4fe55f4e561f58fc6c"
+                    or "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211"
+                    or "0bab9ca3a7395ad160d432f8133eb8544f6d2442971bb72a3b4e49d137fc1b20"
+                    or "94311fbc6ad369a3c61d254fcc1ff224c5897b552862c0d506197808f37b7a55"
+                    or "9a0990a82566c2b281305572fd318ba036b9ab68bcaa7813b9d40ea2265ea699"
+                    or "45a3b00081690058ce1f644c6152e6f6b7ab4277ff0b3d6368918f72aa986768"
+                    or "f47728d611db4fefaf38c68836d1520d1fca5fe9d2f9684fd72bd25709630174"
+                    or "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc")
                 || sourceContent.GetString() is not { } text
                 || !string.Equals(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))),
                     expected, StringComparison.OrdinalIgnoreCase))

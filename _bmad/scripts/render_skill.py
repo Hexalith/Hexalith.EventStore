@@ -249,12 +249,12 @@ def _render_sources(
     token_pattern = re.compile("|".join(patterns))
 
     def replace(match: re.Match[str]) -> str:
-        token = match.group(0)
-        if token in replacements:
-            return replacements[token]
-        snapshot = _SNAPSHOT_TOKEN.fullmatch(token)
+        placeholder = match.group(0)
+        if placeholder in replacements:
+            return replacements[placeholder]
+        snapshot = _SNAPSHOT_TOKEN.fullmatch(placeholder)
         if snapshot is None:
-            raise RenderError(f"unsupported render token: {token}")
+            raise RenderError(f"unsupported render token: {placeholder}")
         target = snapshot.group(1)
         if target not in source_names:
             raise RenderError(f"snapshot reference targets undeclared source: {target}")

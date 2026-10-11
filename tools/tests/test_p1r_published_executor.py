@@ -25,7 +25,7 @@ class MeasurementTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
             worker = CleanupTests.worker(self, scratch)
             worker.redis = "source-id"
-            worker.postgres_password = "fixture-password"
+            worker.postgres_password = "<TEST_PASSWORD>"
             worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
 
             def run(argv, **kwargs):
@@ -213,7 +213,7 @@ class MeasurementTests(unittest.TestCase):
             worker.output = worker.scratch = root
             worker.inputs = {"operational_profile": {"runtime_version": "1.18.2"}}
             worker.redis, worker.redis_port, worker.pubsub_port = "owned", 15432, 16379
-            worker.postgres_password = "private-secret"
+            worker.postgres_password = "<TEST_PASSWORD>"
             worker.invocation = "a" * 32
             worker.digest_key = worker.delegation = worker.app_token = worker.workload_key = "fixture"
             worker.evidence = {"candidate": root}
@@ -226,8 +226,8 @@ class MeasurementTests(unittest.TestCase):
             worker.start_nodes(executor.CANDIDATE)
             self.assertEqual(len(environments), 4)
             self.assertTrue(all("POSTGRES_CONNECTION_STRING" not in value for value in environments))
-            self.assertIn("password=private-secret", (root / "resources/state.yaml").read_text())
-            self.assertNotIn("private-secret", json.dumps(worker.configurations))
+            self.assertIn("password=<TEST_PASSWORD>", (root / "resources/state.yaml").read_text())
+            self.assertNotIn("<TEST_PASSWORD>", json.dumps(worker.configurations))
             self.assertIsNotNone(worker.configurations[0]["source_workload_authority"])
             qualification.validate_postgresql_component(
                 next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"))
