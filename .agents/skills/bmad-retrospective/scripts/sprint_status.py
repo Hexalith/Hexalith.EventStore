@@ -24,6 +24,7 @@ from collections.abc import Mapping
 from datetime import datetime
 
 from ruamel.yaml import YAML
+from ruamel.yaml.tokens import ScalarToken
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 STORY_RE = re.compile(r"^(\d+)-\d+[a-z]?-")  # trailing [a-z]? matches split-story keys like 2-6a-...
@@ -145,16 +146,29 @@ def _match_action_items(entry, items):
     ]
 
 
+def _scalar_continuation_lines(text):
+    """Line indices occupied by multiline scalar content after its first line."""
+    scalar_continuations = set()
+    for token in YAML(typ="rt").scan(text):
+        if isinstance(token, ScalarToken):
+            scalar_continuations.update(range(token.start_mark.line + 1, token.end_mark.line + 1))
+    return scalar_continuations
+
+
 def _comment_counts(text):
-    """Multiset of the comment lines in ``text``, indentation included.
+    """Multiset of standalone comment lines, indentation included.
 
     Keyed by the whole line so that a re-indented comment counts as a loss too:
     the guarantee callers are given is comments *and formatting*, and ruamel
     re-emits comments at their original column even when the block around them
-    is re-indented, so an exact key costs nothing in practice.
+    is re-indented. A multiline quoted or block scalar can contain a continuation
+    line beginning with ``#``; that line is data, not a comment, and the emitter
+    may reflow it without losing any YAML content.
     """
+    scalar_continuations = _scalar_continuation_lines(text)
     return Counter(
-        line for line in text.splitlines() if line.lstrip().startswith("#")
+        line for index, line in enumerate(text.splitlines())
+        if index not in scalar_continuations and line.lstrip().startswith("#")
     )
 
 
@@ -202,7 +216,17 @@ def _dump_bytes(yaml, data):
     failure cannot leave a partial file anywhere."""
     buf = io.BytesIO()
     yaml.dump(data, buf)
-    return buf.getvalue()
+    text = buf.getvalue().decode("utf-8")
+    scalar_continuations = _scalar_continuation_lines(text)
+    lines = text.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        # ruamel can leave a padding space on a plain value wrapped to the next
+        # line ("story_location: \n  /long/path"). This space is not scalar
+        # content and makes git diff --check fail. Leave block/quoted scalar
+        # continuation lines untouched, since their trailing spaces may be data.
+        if index not in scalar_continuations and not line.lstrip().startswith("#"):
+            lines[index] = re.sub(r":[ \t]+(?=\r?\n$)", ":", line)
+    return "".join(lines).encode("utf-8")
 
 
 def _atomic_write(path, payload, mode=None):

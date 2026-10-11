@@ -26,6 +26,9 @@ public class AspireContractTestFixture : IAsyncLifetime {
 
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
+    /// <summary>Enables a disposable projection PubSub transport only for an opting-in derived test fixture.</summary>
+    protected virtual bool UsePubSubProjectionTransport => false;
+
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private string? _previousEnableKeycloak;
@@ -107,6 +110,17 @@ public class AspireContractTestFixture : IAsyncLifetime {
             _builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
                 .ConfigureAwait(false);
+
+            // A disposable qualification run may exercise the real projection publisher through
+            // Dapr without changing the shipped AppHost or its Development default.
+            if (UsePubSubProjectionTransport)
+            {
+                ProjectResource eventStore = _builder.Resources
+                    .OfType<ProjectResource>()
+                    .Single(static resource => string.Equals(resource.Name, "eventstore", StringComparison.Ordinal));
+                eventStore.Annotations.Add(new EnvironmentCallbackAnnotation(
+                    static context => context.EnvironmentVariables["EventStore__ProjectionChanges__Transport"] = "PubSub"));
+            }
 
             // Task 1.2: Configure test logging -- Debug for app, Warning for Aspire infrastructure.
             _ = _builder.Services.AddLogging(logging => {

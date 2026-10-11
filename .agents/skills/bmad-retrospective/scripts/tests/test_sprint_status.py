@@ -739,6 +739,46 @@ def test_lost_comment_fails_with_restore(tmp_path):
     assert target.read_text(encoding="utf-8") == fixture
 
 
+def test_hash_prefixed_multiline_scalar_is_not_a_comment(tmp_path):
+    fixture = (
+        "# header\n"
+        "development_status:\n"
+        "  epic-1-retrospective: optional\n"
+        "action_items:\n"
+        "  - epic: 1\n"
+        '    action: "Prior item"\n'
+        '    owner: "Amelia"\n'
+        "    status: open\n"
+        '    note: "Closed with issue\n'
+        "      #352; the assembler reports receipts=3 verifier_exit=0, and the retained\n"
+        '      verifier passes."\n'
+    )
+    target = tmp_path / "sprint-status.yaml"
+    target.write_text(fixture, encoding="utf-8")
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-retro-done"])
+    assert proc.returncode == 0, proc.stdout
+    data = YAML(typ="rt").load(target.read_text(encoding="utf-8"))
+    assert data["development_status"]["epic-1-retrospective"] == "done"
+    assert "#352; the assembler" in data["action_items"][0]["note"]
+    assert "# header" in target.read_text(encoding="utf-8")
+
+
+def test_wrapped_plain_value_does_not_gain_trailing_whitespace(tmp_path):
+    location = "/workspace/" + "long-segment/" * 8
+    fixture = (
+        "development_status:\n"
+        "  epic-1-retrospective: optional\n"
+        f"story_location:\n  {location}\n"
+    )
+    target = tmp_path / "sprint-status.yaml"
+    target.write_text(fixture, encoding="utf-8")
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-retro-done"])
+    assert proc.returncode == 0, proc.stdout
+    raw = target.read_text(encoding="utf-8")
+    assert all(line == line.rstrip() for line in raw.splitlines())
+    assert YAML(typ="rt").load(raw)["story_location"] == location
+
+
 # --- Malformed input stays on the JSON contract ------------------------------
 
 

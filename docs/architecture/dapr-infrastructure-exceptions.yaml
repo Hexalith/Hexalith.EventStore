@@ -1,6 +1,6 @@
 # Preliminary planning register; Story 3.17 owns the final validated schema/guard.
 schema_version: 1
-updated: '2026-10-05'
+updated: '2026-10-11'
 status: preliminary-unqualified
 policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
 inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
@@ -23,6 +23,14 @@ unresolved:
     candidate_interfaces:
       - Dapr pub/sub fan-out to local hubs
       - Dapr bindings.azure.signalr output binding
+    qualification_packet: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md
+    observed_gap: >-
+      Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
+      but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
+      stream and delivered no concrete tenant-topic notification. Dynamic tenant
+      coverage, real scoped detail, production identity/profile gates, and Azure
+      SignalR equivalence remain unproven. A test-only exact-topic profile delivered
+      a real projection signal to two hosts with matching readback.
     required_evidence:
       - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
       - negotiation-group-membership-reconnect-rejoin-and-tenant-denial
