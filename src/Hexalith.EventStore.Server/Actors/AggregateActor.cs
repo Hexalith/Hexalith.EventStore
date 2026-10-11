@@ -1373,8 +1373,17 @@ public partial class AggregateActor(
 
                     try {
                         aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
-                        snapshotQualification = serviceProvider?.GetService<FoldedSnapshotQualificationRegistry>()?
-                            .Find(command.Domain, aggregateType);
+                        try
+                        {
+                            snapshotQualification = serviceProvider?.GetService<FoldedSnapshotQualificationRegistry>()?
+                                .Find(command.Domain, aggregateType);
+                        }
+                        catch
+                        {
+                            Log.SnapshotAdvisorySkip(logger, command.CorrelationId,
+                                command.TenantId, command.Domain, command.AggregateId,
+                                "SnapshotCaptureUnsupported");
+                        }
                         if (snapshotQualification is not null
                             && SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions))
                         {
@@ -1385,11 +1394,13 @@ public partial class AggregateActor(
                                     rehydrationResult?.CurrentSequence ?? 0, lastSnapshotSequence, cancellationToken)
                                     .ConfigureAwait(false);
                             }
-                            catch (OperationCanceledException) { throw; }
+                            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                             catch
                             {
                                 snapshotPolicyUnavailable = true;
-                                logger.LogWarning("Snapshot capture policy unavailable: FailureClass=SnapshotPolicyUnavailable");
+                                Log.SnapshotAdvisorySkip(logger, command.CorrelationId,
+                                    command.TenantId, command.Domain, command.AggregateId,
+                                    "SnapshotPolicyUnavailable");
                             }
                         }
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
@@ -1473,7 +1484,7 @@ public partial class AggregateActor(
                         // Step 5b: Snapshot creation (Story 3.9)
                         string? committedReplacementReasonClass = null;
                         JsonElement foldedState = default;
-                        string evidenceFailureClass = "SnapshotStateInvalid";
+                        string evidenceFailureClass = "SnapshotEvidenceAbsent";
                         bool evidenceRequested = persistResult.NewSequenceNumber > 0 && snapshotRequestDue
                             && !snapshotPolicyUnavailable && snapshotQualification is not null;
                         bool evidenceReady = evidenceRequested
@@ -1481,8 +1492,8 @@ public partial class AggregateActor(
                                 snapshotQualification!.Limits, out foldedState, out evidenceFailureClass);
                         if (evidenceRequested && !evidenceReady)
                         {
-                            logger.LogWarning(
-                                "Optional folded snapshot evidence skipped: FailureClass={FailureClass}",
+                            Log.SnapshotAdvisorySkip(logger, command.CorrelationId,
+                                command.TenantId, command.Domain, command.AggregateId,
                                 evidenceFailureClass);
                         }
                         if (evidenceReady && snapshotQualification is not null)
@@ -1495,11 +1506,13 @@ public partial class AggregateActor(
                                     persistResult.NewSequenceNumber, lastSnapshotSequence, cancellationToken)
                                     .ConfigureAwait(false);
                             }
-                            catch (OperationCanceledException) { throw; }
+                            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                             catch
                             {
                                 shouldSnapshot = false;
-                                logger.LogWarning("Snapshot stage policy unavailable: FailureClass=SnapshotPolicyUnavailable");
+                                Log.SnapshotAdvisorySkip(logger, command.CorrelationId,
+                                    command.TenantId, command.Domain, command.AggregateId,
+                                    "SnapshotPolicyUnavailable");
                             }
                             if (shouldSnapshot)
                             {
@@ -1510,6 +1523,12 @@ public partial class AggregateActor(
                                         ReasonCode: "SnapshotEnvelopeVersionUnknown" } => "SnapshotEnvelopeVersionUnknown",
                                     { Outcome: SnapshotLoadOutcome.ProviderOpaque } => "SnapshotProviderOpaque",
                                     { Outcome: SnapshotLoadOutcome.UnreadableProtected } => "SnapshotUnreadableProtected",
+                                    { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "AddressMismatch" } => "AddressMismatch",
+                                    { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotSequenceInvalid" } => "SnapshotSequenceInvalid",
+                                    { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotStateInvalid" } => "SnapshotStateInvalid",
+                                    { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotStateShapeCollision" } => "SnapshotStateShapeCollision",
+                                    { Outcome: SnapshotLoadOutcome.InfrastructureFailure, ReasonCode: "SnapshotReadUnavailable" } => "SnapshotReadUnavailable",
+                                    { Outcome: SnapshotLoadOutcome.InfrastructureFailure, ReasonCode: "SnapshotUnprotectUnavailable" } => "SnapshotUnprotectUnavailable",
                                     _ => null,
                                 };
                                 if (snapshotManager is SnapshotManager automaticManager
@@ -2485,6 +2504,7 @@ public partial class AggregateActor(
                 : throw new InvalidOperationException("Manual snapshot manager did not stage a snapshot record.");
             snapshotSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
+            await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
             ConditionalValue<SnapshotRecord> durableSnapshot = await StateManager
                 .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken).ConfigureAwait(false);
             if (!durableSnapshot.HasValue || !SnapshotRecordsMatch(durableSnapshot.Value, attemptedSnapshot))
@@ -2550,7 +2570,12 @@ public partial class AggregateActor(
                 identity.SnapshotKey,
                 LogicalEventReadRejection.IsRejection(ex)
                     ? LogicalEventReadRejection.ReasonCode
-                    : ex is InvalidOperationException && ex.Message.StartsWith("Snapshot", StringComparison.Ordinal)
+                    : ex is InvalidOperationException && ex.Message is
+                        ("SnapshotSerializerUnsupported" or "SnapshotCaptureUnsupported" or
+                        "SnapshotCaptureLimitExceeded" or "SnapshotStateInvalid" or
+                        "SnapshotStateShapeCollision" or "SnapshotEnvelopeBoundExceeded" or
+                        "SnapshotReadbackMismatch" or "SnapshotSequenceInvalid" or
+                        "SnapshotStateChangedByNoOpProtection")
                     ? ex.Message
                     : "InfrastructureFailure",
                 "Manual snapshot creation failed.");
@@ -2576,11 +2601,12 @@ public partial class AggregateActor(
         out string failureCode)
     {
         foldedState = default;
-        failureCode = "SnapshotStateInvalid";
+        failureCode = "SnapshotEvidenceAbsent";
         if (string.IsNullOrWhiteSpace(json))
         {
             return false;
         }
+        failureCode = "SnapshotStateInvalid";
         try
         {
             int byteCount = Encoding.UTF8.GetByteCount(json);
@@ -2607,6 +2633,14 @@ public partial class AggregateActor(
             }
             using JsonDocument document = JsonDocument.Parse(admittedBytes,
                 new JsonDocumentOptions { MaxDepth = limits.MaximumDepth });
+            var propertyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (JsonProperty property in document.RootElement.EnumerateObject())
+            {
+                if (!propertyNames.Add(property.Name))
+                {
+                    return false;
+                }
+            }
             if (!SnapshotEnvelopeInspector.IsFoldedObject(document.RootElement))
             {
                 failureCode = SnapshotEnvelopeInspector.IsDomainServiceCurrentState(document.RootElement)
@@ -6691,6 +6725,14 @@ public partial class AggregateActor(
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 2031,
+            Level = LogLevel.Warning,
+            Message = "Optional snapshot skipped: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass={FailureClass}")]
+        public static partial void SnapshotAdvisorySkip(
+            ILogger logger, string correlationId, string tenantId, string domain,
+            string aggregateId, string failureClass);
+
         [LoggerMessage(
             EventId = 2000,
             Level = LogLevel.Debug,

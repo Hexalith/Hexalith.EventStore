@@ -139,8 +139,8 @@ public sealed record FoldedSnapshotCaptureLimits
     public long MaximumSimultaneousLiveBytes { get; }
     /// <summary>Maximum actor-side workspace.</summary>
     public long MaximumActorWorkspaceBytes { get; }
-    /// <summary>Conservative sum reserved before domain capture starts.</summary>
+    /// <summary>Declared conservative upper bound validated before domain capture starts.</summary>
     public long DomainReservationBytes { get; }
-    /// <summary>Conservative sum reserved before actor parsing starts.</summary>
+    /// <summary>Declared conservative upper bound validated before actor parsing starts.</summary>
     public long ActorReservationBytes { get; }
 }

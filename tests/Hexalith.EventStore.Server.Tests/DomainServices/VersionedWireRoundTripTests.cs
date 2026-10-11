@@ -28,6 +28,42 @@ namespace Hexalith.EventStore.Server.Tests.DomainServices;
 public sealed class VersionedWireRoundTripTests
 {
     [Fact]
+    public async Task InvokerCarriesRequestedSnapshotProfileThroughRouterAndBoundedResponse()
+    {
+        var command = AggregateActorTestHelper.CreateTestEnvelope();
+        var response = new DomainServiceWireResult(false,
+            [new DomainServiceWireEvent("test-event", "{}"u8.ToArray())])
+        {
+            PostCommandStateJson = "{\"count\":1}",
+        };
+        var handler = new VersionedActorResponseHandler(async (requestJson, token) =>
+        {
+            DomainServiceRequest routed = JsonSerializer.Deserialize<DomainServiceRequest>(
+                requestJson, JsonSerializerOptions.Web)!;
+            routed.IncludePostCommandState.ShouldBeTrue();
+            routed.SnapshotCaptureProfileId.ShouldBe("reviewed-profile");
+            using var output = new MemoryStream();
+            await BoundedV1WireResultResponse.WriteAsync(output, response, token);
+            return System.Text.Encoding.UTF8.GetString(output.ToArray());
+        });
+        using var httpClient = new HttpClient(handler);
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync(command.TenantId, command.Domain, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("test-app", "process", command.TenantId, command.Domain, null));
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, resolver,
+            Options.Create(new DomainServiceOptions()), TimeProvider.System,
+            NullLogger<DaprDomainServiceInvoker>.Instance);
+
+        DomainResult result = await invoker.InvokeAsync(command, null, true, "reviewed-profile");
+
+        result.PostCommandStateJson.ShouldBe("{\"count\":1}");
+        result.Events.ShouldHaveSingleItem();
+    }
+
+    [Fact]
     public async Task ActorWriteAndRead_RoundTripsV1AndV2ThroughJsonStateAndDomainRouting()
     {
         var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");

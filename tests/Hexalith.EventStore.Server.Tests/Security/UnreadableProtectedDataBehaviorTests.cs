@@ -219,17 +219,23 @@ public class UnreadableProtectedDataBehaviorTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: storedMetadata);
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true,
+                JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web)));
 
         var protectionService = new FakeUnreadableProtectionService();
         protectionService.ConfigureSnapshotUnreadable(UnreadableProtectedDataReason.MissingKey);
 
-        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), protectionService);
+        ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), logger, protectionService);
 
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
         loaded.ShouldBeNull();
+        protectionService.SnapshotUnprotectInvocations.ShouldHaveSingleItem();
+        logger.ReceivedCalls().Any(call => call.GetMethodInfo().Name == "Log"
+            && ((EventId)call.GetArguments()[1]!).Id == 7100).ShouldBeTrue();
         await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }
 
@@ -244,8 +250,8 @@ public class UnreadableProtectedDataBehaviorTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: null);
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, JsonSerializer.SerializeToElement(legacy, JsonSerializerOptions.Web)));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, JsonSerializer.SerializeToElement(legacy, JsonSerializerOptions.Web)));
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
@@ -262,8 +268,8 @@ public class UnreadableProtectedDataBehaviorTests {
         // A direct load has no verified stream head and must retain even provably plaintext corruption.
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{},"createdAt":"invalid","domain":"billing","aggregateId":"agg-001","tenantId":"tenant-a","protectionMetadata":null}""");
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, malformed));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, malformed));
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 

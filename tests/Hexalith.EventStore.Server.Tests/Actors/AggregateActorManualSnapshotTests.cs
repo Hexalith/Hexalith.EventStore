@@ -31,6 +31,56 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorManualSnapshotTests {
     [Theory]
+    [InlineData("SnapshotReadUnavailable")]
+    [InlineData("SnapshotUnprotectUnavailable")]
+    public async Task CreateManualSnapshotAsync_InspectionInfrastructureFailureRetainsKey(string reason)
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshots = Substitute.For<ISnapshotManager>();
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.InfrastructureFailure(reason));
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-unavailable");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe(reason);
+        stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+        stateManager.Trace.ShouldNotContain("SaveState");
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_ProviderMessageWithSnapshotPrefixIsNotReturned()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshots = Substitute.For<ISnapshotManager>();
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.Absent());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(identity, "OrderAggregate", Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                2, false, "corr-sensitive", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AggregateReconstructionResult>(
+                new InvalidOperationException("Snapshot private provider detail")));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-sensitive");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("InfrastructureFailure");
+        stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("StaleAggregate")]
     public async Task CreateManualSnapshotAsync_AbsentOrStaleQualificationFailsBeforeReconstruction(
@@ -195,6 +245,32 @@ public class AggregateActorManualSnapshotTests {
         result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
         ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SequenceNumber.ShouldBe(2);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_PostSaveReadbackRejectsDifferentDurableRecord()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshotManager = CreateStagingSnapshotManager(identity, stateManager);
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        stateManager.ActBeforeCall($"TryGetState:{identity.SnapshotKey}", 2, async manager =>
+        {
+            SnapshotRecord staged = ((SnapshotRecord)manager.CommittedState[identity.SnapshotKey]);
+            await manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [identity.SnapshotKey] = staged with { SnapshotEnvelopeVersion = 0 },
+            });
+        });
+        AggregateActor actor = CreateActor(identity, stateManager, snapshotManager, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("SnapshotReadbackMismatch");
+        stateManager.Trace.ShouldContain("ClearCache");
+        ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SnapshotEnvelopeVersion.ShouldBe(0);
     }
 
     [Fact]

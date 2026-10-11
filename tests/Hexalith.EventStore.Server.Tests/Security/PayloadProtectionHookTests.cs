@@ -54,8 +54,8 @@ public class PayloadProtectionHookTests {
 
     private static void SetRawSnapshot(IActorStateManager stateManager, SnapshotRecord snapshot) {
         JsonElement raw = JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web);
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, raw));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, raw));
     }
 
     /// <summary>Compatibility entry points must use the same fail-closed unprotection decision.</summary>
@@ -280,8 +280,8 @@ public class PayloadProtectionHookTests {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         JsonElement legacySnapshot = JsonSerializer.Deserialize<JsonElement>(
             """{"sequenceNumber":5,"state":{"count":5},"createdAt":"2026-01-01T00:00:00Z","domain":"billing","aggregateId":"agg-001","tenantId":"tenant-a"}""");
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, legacySnapshot));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, legacySnapshot));
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
         // Act

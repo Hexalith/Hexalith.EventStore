@@ -1,6 +1,6 @@
 
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -92,7 +92,7 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
                     preCommandState = profile.StateCapture.Capture(typedState, cancellationToken);
                 }
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch { profile = null; preCommandState = null; }
         }
         DomainResult result = await HandleAsync(command, typedState, cancellationToken).ConfigureAwait(false);

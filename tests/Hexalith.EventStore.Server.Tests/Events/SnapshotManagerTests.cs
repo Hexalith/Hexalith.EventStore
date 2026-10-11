@@ -7,6 +7,8 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.Actors;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -44,8 +46,51 @@ public class SnapshotManagerTests {
 
     private static void SetRawSnapshot(IActorStateManager stateManager, SnapshotRecord snapshot) {
         JsonElement raw = JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web);
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, raw));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, raw));
+    }
+
+    [Fact]
+    public async Task LoadAfterSameActivationWriteAcceptsCachedSnapshotRecord()
+    {
+        (SnapshotManager manager, _) = CreateManager();
+        var stateManager = new InMemoryStateManager();
+        await manager.CreateSnapshotAsync(TestIdentity, 1,
+            JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager);
+        await stateManager.SaveStateAsync();
+
+        SnapshotLoadResult loaded = await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, stateManager, authoritativeHead: 1);
+
+        loaded.Outcome.ShouldBe(SnapshotLoadOutcome.Readable);
+        loaded.Snapshot.ShouldNotBeNull().SequenceNumber.ShouldBe(1);
+        loaded.Snapshot.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("AddressMismatch")]
+    [InlineData("SnapshotSequenceInvalid")]
+    [InlineData("SnapshotStateInvalid")]
+    [InlineData("SnapshotStateShapeCollision")]
+    [InlineData("SnapshotReadUnavailable")]
+    [InlineData("SnapshotUnprotectUnavailable")]
+    public async Task AutomaticReplacementAllowsRetainedFailureClasses(string reason)
+    {
+        (SnapshotManager manager, _) = CreateManager();
+        var stateManager = new InMemoryStateManager();
+        await stateManager.SetStateAsync(TestIdentity.SnapshotKey,
+            JsonSerializer.Deserialize<JsonElement>("""{"retained":"old"}"""));
+        await stateManager.SaveStateAsync();
+
+        bool staged = await manager.CreateAutomaticReplacementAsync(TestIdentity, 1,
+            JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+            JsonSerializerOptions.Web, SnapshotTestLimits.ForState(), reason, "corr-1", CancellationToken.None);
+        await stateManager.SaveStateAsync();
+
+        staged.ShouldBeTrue();
+        SnapshotRecord written = (SnapshotRecord)stateManager.CommittedState[TestIdentity.SnapshotKey];
+        written.SnapshotEnvelopeVersion.ShouldBe(1);
+        written.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(1);
     }
 
     // === 8.2: ShouldCreateSnapshot at default interval ===
@@ -169,6 +214,116 @@ public class SnapshotManagerTests {
 
         await stateManager.DidNotReceive().SetStateAsync(
             TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AutomaticSnapshot_ProtectionInternalCancellationIsAdvisory()
+    {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SnapshotProtectionResult>(
+                new OperationCanceledException("protection canceled internally")));
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+
+        bool staged = await manager.CreateAutomaticReplacementAsync(TestIdentity, 1,
+            JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+            JsonSerializerOptions.Web, SnapshotTestLimits.ForState(), "SnapshotStateInvalid", "corr-1",
+            CancellationToken.None);
+
+        staged.ShouldBeFalse();
+        await stateManager.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AutomaticSnapshot_ProtectionCallerCancellationPropagates()
+    {
+        using var cancellation = new CancellationTokenSource();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), cancellation.Token)
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return Task.FromCanceled<SnapshotProtectionResult>(cancellation.Token);
+            });
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            manager.CreateAutomaticReplacementAsync(TestIdentity, 1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+                JsonSerializerOptions.Web, SnapshotTestLimits.ForState(), "SnapshotStateInvalid", "corr-1",
+                cancellation.Token));
+
+        await stateManager.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoadSnapshot_InternalCancellationReturnsTypedInfrastructureFailure(bool duringUnprotect)
+    {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+        if (duringUnprotect)
+        {
+            SetRawSnapshot(stateManager, new SnapshotRecord(1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), DateTimeOffset.UtcNow,
+                TestIdentity.Domain, TestIdentity.AggregateId, TestIdentity.TenantId,
+                EventStorePayloadProtectionMetadata.Unprotected()) { SnapshotEnvelopeVersion = 1 });
+            _ = protection.TryUnprotectSnapshotAsync(TestIdentity, Arg.Any<object>(),
+                    Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SnapshotUnprotectionOutcome>(
+                    new OperationCanceledException("unprotect canceled internally")));
+        }
+        else
+        {
+            _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<ConditionalValue<object>>(
+                    new OperationCanceledException("read canceled internally")));
+        }
+
+        SnapshotLoadResult result = await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, stateManager, authoritativeHead: 1);
+
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe(duringUnprotect ? "SnapshotUnprotectUnavailable" : "SnapshotReadUnavailable");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoadSnapshot_CallerCancellationDuringReadOrUnprotectPropagates(bool duringUnprotect)
+    {
+        using var cancellation = new CancellationTokenSource();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+        if (duringUnprotect)
+        {
+            SetRawSnapshot(stateManager, new SnapshotRecord(1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), DateTimeOffset.UtcNow,
+                TestIdentity.Domain, TestIdentity.AggregateId, TestIdentity.TenantId,
+                EventStorePayloadProtectionMetadata.Unprotected()) { SnapshotEnvelopeVersion = 1 });
+            _ = protection.TryUnprotectSnapshotAsync(TestIdentity, Arg.Any<object>(),
+                    Arg.Any<EventStorePayloadProtectionMetadata>(), cancellation.Token)
+                .Returns(_ =>
+                {
+                    cancellation.Cancel();
+                    return Task.FromCanceled<SnapshotUnprotectionOutcome>(cancellation.Token);
+                });
+        }
+        else
+        {
+            _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, cancellation.Token)
+                .Returns(_ =>
+                {
+                    cancellation.Cancel();
+                    return Task.FromCanceled<ConditionalValue<object>>(cancellation.Token);
+                });
+        }
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => manager.LoadSnapshotForCommandAsync(
+            TestIdentity, stateManager, authoritativeHead: 1, cancellationToken: cancellation.Token));
     }
 
     [Fact]
@@ -413,6 +568,29 @@ public class SnapshotManagerTests {
             manager.CreateSnapshotAsync(TestIdentity, 100, state, stateManager));
     }
 
+    [Fact]
+    public async Task CreateSnapshot_ProviderMessageWithSnapshotPrefixNeverBecomesFailureClass()
+    {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Snapshot provider secret material"));
+        ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), logger, protection);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+
+        await manager.CreateSnapshotAsync(TestIdentity, 1,
+            JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager);
+
+        string[] messages = logger.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == "Log")
+            .Select(call => call.GetArguments()[2]?.ToString() ?? string.Empty)
+            .ToArray();
+        messages.ShouldContain(message => message.Contains("FailureClass=SnapshotCreateUnavailable", StringComparison.Ordinal));
+        messages.ShouldNotContain(message => message.Contains("secret", StringComparison.OrdinalIgnoreCase));
+        await stateManager.DidNotReceive().SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
     // === 8.14: Addressed plaintext binding failure may delete with a verified stream head ===
 
     [Fact]
@@ -420,8 +598,8 @@ public class SnapshotManagerTests {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
 
         JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{},"createdAt":"invalid","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""");
-        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<JsonElement>(true, malformed));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, malformed));
 
         SnapshotRecord? result = (await manager.LoadSnapshotForCommandAsync(
             TestIdentity, stateManager, authoritativeHead: 100)).Snapshot;

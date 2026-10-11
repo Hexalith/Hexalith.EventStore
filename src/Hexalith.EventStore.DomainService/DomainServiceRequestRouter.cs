@@ -94,7 +94,8 @@ public static class DomainServiceRequestRouter {
                             wire.Wire with { PostCommandStateJson = foldedJson }, cancellationToken);
                     }
                 }
-                catch (OperationCanceledException) { throw; }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (OperationCanceledException) { foldedJson = null; }
                 catch { foldedJson = null; }
                 finally
                 {
@@ -162,7 +163,7 @@ public static class DomainServiceRequestRouter {
                             && snapshotProcessor.IsQualified(qualification.StateType, qualification.ProfileId,
                                 qualification.ParityEvidenceId, qualification.Limits);
                     }
-                    catch (OperationCanceledException) { throw; }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                     catch { captureQualified = false; }
                 }
                 if (captureQualified)

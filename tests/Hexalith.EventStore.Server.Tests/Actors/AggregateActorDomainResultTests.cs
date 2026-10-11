@@ -692,6 +692,92 @@ public class AggregateActorDomainResultTests {
     }
 
     [Fact]
+    public async Task ProcessCommandAsync_InvalidQualificationRegistrySkipsCaptureButCommitsEvents()
+    {
+        FoldedSnapshotQualification duplicate = new("test-domain", "test-domain", typeof(JsonElement),
+            "test-profile", "test-parity", SnapshotTestLimits.ForState());
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(duplicate)
+            .AddSingleton(duplicate)
+            .AddSingleton<FoldedSnapshotQualificationRegistry>()
+            .BuildServiceProvider();
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        await ctx.SnapshotManager.DidNotReceive().ShouldCreateSnapshotAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>());
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            "FailureClass=SnapshotCaptureUnsupported", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("AddressMismatch")]
+    [InlineData("SnapshotSequenceInvalid")]
+    [InlineData("SnapshotStateInvalid")]
+    [InlineData("SnapshotStateShapeCollision")]
+    [InlineData("SnapshotReadUnavailable")]
+    public async Task ProcessCommandAsync_RetainedSnapshotFailureIsReplacedAtCommittedHead(string reason)
+    {
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        var snapshotLogger = new SnapshotCaptureLogger();
+        var manager = new SnapshotManager(Microsoft.Extensions.Options.Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger,
+            snapshotManager: manager);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 100);
+        if (reason == "SnapshotReadUnavailable")
+        {
+            _ = ctx.StateManager.TryGetStateAsync<object>(
+                    "test-tenant:test-domain:agg-001:snapshot", Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<ConditionalValue<object>>(new IOException("provider detail")));
+        }
+        else
+        {
+            string raw = reason switch
+            {
+                "AddressMismatch" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{"count":100},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"wrong","tenantId":"test-tenant"}""",
+                "SnapshotSequenceInvalid" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":102,"state":{"count":100},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
+                "SnapshotStateShapeCollision" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{"currentSequence":100,"events":[]},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
+                _ => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":null,"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
+            };
+            _ = ctx.StateManager.TryGetStateAsync<object>(
+                    "test-tenant:test-domain:agg-001:snapshot", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<object>(true, JsonSerializer.Deserialize<JsonElement>(raw)));
+        }
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with
+            {
+                PostCommandStateJson = """{"count":101}""",
+            });
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        await ctx.StateManager.Received(1).SetStateAsync(
+            "test-tenant:test-domain:agg-001:snapshot",
+            Arg.Is<SnapshotRecord>(snapshot => snapshot.SequenceNumber == 101
+                && snapshot.SnapshotEnvelopeVersion == 1), Arg.Any<CancellationToken>());
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            $"ReplacementReasonClass={reason}", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ProcessCommandAsync_FirstIntervalCrossingDoesNotRequestUnqualifiedCapture() {
         using ServiceProvider services = new ServiceCollection()
             .AddSingleton(new FoldedSnapshotQualificationRegistry([
@@ -766,7 +852,8 @@ public class AggregateActorDomainResultTests {
                     "test-profile", "test-parity", SnapshotTestLimits.ForState()),
             ]))
             .BuildServiceProvider();
-        ActorTestContext ctx = CreateActor(serviceProvider: services);
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
         ConfigureNoDuplicate(ctx.StateManager);
         ConfigureExistingAggregate(ctx.StateManager, 3);
         _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
@@ -788,12 +875,51 @@ public class AggregateActorDomainResultTests {
             Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
             Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>(), Arg.Any<bool>());
-        string[] messages = ctx.Logger.ReceivedCalls()
-            .Select(call => call.GetArguments().Length > 2 ? call.GetArguments()[2]?.ToString() ?? "" : "")
-            .ToArray();
-        messages.ShouldContain(message => message.Contains("FailureClass=SnapshotStateShapeCollision",
-            StringComparison.Ordinal));
-        messages.ShouldNotContain(message => message.Contains("sensitive-value", StringComparison.Ordinal));
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            "FailureClass=SnapshotStateShapeCollision", StringComparison.Ordinal));
+        snapshotLogger.Messages.ShouldNotContain(message => message.Contains("sensitive-value", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("{\"count\":4", "SnapshotStateInvalid")]
+    [InlineData("{\"count\":4,\"Count\":5}", "SnapshotStateInvalid")]
+    [InlineData("over-depth", "SnapshotStateInvalid")]
+    public async Task ProcessCommandAsync_InvalidPresentEvidenceSkipsSnapshotWithSafeReason(
+        string evidence, string reason)
+    {
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        string presentEvidence = evidence == "over-depth"
+            ? "{\"count\":" + new string('[', 70) + "0" + new string(']', 70) + "}"
+            : evidence;
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with { PostCommandStateJson = presentEvidence });
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
+            Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            $"FailureClass={reason}", StringComparison.Ordinal));
+        snapshotLogger.Messages.ShouldNotContain(message => message.Contains(
+            "FailureClass=SnapshotEvidenceAbsent", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -814,9 +940,12 @@ public class AggregateActorDomainResultTests {
         _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(),
                 cancellation.Token)
-            .Returns(_ => ++policyCalls == (afterInvocation ? 2 : 1)
-                ? Task.FromException<bool>(new OperationCanceledException(cancellation.Token))
-                : Task.FromResult(true));
+            .Returns(_ =>
+            {
+                if (++policyCalls != (afterInvocation ? 2 : 1)) { return Task.FromResult(true); }
+                cancellation.Cancel();
+                return Task.FromCanceled<bool>(cancellation.Token);
+            });
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
                 "test-profile", cancellation.Token)
             .Returns(DomainResult.Success([new TestEvent()])
@@ -834,9 +963,11 @@ public class AggregateActorDomainResultTests {
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ProcessCommandAsync_SnapshotPolicyFailureDoesNotRejectValidEvents(bool afterInvocation) {
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ProcessCommandAsync_SnapshotPolicyFailureDoesNotRejectValidEvents(bool afterInvocation, bool cancelInternally) {
         using ServiceProvider services = new ServiceCollection()
             .AddSingleton(new FoldedSnapshotQualificationRegistry([
                 new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
@@ -852,7 +983,9 @@ public class AggregateActorDomainResultTests {
                 Arg.Any<CancellationToken>())
             .Returns(_ => ++policyCalls == 1 && afterInvocation
                 ? Task.FromResult(true)
-                : Task.FromException<bool>(new InvalidOperationException("policy offline")));
+                : Task.FromException<bool>(cancelInternally
+                    ? new OperationCanceledException("policy canceled internally")
+                    : new InvalidOperationException("policy offline")));
         DomainResult result = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() })
             with { PostCommandStateJson = """{"count":4}""" };
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
@@ -1037,4 +1170,5 @@ public class AggregateActorDomainResultTests {
 
     private static bool IsFourCountFold(object state)
         => state is JsonElement element && element.GetProperty("count").GetInt32() == 4;
+
 }

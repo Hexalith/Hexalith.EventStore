@@ -38,6 +38,26 @@ public sealed class FoldedSnapshotCaptureTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequestedCaptureAppliesAdmittedEventToNonEmptyPreCommandState(bool jsonState)
+    {
+        var processor = new SnapshotCaptureTestProcessor();
+        using ServiceProvider provider = BuildProvider(processor);
+        object state = jsonState
+            ? JsonSerializer.Deserialize<JsonElement>("""{"count":41,"throwOnApply":false}""")
+            : new SnapshotCaptureTestState { Count = 41 };
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with { CurrentState = state };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        using JsonDocument document = JsonDocument.Parse(wire.PostCommandStateJson.ShouldNotBeNull());
+        document.RootElement.GetProperty("count").GetInt32().ShouldBe(42);
+        if (!jsonState) { ((SnapshotCaptureTestState)state).Count.ShouldBe(41); }
+    }
+
+    [Theory]
     [InlineData(false, "test-profile")]
     [InlineData(true, "wrong-profile")]
     public async Task MissingOrMismatchedQualificationOmitsStateWithoutChangingEvents(bool include, string profileId)
@@ -104,6 +124,75 @@ public sealed class FoldedSnapshotCaptureTests
         wire.PostCommandStateJson.ShouldBe(throwAfterMutation ? null : "{}");
     }
 
+    [Fact]
+    public async Task CaptureCallbackCancellationWithoutCallerCancellationKeepsValidEvents()
+    {
+        var processor = new MutatingCaptureProcessor(false) { CancelCapture = true };
+        using ServiceProvider provider = BuildProvider(processor);
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: true, "test-profile"));
+
+        wire.PostCommandStateJson.ShouldBeNull();
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PreCommandCopyFailureKeepsValidEventsWithoutEvidence(bool cancelCopy)
+    {
+        var processor = new CopyFailingProcessor(cancelCopy);
+        using ServiceProvider provider = BuildProvider(processor);
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
+        {
+            CurrentState = new SnapshotCaptureTestState { Count = 4 },
+        };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false });
+
+        wire.PostCommandStateJson.ShouldBeNull();
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe(baseline.Events.ShouldHaveSingleItem().Payload);
+        wire.IsRejection.ShouldBe(baseline.IsRejection);
+        wire.ResultPayload.ShouldBe(baseline.ResultPayload);
+    }
+
+    [Fact]
+    public async Task QualificationInternalCancellationSkipsCaptureAndKeepsValidEvents()
+    {
+        var processor = new MutatingCaptureProcessor(false)
+        {
+            OnQualify = () => throw new OperationCanceledException("internal qualification cancellation"),
+        };
+        using ServiceProvider provider = BuildProvider(processor);
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: true, "test-profile"));
+
+        wire.PostCommandStateJson.ShouldBeNull();
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+    }
+
+    [Fact]
+    public async Task QualificationCallerCancellationPropagates()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var processor = new MutatingCaptureProcessor(false)
+        {
+            OnQualify = () =>
+            {
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            },
+        };
+        using ServiceProvider provider = BuildProvider(processor);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: true, "test-profile"), cancellation.Token));
+    }
+
     private static ServiceProvider BuildProvider(IAsyncDomainProcessor processor)
     {
         var services = new ServiceCollection();
@@ -121,11 +210,18 @@ public sealed class FoldedSnapshotCaptureTests
     private sealed class MutatingCaptureProcessor(bool throwAfterMutation)
         : IAsyncDomainProcessor, IAsyncFoldedSnapshotProcessor
     {
+        public bool CancelCapture { get; init; }
+
+        public Action? OnQualify { get; init; }
+
         public bool IsQualified(Type stateType, string profileId, string parityEvidenceId,
             FoldedSnapshotCaptureLimits limits)
-            => stateType == typeof(SnapshotCaptureTestState)
+        {
+            OnQualify?.Invoke();
+            return stateType == typeof(SnapshotCaptureTestState)
                 && profileId == "test-profile" && parityEvidenceId == "test-parity-evidence"
                 && Equals(limits, SnapshotCaptureTestLimits.Value);
+        }
 
         public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState,
             CancellationToken cancellationToken)
@@ -138,9 +234,26 @@ public sealed class FoldedSnapshotCaptureTests
                 (events, _) =>
                 {
                     events[0].Payload[0] = (byte)'x';
+                    if (CancelCapture) { throw new OperationCanceledException("optional callback canceled"); }
                     if (throwAfterMutation) { throw new InvalidOperationException("capture failed"); }
                     return "{}";
                 }));
+    }
+
+    private sealed class CopyFailingProcessor(bool cancelCopy) : DomainProcessorBase<SnapshotCaptureTestState>
+    {
+        protected override FoldedSnapshotCaptureProfile<SnapshotCaptureTestState> FoldedSnapshotCapture
+            => new("test-profile", "test-parity-evidence",
+                new DetachedStateCapture<SnapshotCaptureTestState>(1024,
+                    (_, _) =>
+                    {
+                        if (cancelCopy) { throw new OperationCanceledException("internal copier cancellation"); }
+                        throw new InvalidOperationException("copier failed");
+                    }),
+                SnapshotCaptureTestLimits.Value);
+
+        protected override Task<DomainResult> HandleAsync(CommandEnvelope command, SnapshotCaptureTestState? currentState)
+            => Task.FromResult(DomainResult.Success([new SnapshotCaptureTestEvent { Amount = 99 }]));
     }
 
     private static DomainServiceRequest CreateRequest(bool include, string profileId)

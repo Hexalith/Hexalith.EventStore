@@ -5756,3 +5756,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Distinguish a standalone P1R refusal probe from an operation guarded by that refusal in published evidence.
   evidence: `p1r_published_executor.py` calls the probe's `admit` mode for refused cases, and that mode does not route a protected historical operation through a runtime guard; the P1R evidence change is independent of Story 6.2.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound process-page event serialization before allocating its full byte array.
+  evidence: `CheckpointedProcessRunner.ValidatePage` calls `JsonSerializer.SerializeToUtf8Bytes` before `MaxEventBytes`; this is Epic 8 process work outside Story 6.2.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Reconcile the module manifest dead-letter strategy with deployed pub/sub configuration.
+  evidence: The manifest declares `deadLetter.strategy` as `none`, while shipped Dapr pub/sub files enable dead-letter routing; the manifest change is separate from folded snapshots.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound owner-sidecar actor-state reads before parsing large snapshot values for Admin inspection.
+  evidence: `ReadAsStringAsync` already reads the entire value before Story 6.2 redaction parses it; a large legacy snapshot can multiply allocations, and the unbounded read predates this story.

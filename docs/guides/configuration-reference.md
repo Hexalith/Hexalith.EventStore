@@ -139,7 +139,7 @@ crash window the index exists to close. Two consequences are easy to misread:
 
 ### Snapshots
 
-Snapshots are periodic state checkpoints that speed up aggregate rehydration. Instead of replaying all events from the beginning, the system loads the latest snapshot and replays only the events after it.
+Snapshots are folded state checkpoints at a committed event sequence. A valid snapshot lets the system replay only the later events. Legacy snapshots containing `DomainServiceCurrentState` are retained but bypassed; the reader replays the complete event stream until a later qualified write replaces them.
 
 Configuration section: `EventStore:Snapshots`
 
@@ -161,6 +161,10 @@ Configuration section: `EventStore:Snapshots`
   }
 }
 ```
+
+Automatic capture also requires the same deployment-owned `AddEventStoreFoldedSnapshotQualification<TState>` declaration on the actor and domain-service hosts, a matching `FoldedSnapshotCaptureProfile<TState>` in the processor, finite `FoldedSnapshotCaptureLimits`, and bounded V1 event serialization. The actor requests optional post-command state only when the snapshot policy is due at the admitted pre-command head. If a command first crosses the interval, capture is deferred to a later non-no-op command. Absent or unqualified evidence skips the automatic snapshot while the valid event batch still commits. Manual snapshot creation fails with a bounded reason when capture is unsupported.
+
+The actor serializer must write compact JSON and support the version-1 snapshot envelope. Both writers measure the folded state and final envelope before staging; unprotected and legacy no-op envelopes must fit within folded-state bytes plus 4096 bytes. A legacy or malformed snapshot never supplies stream authority on its own.
 
 > **Warning:** Setting `DefaultInterval` below `10` will cause a validation error at startup. Low intervals increase state store write volume.
 

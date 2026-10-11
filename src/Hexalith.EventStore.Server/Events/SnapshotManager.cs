@@ -1,6 +1,7 @@
 
-using Dapr.Actors.Runtime;
 using System.Text.Json;
+
+using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -97,7 +98,10 @@ public partial class SnapshotManager(
         CancellationToken cancellationToken)
     {
         if (replacementReasonClass is not ("SnapshotEnvelopeVersionUnknown" or
-            "SnapshotProviderOpaque" or "SnapshotUnreadableProtected"))
+            "SnapshotProviderOpaque" or "SnapshotUnreadableProtected" or
+            "AddressMismatch" or "SnapshotSequenceInvalid" or
+            "SnapshotStateInvalid" or "SnapshotStateShapeCollision" or "SnapshotReadUnavailable" or
+            "SnapshotUnprotectUnavailable"))
         {
             throw new ArgumentOutOfRangeException(nameof(replacementReasonClass));
         }
@@ -201,7 +205,7 @@ public partial class SnapshotManager(
                 sequenceNumber);
             return true;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested) {
             if (throwOnFailure) {
                 throw;
             }
@@ -215,8 +219,7 @@ public partial class SnapshotManager(
                 identity.Domain,
                 identity.AggregateId,
                 sequenceNumber,
-                ex is InvalidOperationException && ex.Message.StartsWith("Snapshot", StringComparison.Ordinal)
-                    ? ex.Message : ex.GetType().Name);
+                SnapshotFailureClass(ex));
             return false;
         }
     }
@@ -271,20 +274,33 @@ public partial class SnapshotManager(
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
         cancellationToken.ThrowIfCancellationRequested();
-        ConditionalValue<JsonElement> rawResult;
+        ConditionalValue<object> rawResult;
         try
         {
-            rawResult = await stateManager.TryGetStateAsync<JsonElement>(identity.SnapshotKey, cancellationToken)
+            // Dapr retains the object staged by SetStateAsync in its activation cache.
+            // Requesting JsonElement after staging SnapshotRecord fails the cache cast.
+            rawResult = await stateManager.TryGetStateAsync<object>(identity.SnapshotKey, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch
         {
             logger.LogWarning("Snapshot read unavailable: CorrelationId={CorrelationId}, FailureClass=SnapshotReadUnavailable", correlationId);
             return SnapshotLoadResult.InfrastructureFailure("SnapshotReadUnavailable");
         }
         if (!rawResult.HasValue) { return SnapshotLoadResult.Absent(); }
-        JsonElement raw = rawResult.Value;
+        JsonElement raw;
+        try
+        {
+            raw = rawResult.Value is JsonElement element
+                ? element : JsonSerializer.SerializeToElement(rawResult.Value, JsonSerializerOptions.Web);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { return SnapshotLoadResult.InfrastructureFailure("SnapshotReadUnavailable"); }
+        catch
+        {
+            return SnapshotLoadResult.ProviderOpaque("SnapshotRecordUnavailable");
+        }
         if (!SnapshotEnvelopeInspector.TryReadVersion(raw, out _))
         {
             return SnapshotLoadResult.ProviderOpaque("SnapshotEnvelopeVersionUnknown");
@@ -319,13 +335,14 @@ public partial class SnapshotManager(
             snapshot = raw.Deserialize<SnapshotRecord>(JsonSerializerOptions.Web)
                 ?? throw new JsonException("Snapshot record is null.");
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { return SnapshotLoadResult.InfrastructureFailure("SnapshotReadUnavailable"); }
         catch
         {
             if (allowCorruptPlaintextRemoval && authoritativeHead is > 0 && provenUnprotected)
             {
                 try { await stateManager.RemoveStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false); }
-                catch (OperationCanceledException) { throw; }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch { logger.LogWarning("Corrupt snapshot removal unavailable: FailureClass=SnapshotRemovalUnavailable"); }
             }
             return SnapshotLoadResult.Corrupt("CorruptSnapshot");
@@ -339,6 +356,10 @@ public partial class SnapshotManager(
         EventStorePayloadProtectionMetadata metadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
         if (metadata.State == PayloadProtectionState.ProviderOpaque)
         {
+            LogUnreadableProtectedSnapshot(identity, sequence, correlationId,
+                ProtectedDataReadabilityDecisionFactory.FromMetadata(metadata,
+                    ProtectedDataDecisionStage.SnapshotLoad, identity.TenantId, identity.Domain,
+                    identity.AggregateId, sequence, correlationId));
             return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque");
         }
         if (metadata.State == PayloadProtectionState.Unprotected
@@ -352,13 +373,26 @@ public partial class SnapshotManager(
             outcome = await payloadProtectionService.TryUnprotectSnapshotAsync(
                 identity, snapshot.State, metadata, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch
         {
+            LogUnreadableProtectedSnapshot(identity, sequence, correlationId,
+                ProtectedDataReadabilityDecisionFactory.FromOutcome(
+                    SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata),
+                    ProtectedDataDecisionStage.SnapshotLoad, identity.TenantId, identity.Domain,
+                    identity.AggregateId, sequence, correlationId));
             return SnapshotLoadResult.InfrastructureFailure("SnapshotUnprotectUnavailable");
         }
-        if (!outcome.IsReadable || outcome.State is null)
+        SnapshotUnprotectionOutcome classifiedOutcome = outcome.IsReadable && outcome.State is null
+            ? SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ConsistencyMismatch,
+                outcome.Metadata)
+            : outcome;
+        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
+            classifiedOutcome, ProtectedDataDecisionStage.SnapshotLoad, identity.TenantId, identity.Domain,
+            identity.AggregateId, sequence, correlationId);
+        if (!decision.IsReadable)
         {
+            LogUnreadableProtectedSnapshot(identity, sequence, correlationId, decision);
             return SnapshotLoadResult.UnreadableProtected("SnapshotUnreadableProtected");
         }
         JsonElement state;
@@ -367,7 +401,8 @@ public partial class SnapshotManager(
             state = outcome.State is JsonElement element
                 ? element : JsonSerializer.SerializeToElement(outcome.State, JsonSerializerOptions.Web);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { return SnapshotLoadResult.InfrastructureFailure("SnapshotUnprotectUnavailable"); }
         catch
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
@@ -495,6 +530,21 @@ public partial class SnapshotManager(
             && string.Equals(snapshot.TenantId, identity.TenantId, StringComparison.Ordinal)
             && string.Equals(snapshot.Domain, identity.Domain, StringComparison.Ordinal)
             && string.Equals(snapshot.AggregateId, identity.AggregateId, StringComparison.Ordinal);
+
+    private static string SnapshotFailureClass(Exception exception)
+        => exception is InvalidOperationException && exception.Message is
+            ("SnapshotSerializerUnsupported" or "SnapshotSequenceInvalid" or
+            "SnapshotStateShapeCollision" or "SnapshotStateInvalid" or
+            "SnapshotCaptureLimitExceeded" or "SnapshotEnvelopeBoundExceeded" or
+            "SnapshotStateChangedByNoOpProtection")
+            ? exception.Message : "SnapshotCreateUnavailable";
+
+    private void LogUnreadableProtectedSnapshot(
+        AggregateIdentity identity, long sequence, string? correlationId,
+        ProtectedDataReadabilityDecision decision)
+        => Log.UnreadableProtectedSnapshot(logger, correlationId ?? string.Empty,
+            identity.TenantId, identity.Domain, identity.AggregateId, sequence,
+            decision.ReasonCode);
 
     private static partial class Log {
         [LoggerMessage(

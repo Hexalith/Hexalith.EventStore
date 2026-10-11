@@ -5,6 +5,7 @@ namespace Hexalith.EventStore.Server.Events;
 /// <summary>Inspects raw snapshot fields before a record is bound or offered to domain logic.</summary>
 internal static class SnapshotEnvelopeInspector
 {
+    /// <summary>Checks whether actor serialization can write the compact version-one envelope.</summary>
     internal static bool IsSupportedWriteSerializer(JsonSerializerOptions options)
     {
         if (options.WriteIndented) { return false; }
@@ -36,6 +37,7 @@ internal static class SnapshotEnvelopeInspector
         catch { return false; }
     }
 
+    /// <summary>Reads a property only when it appears exactly once.</summary>
     internal static bool TryGetUniqueProperty(JsonElement value, string name, out JsonElement property)
     {
         property = default;
@@ -52,6 +54,7 @@ internal static class SnapshotEnvelopeInspector
         return found;
     }
 
+    /// <summary>Reads a supported raw envelope version before binding the record.</summary>
     internal static bool TryReadVersion(JsonElement raw, out int version)
     {
         version = 0;
@@ -66,6 +69,7 @@ internal static class SnapshotEnvelopeInspector
         return version is 0 or 1;
     }
 
+    /// <summary>Reads a unique positive integral covered sequence.</summary>
     internal static bool TryReadSequence(JsonElement raw, out long sequence)
     {
         sequence = 0;
@@ -75,9 +79,11 @@ internal static class SnapshotEnvelopeInspector
             && sequence > 0;
     }
 
+    /// <summary>Checks that state is an object without the legacy command DTO shape.</summary>
     internal static bool IsFoldedObject(JsonElement state)
         => state.ValueKind == JsonValueKind.Object && !IsDomainServiceCurrentState(state);
 
+    /// <summary>Detects the ambiguous top-level legacy command DTO shape.</summary>
     internal static bool IsDomainServiceCurrentState(JsonElement state)
         => state.ValueKind == JsonValueKind.Object
             && state.TryGetProperty("currentSequence", out _)
