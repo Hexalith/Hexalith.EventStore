@@ -184,7 +184,18 @@
             "applicationPrincipal": true
           }
         ],
-        "egress": [],
+        "egress": [
+          {
+            "name": "gateway-oidc-metadata",
+            "protocol": "https",
+            "destination": "Authentication:JwtBearer:Authority/.well-known/openid-configuration"
+          },
+          {
+            "name": "gateway-oidc-jwks",
+            "protocol": "https",
+            "destination": "Authentication:JwtBearer:Authority -> metadata.jwks_uri"
+          }
+        ],
         "providers": [],
         "workers": []
       },
