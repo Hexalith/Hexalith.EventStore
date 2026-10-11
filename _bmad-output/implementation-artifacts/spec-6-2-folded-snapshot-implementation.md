@@ -2,7 +2,7 @@
 title: 'Story 6.2: Folded Snapshot Implementation'
 type: 'feature'
 created: '2026-10-11'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 baseline_commit: 'e4532baa64f4cdabdbf766b9e38c36289a00adba'
 review_loop_iteration: 0
@@ -59,6 +59,56 @@ context:
 - Given absent qualification/evidence or policy/resource/shape/byte failure, when a valid command commits, then event bytes and result remain unchanged without snapshot-only commit (V5–V6,V15–V18).
 - Given legacy, protected, malformed, orphaned or gapped data, when either read path runs, then §9.2 applies without partial authority (V8–V12,V17).
 - Given either Admin inspector route reads a snapshot, when it returns, then only §13 safe fields appear and durable readback supports any completion (V13).
+
+### Review Findings
+
+Code review 2026-10-11, chunk 1 of 2: production `src/` from `2841e0c8..c284eb00` (31 files). Tests and `tools/` are chunk 2.
+
+- [ ] [Review][Patch] Automatic write replaces retained `Corrupt` (`AddressMismatch`, `SnapshotSequenceInvalid`, `SnapshotStateInvalid`) and `InfrastructureFailure` keys with no reason class. Decision: replace them with a support-safe reason class by extending the `replacementReasonClass` switch and the `CreateAutomaticReplacementAsync` allowlist, so keys still self-heal and log like opaque/unreadable replacements; add one test per class [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1507]
+- [ ] [Review][Patch] XML docs say `DomainReservationBytes`/`ActorReservationBytes` are "reserved before capture starts", but they are only validated declared upper bounds; `/process` has no request-wide budget (`ProcessCoreAsync` receives `budget: null`). Decision: keep the declared-limit validation plus the wire-gate check as the §8.6 interpretation and correct the wording [src/Hexalith.EventStore.Contracts/Snapshots/FoldedSnapshotCaptureLimits.cs]
+- [ ] [Review][Patch] Snapshot read uses `TryGetStateAsync<JsonElement>` while writers stage `SnapshotRecord`; Dapr 1.18.10 casts cached values and keeps them after save, so every later read in the same activation throws, becomes `SnapshotReadUnavailable`, full-replays with sequence 0 and rewrites the snapshot on each due command (manual returns `InfrastructureFailure`). `InMemoryStateManager.ReadValue<T>` converts to `JsonElement` and hides this from every test [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:277]
+- [ ] [Review][Patch] Actor-side qualification registry failure (duplicate enrollment throws in the singleton constructor) dead-letters every command instead of skipping capture as §12/V15 require; the domain side already swallows it [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1376]
+- [ ] [Review][Patch] Story 22.7c snapshot-load routing removed: opaque/unreadable loads no longer go through `ProtectedDataReadabilityDecisionFactory`, emit no event-7100 warning, and `Log.UnreadableProtectedSnapshot` is now uncalled [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:340]
+- [ ] [Review][Patch] Docs still describe interval-only automatic snapshots; automatic capture now needs a deployment qualification on both hosts, bounded V1 serialization and a `FoldedSnapshotCapture` profile, and legacy DSCS snapshots now fully replay [docs/guides/configuration-reference.md:148]
+- [ ] [Review][Patch] No successful capture test folds onto a non-empty pre-command state, typed or JSON DSCS; every passing capture starts from null state [tests/Hexalith.EventStore.DomainService.Tests/FoldedSnapshotCaptureTests.cs:24]
+- [ ] [Review][Patch] `IncludePostCommandState`/`SnapshotCaptureProfileId` are never verified through the real invoker and router; dropping the profile ID would silently stop all automatic snapshots [tests/Hexalith.EventStore.Server.Tests/DomainServices/VersionedWireRoundTripTests.cs:56]
+- [ ] [Review][Patch] Manual `InfrastructureFailure` refusal and the new `SnapshotReadUnavailable`/`SnapshotUnprotectUnavailable` mappings are untested; removing the refusal would overwrite a retained protected snapshot and report `Created` [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2373]
+- [ ] [Review][Patch] The full Server regression never finished (exit 124), though the story records `done`; run the Server test assembly to completion through the fallback ladder after patches [tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj]
+- [ ] [Review][Patch] Manual post-save "durable" readback reads the actor cache, so `SnapshotReadbackMismatch` can never fire; clear the cache before the readback [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2488]
+- [ ] [Review][Patch] Failure classes and the Admin-visible manual `ReasonCode` come from `ex.Message.StartsWith("Snapshot")`, so provider text can leak and "Snapshot protection metadata is invalid." becomes a class; use an allowlist [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:218]
+- [ ] [Review][Patch] Absent post-command evidence is logged as `SnapshotStateInvalid`, which misleads operators in mixed-version deployments [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2579]
+- [ ] [Review][Patch] Optional capture rethrows any `OperationCanceledException`, not only caller cancellation, so a callback cancellation fails a valid command (§8.3) [src/Hexalith.EventStore.DomainService/DomainServiceRequestRouter.cs:97]
+- [ ] [Review][Patch] New snapshot warnings carry no correlation or aggregate identity and bypass `[LoggerMessage]` [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1484]
+- [ ] [Review][Patch] New `using System.Text*` directives violate `dotnet_sort_system_directives_first` [src/Hexalith.EventStore.Client/Handlers/DomainProcessorBase.cs:2]
+- [ ] [Review][Patch] New internal members lack the XML docs the repo baseline requires [src/Hexalith.EventStore.Server/Events/SnapshotEnvelopeInspector.cs:8]
+
+**Rejected:**
+
+- false — Pre-command due check defers the first interval crossing: §8.3 mandates evaluating at the admitted pre-command head and the second post-persist check.
+- false — Orphan snapshot blocks its aggregate: §9.1 mandates bounded `SnapshotStreamUnavailable`; remediation is outside 6.2.
+- false — Manual data/config refusals are `InfrastructureFailure`: §§5.3, 6.3 and 8.6 mandate bounded `InfrastructureFailure` with the reason class.
+- false — Default interface members drop new arguments: §§8.3 and 12 mandate default delegation with absent evidence as advisory skip.
+- false — `includePostCommandState:false` breaks old services: domain request binding does not disallow unmapped members.
+- false — Synthetic capture metadata breaks parity: replay reads only metadata version, format, contract type, payload version, type name and sequence, and both paths use the same `ForApplyState` evolution registry.
+- false — Parser budget exhaustion rejects valid results: capture limits keep events at or below 64 MiB and evidence at or below 6 MiB raw, under the 128 MiB live budget.
+- false — Qualification is not bound to the serializer profile: capture decodes the exact admitted bytes with the shared replay deserializer, and `IsQualified` checks state type and limits.
+- false — Test proofs are absent from the diff: this chunk excludes tests and tools by design.
+- low — `PostCommandStateJson` appears in record `ToString()`: no code formats `DomainResult`, and events already print the same way.
+- low — Duplicate `postCommandStateJson` is last-wins: same as `resultPayload` in this parser, from a trusted domain service.
+- low — Capture payload copies are not zeroed: §8.2 requires private copies, not zeroing.
+- low — Manual path reads event 1 for the aggregate type: §9.1 already fails closed when `RetainedFloor > 1`; only the reason class differs.
+- low — `FoldedSnapshotCaptureLimits` ergonomics (18 positional parameters, one parameter name, repeated constants): no current defect.
+- low — Preallocated bounded buffers and per-command serializer probe: deliberate strict reservation; the probe is tiny.
+- low — Non-resumable converters buffer before the bound check: §8.6 accounts serializer scratch; the fix needs a custom bounded writer.
+- low — Admin redaction reports `SizeBytes` 0, accepts unvalidated `state:0`, hard-codes codes: `canonicalSizeBytes` null reports unknown per §13; changing `SizeBytes` needs a DTO change.
+- low — Unsupported actor serializer skips silently: requires indented actor JSON options.
+- low — Custom processor can exceed the escaped-state reservation: trusted callback; server parser and actor re-bound it.
+- low — Profile getter is re-read after `IsQualified`: matches the prior EC3 rejection.
+- low — Domain-side capture catches do not log: the static router has no logger; the actor logs the skip.
+- low — `ResolveAggregateTypeAsync` now runs before the no-op return: resolver failures are rare.
+- low — Fully qualified names and implicit public interface members: cosmetic; `b57310fb` is already on `origin/main`.
+- low — Commit `b57310fb` is typed `feat(tests)` but adds production code: already on `origin/main`.
+- low — Legacy `CreateSnapshotAsync` overload measures with Web options: no production caller.
 
 ## Implementation Notes
 
