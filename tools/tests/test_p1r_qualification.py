@@ -503,7 +503,8 @@ class SourceAndProcessTests(unittest.TestCase):
             process = subprocess.Popen([sys.executable, str(p.ROOT / "tools/p1r-qualification.py"), "run", "--out", str(out)],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             try:
-                deadline = time.monotonic() + 20
+                # CI binds initialized root dependencies before the process controls begin.
+                deadline = time.monotonic() + 120
                 interrupted = False
                 while process.poll() is None and time.monotonic() < deadline:
                     for path in (out / "receipts").glob("*.json"):
@@ -517,7 +518,7 @@ class SourceAndProcessTests(unittest.TestCase):
                         break
                     time.sleep(.02)
                 stdout, stderr = process.communicate(timeout=20)
-                self.assertTrue(interrupted)
+                self.assertTrue(interrupted, (process.returncode, stdout, stderr))
                 self.assertEqual(process.returncode, 2, (stdout, stderr))
                 packet = p.read_json(out / "packet.json")
                 row = next(r for r in packet["process_controls"] if r["id"] == "descendants")
