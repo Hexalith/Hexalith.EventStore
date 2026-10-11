@@ -76,7 +76,9 @@ public static class EventStoreServiceCollectionExtensions {
         // Composite policy scheme (FR28): a request presenting a workload assertion is authenticated only by the
         // DaprInternal workload scheme — the Dapr app-channel token plus a short-lived assertion from the trusted
         // JWT issuer naming an allow-listed caller and its granted operations. Every other request uses the user
-        // JwtBearer scheme. The plaintext dapr-caller-app-id header never selects a scheme or mints claims, and
+        // JwtBearer scheme. A sidecar channel token selects its own scheme only when no bearer token is present;
+        // a valid channel token proves the channel, never a workload or human authority. The plaintext
+        // dapr-caller-app-id header never selects a scheme or mints claims, and
         // the DaprInternal principal carries no tenant, permission, or global-administrator claim.
         _ = services
             .AddAuthentication(options => {
@@ -87,7 +89,10 @@ public static class EventStoreServiceCollectionExtensions {
                 policyOptions.ForwardDefaultSelector = context =>
                     context.Request.Headers.ContainsKey(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName)
                         ? DaprInternalAuthenticationOptions.SchemeName
-                        : JwtBearerDefaults.AuthenticationScheme)
+                        : context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                            && !context.Request.Headers.ContainsKey("Authorization")
+                            ? EventStoreWorkloadAuthenticationDefaults.SidecarChannelScheme
+                            : JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer()
             .AddEventStoreWorkloadScheme(
                 DaprInternalAuthenticationOptions.SchemeName,
@@ -209,7 +214,8 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddRateLimiter(rateLimiterOptions => {
             rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            // Per-tenant limiter (existing, unchanged logic)
+            // Per-tenant limiter; verified internal callers have separate bounded partitions because they carry
+            // no human tenant claim. Unverified traffic remains in the anonymous partition.
             var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
@@ -219,8 +225,10 @@ public static class EventStoreServiceCollectionExtensions {
                     return RateLimitPartition.GetNoLimiter<string>("__health");
                 }
 
-                // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1)
-                string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value ?? "anonymous";
+                // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
+                string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value
+                    ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
+                    ?? "anonymous";
 
                 IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
                 RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
@@ -254,9 +262,12 @@ public static class EventStoreServiceCollectionExtensions {
                     return RateLimitPartition.GetNoLimiter<string>("__health");
                 }
 
-                // Consumer identity from JWT "sub" claim. All anonymous traffic shares one consumer bucket.
+                // Human consumer identity comes from JWT "sub"; verified internal identities have their own
+                // bounded buckets. All other traffic shares one anonymous consumer bucket.
                 string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
-                string consumerId = string.IsNullOrWhiteSpace(rawConsumerId) ? "anonymous" : rawConsumerId;
+                string consumerId = !string.IsNullOrWhiteSpace(rawConsumerId)
+                    ? rawConsumerId
+                    : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous";
 
                 IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
                 RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
@@ -292,9 +303,12 @@ public static class EventStoreServiceCollectionExtensions {
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
                     string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
                         ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
+                        ?? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User)
                         ?? "unknown";
                     string? rawConsumerId = context.HttpContext.User?.FindFirst("sub")?.Value;
-                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId) ? "anonymous" : rawConsumerId;
+                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId)
+                        ? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User) ?? "anonymous"
+                        : rawConsumerId;
                     string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
 
                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds

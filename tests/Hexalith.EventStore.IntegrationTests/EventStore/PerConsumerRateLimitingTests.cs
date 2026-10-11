@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -315,6 +316,27 @@ public class PerConsumerRateLimitingTests(PerConsumerRateLimitingWebApplicationF
         doc.RootElement.TryGetProperty("consumerId", out JsonElement consumerIdElement).ShouldBeTrue();
         consumerIdElement.GetString().ShouldBe("anonymous",
             "Unauthenticated requests should use 'anonymous' consumer partition.");
+    }
+
+    /// <summary>Only a verified sidecar token receives its own bounded partition; a forged token stays anonymous.</summary>
+    [Fact]
+    public async Task VerifiedSidecar_UsesSeparateConsumerPartition_WithoutAuthorizingPublicCommands() {
+        using WebApplicationFactory<EventStoreProgram> channelFactory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                [DaprAppChannelToken.ConfigurationKey] = "rate-limit-channel-secret",
+            })));
+        HttpClient channel = channelFactory.CreateClient();
+        channel.DefaultRequestHeaders.TryAddWithoutValidation(DaprAppChannelToken.HeaderName, "rate-limit-channel-secret");
+        HttpClient anonymous = channelFactory.CreateClient();
+        HttpClient forged = channelFactory.CreateClient();
+        forged.DefaultRequestHeaders.TryAddWithoutValidation(DaprAppChannelToken.HeaderName, "incorrect-channel-secret");
+
+        (await channel.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await channel.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await anonymous.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await anonymous.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await forged.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await channel.PostAsJsonAsync("/api/v1/commands", CreateValidRequest("any"))).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
     }
 
     private static object CreateValidRequest(string tenant) => new {
