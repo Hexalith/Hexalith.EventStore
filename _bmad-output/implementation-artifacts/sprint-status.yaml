@@ -113,8 +113,7 @@ development_status:
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   2-13-dapr-notification-distribution-qualification: in-progress
-  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): corrective successors for
-  # G-TENANT/G-STATUS-ID (2.14/2.15) and primary owners for NFR5/NFR13 (2.16/2.17).
+  # 2.13: rejected because Stories 6.2, 6.3, and 6.4 remain unfinished
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: backlog
   2-15-messageid-only-command-status-identity: backlog
   2-16-bounded-signalr-detail-metadata: backlog
@@ -136,36 +135,7 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
-  # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
-  # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
-  # requires this file to restate Story 3.15's CURRENT canonical subject digest from
-  # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
-  # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
-  # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-26 fresh curl-isolated smokes and limitation 4 re-minted the subject.
-  # All five prior acceptance rounds remain under story-3-15/superseded-acceptances/.
-  # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
-  # lineages. The current canonical subject is
-  # 66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6; it has 3/3
-  # receipts and the verifier exits 0. The prior accepted subject and its three receipts are
-  # retained byte-for-byte in the superseded audit area, with no authority for this subject.
-  # closure.json's deployed_runtime_parity/selected_deployed_identity are claims validated by
-  # the three receipts; the result is evidence only, with no operational authority.
-  # Caveat: both owner roles resolve to one authenticated account and the Test Architect
-  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its
-  # matrix, validator, assurance-level check, and sealed CI control.
-  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
-  # the three caveat lines above, this note, the next four lines, the row, and the fence's END
-  # marker as one verbatim block and pins this row's value; change them only together.
-  # 2026-09-26 owner decision (sprint-change-proposal-2026-09-26) closes this row at FR36-C2
-  # evidence validation only and supersedes the 2026-09-24 review hold without rewriting it.
-  # G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; backlog Story 9.2 owns G-HIGH-RISK. The
-  # row grants no release, promotion, deployment, readiness, or consumer-removal authority.
   3-15-corrected-deployed-runtime-parity-closure: done
-  # >>> END GUARDED COMMENTS <<<
-  # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
-  # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
-  # it excludes non-Hexalith, .NET and Aspire upgrades, which epics.md:2849 requires.
   3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
   3-17-dapr-boundary-inventory-and-enforcement: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-COMPAT, FR36-C3 publication
@@ -184,11 +154,6 @@ development_status:
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
   4-5-append-durability-race-evidence: done
-  # Corrected 2026-09-08 (correct-course OR3). Commit 8d6f7dac flipped this row
-  # 'awaiting-operator' -> 'done' while spec-4-6 frontmatter still records
-  # approval_state: absent and implementation_authorized: false, with three
-  # outstanding operator_actions. The renegotiated successor spec is complete at
-  # review loop 5; the block is external operator approval, not development work.
   4-6-global-position-sharding-spec-renegotiation: awaiting-operator
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   # Corrected 2026-09-09 (code review, Story 4.15 Group C). The row read 'done'
@@ -200,17 +165,6 @@ development_status:
   # carried DW-487/DW-488/DW-493 were not reopened. Spec frontmatter already
   # records status: done. Sprint row synced from review -> done.
   4-7-tenants-query-provenance-follow-up: done
-  # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
-  # The August crosswalk maps its checked candidate evidence to focused review stories only.
-  # Stories 4.9 and 4.10 are ledger-only: they were delivered under the Story 4.8
-  # durable-admission evidence ledger and have no separate spec-4-9-*/spec-4-10-*
-  # artifact. Recorded 2026-09-09 (code review, Story 4.15 Group C) so the absence
-  # is an explicit disposition rather than a silent gap. Note the asymmetry: the
-  # OQ8 validator MANDATES both rows be 'done' (validate-oq8-platform-evidence.py
-  # :3527-3528) while its story_specs frontmatter check covers only 4.11-4.15
-  # (:3539-3544), so these two children are asserted hardest and verified least.
-  # Do not synthesise retroactive spec files to close this -- that manufactures
-  # evidence, which the frozen Story 4.15 spec forbids.
   4-9-trusted-admission-contract-and-protected-identity: done
   4-10-digest-directory-rotation-and-key-retirement: done
   4-11-admission-state-machine-and-current-fence-enforcement: done
@@ -218,17 +172,12 @@ development_status:
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
   4-15-oq8-platform-closure-and-handoff: done
-  # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-APPEND owner (envelope first,
-  # owner decision) and G-OQ8 governing-design authority owner. Story 4.15 is not reopened.
   4-16-append-write-once-conformance-through-enforced-envelope: backlog
   4-17-oq8-governing-design-authority-import: backlog
   epic-4-retrospective: optional
 
   epic-5: in-progress
   5-1-infrastructure-failure-cache-clear: done
-  # Corrected 2026-10-07 (correct-course OR15). Commit 57fa0909 flipped this row
-  # 'backlog' -> 'done' in an IdempotencyChecker change whose subject never mentions
-  # a status change, while spec-5-2 records status 'in-review' at review loop 2.
   5-2-admin-endpoint-authorization-and-tenant-filters: in-progress
   # Corrected 2026-09-08 (correct-course OR2). Commit c83cc4c3 flipped this row
   # 'backlog' -> 'done' in a test-only change whose subject and body never mention
