@@ -493,6 +493,39 @@ public class DaprActorQueryServiceTests {
         evidence.RootElement.GetProperty("coveredSequence").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetActorInstanceStateAsync_AmbiguousProtectionMetadataIsUnknown(bool ownerSidecar) {
+        const string actorId = "tenant:domain:aggregate";
+        const string raw = """{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{"secret":"private"},"protectionMetadata":null,"ProtectionMetadata":{"state":0}}""";
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar) {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new FakeHandler(HttpStatusCode.OK, raw)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory);
+        }
+        else {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => JsonState(raw));
+            service = CreateService(daprClient);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue.ShouldNotBeNull());
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("Unknown");
+        snapshot.JsonValue.ShouldNotContain("private");
+    }
+
     [Fact]
     public async Task GetActorInstanceStateAsync_UsesConfiguredOwnerAppId_ForAggregateMetadataLookup() {
         DaprClient daprClient = Substitute.For<DaprClient>();

@@ -30,22 +30,16 @@ public partial class EventStreamReader(
     internal async Task<RehydrationResult?> RehydrateAsync(
         AggregateIdentity identity, SnapshotRecord? snapshot, CancellationToken cancellationToken,
         DaprProductionLogicalEventReader? productionReader, string? aggregateType,
-        SnapshotManager? snapshotReplay = null) {
+        SnapshotManager? snapshotReplay = null,
+        ConditionalValue<AggregateMetadata>? preloadedMetadata = null) {
         ArgumentNullException.ThrowIfNull(identity);
         cancellationToken.ThrowIfCancellationRequested();
 
         var sw = Stopwatch.StartNew();
 
         // Load metadata to get current sequence number
-        ConditionalValue<AggregateMetadata> metadataResult;
-        try {
-            metadataResult = await stateManager
-                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            throw new EventDeserializationException(-1, identity.ActorId, ex);
-        }
+        ConditionalValue<AggregateMetadata> metadataResult = preloadedMetadata
+            ?? await ReadMetadataAsync(identity, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!metadataResult.HasValue) {
@@ -186,6 +180,23 @@ public partial class EventStreamReader(
             Events: events,
             LastSnapshotSequence: lastSnapshotSequence,
             CurrentSequence: currentSequence);
+    }
+
+    /// <summary>Reads the addressed stream head before a command inspects its snapshot key.</summary>
+    internal async Task<ConditionalValue<AggregateMetadata>> ReadMetadataAsync(
+        AggregateIdentity identity, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            return await stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new EventDeserializationException(-1, identity.ActorId, ex);
+        }
     }
 
     private async Task RequireUnchangedMetadataAsync(AggregateIdentity identity, AggregateMetadata expected,

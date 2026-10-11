@@ -88,6 +88,20 @@ public sealed class BoundedV1DomainResponseParserTests
         result.PostCommandStateJson.ShouldBe(expected);
     }
 
+    [Fact]
+    public async Task OversizedOptionalStateDoesNotRejectAdmittedEventsOrResultPayload()
+    {
+        using var stream = Input("{\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"resultPayload\":\"ok\",\"postCommandStateJson\":\""
+            + new string('a', 6 * 1024 * 1024 + 1) + "\"}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.ResultPayload.ShouldBe("ok");
+        result.PostCommandStateJson.ShouldBeNull();
+    }
+
     [Theory]
     [InlineData("writerMode")]
     [InlineData("registryFingerprint")]

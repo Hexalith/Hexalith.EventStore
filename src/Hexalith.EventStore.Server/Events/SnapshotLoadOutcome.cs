@@ -18,20 +18,20 @@ namespace Hexalith.EventStore.Server.Events;
 /// </remarks>
 public enum SnapshotLoadOutcome {
     /// <summary>The state provider or unprotection service was unavailable.</summary>
-    InfrastructureFailure,
+    InfrastructureFailure = 5,
 
     /// <summary>No snapshot key exists; the stream may be replayed in full.</summary>
-    Absent,
+    Absent = 0,
 
     /// <summary>A snapshot exists and was unprotected successfully (or is plaintext).</summary>
-    Readable,
+    Readable = 1,
 
     /// <summary>A snapshot exists but the unprotection provider classified it as unreadable.</summary>
-    UnreadableProtected,
+    UnreadableProtected = 2,
 
     /// <summary>A snapshot exists with provider-opaque protection metadata (cannot be read here).</summary>
-    ProviderOpaque,
+    ProviderOpaque = 3,
 
     /// <summary>A snapshot exists but failed plaintext deserialization (would have been deleted by the command-time path).</summary>
-    Corrupt,
+    Corrupt = 4,
 }

@@ -21,6 +21,16 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 public class SnapshotManagerTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
+    [Fact]
+    public void SnapshotLoadOutcome_PreservesPublishedNumericValues() {
+        ((int)SnapshotLoadOutcome.Absent).ShouldBe(0);
+        ((int)SnapshotLoadOutcome.Readable).ShouldBe(1);
+        ((int)SnapshotLoadOutcome.UnreadableProtected).ShouldBe(2);
+        ((int)SnapshotLoadOutcome.ProviderOpaque).ShouldBe(3);
+        ((int)SnapshotLoadOutcome.Corrupt).ShouldBe(4);
+        ((int)SnapshotLoadOutcome.InfrastructureFailure).ShouldBe(5);
+    }
+
     private static (SnapshotManager Manager, IActorStateManager StateManager) CreateManager(
         SnapshotOptions? options = null,
         ISnapshotPolicyResolver? snapshotPolicyResolver = null,
@@ -132,6 +142,23 @@ public class SnapshotManagerTests {
     }
 
     [Fact]
+    public async Task CreateSnapshot_NullProtectedStateNeverStagesVersionOneRecord() {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new SnapshotProtectionResult(null!, EventStorePayloadProtectionMetadata.Unprotected()));
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() =>
+            manager.CreateSnapshotAsync(TestIdentity, 1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+                throwOnFailure: true));
+
+        failure.Message.ShouldBe("SnapshotStateInvalid");
+        await stateManager.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateSnapshot_PreCanceledRequestDoesNotStageState() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         using var cancellation = new CancellationTokenSource();
@@ -151,6 +178,7 @@ public class SnapshotManagerTests {
             index => $"flag-{index}", _ => new string('<', 256));
         var metadata = new EventStorePayloadProtectionMetadata(
             PayloadProtectionState.Unprotected, 1, null, null, null, compatibilityFlags);
+        byte[] originalMetadataBytes = JsonSerializer.SerializeToUtf8Bytes(metadata, JsonSerializerOptions.Web);
         _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new SnapshotProtectionResult(call.ArgAt<object>(1), metadata)));
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
@@ -161,6 +189,7 @@ public class SnapshotManagerTests {
                 JsonSerializerOptions.Web, throwOnFailure: true));
 
         failure.Message.ShouldBe("SnapshotEnvelopeBoundExceeded");
+        JsonSerializer.SerializeToUtf8Bytes(metadata, JsonSerializerOptions.Web).ShouldBe(originalMetadataBytes);
         await stateManager.DidNotReceive().SetStateAsync(
             TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
     }
@@ -204,6 +233,7 @@ public class SnapshotManagerTests {
         stateBytes[2].ShouldBe(stateBytes[0]);
         foreach (SnapshotRecord snapshot in staged) {
             int fullBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonSerializerOptions.Web).Length;
+            Console.WriteLine($"FoldedStateBytes={stateBytes[0].Length}, SnapshotEnvelopeBytes={fullBytes}, CoveredSequence={snapshot.SequenceNumber}");
             fullBytes.ShouldBeLessThanOrEqualTo(stateBytes[0].Length + 4096);
         }
     }
@@ -383,17 +413,18 @@ public class SnapshotManagerTests {
             manager.CreateSnapshotAsync(TestIdentity, 100, state, stateManager));
     }
 
-    // === 8.14: LoadSnapshot deserialization failure returns null and deletes corrupt ===
+    // === 8.14: Addressed plaintext binding failure may delete with a verified stream head ===
 
     [Fact]
-    public async Task LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt() {
+    public async Task LoadSnapshot_AddressedPlaintextBindingFailureWithVerifiedHeadDeletesCorrupt() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
 
-        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{},"createdAt":"invalid","protectionMetadata":null}""");
+        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{},"createdAt":"invalid","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""");
         _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<JsonElement>(true, malformed));
 
-        SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
+        SnapshotRecord? result = (await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, stateManager, authoritativeHead: 100)).Snapshot;
 
         result.ShouldBeNull();
         await stateManager.Received(1).RemoveStateAsync(

@@ -691,6 +691,38 @@ public class AggregateActorDomainResultTests {
             false);
     }
 
+    [Fact]
+    public async Task ProcessCommandAsync_FirstIntervalCrossingDoesNotRequestUnqualifiedCapture() {
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        ActorTestContext ctx = CreateActor(serviceProvider: services);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 99);
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<long>(3) - call.ArgAt<long>(4) >= 100);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+
+        CommandProcessingResult processed = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        processed.Accepted.ShouldBeTrue();
+        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync(
+            "test-tenant", "test-domain", "test-domain", 99, 0, Arg.Any<CancellationToken>());
+        _ = await ctx.Invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
+            Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>(), Arg.Any<bool>());
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -723,6 +755,45 @@ public class AggregateActorDomainResultTests {
             Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
             Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>(), Arg.Any<bool>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_AmbiguousStateEvidenceEmitsOnlySafeCollisionClass()
+    {
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        ActorTestContext ctx = CreateActor(serviceProvider: services);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with
+            {
+                PostCommandStateJson = """{"currentSequence":4,"events":[],"secret":"sensitive-value"}""",
+            });
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
+            Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        string[] messages = ctx.Logger.ReceivedCalls()
+            .Select(call => call.GetArguments().Length > 2 ? call.GetArguments()[2]?.ToString() ?? "" : "")
+            .ToArray();
+        messages.ShouldContain(message => message.Contains("FailureClass=SnapshotStateShapeCollision",
+            StringComparison.Ordinal));
+        messages.ShouldNotContain(message => message.Contains("sensitive-value", StringComparison.Ordinal));
     }
 
     [Theory]

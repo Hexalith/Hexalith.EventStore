@@ -146,6 +146,9 @@ public partial class SnapshotManager(
             SnapshotProtectionResult protectionResult = await payloadProtectionService
                 .ProtectSnapshotAsync(identity, folded, cancellationToken)
                 .ConfigureAwait(false);
+            if (protectionResult is null || protectionResult.State is null) {
+                throw new InvalidOperationException("SnapshotStateInvalid");
+            }
             if (!EventStorePayloadProtectionMetadataCarrier.TryValidate(protectionResult.Metadata, out _)) {
                 throw new InvalidOperationException("Snapshot protection metadata is invalid.");
             }
@@ -226,7 +229,7 @@ public partial class SnapshotManager(
         CancellationToken cancellationToken = default)
     {
         SnapshotLoadResult inspected = await LoadSnapshotForCommandAsync(
-            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval: true).ConfigureAwait(false);
+            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval: false).ConfigureAwait(false);
         return inspected.Snapshot;
     }
 
@@ -236,10 +239,12 @@ public partial class SnapshotManager(
         IActorStateManager stateManager,
         string? correlationId = null,
         CancellationToken cancellationToken = default,
-        bool allowCorruptPlaintextRemoval = true)
+        bool allowCorruptPlaintextRemoval = true,
+        long? authoritativeHead = null)
     {
         SnapshotLoadResult inspected = await ReadSnapshotCoreAsync(
-            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval).ConfigureAwait(false);
+            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval,
+            authoritativeHead).ConfigureAwait(false);
         return inspected.Outcome == SnapshotLoadOutcome.Readable
             && inspected.Snapshot is { State: JsonElement state }
             && SnapshotEnvelopeInspector.IsFoldedObject(state)
@@ -260,7 +265,8 @@ public partial class SnapshotManager(
         IActorStateManager stateManager,
         string? correlationId,
         CancellationToken cancellationToken,
-        bool allowCorruptPlaintextRemoval)
+        bool allowCorruptPlaintextRemoval,
+        long? authoritativeHead = null)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -283,13 +289,28 @@ public partial class SnapshotManager(
         {
             return SnapshotLoadResult.ProviderOpaque("SnapshotEnvelopeVersionUnknown");
         }
-        if (!SnapshotEnvelopeInspector.TryReadSequence(raw, out _))
+        if (!SnapshotEnvelopeInspector.TryReadSequence(raw, out long sequence)
+            || (authoritativeHead is long head && sequence > head))
         {
             return SnapshotLoadResult.Corrupt("SnapshotSequenceInvalid");
         }
-        if (!SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "state", out _))
+        if (!HasRawAddressedIdentity(raw, identity))
+        {
+            Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+            return SnapshotLoadResult.Corrupt("AddressMismatch");
+        }
+        if (!SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "state", out JsonElement rawState))
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
+        bool provenUnprotected = IsProvenUnprotected(raw);
+        if (provenUnprotected && rawState.ValueKind != JsonValueKind.Object)
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
+        if (provenUnprotected && SnapshotEnvelopeInspector.IsDomainServiceCurrentState(rawState))
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateShapeCollision") with { CoveredSequence = sequence };
         }
 
         SnapshotRecord snapshot;
@@ -301,7 +322,7 @@ public partial class SnapshotManager(
         catch (OperationCanceledException) { throw; }
         catch
         {
-            if (allowCorruptPlaintextRemoval && IsProvenUnprotected(raw))
+            if (allowCorruptPlaintextRemoval && authoritativeHead is > 0 && provenUnprotected)
             {
                 try { await stateManager.RemoveStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false); }
                 catch (OperationCanceledException) { throw; }
@@ -367,13 +388,40 @@ public partial class SnapshotManager(
                 string.Equals(property.Name, "protectionMetadata", StringComparison.OrdinalIgnoreCase));
         }
         if (metadata.ValueKind == JsonValueKind.Null) { return true; }
+        if (metadata.ValueKind != JsonValueKind.Object
+            || !SnapshotEnvelopeInspector.TryGetUniqueProperty(metadata, "state", out JsonElement state)
+            || state.ValueKind != JsonValueKind.Number
+            || !state.TryGetInt32(out int stateCode)
+            || stateCode != (int)PayloadProtectionState.Unprotected)
+        {
+            return false;
+        }
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (JsonProperty property in metadata.EnumerateObject())
+        {
+            if (!seen.Add(property.Name)) { return false; }
+        }
         try
         {
-            return metadata.Deserialize<EventStorePayloadProtectionMetadata>(JsonSerializerOptions.Web)?.State
-                == PayloadProtectionState.Unprotected;
+            EventStorePayloadProtectionMetadata? protection =
+                metadata.Deserialize<EventStorePayloadProtectionMetadata>(JsonSerializerOptions.Web);
+            return protection is not null
+                && EventStorePayloadProtectionMetadataCarrier.TryValidate(protection, out _)
+                && protection.State == PayloadProtectionState.Unprotected;
         }
         catch { return false; }
     }
+
+    private static bool HasRawAddressedIdentity(JsonElement raw, AggregateIdentity identity)
+        => SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "tenantId", out JsonElement tenant)
+            && tenant.ValueKind == JsonValueKind.String
+            && string.Equals(tenant.GetString(), identity.TenantId, StringComparison.Ordinal)
+            && SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "domain", out JsonElement domain)
+            && domain.ValueKind == JsonValueKind.String
+            && string.Equals(domain.GetString(), identity.Domain, StringComparison.Ordinal)
+            && SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "aggregateId", out JsonElement aggregate)
+            && aggregate.ValueKind == JsonValueKind.String
+            && string.Equals(aggregate.GetString(), identity.AggregateId, StringComparison.Ordinal);
 
     /// <summary>Reads a checked logical range through the shared production reader.</summary>
     internal Task<DaprProductionLogicalReplay> ReadReplayRangeAsync(

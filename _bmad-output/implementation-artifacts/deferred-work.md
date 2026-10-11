@@ -5741,3 +5741,18 @@ status: open
 - source_spec: `spec-6-6-event-versioning-and-upcasting-implementation-3.md`
   summary: Shared projection rebuild should report the last durable accepted count after a later accumulate failure.
   evidence: The pre-existing generic dispatcher catch returns count zero after an earlier aggregate was accepted; a new upcast failure can reach the same catch. A rebuild protocol correction must read and report the persisted session state.
+
+## Deferred from: Story 6.2 review of concurrent changes (2026-10-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Permit the Tenants API's authorized command invocation through production Dapr access control.
+  evidence: `deploy/dapr/accesscontrol.yaml` allows `tenants-api` only `GET /ready`, while `TenantBootstrapHostedService` in the Tenants submodule invokes EventStore `POST api/v1/commands` through Dapr with a delegated human credential; this ACL change is independent of Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Align the module manifest's app-channel token configuration key with the runtime environment variable.
+  evidence: The new module manifest declares `EventStore:AppChannelToken`, while `DaprAppChannelSecurity` reads `APP_API_TOKEN`; this manifest change is independent of Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Represent EventStore's domain and tenant topic naming accurately in the module manifest.
+  evidence: The new manifest fixes `eventstore-events`, while `NamingConventionEngine.GetPubSubTopic` uses `{domain}.events` or `{tenant}.{domain}.events` and registration allows overrides; this manifest change is independent of Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Distinguish a standalone P1R refusal probe from an operation guarded by that refusal in published evidence.
+  evidence: `p1r_published_executor.py` calls the probe's `admit` mode for refused cases, and that mode does not route a protected historical operation through a runtime guard; the P1R evidence change is independent of Story 6.2.

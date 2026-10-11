@@ -103,7 +103,16 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
         }
         FoldedSnapshotCaptureProfile<TState> admittedProfile = profile;
         TState? admittedState = preCommandState;
-        long preSequence = currentState is DomainServiceCurrentState dscs ? dscs.CurrentSequence : 0;
+        long preSequence = currentState switch
+        {
+            DomainServiceCurrentState dscs => dscs.CurrentSequence,
+            JsonElement { ValueKind: JsonValueKind.Object } json
+                when json.TryGetProperty("events", out _)
+                    && json.TryGetProperty("currentSequence", out JsonElement sequence)
+                    && sequence.ValueKind == JsonValueKind.Number
+                    && sequence.TryGetInt64(out long value) => value,
+            _ => 0,
+        };
         return new FoldedSnapshotProcessingResult(result,
             (wireEvents, token) => CaptureFoldedState(command, preSequence, admittedState, admittedProfile, wireEvents, token));
     }

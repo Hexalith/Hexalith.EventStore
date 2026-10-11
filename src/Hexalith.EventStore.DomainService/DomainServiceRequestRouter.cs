@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Handlers;
@@ -60,9 +61,33 @@ public static class DomainServiceRequestRouter {
                 && BoundedV1WireResultAdmission.CanReserveOptionalState(
                     wire.Wire, captureLimits.MaximumEscapedWireStateBytes, cancellationToken))
             {
+                DomainServiceWireEvent[]? detached = null;
                 try
                 {
-                    foldedJson = capture(wire.Wire.Events, cancellationToken);
+                    IReadOnlyList<DomainServiceWireEvent> admitted = wire.Wire.Events;
+                    if (admitted.Count > captureLimits.MaximumEventCount)
+                    {
+                        throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+                    }
+                    long bytes = 0;
+                    foreach (DomainServiceWireEvent item in admitted)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        bytes = checked(bytes + item.Payload.Length);
+                    }
+                    if (bytes > captureLimits.MaximumEventBytes
+                        || checked(bytes + 256L * admitted.Count) > captureLimits.MaximumDetachedEventGraphBytes)
+                    {
+                        throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+                    }
+                    detached = new DomainServiceWireEvent[admitted.Count];
+                    for (int index = 0; index < detached.Length; index++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        DomainServiceWireEvent item = admitted[index];
+                        detached[index] = item with { Payload = item.Payload.ToArray() };
+                    }
+                    foldedJson = capture(Array.AsReadOnly(detached), cancellationToken);
                     if (foldedJson is not null)
                     {
                         _ = BoundedV1WireResultAdmission.Admit(
@@ -71,6 +96,16 @@ public static class DomainServiceRequestRouter {
                 }
                 catch (OperationCanceledException) { throw; }
                 catch { foldedJson = null; }
+                finally
+                {
+                    if (detached is not null)
+                    {
+                        foreach (DomainServiceWireEvent? item in detached)
+                        {
+                            if (item is not null) { CryptographicOperations.ZeroMemory(item.Payload); }
+                        }
+                    }
+                }
             }
             await RequireCurrentAsync().ConfigureAwait(false);
             return wire.Release() with { PostCommandStateJson = foldedJson };

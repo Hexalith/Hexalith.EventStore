@@ -4,6 +4,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Snapshots;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -88,7 +89,22 @@ public sealed class FoldedSnapshotCaptureTests
         document.RootElement.GetProperty("count").GetInt32().ShouldBe(3);
     }
 
-    private static ServiceProvider BuildProvider(SnapshotCaptureTestProcessor processor)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CaptureCannotMutateOnceAdmittedWirePayload(bool throwAfterMutation)
+    {
+        var processor = new MutatingCaptureProcessor(throwAfterMutation);
+        using ServiceProvider provider = BuildProvider(processor);
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: true, "test-profile"));
+
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        wire.PostCommandStateJson.ShouldBe(throwAfterMutation ? null : "{}");
+    }
+
+    private static ServiceProvider BuildProvider(IAsyncDomainProcessor processor)
     {
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IAsyncDomainProcessor>("d", processor);
@@ -100,6 +116,31 @@ public sealed class FoldedSnapshotCaptureTests
         services.AddEventStoreFoldedSnapshotQualification<SnapshotCaptureTestState>(
             "d", "aggregate", "test-profile", "test-parity-evidence", SnapshotCaptureTestLimits.Value);
         return services.BuildServiceProvider();
+    }
+
+    private sealed class MutatingCaptureProcessor(bool throwAfterMutation)
+        : IAsyncDomainProcessor, IAsyncFoldedSnapshotProcessor
+    {
+        public bool IsQualified(Type stateType, string profileId, string parityEvidenceId,
+            FoldedSnapshotCaptureLimits limits)
+            => stateType == typeof(SnapshotCaptureTestState)
+                && profileId == "test-profile" && parityEvidenceId == "test-parity-evidence"
+                && Equals(limits, SnapshotCaptureTestLimits.Value);
+
+        public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState,
+            CancellationToken cancellationToken)
+            => Task.FromResult(DomainResult.Success([new SnapshotCaptureTestEvent { Amount = 99 }]));
+
+        public Task<FoldedSnapshotProcessingResult> ProcessForSnapshotAsync(DomainServiceRequest request,
+            string qualifiedProfileId, FoldedSnapshotCaptureLimits limits, CancellationToken cancellationToken)
+            => Task.FromResult(new FoldedSnapshotProcessingResult(
+                DomainResult.Success([new SnapshotCaptureTestEvent { Amount = 99 }]),
+                (events, _) =>
+                {
+                    events[0].Payload[0] = (byte)'x';
+                    if (throwAfterMutation) { throw new InvalidOperationException("capture failed"); }
+                    return "{}";
+                }));
     }
 
     private static DomainServiceRequest CreateRequest(bool include, string profileId)

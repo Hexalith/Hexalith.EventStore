@@ -27,6 +27,33 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>Proves retained snapshot migration occurs only with the event batch.</summary>
 public sealed class AggregateActorFoldedSnapshotMigrationTests
 {
+    [Fact]
+    public async Task OrphanCorruptPlaintextSnapshotIsRetainedBeforeSnapshotLoad()
+    {
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "orphan-corrupt-snapshot");
+        AggregateIdentity identity = command.AggregateIdentity;
+        JsonElement corrupt = JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""");
+        var stateManager = new FaultInjectingActorStateManager();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.SnapshotKey] = corrupt,
+        });
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        ActorTestContext actor = CreateActor(stateManager: stateManager, snapshotManager: snapshots);
+
+        _ = await actor.Actor.ProcessCommandAsync(command);
+
+        stateManager.Trace.ShouldContain($"TryGetState:{identity.MetadataKey}");
+        stateManager.Trace.ShouldContain($"ContainsState:{identity.SnapshotKey}");
+        stateManager.Trace.ShouldNotContain($"TryGetState:{identity.SnapshotKey}");
+        stateManager.Trace.ShouldNotContain($"RemoveState:{identity.SnapshotKey}");
+        JsonElement.DeepEquals(stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<JsonElement>(),
+            corrupt).ShouldBeTrue();
+        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+    }
+
     [Theory]
     [InlineData(false, "SnapshotEnvelopeVersionUnknown")]
     [InlineData(true, "SnapshotProviderOpaque")]

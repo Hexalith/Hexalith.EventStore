@@ -10,6 +10,9 @@ public sealed record SnapshotLoadResult(
     SnapshotLoadOutcome Outcome,
     SnapshotRecord? Snapshot,
     string? ReasonCode) {
+    /// <summary>The validated raw covered sequence of a retained legacy-shape snapshot.</summary>
+    public long? CoveredSequence { get; init; }
+
     /// <summary>Convenience: a retained key whose provider read failed.</summary>
     public static SnapshotLoadResult InfrastructureFailure(string reasonCode)
         => new(SnapshotLoadOutcome.InfrastructureFailure, null, reasonCode);

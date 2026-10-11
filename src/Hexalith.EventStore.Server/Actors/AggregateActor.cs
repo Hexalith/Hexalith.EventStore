@@ -1256,11 +1256,36 @@ public partial class AggregateActor(
                     SetActivityTags(activity, command);
 
                     try {
+                        var eventStreamReader = new EventStreamReader(
+                            StateManager,
+                            Host.LoggerFactory.CreateLogger<EventStreamReader>());
+                        // The addressed stream establishes authority before snapshot inspection can
+                        // classify a key as removable corrupt plaintext.
+                        ConditionalValue<AggregateMetadata> streamHead = await eventStreamReader
+                            .ReadMetadataAsync(command.AggregateIdentity, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (!streamHead.HasValue)
+                        {
+                            if (await StateManager.ContainsStateAsync(command.AggregateIdentity.SnapshotKey,
+                                    cancellationToken).ConfigureAwait(false))
+                            {
+                                throw new InvalidOperationException("SnapshotStreamUnavailable");
+                            }
+                        }
+                        else if (streamHead.Value.CurrentSequence <= 0
+                            || streamHead.Value.RetainedFloor < 1
+                            || (streamHead.Value.RetainedFloor > streamHead.Value.CurrentSequence
+                                && streamHead.Value.RetainedFloor - streamHead.Value.CurrentSequence > 1))
+                        {
+                            throw new InvalidOperationException("SourceHeadChanged: actor metadata has an invalid stream head or retained floor.");
+                        }
+
                         if (snapshotManager is SnapshotManager classifiedSnapshotManager)
                         {
                             snapshotLoadResult = await classifiedSnapshotManager
                                 .LoadSnapshotForCommandAsync(command.AggregateIdentity, StateManager,
-                                    command.CorrelationId, cancellationToken)
+                                    command.CorrelationId, cancellationToken,
+                                    authoritativeHead: streamHead.HasValue ? streamHead.Value.CurrentSequence : null)
                                 .ConfigureAwait(false);
                             existingSnapshot = snapshotLoadResult.Snapshot;
                         }
@@ -1273,9 +1298,6 @@ public partial class AggregateActor(
                                 .ConfigureAwait(false);
                         }
 
-                        var eventStreamReader = new EventStreamReader(
-                            StateManager,
-                            Host.LoggerFactory.CreateLogger<EventStreamReader>());
                         DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(command.Domain);
                         string? replayAggregateType = productionReader is null
                             ? null
@@ -1288,7 +1310,8 @@ public partial class AggregateActor(
                                 cancellationToken,
                                 productionReader,
                                 replayAggregateType,
-                                snapshotManager as SnapshotManager)
+                                snapshotManager as SnapshotManager,
+                                streamHead)
                             .ConfigureAwait(false);
 
                         lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
@@ -1449,10 +1472,20 @@ public partial class AggregateActor(
 
                         // Step 5b: Snapshot creation (Story 3.9)
                         string? committedReplacementReasonClass = null;
-                        if (persistResult.NewSequenceNumber > 0 && snapshotRequestDue
-                            && !snapshotPolicyUnavailable && snapshotQualification is not null
+                        JsonElement foldedState = default;
+                        string evidenceFailureClass = "SnapshotStateInvalid";
+                        bool evidenceRequested = persistResult.NewSequenceNumber > 0 && snapshotRequestDue
+                            && !snapshotPolicyUnavailable && snapshotQualification is not null;
+                        bool evidenceReady = evidenceRequested
                             && TryParseFoldedSnapshotEvidence(domainResult.PostCommandStateJson,
-                                snapshotQualification.Limits, out JsonElement foldedState, out _))
+                                snapshotQualification!.Limits, out foldedState, out evidenceFailureClass);
+                        if (evidenceRequested && !evidenceReady)
+                        {
+                            logger.LogWarning(
+                                "Optional folded snapshot evidence skipped: FailureClass={FailureClass}",
+                                evidenceFailureClass);
+                        }
+                        if (evidenceReady && snapshotQualification is not null)
                         {
                             bool shouldSnapshot;
                             try
@@ -2344,9 +2377,10 @@ public partial class AggregateActor(
                     snapshotInspection.ReasonCode ?? "SnapshotReadUnavailable",
                     "Existing snapshot could not be inspected.");
             }
-            if (snapshotInspection.Outcome is SnapshotLoadOutcome.UnreadableProtected
+            if ((snapshotInspection.Outcome is SnapshotLoadOutcome.UnreadableProtected
                 or SnapshotLoadOutcome.ProviderOpaque
-                or SnapshotLoadOutcome.Corrupt) {
+                or SnapshotLoadOutcome.Corrupt)
+                && snapshotInspection.ReasonCode != "SnapshotStateShapeCollision") {
                 return new ManualSnapshotResult(
                     snapshotInspection.ReasonCode is "SnapshotStateInvalid" or "SnapshotSequenceInvalid"
                         ? ManualSnapshotOutcome.InfrastructureFailure : ManualSnapshotOutcome.UnreadableProtected,
@@ -2356,8 +2390,8 @@ public partial class AggregateActor(
                     "Existing snapshot cannot be safely read.");
             }
 
-            if (snapshotInspection.Snapshot is { } inspectedSnapshot
-                && inspectedSnapshot.SequenceNumber > metadata.CurrentSequence)
+            if ((snapshotInspection.Snapshot?.SequenceNumber ?? snapshotInspection.CoveredSequence) is long coveredSequence
+                && coveredSequence > metadata.CurrentSequence)
             {
                 return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
                     metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSequenceInvalid",

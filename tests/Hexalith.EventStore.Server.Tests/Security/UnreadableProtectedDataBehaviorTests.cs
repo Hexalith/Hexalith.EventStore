@@ -258,10 +258,10 @@ public class UnreadableProtectedDataBehaviorTests {
     }
 
     [Fact]
-    public async Task SnapshotManager_CorruptUnprotectedDeserialization_StillDeletes() {
-        // A known-version, provably plaintext record whose typed binding fails may be removed.
+    public async Task SnapshotManager_DirectLoadCorruptUnprotectedDeserialization_Retains() {
+        // A direct load has no verified stream head and must retain even provably plaintext corruption.
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{},"createdAt":"invalid","protectionMetadata":null}""");
+        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{},"createdAt":"invalid","domain":"billing","aggregateId":"agg-001","tenantId":"tenant-a","protectionMetadata":null}""");
         _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<JsonElement>(true, malformed));
 
@@ -270,7 +270,7 @@ public class UnreadableProtectedDataBehaviorTests {
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
         loaded.ShouldBeNull();
-        await stateManager.Received(1).RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -89,6 +89,31 @@ public class AggregateActorManualSnapshotTests {
     }
 
     [Fact]
+    public async Task CreateManualSnapshotAsync_FutureDscsSequenceRetainsKeyAndRefusesReconstruction() {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        JsonElement retained = JsonSerializer.Deserialize<JsonElement>(
+            """{"sequenceNumber":3,"state":{"currentSequence":3,"events":[]},"createdAt":"2026-01-01T00:00:00Z","domain":"orders","aggregateId":"order-1","tenantId":"tenant-a"}""");
+        await stateManager.SetStateAsync(identity.SnapshotKey, retained);
+        await stateManager.SaveStateAsync();
+        int writesBefore = stateManager.Trace.Count(operation => operation == $"SetState:{identity.SnapshotKey}");
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-future-dscs");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("SnapshotSequenceInvalid");
+        stateManager.Trace.Count(operation => operation == $"SetState:{identity.SnapshotKey}").ShouldBe(writesBefore);
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateManualSnapshotAsync_StoresReconstructedState_NotReplayEnvelope() {
         var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();

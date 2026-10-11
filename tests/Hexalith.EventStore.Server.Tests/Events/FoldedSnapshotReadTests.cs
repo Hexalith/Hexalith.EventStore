@@ -123,20 +123,68 @@ public sealed class FoldedSnapshotReadTests
     }
 
     [Fact]
-    public async Task KnownPlaintextBindingFailureMayDeleteButProtectedFailureRetains()
+    public async Task KnownPlaintextBindingFailureMayDeleteOnlyWithVerifiedHeadButProtectedFailureRetains()
     {
         var store = new InMemoryStateManager();
         JsonElement corrupt = JsonSerializer.Deserialize<JsonElement>(
             """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":null}""");
         await store.SetStateAsync(Identity.SnapshotKey, corrupt);
         await store.SaveStateAsync();
-        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        (await Manager().LoadSnapshotForCommandAsync(Identity, store, authoritativeHead: 1)).Snapshot.ShouldBeNull();
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeFalse();
 
         await store.SetStateAsync(Identity.SnapshotKey,
             JsonSerializer.Deserialize<JsonElement>(
                 """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":"cipher","createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"metadataVersion":1}}"""));
         await store.SaveStateAsync();
+        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("other", "{}", 1, "AddressMismatch")]
+    [InlineData("domain", "42", 1, "SnapshotStateInvalid")]
+    [InlineData("domain", "{}", 2, "SnapshotSequenceInvalid")]
+    public async Task RawRejectionPrecedesBindingFailureAndRetainsKey(
+        string domain, string stateJson, long sequence, string expectedReason)
+    {
+        var store = new InMemoryStateManager();
+        JsonElement raw = JsonSerializer.Deserialize<JsonElement>(
+            "{\"snapshotEnvelopeVersion\":1,\"sequenceNumber\":" + sequence
+            + ",\"state\":" + stateJson
+            + ",\"createdAt\":\"bad\",\"domain\":\"" + domain
+            + "\",\"aggregateId\":\"aggregate\",\"tenantId\":\"tenant\",\"protectionMetadata\":null}");
+        await store.SetStateAsync(Identity.SnapshotKey, raw);
+        await store.SaveStateAsync();
+
+        SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+        result.ReasonCode.ShouldBe(expectedReason);
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DirectLoadWithoutVerifiedHeadRetainsPlaintextBindingFailure()
+    {
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":null}"""));
+        await store.SaveStateAsync();
+
+        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AmbiguousProtectionMetadataCannotProvePlaintextForDeletion()
+    {
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"state":0,"metadataVersion":1}}"""));
+        await store.SaveStateAsync();
+
         (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }

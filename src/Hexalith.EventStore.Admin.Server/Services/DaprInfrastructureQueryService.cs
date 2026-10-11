@@ -761,7 +761,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     : "Unknown";
             }
         }
-        else { protectionClass = "Unprotected"; }
+        else if (!raw.EnumerateObject().Any(static property =>
+            string.Equals(property.Name, "protectionMetadata", StringComparison.OrdinalIgnoreCase)))
+        {
+            protectionClass = "Unprotected";
+        }
         return SnapshotEvidence(sequence, version, protectionClass);
     }
 
