@@ -208,13 +208,12 @@ public class EventPersistenceIntegrationTests
     }
 
     /// <summary>
-    /// Task 2.5: Test snapshot creation at configured intervals (Rule #15).
-    /// Fixture configures counter domain snapshot interval to 15 events.
-    /// After 15+ events the system should create a snapshot; subsequent commands
-    /// verify state rehydration from snapshot + tail events (FR12, FR14).
+    /// An interval alone does not authorize folded snapshot capture. The fake Counter route has
+    /// no qualified post-command state evidence, so commands past the interval persist normally
+    /// and the next command receives the full event prefix for rehydration.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot()
+    public async Task ProcessCommandAsync_ExceedsUnqualifiedSnapshotInterval_ReplaysFullHistory()
     {
         // Arrange
         var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
@@ -230,7 +229,7 @@ public class EventPersistenceIntegrationTests
 
         _fixture.ThrowIfHostStopped();
 
-        // Act - send 20 commands (exceeds snapshot interval of 15)
+        // Act - send 20 commands (exceeds the configured interval of 15)
         for (int i = 0; i < 20; i++)
         {
             CommandEnvelope command = new CommandEnvelopeBuilder()
@@ -244,7 +243,7 @@ public class EventPersistenceIntegrationTests
             result.Accepted.ShouldBeTrue($"Command {i + 1} should succeed");
         }
 
-        // Assert - verify the aggregate can still process commands after crossing snapshot interval
+        // Assert - the aggregate still processes commands after crossing the interval.
         CommandEnvelope finalCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")
@@ -253,11 +252,21 @@ public class EventPersistenceIntegrationTests
             .Build();
 
         CommandProcessingResult finalResult = await proxy.ProcessCommandAsync(finalCommand).ConfigureAwait(true);
-        finalResult.Accepted.ShouldBeTrue("Post-snapshot command should succeed (state rehydrated)");
+        finalResult.Accepted.ShouldBeTrue("Command after the unqualified interval should succeed");
 
         (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(21);
-        string snapshotJson = await GetStateJsonAsync(identity.SnapshotKey).ConfigureAwait(true);
-        snapshotJson.ShouldNotBeNullOrWhiteSpace();
+        EventEnvelope persisted = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}21")
+            .ConfigureAwait(true);
+        persisted.SequenceNumber.ShouldBe(21);
+        (await _fixture.TryGetAggregateActorStateJsonAsync(identity.SnapshotKey).ConfigureAwait(true)).ShouldBeNull();
+        (_, object? rehydrated) = _fixture.DomainServiceInvoker.InvocationsWithState
+            .Last(item => item.Command.AggregateId == aggregateId);
+        DomainServiceCurrentState fullHistory = rehydrated.ShouldBeOfType<DomainServiceCurrentState>();
+        fullHistory.LastSnapshotSequence.ShouldBe(0);
+        fullHistory.SnapshotState.ShouldBeNull();
+        fullHistory.CurrentSequence.ShouldBe(20);
+        fullHistory.Events.Select(item => item.Metadata.SequenceNumber)
+            .ShouldBe(Enumerable.Range(1, 20).Select(sequence => (long)sequence));
 
         string expectedTopic = "tenant-a.counter.events";
         _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);

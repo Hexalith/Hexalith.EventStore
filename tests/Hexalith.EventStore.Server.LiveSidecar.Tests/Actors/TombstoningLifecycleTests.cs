@@ -136,14 +136,12 @@ public class TombstoningLifecycleTests
     }
 
     /// <summary>
-    /// Scenario 3: send 16 IncrementCounter commands (crossing the fixture's SnapshotOptions
-    /// counter interval of 15), then CloseCounter, then a final IncrementCounter for the rejection.
-    /// Asserts snapshot creation succeeded AND snapshot-aware rehydration loaded it, by inspecting
-    /// the captured DomainServiceCurrentState.LastSnapshotSequence at the consumption point.
-    /// Order-from-end semantics tolerate a single-step shift in the snapshot trigger boundary.
+    /// Scenario 3: cross the configured snapshot interval without a folded-state qualification,
+    /// then close and reject a command. The actor must replay the complete persisted history;
+    /// an unqualified domain cannot stage an automatic snapshot.
     /// </summary>
     [Fact]
-    public async Task Lifecycle_TerminateAfterSnapshotInterval_RehydratesAsTerminated()
+    public async Task Lifecycle_TerminateAfterUnqualifiedSnapshotInterval_ReplaysFullHistory()
     {
         IAggregateActor proxy = CreateProxy(out string aggregateId);
 
@@ -159,8 +157,6 @@ public class TombstoningLifecycleTests
         EventEnvelope[] persisted = await proxy.GetEventsAsync(0);
         EventEnvelope[] ordered = [.. persisted.OrderBy(e => e.SequenceNumber)];
         ordered.Length.ShouldBe(18);
-        // Order-from-end semantics (per AC #5) — survives a one-step shift in SnapshotManager's
-        // > vs >= boundary arithmetic.
         ordered[^2].EventTypeName.ShouldBe(typeof(CounterClosed).FullName!);
         ordered[^1].EventTypeName.ShouldBe(typeof(AggregateTerminated).FullName!);
 
@@ -168,25 +164,22 @@ public class TombstoningLifecycleTests
         _ = rejected.ErrorMessage.ShouldNotBeNull();
         rejected.ErrorMessage!.ShouldContain(nameof(AggregateTerminated));
 
-        // Snapshot creation + snapshot-aware rehydration oracle (consumption point):
-        //   (a) LastSnapshotSequence >= 15 proves snapshot was created AND the rehydrator loaded it.
-        //   (b) Events list contains a CounterClosed envelope — snapshot+tail rehydration combined
-        //       produced a terminal state without the rehydrator throwing on the no-op
-        //       Apply(AggregateTerminated) lookup.
-        // Replaces a prior plan to probe the snapshot Redis key via DAPR HTTP — that probe required
-        // parsing SnapshotRecord JSON shape and only confirmed the key existed.
+        // The fake domain route has no folded-state qualification or post-command capture.
+        // Its final invocation must receive every committed event, including CounterClosed,
+        // rather than relying on an unqualified history-bearing snapshot.
         (CommandEnvelope LastCommand, object? LastState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Where(i => i.Command.AggregateId == aggregateId)
             .Last();
         DomainServiceCurrentState captured = LastState.ShouldBeOfType<DomainServiceCurrentState>();
-        // Lower bound tolerates a one-step boundary shift in SnapshotManager.ShouldCreateSnapshotAsync's
-        // > vs >= arithmetic (per AC #5's order-from-end note). Production observation: snapshot anchor
-        // lands at sequence 14 when interval=15 — strictly less than the 15 hand-calculated in the spec
-        // text, but still proves snapshot was created AND the rehydrator loaded it (the consumption-point
-        // intent). A regression that drops the snapshot entirely would surface as LastSnapshotSequence == 0,
-        // which this assertion still catches.
-        captured.LastSnapshotSequence.ShouldBeGreaterThanOrEqualTo(14);
-        captured.Events.Select(e => e.Metadata.EventTypeName).ShouldContain(typeof(CounterClosed).FullName!);
+        captured.LastSnapshotSequence.ShouldBe(0);
+        captured.SnapshotState.ShouldBeNull();
+        captured.CurrentSequence.ShouldBe(17);
+        captured.Events.Count.ShouldBe(17);
+        captured.Events.OrderBy(e => e.Metadata.SequenceNumber)
+            .Select(e => e.Metadata.EventTypeName)
+            .ShouldBe(ordered[..^1].Select(e => e.EventTypeName));
+        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
+        (await _fixture.TryGetAggregateActorStateJsonAsync(identity.SnapshotKey)).ShouldBeNull();
     }
 
     private IAggregateActor CreateProxy(out string aggregateId)
