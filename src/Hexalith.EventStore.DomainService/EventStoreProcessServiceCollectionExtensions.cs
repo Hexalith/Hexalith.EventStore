@@ -19,11 +19,14 @@ public static class EventStoreProcessServiceCollectionExtensions
         where TTranslator : class, IProcessTranslator
     {
         ArgumentNullException.ThrowIfNull(services);
+        ValidateAdapterRegistration<IProcessSourceCatalog, TCatalog>(services);
+        ValidateAdapterRegistration<IProcessTranslator, TTranslator>(services);
         ProcessRegistration? registration = services.FirstOrDefault(static service => service.ServiceType == typeof(ProcessRegistration))?.ImplementationInstance as ProcessRegistration;
         if (registration is not null)
         {
             if (registration.CatalogType != typeof(TCatalog) || registration.TranslatorType != typeof(TTranslator))
                 throw new InvalidOperationException("Conflicting EventStore process adapter registration.");
+            if (configure is not null) _ = services.Configure(configure);
             return services;
         }
 
@@ -52,5 +55,17 @@ public static class EventStoreProcessServiceCollectionExtensions
             HealthStatus.Degraded,
             ["ready"]));
         return services;
+    }
+
+    private static void ValidateAdapterRegistration<TService, TAdapter>(IServiceCollection services)
+        where TService : class
+        where TAdapter : class, TService
+    {
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(TService)
+            && descriptor.ImplementationType != typeof(TAdapter)
+            && descriptor.ImplementationInstance is not TAdapter))
+        {
+            throw new InvalidOperationException("Conflicting EventStore process adapter registration.");
+        }
     }
 }

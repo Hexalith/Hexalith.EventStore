@@ -33,9 +33,10 @@ public sealed class ProcessReconciler(
     public string? LocalFailureReason => Volatile.Read(ref _localFailureReason);
 
     /// <inheritdoc/>
-    public override Task StartAsync(CancellationToken cancellationToken)
+    public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        using IServiceScope scope = _scopes.CreateScope();
+        AsyncServiceScope scope = _scopes.CreateAsyncScope();
+        await using var disposal = scope.ConfigureAwait(false);
         IServiceProvider provider = scope.ServiceProvider;
         if (provider.GetService<ProcessRegistration>() is not null)
         {
@@ -48,7 +49,7 @@ public sealed class ProcessReconciler(
             _ = provider.GetRequiredService<IProcessDispositionAuditSink>();
             _ = provider.GetRequiredService<ProcessDispositionService>();
         }
-        return base.StartAsync(cancellationToken);
+        await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -89,17 +90,19 @@ public sealed class ProcessReconciler(
             ProcessPendingObservation[] pendingObservations = [.. state.PendingObservations.Values];
             int pendingStart = pendingObservations.Length == 0 ? 0 : (int)(state.Fence % pendingObservations.Length);
             int budget = _options.SourcesPerPass - (repaired ? 1 : 0);
-            int observationBudget = Math.Min(pendingObservations.Length, 1);
+            int observationBudget = Math.Min(pendingObservations.Length,
+                budget > 1 || state.Fence % 2 == 0 ? Math.Min(1, budget) : 0);
             foreach (ProcessPendingObservation pending in pendingObservations.Skip(pendingStart)
                 .Concat(pendingObservations.Take(pendingStart)).Take(observationBudget))
             {
                 state = await FinishObservationAsync(state, pending, cancellationToken).ConfigureAwait(false);
             }
 
-            using IServiceScope scope = _scopes.CreateScope();
+            AsyncServiceScope scope = _scopes.CreateAsyncScope();
+            await using var disposal = scope.ConfigureAwait(false);
             IProcessSourceCatalog catalog = scope.ServiceProvider.GetRequiredService<IProcessSourceCatalog>();
             CheckpointedProcessRunner runner = scope.ServiceProvider.GetRequiredService<CheckpointedProcessRunner>();
-            int work = 0;
+            int work = observationBudget;
             ProcessSourcePage? catalogPage = null;
             int catalogOffset = 0;
             while (work < budget && state.PendingObservations.Count < 4096
@@ -155,7 +158,14 @@ public sealed class ProcessReconciler(
         }
         finally
         {
-            await _sweeps.ReleaseAsync(state, CancellationToken.None).ConfigureAwait(false);
+            try
+            {
+                await _sweeps.ReleaseAsync(state, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The durable lease expires; a later pass may take over.
+            }
         }
     }
 
@@ -669,8 +679,13 @@ public sealed class ProcessReconciler(
             _ = await WithRepairDeadline(async ct =>
             {
                 ProcessPendingDisposition? claim = await _sweeps.ClaimDispositionAsync(pending.Source, pending.PreparedGeneration, ct).ConfigureAwait(false);
-                if (claim is not null && await _checkpoints.RevalidateAsync(claim, ct).ConfigureAwait(false))
-                    _ = await _sweeps.MarkDispositionAppliedAsync(claim, ct).ConfigureAwait(false);
+                if (claim is not null)
+                {
+                    if (await _checkpoints.RevalidateAsync(claim, ct).ConfigureAwait(false))
+                        _ = await _sweeps.MarkDispositionAppliedAsync(claim, ct).ConfigureAwait(false);
+                    else
+                        await _sweeps.ReleaseDispositionClaimAsync(claim, ct).ConfigureAwait(false);
+                }
                 return true;
             }, cancellationToken).ConfigureAwait(false);
         }

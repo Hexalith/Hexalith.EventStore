@@ -87,7 +87,7 @@ public sealed class CheckpointedProcessRunner(
                     && (gatewayException.ReasonCode is StreamReplayReasonCodes.MissingEvent or StreamReplayReasonCodes.CorruptEvent
                         || gatewayException.Code is StreamReplayReasonCodes.MissingEvent or StreamReplayReasonCodes.CorruptEvent);
                 string reason = corrupt ? "invalid-evidence" : exception is ProcessReadAdmissionException ? "read-worker-exhausted" : "source-read";
-                owned = await FailAsync(owned, reason, null, corrupt, sweepOwner, cancellationToken).ConfigureAwait(false);
+                owned = await FailAsync(owned, reason, corrupt ? null : owned.FailureSequence, corrupt, sweepOwner, cancellationToken).ConfigureAwait(false);
                 return Result(owned, 0);
             }
 
@@ -253,7 +253,7 @@ public sealed class CheckpointedProcessRunner(
             {
                 await WithDeadline(ct => _checkpoints.ReleaseAsync(owned, ct), CancellationToken.None).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
+            catch (Exception)
             {
                 // The durable lease expires; a later pass retries under a new fence.
             }
