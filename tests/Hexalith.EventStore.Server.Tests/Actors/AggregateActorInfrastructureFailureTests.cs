@@ -1,9 +1,12 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Snapshots;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -13,6 +16,7 @@ using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -154,25 +158,30 @@ public class AggregateActorInfrastructureFailureTests
             [identity.MetadataKey] = winnerMetadata,
             [$"{identity.EventStreamKeyPrefix}1"] = winnerEvent,
         });
-        ActorTestContext context = CreateActor(stateManager: stateManager);
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification(command.Domain, command.Domain, typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        ActorTestContext context = CreateActor(stateManager: stateManager, serviceProvider: services);
         _ = context.Invoker.InvokeAsync(
-                Arg.Any<CommandEnvelope>(),
-                Arg.Any<object?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+                Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()])
+                with { PostCommandStateJson = """{"count":2}""" });
         _ = context.SnapshotManager.ShouldCreateSnapshotAsync(
-                command.TenantId,
-                command.Domain,
-                Arg.Any<string>(),
-                2,
-                0,
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<long>(), Arg.Any<long>(),
                 Arg.Any<CancellationToken>())
             .Returns(true);
         _ = context.SnapshotManager.CreateSnapshotAsync(
                 identity,
-                1,
+                2,
                 Arg.Any<object>(),
                 stateManager,
+                Arg.Any<JsonSerializerOptions>(),
+                Arg.Any<FoldedSnapshotCaptureLimits>(),
                 command.CorrelationId,
                 Arg.Any<CancellationToken>(),
                 false)
@@ -184,6 +193,12 @@ public class AggregateActorInfrastructureFailureTests
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeFalse();
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command, Arg.Any<object?>(), true, "test-profile", Arg.Any<CancellationToken>());
+        await context.SnapshotManager.Received(1).CreateSnapshotAsync(
+            identity, 2, Arg.Any<object>(), stateManager,
+            Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(),
+            command.CorrelationId, Arg.Any<CancellationToken>(), false);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable[identity.MetadataKey].ShouldBe(winnerMetadata);
         durable[$"{identity.EventStreamKeyPrefix}1"].ShouldBe(winnerEvent);

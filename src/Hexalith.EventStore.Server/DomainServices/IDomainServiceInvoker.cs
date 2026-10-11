@@ -8,6 +8,20 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// The server calls domain services via DAPR; in tests, this is faked.
 /// </summary>
 public interface IDomainServiceInvoker {
+    /// <summary>Invokes a domain service with an optional request for post-command folded state.</summary>
+    /// <param name="command">The command envelope.</param>
+    /// <param name="currentState">The current aggregate state.</param>
+    /// <param name="includePostCommandState">Whether folded-state evidence is requested.</param>
+    /// <param name="cancellationToken">The originating cancellation token.</param>
+    /// <returns>The domain result; older implementations omit optional state evidence.</returns>
+    Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState, CancellationToken cancellationToken = default)
+        => InvokeAsync(command, currentState, cancellationToken);
+
+    /// <summary>Invokes with the exact deployment-owned capture qualification identifier.</summary>
+    Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, CancellationToken cancellationToken = default)
+        => InvokeAsync(command, currentState, includePostCommandState, cancellationToken);
+
     /// <summary>
     /// Invokes a domain service to process the specified command against the current aggregate state.
     /// </summary>

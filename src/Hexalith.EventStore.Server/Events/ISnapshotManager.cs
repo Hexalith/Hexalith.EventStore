@@ -1,7 +1,9 @@
 
 using Dapr.Actors.Runtime;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Snapshots;
 
 namespace Hexalith.EventStore.Server.Events;
 /// <summary>
@@ -39,7 +41,7 @@ public interface ISnapshotManager {
     /// </summary>
     /// <param name="identity">The aggregate identity providing key derivation.</param>
     /// <param name="sequenceNumber">The event sequence number this snapshot represents.</param>
-    /// <param name="state">The aggregate state to snapshot (domain-specific, opaque to EventStore).</param>
+    /// <param name="state">The folded JSON-object state to snapshot.</param>
     /// <param name="stateManager">The actor state manager for staging the snapshot write.</param>
     /// <param name="correlationId">The correlation ID for structured logging (rule #9). Optional.</param>
     /// <param name="cancellationToken">The caller's cancellation token. Forwarded to the snapshot protection hook.</param>
@@ -54,10 +56,36 @@ public interface ISnapshotManager {
         CancellationToken cancellationToken = default,
         bool throwOnFailure = false);
 
+    /// <summary>Stages a folded snapshot using the owning actor's canonical serializer.</summary>
+    Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
+        => CreateSnapshotAsync(identity, sequenceNumber, state, stateManager, correlationId, cancellationToken, throwOnFailure);
+
+    /// <summary>Stages a folded snapshot under the exact reviewed representation limits.</summary>
+    Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        FoldedSnapshotCaptureLimits limits,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
+        => CreateSnapshotAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
+            correlationId, cancellationToken, throwOnFailure);
+
     /// <summary>
-    /// Loads an existing snapshot for an aggregate.
-    /// Returns null if no snapshot exists or if deserialization fails (graceful degradation).
-    /// On deserialization failure, deletes the corrupt snapshot and logs a warning.
+    /// Loads an addressed, known-version folded snapshot for an aggregate.
+    /// Unknown, opaque, unreadable, and structurally invalid records are retained and bypassed.
+    /// Only a proven unprotected known-version typed-binding failure permits removal.
     /// </summary>
     /// <param name="identity">The aggregate identity providing key derivation.</param>
     /// <param name="stateManager">The actor state manager for reading the snapshot.</param>
@@ -72,7 +100,7 @@ public interface ISnapshotManager {
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Unlike <see cref="LoadSnapshotAsync"/>, this method does NOT delete corrupt snapshots and
+    /// Unlike <see cref="LoadSnapshotAsync"/>, this method never deletes corrupt snapshots and
     /// does NOT collapse unreadable protected/provider-opaque snapshots into <c>null</c>. The
     /// caller can decide to fail closed (and refuse to overwrite) on
     /// <see cref="SnapshotLoadOutcome.UnreadableProtected"/>, <see cref="SnapshotLoadOutcome.ProviderOpaque"/>,

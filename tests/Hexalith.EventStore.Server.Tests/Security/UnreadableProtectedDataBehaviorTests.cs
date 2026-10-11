@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -237,14 +238,14 @@ public class UnreadableProtectedDataBehaviorTests {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var legacy = new SnapshotRecord(
             SequenceNumber: 3,
-            State: "legacy-state",
+            State: JsonSerializer.Deserialize<JsonElement>("""{"status":"legacy-state"}"""),
             CreatedAt: DateTimeOffset.UtcNow,
             Domain: TestIdentity.Domain,
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: null);
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, legacy));
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, JsonSerializer.SerializeToElement(legacy, JsonSerializerOptions.Web)));
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
@@ -258,11 +259,11 @@ public class UnreadableProtectedDataBehaviorTests {
 
     [Fact]
     public async Task SnapshotManager_CorruptUnprotectedDeserialization_StillDeletes() {
-        // Story 22.7b: the existing RemoveStateAsync path is PRESERVED for non-protected corrupt
-        // deserialization (schema drift, etc.). This is NOT changed by 22.7b.
+        // A known-version, provably plaintext record whose typed binding fails may be removed.
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Throws<InvalidOperationException>();
+        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{},"createdAt":"invalid","protectionMetadata":null}""");
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, malformed));
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 

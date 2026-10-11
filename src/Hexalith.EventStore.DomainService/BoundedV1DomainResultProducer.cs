@@ -212,7 +212,10 @@ internal sealed class BoundedV1DomainResultProducer
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            var owned = new PrivateProducedDomainResult(new DomainServiceWireResult(isRejection, events, resultPayload), resultCharge);
+            var owned = new PrivateProducedDomainResult(new DomainServiceWireResult(isRejection, events, resultPayload)
+            {
+                PostCommandStateJson = result.PostCommandStateJson,
+            }, resultCharge);
             resultCharge = null;
             return owned;
         }

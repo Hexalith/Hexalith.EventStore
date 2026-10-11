@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Snapshots;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -45,11 +46,34 @@ public static class DomainServiceRequestRouter {
             if (fence is not null) { await fence(cancellationToken).ConfigureAwait(false); }
             cancellationToken.ThrowIfCancellationRequested();
         }
-        async Task<DomainServiceWireResult> ProduceAuthorizedAsync(DomainResult result) {
+        async Task<DomainServiceWireResult> ProduceAuthorizedAsync(
+            DomainResult result,
+            Func<IReadOnlyList<DomainServiceWireEvent>, CancellationToken, string?>? capture = null,
+            FoldedSnapshotCaptureLimits? captureLimits = null) {
             await RequireCurrentAsync().ConfigureAwait(false);
+            // A processor cannot inject state evidence before exact event/result admission.
+            result = result with { PostCommandStateJson = null };
             using PrivateProducedDomainResult wire = await ProduceWireOwnedAsync(serviceProvider, request.Command.Domain, result, cancellationToken, fence, budget).ConfigureAwait(false);
             await RequireCurrentAsync().ConfigureAwait(false);
-            return wire.Release();
+            string? foldedJson = null;
+            if (capture is not null && captureLimits is not null && wire.Wire.Events.Count > 0
+                && BoundedV1WireResultAdmission.CanReserveOptionalState(
+                    wire.Wire, captureLimits.MaximumEscapedWireStateBytes, cancellationToken))
+            {
+                try
+                {
+                    foldedJson = capture(wire.Wire.Events, cancellationToken);
+                    if (foldedJson is not null)
+                    {
+                        _ = BoundedV1WireResultAdmission.Admit(
+                            wire.Wire with { PostCommandStateJson = foldedJson }, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch { foldedJson = null; }
+            }
+            await RequireCurrentAsync().ConfigureAwait(false);
+            return wire.Release() with { PostCommandStateJson = foldedJson };
         }
         await RequireCurrentAsync().ConfigureAwait(false);
         DomainServiceAdmissionContext? admissionContext = null;
@@ -84,8 +108,41 @@ public static class DomainServiceRequestRouter {
         try { asyncProcessor = serviceProvider.GetKeyedService<IAsyncDomainProcessor>(request.Command.Domain); }
         finally { await RequireCurrentAsync().ConfigureAwait(false); }
         DomainResult result;
+        Func<IReadOnlyList<DomainServiceWireEvent>, CancellationToken, string?>? capture = null;
+        FoldedSnapshotCaptureLimits? captureLimits = null;
         if (asyncProcessor is not null) {
-            try { result = await asyncProcessor.ProcessAsync(request.Command, request.CurrentState, cancellationToken).ConfigureAwait(false); }
+            try {
+                FoldedSnapshotQualification? qualification = null;
+                IAsyncFoldedSnapshotProcessor? snapshotProcessor = asyncProcessor as IAsyncFoldedSnapshotProcessor;
+                bool captureQualified = false;
+                if (request.IncludePostCommandState && request.SnapshotCaptureProfileId is not null && snapshotProcessor is not null)
+                {
+                    try
+                    {
+                        qualification = ResolveBoundedV1Producer(serviceProvider, request.Command.Domain) is not null
+                            ? serviceProvider.GetService<FoldedSnapshotQualificationRegistry>()?
+                                .FindByProfile(request.Command.Domain, request.SnapshotCaptureProfileId)
+                            : null;
+                        captureQualified = qualification is not null
+                            && snapshotProcessor.IsQualified(qualification.StateType, qualification.ProfileId,
+                                qualification.ParityEvidenceId, qualification.Limits);
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch { captureQualified = false; }
+                }
+                if (captureQualified)
+                {
+                    FoldedSnapshotProcessingResult processed = await snapshotProcessor!.ProcessForSnapshotAsync(
+                        request, qualification!.ProfileId, qualification.Limits, cancellationToken).ConfigureAwait(false);
+                    result = processed.Result;
+                    capture = processed.Capture;
+                    captureLimits = qualification.Limits;
+                }
+                else
+                {
+                    result = await asyncProcessor.ProcessAsync(request.Command, request.CurrentState, cancellationToken).ConfigureAwait(false);
+                }
+            }
             finally { await RequireCurrentAsync().ConfigureAwait(false); }
         }
         else {
@@ -99,7 +156,7 @@ public static class DomainServiceRequestRouter {
         cancellationToken.ThrowIfCancellationRequested();
 
         await RequireCurrentAsync().ConfigureAwait(false);
-        return await ProduceAuthorizedAsync(result).ConfigureAwait(false);
+        return await ProduceAuthorizedAsync(result, capture, captureLimits).ConfigureAwait(false);
     }
 
     internal static bool HasBoundedV1Producer(IServiceProvider serviceProvider, string domain)

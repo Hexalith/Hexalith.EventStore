@@ -10,6 +10,37 @@ internal static class BoundedV1WireResultAdmission
 {
     private const long MaximumResultBytes = 128L * 1024 * 1024;
 
+    /// <summary>Reserves the declared worst-case optional scalar beside an already admitted result.</summary>
+    internal static bool CanReserveOptionalState(
+        DomainServiceWireResult result, int maximumEscapedStateBytes, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (maximumEscapedStateBytes is < 1 or > 6 * 1024 * 1024 + 2) { return false; }
+        try
+        {
+            long encoded = "{\"isRejection\":"u8.Length + (result.IsRejection ? 4 : 5)
+                + ",\"events\":["u8.Length + "],\"resultPayload\":"u8.Length + 1
+                + (result.ResultPayload is null ? 4 : StringLength(result.ResultPayload, cancellationToken));
+            IReadOnlyList<DomainServiceWireEvent> events = result.Events;
+            for (int index = 0; index < events.Count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                DomainServiceWireEvent item = events[index];
+                long metadata = "{\"eventTypeName\":"u8.Length + StringLength(item.EventTypeName, cancellationToken)
+                    + ",\"payload\":\""u8.Length + "\",\"serializationFormat\":"u8.Length
+                    + StringLength(item.SerializationFormat, cancellationToken) + 1
+                    + (item.MetadataVersion is null ? 0 : 20)
+                    + (item.PayloadVersion is null ? 0 : 25);
+                encoded = checked(encoded + (index == 0 ? 0 : 1) + metadata
+                    + 4L * ((item.Payload.Length + 2L) / 3));
+            }
+            return checked(encoded + ",\"postCommandStateJson\":"u8.Length + maximumEscapedStateBytes)
+                <= MaximumResultBytes;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return false; }
+    }
+
     /// <summary>Snapshots event references and checks the exact renderer framing and string lengths.</summary>
     internal static DomainServiceWireResult Admit(DomainServiceWireResult result, CancellationToken cancellationToken)
     {
@@ -29,6 +60,11 @@ internal static class BoundedV1WireResultAdmission
         long encoded = "{\"isRejection\":"u8.Length + (result.IsRejection ? 4 : 5)
             + ",\"events\":["u8.Length + "],\"resultPayload\":"u8.Length + 1
             + (result.ResultPayload is null ? 4 : StringLength(result.ResultPayload, cancellationToken));
+        if (result.PostCommandStateJson is not null)
+        {
+            encoded = checked(encoded + ",\"postCommandStateJson\":"u8.Length
+                + StringLength(result.PostCommandStateJson, cancellationToken));
+        }
         RequireResultCapacity(encoded);
         for (int index = 0; index < events.Length; index++)
         {

@@ -72,6 +72,23 @@ public sealed class BoundedV1DomainResponseParserTests
     }
 
     [Theory]
+    [InlineData("\"{\\\"count\\\":1}\"", "{\"count\":1}")]
+    [InlineData("{}", null)]
+    [InlineData("17", null)]
+    [InlineData("null", null)]
+    public async Task OptionalPostCommandStatePreservesValidEvidenceAndIgnoresWrongShape(
+        string optionalValue, string? expected)
+    {
+        using var stream = Input("{\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"postCommandStateJson\":" + optionalValue + "}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem();
+        result.PostCommandStateJson.ShouldBe(expected);
+    }
+
+    [Theory]
     [InlineData("writerMode")]
     [InlineData("registryFingerprint")]
     public async Task ExplicitNullEchoIsNotAnAbsentLegacyEcho(string field)

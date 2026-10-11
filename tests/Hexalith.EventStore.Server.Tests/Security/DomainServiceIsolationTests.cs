@@ -326,7 +326,8 @@ public class DomainServiceIsolationTests {
         // Guard test: if someone adds metadata parameters to InvokeAsync, domain services
         // could influence event metadata, breaking SEC-1 ownership guarantee.
         System.Reflection.MethodInfo method = typeof(IDomainServiceInvoker)
-            .GetMethod(nameof(IDomainServiceInvoker.InvokeAsync))!;
+            .GetMethod(nameof(IDomainServiceInvoker.InvokeAsync), [
+                typeof(CommandEnvelope), typeof(object), typeof(CancellationToken)])!;
 
         _ = method.ShouldNotBeNull();
         System.Reflection.ParameterInfo[] parameters = method.GetParameters();

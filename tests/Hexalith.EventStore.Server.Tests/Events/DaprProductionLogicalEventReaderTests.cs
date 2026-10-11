@@ -427,7 +427,8 @@ public sealed class DaprProductionLogicalEventReaderTests
     {
         using EventDomainRegistry registry = CreateRegistry();
         (IActorStateManager stateManager, _) = StoreCurrentV1(head: 3, count: 3);
-        var snapshot = new SnapshotRecord(1, new { Count = 1 }, DateTimeOffset.UnixEpoch, "d", "aggregate", "tenant");
+        var snapshot = new SnapshotRecord(1, JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""),
+            DateTimeOffset.UnixEpoch, "d", "aggregate", "tenant") { SnapshotEnvelopeVersion = 1 };
         var stream = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
         RehydrationResult typed = (await stream.RehydrateAsync(Identity, snapshot, CancellationToken.None)
             .ConfigureAwait(true)).ShouldNotBeNull();
@@ -892,7 +893,8 @@ public sealed class DaprProductionLogicalEventReaderTests
         (IActorStateManager stateManager, _) = StoreCurrentV1(head: 2, count: 2);
         var reader = CreateReader(registry, stateManager, registry.Fingerprint);
         var replay = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
-        var snapshot = new SnapshotRecord(1, new { Name = "kept" }, DateTimeOffset.UnixEpoch, "d", "aggregate", "tenant");
+        var snapshot = new SnapshotRecord(1, JsonSerializer.Deserialize<JsonElement>("""{"name":"kept"}"""),
+            DateTimeOffset.UnixEpoch, "d", "aggregate", "tenant") { SnapshotEnvelopeVersion = 1 };
 
         RehydrationResult? result = await replay.RehydrateAsync(
             Identity, snapshot, CancellationToken.None, reader, "r").ConfigureAwait(true);

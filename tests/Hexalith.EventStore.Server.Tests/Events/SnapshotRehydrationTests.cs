@@ -1,4 +1,6 @@
 
+using System.Text.Json;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
@@ -19,6 +21,14 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// </summary>
 public class SnapshotRehydrationTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
+
+    private static SnapshotRecord FoldedSnapshot(long sequence, string value) => new(
+        sequence,
+        JsonSerializer.Deserialize<JsonElement>($"{{\"state\":\"{value}\"}}"),
+        DateTimeOffset.UtcNow,
+        "test-domain",
+        "agg-001",
+        "test-tenant") { SnapshotEnvelopeVersion = 1 };
 
     private static EventEnvelope CreateEvent(int seq) => new(
         $"01J{seq:D23}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
@@ -47,7 +57,7 @@ public class SnapshotRehydrationTests {
     public async Task RehydrateWithSnapshot_ReadsOnlyTailEvents_NotAllEvents() {
         // Arrange - state has 10 events, snapshot at seq 7
         InMemoryStateManager stateManager = await SetupStateWithEvents(10);
-        var snapshot = new SnapshotRecord(7, new { State = "at-seq-7" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
+        SnapshotRecord snapshot = FoldedSnapshot(7, "at-seq-7");
         var reader = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
 
         // Act
@@ -71,7 +81,7 @@ public class SnapshotRehydrationTests {
     public async Task RehydrateWithSnapshot_LastSnapshotSequence_FlowsCorrectlyForSnapshotDecision() {
         // Arrange - snapshot at seq 50, events up to 55
         InMemoryStateManager stateManager = await SetupStateWithEvents(55);
-        var snapshot = new SnapshotRecord(50, new { State = "at-50" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
+        SnapshotRecord snapshot = FoldedSnapshot(50, "at-50");
         var reader = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
 
         // Act
@@ -95,7 +105,7 @@ public class SnapshotRehydrationTests {
     public async Task SnapshotPlusTail_TailEventsMatch_FullReplayEvents() {
         // Arrange - same state, both paths read from same InMemoryStateManager
         InMemoryStateManager stateManager = await SetupStateWithEvents(10);
-        var snapshot = new SnapshotRecord(5, new { State = "at-5" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
+        SnapshotRecord snapshot = FoldedSnapshot(5, "at-5");
         var reader = new EventStreamReader(stateManager, Substitute.For<ILogger<EventStreamReader>>());
 
         // Act - full replay (no snapshot)

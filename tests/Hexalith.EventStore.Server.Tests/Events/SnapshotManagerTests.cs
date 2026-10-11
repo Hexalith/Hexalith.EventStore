@@ -1,7 +1,10 @@
 
+using System.Text.Json;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 
@@ -20,12 +23,19 @@ public class SnapshotManagerTests {
 
     private static (SnapshotManager Manager, IActorStateManager StateManager) CreateManager(
         SnapshotOptions? options = null,
-        ISnapshotPolicyResolver? snapshotPolicyResolver = null) {
+        ISnapshotPolicyResolver? snapshotPolicyResolver = null,
+        IEventPayloadProtectionService? protection = null) {
         options ??= new SnapshotOptions();
         IOptions<SnapshotOptions> optionsWrapper = Options.Create(options);
         ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        return (new SnapshotManager(optionsWrapper, logger, new NoOpEventPayloadProtectionService(), snapshotPolicyResolver), stateManager);
+        return (new SnapshotManager(optionsWrapper, logger, protection ?? new NoOpEventPayloadProtectionService(), snapshotPolicyResolver), stateManager);
+    }
+
+    private static void SetRawSnapshot(IActorStateManager stateManager, SnapshotRecord snapshot) {
+        JsonElement raw = JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web);
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, raw));
     }
 
     // === 8.2: ShouldCreateSnapshot at default interval ===
@@ -134,6 +144,84 @@ public class SnapshotManagerTests {
             TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task CreateSnapshot_EscapedMetadataBeyondOverheadBoundDoesNotStage() {
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var compatibilityFlags = Enumerable.Range(0, 8).ToDictionary(
+            index => $"flag-{index}", _ => new string('<', 256));
+        var metadata = new EventStorePayloadProtectionMetadata(
+            PayloadProtectionState.Unprotected, 1, null, null, null, compatibilityFlags);
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new SnapshotProtectionResult(call.ArgAt<object>(1), metadata)));
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() =>
+            manager.CreateSnapshotAsync(TestIdentity, 1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+                JsonSerializerOptions.Web, throwOnFailure: true));
+
+        failure.Message.ShouldBe("SnapshotEnvelopeBoundExceeded");
+        await stateManager.DidNotReceive().SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateSnapshot_UnqualifiedEnvelopeSerializerDoesNotStage(bool indented) {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        var serializerOptions = new JsonSerializerOptions(JsonSerializerOptions.Web);
+        if (indented) { serializerOptions.WriteIndented = true; }
+        else { serializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower; }
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() =>
+            manager.CreateSnapshotAsync(TestIdentity, 1,
+                JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+                serializerOptions, throwOnFailure: true));
+
+        failure.Message.ShouldBe("SnapshotSerializerUnsupported");
+        await stateManager.DidNotReceive().SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateSnapshot_LargeCompactFoldHasBoundedEnvelopeAndStableStateBytes() {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        JsonElement state = JsonSerializer.SerializeToElement(new { values = Enumerable.Range(0, 5000).ToArray() });
+        var staged = new List<SnapshotRecord>();
+        _ = stateManager.SetStateAsync(TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>())
+            .Returns(call => { staged.Add(call.ArgAt<SnapshotRecord>(1)); return Task.CompletedTask; });
+
+        foreach (long sequence in new long[] { 1, 100, 1000 }) {
+            await manager.CreateSnapshotAsync(TestIdentity, sequence, state, stateManager,
+                JsonSerializerOptions.Web, throwOnFailure: true);
+        }
+
+        staged.Count.ShouldBe(3);
+        byte[][] stateBytes = staged.Select(snapshot => JsonSerializer.SerializeToUtf8Bytes(snapshot.State, JsonSerializerOptions.Web)).ToArray();
+        stateBytes[0].Length.ShouldBeGreaterThan(10_000);
+        stateBytes[1].ShouldBe(stateBytes[0]);
+        stateBytes[2].ShouldBe(stateBytes[0]);
+        foreach (SnapshotRecord snapshot in staged) {
+            int fullBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonSerializerOptions.Web).Length;
+            fullBytes.ShouldBeLessThanOrEqualTo(stateBytes[0].Length + 4096);
+        }
+    }
+
+    [Fact]
+    public async Task CreateSnapshot_DscsShapeCollisionCannotBeStaged() {
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
+        JsonElement dscs = JsonSerializer.Deserialize<JsonElement>("""{"currentSequence":1,"events":[],"snapshotState":{"count":1}}""");
+
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() =>
+            manager.CreateSnapshotAsync(TestIdentity, 1, dscs, stateManager,
+                JsonSerializerOptions.Web, throwOnFailure: true));
+
+        failure.Message.ShouldBe("SnapshotStateShapeCollision");
+        await stateManager.DidNotReceive().SetStateAsync(
+            TestIdentity.SnapshotKey, Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
     // === 8.7: CreateSnapshot includes sequence number ===
 
     [Fact]
@@ -191,8 +279,7 @@ public class SnapshotManagerTests {
     public async Task LoadSnapshot_ReturnsStoredSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
         var snapshot = new SnapshotRecord(100, new { Value = "stored" }, DateTimeOffset.UtcNow, "test-domain", "agg-001", "test-tenant");
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
+        SetRawSnapshot(stateManager, snapshot);
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
@@ -213,8 +300,7 @@ public class SnapshotManagerTests {
             "domain" => snapshot with { Domain = "other-domain" },
             _ => snapshot with { AggregateId = "other-aggregate" },
         };
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
+        SetRawSnapshot(stateManager, snapshot);
 
         SnapshotRecord? replaySnapshot = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
         SnapshotLoadResult overwriteSnapshot = await manager.InspectSnapshotForManualOverwriteAsync(TestIdentity, stateManager);
@@ -303,8 +389,9 @@ public class SnapshotManagerTests {
     public async Task LoadSnapshot_DeserializationFailure_ReturnsNullAndDeletesCorrupt() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
 
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Deserialization failed"));
+        JsonElement malformed = JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{},"createdAt":"invalid","protectionMetadata":null}""");
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, malformed));
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 

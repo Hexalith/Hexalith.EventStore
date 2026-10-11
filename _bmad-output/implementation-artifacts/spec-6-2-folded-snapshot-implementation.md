@@ -2,8 +2,9 @@
 title: 'Story 6.2: Folded Snapshot Implementation'
 type: 'feature'
 created: '2026-10-11'
-status: 'ready-for-dev'
+status: 'in-progress'
 route: 'dispatch'
+baseline_commit: 'e4532baa64f4cdabdbf766b9e38c36289a00adba'
 review_loop_iteration: 0
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-folded-snapshot.md'

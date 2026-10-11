@@ -10,6 +10,10 @@ public sealed record SnapshotLoadResult(
     SnapshotLoadOutcome Outcome,
     SnapshotRecord? Snapshot,
     string? ReasonCode) {
+    /// <summary>Convenience: a retained key whose provider read failed.</summary>
+    public static SnapshotLoadResult InfrastructureFailure(string reasonCode)
+        => new(SnapshotLoadOutcome.InfrastructureFailure, null, reasonCode);
+
     /// <summary>Convenience: a Readable result with the supplied snapshot.</summary>
     public static SnapshotLoadResult Readable(SnapshotRecord snapshot)
         => new(SnapshotLoadOutcome.Readable, snapshot, null);

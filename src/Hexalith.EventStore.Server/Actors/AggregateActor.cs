@@ -18,6 +18,8 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Snapshots;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Diagnostics;
@@ -1243,6 +1245,7 @@ public partial class AggregateActor(
                 // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
                 // Dead-letter routing handles infrastructure exceptions.
                 SnapshotRecord? existingSnapshot;
+                SnapshotLoadResult? snapshotLoadResult;
                 RehydrationResult? rehydrationResult;
                 long lastSnapshotSequence;
                 object? currentState;
@@ -1253,9 +1256,22 @@ public partial class AggregateActor(
                     SetActivityTags(activity, command);
 
                     try {
-                        existingSnapshot = await snapshotManager
-                            .LoadSnapshotAsync(command.AggregateIdentity, StateManager, command.CorrelationId, cancellationToken)
-                            .ConfigureAwait(false);
+                        if (snapshotManager is SnapshotManager classifiedSnapshotManager)
+                        {
+                            snapshotLoadResult = await classifiedSnapshotManager
+                                .LoadSnapshotForCommandAsync(command.AggregateIdentity, StateManager,
+                                    command.CorrelationId, cancellationToken)
+                                .ConfigureAwait(false);
+                            existingSnapshot = snapshotLoadResult.Snapshot;
+                        }
+                        else
+                        {
+                            snapshotLoadResult = null;
+                            existingSnapshot = await snapshotManager
+                                .LoadSnapshotAsync(command.AggregateIdentity, StateManager,
+                                    command.CorrelationId, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
 
                         var eventStreamReader = new EventStreamReader(
                             StateManager,
@@ -1323,16 +1339,42 @@ public partial class AggregateActor(
                 // Dead-letter routing handles infrastructure exceptions.
                 // D3: Domain rejections (IRejectionEvent) are normal events, NOT dead-letter triggers.
                 DomainResult domainResult;
+                string? aggregateType = null;
+                FoldedSnapshotQualification? snapshotQualification = null;
+                bool snapshotRequestDue = false;
+                bool snapshotPolicyUnavailable = false;
                 using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
                     EventStoreActivitySource.DomainServiceInvoke,
                     ActivityKind.Client)) {
                     SetActivityTags(activity, command);
 
                     try {
+                        aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
+                        snapshotQualification = serviceProvider?.GetService<FoldedSnapshotQualificationRegistry>()?
+                            .Find(command.Domain, aggregateType);
+                        if (snapshotQualification is not null
+                            && SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions))
+                        {
+                            try
+                            {
+                                snapshotRequestDue = await snapshotManager.ShouldCreateSnapshotAsync(
+                                    command.TenantId, command.Domain, aggregateType,
+                                    rehydrationResult?.CurrentSequence ?? 0, lastSnapshotSequence, cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+                            catch (OperationCanceledException) { throw; }
+                            catch
+                            {
+                                snapshotPolicyUnavailable = true;
+                                logger.LogWarning("Snapshot capture policy unavailable: FailureClass=SnapshotPolicyUnavailable");
+                            }
+                        }
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
-                        domainResult = await domainServiceInvoker
-                            .InvokeAsync(command, currentState, cancellationToken)
-                            .ConfigureAwait(false);
+                        domainResult = snapshotRequestDue
+                            ? await domainServiceInvoker.InvokeAsync(command, currentState, true,
+                                snapshotQualification?.ProfileId, cancellationToken).ConfigureAwait(false)
+                            : await domainServiceInvoker.InvokeAsync(command, currentState, cancellationToken)
+                                .ConfigureAwait(false);
 
                         logger.LogInformation(
                             "Domain service result: {ResultType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -1386,7 +1428,7 @@ public partial class AggregateActor(
                             payloadProtectionService,
                             globalPositionAllocator);
 
-                        string aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
+                        aggregateType ??= await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
 
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         // Qualified publication namespaces require durable pre-create registration before any event staging.
@@ -1406,17 +1448,55 @@ public partial class AggregateActor(
                             .ConfigureAwait(false);
 
                         // Step 5b: Snapshot creation (Story 3.9)
-                        if (persistResult.NewSequenceNumber > 0 && currentState is not null) {
-                            bool shouldSnapshot = await snapshotManager
-                                .ShouldCreateSnapshotAsync(command.TenantId, command.Domain, aggregateType, persistResult.NewSequenceNumber, lastSnapshotSequence)
-                                .ConfigureAwait(false);
-
-                            if (shouldSnapshot) {
-                                await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
-                                long preEventSequence = persistResult.NewSequenceNumber - domainResult.Events.Count;
-                                await snapshotManager
-                                    .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
+                        string? committedReplacementReasonClass = null;
+                        if (persistResult.NewSequenceNumber > 0 && snapshotRequestDue
+                            && !snapshotPolicyUnavailable && snapshotQualification is not null
+                            && TryParseFoldedSnapshotEvidence(domainResult.PostCommandStateJson,
+                                snapshotQualification.Limits, out JsonElement foldedState, out _))
+                        {
+                            bool shouldSnapshot;
+                            try
+                            {
+                                shouldSnapshot = await snapshotManager.ShouldCreateSnapshotAsync(
+                                    command.TenantId, command.Domain, aggregateType,
+                                    persistResult.NewSequenceNumber, lastSnapshotSequence, cancellationToken)
                                     .ConfigureAwait(false);
+                            }
+                            catch (OperationCanceledException) { throw; }
+                            catch
+                            {
+                                shouldSnapshot = false;
+                                logger.LogWarning("Snapshot stage policy unavailable: FailureClass=SnapshotPolicyUnavailable");
+                            }
+                            if (shouldSnapshot)
+                            {
+                                await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                                string? replacementReasonClass = snapshotLoadResult switch
+                                {
+                                    { Outcome: SnapshotLoadOutcome.ProviderOpaque,
+                                        ReasonCode: "SnapshotEnvelopeVersionUnknown" } => "SnapshotEnvelopeVersionUnknown",
+                                    { Outcome: SnapshotLoadOutcome.ProviderOpaque } => "SnapshotProviderOpaque",
+                                    { Outcome: SnapshotLoadOutcome.UnreadableProtected } => "SnapshotUnreadableProtected",
+                                    _ => null,
+                                };
+                                if (snapshotManager is SnapshotManager automaticManager
+                                    && replacementReasonClass is not null)
+                                {
+                                    bool staged = await automaticManager.CreateAutomaticReplacementAsync(
+                                        command.AggregateIdentity, persistResult.NewSequenceNumber,
+                                        foldedState, StateManager, ActorStateJsonSerializerOptions,
+                                        snapshotQualification.Limits, replacementReasonClass,
+                                        command.CorrelationId, cancellationToken).ConfigureAwait(false);
+                                    if (staged) { committedReplacementReasonClass = replacementReasonClass; }
+                                }
+                                else
+                                {
+                                    await snapshotManager.CreateSnapshotAsync(command.AggregateIdentity,
+                                        persistResult.NewSequenceNumber, foldedState, StateManager,
+                                        ActorStateJsonSerializerOptions, snapshotQualification.Limits,
+                                        command.CorrelationId, cancellationToken)
+                                        .ConfigureAwait(false);
+                                }
                             }
                         }
 
@@ -1584,6 +1664,14 @@ public partial class AggregateActor(
                             }
                         }
 
+                        if (committedReplacementReasonClass is not null)
+                        {
+                            logger.LogInformation(
+                                "Folded snapshot replacement committed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}",
+                                command.CorrelationId, command.TenantId, command.Domain,
+                                command.AggregateId, persistResult.NewSequenceNumber,
+                                committedReplacementReasonClass);
+                        }
                         LogStageTransition(CommandStatus.EventsStored, command, causationId, startTicks);
                         await WriteAdvisoryStatusAsync(command, CommandStatus.EventsStored).ConfigureAwait(false);
 
@@ -2249,25 +2337,67 @@ public partial class AggregateActor(
                 .InspectSnapshotForManualOverwriteAsync(identity, StateManager, correlationId, cancellationToken)
                 .ConfigureAwait(false);
 
+            if (snapshotInspection.Outcome == SnapshotLoadOutcome.InfrastructureFailure)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey,
+                    snapshotInspection.ReasonCode ?? "SnapshotReadUnavailable",
+                    "Existing snapshot could not be inspected.");
+            }
             if (snapshotInspection.Outcome is SnapshotLoadOutcome.UnreadableProtected
                 or SnapshotLoadOutcome.ProviderOpaque
                 or SnapshotLoadOutcome.Corrupt) {
                 return new ManualSnapshotResult(
-                    ManualSnapshotOutcome.UnreadableProtected,
+                    snapshotInspection.ReasonCode is "SnapshotStateInvalid" or "SnapshotSequenceInvalid"
+                        ? ManualSnapshotOutcome.InfrastructureFailure : ManualSnapshotOutcome.UnreadableProtected,
                     metadata.CurrentSequence,
                     identity.SnapshotKey,
                     snapshotInspection.ReasonCode ?? snapshotInspection.Outcome.ToString(),
                     "Existing snapshot cannot be safely read.");
             }
 
-            if (snapshotInspection.Snapshot is not null
-                && snapshotInspection.Snapshot.SequenceNumber >= metadata.CurrentSequence) {
+            if (snapshotInspection.Snapshot is { } inspectedSnapshot
+                && inspectedSnapshot.SequenceNumber > metadata.CurrentSequence)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSequenceInvalid",
+                    "Existing snapshot sequence exceeds the stream head.");
+            }
+            if (snapshotInspection.Snapshot is { } currentSnapshot
+                && currentSnapshot.SequenceNumber == metadata.CurrentSequence
+                && currentSnapshot.State is JsonElement currentSnapshotState
+                && SnapshotEnvelopeInspector.IsFoldedObject(currentSnapshotState)) {
                 return new ManualSnapshotResult(
                     ManualSnapshotOutcome.AlreadyCurrent,
                     metadata.CurrentSequence,
                     identity.SnapshotKey,
                     null,
                     null);
+            }
+
+            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions))
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSerializerUnsupported",
+                    "Snapshot serializer is not qualified.");
+            }
+            FoldedSnapshotQualificationRegistry? qualificationRegistry =
+                serviceProvider?.GetService<FoldedSnapshotQualificationRegistry>();
+            if (qualificationRegistry is null)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotCaptureUnsupported",
+                    "No qualified snapshot capture is registered.");
+            }
+            ConditionalValue<EventEnvelope> firstEvent = await StateManager.TryGetStateAsync<EventEnvelope>(
+                $"{identity.EventStreamKeyPrefix}1", cancellationToken).ConfigureAwait(false);
+            FoldedSnapshotQualification? qualification = firstEvent.HasValue
+                ? qualificationRegistry.Find(identity.Domain, firstEvent.Value.AggregateType) : null;
+            if (qualification is null)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotCaptureUnsupported",
+                    "No qualified snapshot capture is registered.");
             }
 
             var eventStreamReader = new EventStreamReader(
@@ -2278,6 +2408,7 @@ public partial class AggregateActor(
                 identity,
                 eventStreamReader,
                 metadata.CurrentSequence,
+                qualification.Limits,
                 correlationId,
                 cancellationToken).ConfigureAwait(false);
             if (snapshotState is null) {
@@ -2289,11 +2420,26 @@ public partial class AggregateActor(
                     "Manual snapshot state could not be reconstructed.");
             }
 
+            if (snapshotState is not JsonElement candidate
+                || !SnapshotEnvelopeInspector.IsFoldedObject(candidate)
+                || !IsWithinBoundedSnapshotState(candidate,
+                    qualification.Limits.MaximumCanonicalStateMeasurementBytes,
+                    ActorStateJsonSerializerOptions))
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey,
+                    snapshotState is JsonElement collision && SnapshotEnvelopeInspector.IsDomainServiceCurrentState(collision)
+                        ? "SnapshotStateShapeCollision" : "SnapshotCaptureLimitExceeded",
+                    "Reconstructed state is not eligible for a folded snapshot.");
+            }
+
             await snapshotManager.CreateSnapshotAsync(
                 identity,
                 metadata.CurrentSequence,
                 snapshotState,
                 StateManager,
+                ActorStateJsonSerializerOptions,
+                qualification.Limits,
                 correlationId,
                 cancellationToken,
                 throwOnFailure: true).ConfigureAwait(false);
@@ -2305,6 +2451,12 @@ public partial class AggregateActor(
                 : throw new InvalidOperationException("Manual snapshot manager did not stage a snapshot record.");
             snapshotSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
+            ConditionalValue<SnapshotRecord> durableSnapshot = await StateManager
+                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken).ConfigureAwait(false);
+            if (!durableSnapshot.HasValue || !SnapshotRecordsMatch(durableSnapshot.Value, attemptedSnapshot))
+            {
+                throw new InvalidOperationException("SnapshotReadbackMismatch");
+            }
 
             return new ManualSnapshotResult(
                 ManualSnapshotOutcome.Created,
@@ -2364,6 +2516,8 @@ public partial class AggregateActor(
                 identity.SnapshotKey,
                 LogicalEventReadRejection.IsRejection(ex)
                     ? LogicalEventReadRejection.ReasonCode
+                    : ex is InvalidOperationException && ex.Message.StartsWith("Snapshot", StringComparison.Ordinal)
+                    ? ex.Message
                     : "InfrastructureFailure",
                 "Manual snapshot creation failed.");
         }
@@ -2371,6 +2525,7 @@ public partial class AggregateActor(
 
     private bool SnapshotRecordsMatch(SnapshotRecord observed, SnapshotRecord expected)
         => observed.SequenceNumber == expected.SequenceNumber
+            && observed.SnapshotEnvelopeVersion == expected.SnapshotEnvelopeVersion
             && observed.CreatedAt == expected.CreatedAt
             && string.Equals(observed.Domain, expected.Domain, StringComparison.Ordinal)
             && string.Equals(observed.AggregateId, expected.AggregateId, StringComparison.Ordinal)
@@ -2382,10 +2537,73 @@ public partial class AggregateActor(
                     expected.State,
                     ActorStateJsonSerializerOptions));
 
+    private static bool TryParseFoldedSnapshotEvidence(
+        string? json, FoldedSnapshotCaptureLimits limits, out JsonElement foldedState,
+        out string failureCode)
+    {
+        foldedState = default;
+        failureCode = "SnapshotStateInvalid";
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return false;
+        }
+        try
+        {
+            int byteCount = Encoding.UTF8.GetByteCount(json);
+            if (byteCount > limits.MaximumActorParsedStateBytes)
+            {
+                failureCode = "SnapshotCaptureLimitExceeded";
+                return false;
+            }
+            byte[] admittedBytes = Encoding.UTF8.GetBytes(json);
+            var reader = new Utf8JsonReader(admittedBytes, new JsonReaderOptions { MaxDepth = limits.MaximumDepth });
+            int nodes = 0;
+            while (reader.Read())
+            {
+                if (++nodes > limits.MaximumNodeCount)
+                {
+                    failureCode = "SnapshotCaptureLimitExceeded";
+                    return false;
+                }
+            }
+            if (checked(16L * byteCount + 64L * nodes) > limits.MaximumActorParsedGraphBytes)
+            {
+                failureCode = "SnapshotCaptureLimitExceeded";
+                return false;
+            }
+            using JsonDocument document = JsonDocument.Parse(admittedBytes,
+                new JsonDocumentOptions { MaxDepth = limits.MaximumDepth });
+            if (!SnapshotEnvelopeInspector.IsFoldedObject(document.RootElement))
+            {
+                failureCode = SnapshotEnvelopeInspector.IsDomainServiceCurrentState(document.RootElement)
+                    ? "SnapshotStateShapeCollision" : "SnapshotStateInvalid";
+                return false;
+            }
+            foldedState = document.RootElement.Clone();
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return false; }
+    }
+
+    private static bool IsWithinBoundedSnapshotState(
+        JsonElement state, int maximumBytes, JsonSerializerOptions serializerOptions)
+    {
+        try
+        {
+            using var output = new BoundedSnapshotByteStream(maximumBytes);
+            JsonSerializer.Serialize(output, state, serializerOptions);
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return false; }
+    }
+
     private async Task<object?> MaterializeManualSnapshotStateAsync(
         AggregateIdentity identity,
         EventStreamReader eventStreamReader,
         long currentSequence,
+        FoldedSnapshotCaptureLimits limits,
         string? correlationId,
         CancellationToken cancellationToken) {
         if (serviceProvider?.GetService(typeof(IAggregateStateReconstructor)) is not IAggregateStateReconstructor reconstructor) {
@@ -2466,7 +2684,12 @@ public partial class AggregateActor(
             return null;
         }
 
-        return JsonSerializer.Deserialize<JsonElement>(reconstruction.StateJson);
+        if (!TryParseFoldedSnapshotEvidence(reconstruction.StateJson, limits,
+                out JsonElement foldedState, out string failureCode))
+        {
+            throw new InvalidOperationException(failureCode);
+        }
+        return foldedState;
     }
 
     private const int MaxExceptionFrames = 8;

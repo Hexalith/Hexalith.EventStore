@@ -1,8 +1,10 @@
 
 using Dapr.Actors.Runtime;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Snapshots;
 using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,9 @@ public partial class SnapshotManager(
     ILogger<SnapshotManager> logger,
     IEventPayloadProtectionService payloadProtectionService,
     ISnapshotPolicyResolver? snapshotPolicyResolver = null) : ISnapshotManager {
+    private const int MaximumFoldedStateBytes = 1024 * 1024;
+    private const int MaximumProtectedEnvelopeBytes = 4 * 1024 * 1024;
+
     /// <inheritdoc/>
     public async Task<bool> ShouldCreateSnapshotAsync(
         string tenantId,
@@ -41,22 +46,105 @@ public partial class SnapshotManager(
         => ShouldCreateSnapshotAsync(tenantId, domain, domain, currentSequence, lastSnapshotSequence);
 
     /// <inheritdoc/>
-    public async Task CreateSnapshotAsync(
+    public Task CreateSnapshotAsync(
         AggregateIdentity identity,
         long sequenceNumber,
         object state,
         IActorStateManager stateManager,
         string? correlationId = null,
         CancellationToken cancellationToken = default,
-        bool throwOnFailure = false) {
+        bool throwOnFailure = false)
+        => CreateSnapshotAsync(identity, sequenceNumber, state, stateManager, JsonSerializerOptions.Web,
+            correlationId, cancellationToken, throwOnFailure);
+
+    /// <inheritdoc/>
+    public Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
+        => CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
+            null, correlationId, cancellationToken, throwOnFailure);
+
+    /// <inheritdoc/>
+    public Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        FoldedSnapshotCaptureLimits limits,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false)
+        => CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
+            limits, correlationId, cancellationToken, throwOnFailure);
+
+    /// <summary>Stages an actor-owned automatic replacement with an allowlisted retained-key reason.</summary>
+    internal Task<bool> CreateAutomaticReplacementAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        FoldedSnapshotCaptureLimits limits,
+        string replacementReasonClass,
+        string? correlationId,
+        CancellationToken cancellationToken)
+    {
+        if (replacementReasonClass is not ("SnapshotEnvelopeVersionUnknown" or
+            "SnapshotProviderOpaque" or "SnapshotUnreadableProtected"))
+        {
+            throw new ArgumentOutOfRangeException(nameof(replacementReasonClass));
+        }
+        return CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
+            limits, correlationId, cancellationToken, throwOnFailure: false);
+    }
+
+    private async Task<bool> CreateSnapshotCoreAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        JsonSerializerOptions serializerOptions,
+        FoldedSnapshotCaptureLimits? limits,
+        string? correlationId,
+        CancellationToken cancellationToken,
+        bool throwOnFailure) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
+        ArgumentNullException.ThrowIfNull(serializerOptions);
         cancellationToken.ThrowIfCancellationRequested();
+        int maximumStateBytes = limits?.MaximumCanonicalStateMeasurementBytes ?? MaximumFoldedStateBytes;
+        int maximumEnvelopeBytes = limits?.MaximumCanonicalEnvelopeBytes ?? MaximumProtectedEnvelopeBytes;
+        int maximumDepth = limits?.MaximumDepth ?? 64;
 
         try {
+            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(serializerOptions)) {
+                throw new InvalidOperationException("SnapshotSerializerUnsupported");
+            }
+            if (sequenceNumber <= 0) {
+                throw new InvalidOperationException("SnapshotSequenceInvalid");
+            }
+            // Reserve the complete state serializer buffer before invoking a converter.
+            // The actor admits optional evidence at or below this same ceiling.
+            using var stateOutput = new BoundedSnapshotByteStream(maximumStateBytes);
+            JsonSerializer.Serialize(stateOutput, state, state.GetType(), serializerOptions);
+            byte[] stateBytes = stateOutput.ToArray();
+            using JsonDocument stateDocument = JsonDocument.Parse(stateBytes, new JsonDocumentOptions { MaxDepth = maximumDepth });
+            JsonElement folded = stateDocument.RootElement.Clone();
+            if (!SnapshotEnvelopeInspector.IsFoldedObject(folded)) {
+                throw new InvalidOperationException(SnapshotEnvelopeInspector.IsDomainServiceCurrentState(folded)
+                    ? "SnapshotStateShapeCollision" : "SnapshotStateInvalid");
+            }
+
             SnapshotProtectionResult protectionResult = await payloadProtectionService
-                .ProtectSnapshotAsync(identity, state, cancellationToken)
+                .ProtectSnapshotAsync(identity, folded, cancellationToken)
                 .ConfigureAwait(false);
             if (!EventStorePayloadProtectionMetadataCarrier.TryValidate(protectionResult.Metadata, out _)) {
                 throw new InvalidOperationException("Snapshot protection metadata is invalid.");
@@ -69,7 +157,31 @@ public partial class SnapshotManager(
                 Domain: identity.Domain,
                 AggregateId: identity.AggregateId,
                 TenantId: identity.TenantId,
-                ProtectionMetadata: protectionResult.Metadata);
+                ProtectionMetadata: protectionResult.Metadata) { SnapshotEnvelopeVersion = 1 };
+
+            if (protectionResult.Metadata.State == PayloadProtectionState.Unprotected) {
+                using var protectedStateOutput = new BoundedSnapshotByteStream(maximumStateBytes);
+                JsonSerializer.Serialize(protectedStateOutput, protectionResult.State,
+                    protectionResult.State.GetType(), serializerOptions);
+                byte[] protectedStateBytes = protectedStateOutput.ToArray();
+                if (!stateBytes.AsSpan().SequenceEqual(protectedStateBytes)) {
+                    throw new InvalidOperationException("SnapshotStateChangedByNoOpProtection");
+                }
+                using var envelopeOutput = new BoundedSnapshotByteStream(
+                    Math.Min(checked(stateBytes.Length + 4096), maximumEnvelopeBytes));
+                try { JsonSerializer.Serialize(envelopeOutput, snapshot, serializerOptions); }
+                catch (InvalidOperationException exception) when (exception.Message == "SnapshotCaptureLimitExceeded") {
+                    throw new InvalidOperationException("SnapshotEnvelopeBoundExceeded", exception);
+                }
+                byte[] envelopeBytes = envelopeOutput.ToArray();
+                if (envelopeBytes.Length > (long)stateBytes.Length + 4096) {
+                    throw new InvalidOperationException("SnapshotEnvelopeBoundExceeded");
+                }
+            }
+            else {
+                using var protectedEnvelopeOutput = new BoundedSnapshotByteStream(maximumEnvelopeBytes);
+                JsonSerializer.Serialize(protectedEnvelopeOutput, snapshot, serializerOptions);
+            }
 
             // Stage the snapshot write -- committed by caller's SaveStateAsync (D1)
             cancellationToken.ThrowIfCancellationRequested();
@@ -84,6 +196,7 @@ public partial class SnapshotManager(
                 identity.Domain,
                 identity.AggregateId,
                 sequenceNumber);
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             if (throwOnFailure) {
@@ -93,13 +206,15 @@ public partial class SnapshotManager(
             // Advisory: snapshot failure must not block command processing (rule #12)
             // Rule #5: Never log snapshot state content (payload data)
             logger.LogWarning(
-                ex,
-                "Snapshot creation failed (advisory, non-blocking): CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}",
+                "Snapshot creation failed (advisory, non-blocking): CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, FailureClass={FailureClass}",
                 correlationId,
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                sequenceNumber);
+                sequenceNumber,
+                ex is InvalidOperationException && ex.Message.StartsWith("Snapshot", StringComparison.Ordinal)
+                    ? ex.Message : ex.GetType().Name);
+            return false;
         }
     }
 
@@ -108,236 +223,156 @@ public partial class SnapshotManager(
         AggregateIdentity identity,
         IActorStateManager stateManager,
         string? correlationId = null,
-        CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentNullException.ThrowIfNull(stateManager);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        try {
-            ConditionalValue<SnapshotRecord> result = await stateManager
-                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken)
-                .ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (!result.HasValue) {
-                return null;
-            }
-
-            SnapshotRecord snapshot = result.Value;
-            if (!HasAddressedIdentity(snapshot, identity)) {
-                // A typed legacy snapshot is only a replay optimization. Retain a
-                // mismatched record for investigation and replay from event one.
-                Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
-                return null;
-            }
-
-            // Legacy snapshots persisted before Story 22.7a have no ProtectionMetadata. Map to the
-            // explicit legacy compatibility record so callers never see a null sentinel.
-            EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
-
-            // Story 22.7b: Provider-opaque protected snapshots must NOT be deleted (would erase
-            // audit-relevant state). Return null so the actor falls back to full replay; if the
-            // event tail is also unreadable, the pre-domain readability boundary will fail closed.
-            // Story 22.7c: route every fail-closed snapshot-load decision through the canonical
-            // ProtectedDataReadabilityDecisionFactory so the publisher, actor, snapshot manager,
-            // and stream reader emit decisions with identical shape.
-            if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
-                ProtectedDataReadabilityDecision opaqueDecision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
-                    effectiveMetadata,
-                    ProtectedDataDecisionStage.SnapshotLoad,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    snapshot.SequenceNumber,
-                    correlationId);
-                Log.UnreadableProtectedSnapshot(
-                    logger,
-                    correlationId ?? string.Empty,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    snapshot.SequenceNumber,
-                    opaqueDecision.ReasonCode);
-                return null;
-            }
-
-            // Story 22.7b: use the typed snapshot unprotect entry point. Unreadable outcomes (e.g.
-            // missing key, provider unavailable) DO NOT trigger snapshot deletion — protected
-            // unreadable data is not the same as corrupt unprotected data. The actor will replay
-            // the event tail; if that tail is also unreadable, the pre-domain boundary fails closed.
-            SnapshotUnprotectionOutcome outcome;
-            try {
-                outcome = await payloadProtectionService
-                    .TryUnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch {
-                outcome = SnapshotUnprotectionOutcome.Unreadable(
-                    UnreadableProtectedDataReason.ProviderUnavailable,
-                    effectiveMetadata);
-            }
-
-            ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
-                outcome,
-                ProtectedDataDecisionStage.SnapshotLoad,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                snapshot.SequenceNumber,
-                correlationId);
-            if (!decision.IsReadable) {
-                Log.UnreadableProtectedSnapshot(
-                    logger,
-                    correlationId ?? string.Empty,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    snapshot.SequenceNumber,
-                    decision.ReasonCode);
-                return null;
-            }
-
-            return snapshot with { State = outcome.State!, ProtectionMetadata = outcome.Metadata };
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            // Deserialization failure: delete corrupt snapshot and fall back to full replay
-            // Rule #5: Never log snapshot state content
-            // Story 22.7b: this RemoveStateAsync path is ONLY for non-protected corrupt
-            // deserialization (schema drift on plaintext snapshots). Protected unreadable cases
-            // are routed above via TryUnprotectSnapshotAsync and DO NOT delete the snapshot.
-            logger.LogWarning(
-                ex,
-                "Snapshot deserialization failed, deleting corrupt snapshot and falling back to full replay: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
-                correlationId,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId);
-
-            try {
-                await stateManager
-                    .RemoveStateAsync(identity.SnapshotKey, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception removeEx) when (removeEx is not OperationCanceledException) {
-                logger.LogWarning(
-                    removeEx,
-                    "Failed to delete corrupt snapshot: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
-                    correlationId,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId);
-            }
-
-            return null;
-        }
+        CancellationToken cancellationToken = default)
+    {
+        SnapshotLoadResult inspected = await LoadSnapshotForCommandAsync(
+            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval: true).ConfigureAwait(false);
+        return inspected.Snapshot;
     }
 
-    /// <inheritdoc/>
-    public async Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+    /// <summary>Preserves the command-time bypass class from the same raw load used for replay.</summary>
+    internal async Task<SnapshotLoadResult> LoadSnapshotForCommandAsync(
         AggregateIdentity identity,
         IActorStateManager stateManager,
         string? correlationId = null,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        bool allowCorruptPlaintextRemoval = true)
+    {
+        SnapshotLoadResult inspected = await ReadSnapshotCoreAsync(
+            identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval).ConfigureAwait(false);
+        return inspected.Outcome == SnapshotLoadOutcome.Readable
+            && inspected.Snapshot is { State: JsonElement state }
+            && SnapshotEnvelopeInspector.IsFoldedObject(state)
+            ? inspected : inspected.Outcome == SnapshotLoadOutcome.Readable
+                ? SnapshotLoadResult.Corrupt("SnapshotStateShapeCollision") : inspected;
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default)
+        => ReadSnapshotCoreAsync(identity, stateManager, correlationId, cancellationToken, allowCorruptPlaintextRemoval: false);
+
+    private async Task<SnapshotLoadResult> ReadSnapshotCoreAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId,
+        CancellationToken cancellationToken,
+        bool allowCorruptPlaintextRemoval)
+    {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
         cancellationToken.ThrowIfCancellationRequested();
-
-        ConditionalValue<SnapshotRecord> result;
-        try {
-            result = await stateManager
-                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken)
+        ConditionalValue<JsonElement> rawResult;
+        try
+        {
+            rawResult = await stateManager.TryGetStateAsync<JsonElement>(identity.SnapshotKey, cancellationToken)
                 .ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
         }
-        catch (OperationCanceledException) {
-            throw;
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            logger.LogWarning("Snapshot read unavailable: CorrelationId={CorrelationId}, FailureClass=SnapshotReadUnavailable", correlationId);
+            return SnapshotLoadResult.InfrastructureFailure("SnapshotReadUnavailable");
         }
-        catch (Exception ex) {
-            // Deserialization failure on inspection: surface as Corrupt without deleting. The
-            // manual overwrite path must fail closed; deletion is reserved for the command-time
-            // path that has fallback-via-replay semantics.
-            logger.LogWarning(
-                "Snapshot inspection failed (corrupt or unreadable): CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}",
-                correlationId,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                ex.GetType().Name);
+        if (!rawResult.HasValue) { return SnapshotLoadResult.Absent(); }
+        JsonElement raw = rawResult.Value;
+        if (!SnapshotEnvelopeInspector.TryReadVersion(raw, out _))
+        {
+            return SnapshotLoadResult.ProviderOpaque("SnapshotEnvelopeVersionUnknown");
+        }
+        if (!SnapshotEnvelopeInspector.TryReadSequence(raw, out _))
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotSequenceInvalid");
+        }
+        if (!SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "state", out _))
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
+
+        SnapshotRecord snapshot;
+        try
+        {
+            snapshot = raw.Deserialize<SnapshotRecord>(JsonSerializerOptions.Web)
+                ?? throw new JsonException("Snapshot record is null.");
+        }
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            if (allowCorruptPlaintextRemoval && IsProvenUnprotected(raw))
+            {
+                try { await stateManager.RemoveStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false); }
+                catch (OperationCanceledException) { throw; }
+                catch { logger.LogWarning("Corrupt snapshot removal unavailable: FailureClass=SnapshotRemovalUnavailable"); }
+            }
             return SnapshotLoadResult.Corrupt("CorruptSnapshot");
         }
-
-        if (!result.HasValue) {
-            return SnapshotLoadResult.Absent();
-        }
-
-        SnapshotRecord snapshot = result.Value;
-        if (!HasAddressedIdentity(snapshot, identity)) {
+        if (!HasAddressedIdentity(snapshot, identity))
+        {
             Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
             return SnapshotLoadResult.Corrupt("AddressMismatch");
         }
 
-        EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
-
-        if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
-            ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
-                effectiveMetadata,
-                ProtectedDataDecisionStage.SnapshotLoad,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                snapshot.SequenceNumber,
-                correlationId);
-            Log.UnreadableProtectedSnapshot(
-                logger,
-                correlationId ?? string.Empty,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                snapshot.SequenceNumber,
-                decision.ReasonCode);
-            return SnapshotLoadResult.ProviderOpaque(decision.ReasonCode);
+        EventStorePayloadProtectionMetadata metadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
+        if (metadata.State == PayloadProtectionState.ProviderOpaque)
+        {
+            return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque");
         }
-
+        if (metadata.State == PayloadProtectionState.Unprotected
+            && (snapshot.State is null || snapshot.State is JsonElement { ValueKind: JsonValueKind.Null }))
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
         SnapshotUnprotectionOutcome outcome;
-        try {
-            outcome = await payloadProtectionService
-                .TryUnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
-                .ConfigureAwait(false);
+        try
+        {
+            outcome = await payloadProtectionService.TryUnprotectSnapshotAsync(
+                identity, snapshot.State, metadata, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            throw;
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            return SnapshotLoadResult.InfrastructureFailure("SnapshotUnprotectUnavailable");
         }
-        catch {
-            outcome = SnapshotUnprotectionOutcome.Unreadable(
-                UnreadableProtectedDataReason.ProviderUnavailable,
-                effectiveMetadata);
+        if (!outcome.IsReadable || outcome.State is null)
+        {
+            return SnapshotLoadResult.UnreadableProtected("SnapshotUnreadableProtected");
         }
+        JsonElement state;
+        try
+        {
+            state = outcome.State is JsonElement element
+                ? element : JsonSerializer.SerializeToElement(outcome.State, JsonSerializerOptions.Web);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
+        if (state.ValueKind != JsonValueKind.Object)
+        {
+            return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
+        }
+        return SnapshotLoadResult.Readable(snapshot with { State = state, ProtectionMetadata = outcome.Metadata });
+    }
 
-        ProtectedDataReadabilityDecision readDecision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
-            outcome,
-            ProtectedDataDecisionStage.SnapshotLoad,
-            identity.TenantId,
-            identity.Domain,
-            identity.AggregateId,
-            snapshot.SequenceNumber,
-            correlationId);
-        if (!readDecision.IsReadable) {
-            Log.UnreadableProtectedSnapshot(
-                logger,
-                correlationId ?? string.Empty,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                snapshot.SequenceNumber,
-                readDecision.ReasonCode);
-            return SnapshotLoadResult.UnreadableProtected(readDecision.ReasonCode);
+    private static bool IsProvenUnprotected(JsonElement raw)
+    {
+        if (!SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "protectionMetadata", out JsonElement metadata))
+        {
+            // An absent protection record is the legacy plaintext mode.
+            return !raw.EnumerateObject().Any(static property =>
+                string.Equals(property.Name, "protectionMetadata", StringComparison.OrdinalIgnoreCase));
         }
-
-        SnapshotRecord readable = snapshot with { State = outcome.State!, ProtectionMetadata = outcome.Metadata };
-        return SnapshotLoadResult.Readable(readable);
+        if (metadata.ValueKind == JsonValueKind.Null) { return true; }
+        try
+        {
+            return metadata.Deserialize<EventStorePayloadProtectionMetadata>(JsonSerializerOptions.Web)?.State
+                == PayloadProtectionState.Unprotected;
+        }
+        catch { return false; }
     }
 
     /// <summary>Reads a checked logical range through the shared production reader.</summary>

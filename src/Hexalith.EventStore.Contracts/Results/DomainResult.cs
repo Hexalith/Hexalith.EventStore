@@ -8,6 +8,9 @@ namespace Hexalith.EventStore.Contracts.Results;
 /// Mixed results (both regular and rejection events) are invalid and rejected at construction.
 /// </summary>
 public record DomainResult {
+    /// <summary>Gets optional folded state captured after the returned events were admitted.</summary>
+    public string? PostCommandStateJson { get; init; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainResult"/> record.
     /// </summary>

@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.DomainServices;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -12,9 +13,16 @@ internal sealed class KeyedEvolutionProvider(
     EventEvolutionManifestCandidate candidate,
     DaprAggregateStateReconstructor reconstructor) : IKeyedServiceProvider
 {
+    private readonly FoldedSnapshotQualificationRegistry _snapshotQualifications = new([
+        new FoldedSnapshotQualification("d", "r", typeof(System.Text.Json.JsonElement), "fixture-profile", "fixture-parity", SnapshotTestLimits.ForState()),
+        new FoldedSnapshotQualification("orders", "OrderAggregate", typeof(System.Text.Json.JsonElement), "order-profile", "order-parity", SnapshotTestLimits.ForState()),
+    ]);
+
     /// <inheritdoc/>
     public object? GetService(Type serviceType)
-        => serviceType == typeof(IAggregateStateReconstructor) ? reconstructor : null;
+        => serviceType == typeof(IAggregateStateReconstructor) ? reconstructor
+            : serviceType == typeof(FoldedSnapshotQualificationRegistry) ? _snapshotQualifications
+            : null;
 
     /// <inheritdoc/>
     public object? GetKeyedService(Type serviceType, object? serviceKey)

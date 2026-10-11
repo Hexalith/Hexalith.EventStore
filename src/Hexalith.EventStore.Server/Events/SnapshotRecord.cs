@@ -24,4 +24,7 @@ public record SnapshotRecord(
     string Domain,
     string AggregateId,
     string TenantId,
-    EventStorePayloadProtectionMetadata? ProtectionMetadata = null);
+    EventStorePayloadProtectionMetadata? ProtectionMetadata = null) {
+    /// <summary>Gets the snapshot envelope format version; zero denotes a legacy record.</summary>
+    public int SnapshotEnvelopeVersion { get; init; }
+}

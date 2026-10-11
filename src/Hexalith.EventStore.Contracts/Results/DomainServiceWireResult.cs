@@ -15,6 +15,10 @@ public sealed record DomainServiceWireResult(
     bool IsRejection,
     IReadOnlyList<DomainServiceWireEvent> Events,
     string? ResultPayload = null) {
+    /// <summary>Gets optional folded post-command state; omitted when capture was unavailable.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? PostCommandStateJson { get; init; }
+
     /// <summary>Gets the event writer mode echoed by a version-aware domain service.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? WriterMode { get; init; }
@@ -57,6 +61,9 @@ public sealed record DomainServiceWireResult(
         }
 
         string? resultPayload = result.IsSuccess || result.IsNoOp ? result.ResultPayload : null;
-        return new DomainServiceWireResult(result.IsRejection, events, resultPayload);
+        return new DomainServiceWireResult(result.IsRejection, events, resultPayload)
+        {
+            PostCommandStateJson = result.PostCommandStateJson,
+        };
     }
 }

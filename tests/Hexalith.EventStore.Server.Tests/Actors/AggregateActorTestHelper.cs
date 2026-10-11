@@ -69,7 +69,9 @@ internal static class AggregateActorTestHelper {
         ITrustedEffectAuditSink? trustedEffectAuditSink = null,
         ITrustedEffectGatewayProof? trustedEffectGatewayProof = null,
         ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null,
-        string actorId = "test-tenant:test-domain:agg-001") {
+        IServiceProvider? serviceProvider = null,
+        string actorId = "test-tenant:test-domain:agg-001",
+        ISnapshotManager? snapshotManager = null) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -80,7 +82,7 @@ internal static class AggregateActorTestHelper {
         }
 
         invoker ??= Substitute.For<IDomainServiceInvoker>();
-        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        snapshotManager ??= Substitute.For<ISnapshotManager>();
         ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
         _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
@@ -97,7 +99,7 @@ internal static class AggregateActorTestHelper {
                 Arg.Any<CancellationToken>())
                 .Returns(true);
         }
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector, trustedEffectAdmissionPolicy: trustedEffectAdmissionPolicy, trustedEffectGatewayProof: trustedEffectGatewayProof ?? (trustedEffectAdmissionPolicy is null ? null : Substitute.For<ITrustedEffectGatewayProof>()), trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>(), trustedEffectErasureAuthority: trustedEffectErasureAuthority);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, serviceProvider: serviceProvider, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector, trustedEffectAdmissionPolicy: trustedEffectAdmissionPolicy, trustedEffectGatewayProof: trustedEffectGatewayProof ?? (trustedEffectAdmissionPolicy is null ? null : Substitute.For<ITrustedEffectGatewayProof>()), trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>(), trustedEffectErasureAuthority: trustedEffectErasureAuthority);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);

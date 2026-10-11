@@ -1,4 +1,6 @@
 
+using System.Text.Json;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Identity;
@@ -36,13 +38,16 @@ public class EventStreamReaderTests {
         Payload: [1, 2, 3],
         Extensions: null);
 
-    private static SnapshotRecord CreateTestSnapshot(long sequenceNumber, object? state = null) => new(
-        SequenceNumber: sequenceNumber,
-        State: state ?? new { Name = "test-state" },
-        CreatedAt: DateTimeOffset.UtcNow,
-        Domain: "test-domain",
-        AggregateId: "agg-001",
-        TenantId: "test-tenant");
+    private static SnapshotRecord CreateTestSnapshot(long sequenceNumber, object? state = null) {
+        object foldedState = state ?? new { Name = "test-state" };
+        return new SnapshotRecord(
+            SequenceNumber: sequenceNumber,
+            State: JsonSerializer.SerializeToElement(foldedState, foldedState.GetType(), JsonSerializerOptions.Web),
+            CreatedAt: DateTimeOffset.UtcNow,
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            TenantId: "test-tenant") { SnapshotEnvelopeVersion = 1 };
+    }
 
     private static (EventStreamReader Reader, IActorStateManager StateManager) CreateReader() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
@@ -585,7 +590,8 @@ public class EventStreamReaderTests {
 
         // Assert
         _ = result.ShouldNotBeNull();
-        result.SnapshotState.ShouldBeSameAs(snapshotState);
+        JsonElement.DeepEquals(result.SnapshotState.ShouldBeOfType<JsonElement>(),
+            JsonSerializer.SerializeToElement(snapshotState, JsonSerializerOptions.Web)).ShouldBeTrue();
         result.Events.Count.ShouldBe(3);
         result.LastSnapshotSequence.ShouldBe(100);
         result.CurrentSequence.ShouldBe(103);

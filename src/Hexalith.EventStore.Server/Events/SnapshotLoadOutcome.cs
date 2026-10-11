@@ -17,6 +17,9 @@ namespace Hexalith.EventStore.Server.Events;
 /// </para>
 /// </remarks>
 public enum SnapshotLoadOutcome {
+    /// <summary>The state provider or unprotection service was unavailable.</summary>
+    InfrastructureFailure,
+
     /// <summary>No snapshot key exists; the stream may be replayed in full.</summary>
     Absent,
 

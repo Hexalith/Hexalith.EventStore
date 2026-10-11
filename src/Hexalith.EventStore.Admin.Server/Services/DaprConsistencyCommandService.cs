@@ -803,8 +803,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex) {
-            _logger.LogDebug(ex, "Failed to read snapshot key '{Key}'.", snapshotKey);
+        catch (Exception) {
+            _logger.LogDebug("Snapshot consistency read unavailable: FailureClass=SnapshotReadUnavailable");
         }
     }
 

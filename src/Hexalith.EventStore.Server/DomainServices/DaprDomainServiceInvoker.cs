@@ -61,7 +61,16 @@ public partial class DaprDomainServiceInvoker(
     private static partial Regex VersionFormatRegex();
 
     /// <inheritdoc/>
-    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
+    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default)
+        => InvokeAsync(command, currentState, includePostCommandState: false, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState, CancellationToken cancellationToken = default)
+        => InvokeAsync(command, currentState, includePostCommandState, null, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
 
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
@@ -86,7 +95,11 @@ public partial class DaprDomainServiceInvoker(
 
             // Invoke via DAPR service invocation (D7)
             // DAPR resiliency policies handle retries and circuit breaking (rule #4).
-            var request = new DomainServiceRequest(command, currentState);
+            var request = new DomainServiceRequest(command, currentState)
+            {
+                IncludePostCommandState = includePostCommandState,
+                SnapshotCaptureProfileId = includePostCommandState ? snapshotCaptureProfileId : null,
+            };
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 registration.MethodName,
@@ -162,6 +175,7 @@ public partial class DaprDomainServiceInvoker(
             ?? throw new InvalidOperationException("Domain-service invocation completed without a resolved registration.");
         ValidateLegacyWriterResponse(wireResult, command);
         DomainResult result = ToDomainResult(wireResult);
+        if (!includePostCommandState) { result = result with { PostCommandStateJson = null }; }
 
         // Validate response size limits (AC #6)
         ValidateResponseLimits(result, command.TenantId, command.Domain, _options);
@@ -204,9 +218,10 @@ public partial class DaprDomainServiceInvoker(
         ArgumentNullException.ThrowIfNull(wireResult);
 
         if (wireResult.Events.Count == 0) {
-            return string.IsNullOrWhiteSpace(wireResult.ResultPayload)
+            return (string.IsNullOrWhiteSpace(wireResult.ResultPayload)
                 ? DomainResult.NoOp()
-                : new PayloadDomainResult(Array.Empty<IEventPayload>(), wireResult.ResultPayload);
+                : new PayloadDomainResult(Array.Empty<IEventPayload>(), wireResult.ResultPayload))
+                with { PostCommandStateJson = wireResult.PostCommandStateJson };
         }
 
         var events = new IEventPayload[wireResult.Events.Count];
@@ -230,9 +245,9 @@ public partial class DaprDomainServiceInvoker(
         }
 
         DomainResult result = new(events);
-        return result.IsSuccess && !string.IsNullOrWhiteSpace(wireResult.ResultPayload)
+        return (result.IsSuccess && !string.IsNullOrWhiteSpace(wireResult.ResultPayload)
             ? new PayloadDomainResult(events, wireResult.ResultPayload)
-            : result;
+            : result) with { PostCommandStateJson = wireResult.PostCommandStateJson };
     }
 
     private static DomainServiceOptions ValidateOptions(IOptions<DomainServiceOptions> configuredOptions) {

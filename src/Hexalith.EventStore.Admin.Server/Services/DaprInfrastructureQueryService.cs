@@ -617,15 +617,23 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), false, null);
             }
 
-            string jsonValue = FormatStateValue(value.Value);
-            long size = Encoding.UTF8.GetByteCount(jsonValue);
+            bool snapshot = IsSnapshotKey(resolvedKey);
+            string jsonValue = snapshot ? RedactSnapshotValue(value.Value) : FormatStateValue(value.Value);
+            long size = snapshot ? 0 : Encoding.UTF8.GetByteCount(jsonValue);
             return new ActorStateReadResult(new DaprActorStateEntry(displayKey, jsonValue, size, true), false, null);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
+            if (IsSnapshotKey(resolvedKey))
+            {
+                _logger.LogWarning("Snapshot actor state read unavailable: FailureClass=SnapshotReadUnavailable");
+            }
+            else
+            {
+                _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
+            }
             return new ActorStateReadResult(
                 new DaprActorStateEntry(displayKey, null, 0, false),
                 true,
@@ -665,15 +673,23 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), false, null);
             }
 
-            string jsonValue = FormatStateValue(value);
-            long size = Encoding.UTF8.GetByteCount(jsonValue);
+            bool snapshot = IsSnapshotKey(resolvedKey);
+            string jsonValue = snapshot ? RedactSnapshotValue(value) : FormatStateValue(value);
+            long size = snapshot ? 0 : Encoding.UTF8.GetByteCount(jsonValue);
             return new ActorStateReadResult(new DaprActorStateEntry(displayKey, jsonValue, size, true), false, null);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' from owner sidecar for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
+            if (IsSnapshotKey(resolvedKey))
+            {
+                _logger.LogWarning("Snapshot owner-sidecar read unavailable: FailureClass=SnapshotReadUnavailable");
+            }
+            else
+            {
+                _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' from owner sidecar for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
+            }
             return new ActorStateReadResult(
                 new DaprActorStateEntry(displayKey, null, 0, false),
                 true,
@@ -685,6 +701,93 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         DaprActorStateEntry Entry,
         bool LookupUnavailable,
         string? Message);
+
+    private static bool IsSnapshotKey(string resolvedKey)
+        => resolvedKey.EndsWith(":snapshot", StringComparison.Ordinal);
+
+    private static string RedactSnapshotValue(string raw)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(raw, new JsonDocumentOptions { MaxDepth = 64 });
+            return RedactSnapshotValue(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            return SnapshotEvidence(null, null, "Unknown");
+        }
+    }
+
+    private static string RedactSnapshotValue(JsonElement raw)
+    {
+        if (raw.ValueKind == JsonValueKind.String)
+        {
+            return RedactSnapshotValue(raw.GetString() ?? string.Empty);
+        }
+        if (raw.ValueKind != JsonValueKind.Object)
+        {
+            return SnapshotEvidence(null, null, "Unknown");
+        }
+        int? version = null;
+        long? sequence = null;
+        int versionFields = 0;
+        foreach (JsonProperty property in raw.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, "snapshotEnvelopeVersion", StringComparison.OrdinalIgnoreCase)) { continue; }
+            versionFields++;
+            if (versionFields != 1 || property.Value.ValueKind != JsonValueKind.Number
+                || !property.Value.TryGetInt32(out int parsedVersion))
+            {
+                return SnapshotEvidence(null, null, "UnknownVersion");
+            }
+            version = parsedVersion;
+        }
+        version ??= 0;
+        if (version is not (0 or 1)) { return SnapshotEvidence(null, version, "UnknownVersion"); }
+        if (TryReadSnapshotProperty(raw, "sequenceNumber", out JsonElement sequenceValue)
+            && sequenceValue.ValueKind == JsonValueKind.Number
+            && sequenceValue.TryGetInt64(out long parsedSequence) && parsedSequence > 0)
+        {
+            sequence = parsedSequence;
+        }
+        string protectionClass = "Unknown";
+        if (TryReadSnapshotProperty(raw, "protectionMetadata", out JsonElement metadata))
+        {
+            if (metadata.ValueKind == JsonValueKind.Null) { protectionClass = "Unprotected"; }
+            else if (TryReadSnapshotProperty(metadata, "state", out JsonElement state))
+            {
+                protectionClass = state.ValueKind == JsonValueKind.Number && state.TryGetInt32(out int stateCode)
+                    ? stateCode switch { 0 => "Unprotected", 1 => "ProtectedUnreadableUnknown", 2 => "ProviderOpaque", _ => "Unknown" }
+                    : "Unknown";
+            }
+        }
+        else { protectionClass = "Unprotected"; }
+        return SnapshotEvidence(sequence, version, protectionClass);
+    }
+
+    private static bool TryReadSnapshotProperty(JsonElement raw, string name, out JsonElement value)
+    {
+        value = default;
+        if (raw.ValueKind != JsonValueKind.Object) { return false; }
+        bool found = false;
+        foreach (JsonProperty property in raw.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)) { continue; }
+            if (found) { value = default; return false; }
+            found = true;
+            value = property.Value;
+        }
+        return found;
+    }
+
+    private static string SnapshotEvidence(long? sequence, int? version, string protectionClass)
+        => JsonSerializer.Serialize(new
+        {
+            coveredSequence = sequence,
+            canonicalSizeBytes = (long?)null,
+            snapshotEnvelopeVersion = version,
+            protectionReadabilityClass = protectionClass,
+        });
 
     private static string FormatStateValue(JsonElement value)
         => value.ValueKind == JsonValueKind.String

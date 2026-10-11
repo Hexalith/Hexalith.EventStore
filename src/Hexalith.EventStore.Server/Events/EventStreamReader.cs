@@ -49,17 +49,9 @@ public partial class EventStreamReader(
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!metadataResult.HasValue) {
-            // AC #3 / AC #8: new aggregate with no events
-            if (snapshot is not null) {
-                // Snapshot exists but no events -- return snapshot state directly
-                sw.Stop();
-                Log.RehydrationCompleteSnapshotOnly(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);
-
-                return new RehydrationResult(
-                    SnapshotState: snapshot.State,
-                    Events: [],
-                    LastSnapshotSequence: snapshot.SequenceNumber,
-                    CurrentSequence: snapshot.SequenceNumber);
+            // A retained orphan cannot establish a stream head, even when its state was bypassed.
+            if (snapshot is not null || await stateManager.ContainsStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false)) {
+                throw new InvalidOperationException("SnapshotStreamUnavailable");
             }
 
             Log.NewAggregateDetected(logger, identity.TenantId, identity.Domain, identity.AggregateId);
@@ -73,6 +65,15 @@ public partial class EventStreamReader(
         }
 
         long currentSequence = metadata.CurrentSequence;
+        if (snapshot is not null && (snapshot.SnapshotEnvelopeVersion is not (0 or 1)
+            || !string.Equals(snapshot.TenantId, identity.TenantId, StringComparison.Ordinal)
+            || !string.Equals(snapshot.Domain, identity.Domain, StringComparison.Ordinal)
+            || !string.Equals(snapshot.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+            || snapshot.SequenceNumber <= 0 || snapshot.SequenceNumber > currentSequence
+            || snapshot.State is not System.Text.Json.JsonElement state
+            || !SnapshotEnvelopeInspector.IsFoldedObject(state))) {
+            snapshot = null;
+        }
         long lastSnapshotSequence = snapshot?.SequenceNumber ?? 0;
         if (metadata.RetainedFloor < 1
             || (metadata.RetainedFloor > currentSequence && metadata.RetainedFloor - currentSequence > 1)) {
@@ -85,7 +86,7 @@ public partial class EventStreamReader(
 
         if (snapshot is not null) {
             // AC #8: snapshot at current sequence -- no tail events needed
-            if (snapshot.SequenceNumber >= currentSequence) {
+            if (snapshot.SequenceNumber == currentSequence) {
                 await RequireUnchangedMetadataAsync(identity, metadata, cancellationToken).ConfigureAwait(false);
                 sw.Stop();
                 Log.RehydrationCompleteSnapshotAtCurrent(logger, identity.TenantId, identity.Domain, identity.AggregateId, sw.ElapsedMilliseconds);

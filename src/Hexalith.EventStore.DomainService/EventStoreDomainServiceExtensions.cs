@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -46,6 +47,22 @@ namespace Hexalith.EventStore.DomainService;
 /// </code>
 /// </remarks>
 public static class EventStoreDomainServiceExtensions {
+    /// <summary>Enrolls one reviewed aggregate/state capture profile in the serving deployment.</summary>
+    public static IServiceCollection AddEventStoreFoldedSnapshotQualification<TState>(
+        this IServiceCollection services,
+        string domain,
+        string aggregateType,
+        string profileId,
+        string parityEvidenceId,
+        Hexalith.EventStore.Contracts.Snapshots.FoldedSnapshotCaptureLimits limits) where TState : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton(new FoldedSnapshotQualification(
+            domain, aggregateType, typeof(TState), profileId, parityEvidenceId, limits));
+        services.TryAddSingleton<FoldedSnapshotQualificationRegistry>();
+        return services;
+    }
+
     /// <summary>Opts one domain into bounded V1 result serialization using an exact, declared profile.</summary>
     /// <remarks>The readable ceiling remains 1 MiB until a separately measured capability is admitted.</remarks>
     public static IServiceCollection AddEventStoreBoundedV1DomainSerialization(

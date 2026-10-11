@@ -1,5 +1,6 @@
 
 using Dapr.Actors.Runtime;
+using System.Text.Json;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 /// <summary>
@@ -182,15 +183,20 @@ public sealed class InMemoryStateManager : IActorStateManager {
         }
 
         if (_pendingState.TryGetValue(stateName, out object? pendingValue)) {
-            return Task.FromResult(new ConditionalValue<T>(true, (T)pendingValue));
+            return Task.FromResult(new ConditionalValue<T>(true, ReadValue<T>(pendingValue)));
         }
 
         if (_committedState.TryGetValue(stateName, out object? committedValue)) {
-            return Task.FromResult(new ConditionalValue<T>(true, (T)committedValue));
+            return Task.FromResult(new ConditionalValue<T>(true, ReadValue<T>(committedValue)));
         }
 
         return Task.FromResult(new ConditionalValue<T>(false, default!));
     }
+
+    private static T ReadValue<T>(object value)
+        => typeof(T) == typeof(JsonElement) && value is not JsonElement
+            ? (T)(object)JsonSerializer.SerializeToElement(value, JsonSerializerOptions.Web)
+            : (T)value;
 
     /// <inheritdoc/>
     public Task<bool> TryRemoveStateAsync(string stateName, CancellationToken cancellationToken = default) {

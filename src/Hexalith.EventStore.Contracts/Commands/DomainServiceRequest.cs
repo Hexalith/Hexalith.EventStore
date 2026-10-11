@@ -11,6 +11,13 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// that carries snapshot state plus tail events for snapshot-aware rehydration.
 /// </param>
 public record DomainServiceRequest(CommandEnvelope Command, object? CurrentState) {
+    /// <summary>Requests optional post-command folded state for a snapshot-due invocation.</summary>
+    public bool IncludePostCommandState { get; init; }
+
+    /// <summary>Gets the deployment-owned capture qualification selected for this request.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? SnapshotCaptureProfileId { get; init; }
+
     /// <summary>Gets the negotiated event writer mode, when the request is version-aware.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? WriterMode { get; init; }

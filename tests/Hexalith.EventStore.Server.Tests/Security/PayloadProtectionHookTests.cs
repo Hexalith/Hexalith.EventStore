@@ -52,6 +52,12 @@ public class PayloadProtectionHookTests {
         UserId: "user-1",
         Extensions: null);
 
+    private static void SetRawSnapshot(IActorStateManager stateManager, SnapshotRecord snapshot) {
+        JsonElement raw = JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web);
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, raw));
+    }
+
     /// <summary>Compatibility entry points must use the same fail-closed unprotection decision.</summary>
     [Fact]
     public async Task NoOpProvider_LegacyUnprotectCannotBypassProtectedMarkerRefusal()
@@ -272,16 +278,10 @@ public class PayloadProtectionHookTests {
     public async Task SnapshotManager_LoadLegacyNullMetadata_MapsToLegacyCompatibilityRecord() {
         // Arrange: a snapshot persisted before Story 22.7a (ProtectionMetadata = null)
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        var legacySnapshot = new SnapshotRecord(
-            SequenceNumber: 5,
-            State: "legacy-state",
-            CreatedAt: DateTimeOffset.UtcNow,
-            Domain: TestIdentity.Domain,
-            AggregateId: TestIdentity.AggregateId,
-            TenantId: TestIdentity.TenantId,
-            ProtectionMetadata: null);
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, legacySnapshot));
+        JsonElement legacySnapshot = JsonSerializer.Deserialize<JsonElement>(
+            """{"sequenceNumber":5,"state":{"count":5},"createdAt":"2026-01-01T00:00:00Z","domain":"billing","aggregateId":"agg-001","tenantId":"tenant-a"}""");
+        _ = stateManager.TryGetStateAsync<JsonElement>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<JsonElement>(true, legacySnapshot));
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
         // Act
@@ -293,6 +293,8 @@ public class PayloadProtectionHookTests {
         loaded.ProtectionMetadata!.State.ShouldBe(PayloadProtectionState.Unprotected);
         _ = loaded.ProtectionMetadata.CompatibilityFlags.ShouldNotBeNull();
         loaded.ProtectionMetadata.CompatibilityFlags!["legacy"].ShouldBe("missing");
+        loaded.SnapshotEnvelopeVersion.ShouldBe(0);
+        loaded.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(5);
     }
 
     [Fact]
@@ -309,8 +311,7 @@ public class PayloadProtectionHookTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: EventStorePayloadProtectionMetadata.ProviderOpaque("parseError"));
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, opaqueSnapshot));
+        SetRawSnapshot(stateManager, opaqueSnapshot);
         var tracker = new InvocationCountingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), tracker);
 
@@ -341,8 +342,7 @@ public class PayloadProtectionHookTests {
                 KeyAlias: null,
                 ContentHint: null,
                 CompatibilityFlags: null));
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, invalidSnapshot));
+        SetRawSnapshot(stateManager, invalidSnapshot);
         var tracker = new InvocationCountingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), tracker);
 
@@ -371,8 +371,7 @@ public class PayloadProtectionHookTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: storedMetadata);
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
-            .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
+        SetRawSnapshot(stateManager, snapshot);
         var capturing = new CapturingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), capturing);
 

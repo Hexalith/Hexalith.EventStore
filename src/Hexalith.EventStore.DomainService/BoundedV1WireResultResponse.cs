@@ -55,6 +55,11 @@ internal sealed class BoundedV1WireResultResponse(DomainServiceWireResult result
         await output.RawAsync("],\"resultPayload\":"u8.ToArray()).ConfigureAwait(false);
         if (result.ResultPayload is null) { await output.RawAsync("null"u8.ToArray()).ConfigureAwait(false); }
         else { await output.StringAsync(result.ResultPayload).ConfigureAwait(false); }
+        if (result.PostCommandStateJson is not null)
+        {
+            await output.RawAsync(",\"postCommandStateJson\":"u8.ToArray()).ConfigureAwait(false);
+            await output.StringAsync(result.PostCommandStateJson).ConfigureAwait(false);
+        }
         await output.RawAsync("}"u8.ToArray()).ConfigureAwait(false);
         await output.FinishAsync().ConfigureAwait(false);
     }

@@ -48,6 +48,7 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
         bool rejection = false;
         bool eventsPresent = false;
         string? resultPayload = null;
+        string? postCommandStateJson = null;
         await NextAsync().ConfigureAwait(false);
         Require(JsonTokenType.StartObject);
         await ObjectAsync(async name =>
@@ -95,6 +96,26 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
                 if (kind == JsonTokenType.String) { resultPayload = DecodeRetained(); }
                 else if (kind != JsonTokenType.Null) { throw new JsonException("resultPayload must be string or null."); }
             }
+            else if (name.Equals("postCommandStateJson", StringComparison.OrdinalIgnoreCase))
+            {
+                // The optional capture has an independent finite scalar bound within the result gate.
+                if (!await _reader.ReadAsync(6L * 1024 * 1024 + 2).ConfigureAwait(false))
+                {
+                    throw new JsonException("Incomplete post-command state evidence.");
+                }
+                JsonTokenType kind = _reader.TokenType;
+                if (kind == JsonTokenType.String)
+                {
+                    string candidate = DecodeRetained();
+                    // Evidence is advisory. An excessive optional value must not reject
+                    // an otherwise admitted command result and its domain events.
+                    if (System.Text.Encoding.UTF8.GetByteCount(candidate) <= 1024 * 1024)
+                    {
+                        postCommandStateJson = candidate;
+                    }
+                }
+                else if (kind != JsonTokenType.Null) { await SkipAsync().ConfigureAwait(false); }
+            }
             else
             {
                 await NextAsync().ConfigureAwait(false);
@@ -106,7 +127,10 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
         _token.ThrowIfCancellationRequested();
         DomainServiceWireEvent[] events = _events.Select(static item => new DomainServiceWireEvent(item.TypeName!, item.Payload!, item.Format)
         { MetadataVersion = item.MetadataVersion, PayloadVersion = item.PayloadVersion }).ToArray();
-        var result = new DomainServiceWireResult(rejection, events, resultPayload);
+        var result = new DomainServiceWireResult(rejection, events, resultPayload)
+        {
+            PostCommandStateJson = postCommandStateJson,
+        };
         // Transfer the already charged decoded arrays; there is no second typed payload copy.
         _detached = true;
         return result;
