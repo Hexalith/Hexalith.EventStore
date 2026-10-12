@@ -58,6 +58,14 @@ public sealed class ProcessPublicationTests
         services.AddScoped<IProcessTranslator, AlternateProcessTranslator>();
 
         Should.Throw<InvalidOperationException>(() => services.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>());
+
+        ServiceCollection catalogType = new();
+        catalogType.AddScoped<IProcessSourceCatalog, AlternateProcessCatalog>();
+        Should.Throw<InvalidOperationException>(() => catalogType.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>());
+
+        ServiceCollection catalogInstance = new();
+        catalogInstance.AddSingleton<IProcessSourceCatalog>(new AlternateProcessCatalog());
+        Should.Throw<InvalidOperationException>(() => catalogInstance.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>());
     }
 
     /// <summary>Repeated registration of the same pair composes later option configuration.</summary>
@@ -74,8 +82,10 @@ public sealed class ProcessPublicationTests
     }
 
     /// <summary>The registered hosted runtime requires operator authorization and audit adapters at startup.</summary>
-    [Fact]
-    public async Task HostedRuntimeRejectsMissingDispositionAuditAdapter()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HostedRuntimeRejectsMissingDispositionAdapter(bool omitAuthorizer)
     {
         using IHost host = Host.CreateDefaultBuilder().ConfigureServices((_, services) =>
         {
@@ -83,11 +93,13 @@ public sealed class ProcessPublicationTests
             services.AddSingleton(Substitute.For<IEventStoreGatewayClient>());
             services.AddSingleton(Substitute.For<ITrustedEffectSubmitter>());
             services.AddSingleton(Substitute.For<IProcessDelegationProvider>());
-            services.AddSingleton(Substitute.For<IProcessDispositionAuthorizer>());
+            if (!omitAuthorizer) services.AddSingleton(Substitute.For<IProcessDispositionAuthorizer>());
+            if (omitAuthorizer) services.AddSingleton(Substitute.For<IProcessDispositionAuditSink>());
             services.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>();
         }).Build();
 
-        await Should.ThrowAsync<InvalidOperationException>(() => host.StartAsync());
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => host.StartAsync());
+        failure.ToString().ShouldContain(omitAuthorizer ? nameof(IProcessDispositionAuthorizer) : nameof(IProcessDispositionAuditSink));
     }
 
     /// <summary>Hosted startup and a recovery pass asynchronously dispose their scoped catalog adapters.</summary>
@@ -292,6 +304,38 @@ public sealed class ProcessPublicationTests
         (await sweeps.GetAsync()).PendingPublications.Values.ShouldContain(stuck);
     }
 
+    /// <summary>A failed catalog publication with a durable intent advances its keyset cursor to serve a later source.</summary>
+    [Fact]
+    public async Task RetainedFailedCatalogPublicationDoesNotPinLaterSource()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 2 };
+        ProcessSource failing = new("tenant-a", "sample", "failing");
+        ProcessSource later = new("tenant-b", "sample", "later");
+        RejectProcessMarkerStore rejecting = new(inner, ProcessStateKeys.CandidateMarker(failing), alwaysReject: true);
+        IProcessSourceCatalog catalog = Substitute.For<IProcessSourceCatalog>();
+        catalog.ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            ProcessSource[] remaining = new[] { failing, later }
+                .Where(source => call.ArgAt<string?>(0) is not { } after || string.CompareOrdinal(source.CatalogKey, after) > 0)
+                .Take(call.ArgAt<int>(1)).ToArray();
+            return Task.FromResult(new ProcessSourcePage(remaining, null));
+        });
+        (ProcessCheckpointStore checkpoints, ProcessReconciler reconciler) = Runtime(inner, options, rejecting, catalog);
+        ProcessSweepStore sweeps = new(inner, Options.Create(options), TimeProvider.System);
+        using (reconciler)
+        {
+            _ = await reconciler.RunPassAsync();
+            (await sweeps.GetAsync()).CatalogAfterKey.ShouldBe(failing.CatalogKey);
+            (await sweeps.GetAsync()).PendingPublications.Values.ShouldContain(failing);
+            for (int pass = 0; pass < 12 && (await checkpoints.GetAsync(later)).Checkpoint == 0; pass++)
+                _ = await reconciler.RunPassAsync();
+        }
+
+        (await checkpoints.GetAsync(later)).Checkpoint.ShouldBe(1);
+        (await sweeps.GetAsync()).PendingPublications.Values.ShouldContain(failing);
+    }
+
     /// <summary>One-source passes alternate repair and scanning until both repair queues finish.</summary>
     [Fact]
     public async Task OneSourcePassCompletesPublicationAndDispositionRepairs()
@@ -418,8 +462,10 @@ public sealed class ProcessPublicationTests
     [Theory]
     [InlineData("candidate-page")]
     [InlineData("candidate-marker")]
+    [InlineData("candidate-tail")]
     [InlineData("tenant-page")]
     [InlineData("tenant-marker")]
+    [InlineData("tenant-tail")]
     public async Task PublicationCrashAtEachWriteRecoversAfterCatalogRemoval(string phase)
     {
         InMemoryReadModelStore inner = new();
@@ -428,12 +474,15 @@ public sealed class ProcessPublicationTests
         {
             "candidate-page" => value is ProcessIndexPage<ProcessSource>,
             "candidate-marker" => key == ProcessStateKeys.CandidateMarker(Source),
+            "candidate-tail" => key == ProcessStateKeys.CandidatesTail(Source.Tenant) && value is ProcessIndexTail,
             "tenant-page" => value is ProcessIndexPage<string>,
             "tenant-marker" => key == ProcessStateKeys.TenantMarker(Source.Tenant),
+            "tenant-tail" => key == ProcessStateKeys.TenantsTail && value is ProcessIndexTail,
             _ => false,
         });
         ProcessCheckpointStore failed = new(crashing, Options.Create(options), TimeProvider.System);
         await Should.ThrowAsync<InvalidOperationException>(() => failed.EnsureCandidateAsync(Source));
+        crashing.Fired.ShouldBeTrue();
         ProcessSweepState pending = await new ProcessSweepStore(inner, Options.Create(options), TimeProvider.System).GetAsync();
         pending.PendingPublications.Values.ShouldContain(Source);
 
@@ -603,9 +652,16 @@ public sealed class ProcessPublicationTests
             && value is ProcessIndexPage<ProcessSource> { NextPage: 1 });
         ProcessCheckpointStore failed = new(crashing, Options.Create(options), TimeProvider.System);
         await Should.ThrowAsync<InvalidOperationException>(() => failed.EnsureCandidateAsync(Source));
-        await normal.EnsureCandidateAsync(Source);
+        crashing.Fired.ShouldBeTrue();
+        (ProcessCheckpointStore repaired, ProcessReconciler reconciler) = Runtime(inner, options);
+        using (reconciler)
+        {
+            for (int pass = 0; pass < 20 && (await repaired.GetAsync(Source)).Checkpoint == 0; pass++)
+                _ = await reconciler.RunPassAsync();
+        }
 
-        ProcessIndexPage<ProcessSource> second = (await normal.ReadCandidatePageAsync(Source.Tenant, 1)).ShouldNotBeNull();
+        (await repaired.GetAsync(Source)).Checkpoint.ShouldBe(1);
+        ProcessIndexPage<ProcessSource> second = (await repaired.ReadCandidatePageAsync(Source.Tenant, 1)).ShouldNotBeNull();
         second.Entries.Count(item => item == Source).ShouldBe(1);
         (await new ProcessSweepStore(inner, Options.Create(options), TimeProvider.System).GetAsync()).PendingPublications.ShouldBeEmpty();
     }
@@ -661,7 +717,7 @@ public sealed class ProcessPublicationTests
 
         await measured.EnsureCandidateAsync(Source);
 
-        counted.CandidatePageReads.ShouldBeLessThan(5);
+        counted.CandidatePageReads.ShouldBe(2);
         (await measured.ContainsCandidateAsync(Source)).ShouldBeTrue();
     }
 
@@ -688,7 +744,7 @@ public sealed class ProcessPublicationTests
 
         await measured.EnsureCandidateAsync(new ProcessSource("tenant-new", "sample", "source"));
 
-        counted.TenantPageReads.ShouldBeLessThan(5);
+        counted.TenantPageReads.ShouldBe(2);
         (await measured.ReadTenantPageAsync(2)).ShouldNotBeNull().Entries.ShouldContain("tenant-new");
     }
 
@@ -1056,6 +1112,36 @@ public sealed class ProcessPublicationTests
         }
     }
 
+    /// <summary>Publication invalidates completed coverage before its first registry page becomes visible.</summary>
+    [Fact]
+    public async Task CandidatePublicationInvalidatesReadinessBeforeFirstIndexWrite()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new();
+        (_, ProcessReconciler reconciler) = Runtime(inner, options);
+        using (reconciler)
+            _ = await reconciler.RunPassAsync();
+        ProcessSweepStore sweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessReadinessHealthCheck health = new(sweeps, Options.Create(options), TimeProvider.System);
+        (await health.CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Healthy);
+        bool checkedAtWrite = false;
+        FaultInjectingProcessStore crashing = new(inner, (_, value) => value is ProcessIndexPage<ProcessSource>,
+            (_, value) =>
+            {
+                if (value is not ProcessIndexPage<ProcessSource>) return;
+                checkedAtWrite = true;
+                inner.Snapshot<ProcessIndexPage<ProcessSource>>(options.StateStoreName, ProcessStateKeys.Candidates(Source.Tenant, 0)).ShouldBeNull();
+                health.CheckHealthAsync(new HealthCheckContext()).GetAwaiter().GetResult().Status.ShouldBe(HealthStatus.Degraded);
+            });
+        ProcessCheckpointStore checkpoints = new(crashing, Options.Create(options), TimeProvider.System);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => checkpoints.EnsureCandidateAsync(Source));
+
+        crashing.Fired.ShouldBeTrue();
+        checkedAtWrite.ShouldBeTrue();
+        (await sweeps.GetAsync()).Complete.ShouldBeFalse();
+    }
+
     /// <summary>The local readiness check sees hosted-service stop without waiting for the stored age limit.</summary>
     [Fact]
     public async Task StoppedReconcilerImmediatelyDegradesReadiness()
@@ -1110,7 +1196,8 @@ public sealed class ProcessPublicationTests
         HealthReport stopped = await checks.CheckHealthAsync(static registration => registration.Name == "eventstore-processes-unresolved");
         stopped.Entries["eventstore-processes-unresolved"].Status.ShouldBe(HealthStatus.Degraded);
         ProcessSweepState covered = await sweeps.GetAsync();
-        store.SeedRaw("statestore", ProcessStateKeys.Sweep, covered with
+        string stateStoreName = host.Services.GetRequiredService<IOptions<EventStoreProcessOptions>>().Value.StateStoreName;
+        store.SeedRaw(stateStoreName, ProcessStateKeys.Sweep, covered with
         {
             Complete = false,
             Unresolved = 1,
@@ -1243,6 +1330,7 @@ public sealed class ProcessPublicationTests
             new ProcessSweepStore(store, Options.Create(options), TimeProvider.System), checkpoints, Options.Create(options), TimeProvider.System);
 
         await reconciler.StartAsync(CancellationToken.None);
+        reconciler.IsRunning.ShouldBeFalse();
         await reconciler.StopAsync(CancellationToken.None);
 
         await catalog.DidNotReceive().ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());

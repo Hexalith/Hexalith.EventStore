@@ -27,15 +27,19 @@ public sealed class ProcessRunnerEdgeTests
 
     /// <summary>Stable gateway corruption is invalid source evidence, even without a returned page.</summary>
     [Theory]
-    [InlineData(StreamReplayReasonCodes.MissingEvent)]
-    [InlineData(StreamReplayReasonCodes.CorruptEvent)]
-    public async Task GatewayCorruptionQuarantinesWithUnknownPosition(string reason)
+    [InlineData(StreamReplayReasonCodes.MissingEvent, false)]
+    [InlineData(StreamReplayReasonCodes.CorruptEvent, false)]
+    [InlineData(StreamReplayReasonCodes.MissingEvent, true)]
+    [InlineData(StreamReplayReasonCodes.CorruptEvent, true)]
+    public async Task GatewayCorruptionQuarantinesWithUnknownPosition(string reason, bool codeOnly)
     {
         InMemoryReadModelStore store = new();
         EventStoreProcessOptions options = new();
         IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
         gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<StreamReadPage>(new EventStoreGatewayException(409, "synthetic corruption", reasonCode: reason)));
+            .Returns(Task.FromException<StreamReadPage>(codeOnly
+                ? new EventStoreGatewayException(409, "synthetic corruption", code: reason)
+                : new EventStoreGatewayException(409, "synthetic corruption", reasonCode: reason)));
 
         ProcessRunResult result = await Runner(store, options, gateway, Translator([]), Delegation(), Submitter()).RunAsync(Source);
 
@@ -390,15 +394,102 @@ public sealed class ProcessRunnerEdgeTests
     {
         InMemoryReadModelStore store = new();
         EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromMilliseconds(100) };
+        TaskCompletionSource<IReadOnlyList<ProcessEffect>> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IProcessTranslator translator = Substitute.For<IProcessTranslator>();
         translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
-            .Returns(_ => new ValueTask<IReadOnlyList<ProcessEffect>>(
-                new TaskCompletionSource<IReadOnlyList<ProcessEffect>>(TaskCreationOptions.RunContinuationsAsynchronously).Task));
+            .Returns(_ => new ValueTask<IReadOnlyList<ProcessEffect>>(held.Task));
 
-        ProcessRunResult result = await Runner(store, options, Gateway(OneEventPage()), translator, Delegation(), Submitter()).RunAsync(Source);
-        result.Status.ShouldBe(ProcessSourceStatus.Retrying);
-        result.Checkpoint.ShouldBe(0);
-        (await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source)).ReasonCode.ShouldBe("translation-timeout");
+        try
+        {
+            ProcessRunResult result = await Runner(store, options, Gateway(OneEventPage()), translator, Delegation(), Submitter()).RunAsync(Source);
+            result.Status.ShouldBe(ProcessSourceStatus.Retrying);
+            result.Checkpoint.ShouldBe(0);
+            (await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source)).ReasonCode.ShouldBe("translation-timeout");
+        }
+        finally
+        {
+            held.TrySetResult([]);
+        }
+    }
+
+    /// <summary>Caller cancellation during pure translation or target submission does not consume retry budget.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelledRunDoesNotRecordOperationalFailure(bool duringSubmission)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(5) };
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        await checkpoints.EnsureCandidateAsync(Source);
+        ProcessSourceState initial = new(1, Source, 0, ProcessSourceStatus.Incomplete, 0, null, null,
+            null, null, 0, 0, DateTimeOffset.UtcNow);
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(Source), initial);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(call => duringSubmission
+                ? new ValueTask<IReadOnlyList<ProcessEffect>>([Effect([1])])
+                : new ValueTask<IReadOnlyList<ProcessEffect>>(WaitForTranslationCancellationAsync(call.Arg<CancellationToken>(), entered)));
+        ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
+        submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
+            .Returns(call => WaitForSubmissionCancellationAsync(call.Arg<CancellationToken>(), entered));
+        CheckpointedProcessRunner runner = new(Gateway(OneEventPage()), translator, Delegation(), submitter,
+            checkpoints, Options.Create(options));
+        using CancellationTokenSource cancellation = new();
+
+        Task<ProcessRunResult> running = runner.RunAsync(Source, cancellation.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        cancellation.Cancel();
+        await Should.ThrowAsync<OperationCanceledException>(() => running);
+
+        ProcessSourceState after = await checkpoints.GetAsync(Source);
+        after.Checkpoint.ShouldBe(initial.Checkpoint);
+        after.Status.ShouldBe(initial.Status);
+        after.Attempts.ShouldBe(initial.Attempts);
+        after.ReasonCode.ShouldBe(initial.ReasonCode);
+        after.Owner.ShouldBeNull();
+        after.LeaseUntil.ShouldBeNull();
+        ProcessSourceState reacquired = (await checkpoints.AcquireAsync(Source)).ShouldNotBeNull();
+        reacquired.Fence.ShouldBeGreaterThan(after.Fence);
+        await checkpoints.ReleaseAsync(reacquired);
+        (await Runner(store, options, Gateway(OneEventPage()), Translator([]), Delegation(), Submitter()).RunAsync(Source)).Checkpoint.ShouldBe(1);
+    }
+
+    /// <summary>A committed effect survives caller cancellation and replays under its original identity.</summary>
+    [Fact]
+    public async Task CancelledSubmissionAfterCommitReplaysOneDurableEffect()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(5) };
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        TaskCompletionSource committed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        HashSet<string> durable = [];
+        List<string> submitted = [];
+        ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
+        submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                string id = EffectIdentityCodec.ComputeEffectId(call.Arg<TrustedEffectSubmission>().Identity);
+                submitted.Add(id);
+                bool replayed = !durable.Add(id);
+                if (!replayed) return WaitForSubmissionCancellationAsync(call.Arg<CancellationToken>(), committed);
+                return Task.FromResult(new TrustedEffectResult(id, TrustedEffectDisposition.Success, true, null));
+            });
+        CheckpointedProcessRunner runner = new(Gateway(OneEventPage()), Translator([Effect([1])]), Delegation(), submitter,
+            checkpoints, Options.Create(options));
+        using CancellationTokenSource cancellation = new();
+
+        Task<ProcessRunResult> first = runner.RunAsync(Source, cancellation.Token);
+        await committed.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        cancellation.Cancel();
+        await Should.ThrowAsync<OperationCanceledException>(() => first);
+        (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(0);
+
+        (await runner.RunAsync(Source)).Checkpoint.ShouldBe(1);
+        submitted.Count.ShouldBe(2);
+        submitted[1].ShouldBe(submitted[0]);
+        durable.Count.ShouldBe(1);
     }
 
     /// <summary>A delegation provider conflict is retryable and must never be labeled a target conflict.</summary>
@@ -579,14 +670,15 @@ public sealed class ProcessRunnerEdgeTests
         EventStoreProcessOptions options = new()
         {
             OperationTimeout = TimeSpan.FromMilliseconds(100),
-            LeaseDuration = TimeSpan.FromMilliseconds(150),
+            LeaseDuration = TimeSpan.FromMilliseconds(300),
         };
+        options.Validate().ShouldBeEmpty();
         ManualProcessTimeProvider clock = new(DateTimeOffset.UtcNow);
         ProcessCheckpointStore checkpoints = new(store, Options.Create(options), clock);
         IProcessDelegationProvider delegation = Substitute.For<IProcessDelegationProvider>();
         delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
         {
-            clock.Advance(TimeSpan.FromMilliseconds(120));
+            clock.Advance(TimeSpan.FromMilliseconds(240));
             return Task.FromResult(new TrustedEffectContext("synthetic", "process", "cause", "token"));
         });
         ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
@@ -595,7 +687,7 @@ public sealed class ProcessRunnerEdgeTests
             ProcessSourceState state = store.Snapshot<ProcessSourceState>(options.StateStoreName, ProcessStateKeys.Source(Source)).ShouldNotBeNull();
             (state.LeaseUntil.ShouldNotBeNull() - clock.GetUtcNow()).ShouldBeGreaterThan(TimeSpan.FromMilliseconds(100));
             TrustedEffectSubmission submission = call.Arg<TrustedEffectSubmission>();
-            clock.Advance(TimeSpan.FromMilliseconds(140));
+            clock.Advance(TimeSpan.FromMilliseconds(270));
             return Task.FromResult(new TrustedEffectResult(EffectIdentityCodec.ComputeEffectId(submission.Identity), TrustedEffectDisposition.Success, false, null));
         });
         CheckpointedProcessRunner runner = new(Gateway(OneEventPage()), Translator([Effect([1])]), delegation, submitter, checkpoints, Options.Create(options));
@@ -656,7 +748,7 @@ public sealed class ProcessRunnerEdgeTests
     public async Task MultiEnvelopeTranslationMakesDurableProgressAcrossOperationDeadlines()
     {
         InMemoryReadModelStore store = new();
-        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromMilliseconds(180), PageSize = 2 };
+        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromMilliseconds(500), PageSize = 2 };
         IProcessTranslator translator = Substitute.For<IProcessTranslator>();
         translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyList<ProcessEffect>>(DelayedEmptyAsync(call.Arg<CancellationToken>())));
@@ -675,8 +767,8 @@ public sealed class ProcessRunnerEdgeTests
         InMemoryReadModelStore store = new();
         EventStoreProcessOptions options = new()
         {
-            OperationTimeout = TimeSpan.FromMilliseconds(200),
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(1600),
+            OperationTimeout = TimeSpan.FromMilliseconds(500),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(4200),
             MaxEffectsPerEnvelope = 1,
             MaxEnvelopesPerRun = 20,
             PageSize = 20,
@@ -757,8 +849,22 @@ public sealed class ProcessRunnerEdgeTests
 
     private static async Task<IReadOnlyList<ProcessEffect>> DelayedEmptyAsync(CancellationToken cancellationToken)
     {
-        await Task.Delay(110, cancellationToken);
+        await Task.Delay(300, cancellationToken);
         return [];
+    }
+
+    private static async Task<IReadOnlyList<ProcessEffect>> WaitForTranslationCancellationAsync(CancellationToken cancellationToken, TaskCompletionSource entered)
+    {
+        entered.TrySetResult();
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        return [];
+    }
+
+    private static async Task<TrustedEffectResult> WaitForSubmissionCancellationAsync(CancellationToken cancellationToken, TaskCompletionSource entered)
+    {
+        entered.TrySetResult();
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        throw new InvalidOperationException("Cancellation should complete this synthetic submission.");
     }
 
     private static StreamReadPage OneEventPage() => Page(1);

@@ -4,9 +4,12 @@ using Hexalith.EventStore.Testing.Fakes;
 namespace Hexalith.EventStore.DomainService.Tests.Processes;
 
 /// <summary>Simulates a crash after one successful durable process-control write.</summary>
-internal sealed class FaultInjectingProcessStore(InMemoryReadModelStore inner, Func<string, object, bool> fault) : IReadModelStore
+internal sealed class FaultInjectingProcessStore(InMemoryReadModelStore inner, Func<string, object, bool> fault, Action<string, object>? beforeWrite = null) : IReadModelStore
 {
     private bool _armed = true;
+
+    /// <summary>Whether the requested durable-write crash actually fired.</summary>
+    public bool Fired { get; private set; }
 
     /// <summary>Gets the number of candidate-page reads, excluding tail hints.</summary>
     public int CandidatePageReads { get; private set; }
@@ -29,10 +32,12 @@ internal sealed class FaultInjectingProcessStore(InMemoryReadModelStore inner, F
     /// <inheritdoc/>
     public async Task<bool> TrySaveAsync<T>(string storeName, string key, T value, string etag, CancellationToken cancellationToken = default) where T : class
     {
+        beforeWrite?.Invoke(key, value);
         bool saved = await inner.TrySaveAsync(storeName, key, value, etag, cancellationToken).ConfigureAwait(false);
         if (saved && _armed && fault(key, value))
         {
             _armed = false;
+            Fired = true;
             throw new InvalidOperationException("Synthetic crash after durable write.");
         }
 

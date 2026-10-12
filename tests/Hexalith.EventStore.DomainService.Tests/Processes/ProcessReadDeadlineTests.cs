@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Claims;
 
 using Hexalith.EventStore.Client.Effects;
 using Hexalith.EventStore.Client.Gateway;
@@ -86,6 +87,43 @@ public sealed class ProcessReadDeadlineTests
         finally
         {
             held.SetResult(1);
+            try { await Task.WhenAll(blocked); }
+            catch (TimeoutException) { }
+        }
+    }
+
+    /// <summary>Operator authorization and audit remain available when all pure-adapter slots are exhausted.</summary>
+    [Fact]
+    public async Task AdapterSlotExhaustionDoesNotBlockAuditedDisposition()
+    {
+        TaskCompletionSource<int> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<int>[] blocked = Enumerable.Range(0, 16)
+            .Select(_ => ProcessReadDeadline.RunAsync(_ => held.Task, TimeSpan.FromMilliseconds(100), CancellationToken.None))
+            .ToArray();
+        try
+        {
+            await Task.Delay(150);
+            InMemoryReadModelStore store = new();
+            EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(1) };
+            ProcessSource source = new("tenant-a", "sample", "operator-slots");
+            ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+            await checkpoints.EnsureCandidateAsync(source);
+            ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+            IProcessDispositionAuthorizer authorizer = Substitute.For<IProcessDispositionAuthorizer>();
+            authorizer.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), source, Arg.Any<CancellationToken>()).Returns(true);
+            IProcessDispositionAuditSink audit = Substitute.For<IProcessDispositionAuditSink>();
+            ProcessDispositionService disposition = new(authorizer, audit, checkpoints, sweeps, Options.Create(options));
+            ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "operator")], "synthetic"));
+
+            (await disposition.RevalidateAsync(principal, source, "retry")).ShouldBeTrue();
+
+            await authorizer.Received(1).AuthorizeAsync(principal, source, Arg.Any<CancellationToken>());
+            await audit.Received(1).RecordAsync(principal, source, "retry", Arg.Any<CancellationToken>());
+            (await checkpoints.GetAsync(source)).Status.ShouldBe(ProcessSourceStatus.Revalidating);
+        }
+        finally
+        {
+            held.TrySetResult(1);
             try { await Task.WhenAll(blocked); }
             catch (TimeoutException) { }
         }

@@ -249,6 +249,8 @@ public sealed class CheckpointedProcessRunnerTests
         submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
+                if (receipts.Count == 1)
+                    checkpoints.GetAsync(Source).GetAwaiter().GetResult().Checkpoint.ShouldBe(0);
                 TrustedEffectDisposition disposition = receipts.Count == 0 ? TrustedEffectDisposition.Rejection : TrustedEffectDisposition.NoOp;
                 receipts.Add(disposition);
                 return Task.FromResult(new TrustedEffectResult(EffectIdentityCodec.ComputeEffectId(call.Arg<TrustedEffectSubmission>().Identity), disposition, false, null));
@@ -258,6 +260,50 @@ public sealed class CheckpointedProcessRunnerTests
         (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Active);
         receipts.ShouldBe([TrustedEffectDisposition.Rejection, TrustedEffectDisposition.NoOp]);
         (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(1);
+    }
+
+    /// <summary>A terminal first receipt does not advance the envelope when the second effect is uncertain.</summary>
+    [Fact]
+    public async Task SecondEffectFailureRetainsCheckpointAndReplaysFirstEffectIdentity()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(Page(0, true)));
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([
+                new(EffectKindCatalog.Registry, "sample", "target-a", 0, "DoA", [1]),
+                new(EffectKindCatalog.Registry, "sample", "target-b", 1, "DoB", [2]),
+            ]));
+        List<string> firstEffectIds = [];
+        List<string> secondEffectIds = [];
+        bool failSecond = true;
+        ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
+        submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                TrustedEffectSubmission submission = call.Arg<TrustedEffectSubmission>();
+                string id = EffectIdentityCodec.ComputeEffectId(submission.Identity);
+                if (submission.Identity.Ordinal == 0) firstEffectIds.Add(id);
+                if (submission.Identity.Ordinal == 1) secondEffectIds.Add(id);
+                if (submission.Identity.Ordinal == 1 && failSecond)
+                {
+                    failSecond = false;
+                    throw new HttpRequestException("Synthetic ambiguous target result.");
+                }
+                return Task.FromResult(new TrustedEffectResult(id, TrustedEffectDisposition.NoOp, firstEffectIds.Count > 1, null));
+            });
+        CheckpointedProcessRunner runner = new(gateway, translator, Delegation(), submitter, checkpoints, Options.Create(options));
+
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Retrying);
+        (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(0);
+        (await runner.RunAsync(Source)).Checkpoint.ShouldBe(1);
+        firstEffectIds.Count.ShouldBe(2);
+        firstEffectIds[1].ShouldBe(firstEffectIds[0]);
+        secondEffectIds.Count.ShouldBe(2);
+        secondEffectIds[1].ShouldBe(secondEffectIds[0]);
     }
 
     /// <summary>Source-read outages park after the hot budget without inventing a failed event position.</summary>
@@ -359,6 +405,7 @@ public sealed class CheckpointedProcessRunnerTests
     [Theory]
     [InlineData("foreign")]
     [InlineData("reordered")]
+    [InlineData("gap")]
     [InlineData("unknown")]
     public async Task InvalidEvidencePersistsQuarantineWithoutSubmitting(string failure)
     {
@@ -371,6 +418,9 @@ public sealed class CheckpointedProcessRunnerTests
             StreamReadEvent[] events = failure == "reordered"
                 ? [new StreamReadEvent(2, "SyntheticEvent", [2], "json", 1, "message-2", null, null, DateTimeOffset.UtcNow, null),
                    new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null)]
+                : failure == "gap"
+                ? [new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null),
+                   new StreamReadEvent(3, "SyntheticEvent", [3], "json", 1, "message-3", null, null, DateTimeOffset.UtcNow, null)]
                 : [new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null)];
             return Task.FromResult(new StreamReadPage(failure == "foreign" ? "other-tenant" : Source.Tenant,
                 Source.Domain, Source.Aggregate, events,
@@ -390,6 +440,75 @@ public sealed class CheckpointedProcessRunnerTests
         state.ReasonCode.ShouldBe("invalid-evidence");
         (await checkpoints.ContainsCandidateAsync(Source)).ShouldBeTrue();
         await submitter.DidNotReceive().SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Every invalid translator result is quarantined before the first target submission.</summary>
+    [Theory]
+    [InlineData("too-many")]
+    [InlineData("duplicate")]
+    [InlineData("null-list")]
+    [InlineData("null-effect")]
+    [InlineData("null-payload")]
+    [InlineData("blank-type")]
+    public async Task InvalidTranslatorOutputQuarantinesBeforeSubmission(string failure)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { MaxEffectsPerEnvelope = 2 };
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(Page(0, true)));
+        ProcessEffect valid = new(EffectKindCatalog.Registry, "sample", "target", 0, "Do", [1]);
+        IReadOnlyList<ProcessEffect>? effects = failure switch
+        {
+            "too-many" => [valid, valid with { Ordinal = 1 }, valid with { Ordinal = 2 }],
+            "duplicate" => [valid, valid],
+            "null-list" => null,
+            "null-effect" => [valid, null!],
+            "null-payload" => [valid with { CommandPayload = null! }],
+            "blank-type" => [valid with { CommandType = " " }],
+            _ => throw new InvalidOperationException("Unknown fixture."),
+        };
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>(effects!));
+        ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
+        CheckpointedProcessRunner runner = new(gateway, translator, Delegation(), submitter, checkpoints, Options.Create(options));
+
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Quarantined);
+        ProcessSourceState state = await checkpoints.GetAsync(Source);
+        state.Checkpoint.ShouldBe(0);
+        state.FailureSequence.ShouldBe(1);
+        state.ReasonCode.ShouldBe("invalid-evidence");
+        await submitter.DidNotReceive().SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An expired foreign lease is taken over with a higher fence, and its prior owner cannot write.</summary>
+    [Fact]
+    public async Task ExpiredForeignLeaseAllowsFencedCrashTakeover()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        ManualProcessTimeProvider clock = new(DateTimeOffset.UtcNow);
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), clock);
+        await checkpoints.EnsureCandidateAsync(Source);
+        ProcessSourceState stale = new(1, Source, 0, ProcessSourceStatus.Active, 0, null, null,
+            "crashed-owner", clock.GetUtcNow() + options.LeaseDuration, 7, 0, clock.GetUtcNow());
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(Source), stale);
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(Page(0, true)));
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([]));
+        CheckpointedProcessRunner runner = new(gateway, translator, Delegation(), Substitute.For<ITrustedEffectSubmitter>(),
+            checkpoints, Options.Create(options), clock);
+
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Incomplete);
+        (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(0);
+        _ = gateway.DidNotReceive().ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>());
+        clock.Advance(options.LeaseDuration + TimeSpan.FromTicks(1));
+        (await runner.RunAsync(Source)).Checkpoint.ShouldBe(1);
+        (await checkpoints.GetAsync(Source)).Fence.ShouldBeGreaterThan(stale.Fence);
+        await Should.ThrowAsync<InvalidOperationException>(() => checkpoints.UpdateOwnedAsync(stale, state => state with { Attempts = 1 }));
     }
 
     /// <summary>An old envelope after a durable checkpoint cannot regress or submit an effect.</summary>
@@ -419,7 +538,7 @@ public sealed class CheckpointedProcessRunnerTests
     public async Task ConcurrentRunnerCannotReadOrAdvanceOwnedSource()
     {
         InMemoryReadModelStore store = new();
-        EventStoreProcessOptions options = new();
+        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(5) };
         ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -436,11 +555,17 @@ public sealed class CheckpointedProcessRunnerTests
         CheckpointedProcessRunner runner = new(gateway, translator, Delegation(), Substitute.For<ITrustedEffectSubmitter>(), checkpoints, Options.Create(options));
 
         Task<ProcessRunResult> first = runner.RunAsync(Source);
-        await entered.Task;
-        ProcessRunResult contender = await runner.RunAsync(Source);
-        contender.Status.ShouldBe(ProcessSourceStatus.Incomplete);
-        contender.Checkpoint.ShouldBe(0);
-        release.TrySetResult();
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            ProcessRunResult contender = await runner.RunAsync(Source);
+            contender.Status.ShouldBe(ProcessSourceStatus.Incomplete);
+            contender.Checkpoint.ShouldBe(0);
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
         (await first).Checkpoint.ShouldBe(1);
         (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(1);
         _ = gateway.Received(1).ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>());

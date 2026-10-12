@@ -272,6 +272,7 @@ public sealed class ProcessRecoveryTests
         (await sweeps.GetAsync()).Complete.ShouldBeTrue();
         (await checkpoints.GetAsync(sources[^1])).Checkpoint.ShouldBe(1);
         _ = await catalog.Received(2).ListAsync(Arg.Any<string?>(), 3, Arg.Any<CancellationToken>());
+        catalog.ReceivedCalls().Count().ShouldBe(2);
     }
 
     /// <summary>Validated capacity includes operation latency, a complete envelope, and repair work.</summary>
@@ -533,8 +534,11 @@ public sealed class ProcessRecoveryTests
 
         // Simulate a crash exactly after durable invalidation and before source mutation.
         _ = await sweeps.PrepareDispositionAsync(source);
-        (await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
-            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+        HealthCheckResult result = await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
+            .CheckHealthAsync(new HealthCheckContext());
+        result.Status.ShouldBe(HealthStatus.Degraded);
+        result.Data["complete"].ShouldBe(false);
+        result.Data["reasonCounts"].ShouldBeOfType<Dictionary<string, int>>().ShouldBeEmpty();
         using (reconciler)
         {
             for (int pass = 0; pass < 15; pass++)
@@ -610,8 +614,11 @@ public sealed class ProcessRecoveryTests
                 new Dictionary<string, ProcessPendingDisposition>(), null, null, 0));
         ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
 
-        (await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
-            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+        HealthCheckResult result = await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
+            .CheckHealthAsync(new HealthCheckContext());
+        result.Status.ShouldBe(HealthStatus.Degraded);
+        result.Data["complete"].ShouldBe(true);
+        result.Data["reasonCounts"].ShouldBeOfType<Dictionary<string, int>>().ShouldBeEmpty();
     }
 
     /// <summary>Slow operator adapters time out before disposition or source mutation.</summary>
@@ -679,19 +686,27 @@ public sealed class ProcessRecoveryTests
         InMemoryReadModelStore store = new();
         EventStoreProcessOptions options = new() { SourcesPerPass = 2, OperationTimeout = TimeSpan.FromMilliseconds(100) };
         ProcessSource source = new("tenant-a", "sample", "retained");
+        TaskCompletionSource<ProcessSourcePage> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IProcessSourceCatalog catalog = Substitute.For<IProcessSourceCatalog>();
-        var never = new TaskCompletionSource<ProcessSourcePage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        catalog.ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(never.Task);
+        catalog.ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(_ => held.Task);
         (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, catalog);
         await checkpoints.EnsureCandidateAsync(source);
-        using (reconciler)
+        try
         {
-            for (int pass = 0; pass < 12 && (await checkpoints.GetAsync(source)).Checkpoint == 0; pass++)
-                _ = await reconciler.RunPassAsync();
-        }
+            using (reconciler)
+            {
+                for (int pass = 0; pass < 12 && (await checkpoints.GetAsync(source)).Checkpoint == 0; pass++)
+                    _ = await reconciler.RunPassAsync();
+            }
 
-        (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(1);
-        (await sweeps.GetAsync()).Reasons.ShouldContainKey("catalog-unavailable");
+            (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(1);
+            (await sweeps.GetAsync()).Reasons.ShouldContainKey("catalog-unavailable");
+        }
+        finally
+        {
+            held.TrySetResult(new ProcessSourcePage([], null));
+        }
     }
 
     /// <summary>A parked source remains discoverable and readiness-degraded over separate complete coverage cycles.</summary>
@@ -727,6 +742,64 @@ public sealed class ProcessRecoveryTests
         ProcessSourceState state = await checkpoints.GetAsync(source);
         state.Status.ShouldBe(ProcessSourceStatus.Parked);
         state.Attempts.ShouldBe(3);
+    }
+
+    /// <summary>Audited disposition clears both parked and quarantined evidence before replaying the same source.</summary>
+    [Theory]
+    [InlineData(ProcessSourceStatus.Parked, false)]
+    [InlineData(ProcessSourceStatus.Parked, true)]
+    [InlineData(ProcessSourceStatus.Quarantined, false)]
+    [InlineData(ProcessSourceStatus.Quarantined, true)]
+    public async Task AuditedDispositionRevalidatesUnresolvedSourceAndReplaysEvidence(ProcessSourceStatus initialStatus, bool invalidEvidence)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 4 };
+        ProcessSource source = new("tenant-a", "sample", "disposition-replay");
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        await checkpoints.EnsureCandidateAsync(source);
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(source),
+            new ProcessSourceState(1, source, 0, initialStatus, 3, 1, "invalid-evidence", null, null, 4, 0, DateTimeOffset.UtcNow));
+        ProcessSourceState before = await checkpoints.GetAsync(source);
+        IProcessDispositionAuthorizer authorizer = Substitute.For<IProcessDispositionAuthorizer>();
+        authorizer.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), source, Arg.Any<CancellationToken>()).Returns(true);
+        IProcessDispositionAuditSink audit = Substitute.For<IProcessDispositionAuditSink>();
+        ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        ProcessDispositionService disposition = new(authorizer, audit, checkpoints, sweeps);
+        ClaimsPrincipal principal = new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "operator")], "synthetic"));
+
+        (await disposition.RevalidateAsync(principal, source, "retry")).ShouldBeTrue();
+        await audit.Received(1).RecordAsync(principal, source, "retry", Arg.Any<CancellationToken>());
+        ProcessSourceState prepared = await checkpoints.GetAsync(source);
+        prepared.Status.ShouldBe(ProcessSourceStatus.Revalidating);
+        prepared.Attempts.ShouldBe(0);
+        prepared.ReasonCode.ShouldBeNull();
+        prepared.FailureSequence.ShouldBeNull();
+        prepared.Fence.ShouldBeGreaterThan(before.Fence);
+
+        IProcessTranslator invalidTranslator = Substitute.For<IProcessTranslator>();
+        invalidTranslator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(_ => invalidEvidence
+                ? ValueTask.FromException<IReadOnlyList<ProcessEffect>>(new InvalidOperationException("Unsupported synthetic event."))
+                : new ValueTask<IReadOnlyList<ProcessEffect>>([]));
+        (_, _, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]), request =>
+            new StreamReadPage(request.Tenant, request.Domain, request.AggregateId,
+                [new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null)],
+                new StreamReadMetadata(request.FromSequence, null, 1, 1, 1, false, null)), invalidTranslator);
+        using (reconciler)
+        {
+            for (int pass = 0; pass < 12; pass++)
+            {
+                _ = await reconciler.RunPassAsync();
+                ProcessSourceState current = await checkpoints.GetAsync(source);
+                if (current.Status == ProcessSourceStatus.Quarantined || current.Checkpoint == 1) break;
+            }
+        }
+
+        ProcessSourceState replayed = await checkpoints.GetAsync(source);
+        replayed.Status.ShouldBe(invalidEvidence ? ProcessSourceStatus.Quarantined : ProcessSourceStatus.Active);
+        replayed.ReasonCode.ShouldBe(invalidEvidence ? "invalid-evidence" : null);
+        replayed.FailureSequence.ShouldBe(invalidEvidence ? 1 : null);
+        replayed.Checkpoint.ShouldBe(invalidEvidence ? 0 : 1);
     }
 
     /// <summary>Wrong-tenant denial and failed audit leave both source and sweep records untouched.</summary>
@@ -771,7 +844,18 @@ public sealed class ProcessRecoveryTests
         ProcessSource source = new("tenant-a", "sample", "unpublished");
         ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
         ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
-        if (pendingPublication) (await sweeps.PreparePublicationAsync(source)).ShouldBeTrue();
+        if (pendingPublication)
+        {
+            FaultInjectingProcessStore crashing = new(store, (key, value) =>
+                key == ProcessStateKeys.TenantMarker(source.Tenant) && value is ProcessTenantMarker);
+            await Should.ThrowAsync<InvalidOperationException>(() =>
+                new ProcessCheckpointStore(crashing, Options.Create(options), TimeProvider.System).EnsureCandidateAsync(source));
+            crashing.Fired.ShouldBeTrue();
+            (await store.GetAsync<ProcessCandidateMarker>(options.StateStoreName, ProcessStateKeys.CandidateMarker(source))).Value.ShouldNotBeNull();
+            (await store.GetAsync<ProcessTenantMarker>(options.StateStoreName, ProcessStateKeys.TenantMarker(source.Tenant))).Value.ShouldNotBeNull();
+            (await sweeps.GetAsync()).PendingPublications.Values.ShouldContain(source);
+            (await checkpoints.ContainsCandidateAsync(source)).ShouldBeFalse();
+        }
         IProcessDispositionAuthorizer authorizer = Substitute.For<IProcessDispositionAuthorizer>();
         authorizer.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), source, Arg.Any<CancellationToken>()).Returns(true);
         IProcessDispositionAuditSink audit = Substitute.For<IProcessDispositionAuditSink>();
@@ -818,6 +902,32 @@ public sealed class ProcessRecoveryTests
 
         (await checkpoints.GetAsync(source)).LastDispositionGeneration.ShouldBeGreaterThan(0);
         (await checkpoints.GetAsync(source)).Fence.ShouldBeGreaterThan(owner.Fence);
+    }
+
+    /// <summary>Reconciler repair releases a failed disposition claim immediately when a live source owner wins.</summary>
+    [Fact]
+    public async Task BusyDispositionRepairReleasesClaimForNextPass()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 2 };
+        ProcessSource source = new("tenant-a", "sample", "busy-repair");
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        await checkpoints.EnsureCandidateAsync(source);
+        ProcessSourceState owner = (await checkpoints.AcquireAsync(source)).ShouldNotBeNull();
+        long generation = await sweeps.PrepareDispositionAsync(source);
+        (_, _, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]));
+        using (reconciler)
+        {
+            _ = await reconciler.RunPassAsync();
+            ProcessPendingDisposition pending = (await sweeps.GetAsync()).Pending[ProcessStateKeys.SourceId(source)];
+            pending.PreparedGeneration.ShouldBe(generation);
+            pending.ClaimToken.ShouldBeNull();
+            pending.ClaimUntil.ShouldBeNull();
+            await checkpoints.ReleaseAsync(owner);
+            _ = await reconciler.RunPassAsync();
+        }
+        (await checkpoints.GetAsync(source)).LastDispositionGeneration.ShouldBeGreaterThan(0);
     }
 
     /// <summary>Every audited revalidation gets a fresh sweep generation even while the same source is pending.</summary>
@@ -1117,31 +1227,34 @@ public sealed class ProcessRecoveryTests
         EventStoreProcessOptions options = new()
         {
             SourcesPerPass = 4,
+            SupportedCandidateCount = 1,
+            MaxCommandBytesPerPage = 2 * 1024 * 1024,
             OperationTimeout = TimeSpan.FromMilliseconds(500),
-            LeaseDuration = TimeSpan.FromMilliseconds(600),
+            LeaseDuration = TimeSpan.FromMilliseconds(1500),
         };
+        options.Validate().ShouldBeEmpty();
         ProcessSource source = new("tenant-a", "sample", "slow");
         IProcessTranslator translator = Substitute.For<IProcessTranslator>();
         translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyList<ProcessEffect>>(TranslateSlowlyAsync(call.Arg<CancellationToken>())));
         (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, Catalog([source]),
             request => new StreamReadPage(request.Tenant, request.Domain, request.AggregateId,
-                [new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null),
-                 new StreamReadEvent(2, "SyntheticEvent", [2], "json", 1, "message-2", null, null, DateTimeOffset.UtcNow, null)],
-                new StreamReadMetadata(request.FromSequence, null, 2, 2, 2, false, null)), translator);
+                Enumerable.Range(1, 7).Select(position => new StreamReadEvent(position, "SyntheticEvent", [1], "json", 1,
+                    $"message-{position}", null, null, DateTimeOffset.UtcNow, null)).ToArray(),
+                new StreamReadMetadata(request.FromSequence, null, 7, 7, 7, false, null)), translator);
         using (reconciler)
         {
             for (int pass = 0; pass < 10 && !(await sweeps.GetAsync()).Complete; pass++)
                 _ = await reconciler.RunPassAsync();
         }
 
-        (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(2);
+        (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(7);
         (await sweeps.GetAsync()).Complete.ShouldBeTrue();
     }
 
     private static async Task<IReadOnlyList<ProcessEffect>> TranslateSlowlyAsync(CancellationToken cancellationToken)
     {
-        await Task.Delay(400, cancellationToken);
+        await Task.Delay(250, cancellationToken);
         return [];
     }
 
@@ -1198,6 +1311,145 @@ public sealed class ProcessRecoveryTests
         (await sweeps.GetAsync()).Complete.ShouldBeFalse();
         (await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
             .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+    }
+
+    /// <summary>Direct runner coverage is degraded while its first source transition is still paused before CAS.</summary>
+    [Fact]
+    public async Task DirectRunnerInvalidatesBeforeFirstSourceMutation()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(5), SourcesPerPass = 4 };
+        ProcessSource source = new("tenant-a", "sample", "direct-order");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(inner, options, Catalog([]), request =>
+            new StreamReadPage(request.Tenant, request.Domain, request.AggregateId, [],
+                new StreamReadMetadata(request.FromSequence, null, null, 0, 0, false, null)));
+        using (reconciler)
+        {
+            for (int pass = 0; pass < 10 && !(await sweeps.GetAsync()).Complete; pass++)
+                _ = await reconciler.RunPassAsync();
+        }
+        ProcessReadinessHealthCheck health = new(sweeps, Options.Create(options), TimeProvider.System);
+        (await health.CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Healthy);
+        PausingProcessSourceStore paused = new(inner, ProcessStateKeys.Source(source));
+        ProcessCheckpointStore checkpoints = new(paused, Options.Create(options), TimeProvider.System);
+        IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Task.FromResult(new StreamReadPage(source.Tenant, source.Domain, source.Aggregate,
+                [new StreamReadEvent(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null)],
+                new StreamReadMetadata(call.Arg<StreamReadRequest>().FromSequence, null, 1, 1, 1, false, null))));
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([]));
+        CheckpointedProcessRunner direct = new(gateway, translator, Substitute.For<IProcessDelegationProvider>(),
+            Substitute.For<ITrustedEffectSubmitter>(), checkpoints, Options.Create(options));
+
+        Task<ProcessRunResult> running = direct.RunAsync(source);
+        try
+        {
+            await paused.Paused.WaitAsync(TimeSpan.FromSeconds(3));
+            (await initial.GetAsync(source)).Status.ShouldBe(ProcessSourceStatus.Active);
+            (await health.CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+            (await sweeps.GetAsync()).PendingTransitions.ShouldContainKey(ProcessStateKeys.SourceId(source));
+        }
+        finally
+        {
+            paused.Release();
+        }
+        (await running).Checkpoint.ShouldBe(1);
+    }
+
+    /// <summary>Cancelling an in-flight recovery pass leaves its source evidence and checkpoint intact.</summary>
+    [Fact]
+    public async Task CancelledRecoveryPassDoesNotConsumeRetryBudget()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 4, OperationTimeout = TimeSpan.FromSeconds(5) };
+        ProcessSource source = new("tenant-a", "sample", "cancelled-pass");
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+        await checkpoints.EnsureCandidateAsync(source);
+        ProcessSourceState initial = new(1, source, 0, ProcessSourceStatus.Incomplete, 0, null, null,
+            null, null, 0, 0, DateTimeOffset.UtcNow);
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(source), initial);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool resume = false;
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(call => resume
+                ? new ValueTask<IReadOnlyList<ProcessEffect>>([])
+                : new ValueTask<IReadOnlyList<ProcessEffect>>(WaitForTranslationCancellationAsync(call.Arg<CancellationToken>(), entered)));
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, Catalog([source]), processTranslator: translator);
+        using (reconciler)
+        using (CancellationTokenSource cancellation = new())
+        {
+            Task<ProcessReconciliationPass> running = reconciler.RunPassAsync(cancellation.Token);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            cancellation.Cancel();
+            await Should.ThrowAsync<OperationCanceledException>(() => running);
+            ProcessSourceState after = await checkpoints.GetAsync(source);
+            after.Checkpoint.ShouldBe(initial.Checkpoint);
+            after.Status.ShouldBe(initial.Status);
+            after.Attempts.ShouldBe(initial.Attempts);
+            after.ReasonCode.ShouldBe(initial.ReasonCode);
+            after.Owner.ShouldBeNull();
+            after.LeaseUntil.ShouldBeNull();
+            ProcessSweepState releasedSweep = await sweeps.GetAsync();
+            releasedSweep.Complete.ShouldBeFalse();
+            releasedSweep.Owner.ShouldBeNull();
+            releasedSweep.LeaseUntil.ShouldBeNull();
+            ProcessSourceState reacquiredSource = (await checkpoints.AcquireAsync(source)).ShouldNotBeNull();
+            await checkpoints.ReleaseAsync(reacquiredSource);
+            ProcessSweepState reacquiredSweep = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+            await sweeps.ReleaseAsync(reacquiredSweep);
+            resume = true;
+            for (int pass = 0; pass < 12 && (await checkpoints.GetAsync(source)).Checkpoint == 0; pass++)
+                _ = await reconciler.RunPassAsync();
+            (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(1);
+        }
+    }
+
+    /// <summary>A second replica cannot run sources or publish Healthy while another owns the sweep lease.</summary>
+    [Fact]
+    public async Task CompetingReconcilersRespectSweepOwnerBeforeHealthyCoverage()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 4, OperationTimeout = TimeSpan.FromSeconds(5) };
+        ProcessSource source = new("tenant-a", "sample", "replica-source");
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<IReadOnlyList<ProcessEffect>> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProcessTranslator translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                entered.TrySetResult();
+                return new ValueTask<IReadOnlyList<ProcessEffect>>(release.Task);
+            });
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore firstSweeps, ProcessReconciler first) = Runtime(store, options, Catalog([source]), processTranslator: translator);
+        (_, ProcessSweepStore secondSweeps, ProcessReconciler second) = Runtime(store, options, Catalog([source]));
+        using (first)
+        using (second)
+        {
+            Task<ProcessReconciliationPass> firstPass = first.RunPassAsync();
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+                (await firstSweeps.GetAsync()).Owner.ShouldNotBeNull();
+                (await second.RunPassAsync()).Sources.ShouldBe(0);
+                (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(0);
+                (await new ProcessReadinessHealthCheck(secondSweeps, Options.Create(options), TimeProvider.System)
+                    .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+            }
+            finally
+            {
+                release.TrySetResult([]);
+                await firstPass;
+            }
+            for (int pass = 0; pass < 10 && !(await firstSweeps.GetAsync()).Complete; pass++)
+                _ = await first.RunPassAsync();
+            (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(1);
+            (await firstSweeps.GetAsync()).Complete.ShouldBeTrue();
+        }
     }
 
     /// <summary>A competing sweep cannot complete Healthy between invalidation and source CAS.</summary>
@@ -1259,6 +1511,13 @@ public sealed class ProcessRecoveryTests
             return Task.FromResult(new ProcessSourcePage(page, next));
         });
         return catalog;
+    }
+
+    private static async Task<IReadOnlyList<ProcessEffect>> WaitForTranslationCancellationAsync(CancellationToken cancellationToken, TaskCompletionSource entered)
+    {
+        entered.TrySetResult();
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        return [];
     }
 
     private static (ProcessCheckpointStore Checkpoints, ProcessSweepStore Sweeps, ProcessReconciler Reconciler) Runtime(
