@@ -329,7 +329,7 @@ public partial class SnapshotManager(
             rawProtectionMetadata = property.Value;
             if (++protectionMetadataFields > 1) { return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque"); }
         }
-        if (protectionMetadataFields == 1 && HasDuplicatePropertyNames(rawProtectionMetadata))
+        if (protectionMetadataFields == 1 && SnapshotEnvelopeInspector.HasDuplicatePropertyNames(rawProtectionMetadata))
         {
             return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque");
         }
@@ -337,7 +337,7 @@ public partial class SnapshotManager(
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
-        if (HasDuplicatePropertyNames(rawState)) { return SnapshotLoadResult.Corrupt("SnapshotStateInvalid"); }
+        if (SnapshotEnvelopeInspector.HasDuplicatePropertyNames(rawState)) { return SnapshotLoadResult.Corrupt("SnapshotStateInvalid"); }
         bool provenUnprotected = IsProvenUnprotected(raw);
         if (provenUnprotected && rawState.ValueKind != JsonValueKind.Object)
         {
@@ -426,30 +426,11 @@ public partial class SnapshotManager(
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
-        if (state.ValueKind != JsonValueKind.Object || HasDuplicatePropertyNames(state))
+        if (state.ValueKind != JsonValueKind.Object || SnapshotEnvelopeInspector.HasDuplicatePropertyNames(state))
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
         return SnapshotLoadResult.Readable(snapshot with { State = state, ProtectionMetadata = outcome.Metadata });
-    }
-
-    private static bool HasDuplicatePropertyNames(JsonElement value)
-    {
-        if (value.ValueKind == JsonValueKind.Array)
-        {
-            foreach (JsonElement item in value.EnumerateArray())
-            {
-                if (HasDuplicatePropertyNames(item)) { return true; }
-            }
-            return false;
-        }
-        if (value.ValueKind != JsonValueKind.Object) { return false; }
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (JsonProperty property in value.EnumerateObject())
-        {
-            if (!names.Add(property.Name) || HasDuplicatePropertyNames(property.Value)) { return true; }
-        }
-        return false;
     }
 
     private static bool IsProvenUnprotected(JsonElement raw)

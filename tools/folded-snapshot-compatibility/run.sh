@@ -40,6 +40,7 @@ EOF
 cp "$fixture_root/LegacyConsumer.cs" "$work_root/old/LegacyConsumer.cs"
 cp "$fixture_root/LegacyInvoker.cs" "$work_root/old/LegacyInvoker.cs"
 cp "$fixture_root/LegacyProcessor.cs" "$work_root/old/LegacyProcessor.cs"
+cp "$fixture_root/LegacySnapshotManager.cs" "$work_root/old/LegacySnapshotManager.cs"
 dotnet restore "$work_root/old/LegacyConsumer.csproj" --configfile "$work_root/NuGet.Config" -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
 dotnet build "$work_root/old/LegacyConsumer.csproj" --configuration Release --no-restore -m:1 -p:UseHexalithProjectReferences=false
 dotnet "$work_root/old/bin/Release/net10.0/LegacyConsumer.dll" \

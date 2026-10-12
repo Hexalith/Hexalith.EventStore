@@ -328,6 +328,7 @@ public class DomainServiceIsolationTests {
             [typeof(CommandEnvelope), typeof(object), typeof(CancellationToken)],
             [typeof(CommandEnvelope), typeof(object), typeof(bool), typeof(CancellationToken)],
             [typeof(CommandEnvelope), typeof(object), typeof(bool), typeof(string), typeof(CancellationToken)],
+            [typeof(CommandEnvelope), typeof(object), typeof(bool), typeof(string), typeof(string), typeof(CancellationToken)],
         ];
         System.Reflection.MethodInfo[] methods = typeof(IDomainServiceInvoker)
             .GetMethods().Where(method => method.Name == nameof(IDomainServiceInvoker.InvokeAsync)).ToArray();

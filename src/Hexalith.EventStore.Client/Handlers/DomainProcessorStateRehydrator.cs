@@ -21,13 +21,15 @@ internal static class DomainProcessorStateRehydrator {
     internal static ApplyMethodTable DiscoverApplyMethods(Type stateType)
         => ApplyMethodResolver.GetOrBuildTable(stateType);
 
+    /// <summary>Restores and applies through the shared algorithm using an optional already-reserved capture owner.</summary>
     internal static TState? RehydrateState<TState>(object? currentState, ApplyMethodTable applyMethods, CancellationToken cancellationToken = default,
-        DetachedStateCapture<TState>? snapshotCapture = null, EventPayloadEvolutionRegistry? evolution = null)
+        DetachedStateCapture<TState>? snapshotCapture = null, EventPayloadEvolutionRegistry? evolution = null,
+        LegacyCommandReplayInput? admittedInput = null)
         where TState : class, new() {
         cancellationToken.ThrowIfCancellationRequested();
         evolution ??= EventPayloadEvolutionRegistry.ForApplyState(typeof(TState));
         TState? rehydratedState;
-        using var input = new LegacyCommandReplayInput(cancellationToken);
+        using var input = admittedInput ?? new LegacyCommandReplayInput(cancellationToken);
         try {
             currentState = CaptureReplayInput(currentState, cancellationToken, input, snapshotCapture);
             rehydratedState = currentState switch {

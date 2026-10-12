@@ -2599,6 +2599,7 @@ public partial class AggregateActor(
             attemptedSnapshot = stagedSnapshot.HasValue
                 ? stagedSnapshot.Value
                 : throw new InvalidOperationException("Manual snapshot manager did not stage a snapshot record.");
+            cancellationToken.ThrowIfCancellationRequested();
             snapshotSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
             await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
@@ -2723,14 +2724,6 @@ public partial class AggregateActor(
             }
             using JsonDocument document = JsonDocument.Parse(admittedBytes,
                 new JsonDocumentOptions { MaxDepth = limits.MaximumDepth });
-            var propertyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (JsonProperty property in document.RootElement.EnumerateObject())
-            {
-                if (!propertyNames.Add(property.Name))
-                {
-                    return false;
-                }
-            }
             if (!SnapshotEnvelopeInspector.IsFoldedObject(document.RootElement))
             {
                 failureCode = SnapshotEnvelopeInspector.IsDomainServiceCurrentState(document.RootElement)

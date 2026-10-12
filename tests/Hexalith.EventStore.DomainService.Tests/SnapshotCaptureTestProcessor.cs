@@ -13,12 +13,15 @@ public sealed class SnapshotCaptureTestProcessor : DomainProcessorBase<SnapshotC
     {
         FoldedSnapshotCapture = new("test-profile", "test-parity-evidence",
             new DetachedStateCapture<SnapshotCaptureTestState>(1024,
-                static (state, _) => new SnapshotCaptureTestState { Count = state.Count, ThrowOnApply = state.ThrowOnApply }),
+                (state, _) => CapturedState = new SnapshotCaptureTestState { Count = state.Count, ThrowOnApply = state.ThrowOnApply }),
             limits ?? SnapshotCaptureTestLimits.Value);
     }
 
     /// <summary>Gets the live returned event for isolation assertions.</summary>
     public SnapshotCaptureTestEvent? ReturnedEvent { get; private set; }
+
+    /// <summary>Gets the isolated pre-command state used to observe optional Apply admission.</summary>
+    public SnapshotCaptureTestState? CapturedState { get; private set; }
 
     /// <summary>Gets the live rejection event for canonical-Apply assertions.</summary>
     public SnapshotCaptureTestRejectionEvent? ReturnedRejectionEvent { get; private set; }

@@ -336,16 +336,75 @@ public sealed class FoldedSnapshotCaptureTests
             [eventBytes, eventBytes], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
     }
 
+    [Fact]
+    public async Task TokenDenseIgnoredFieldRefusesBeforeApplyAndCapturesAtTheAdmittedBoundary()
+    {
+        // HX-FS-V1 §§8.2/8.6, V6/V16: payload length alone does not bound retained token tables.
+        byte[] payload = Encoding.UTF8.GetBytes("{\"amount\":1,\"ignored\":[" + string.Join(',', Enumerable.Repeat("0", 128)) + "]}");
+        int tokens = CountTokens(payload);
+        // Outer envelopes, wrapper, captured references/prepared inputs, then 128 bytes/token.
+        long exactGraphBytes = 128 + 256 + 256 + 128 + 2 * IntPtr.Size + 256 + 128L * tokens;
+        FoldedSnapshotCaptureLimits exactLimits = SnapshotCaptureTestLimits.For(
+            maximumDetachedEventGraphBytes: exactGraphBytes, maximumCaptureWorkspaceBytes: 64_000);
+        FoldedSnapshotCaptureLimits shortLimits = SnapshotCaptureTestLimits.For(
+            maximumDetachedEventGraphBytes: exactGraphBytes - 1, maximumCaptureWorkspaceBytes: 64_000);
+        var refusedProcessor = new SnapshotCaptureTestProcessor(shortLimits);
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
+        {
+            CurrentState = new SnapshotCaptureTestState { Count = 41 },
+        };
+        FoldedSnapshotProcessingResult processing = await refusedProcessor.ProcessForSnapshotAsync(
+            request, "test-profile", shortLimits, CancellationToken.None);
+        var admittedEvent = new DomainServiceWireEvent(typeof(SnapshotCaptureTestEvent).FullName!, payload, "json");
+
+        Should.Throw<InvalidOperationException>(() => processing.Capture.ShouldNotBeNull()(
+            [admittedEvent], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
+        refusedProcessor.CapturedState.ShouldNotBeNull().Count.ShouldBe(41);
+        admittedEvent.Payload.ShouldBe(payload);
+
+        using (ServiceProvider provider = BuildProvider(refusedProcessor, shortLimits, customPayload: payload))
+        {
+            DomainServiceWireResult refused = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+            DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+                request with { IncludePostCommandState = false });
+            refused.PostCommandStateJson.ShouldBeNull();
+            refusedProcessor.CapturedState.ShouldNotBeNull().Count.ShouldBe(41);
+            DomainServiceWireEvent baselineEvent = baseline.Events.ShouldHaveSingleItem();
+            (refused.Events.ShouldHaveSingleItem() with { Payload = baselineEvent.Payload }).ShouldBe(baselineEvent);
+            refused.Events[0].Payload.ShouldBe(payload);
+            refused.IsRejection.ShouldBe(baseline.IsRejection);
+            refused.ResultPayload.ShouldBe(baseline.ResultPayload);
+            refusedProcessor.ReturnedEvent.ShouldNotBeNull().Amount.ShouldBe(99);
+        }
+
+        var acceptedProcessor = new SnapshotCaptureTestProcessor(exactLimits);
+        using ServiceProvider acceptedProvider = BuildProvider(acceptedProcessor, exactLimits, customPayload: payload);
+        DomainServiceWireResult accepted = await DomainServiceRequestRouter.ProcessAsync(acceptedProvider, request);
+        accepted.Events.ShouldHaveSingleItem().Payload.ShouldBe(payload);
+        acceptedProcessor.CapturedState.ShouldNotBeNull().Count.ShouldBe(42);
+        using JsonDocument document = JsonDocument.Parse(accepted.PostCommandStateJson.ShouldNotBeNull());
+        document.RootElement.GetProperty("count").GetInt32().ShouldBe(42);
+    }
+
+    private static int CountTokens(byte[] payload)
+    {
+        var reader = new Utf8JsonReader(payload);
+        int count = 0;
+        while (reader.Read()) { count++; }
+        return count;
+    }
+
     private static ServiceProvider BuildProvider(IAsyncDomainProcessor processor,
-        FoldedSnapshotCaptureLimits? limits = null, string? mismatch = null)
+        FoldedSnapshotCaptureLimits? limits = null, string? mismatch = null, byte[]? customPayload = null)
     {
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IAsyncDomainProcessor>("d", processor);
         services.AddEventStoreBoundedV1DomainSerialization("d", profile => profile.Add<SnapshotCaptureTestEvent>(
-            typeof(SnapshotCaptureTestEvent).FullName!, "json", 64,
-            static (value, sink, _) =>
+            typeof(SnapshotCaptureTestEvent).FullName!, "json", Math.Max(64, customPayload?.Length ?? 0),
+            (value, sink, _) =>
             {
-                sink.Write(value.Amount == 98 ? "{\"amount\":10}"u8 : "{\"amount\":1}"u8);
+                if (customPayload is not null) { sink.Write(customPayload); }
+                else { sink.Write(value.Amount == 98 ? "{\"amount\":10}"u8 : "{\"amount\":1}"u8); }
                 return Task.CompletedTask;
             })
             .Add<SnapshotCaptureTestRejectionEvent>(typeof(SnapshotCaptureTestRejectionEvent).FullName!, "json", 64,

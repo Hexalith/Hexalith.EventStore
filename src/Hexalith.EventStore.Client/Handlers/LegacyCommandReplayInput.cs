@@ -8,6 +8,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Snapshots;
 
 namespace Hexalith.EventStore.Client.Handlers;
 
@@ -18,6 +19,11 @@ namespace Hexalith.EventStore.Client.Handlers;
 /// JSON documents and base64 buffers are admitted before private materialization. Original
 /// transport parsing and application converter/typed graph allocations remain unqualified.
 /// Typed snapshots are detached only when their owner supplies an explicit capture declaration.
+/// Optional folded capture additionally debits its qualified event-buffer and detached-graph
+/// reservations before copying envelopes or parsing retained JSON token tables. Those
+/// representations cannot use the unrelated legacy ceiling to expand capture workspace.
+/// Decoded domain graphs and strings still require the owner's qualified serializer and
+/// callback bounds; this ledger does not measure or confine undeclared callback allocations.
 /// </remarks>
 internal sealed class LegacyCommandReplayInput : IDisposable
 {
@@ -28,19 +34,35 @@ internal sealed class LegacyCommandReplayInput : IDisposable
     private const long MaximumAccountedBytes = 256L * 1024 * 1024;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly CancellationToken _cancellationToken;
+    private readonly FoldedSnapshotCaptureLimits? _captureLimits;
     private readonly List<byte[]> _payloads = [];
     private readonly List<JsonDocument> _jsonDocuments = [];
     private long _accountedBytes;
     private long _readableBytes;
     private long _jsonDecodedBytesAvailable;
+    private long _captureGraphBytes;
+    private long _capturePayloadBytes;
     private int _eventCount;
     private bool _disposed;
 
-    /// <summary>Creates one admission owner for the complete command-state reconstruction.</summary>
-    internal LegacyCommandReplayInput(CancellationToken cancellationToken)
+    /// <summary>Creates one admission owner, optionally constrained by the qualified capture reservations.</summary>
+    internal LegacyCommandReplayInput(CancellationToken cancellationToken, FoldedSnapshotCaptureLimits? captureLimits = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         _cancellationToken = cancellationToken;
+        _captureLimits = captureLimits;
+    }
+
+    /// <summary>Reserves the capture envelope array and metadata objects before they are constructed.</summary>
+    internal void AdmitCaptureEnvelopes(int count)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cancellationToken.ThrowIfCancellationRequested();
+        if (_captureLimits is null || count < 1 || count > _captureLimits.MaximumEventCount)
+        {
+            throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+        }
+        AccountCaptureGraph(checked(128L + 256L * count));
     }
 
     /// <summary>Refuses excessive wrapper recursion and charges empty wrappers before traversing them.</summary>
@@ -49,6 +71,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         _cancellationToken.ThrowIfCancellationRequested();
         if (depth >= 64) { Refuse("LegacyArrayLimit"); }
+        AccountCaptureGraph(256);
         Account(256);
     }
 
@@ -81,12 +104,15 @@ internal sealed class LegacyCommandReplayInput : IDisposable
         // A collection may report more entries than it actually yields. Charge its
         // requested list capacity independently of the per-yield envelope overhead.
         Account(checked(128L + (count ?? 0) * 2L * IntPtr.Size));
+        AccountCaptureGraph(checked(128L + (count ?? 0) * 2L * IntPtr.Size));
         var references = count is int capacity ? new List<object?>(capacity) : [];
         foreach (object? item in events)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             RequireCount(1);
             Account(PerEventCharge);
+            // Covers private envelopes, reference-list growth and prepared Apply entries.
+            AccountCaptureGraph(256);
             _eventCount++;
             references.Add(item);
         }
@@ -99,6 +125,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
             _cancellationToken.ThrowIfCancellationRequested();
             if (item is EventEnvelope envelope)
             {
+                AccountCapturePayload(envelope.Payload.LongLength);
                 AdmitEnvelope(envelope);
             }
         }
@@ -148,6 +175,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
         LegacyCommandReplayJsonAdmission.ValidateContractMetadata(source, AdmitEnvelope, _cancellationToken);
         if (documents + eventCapacity > MaximumAccountedBytes - _accountedBytes) { Refuse("LegacyArrayLimit"); }
         Account(documents);
+        AccountCaptureGraph(documents);
         if (reserveEvents)
         {
             Account(eventCapacity);
@@ -177,6 +205,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
         long expectedLength = LegacyCommandReplayJsonAdmission.DecodedBase64Length(value, _cancellationToken);
         if (expectedLength > _jsonDecodedBytesAvailable) { Refuse("LegacyArrayLimit"); }
         _jsonDecodedBytesAvailable -= expectedLength;
+        AccountCapturePayload(expectedLength);
         byte[] bytes = new byte[checked((int)expectedLength)];
         RetainPayload(bytes);
         LegacyCommandReplayJsonAdmission.DecodeBase64(value, bytes, _cancellationToken);
@@ -196,6 +225,7 @@ internal sealed class LegacyCommandReplayInput : IDisposable
             // Cover document token-table capacity and resizing slack, in addition to
             // the source/private byte buffers admitted by envelope or JSON capture.
             Account(128);
+            AccountCaptureGraph(128);
         }
 
         _cancellationToken.ThrowIfCancellationRequested();
@@ -306,6 +336,26 @@ internal sealed class LegacyCommandReplayInput : IDisposable
     {
         if (capacity < 0 || capacity > MaximumAccountedBytes - _accountedBytes) { Refuse("LegacyArrayLimit"); }
         _accountedBytes += capacity;
+    }
+
+    private void AccountCaptureGraph(long capacity)
+    {
+        if (_captureLimits is null) { return; }
+        if (capacity < 0 || capacity > _captureLimits.MaximumDetachedEventGraphBytes - _captureGraphBytes)
+        {
+            throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+        }
+        _captureGraphBytes += capacity;
+    }
+
+    private void AccountCapturePayload(long capacity)
+    {
+        if (_captureLimits is null) { return; }
+        if (capacity < 0 || capacity > _captureLimits.MaximumEventBytes - _capturePayloadBytes)
+        {
+            throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+        }
+        _capturePayloadBytes += capacity;
     }
 
     private long StringLength(string? value)

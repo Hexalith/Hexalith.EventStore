@@ -993,6 +993,8 @@ public class AggregateActorDomainResultTests {
     [Theory]
     [InlineData("{\"count\":4", "SnapshotStateInvalid")]
     [InlineData("{\"count\":4,\"Count\":5}", "SnapshotStateInvalid")]
+    [InlineData("{\"nested\":{\"count\":4,\"Count\":5}}", "SnapshotStateInvalid")]
+    [InlineData("{\"items\":[{\"count\":4,\"Count\":5}]}", "SnapshotStateInvalid")]
     [InlineData("over-depth", "SnapshotStateInvalid")]
     public async Task ProcessCommandAsync_InvalidPresentEvidenceSkipsSnapshotWithSafeReason(
         string evidence, string reason)
@@ -1021,6 +1023,10 @@ public class AggregateActorDomainResultTests {
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
 
         result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        await ctx.StateManager.Received().SetStateAsync(
+            "test-tenant:test-domain:agg-001:events:4", Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
         await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
@@ -1030,6 +1036,45 @@ public class AggregateActorDomainResultTests {
             $"FailureClass={reason}", StringComparison.Ordinal));
         snapshotLogger.Messages.ShouldNotContain(message => message.Contains(
             "FailureClass=SnapshotEvidenceAbsent", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_AdmittedNestedStateRemainsReadableAfterSnapshotStaging()
+    {
+        // HX-FS-V1 §§5/9, V7/V17: write and read use the same recursive property-name validator.
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(new FoldedSnapshotQualificationRegistry([
+                new FoldedSnapshotQualification("test-domain", "test-domain", typeof(JsonElement),
+                    "test-profile", "test-parity", SnapshotTestLimits.ForState()),
+            ]))
+            .BuildServiceProvider();
+        var snapshots = new SnapshotManager(Microsoft.Extensions.Options.Options.Create(new SnapshotOptions { DefaultInterval = 10 }),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        ActorTestContext ctx = CreateActor(serviceProvider: services, snapshotManager: snapshots);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 10);
+        const string evidence = """{"nested":{"count":11},"items":[{"count":12}]}""";
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with { PostCommandStateJson = evidence });
+        SnapshotRecord? staged = null;
+        _ = ctx.StateManager.SetStateAsync("test-tenant:test-domain:agg-001:snapshot",
+                Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>())
+            .Returns(call => { staged = call.ArgAt<SnapshotRecord>(1); return Task.CompletedTask; });
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        staged.ShouldNotBeNull().SequenceNumber.ShouldBe(11);
+        await ctx.StateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+        _ = ctx.StateManager.TryGetStateAsync<object>("test-tenant:test-domain:agg-001:snapshot", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(true, staged));
+        SnapshotLoadResult readback = await snapshots.LoadSnapshotForCommandAsync(
+            CreateTestEnvelope().AggregateIdentity, ctx.StateManager);
+        readback.Outcome.ShouldBe(SnapshotLoadOutcome.Readable);
+        JsonElement.DeepEquals(readback.Snapshot.ShouldNotBeNull().State.ShouldBeOfType<JsonElement>(),
+            JsonSerializer.Deserialize<JsonElement>(evidence)).ShouldBeTrue();
     }
 
     [Theory]

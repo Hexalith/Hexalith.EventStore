@@ -48,7 +48,8 @@ public class ProjectionDispatchContractTests {
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
         root.EnumerateObject().Select(property => property.Name).ShouldBe(
-            ["request", "projectionTypes", "dispatchId", "catalogFingerprint"]);
+            ["request", "projectionTypes", "dispatchId", "catalogFingerprint", "rebuildTransport"]);
+        root.GetProperty("rebuildTransport").ValueKind.ShouldBe(JsonValueKind.Null);
         root.GetProperty("projectionTypes").EnumerateArray().Select(value => value.GetString()).ShouldBe(
             ["order-detail", "order-index"]);
     }

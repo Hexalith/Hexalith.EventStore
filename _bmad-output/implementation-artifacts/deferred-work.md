@@ -5820,3 +5820,57 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Detect PascalCase legacy DomainServiceCurrentState snapshots before treating them as folded state.
   evidence: `SnapshotEnvelopeInspector.IsDomainServiceCurrentState` still uses ordinal camelCase property lookup while the envelope reader is case-insensitive. A change would renegotiate the approved HX-FS-V1 section 5.3 boundary for custom actor JSON options.
+
+## Deferred from: Story 6.2 resumed review (2026-10-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Preserve scoped process adapters until timed-out read workers finish.
+  evidence: `ProcessReconciler.RunPassAsync` disposes its scope while `ProcessReadDeadline` allows its catalog worker to continue; R3-BH4 is separate process work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Verify control-read progress while all process adapters synchronously block.
+  evidence: R3-BH5 is medium and unverified: both adapter/control reads use Task.Run despite separate semaphores. A sixteen-adapter synchronous blocking test with a control-read deadline must establish actual starvation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Align bound stream-proof aggregate ID admission with the canonical 256-character limit.
+  evidence: `BoundStreamReadProof.ValidScope` caps IDs at 200 while `AggregateIdentity` admits 256; R3-BH6 excludes otherwise valid 201–256-character streams in separate gateway work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Admit rebuild-transport event count and decoded bytes before full materialization.
+  evidence: `DomainProjectionRebuildTransport.ResolveAsync` deserializes the complete array before MaxRebuildEventCount; R3-BH7 is separate projection work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Provide finite retention for projection rebuild plans on non-expiring stores.
+  evidence: `SavePlanAsync` falls back to ordinary save and ReclaimAsync retains the plan; R3-BH8 permits permanent plan retention without IReadModelExpiringStore.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Repair process transition preparations abandoned before the source CAS.
+  evidence: `UpdateOwnedAsync` persists a transition token first, while FinishObservationAsync removes only a matching durable source token; an already observed caught-up source may leave completion blocked after a crash. R3-BH9 is separate process work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Exercise gateway-issued stream proof forwarding at the stream-controller consumer.
+  evidence: R3-VG1 found no test supplying IEventStoreGatewayStreamReadProofSource: gateway tests accept unconditional success and controller tests insert their own proof, so deleting issuance/header forwarding stays green.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Verify marked safe domain denials through invoker and terminal actor processing.
+  evidence: R3-VG2 found no denial exception, header or terminal reason references in tests; deleting recognition turns folders authorization denial into infrastructure handling.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Map safe domain denial exceptions to their intended API HTTP statuses.
+  evidence: `SubmitCommandHandler` reconstructs DomainServiceSafeDenialException, but no typed registered handler accepts it and GlobalExceptionHandler returns 500; R3-VG3 loses 401/403/404/503 in separate authorization work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Preserve the published three-argument EventStoreGatewayClient constructor.
+  evidence: R3-VG4/R4-BH1: replacing it with four optional arguments removes the former CLR signature and can throw MissingMethodException in existing compiled consumers.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Preserve the original FencedCommandEnvelope positional constructor and deconstruction.
+  evidence: R4-BH2: a third positional receipt member replaces the old two-argument constructor and two-output Deconstruct in separate signed-authority work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Establish finite Dapr deadlines for manual snapshot commit verification without losing committed truth.
+  evidence: R4-BH4 is medium and unverified: non-cancelable save/witness calls are intentional, and dotnet-inspect confirms only their optional token API. A stalled actual sidecar/provider test must establish whether transport deadlines allow an indefinite hold before selecting a bounded completion protocol.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bind privileged owner-query permissions to both domain and query type.
+  evidence: R4-BH5: QueriesController matches AllowedQueries by QueryType only, then installs prevalidated authorization for the signed requested domain; a different domain exposing that name can receive the privileged route.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Domain-separate bound stream, query and command proof signatures.
+  evidence: R4-BH6: query and command helpers reuse BoundStreamReadProof with a request digest as aggregate ID and no purpose discriminator; a stream proof for the same digest matches their verification schema.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Authorize polling for bound-workload submissions lacking tenant/domain JWT bindings.
+  evidence: R4-BH7: SubmitBoundWorkload accepts unbound workloads but returns a status URL whose GetWorkloadStatus requires both bindings, preventing the accepted caller from polling.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Correct self-referential API key placeholders in mirrored Playwright agent examples.
+  evidence: R4-BH10: API_KEY=${API_KEY} in .env.example yields a literal or empty value with common dotenv loaders; this correction edits agent-context resources and is outside the runtime story.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Exercise successor support-boundary measurement through real validation.
+  evidence: R4-VG1: tests handcraft successor tables and mock validation; no owned test calls measure_successor_support_table or measure-boundary. Removing the measured refused treatment leaves all eleven SupportBoundaryTests green but produces an invalid owner boundary.

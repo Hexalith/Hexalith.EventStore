@@ -79,9 +79,30 @@ internal static class SnapshotEnvelopeInspector
             && sequence > 0;
     }
 
-    /// <summary>Checks that state is an object without the legacy command DTO shape.</summary>
+    /// <summary>Checks for an object without the legacy command DTO shape or recursive duplicate names.</summary>
     internal static bool IsFoldedObject(JsonElement state)
-        => state.ValueKind == JsonValueKind.Object && !IsDomainServiceCurrentState(state);
+        => state.ValueKind == JsonValueKind.Object && !IsDomainServiceCurrentState(state)
+            && !HasDuplicatePropertyNames(state);
+
+    /// <summary>Rejects case-insensitive duplicate names throughout objects and nested arrays.</summary>
+    internal static bool HasDuplicatePropertyNames(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement item in value.EnumerateArray())
+            {
+                if (HasDuplicatePropertyNames(item)) { return true; }
+            }
+            return false;
+        }
+        if (value.ValueKind != JsonValueKind.Object) { return false; }
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (!names.Add(property.Name) || HasDuplicatePropertyNames(property.Value)) { return true; }
+        }
+        return false;
+    }
 
     /// <summary>Detects the ambiguous top-level legacy command DTO shape.</summary>
     internal static bool IsDomainServiceCurrentState(JsonElement state)

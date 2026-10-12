@@ -140,6 +140,8 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
                 throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
             }
         }
+        using var replayInput = new LegacyCommandReplayInput(cancellationToken, profile.Limits);
+        replayInput.AdmitCaptureEnvelopes(wireEvents.Count);
         var detached = new EventEnvelope[wireEvents.Count];
         for (int index = 0; index < wireEvents.Count; index++)
         {
@@ -150,12 +152,15 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
                 checked(preSequence + index + 1), 0, DateTimeOffset.UtcNow, command.CorrelationId,
                 command.CausationId ?? command.CorrelationId, command.UserId, "capture", item.EventTypeName,
                 item.MetadataVersion ?? 1, item.SerializationFormat) { PayloadVersion = item.PayloadVersion };
-            detached[index] = new EventEnvelope(metadata, item.Payload.ToArray(), null);
+            // The router already supplied private once-admitted bytes. Shared replay
+            // admits and makes the final private envelope copy before payload parsing.
+            detached[index] = new EventEnvelope(metadata, item.Payload, null);
         }
         var input = new DomainServiceCurrentState(preCommandState, detached, preSequence,
             checked(preSequence + detached.Length));
         TState folded = DomainProcessorStateRehydrator.RehydrateState<TState>(input,
-            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)), cancellationToken)
+            DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)), cancellationToken,
+            admittedInput: replayInput)
             ?? throw new InvalidOperationException("SnapshotCaptureStateInvalid");
         using var output = new BoundedSnapshotJsonStream(profile.MaximumStateJsonBytes);
         JsonSerializer.Serialize(output, folded, EventStorePayloadSerialization.Options);

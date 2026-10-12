@@ -13,12 +13,14 @@ internal static class SnapshotCaptureTestLimits
         int maximumStateJsonBytes = 1024,
         long maximumDomainParsedStateGraphBytes = 8192,
         int maximumNodeCount = 100,
-        int maximumDepth = 16)
+        int maximumDepth = 16,
+        long maximumDetachedEventGraphBytes = 4096,
+        long maximumCaptureWorkspaceBytes = 40_000)
         => new(
-        maximumCaptureWorkspaceBytes: 40_000,
+        maximumCaptureWorkspaceBytes: maximumCaptureWorkspaceBytes,
         maximumPreCommandStateGraphBytes: 1024,
         maximumWorkingStateGraphBytes: 1024,
-        maximumDetachedEventGraphBytes: 4096,
+        maximumDetachedEventGraphBytes: maximumDetachedEventGraphBytes,
         maximumEventCount: maximumEventCount,
         maximumEventBytes: maximumEventBytes,
         maximumStateJsonBytes: maximumStateJsonBytes,
@@ -31,6 +33,6 @@ internal static class SnapshotCaptureTestLimits
         maximumNodeCount: maximumNodeCount,
         maximumDepth: maximumDepth,
         maximumSerializerScratchBytes: 2048,
-        maximumSimultaneousLiveBytes: 40_000,
+        maximumSimultaneousLiveBytes: maximumCaptureWorkspaceBytes,
         maximumActorWorkspaceBytes: 40_000);
 }

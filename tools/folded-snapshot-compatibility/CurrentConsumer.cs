@@ -1,8 +1,12 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+
+using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Snapshots;
 using Hexalith.EventStore.DomainService;
@@ -118,6 +122,8 @@ public static class CurrentConsumer
             throw new InvalidOperationException("The optional invoker overload did not delegate to the old binary method.");
         }
 
+        await AssertLegacySnapshotManagerDelegationAsync(oldAssembly, cancellation.Token).ConfigureAwait(false);
+
         Type processorType = oldAssembly.GetType("FoldedSnapshotCompatibility.LegacyProcessor", throwOnError: true)!;
         IAsyncDomainProcessor oldProcessor = (IAsyncDomainProcessor)Activator.CreateInstance(processorType)!;
         var registrations = new ServiceCollection();
@@ -146,6 +152,67 @@ public static class CurrentConsumer
 
         Console.WriteLine("PASS: published old package, old binary on current package, observable fallbacks, bounded old/new wire and positional APIs");
         return 0;
+    }
+
+    private static async Task AssertLegacySnapshotManagerDelegationAsync(
+        Assembly oldAssembly, CancellationToken cancellationToken)
+    {
+        Type managerType = oldAssembly.GetType("FoldedSnapshotCompatibility.LegacySnapshotManager", throwOnError: true)!;
+        ISnapshotManager manager = (ISnapshotManager)Activator.CreateInstance(managerType)!;
+        var identity = new AggregateIdentity("tenant", "domain", "aggregate");
+        object state = JsonSerializer.Deserialize<JsonElement>("{\"count\":7}");
+        // A reference-only sentinel: the forwarding fixture never invokes actor-manager operations.
+        Type actorManagerType = typeof(IActorStateManager).Assembly.GetType(
+            "Dapr.Actors.Runtime.ActorStateManager", throwOnError: true)!;
+        var actorManager = (IActorStateManager)RuntimeHelpers.GetUninitializedObject(actorManagerType);
+        var limits = new FoldedSnapshotCaptureLimits(
+            40_000, 1024, 1024, 4096, 2, 1024, 1024, 8192, 6146,
+            1024, 8192, 1024, 8192, 100, 16, 2048, 40_000, 40_000);
+        var providerFailure = new InvalidOperationException("legacy provider failure");
+        int calls = 0;
+        foreach (bool failProvider in new[] { false, true })
+        {
+            managerType.GetProperty("ProviderFailure")!.SetValue(null, failProvider ? providerFailure : null);
+            foreach (bool useLimits in new[] { false, true })
+            {
+                foreach (bool throwOnFailure in new[] { false, true })
+                {
+                    long sequence = 7 + calls;
+                    string correlationId = $"snapshot-compat-{calls}";
+                    Exception? observedFailure = null;
+                    try
+                    {
+                        if (useLimits)
+                        {
+                            await manager.CreateSnapshotAsync(identity, sequence, state, actorManager,
+                                JsonSerializerOptions.Web, limits, correlationId, cancellationToken,
+                                throwOnFailure).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await manager.CreateSnapshotAsync(identity, sequence, state, actorManager,
+                                JsonSerializerOptions.Web, correlationId, cancellationToken,
+                                throwOnFailure).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception error) { observedFailure = error; }
+                    calls++;
+                    if ((int)managerType.GetProperty("Calls")!.GetValue(null)! != calls
+                        || !ReferenceEquals(managerType.GetProperty("LastIdentity")!.GetValue(null), identity)
+                        || (long)managerType.GetProperty("LastSequenceNumber")!.GetValue(null)! != sequence
+                        || !ReferenceEquals(managerType.GetProperty("LastState")!.GetValue(null), state)
+                        || !ReferenceEquals(managerType.GetProperty("LastStateManager")!.GetValue(null), actorManager)
+                        || (string?)managerType.GetProperty("LastCorrelationId")!.GetValue(null) != correlationId
+                        || (CancellationToken)managerType.GetProperty("LastCancellationToken")!.GetValue(null)! != cancellationToken
+                        || (bool)managerType.GetProperty("LastThrowOnFailure")!.GetValue(null)! != throwOnFailure
+                        || !ReferenceEquals(observedFailure, failProvider && throwOnFailure ? providerFailure : null))
+                    {
+                        throw new InvalidOperationException("A snapshot overload did not preserve old binary arguments or failure posture.");
+                    }
+                }
+            }
+        }
+        managerType.GetProperty("ProviderFailure")!.SetValue(null, null);
     }
 
     private static async Task<byte[]> WriteBoundedWireAsync(DomainServiceWireResult wire)

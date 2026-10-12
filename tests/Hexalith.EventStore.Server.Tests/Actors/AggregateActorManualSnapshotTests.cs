@@ -31,6 +31,45 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorManualSnapshotTests {
     [Theory]
+    [InlineData("{\"nested\":{\"count\":2,\"Count\":3}}", false)]
+    [InlineData("{\"items\":[{\"count\":2,\"Count\":3}]}", false)]
+    [InlineData("{\"nested\":{\"count\":2},\"items\":[{\"count\":3}]}", true)]
+    public async Task CreateManualSnapshotAsync_RecursiveCandidateValidationMatchesSnapshotRead(
+        string stateJson, bool admitted)
+    {
+        // HX-FS-V1 §§5/9, V3/V7/V17: duplicates cannot become unreadable persisted authority.
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(identity, "OrderAggregate", Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                2, false, "corr-nested", Arg.Any<CancellationToken>())
+            .Returns(AggregateReconstructionResult.Succeeded(stateJson, 2));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-nested");
+
+        if (!admitted)
+        {
+            result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+            result.ReasonCode.ShouldBe("SnapshotStateInvalid");
+            stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+            stateManager.Trace.ShouldNotContain("SaveState");
+            stateManager.CommittedState.ContainsKey(identity.SnapshotKey).ShouldBeFalse();
+            return;
+        }
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
+        SnapshotLoadResult readback = await snapshots.LoadSnapshotForCommandAsync(identity, stateManager);
+        readback.Outcome.ShouldBe(SnapshotLoadOutcome.Readable);
+        SnapshotRecord persisted = stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        persisted.SequenceNumber.ShouldBe(2);
+        JsonElement.DeepEquals(readback.Snapshot.ShouldNotBeNull().State.ShouldBeOfType<JsonElement>(),
+            JsonSerializer.Deserialize<JsonElement>(stateJson)).ShouldBeTrue();
+    }
+
+    [Theory]
     [InlineData("SnapshotReadUnavailable")]
     [InlineData("SnapshotUnprotectUnavailable")]
     [InlineData("provider-secret-detail")]
@@ -413,6 +452,49 @@ public class AggregateActorManualSnapshotTests {
         status.GetString().ShouldBe("ready");
         capturedState.ShouldNotBeOfType<Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState>();
         await stateManager.Received(1).SaveStateAsync();
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_TimeoutDuringStagedReadDiscardsSnapshotBeforeSave()
+    {
+        // HX-FS-V1 §8.4/V11: expiry before commit must discard the staged batch.
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        IReadOnlyDictionary<string, object> committedBefore = stateManager.CreateCommittedView();
+        ISnapshotManager snapshots = CreateStagingSnapshotManager(identity, stateManager);
+        CancellationToken manualTimeoutToken = default;
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Do<CancellationToken>(token => manualTimeoutToken = token))
+            .Returns(SnapshotLoadResult.Absent());
+        stateManager.ActBeforeCall($"TryGetState:{identity.SnapshotKey}", 1, async manager =>
+        {
+            manualTimeoutToken.CanBeCanceled.ShouldBeTrue();
+            manualTimeoutToken.IsCancellationRequested.ShouldBeFalse();
+            (await manager.ContainsStateAsync(identity.SnapshotKey)).ShouldBeTrue();
+            var expired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using CancellationTokenRegistration registration = manualTimeoutToken.Register(() => expired.SetResult());
+            // Complete the cached read after the real manual timeout expires. The read
+            // itself succeeds, so only the final pre-save cancellation check can refuse it.
+            await expired.Task.WaitAsync(TimeSpan.FromSeconds(45));
+            manualTimeoutToken.IsCancellationRequested.ShouldBeTrue();
+        });
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, CreateReconstructor(identity));
+
+        OperationCanceledException cancellation = await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.CreateManualSnapshotAsync("corr-ambiguous"));
+
+        cancellation.CancellationToken.ShouldBe(manualTimeoutToken);
+        stateManager.Trace.ShouldContain($"SetState:{identity.SnapshotKey}:Delegated");
+        stateManager.Trace.ShouldContain($"TryGetState:{identity.SnapshotKey}:Delegated");
+        stateManager.Trace.ShouldNotContain("SaveState");
+        stateManager.Trace.ShouldContain("ClearCache:Delegated");
+        (await stateManager.ContainsStateAsync(identity.SnapshotKey)).ShouldBeFalse();
+        stateManager.CommittedState.Count.ShouldBe(committedBefore.Count);
+        foreach ((string key, object value) in committedBefore)
+        {
+            stateManager.CommittedState[key].ShouldBe(value);
+        }
     }
 
     [Fact]
