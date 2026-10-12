@@ -113,7 +113,11 @@ public sealed class ProcessSweepStore(IReadModelStore store, IOptions<EventStore
             ProcessSweepState current = entry.Value ?? Initial();
             current.Validate(_time);
             DateTimeOffset now = _time.GetUtcNow();
-            if (current.Owner is not null && current.LeaseUntil > now) return null;
+            // A lease beyond the validated maximum plus one minute was not written by a
+            // healthy owner. Take the sweep so that timestamp cannot freeze every replica.
+            DateTimeOffset legalLeaseEnd = now + EventStoreProcessOptions.MaximumLeaseDuration + TimeSpan.FromMinutes(1);
+            if (current.Owner is not null && current.LeaseUntil is { } leaseUntil && leaseUntil > now && leaseUntil <= legalLeaseEnd)
+                return null;
             bool rescanPending = current.CatalogComplete && current.CandidatesComplete
                 && current.PendingObservations.Count == 0
                 && (current.PendingTransitions.Count != 0 || current.Pending.Values.Any(static pending => pending.Applied));

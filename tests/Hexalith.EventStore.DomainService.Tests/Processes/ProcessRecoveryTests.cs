@@ -1220,6 +1220,41 @@ public sealed class ProcessRecoveryTests
         complete.Reasons["source-read"].ShouldBe(1);
     }
 
+    /// <summary>A lease past the validated maximum cannot freeze every replica.</summary>
+    [Fact]
+    public async Task FarFutureSweepLeaseIsTakenOver()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        TimeProvider clock = TimeProvider.System;
+        ProcessSweepStore sweeps = new(store, Options.Create(options), clock);
+        ProcessSweepState owned = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep, owned with
+        {
+            LeaseUntil = clock.GetUtcNow().AddHours(2),
+        });
+
+        ProcessSweepState taken = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        taken.Owner.ShouldNotBe(owned.Owner);
+    }
+
+    /// <summary>A lease inside the validated maximum still belongs to its owner.</summary>
+    [Fact]
+    public async Task LegalSweepLeaseBlocksAnotherReplica()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        TimeProvider clock = TimeProvider.System;
+        ProcessSweepStore sweeps = new(store, Options.Create(options), clock);
+        ProcessSweepState owned = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep, owned with
+        {
+            LeaseUntil = clock.GetUtcNow().AddMinutes(10),
+        });
+
+        (await sweeps.AcquireAsync()).ShouldBeNull();
+    }
+
     /// <summary>A long valid source run renews the sweep lease until its checkpoint is covered.</summary>
     [Fact]
     public async Task LongSourceRunRenewsSweepOwnership()

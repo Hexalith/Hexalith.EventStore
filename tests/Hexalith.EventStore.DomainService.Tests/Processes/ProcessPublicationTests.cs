@@ -223,6 +223,25 @@ public sealed class ProcessPublicationTests
         sweep.PublicationCandidateUnknownPages.ShouldContainKey(ProcessStateKeys.SourceId(Source));
     }
 
+    /// <summary>A tail that names a missing page records the hole and does not invent the page.</summary>
+    [Fact]
+    public async Task MissingTailPageIsMarkedUnknownWithoutInventingIt()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.CandidatesTail(Source.Tenant), new ProcessIndexTail(1, 1));
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
+
+        (await checkpoints.EnsureCandidateAsync(Source, null, CancellationToken.None)).ShouldBeFalse();
+
+        (await checkpoints.ReadCandidatePageAsync(Source.Tenant, 1)).ShouldBeNull();
+        ProcessSweepState sweep = await new ProcessSweepStore(store, Options.Create(options), TimeProvider.System).GetAsync();
+        string sourceId = ProcessStateKeys.SourceId(Source);
+        sweep.PendingPublications.Values.ShouldContain(Source);
+        sweep.PublicationCandidateUnknownPages.ShouldContainKey(sourceId);
+        sweep.PublicationCandidateRepairPages[sourceId].ShouldBe(2);
+    }
+
     /// <summary>A stale tail is traversed in durable bounded steps instead of one million inline reads.</summary>
     [Fact]
     public async Task StaleTailAppendResumesAtPersistedPageCursor()
@@ -1272,12 +1291,29 @@ public sealed class ProcessPublicationTests
             MaxEffectsPerEnvelope = 1,
             SourceServiceQuantum = TimeSpan.FromMilliseconds(800),
             ReconciliationInterval = TimeSpan.FromSeconds(1),
+            LeaseDuration = TimeSpan.FromSeconds(1),
             ReadinessMaxAge = TimeSpan.FromSeconds(9),
             SupportedCandidateCount = 2,
         };
         options.Validate().ShouldBeEmpty();
         options.SupportedCandidateCount = 3;
         options.Validate().ShouldContain(value => value.Contains("SupportedCandidateCount", StringComparison.Ordinal));
+    }
+
+    /// <summary>A dead owner's lease must fit inside the readiness window.</summary>
+    [Fact]
+    public void ReadinessAgeMustOutlastSweepLease()
+    {
+        EventStoreProcessOptions options = new()
+        {
+            LeaseDuration = TimeSpan.FromMinutes(10),
+            ReconciliationInterval = TimeSpan.FromMinutes(1),
+            ReadinessMaxAge = TimeSpan.FromMinutes(11),
+        };
+
+        options.Validate().ShouldContain(value => value.Contains("outlast the sweep lease", StringComparison.Ordinal));
+        options.ReadinessMaxAge = TimeSpan.FromMinutes(12);
+        options.Validate().ShouldBeEmpty();
     }
 
     /// <summary>Raising supported capacity lets a fresh complete sweep clear an earlier overflow.</summary>

@@ -6,6 +6,9 @@ public sealed class EventStoreProcessOptions
     /// <summary>Configuration section name.</summary>
     public const string SectionName = "EventStore:Processes";
 
+    /// <summary>Longest lease <see cref="Validate"/> accepts.</summary>
+    internal static readonly TimeSpan MaximumLeaseDuration = TimeSpan.FromMinutes(10);
+
     /// <summary>Dapr state component for process control records.</summary>
     public string StateStoreName { get; set; } = "statestore";
 
@@ -81,7 +84,7 @@ public sealed class EventStoreProcessOptions
         if (RetryLimit is < 1 or > 20) errors.Add("RetryLimit must be 1..20.");
         if (WriteAttempts is < 1 or > 16) errors.Add("WriteAttempts must be 1..16.");
         if (OperationTimeout < TimeSpan.FromMilliseconds(100) || OperationTimeout > TimeSpan.FromMinutes(2)) errors.Add("OperationTimeout must be 100 ms..2 minutes.");
-        if (LeaseDuration < OperationTimeout * 3 || LeaseDuration > TimeSpan.FromMinutes(10))
+        if (LeaseDuration < OperationTimeout * 3 || LeaseDuration > MaximumLeaseDuration)
             errors.Add("LeaseDuration must allow three operation deadlines and be at most 10 minutes.");
         if (SourceServiceQuantum < TimeSpan.FromMilliseconds(100) || SourceServiceQuantum > TimeSpan.FromMinutes(10))
             errors.Add("SourceServiceQuantum must be 100 ms..10 minutes.");
@@ -90,6 +93,8 @@ public sealed class EventStoreProcessOptions
             errors.Add("SourceServiceQuantum must fit one envelope's translation, effects, and checkpoint deadlines.");
         if (ReconciliationInterval < TimeSpan.FromSeconds(1) || ReconciliationInterval > TimeSpan.FromMinutes(5)) errors.Add("ReconciliationInterval must be 1 second..5 minutes.");
         if (ReadinessMaxAge <= ReconciliationInterval || ReadinessMaxAge > TimeSpan.FromMinutes(30)) errors.Add("ReadinessMaxAge must exceed the interval and be at most 30 minutes.");
+        if (ReadinessMaxAge <= LeaseDuration + ReconciliationInterval)
+            errors.Add("ReadinessMaxAge must outlast the sweep lease and one reconciliation interval.");
         if (ReconciliationInterval > TimeSpan.Zero && ReadinessMaxAge > ReconciliationInterval
             && SupportedCandidateCount > 0 && SourcesPerPass > 0 && DiscoveryPageSize > 0)
         {

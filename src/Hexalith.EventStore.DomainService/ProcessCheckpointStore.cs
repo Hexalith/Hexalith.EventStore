@@ -438,7 +438,13 @@ public sealed class ProcessCheckpointStore(
                         await _sweeps.MarkPublicationPageUnknownAsync(source, tenantPage, page + 1, cancellationToken).ConfigureAwait(false);
                         return false;
                     }
-                    if (page != 0 && firstPage == page) return false;
+                    if (page != 0 && firstPage == page)
+                    {
+                        // The tail or repair cursor names a page that is not there. Keep the
+                        // hole unresolved and resume at the next page instead of inventing it.
+                        await _sweeps.MarkPublicationPageUnknownAsync(source, tenantPage, page + 1, cancellationToken).ConfigureAwait(false);
+                        return false;
+                    }
                     _ = await TrySaveAsync(_options.StateStoreName, key, new ProcessIndexPage<T>(1, page, [item], null), string.Empty, cancellationToken).ConfigureAwait(false);
                     ProcessIndexPage<T>? written = await ReadPageAsync<T>(tenant, page, cancellationToken).ConfigureAwait(false);
                     if (written?.Entries.Contains(item) == true)
