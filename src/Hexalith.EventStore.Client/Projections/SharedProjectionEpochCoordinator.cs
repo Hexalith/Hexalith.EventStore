@@ -1448,7 +1448,9 @@ public sealed class SharedProjectionEpochCoordinator
                         cancellationToken).ConfigureAwait(false);
                     if (!retiredResult.IsSuccess)
                         throw new SharedProjectionWriteUnavailableException(
-                            new InvalidOperationException("Promoted value retirement is incomplete."));
+                            new InvalidOperationException(
+                                $"Promoted value retirement is incomplete: {retiredResult.Status}, "
+                                + $"{retiredResult.ConflictKind}, {retiredResult.RecoveryReason}."));
                     await EraseTerminalBatchMarkerAsync(scope, retireBatchId, cancellationToken)
                         .ConfigureAwait(false);
                 }
