@@ -33,6 +33,7 @@ public class AggregateActorManualSnapshotTests {
     [Theory]
     [InlineData("SnapshotReadUnavailable")]
     [InlineData("SnapshotUnprotectUnavailable")]
+    [InlineData("provider-secret-detail")]
     public async Task CreateManualSnapshotAsync_InspectionInfrastructureFailureRetainsKey(string reason)
     {
         var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
@@ -48,7 +49,9 @@ public class AggregateActorManualSnapshotTests {
         ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-unavailable");
 
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
-        result.ReasonCode.ShouldBe(reason);
+        result.ReasonCode.ShouldBe(reason == "SnapshotUnprotectUnavailable"
+            ? "SnapshotUnprotectUnavailable" : "SnapshotReadUnavailable");
+        result.Message.ShouldNotContain("provider-secret-detail");
         stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
         stateManager.Trace.ShouldNotContain("SaveState");
         _ = await reconstructor.DidNotReceive().ReconstructAsync(
@@ -57,11 +60,16 @@ public class AggregateActorManualSnapshotTests {
     }
 
     [Theory]
-    [InlineData(SnapshotLoadOutcome.UnreadableProtected, "SnapshotUnreadableProtected", ManualSnapshotOutcome.UnreadableProtected)]
-    [InlineData(SnapshotLoadOutcome.ProviderOpaque, "SnapshotProtectionOpaque", ManualSnapshotOutcome.UnreadableProtected)]
-    [InlineData(SnapshotLoadOutcome.Corrupt, "SnapshotStateInvalid", ManualSnapshotOutcome.InfrastructureFailure)]
+    [InlineData(SnapshotLoadOutcome.UnreadableProtected, "SnapshotUnreadableProtected", "SnapshotUnreadableProtected", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.ProviderOpaque, "SnapshotProtectionOpaque", "SnapshotProtectionOpaque", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.ProviderOpaque, "SnapshotRecordUnavailable", "SnapshotRecordUnavailable", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.Corrupt, "SnapshotStateInvalid", "SnapshotStateInvalid", ManualSnapshotOutcome.InfrastructureFailure)]
+    [InlineData(SnapshotLoadOutcome.Corrupt, "SnapshotSequenceInvalid", "SnapshotSequenceInvalid", ManualSnapshotOutcome.InfrastructureFailure)]
+    [InlineData(SnapshotLoadOutcome.Corrupt, "CorruptSnapshot", "CorruptSnapshot", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.ProviderOpaque, "provider-secret-detail", "ProviderOpaque", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.Corrupt, null, "Corrupt", ManualSnapshotOutcome.UnreadableProtected)]
     public async Task CreateManualSnapshotAsync_UnreadableOrCorruptInspectionRetainsKey(
-        SnapshotLoadOutcome outcome, string reason, ManualSnapshotOutcome expectedOutcome)
+        SnapshotLoadOutcome outcome, string? reason, string expectedReasonClass, ManualSnapshotOutcome expectedOutcome)
     {
         var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
         var stateManager = new FaultInjectingActorStateManager();
@@ -82,8 +90,8 @@ public class AggregateActorManualSnapshotTests {
         ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-retain");
 
         result.Outcome.ShouldBe(expectedOutcome);
-        result.ReasonCode.ShouldBe(reason);
-        result.Message.ShouldBe($"Existing snapshot cannot be safely read: {reason}.");
+        result.ReasonCode.ShouldBe(expectedReasonClass);
+        result.Message.ShouldBe($"Existing snapshot cannot be safely read: {expectedReasonClass}.");
         stateManager.Trace.Count(entry => entry == $"SetState:{identity.SnapshotKey}").ShouldBe(writesBefore);
         stateManager.Trace.Count(entry => entry == "SaveState").ShouldBe(savesBefore);
         stateManager.CommittedState[identity.SnapshotKey].ShouldBe(retained);
@@ -158,6 +166,13 @@ public class AggregateActorManualSnapshotTests {
         {
             ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SequenceNumber.ShouldBe(2);
             stateManager.Trace.ShouldContain("SaveState");
+            int saved = stateManager.Trace.FindIndex(entry => entry == "SaveState:Delegated");
+            saved.ShouldBeGreaterThanOrEqualTo(0);
+            int cleared = stateManager.Trace.FindIndex(saved + 1, entry => entry == "ClearCache");
+            int readback = stateManager.Trace.FindIndex(saved + 1,
+                entry => entry == $"TryGetState:{identity.SnapshotKey}");
+            cleared.ShouldBeGreaterThan(saved);
+            readback.ShouldBeGreaterThan(cleared);
         }
     }
 
@@ -176,8 +191,7 @@ public class AggregateActorManualSnapshotTests {
                 2, false, "corr-sensitive", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<AggregateReconstructionResult>(
                 new InvalidOperationException("Snapshot private provider detail")));
-        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var logger = new SnapshotCaptureLogger();
         AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor,
             logger: logger);
 
@@ -187,16 +201,11 @@ public class AggregateActorManualSnapshotTests {
         result.ReasonCode.ShouldBe("InfrastructureFailure");
         result.Message.ShouldNotBeNull().ShouldContain("InfrastructureFailure");
         result.Message.ShouldNotContain("Snapshot private provider detail");
-        logger.ReceivedCalls().Any(call => call.GetArguments().Length > 3
-            && call.GetArguments()[0] is LogLevel.Warning
-            && call.GetArguments()[2]?.ToString()?.Contains("FailureClass=InfrastructureFailure",
-                StringComparison.Ordinal) == true).ShouldBeTrue();
-        logger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
-            && call.GetArguments()[2]?.ToString()?.Contains("Manual snapshot creation failed",
-                StringComparison.Ordinal) == true)
-            .All(call => call.GetArguments()[3] is null
-                && !call.GetArguments()[2]!.ToString()!.Contains("Snapshot private provider detail",
-                    StringComparison.Ordinal)).ShouldBeTrue();
+        logger.Messages.ShouldContain(message => message.Contains(
+            "FailureClass=InfrastructureFailure", StringComparison.Ordinal));
+        logger.Exceptions.ShouldAllBe(exception => exception == null);
+        logger.Messages.ShouldNotContain(message => message.Contains(
+            "Snapshot private provider detail", StringComparison.Ordinal));
         stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
     }
 
@@ -220,6 +229,36 @@ public class AggregateActorManualSnapshotTests {
 
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
         result.ReasonCode.ShouldBe("SnapshotCaptureUnsupported");
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+        stateManager.Trace.ShouldNotContain("SaveState");
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_MissingFirstEventReportsUnavailableAuthoritativePrefix()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = new AggregateMetadata(2, DateTimeOffset.UtcNow, null),
+            [$"{identity.EventStreamKeyPrefix}2"] = CreateEvent(identity, 2),
+        });
+        ISnapshotManager snapshots = Substitute.For<ISnapshotManager>();
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.Absent());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor,
+            qualifiedAggregateType: null);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-missing-prefix");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("ReplayRestartRequired");
+        result.SequenceNumber.ShouldBe(2);
         _ = await reconstructor.DidNotReceive().ReconstructAsync(
             Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -693,7 +732,10 @@ public class AggregateActorManualSnapshotTests {
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(identity.ActorId) });
         logger ??= Substitute.For<ILogger<AggregateActor>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        if (logger is not SnapshotCaptureLogger)
+        {
+            _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        }
 
         var actor = new AggregateActor(
             host,

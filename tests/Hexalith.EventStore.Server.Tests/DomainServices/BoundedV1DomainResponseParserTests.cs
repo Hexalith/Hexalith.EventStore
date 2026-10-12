@@ -102,6 +102,60 @@ public sealed class BoundedV1DomainResponseParserTests
         result.PostCommandStateJson.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task OptionalScalarLargerThanParserBudgetIsSkippedWithoutLosingAdmittedEvents()
+    {
+        using var stream = new OversizedOptionalStateStream(130L * 1024 * 1024);
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.ResultPayload.ShouldBe("ok");
+        result.PostCommandStateJson.ShouldBeNull();
+        parser.LiveBytes.ShouldBeLessThan(16L * 1024 * 1024);
+    }
+
+    [Fact]
+    public async Task OversizedOptionalScalarBeforeEventsStillParsesFollowingFields()
+    {
+        using var stream = Input("{\"postCommandStateJson\":\"" + new string('a', 6 * 1024 * 1024 + 1)
+            + "\",\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"resultPayload\":\"ok\"}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.ResultPayload.ShouldBe("ok");
+        result.PostCommandStateJson.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task OversizedOptionalScalarStillRejectsMalformedJsonEscape()
+    {
+        using var stream = Input("{\"events\":[],\"postCommandStateJson\":\""
+            + new string('a', 6 * 1024 * 1024 + 1) + "\\q\"}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        await Should.ThrowAsync<JsonException>(() => parser.ParseAsync());
+    }
+
+    [Theory]
+    [InlineData(1024 * 1024, true)]
+    [InlineData(1024 * 1024 + 1, false)]
+    public async Task OptionalStateDecodedUtf8BoundaryPreservesEvents(int decodedBytes, bool admitted)
+    {
+        string state = new('a', decodedBytes);
+        using var stream = Input("{\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"postCommandStateJson\":\""
+            + state + "\"}");
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.PostCommandStateJson.ShouldBe(admitted ? state : null);
+    }
+
     [Theory]
     [InlineData("writerMode")]
     [InlineData("registryFingerprint")]
@@ -125,6 +179,30 @@ public sealed class BoundedV1DomainResponseParserTests
         (await Should.ThrowAsync<InvalidOperationException>(() => metadataParser.ParseAsync())).Message.ShouldContain("MetadataLimit");
         metadataParser.Dispose();
         metadataParser.LiveBytes.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(7, true)]
+    [InlineData(8, false)]
+    public async Task DecodedPayloadBoundaryAdmitsExactBytesAndRejectsOneExtraByte(int decodedBytes, bool admitted)
+    {
+        byte[] payload = Enumerable.Repeat((byte)0xff, decodedBytes).ToArray();
+        string encoded = Convert.ToBase64String(payload).Replace("/", "\\/");
+        using var stream = Input("{\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"" + encoded + "\"}]}");
+        var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None, maximumPayload: 7);
+
+        if (admitted)
+        {
+            (await parser.ParseAsync()).Events.ShouldHaveSingleItem().Payload.ShouldBe(payload);
+        }
+        else
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => parser.ParseAsync()))
+                .Message.ShouldBe("PayloadLimit: decoded payload exceeds the selected readable ceiling.");
+        }
+
+        parser.Dispose();
+        if (!admitted) { parser.LiveBytes.ShouldBe(0); }
     }
 
     [Fact]

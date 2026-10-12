@@ -45,6 +45,8 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
     internal long BytesConsumed => _consumed;
     /// <summary>Gets whether the current private scalar contains JSON escapes.</summary>
     internal bool ValueIsEscaped { get; private set; }
+    /// <summary>Gets whether the current optional string was discarded after its raw limit.</summary>
+    internal bool SkippedOversizedString { get; private set; }
     /// <summary>Gets an invocation-bounded read-only private raw scalar slice.</summary>
     internal ReadOnlySpan<byte> RawValue
     {
@@ -56,18 +58,30 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
     }
 
     /// <summary>Reads one token while charging old/new capacity before any growth and checking the original token.</summary>
-    internal async ValueTask<bool> ReadAsync(long maximumRawTokenBytes = long.MaxValue, IDomainJsonScalarAdmission? scalarAdmission = null, long maximumConsumedBytes = long.MaxValue)
+    internal async ValueTask<bool> ReadAsync(long maximumRawTokenBytes = long.MaxValue, IDomainJsonScalarAdmission? scalarAdmission = null,
+        long maximumConsumedBytes = long.MaxValue, bool skipOversizedString = false)
     {
         ObjectDisposedException.ThrowIf(_owner is null, this);
         _token.ThrowIfCancellationRequested();
+        SkippedOversizedString = false;
         while (true)
         {
+            if (skipOversizedString && _end - _start > maximumRawTokenBytes
+                && await SkipOversizedStringAsync().ConfigureAwait(false))
+            {
+                return true;
+            }
             if (TryRead())
             {
                 long chargedConsumed = _consumed - (scalarAdmission is not null && TokenType == JsonTokenType.String ? _valueLength + 2L : 0);
                 if (chargedConsumed > maximumConsumedBytes) { throw new InvalidOperationException("MetadataLimit: cumulative encoded metadata exceeds its selected cap."); }
                 if (TokenType is JsonTokenType.String or JsonTokenType.PropertyName && _valueLength + 2L > maximumRawTokenBytes)
                 {
+                    if (skipOversizedString && TokenType == JsonTokenType.String)
+                    {
+                        SkippedOversizedString = true;
+                        return true;
+                    }
                     throw new InvalidOperationException("PayloadLimit: encoded scalar exceeds its field-selected bound.");
                 }
                 if (scalarAdmission is not null)
@@ -80,6 +94,7 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
             if (_consumed > maximumConsumedBytes) { throw new InvalidOperationException("MetadataLimit: cumulative encoded whitespace/metadata exceeds its selected cap."); }
             if (_end - _start > maximumRawTokenBytes)
             {
+                if (skipOversizedString && await SkipOversizedStringAsync().ConfigureAwait(false)) { return true; }
                 throw new InvalidOperationException("PayloadLimit: incomplete encoded scalar exceeds its field-selected bound.");
             }
             if (scalarAdmission is not null && _end > _start)
@@ -95,6 +110,134 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
             else { _end += read; }
         }
     }
+
+    /// <summary>Consumes an excessive optional JSON string without retaining or growing its scalar bytes.</summary>
+    private async ValueTask<bool> SkipOversizedStringAsync()
+    {
+        int quote = _owner!.AsSpan(_start, _end - _start).IndexOf((byte)'"');
+        if (quote < 0) { return false; }
+        quote += _start;
+        // Let the JSON reader validate any colon/whitespace before the string and advance
+        // its grammar state using a synthetic empty string after the original is skipped.
+        byte[] prefix = _owner.AsSpan(_start, quote - _start).ToArray();
+        long start = _consumed + quote - _start;
+        _consumed += quote - _start;
+        _start = quote;
+        var utf8 = StrictUtf8.GetDecoder();
+        int unicodeDigits = 0;
+        int unicodeValue = 0;
+        bool escaped = false;
+        bool pendingHigh = false;
+        bool requireLowEscape = false;
+        bool requireLowU = false;
+        bool inside = false;
+        while (true)
+        {
+            ReadOnlySpan<byte> span = _owner.AsSpan(_start, _end - _start);
+            int consumed = 0;
+            while (consumed < span.Length)
+            {
+                byte value = span[consumed];
+                if (!inside) { inside = true; consumed++; continue; }
+                if (unicodeDigits > 0)
+                {
+                    unicodeValue = (unicodeValue << 4) | HexDigit(value);
+                    unicodeDigits--;
+                    consumed++;
+                    if (unicodeDigits == 0)
+                    {
+                        if (pendingHigh)
+                        {
+                            if (unicodeValue is < 0xdc00 or > 0xdfff) { throw new JsonException("Unpaired high surrogate."); }
+                            pendingHigh = false;
+                        }
+                        else if (unicodeValue is >= 0xd800 and <= 0xdbff)
+                        {
+                            pendingHigh = true;
+                            requireLowEscape = true;
+                        }
+                        else if (unicodeValue is >= 0xdc00 and <= 0xdfff) { throw new JsonException("Unpaired low surrogate."); }
+                        unicodeValue = 0;
+                    }
+                    continue;
+                }
+                if (requireLowEscape)
+                {
+                    if (value != (byte)'\\') { throw new JsonException("Unpaired high surrogate."); }
+                    requireLowEscape = false;
+                    requireLowU = true;
+                    consumed++;
+                    continue;
+                }
+                if (requireLowU)
+                {
+                    if (value != (byte)'u') { throw new JsonException("Unpaired high surrogate."); }
+                    requireLowU = false;
+                    unicodeDigits = 4;
+                    consumed++;
+                    continue;
+                }
+                if (escaped)
+                {
+                    if (value == (byte)'u') { unicodeDigits = 4; }
+                    else if (value is not ((byte)'"' or (byte)'\\' or (byte)'/' or (byte)'b' or (byte)'f' or (byte)'n' or (byte)'r' or (byte)'t'))
+                    {
+                        throw new JsonException("Invalid JSON escape.");
+                    }
+                    escaped = false;
+                    consumed++;
+                    continue;
+                }
+                if (value == (byte)'"' || value == (byte)'\\')
+                {
+                    _ = utf8.GetCharCount(ReadOnlySpan<byte>.Empty, flush: true);
+                    utf8.Reset();
+                    if (value == (byte)'"')
+                    {
+                        _consumed += consumed + 1;
+                        _start += consumed + 1;
+                        byte[] synthetic = new byte[prefix.Length + 2];
+                        prefix.CopyTo(synthetic, 0);
+                        synthetic[^2] = (byte)'"';
+                        synthetic[^1] = (byte)'"';
+                        var reader = new Utf8JsonReader(synthetic, isFinalBlock: true, _state);
+                        if (!reader.Read() || reader.TokenType != JsonTokenType.String)
+                        {
+                            throw new JsonException("Invalid optional state scalar.");
+                        }
+                        _state = reader.CurrentState;
+                        TokenType = JsonTokenType.String;
+                        Depth = reader.CurrentDepth;
+                        TokenStart = start;
+                        ValueIsEscaped = false;
+                        _valueLength = 0;
+                        SkippedOversizedString = true;
+                        return true;
+                    }
+                    escaped = true;
+                    consumed++;
+                    continue;
+                }
+                if (value < 0x20) { throw new JsonException("Unescaped control byte in JSON string."); }
+                int run = consumed + 1;
+                while (run < span.Length && span[run] >= 0x20 && span[run] is not ((byte)'"' or (byte)'\\')) { run++; }
+                _ = utf8.GetCharCount(span.Slice(consumed, run - consumed), flush: false);
+                consumed = run;
+            }
+            _consumed += consumed;
+            _start = _end = 0;
+            _token.ThrowIfCancellationRequested();
+            int read = await _source.ReadAsync(_owner.AsMemory(0, 64 * 1024), _token).ConfigureAwait(false);
+            if (read == 0) { throw new JsonException("Incomplete optional state scalar."); }
+            _end = read;
+        }
+    }
+
+    private static int HexDigit(byte value)
+        => value is >= (byte)'0' and <= (byte)'9' ? value - '0'
+            : value is >= (byte)'a' and <= (byte)'f' ? value - 'a' + 10
+            : value is >= (byte)'A' and <= (byte)'F' ? value - 'A' + 10
+            : throw new JsonException("Invalid Unicode escape.");
 
     /// <summary>Decodes a name/value only after reserving conservative UTF16 capacity and object overhead.</summary>
     internal (string Value, long Charge) DecodeString()

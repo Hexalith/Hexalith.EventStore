@@ -95,7 +95,6 @@ public static class DomainServiceRequestRouter {
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-                catch (OperationCanceledException) { foldedJson = null; }
                 catch { foldedJson = null; }
                 finally
                 {

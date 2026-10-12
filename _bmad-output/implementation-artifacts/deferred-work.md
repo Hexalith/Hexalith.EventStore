@@ -5777,30 +5777,46 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Run the folded-snapshot compatibility harness as a blocking NuGet-mode CI job.
   evidence: Split from the 2369-token Story 6.2 proof-closure spec so the in-CI unit proofs can land first; the harness and its `ci.yml` job can ship without those test repairs.
+  status: resolved (2026-10-12) — Story 6.2: the workflow job is present, actionlint passed, and the published/current harness passed twice.
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Persist and reload one qualified folded snapshot through a real Dapr sidecar.
   evidence: Split from the 2369-token Story 6.2 proof-closure spec; the LiveSidecar reload can follow the in-CI qualification proofs and does not block them.
+  status: resolved (2026-10-12) — Story 6.2: LiveSidecar test passed 1/1 with a durable sequence-11 snapshot and snapshot-plus-tail rehydration after restart.
 
 ## Deferred from: Story 6.2 in-CI proof split (2026-10-12)
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Prove folded-snapshot capture limits, qualification, and the parser decoded-size bound.
   evidence: Split from the 2063-token in-CI proof spec so the Server actor and read proofs can land first; these DomainService and parser tests do not need that actor suite.
+  status: resolved (2026-10-12) — Story 6.2: Contracts 2/2, DomainService 21/21, and Server parser 35/35 focused tests passed.
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Pin Admin snapshot evidence values and prove wire-level snapshot profile delegation.
   evidence: Split from the 2063-token in-CI proof spec; the Admin inspector pins and the `includePostCommandState: false` plus 3-arg invoker tests each live in their own test class and can ship separately.
+  status: resolved (2026-10-12) — Story 6.2: Admin inspector 27/27 and Server wire/delegation matrix passed.
 
 ## Deferred from: Story 6.2 actor-proof split (2026-10-12)
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Prove folded-snapshot byte identity across three event prefixes and a large indented payload.
   evidence: Split from the 1660-token Server proof spec so the actor decision proofs can land first; `SnapshotManagerTests` and `FoldedSnapshotParityTests` do not need those actor tests.
+  status: resolved (2026-10-12) — Story 6.2: byte-identity 2/2 passed for 1, 100, and 1,000 event prefixes and large indented refusal.
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Enumerate every `IDomainServiceInvoker.InvokeAsync` overload against the metadata-parameter allowlist.
   evidence: Split from the 1660-token Server proof spec; the `DomainServiceIsolationTests` scan does not depend on the actor decision proofs.
+  status: resolved (2026-10-12) — Story 6.2: SEC-1 signature scan passed in the focused Server matrix.
 
 ## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-12, gap review)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Close the five chunk-2 proof items that no Story 6.2 split owns: capture from a snapshot-plus-tail JSON `DomainServiceCurrentState` pre-state, stale typed `TryGetStateAsync<SnapshotRecord>` stubs in `SnapshotManagerTests`, a raw-byte parity compare in `FoldedSnapshotParityTests`, the V5 counts reported through `Console.WriteLine`, and `NUGET_PACKAGES` isolation in `tools/folded-snapshot-compatibility/run.sh`.
   evidence: These chunk-2 `[Review][Patch]` items remain open at `cf43d21a`; `883db9fe` touched none of those files, and the 2026-10-12 split entries above cover only the harness CI job, LiveSidecar reload, capture limits and qualification, Admin pins and delegation, byte identity, and the `InvokeAsync` scan. Story acceptance still depends on them.
+  status: resolved (2026-10-12) — the five fixes are in the Story 6.2 review patch; focused DomainService and Server event tests, the full project suites, and the isolated NuGet-mode compatibility harness passed.
+
+## Deferred from: Story 6.2 independent review (2026-10-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound actor snapshot-state reads and object-to-JSON conversion for oversized stored values.
+  evidence: `SnapshotManager.ReadSnapshotCoreAsync` requests the entire actor state value and serializes non-JSON cached objects before a size check; this behavior predates the current review patch and needs a read/storage contract for legacy keys.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Detect PascalCase legacy DomainServiceCurrentState snapshots before treating them as folded state.
+  evidence: `SnapshotEnvelopeInspector.IsDomainServiceCurrentState` still uses ordinal camelCase property lookup while the envelope reader is case-insensitive. A change would renegotiate the approved HX-FS-V1 section 5.3 boundary for custom actor JSON options.

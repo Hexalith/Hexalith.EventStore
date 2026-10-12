@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Snapshots;
 
@@ -55,6 +56,33 @@ public sealed class FoldedSnapshotCaptureTests
         using JsonDocument document = JsonDocument.Parse(wire.PostCommandStateJson.ShouldNotBeNull());
         document.RootElement.GetProperty("count").GetInt32().ShouldBe(42);
         if (!jsonState) { ((SnapshotCaptureTestState)state).Count.ShouldBe(41); }
+    }
+
+    [Fact]
+    public async Task RequestedCaptureFoldsJsonSnapshotAndTailBeforeAdmittedCommandEvent()
+    {
+        var processor = new SnapshotCaptureTestProcessor();
+        using ServiceProvider provider = BuildProvider(processor);
+        var tailMetadata = new EventMetadata(
+            "01HZX6FKA8B3YTX6MBQ3AYT3PX", "aggregate-id", "aggregate", "tenant", "d",
+            2, 2, DateTimeOffset.UnixEpoch, "01HZX6FKA8B3YTX6MBQ3AYT3PT",
+            "01HZX6FKA8B3YTX6MBQ3AYT3PT", "user", "v1",
+            typeof(SnapshotCaptureTestEvent).FullName!, 1, "json");
+        var current = new DomainServiceCurrentState(
+            JsonSerializer.Deserialize<JsonElement>("""{"count":41,"throwOnApply":false}"""),
+            [new EventEnvelope(tailMetadata, "{\"amount\":2}"u8.ToArray(), null)], 1, 2);
+        JsonElement jsonCurrent = JsonSerializer.SerializeToElement(current, JsonSerializerOptions.Web);
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
+        {
+            CurrentState = jsonCurrent,
+        };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        using JsonDocument document = JsonDocument.Parse(wire.PostCommandStateJson.ShouldNotBeNull());
+        document.RootElement.GetProperty("count").GetInt32().ShouldBe(44);
+        jsonCurrent.GetProperty("snapshotState").GetProperty("count").GetInt32().ShouldBe(41);
     }
 
     [Theory]
@@ -193,17 +221,147 @@ public sealed class FoldedSnapshotCaptureTests
             provider, CreateRequest(include: true, "test-profile"), cancellation.Token));
     }
 
-    private static ServiceProvider BuildProvider(IAsyncDomainProcessor processor)
+    [Theory]
+    [InlineData("state")]
+    [InlineData("parity")]
+    [InlineData("limits")]
+    public async Task QualificationMismatchOmitsOnlyOptionalEvidence(string mismatch)
+    {
+        var processor = new SnapshotCaptureTestProcessor();
+        using ServiceProvider provider = BuildProvider(processor, mismatch: mismatch);
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile");
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false });
+
+        result.PostCommandStateJson.ShouldBeNull();
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe(baseline.Events.ShouldHaveSingleItem().Payload);
+        result.IsRejection.ShouldBe(baseline.IsRejection);
+        result.ResultPayload.ShouldBe(baseline.ResultPayload);
+    }
+
+    [Fact]
+    public async Task RouterAdmitsExactEventCountAndByteLimitThenSkipsExcess()
+    {
+        FoldedSnapshotCaptureLimits countLimits = SnapshotCaptureTestLimits.For(maximumEventCount: 2);
+        var countProcessor = new MutatingCaptureProcessor(false)
+        {
+            ExpectedLimits = countLimits,
+            EventAmounts = [99, 99],
+        };
+        using (ServiceProvider provider = BuildProvider(countProcessor, countLimits))
+        {
+            DomainServiceWireResult atLimit = await DomainServiceRequestRouter.ProcessAsync(provider,
+                CreateRequest(include: true, "test-profile"));
+            atLimit.PostCommandStateJson.ShouldBe("{}");
+            countProcessor.CaptureCalls.ShouldBe(1);
+            countProcessor.EventAmounts = [99, 99, 99];
+            DomainServiceWireResult overLimit = await DomainServiceRequestRouter.ProcessAsync(provider,
+                CreateRequest(include: true, "test-profile"));
+            overLimit.Events.Count.ShouldBe(3);
+            overLimit.PostCommandStateJson.ShouldBeNull();
+            countProcessor.CaptureCalls.ShouldBe(1);
+        }
+
+        FoldedSnapshotCaptureLimits byteLimits = SnapshotCaptureTestLimits.For(maximumEventBytes: 12);
+        var byteProcessor = new MutatingCaptureProcessor(false) { ExpectedLimits = byteLimits };
+        using ServiceProvider byteProvider = BuildProvider(byteProcessor, byteLimits);
+        DomainServiceWireResult exactBytes = await DomainServiceRequestRouter.ProcessAsync(byteProvider,
+            CreateRequest(include: true, "test-profile"));
+        exactBytes.Events.ShouldHaveSingleItem().Payload.Length.ShouldBe(12);
+        exactBytes.PostCommandStateJson.ShouldBe("{}");
+        byteProcessor.EventAmounts = [98];
+        DomainServiceWireResult excessBytes = await DomainServiceRequestRouter.ProcessAsync(byteProvider,
+            CreateRequest(include: true, "test-profile"));
+        excessBytes.Events.ShouldHaveSingleItem().Payload.Length.ShouldBe(13);
+        excessBytes.PostCommandStateJson.ShouldBeNull();
+        byteProcessor.CaptureCalls.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task DomainProcessorEnforcesEventCountBytesAndSerializedStateLimits()
+    {
+        FoldedSnapshotCaptureLimits eventLimits = SnapshotCaptureTestLimits.For(maximumEventCount: 2, maximumEventBytes: 24);
+        var processor = new SnapshotCaptureTestProcessor(eventLimits);
+        FoldedSnapshotProcessingResult processing = await processor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", eventLimits, CancellationToken.None);
+        Func<IReadOnlyList<DomainServiceWireEvent>, CancellationToken, string?> capture = processing.Capture.ShouldNotBeNull();
+        var eventBytes = new DomainServiceWireEvent(typeof(SnapshotCaptureTestEvent).FullName!, "{\"amount\":1}"u8.ToArray(), "json");
+        string exact = capture([eventBytes, eventBytes], CancellationToken.None).ShouldNotBeNull();
+        exact.ShouldContain("\"count\":2");
+        Should.Throw<InvalidOperationException>(() => capture([eventBytes, eventBytes, eventBytes], CancellationToken.None))
+            .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+        var excessBytes = eventBytes with { Payload = "{\"amount\":10}"u8.ToArray() };
+        Should.Throw<InvalidOperationException>(() => capture([eventBytes, excessBytes], CancellationToken.None))
+            .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+
+        int exactStateBytes = Encoding.UTF8.GetByteCount(exact);
+        FoldedSnapshotCaptureLimits stateLimits = SnapshotCaptureTestLimits.For(maximumStateJsonBytes: exactStateBytes);
+        var stateProcessor = new SnapshotCaptureTestProcessor(stateLimits);
+        FoldedSnapshotProcessingResult stateProcessing = await stateProcessor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", stateLimits, CancellationToken.None);
+        stateProcessing.Capture.ShouldNotBeNull()([eventBytes, eventBytes], CancellationToken.None).ShouldBe(exact);
+        FoldedSnapshotCaptureLimits shortStateLimits = SnapshotCaptureTestLimits.For(maximumStateJsonBytes: exactStateBytes - 1);
+        var shortProcessor = new SnapshotCaptureTestProcessor(shortStateLimits);
+        FoldedSnapshotProcessingResult shortProcessing = await shortProcessor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", shortStateLimits, CancellationToken.None);
+        Should.Throw<InvalidOperationException>(() => shortProcessing.Capture.ShouldNotBeNull()(
+            [eventBytes, eventBytes], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
+
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(exact));
+        int nodes = 0;
+        while (reader.Read()) { nodes++; }
+        long graphBytes = checked(16L * exactStateBytes + 64L * nodes);
+        FoldedSnapshotCaptureLimits exactShapeLimits = SnapshotCaptureTestLimits.For(
+            maximumNodeCount: nodes, maximumDomainParsedStateGraphBytes: graphBytes);
+        var shapeProcessor = new SnapshotCaptureTestProcessor(exactShapeLimits);
+        FoldedSnapshotProcessingResult shapeProcessing = await shapeProcessor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", exactShapeLimits, CancellationToken.None);
+        shapeProcessing.Capture.ShouldNotBeNull()([eventBytes, eventBytes], CancellationToken.None).ShouldBe(exact);
+
+        FoldedSnapshotCaptureLimits shortNodeLimits = SnapshotCaptureTestLimits.For(maximumNodeCount: nodes - 1);
+        var shortNodeProcessor = new SnapshotCaptureTestProcessor(shortNodeLimits);
+        FoldedSnapshotProcessingResult shortNodeProcessing = await shortNodeProcessor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", shortNodeLimits, CancellationToken.None);
+        Should.Throw<InvalidOperationException>(() => shortNodeProcessing.Capture.ShouldNotBeNull()(
+            [eventBytes, eventBytes], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
+
+        FoldedSnapshotCaptureLimits shortGraphLimits = SnapshotCaptureTestLimits.For(
+            maximumDomainParsedStateGraphBytes: graphBytes - 1);
+        var shortGraphProcessor = new SnapshotCaptureTestProcessor(shortGraphLimits);
+        FoldedSnapshotProcessingResult shortGraphProcessing = await shortGraphProcessor.ProcessForSnapshotAsync(
+            CreateRequest(include: true, "test-profile"), "test-profile", shortGraphLimits, CancellationToken.None);
+        Should.Throw<InvalidOperationException>(() => shortGraphProcessing.Capture.ShouldNotBeNull()(
+            [eventBytes, eventBytes], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
+    }
+
+    private static ServiceProvider BuildProvider(IAsyncDomainProcessor processor,
+        FoldedSnapshotCaptureLimits? limits = null, string? mismatch = null)
     {
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IAsyncDomainProcessor>("d", processor);
         services.AddEventStoreBoundedV1DomainSerialization("d", profile => profile.Add<SnapshotCaptureTestEvent>(
             typeof(SnapshotCaptureTestEvent).FullName!, "json", 64,
-            static (_, sink, _) => { sink.Write("{\"amount\":1}"u8); return Task.CompletedTask; })
+            static (value, sink, _) =>
+            {
+                sink.Write(value.Amount == 98 ? "{\"amount\":10}"u8 : "{\"amount\":1}"u8);
+                return Task.CompletedTask;
+            })
             .Add<SnapshotCaptureTestRejectionEvent>(typeof(SnapshotCaptureTestRejectionEvent).FullName!, "json", 64,
                 static (_, sink, _) => { sink.Write("{\"amount\":3}"u8); return Task.CompletedTask; }));
-        services.AddEventStoreFoldedSnapshotQualification<SnapshotCaptureTestState>(
-            "d", "aggregate", "test-profile", "test-parity-evidence", SnapshotCaptureTestLimits.Value);
+        FoldedSnapshotCaptureLimits declaration = limits ?? SnapshotCaptureTestLimits.Value;
+        if (mismatch == "state")
+        {
+            services.AddEventStoreFoldedSnapshotQualification<object>(
+                "d", "aggregate", "test-profile", "test-parity-evidence", declaration);
+        }
+        else
+        {
+            services.AddEventStoreFoldedSnapshotQualification<SnapshotCaptureTestState>(
+                "d", "aggregate", "test-profile", mismatch == "parity" ? "other-parity" : "test-parity-evidence",
+                mismatch == "limits" ? SnapshotCaptureTestLimits.For(maximumNodeCount: 99) : declaration);
+        }
         return services.BuildServiceProvider();
     }
 
@@ -214,25 +372,34 @@ public sealed class FoldedSnapshotCaptureTests
 
         public Action? OnQualify { get; init; }
 
+        public FoldedSnapshotCaptureLimits ExpectedLimits { get; init; } = SnapshotCaptureTestLimits.Value;
+
+        public int[] EventAmounts { get; set; } = [99];
+
+        public int CaptureCalls { get; private set; }
+
         public bool IsQualified(Type stateType, string profileId, string parityEvidenceId,
             FoldedSnapshotCaptureLimits limits)
         {
             OnQualify?.Invoke();
             return stateType == typeof(SnapshotCaptureTestState)
                 && profileId == "test-profile" && parityEvidenceId == "test-parity-evidence"
-                && Equals(limits, SnapshotCaptureTestLimits.Value);
+                && Equals(limits, ExpectedLimits);
         }
 
         public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState,
             CancellationToken cancellationToken)
-            => Task.FromResult(DomainResult.Success([new SnapshotCaptureTestEvent { Amount = 99 }]));
+            => Task.FromResult(DomainResult.Success(EventAmounts.Select(amount =>
+                (IEventPayload)new SnapshotCaptureTestEvent { Amount = amount }).ToArray()));
 
         public Task<FoldedSnapshotProcessingResult> ProcessForSnapshotAsync(DomainServiceRequest request,
             string qualifiedProfileId, FoldedSnapshotCaptureLimits limits, CancellationToken cancellationToken)
             => Task.FromResult(new FoldedSnapshotProcessingResult(
-                DomainResult.Success([new SnapshotCaptureTestEvent { Amount = 99 }]),
+                DomainResult.Success(EventAmounts.Select(amount =>
+                    (IEventPayload)new SnapshotCaptureTestEvent { Amount = amount }).ToArray()),
                 (events, _) =>
                 {
+                    CaptureCalls++;
                     events[0].Payload[0] = (byte)'x';
                     if (CancelCapture) { throw new OperationCanceledException("optional callback canceled"); }
                     if (throwAfterMutation) { throw new InvalidOperationException("capture failed"); }

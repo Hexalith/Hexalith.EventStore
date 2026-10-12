@@ -15,6 +15,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Snapshots;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Actors;
@@ -468,6 +469,26 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 new Hexalith.EventStore.Sample.Counter.Events.CounterReset(),
             }));
     }
+
+    private static FoldedSnapshotCaptureLimits CreateFoldedCounterCaptureLimits() => new(
+        maximumCaptureWorkspaceBytes: 32L * 1024 * 1024,
+        maximumPreCommandStateGraphBytes: 1024 * 1024,
+        maximumWorkingStateGraphBytes: 1024 * 1024,
+        maximumDetachedEventGraphBytes: 2 * 1024 * 1024,
+        maximumEventCount: 1000,
+        maximumEventBytes: 1024 * 1024,
+        maximumStateJsonBytes: 1024 * 1024,
+        maximumDomainParsedStateGraphBytes: 8L * 1024 * 1024,
+        maximumEscapedWireStateBytes: 6 * 1024 * 1024 + 2,
+        maximumActorParsedStateBytes: 1024 * 1024,
+        maximumActorParsedGraphBytes: 8L * 1024 * 1024,
+        maximumCanonicalStateMeasurementBytes: 1024 * 1024,
+        maximumCanonicalEnvelopeBytes: 4 * 1024 * 1024,
+        maximumNodeCount: 100_000,
+        maximumDepth: 64,
+        maximumSerializerScratchBytes: 4L * 1024 * 1024,
+        maximumSimultaneousLiveBytes: 32L * 1024 * 1024,
+        maximumActorWorkspaceBytes: 32L * 1024 * 1024);
 
     /// <summary>
     /// Reads aggregate actor state directly from Redis using the fixture's isolated actor type name.
@@ -1041,6 +1062,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
+            "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
+            CreateFoldedCounterCaptureLimits());
         _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
         _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
@@ -1055,6 +1079,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
 
         _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["foldedcounter"] = 10);
         ConfigureTypedReminders(builder);
 
         _testHost = builder.Build();
@@ -1201,12 +1226,16 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
+            "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
+            CreateFoldedCounterCaptureLimits());
         _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
         _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
         _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
         _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["foldedcounter"] = 10);
 
         _replicaTestHost = builder.Build();
         EnsureTestingEnvironment(_replicaTestHost.Services, "replica");

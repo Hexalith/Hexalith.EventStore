@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     private readonly ConcurrentQueue<(CommandEnvelope Command, object? CurrentState)> _invocations = new();
     private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, Task<DomainResult>>> _aggregateHandlers = new();
+    private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, bool, string?, Task<DomainResult>>> _aggregateSnapshotHandlers = new();
     private readonly ConcurrentDictionary<string, DomainResult> _commandTypeResponses = new();
     private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, Task<DomainResult>>> _commandTypeHandlers = new();
     private readonly ConcurrentDictionary<string, DomainResult> _tenantDomainResponses = new();
@@ -98,6 +99,15 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
         _aggregateHandlers[identity.ActorId] = handler;
     }
 
+    /// <summary>Configures a scoped handler that observes the optional folded-state request.</summary>
+    public void SetupAggregateSnapshotHandler(
+        AggregateIdentity identity,
+        Func<CommandEnvelope, object?, bool, string?, Task<DomainResult>> handler) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(handler);
+        _aggregateSnapshotHandlers[identity.ActorId] = handler;
+    }
+
     /// <summary>
     /// Configures a canned response for a specific tenant and domain combination.
     /// </summary>
@@ -134,6 +144,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
         _commandTypeResponses.Clear();
         _commandTypeHandlers.Clear();
         _aggregateHandlers.Clear();
+        _aggregateSnapshotHandlers.Clear();
         _tenantDomainResponses.Clear();
         _invocations.Clear();
         _defaultResponse = null;
@@ -143,6 +154,11 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
         _invocations.Enqueue((command, currentState));
+
+        if (_aggregateSnapshotHandlers.TryGetValue(command.AggregateIdentity.ActorId,
+            out Func<CommandEnvelope, object?, bool, string?, Task<DomainResult>>? snapshotHandler)) {
+            return await snapshotHandler(command, currentState, false, null).ConfigureAwait(false);
+        }
 
         if (_aggregateHandlers.TryGetValue(command.AggregateIdentity.ActorId, out Func<CommandEnvelope, object?, Task<DomainResult>>? aggregateHandler)) {
             return await aggregateHandler(command, currentState).ConfigureAwait(false);
@@ -168,5 +184,18 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
         throw new InvalidOperationException(
             $"No response configured for command type '{command.CommandType}'. " +
             $"Use SetupResponse or SetupDefaultResponse to configure a response.");
+    }
+
+    /// <inheritdoc/>
+    public Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState,
+        bool includePostCommandState, string? snapshotCaptureProfileId, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(command);
+        if (_aggregateSnapshotHandlers.TryGetValue(command.AggregateIdentity.ActorId,
+            out Func<CommandEnvelope, object?, bool, string?, Task<DomainResult>>? handler)) {
+            _invocations.Enqueue((command, currentState));
+            return handler(command, currentState, includePostCommandState, snapshotCaptureProfileId);
+        }
+
+        return InvokeAsync(command, currentState, cancellationToken);
     }
 }

@@ -323,20 +323,22 @@ public class DomainServiceIsolationTests {
 
     [Fact]
     public void DomainServiceInvoker_InvokeAsync_DoesNotAcceptMetadataParameters() {
-        // Guard test: if someone adds metadata parameters to InvokeAsync, domain services
-        // could influence event metadata, breaking SEC-1 ownership guarantee.
-        System.Reflection.MethodInfo method = typeof(IDomainServiceInvoker)
-            .GetMethod(nameof(IDomainServiceInvoker.InvokeAsync), [
-                typeof(CommandEnvelope), typeof(object), typeof(CancellationToken)])!;
+        // Every overload is checked; an added metadata-bearing overload must fail this guard.
+        Type[][] allowed = [
+            [typeof(CommandEnvelope), typeof(object), typeof(CancellationToken)],
+            [typeof(CommandEnvelope), typeof(object), typeof(bool), typeof(CancellationToken)],
+            [typeof(CommandEnvelope), typeof(object), typeof(bool), typeof(string), typeof(CancellationToken)],
+        ];
+        System.Reflection.MethodInfo[] methods = typeof(IDomainServiceInvoker)
+            .GetMethods().Where(method => method.Name == nameof(IDomainServiceInvoker.InvokeAsync)).ToArray();
 
-        _ = method.ShouldNotBeNull();
-        System.Reflection.ParameterInfo[] parameters = method.GetParameters();
-
-        // Expected: (CommandEnvelope command, object? currentState, CancellationToken cancellationToken)
-        parameters.Length.ShouldBe(3, "InvokeAsync should only accept command, state, and cancellation token");
-        parameters[0].ParameterType.ShouldBe(typeof(CommandEnvelope));
-        parameters[1].ParameterType.ShouldBe(typeof(object));
-        parameters[2].ParameterType.ShouldBe(typeof(CancellationToken));
+        methods.Length.ShouldBe(allowed.Length);
+        foreach (System.Reflection.MethodInfo method in methods)
+        {
+            Type[] signature = method.GetParameters().Select(parameter => parameter.ParameterType).ToArray();
+            allowed.Any(candidate => candidate.SequenceEqual(signature)).ShouldBeTrue(
+                $"Unrecognized InvokeAsync parameter signature: {method}");
+        }
     }
 
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;

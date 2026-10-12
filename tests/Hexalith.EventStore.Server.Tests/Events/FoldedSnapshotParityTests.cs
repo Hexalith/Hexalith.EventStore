@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
@@ -81,6 +82,8 @@ public sealed class FoldedSnapshotParityTests
 
         SnapshotRecord stored = (await manager.LoadSnapshotAsync(identity, store)).ShouldNotBeNull();
         stored.SnapshotEnvelopeVersion.ShouldBe(1);
+        Encoding.UTF8.GetBytes(stored.State.ShouldBeOfType<JsonElement>().GetRawText())
+            .ShouldBe(Encoding.UTF8.GetBytes(manualPrefix.StateJson.ShouldNotBeNull()));
         byte[] autoBytes = JsonSerializer.SerializeToUtf8Bytes(stored.State, EventStorePayloadSerialization.Options);
         using JsonDocument manualDocument = JsonDocument.Parse(manualPrefix.StateJson.ShouldNotBeNull());
         byte[] manualBytes = JsonSerializer.SerializeToUtf8Bytes(

@@ -723,6 +723,7 @@ public class AggregateActorDomainResultTests {
     [InlineData("SnapshotSequenceInvalid")]
     [InlineData("SnapshotStateInvalid")]
     [InlineData("SnapshotStateShapeCollision")]
+    [InlineData("CorruptSnapshot")]
     [InlineData("SnapshotReadUnavailable")]
     [InlineData("SnapshotUnprotectUnavailable")]
     public async Task ProcessCommandAsync_RetainedSnapshotFailureIsReplacedAtCommittedHead(string reason)
@@ -778,6 +779,7 @@ public class AggregateActorDomainResultTests {
                 "AddressMismatch" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{"count":100},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"wrong","tenantId":"test-tenant"}""",
                 "SnapshotSequenceInvalid" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":102,"state":{"count":100},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
                 "SnapshotStateShapeCollision" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{"currentSequence":100,"events":[]},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
+                "CorruptSnapshot" => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":{"count":100},"createdAt":"bad","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":{"state":"Protected","metadataVersion":1,"providerId":"test-provider","keyReference":"test-key"}}""",
                 _ => """{"snapshotEnvelopeVersion":1,"sequenceNumber":100,"state":null,"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""",
             };
             _ = ctx.StateManager.TryGetStateAsync<object>(
@@ -920,7 +922,8 @@ public class AggregateActorDomainResultTests {
                     "test-profile", "test-parity", SnapshotTestLimits.ForState()),
             ]))
             .BuildServiceProvider();
-        ActorTestContext ctx = CreateActor(serviceProvider: services);
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
         ConfigureNoDuplicate(ctx.StateManager);
         ConfigureExistingAggregate(ctx.StateManager, 3);
         _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
@@ -942,6 +945,12 @@ public class AggregateActorDomainResultTests {
             Arg.Any<long>(), Arg.Any<object>(), Arg.Any<IActorStateManager>(),
             Arg.Any<JsonSerializerOptions>(), Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        if (!noOp)
+        {
+            snapshotLogger.Messages.ShouldContain(message => message.Contains(
+                "FailureClass=SnapshotEvidenceAbsent", StringComparison.Ordinal));
+        }
+        snapshotLogger.Exceptions.ShouldAllBe(exception => exception == null);
     }
 
     [Fact]

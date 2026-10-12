@@ -20,7 +20,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Events;
 
-public class SnapshotManagerTests {
+public class SnapshotManagerTests(ITestOutputHelper output) {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     [Fact]
@@ -72,6 +72,7 @@ public class SnapshotManagerTests {
     [InlineData("SnapshotSequenceInvalid")]
     [InlineData("SnapshotStateInvalid")]
     [InlineData("SnapshotStateShapeCollision")]
+    [InlineData("CorruptSnapshot")]
     [InlineData("SnapshotReadUnavailable")]
     [InlineData("SnapshotUnprotectUnavailable")]
     public async Task AutomaticReplacementAllowsRetainedFailureClasses(string reason)
@@ -388,7 +389,7 @@ public class SnapshotManagerTests {
         stateBytes[2].ShouldBe(stateBytes[0]);
         foreach (SnapshotRecord snapshot in staged) {
             int fullBytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonSerializerOptions.Web).Length;
-            Console.WriteLine($"FoldedStateBytes={stateBytes[0].Length}, SnapshotEnvelopeBytes={fullBytes}, CoveredSequence={snapshot.SequenceNumber}");
+            output.WriteLine($"FoldedStateBytes={stateBytes[0].Length}, SnapshotEnvelopeBytes={fullBytes}, CoveredSequence={snapshot.SequenceNumber}");
             fullBytes.ShouldBeLessThanOrEqualTo(stateBytes[0].Length + 4096);
         }
     }
@@ -450,8 +451,8 @@ public class SnapshotManagerTests {
     [Fact]
     public async Task LoadSnapshot_ReturnsNullWhenNoSnapshot() {
         (SnapshotManager manager, IActorStateManager stateManager) = CreateManager();
-        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<SnapshotRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<object>(false, default!));
 
         SnapshotRecord? result = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
@@ -505,7 +506,7 @@ public class SnapshotManagerTests {
         _ = await Should.ThrowAsync<OperationCanceledException>(
             () => manager.LoadSnapshotAsync(TestIdentity, stateManager, cancellationToken: cancellation.Token));
 
-        _ = stateManager.DidNotReceive().TryGetStateAsync<SnapshotRecord>(
+        _ = stateManager.DidNotReceive().TryGetStateAsync<object>(
             TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
         await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }

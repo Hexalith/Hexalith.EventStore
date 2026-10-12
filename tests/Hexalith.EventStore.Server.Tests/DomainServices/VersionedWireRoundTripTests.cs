@@ -27,21 +27,23 @@ namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
 public sealed class VersionedWireRoundTripTests
 {
-    [Fact]
-    public async Task InvokerCarriesRequestedSnapshotProfileThroughRouterAndBoundedResponse()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokerCarriesRequestedSnapshotProfileThroughRouterAndBoundedResponse(bool includePostCommandState)
     {
         var command = AggregateActorTestHelper.CreateTestEnvelope();
-        var response = new DomainServiceWireResult(false,
-            [new DomainServiceWireEvent("test-event", "{}"u8.ToArray())])
-        {
-            PostCommandStateJson = "{\"count\":1}",
-        };
         var handler = new VersionedActorResponseHandler(async (requestJson, token) =>
         {
             DomainServiceRequest routed = JsonSerializer.Deserialize<DomainServiceRequest>(
                 requestJson, JsonSerializerOptions.Web)!;
-            routed.IncludePostCommandState.ShouldBeTrue();
-            routed.SnapshotCaptureProfileId.ShouldBe("reviewed-profile");
+            routed.IncludePostCommandState.ShouldBe(includePostCommandState);
+            routed.SnapshotCaptureProfileId.ShouldBe(includePostCommandState ? "reviewed-profile" : null);
+            var response = new DomainServiceWireResult(false,
+                [new DomainServiceWireEvent("test-event", "{}"u8.ToArray())])
+            {
+                PostCommandStateJson = routed.IncludePostCommandState ? "{\"count\":1}" : null,
+            };
             using var output = new MemoryStream();
             await BoundedV1WireResultResponse.WriteAsync(output, response, token);
             return System.Text.Encoding.UTF8.GetString(output.ToArray());
@@ -57,9 +59,9 @@ public sealed class VersionedWireRoundTripTests
             Options.Create(new DomainServiceOptions()), TimeProvider.System,
             NullLogger<DaprDomainServiceInvoker>.Instance);
 
-        DomainResult result = await invoker.InvokeAsync(command, null, true, "reviewed-profile");
+        DomainResult result = await invoker.InvokeAsync(command, null, includePostCommandState, "reviewed-profile");
 
-        result.PostCommandStateJson.ShouldBe("{\"count\":1}");
+        result.PostCommandStateJson.ShouldBe(includePostCommandState ? "{\"count\":1}" : null);
         result.Events.ShouldHaveSingleItem();
     }
 

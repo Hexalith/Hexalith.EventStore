@@ -62,7 +62,7 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
     public async Task SnapshotCreationFailureLogsOnlySafeClassWithoutException()
     {
         AggregateIdentity identity = CreateTestEnvelope().AggregateIdentity;
-        ILogger<SnapshotManager> snapshotLogger = Substitute.For<ILogger<SnapshotManager>>();
+        var snapshotLogger = new SnapshotManagerCaptureLogger();
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         _ = protection.ProtectSnapshotAsync(identity, Arg.Any<object>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<SnapshotProtectionResult>(
@@ -76,15 +76,11 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             "SnapshotUnreadableProtected", "corr-safe-warning", CancellationToken.None);
 
         staged.ShouldBeFalse();
-        snapshotLogger.ReceivedCalls().Any(call => call.GetArguments().Length > 3
-            && call.GetArguments()[0] is LogLevel.Warning
-            && call.GetArguments()[2]?.ToString()?.Contains("FailureClass=SnapshotCreateUnavailable",
-                StringComparison.Ordinal) == true).ShouldBeTrue();
-        snapshotLogger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
-            && call.GetArguments()[0] is LogLevel.Warning)
-            .All(call => call.GetArguments()[3] is null
-                && !call.GetArguments()[2]!.ToString()!.Contains("provider-secret-detail",
-                    StringComparison.Ordinal)).ShouldBeTrue();
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            "FailureClass=SnapshotCreateUnavailable", StringComparison.Ordinal));
+        snapshotLogger.Exceptions.ShouldAllBe(exception => exception == null);
+        snapshotLogger.Messages.ShouldNotContain(message => message.Contains(
+            "provider-secret-detail", StringComparison.Ordinal));
         stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
     }
 
@@ -99,7 +95,7 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         AggregateIdentity identity = command.AggregateIdentity;
         JsonElement retained = RetainedSnapshot(identity, opaque);
         FaultInjectingActorStateManager stateManager = await SeedStreamAsync(identity, retained);
-        ILogger<SnapshotManager> snapshotLogger = Substitute.For<ILogger<SnapshotManager>>();
+        var snapshotLogger = new SnapshotManagerCaptureLogger();
         var protection = new NoOpEventPayloadProtectionService();
         var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions { DefaultInterval = 10 }),
             snapshotLogger, protection);
@@ -142,14 +138,16 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             StringComparison.Ordinal)).ShouldBeTrue();
         messages.Any(message => message.Contains("retained-sensitive-value", StringComparison.Ordinal))
             .ShouldBeFalse();
-        snapshotLogger.ReceivedCalls().Any(call => call.GetArguments().Length > 2
-            && call.GetArguments()[2]?.ToString()?.Contains($"ReplacementReasonClass={expectedReasonClass}",
-                StringComparison.Ordinal) == true).ShouldBeTrue();
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            $"ReplacementReasonClass={expectedReasonClass}", StringComparison.Ordinal));
+        if (opaque is not false)
+        {
+            snapshotLogger.EventIds.ShouldContain(eventId => eventId.Id == 7100);
+        }
         actor.Logger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
             && call.GetArguments()[2]?.ToString()?.Contains("snapshot", StringComparison.OrdinalIgnoreCase) == true)
             .All(call => call.GetArguments()[3] is null).ShouldBeTrue();
-        snapshotLogger.ReceivedCalls().Where(call => call.GetArguments().Length > 3)
-            .All(call => call.GetArguments()[3] is null).ShouldBeTrue();
+        snapshotLogger.Exceptions.ShouldAllBe(exception => exception == null);
     }
 
     [Fact]

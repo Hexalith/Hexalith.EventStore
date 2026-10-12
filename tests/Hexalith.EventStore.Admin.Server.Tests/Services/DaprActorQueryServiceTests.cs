@@ -465,6 +465,9 @@ public class DaprActorQueryServiceTests {
         evidence.RootElement.EnumerateObject().Select(property => property.Name).ShouldBe([
             "coveredSequence", "canonicalSizeBytes", "snapshotEnvelopeVersion", "protectionReadabilityClass"]);
         evidence.RootElement.GetProperty("coveredSequence").GetInt64().ShouldBe(7);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(1);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("Unprotected");
         snapshot.JsonValue.ShouldNotContain("private");
         snapshot.JsonValue.ShouldNotContain("sensitive-key");
     }
@@ -491,6 +494,59 @@ public class DaprActorQueryServiceTests {
         using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue);
         evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(9);
         evidence.RootElement.GetProperty("coveredSequence").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("UnknownVersion");
+    }
+
+    [Theory]
+    [InlineData(false, 1, "ProtectedUnreadableUnknown")]
+    [InlineData(true, 1, "ProtectedUnreadableUnknown")]
+    [InlineData(false, 2, "ProviderOpaque")]
+    [InlineData(true, 2, "ProviderOpaque")]
+    public async Task GetActorInstanceStateAsync_SnapshotProtectionClassIsRedactedOnBothRoutes(
+        bool ownerSidecar, int protectionState, string expectedClass)
+    {
+        const string actorId = "tenant:domain:aggregate";
+        string raw = JsonSerializer.Serialize(new
+        {
+            snapshotEnvelopeVersion = 1,
+            sequenceNumber = 7,
+            state = new { payload = "private" },
+            protectionMetadata = new { state = protectionState, keyAlias = "sensitive-key" },
+        });
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar)
+        {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new FakeHandler(HttpStatusCode.OK, raw)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory);
+        }
+        else
+        {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => JsonState(raw));
+            service = CreateService(daprClient);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue.ShouldNotBeNull());
+        evidence.RootElement.EnumerateObject().Select(property => property.Name).ShouldBe([
+            "coveredSequence", "canonicalSizeBytes", "snapshotEnvelopeVersion", "protectionReadabilityClass"]);
+        evidence.RootElement.GetProperty("coveredSequence").GetInt64().ShouldBe(7);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(1);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe(expectedClass);
+        snapshot.JsonValue.ShouldNotContain("private");
+        snapshot.JsonValue.ShouldNotContain("sensitive-key");
     }
 
     [Theory]

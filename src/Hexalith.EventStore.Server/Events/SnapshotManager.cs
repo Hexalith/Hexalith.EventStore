@@ -100,7 +100,7 @@ public partial class SnapshotManager(
         if (replacementReasonClass is not ("SnapshotEnvelopeVersionUnknown" or
             "SnapshotProviderOpaque" or "SnapshotUnreadableProtected" or
             "AddressMismatch" or "SnapshotSequenceInvalid" or
-            "SnapshotStateInvalid" or "SnapshotStateShapeCollision" or "SnapshotReadUnavailable" or
+            "SnapshotStateInvalid" or "SnapshotStateShapeCollision" or "CorruptSnapshot" or "SnapshotReadUnavailable" or
             "SnapshotUnprotectUnavailable"))
         {
             throw new ArgumentOutOfRangeException(nameof(replacementReasonClass));
@@ -109,10 +109,8 @@ public partial class SnapshotManager(
             limits, correlationId, cancellationToken, throwOnFailure: false).ConfigureAwait(false);
         if (staged)
         {
-            logger.LogInformation(
-                "Snapshot replacement staged: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}",
-                correlationId, identity.TenantId, identity.Domain, identity.AggregateId,
-                sequenceNumber, replacementReasonClass);
+            Log.ReplacementStaged(logger, correlationId, identity.TenantId, identity.Domain,
+                identity.AggregateId, sequenceNumber, replacementReasonClass);
         }
         return staged;
     }
@@ -323,10 +321,23 @@ public partial class SnapshotManager(
             Log.MismatchedSnapshotRetained(logger, identity.TenantId, identity.Domain, identity.AggregateId);
             return SnapshotLoadResult.Corrupt("AddressMismatch");
         }
+        int protectionMetadataFields = 0;
+        JsonElement rawProtectionMetadata = default;
+        foreach (JsonProperty property in raw.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, "protectionMetadata", StringComparison.OrdinalIgnoreCase)) { continue; }
+            rawProtectionMetadata = property.Value;
+            if (++protectionMetadataFields > 1) { return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque"); }
+        }
+        if (protectionMetadataFields == 1 && HasDuplicatePropertyNames(rawProtectionMetadata))
+        {
+            return SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque");
+        }
         if (!SnapshotEnvelopeInspector.TryGetUniqueProperty(raw, "state", out JsonElement rawState))
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
+        if (HasDuplicatePropertyNames(rawState)) { return SnapshotLoadResult.Corrupt("SnapshotStateInvalid"); }
         bool provenUnprotected = IsProvenUnprotected(raw);
         if (provenUnprotected && rawState.ValueKind != JsonValueKind.Object)
         {
@@ -415,11 +426,30 @@ public partial class SnapshotManager(
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
-        if (state.ValueKind != JsonValueKind.Object)
+        if (state.ValueKind != JsonValueKind.Object || HasDuplicatePropertyNames(state))
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
         return SnapshotLoadResult.Readable(snapshot with { State = state, ProtectionMetadata = outcome.Metadata });
+    }
+
+    private static bool HasDuplicatePropertyNames(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement item in value.EnumerateArray())
+            {
+                if (HasDuplicatePropertyNames(item)) { return true; }
+            }
+            return false;
+        }
+        if (value.ValueKind != JsonValueKind.Object) { return false; }
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (!names.Add(property.Name) || HasDuplicatePropertyNames(property.Value)) { return true; }
+        }
+        return false;
     }
 
     private static bool IsProvenUnprotected(JsonElement raw)
@@ -555,6 +585,14 @@ public partial class SnapshotManager(
             decision.ReasonCode);
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 7102,
+            Level = LogLevel.Information,
+            Message = "Snapshot replacement staged: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}")]
+        public static partial void ReplacementStaged(
+            ILogger logger, string? correlationId, string tenantId, string domain,
+            string aggregateId, long sequenceNumber, string replacementReasonClass);
+
         [LoggerMessage(
             EventId = 7101,
             Level = LogLevel.Warning,

@@ -1574,6 +1574,7 @@ public partial class AggregateActor(
                                     { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotSequenceInvalid" } => "SnapshotSequenceInvalid",
                                     { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotStateInvalid" } => "SnapshotStateInvalid",
                                     { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "SnapshotStateShapeCollision" } => "SnapshotStateShapeCollision",
+                                    { Outcome: SnapshotLoadOutcome.Corrupt, ReasonCode: "CorruptSnapshot" } => "CorruptSnapshot",
                                     { Outcome: SnapshotLoadOutcome.InfrastructureFailure, ReasonCode: "SnapshotReadUnavailable" } => "SnapshotReadUnavailable",
                                     { Outcome: SnapshotLoadOutcome.InfrastructureFailure, ReasonCode: "SnapshotUnprotectUnavailable" } => "SnapshotUnprotectUnavailable",
                                     _ => null,
@@ -2471,9 +2472,11 @@ public partial class AggregateActor(
 
             if (snapshotInspection.Outcome == SnapshotLoadOutcome.InfrastructureFailure)
             {
+                string reasonClass = snapshotInspection.ReasonCode == "SnapshotUnprotectUnavailable"
+                    ? "SnapshotUnprotectUnavailable" : "SnapshotReadUnavailable";
                 return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
                     metadata.CurrentSequence, identity.SnapshotKey,
-                    snapshotInspection.ReasonCode ?? "SnapshotReadUnavailable",
+                    reasonClass,
                     "Existing snapshot could not be inspected.");
             }
             if ((snapshotInspection.Outcome is SnapshotLoadOutcome.UnreadableProtected
@@ -2522,6 +2525,14 @@ public partial class AggregateActor(
                     metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSerializerUnsupported",
                     "Snapshot serializer is not qualified.");
             }
+            ConditionalValue<EventEnvelope> firstEvent = await StateManager.TryGetStateAsync<EventEnvelope>(
+                $"{identity.EventStreamKeyPrefix}1", cancellationToken).ConfigureAwait(false);
+            if (!firstEvent.HasValue)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "ReplayRestartRequired",
+                    "The authoritative event prefix is unavailable.");
+            }
             FoldedSnapshotQualificationRegistry? qualificationRegistry =
                 serviceProvider?.GetService<FoldedSnapshotQualificationRegistry>();
             if (qualificationRegistry is null)
@@ -2530,10 +2541,8 @@ public partial class AggregateActor(
                     metadata.CurrentSequence, identity.SnapshotKey, "SnapshotCaptureUnsupported",
                     "No qualified snapshot capture is registered.");
             }
-            ConditionalValue<EventEnvelope> firstEvent = await StateManager.TryGetStateAsync<EventEnvelope>(
-                $"{identity.EventStreamKeyPrefix}1", cancellationToken).ConfigureAwait(false);
-            FoldedSnapshotQualification? qualification = firstEvent.HasValue
-                ? qualificationRegistry.Find(identity.Domain, firstEvent.Value.AggregateType) : null;
+            FoldedSnapshotQualification? qualification =
+                qualificationRegistry.Find(identity.Domain, firstEvent.Value.AggregateType);
             if (qualification is null)
             {
                 return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
@@ -2592,9 +2601,9 @@ public partial class AggregateActor(
                 : throw new InvalidOperationException("Manual snapshot manager did not stage a snapshot record.");
             snapshotSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
-            await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
+            await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
             ConditionalValue<SnapshotRecord> durableSnapshot = await StateManager
-                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, cancellationToken).ConfigureAwait(false);
+                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, CancellationToken.None).ConfigureAwait(false);
             if (!durableSnapshot.HasValue || !SnapshotRecordsMatch(durableSnapshot.Value, attemptedSnapshot))
             {
                 throw new InvalidOperationException("SnapshotReadbackMismatch");
@@ -2655,9 +2664,8 @@ public partial class AggregateActor(
                         "SnapshotStateChangedByNoOpProtection")
                     ? ex.Message
                     : "InfrastructureFailure";
-            logger.LogWarning(
-                "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass={FailureClass}",
-                correlationId, identity.TenantId, identity.Domain, identity.AggregateId, reasonCode);
+            Log.ManualSnapshotCreationFailed(logger, correlationId, identity.TenantId,
+                identity.Domain, identity.AggregateId, reasonCode);
             return new ManualSnapshotResult(
                 ManualSnapshotOutcome.InfrastructureFailure, currentSequence, identity.SnapshotKey,
                 reasonCode, $"Manual snapshot creation failed: {reasonCode}.");
@@ -6807,6 +6815,14 @@ public partial class AggregateActor(
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 2032,
+            Level = LogLevel.Warning,
+            Message = "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass={FailureClass}")]
+        public static partial void ManualSnapshotCreationFailed(
+            ILogger logger, string? correlationId, string tenantId, string domain,
+            string aggregateId, string failureClass);
+
         [LoggerMessage(
             EventId = 2031,
             Level = LogLevel.Warning,

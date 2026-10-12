@@ -218,8 +218,50 @@ public sealed class FoldedSnapshotReadTests
         SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
             Identity, store, authoritativeHead: 1);
         result.Snapshot.ShouldBeNull();
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+        result.ReasonCode.ShouldBe("SnapshotProtectionOpaque");
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("{\"count\":1,\"COUNT\":2}")]
+    [InlineData("{\"nested\":{\"count\":1,\"COUNT\":2}}")]
+    [InlineData("{\"items\":[{\"count\":1,\"COUNT\":2}]}")]
+    public async Task CommandReadBypassesCaseInsensitiveDuplicateFoldedStateWithoutDeletingIt(string stateJson)
+    {
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
+            "{\"snapshotEnvelopeVersion\":1,\"sequenceNumber\":1,\"state\":" + stateJson
+            + ",\"createdAt\":\"2026-01-01T00:00:00Z\",\"domain\":\"domain\",\"aggregateId\":\"aggregate\",\"tenantId\":\"tenant\",\"protectionMetadata\":null}"));
+        await store.SaveStateAsync();
+
+        SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+
+        result.Snapshot.ShouldBeNull();
         result.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
-        result.ReasonCode.ShouldBe("CorruptSnapshot");
+        result.ReasonCode.ShouldBe("SnapshotStateInvalid");
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("\"protectionMetadata\":null,\"ProtectionMetadata\":{\"state\":0}")]
+    [InlineData("\"protectionMetadata\":{\"state\":1,\"State\":0,\"metadataVersion\":1}")]
+    public async Task CommandReadRetainsAmbiguousProtectionMetadataBeforeTypedBinding(string protectionJson)
+    {
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
+            "{\"snapshotEnvelopeVersion\":1,\"sequenceNumber\":1,\"state\":{\"count\":1},"
+            + "\"createdAt\":\"2026-01-01T00:00:00Z\",\"domain\":\"domain\",\"aggregateId\":\"aggregate\",\"tenantId\":\"tenant\","
+            + protectionJson + "}"));
+        await store.SaveStateAsync();
+
+        SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+
+        result.Snapshot.ShouldBeNull();
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+        result.ReasonCode.ShouldBe("SnapshotProtectionOpaque");
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }
 

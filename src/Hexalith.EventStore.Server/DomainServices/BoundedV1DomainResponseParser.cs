@@ -99,12 +99,13 @@ internal sealed class BoundedV1DomainResponseParser : IDisposable
             else if (name.Equals("postCommandStateJson", StringComparison.OrdinalIgnoreCase))
             {
                 // The optional capture has an independent finite scalar bound within the result gate.
-                if (!await _reader.ReadAsync().ConfigureAwait(false))
+                if (!await _reader.ReadAsync(maximumRawTokenBytes: 6L * 1024 * 1024 + 2,
+                    skipOversizedString: true).ConfigureAwait(false))
                 {
                     throw new JsonException("Incomplete post-command state evidence.");
                 }
                 JsonTokenType kind = _reader.TokenType;
-                if (kind == JsonTokenType.String && _reader.RawValue.Length + 2L <= 6L * 1024 * 1024 + 2)
+                if (kind == JsonTokenType.String && !_reader.SkippedOversizedString)
                 {
                     (string candidate, long charge) = _reader.DecodeString();
                     // Evidence is advisory. An excessive optional value must not reject
