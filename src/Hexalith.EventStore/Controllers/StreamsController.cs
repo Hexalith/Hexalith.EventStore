@@ -303,6 +303,15 @@ public sealed partial class StreamsController(
                 "Event stream contains unreadable event data.",
                 StreamReplayReasonCodes.CorruptEvent);
         }
+        catch (InvalidOperationException ex) when (ex.Message.StartsWith("LogicalDigestMismatch:", StringComparison.Ordinal)) {
+            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.CorruptEvent);
+            return ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                ProblemTypeUris.ServiceUnavailable,
+                "Unavailable",
+                "Stream evidence is unavailable.",
+                StreamReplayReasonCodes.CorruptEvent);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.ServiceUnavailable);
             ObjectResult result = ProblemWithReason(
@@ -439,7 +448,7 @@ public sealed partial class StreamsController(
             envelope.Timestamp,
             string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
             EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions))
-                            { GlobalPosition = envelope.GlobalPosition };
+                            { GlobalPosition = envelope.GlobalPosition, PayloadVersion = envelope.PayloadVersion };
 
     private static bool TryGetException<TException>(Exception exception, out TException? result)
         where TException : Exception {
@@ -520,6 +529,7 @@ public sealed partial class StreamsController(
         }
 
         if (storedMetadata.State == PayloadProtectionState.Unprotected) {
+            EventLogicalDigest.RequireMatching(envelope, envelope.SerializationFormat, envelope.Payload);
             return ReplayReadabilityResult.Readable(envelope, storedMetadata.MetadataVersion);
         }
 
@@ -546,6 +556,7 @@ public sealed partial class StreamsController(
             return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value, outcome.Metadata.MetadataVersion);
         }
 
+        EventLogicalDigest.RequireMatching(envelope, outcome.SerializationFormat!, outcome.PayloadBytes!);
         return ReplayReadabilityResult.Readable(envelope with {
             Payload = outcome.PayloadBytes!,
             SerializationFormat = outcome.SerializationFormat!,

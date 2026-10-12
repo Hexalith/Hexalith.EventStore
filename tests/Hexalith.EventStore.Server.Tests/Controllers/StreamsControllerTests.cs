@@ -124,6 +124,68 @@ public class StreamsControllerTests {
         _ = await actor.Received(1).ReadEventsRangeAsync(1, null, 3);
     }
 
+    [Fact]
+    public async Task ReadStreamAsyncPreservesStoredPayloadVersion() {
+        byte[] payload = "{\"name\":\"version-two\"}"u8.ToArray();
+        ServerEventEnvelope source = BuildEnvelope(1, payload, metadata: null) with
+        {
+            MetadataVersion = 2,
+            PayloadVersion = 2,
+        };
+        source = source with { ApplicationPayloadDigest = EventLogicalDigest.Compute(source, "json", EventLogicalDigest.HashPayload(payload)) };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        _ = actor.ReadEventsRangeAsync(0, null, 101).Returns([source]);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
+
+        StreamReadEvent readEvent = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>().Events.Single();
+        readEvent.PayloadVersion.ShouldBe(2);
+        readEvent.Payload.ShouldBe(payload);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncRejectsTamperedUnprotectedPayloadWithoutReturningBytes() {
+        byte[] original = "{\"name\":\"original\"}"u8.ToArray();
+        ServerEventEnvelope source = BuildEnvelope(1, original, metadata: null) with { MetadataVersion = 2 };
+        source = source with { ApplicationPayloadDigest = EventLogicalDigest.Compute(source, "json", EventLogicalDigest.HashPayload(original)) };
+        source = source with { Payload = "{\"name\":\"tampered-secret\"}"u8.ToArray() };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        _ = actor.ReadEventsRangeAsync(0, null, 101).Returns([source]);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
+
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status503ServiceUnavailable);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.CorruptEvent);
+        JsonSerializer.Serialize(problem).ShouldNotContain("tampered-secret");
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncRejectsTamperedDecryptedPayloadWithoutReturningBytes() {
+        byte[] original = "{\"name\":\"original\"}"u8.ToArray();
+        var metadata = new EventStorePayloadProtectionMetadata(
+            PayloadProtectionState.Protected, 1, "test-aead", "safe-test-alias", null, null);
+        ServerEventEnvelope source = BuildEnvelope(1, [9, 9, 9], metadata) with { MetadataVersion = 2 };
+        source = source with { ApplicationPayloadDigest = EventLogicalDigest.Compute(source, "json", EventLogicalDigest.HashPayload(original)) };
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        _ = actor.ReadEventsRangeAsync(0, null, 101).Returns([source]);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.TryUnprotectEventPayloadAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>())
+            .Returns(PayloadUnprotectionOutcome.Readable("{\"name\":\"decrypted-tampered-secret\"}"u8.ToArray(), "json", metadata));
+        (StreamsController controller, _, _, _) = CreateController(actor, protection);
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
+
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status503ServiceUnavailable);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.CorruptEvent);
+        JsonSerializer.Serialize(problem).ShouldNotContain("decrypted-tampered-secret");
+    }
+
     [Theory]
     [InlineData("foreign-tenant", Domain, AggregateId)]
     [InlineData(Tenant, "foreign-domain", AggregateId)]
