@@ -5771,3 +5771,30 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Detect PascalCase legacy `DomainServiceCurrentState` snapshots before treating them as folded state.
   evidence: `SnapshotEnvelopeInspector` reads envelope fields case-insensitively, but `IsDomainServiceCurrentState` matches ordinal camelCase `currentSequence` and `events`, so a legacy snapshot written with PascalCase actor JSON options would rehydrate as an empty state plus the tail. This is pre-existing (the domain-side detector was already camelCase) and needs custom actor JSON options; no repository host configures them. A fix would renegotiate HX-FS-V1 §5.3.
+
+## Deferred from: Story 6.2 proof-closure split (2026-10-12)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Run the folded-snapshot compatibility harness as a blocking NuGet-mode CI job.
+  evidence: Split from the 2369-token Story 6.2 proof-closure spec so the in-CI unit proofs can land first; the harness and its `ci.yml` job can ship without those test repairs.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Persist and reload one qualified folded snapshot through a real Dapr sidecar.
+  evidence: Split from the 2369-token Story 6.2 proof-closure spec; the LiveSidecar reload can follow the in-CI qualification proofs and does not block them.
+
+## Deferred from: Story 6.2 in-CI proof split (2026-10-12)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Prove folded-snapshot capture limits, qualification, and the parser decoded-size bound.
+  evidence: Split from the 2063-token in-CI proof spec so the Server actor and read proofs can land first; these DomainService and parser tests do not need that actor suite.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Pin Admin snapshot evidence values and prove wire-level snapshot profile delegation.
+  evidence: Split from the 2063-token in-CI proof spec; the Admin inspector pins and the `includePostCommandState: false` plus 3-arg invoker tests each live in their own test class and can ship separately.
+
+## Deferred from: Story 6.2 actor-proof split (2026-10-12)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Prove folded-snapshot byte identity across three event prefixes and a large indented payload.
+  evidence: Split from the 1660-token Server proof spec so the actor decision proofs can land first; `SnapshotManagerTests` and `FoldedSnapshotParityTests` do not need those actor tests.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Enumerate every `IDomainServiceInvoker.InvokeAsync` overload against the metadata-parameter allowlist.
+  evidence: Split from the 1660-token Server proof spec; the `DomainServiceIsolationTests` scan does not depend on the actor decision proofs.
