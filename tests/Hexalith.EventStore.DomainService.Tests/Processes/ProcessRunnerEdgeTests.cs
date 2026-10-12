@@ -149,6 +149,7 @@ public sealed class ProcessRunnerEdgeTests
 
         ProcessRunResult result = await runner.RunAsync(Source);
 
+        fault.Fired.ShouldBeTrue();
         result.Status.ShouldBe(ProcessSourceStatus.Active);
         result.Checkpoint.ShouldBe(1);
         (await new ProcessCheckpointStore(durable, Options.Create(options), TimeProvider.System).GetAsync(Source)).Checkpoint.ShouldBe(1);

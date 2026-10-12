@@ -66,6 +66,10 @@ public sealed class ProcessPublicationTests
         ServiceCollection catalogInstance = new();
         catalogInstance.AddSingleton<IProcessSourceCatalog>(new AlternateProcessCatalog());
         Should.Throw<InvalidOperationException>(() => catalogInstance.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>());
+
+        ServiceCollection catalogFactory = new();
+        catalogFactory.AddScoped<IProcessSourceCatalog>(_ => new EmptyCatalog());
+        Should.Throw<InvalidOperationException>(() => catalogFactory.AddEventStoreProcesses<EmptyCatalog, EmptyTranslator>());
     }
 
     /// <summary>Repeated registration of the same pair composes later option configuration.</summary>
@@ -99,7 +103,7 @@ public sealed class ProcessPublicationTests
         }).Build();
 
         InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => host.StartAsync());
-        failure.ToString().ShouldContain(omitAuthorizer ? nameof(IProcessDispositionAuthorizer) : nameof(IProcessDispositionAuditSink));
+        failure.Message.ShouldContain(omitAuthorizer ? nameof(IProcessDispositionAuthorizer) : nameof(IProcessDispositionAuditSink));
     }
 
     /// <summary>Hosted startup and a recovery pass asynchronously dispose their scoped catalog adapters.</summary>
@@ -316,10 +320,12 @@ public sealed class ProcessPublicationTests
         IProcessSourceCatalog catalog = Substitute.For<IProcessSourceCatalog>();
         catalog.ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            ProcessSource[] remaining = new[] { failing, later }
+            ProcessSource[] ordered = [failing, later];
+            ProcessSource[] remaining = ordered
                 .Where(source => call.ArgAt<string?>(0) is not { } after || string.CompareOrdinal(source.CatalogKey, after) > 0)
-                .Take(call.ArgAt<int>(1)).ToArray();
-            return Task.FromResult(new ProcessSourcePage(remaining, null));
+                .ToArray();
+            ProcessSource[] page = remaining.Take(call.ArgAt<int>(1)).ToArray();
+            return Task.FromResult(new ProcessSourcePage(page, remaining.Length > page.Length ? page[^1].CatalogKey : null));
         });
         (ProcessCheckpointStore checkpoints, ProcessReconciler reconciler) = Runtime(inner, options, rejecting, catalog);
         ProcessSweepStore sweeps = new(inner, Options.Create(options), TimeProvider.System);
@@ -401,6 +407,7 @@ public sealed class ProcessPublicationTests
         {
             (await reconciler.RunPassAsync()).CycleComplete.ShouldBeTrue();
         }
+        fault.Fired.ShouldBeTrue();
         (await new ProcessSweepStore(store, Options.Create(options), TimeProvider.System).GetAsync()).Complete.ShouldBeTrue();
     }
 
@@ -680,6 +687,7 @@ public sealed class ProcessPublicationTests
         ProcessSource later = new("tenant-z", "sample", "later");
         ProcessCheckpointStore failed = new(crashing, Options.Create(options), TimeProvider.System);
         await Should.ThrowAsync<InvalidOperationException>(() => failed.EnsureCandidateAsync(later));
+        crashing.Fired.ShouldBeTrue();
 
         (ProcessCheckpointStore checkpoints, ProcessReconciler reconciler) = Runtime(inner, options);
         using (reconciler)
@@ -1131,7 +1139,9 @@ public sealed class ProcessPublicationTests
                 if (value is not ProcessIndexPage<ProcessSource>) return;
                 checkedAtWrite = true;
                 inner.Snapshot<ProcessIndexPage<ProcessSource>>(options.StateStoreName, ProcessStateKeys.Candidates(Source.Tenant, 0)).ShouldBeNull();
-                health.CheckHealthAsync(new HealthCheckContext()).GetAwaiter().GetResult().Status.ShouldBe(HealthStatus.Degraded);
+                HealthCheckResult beforeWrite = health.CheckHealthAsync(new HealthCheckContext()).GetAwaiter().GetResult();
+                beforeWrite.Status.ShouldBe(HealthStatus.Degraded);
+                beforeWrite.Data["pendingPublications"].ShouldBe(1);
             });
         ProcessCheckpointStore checkpoints = new(crashing, Options.Create(options), TimeProvider.System);
 
@@ -1220,12 +1230,16 @@ public sealed class ProcessPublicationTests
             _ = await reconciler.RunPassAsync();
         }
         ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        ProcessReadinessHealthCheck health = new(sweeps, Options.Create(options), TimeProvider.System);
+        (await health.CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Healthy);
         ProcessSweepState complete = await sweeps.GetAsync();
         store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep,
             complete with { CycleStartedAt = DateTimeOffset.UtcNow.AddMinutes(-3), LastCompleteAt = DateTimeOffset.UtcNow.AddMinutes(-2) });
 
-        (await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
-            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+        HealthCheckResult result = await health.CheckHealthAsync(new HealthCheckContext());
+        result.Status.ShouldBe(HealthStatus.Degraded);
+        result.Data["complete"].ShouldBe(true);
+        ((Dictionary<string, int>)result.Data["reasonCounts"]).ShouldBeEmpty();
     }
 
     /// <summary>Retention may exceed supported coverage, but the excess remains durable and alert-visible.</summary>
@@ -1330,6 +1344,7 @@ public sealed class ProcessPublicationTests
             new ProcessSweepStore(store, Options.Create(options), TimeProvider.System), checkpoints, Options.Create(options), TimeProvider.System);
 
         await reconciler.StartAsync(CancellationToken.None);
+        await reconciler.ExecuteTask.ShouldNotBeNull().WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         reconciler.IsRunning.ShouldBeFalse();
         await reconciler.StopAsync(CancellationToken.None);
 

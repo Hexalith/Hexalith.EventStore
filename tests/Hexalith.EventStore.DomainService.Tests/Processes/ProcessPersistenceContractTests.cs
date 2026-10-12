@@ -47,7 +47,7 @@ public sealed class ProcessPersistenceContractTests
         roundTrip.Entries.Single().ShouldBe(source);
     }
 
-    /// <summary>The production serializer preserves every checkpoint and sweep control field after restore.</summary>
+    /// <summary>Web-default JSON options preserve checkpoint and sweep control fields after restore.</summary>
     [Fact]
     public void CheckpointAndSweepJsonShapeIsStable()
     {
@@ -71,11 +71,14 @@ public sealed class ProcessPersistenceContractTests
         JsonSerializer.Deserialize<ProcessSourceState>(checkpointJson, SerializerOptions).ShouldBe(checkpoint);
 
         string sourceId = ProcessStateKeys.SourceId(source);
+        ProcessSource appliedSource = new("tenant-a", "sample", "applied");
+        string appliedSourceId = ProcessStateKeys.SourceId(appliedSource);
         ProcessSweepState sweep = new(1, 2, 5, false, instant, instant.AddMinutes(-1), source.CatalogKey, false,
             1, 2, 3, 4, false, false, 1, new Dictionary<string, int> { ["source-read"] = 1 },
             new Dictionary<string, ProcessPendingDisposition>
             {
                 [sourceId] = new(source, false, 3, 0) { ClaimToken = "claim", ClaimUntil = instant.AddMinutes(1) },
+                [appliedSourceId] = new(appliedSource, true, 4, 4),
             }, "replica", instant.AddMinutes(2), 8)
         {
             PendingObservations = new Dictionary<string, ProcessPendingObservation> { [sourceId] = new(source, 2, true) },
@@ -105,6 +108,16 @@ public sealed class ProcessPersistenceContractTests
             "publicationTenantRepairPages", "publicationCandidateUnknownPages", "publicationTenantUnknownPages", "expectedTenantPage",
             "expectedCandidatePage", "tenantProbeMisses", "candidateProbeMisses", "retainedCandidates", "capacityExceeded",
         ]);
+        sweepDocument.RootElement.GetProperty("pending").GetProperty(sourceId).EnumerateObject()
+            .Select(static value => value.Name).ShouldBe([
+                "source", "applied", "preparedGeneration", "appliedGeneration", "claimToken", "claimUntil",
+            ]);
+        sweepDocument.RootElement.GetProperty("pending").GetProperty(appliedSourceId).GetProperty("applied").GetBoolean().ShouldBeTrue();
+        sweepDocument.RootElement.GetProperty("pending").GetProperty(appliedSourceId).GetProperty("appliedGeneration").GetInt64().ShouldBe(4);
+        sweepDocument.RootElement.GetProperty("pendingObservations").GetProperty(sourceId).EnumerateObject()
+            .Select(static value => value.Name).ShouldBe(["source", "cycle", "unresolved"]);
+        sweepDocument.RootElement.GetProperty("pendingTransitions").GetProperty(sourceId).EnumerateObject()
+            .Select(static value => value.Name).ShouldBe(["source", "generation", "token"]);
         ProcessSweepState restored = JsonSerializer.Deserialize<ProcessSweepState>(sweepJson, SerializerOptions).ShouldNotBeNull();
         restored.Validate();
         restored.CatalogAfterKey.ShouldBe(source.CatalogKey);
@@ -135,6 +148,45 @@ public sealed class ProcessPersistenceContractTests
         restored.RetainedCandidates.ShouldBe(9);
         restored.CapacityExceeded.ShouldBeTrue();
         JsonSerializer.Serialize(restored, SerializerOptions).ShouldBe(sweepJson);
+    }
+
+    /// <summary>A stored version-one sweep still reads its disposition, observation, and transition records.</summary>
+    [Fact]
+    public void VersionOneNestedSweepRecordsRemainReadable()
+    {
+        ProcessSource source = new("tenant-a", "sample", "source");
+        ProcessSource appliedSource = new("tenant-a", "sample", "applied");
+        string sourceId = ProcessStateKeys.SourceId(source);
+        string appliedSourceId = ProcessStateKeys.SourceId(appliedSource);
+        string json = """
+            {
+              "version":1,"cycle":1,"generation":3,"complete":false,
+              "cycleStartedAt":"2026-10-01T09:30:00+00:00","lastCompleteAt":null,
+              "catalogAfterKey":null,"catalogComplete":false,
+              "tenantPage":0,"tenantOffset":0,"candidatePage":0,"candidateOffset":0,
+              "candidatesComplete":false,"nextCatalog":true,"unresolved":0,"reasons":{},
+              "pending":{
+                "SOURCE_ID":{"source":{"tenant":"tenant-a","domain":"sample","aggregate":"source"},"applied":false,"preparedGeneration":2,"appliedGeneration":0,"claimToken":"claim-v1","claimUntil":"2026-10-01T09:31:00+00:00"},
+                "APPLIED_SOURCE_ID":{"source":{"tenant":"tenant-a","domain":"sample","aggregate":"applied"},"applied":true,"preparedGeneration":3,"appliedGeneration":3,"claimToken":null,"claimUntil":null}
+              },
+              "owner":null,"leaseUntil":null,"fence":0,
+              "pendingObservations":{"SOURCE_ID":{"source":{"tenant":"tenant-a","domain":"sample","aggregate":"source"},"cycle":1,"unresolved":true}},
+              "pendingTransitions":{"SOURCE_ID":{"source":{"tenant":"tenant-a","domain":"sample","aggregate":"source"},"generation":3,"token":"transition-v1"}}
+            }
+            """.Replace("APPLIED_SOURCE_ID", appliedSourceId, StringComparison.Ordinal)
+                .Replace("SOURCE_ID", sourceId, StringComparison.Ordinal);
+
+        ProcessSweepState restored = JsonSerializer.Deserialize<ProcessSweepState>(json, SerializerOptions).ShouldNotBeNull();
+        restored.Validate();
+        restored.Pending[sourceId].PreparedGeneration.ShouldBe(2);
+        restored.Pending[sourceId].ClaimToken.ShouldBe("claim-v1");
+        restored.Pending[sourceId].ClaimUntil.ShouldBe(new DateTimeOffset(2026, 10, 1, 9, 31, 0, TimeSpan.Zero));
+        restored.Pending[appliedSourceId].Applied.ShouldBeTrue();
+        restored.Pending[appliedSourceId].AppliedGeneration.ShouldBe(3);
+        restored.PendingObservations[sourceId].Cycle.ShouldBe(1);
+        restored.PendingObservations[sourceId].Unresolved.ShouldBeTrue();
+        restored.PendingTransitions[sourceId].Generation.ShouldBe(3);
+        restored.PendingTransitions[sourceId].Token.ShouldBe("transition-v1");
     }
 
     /// <summary>Markers, tail hints, and all source-status numeric values are wire-stable.</summary>

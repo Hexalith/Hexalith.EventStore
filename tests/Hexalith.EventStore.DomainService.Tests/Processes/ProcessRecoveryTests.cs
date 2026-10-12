@@ -927,7 +927,8 @@ public sealed class ProcessRecoveryTests
             await checkpoints.ReleaseAsync(owner);
             _ = await reconciler.RunPassAsync();
         }
-        (await checkpoints.GetAsync(source)).LastDispositionGeneration.ShouldBeGreaterThan(0);
+        (await checkpoints.GetAsync(source)).LastDispositionGeneration.ShouldBe(generation);
+        (await sweeps.GetAsync()).Pending.ShouldNotContainKey(ProcessStateKeys.SourceId(source));
     }
 
     /// <summary>Every audited revalidation gets a fresh sweep generation even while the same source is pending.</summary>
@@ -1416,6 +1417,12 @@ public sealed class ProcessRecoveryTests
         InMemoryReadModelStore store = new();
         EventStoreProcessOptions options = new() { SourcesPerPass = 4, OperationTimeout = TimeSpan.FromSeconds(5) };
         ProcessSource source = new("tenant-a", "sample", "replica-source");
+        (_, ProcessSweepStore initialSweeps, ProcessReconciler initial) = Runtime(store, options, Catalog([]));
+        using (initial)
+            _ = await initial.RunPassAsync();
+        (await initialSweeps.GetAsync()).Complete.ShouldBeTrue();
+        (await new ProcessReadinessHealthCheck(initialSweeps, Options.Create(options), TimeProvider.System)
+            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Healthy);
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<IReadOnlyList<ProcessEffect>> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IProcessTranslator translator = Substitute.For<IProcessTranslator>();
@@ -1437,8 +1444,10 @@ public sealed class ProcessRecoveryTests
                 (await firstSweeps.GetAsync()).Owner.ShouldNotBeNull();
                 (await second.RunPassAsync()).Sources.ShouldBe(0);
                 (await checkpoints.GetAsync(source)).Checkpoint.ShouldBe(0);
-                (await new ProcessReadinessHealthCheck(secondSweeps, Options.Create(options), TimeProvider.System)
-                    .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+                HealthCheckResult overlap = await new ProcessReadinessHealthCheck(secondSweeps, Options.Create(options), TimeProvider.System)
+                    .CheckHealthAsync(new HealthCheckContext());
+                overlap.Status.ShouldBe(HealthStatus.Degraded);
+                overlap.Data["complete"].ShouldBe(false);
             }
             finally
             {

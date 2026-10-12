@@ -450,6 +450,9 @@ public sealed class CheckpointedProcessRunnerTests
     [InlineData("null-effect")]
     [InlineData("null-payload")]
     [InlineData("blank-type")]
+    [InlineData("unknown-kind")]
+    [InlineData("negative-ordinal")]
+    [InlineData("noncanonical-target")]
     public async Task InvalidTranslatorOutputQuarantinesBeforeSubmission(string failure)
     {
         InMemoryReadModelStore store = new();
@@ -466,6 +469,9 @@ public sealed class CheckpointedProcessRunnerTests
             "null-effect" => [valid, null!],
             "null-payload" => [valid with { CommandPayload = null! }],
             "blank-type" => [valid with { CommandType = " " }],
+            "unknown-kind" => [valid, valid with { Kind = "unknown-effect-kind" }],
+            "negative-ordinal" => [valid, valid with { Ordinal = -1 }],
+            "noncanonical-target" => [valid, valid with { TargetDomain = "Sample" }],
             _ => throw new InvalidOperationException("Unknown fixture."),
         };
         IProcessTranslator translator = Substitute.For<IProcessTranslator>();

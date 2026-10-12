@@ -69,6 +69,8 @@ public sealed class ProcessReadDeadlineTests
         try
         {
             await Task.Delay(150);
+            await Should.ThrowAsync<ProcessReadAdmissionException>(() =>
+                ProcessReadDeadline.RunAsync(_ => Task.FromResult(1), TimeSpan.FromSeconds(1), CancellationToken.None));
             InMemoryReadModelStore store = new();
             EventStoreProcessOptions options = new();
             ProcessSource source = new("tenant-a", "sample", "exhausted-slots");
@@ -103,6 +105,8 @@ public sealed class ProcessReadDeadlineTests
         try
         {
             await Task.Delay(150);
+            await Should.ThrowAsync<ProcessReadAdmissionException>(() =>
+                ProcessReadDeadline.RunAsync(_ => Task.FromResult(1), TimeSpan.FromSeconds(1), CancellationToken.None));
             InMemoryReadModelStore store = new();
             EventStoreProcessOptions options = new() { OperationTimeout = TimeSpan.FromSeconds(1) };
             ProcessSource source = new("tenant-a", "sample", "operator-slots");
