@@ -44,7 +44,8 @@ spec:
           - name: /**
             httpVerb: ['GET', 'POST', 'PUT']
             action: allow
-      # The public Tenants API checks gateway readiness before accepting traffic.
+      # The public Tenants API checks gateway readiness and forwards authenticated business
+      # queries and commands; EventStore still authorizes each request.
       - appId: tenants-api
         defaultAction: deny
         trustDomain: "{env:DAPR_TRUST_DOMAIN|hexalith.io}"

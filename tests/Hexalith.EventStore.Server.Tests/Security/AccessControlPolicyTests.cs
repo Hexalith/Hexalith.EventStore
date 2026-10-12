@@ -257,6 +257,43 @@ public class AccessControlPolicyTests {
             "Production global-level defaultAction must be deny for secure-by-default posture (D4)");
     }
 
+    [Fact]
+    public void ProductionEventStoreAccessControlYaml_CallerPolicies_AreExact() {
+        // Story 1.5: the receiver policy grants each caller only the routes it invokes.
+        Dictionary<string, object> doc = LoadYaml(ProductionEventStoreAccessControlPath);
+        List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
+        _ = policies.ShouldNotBeNull("Production EventStore access control must have policies");
+        var expectedOperations = new Dictionary<string, string[]> {
+            ["eventstore-admin"] = ["/** GET,POST,PUT"],
+            ["tenants-api"] = ["/ready GET", "/api/v1/queries POST", "/api/v1/commands POST"],
+            ["tenants"] = ["/api/v1/commands POST"],
+        };
+
+        List<Dictionary<object, object>> callers = [.. policies.Cast<Dictionary<object, object>>()];
+        callers.Select(p => GetString(p, "appId")).ShouldBe(expectedOperations.Keys, ignoreOrder: true,
+            "Production EventStore receiver must allow only the documented callers");
+        foreach (Dictionary<object, object> policy in callers) {
+            string appId = GetString(policy, "appId");
+            GetString(policy, "defaultAction").ShouldBe("deny", $"{appId} must deny unlisted operations");
+            GetString(policy, "trustDomain").ShouldBe("{env:DAPR_TRUST_DOMAIN|hexalith.io}",
+                $"{appId} must use the production trust domain");
+            GetString(policy, "namespace").ShouldBe("{env:DAPR_NAMESPACE|hexalith}",
+                $"{appId} must use the production namespace");
+            List<string> operations = [];
+            foreach (Dictionary<object, object> operation in GetPolicyOperations(policy)) {
+                operation.Keys.Select(k => k.ToString()).ShouldBe(["name", "httpVerb", "action"], ignoreOrder: true,
+                    $"{appId} operations must declare only name, httpVerb and action");
+                GetString(operation, "action").ShouldBe("allow", $"{appId} operations must be explicit allows");
+                List<object>? verbs = GetList(operation, "httpVerb");
+                _ = verbs.ShouldNotBeNull($"{appId} operations must list their HTTP verbs");
+                operations.Add($"{GetString(operation, "name")} {string.Join(',', verbs)}");
+            }
+
+            operations.ShouldBe(expectedOperations[appId], ignoreOrder: true,
+                $"{appId} must be granted exactly its documented routes and verbs");
+        }
+    }
+
     // --- Task 5.8: Pub/sub scoping validation ---
 
     [Fact]

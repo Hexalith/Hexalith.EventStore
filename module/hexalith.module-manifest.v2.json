@@ -28,6 +28,12 @@
             "capability": "pubsub",
             "recoveryClass": "rebuild-only",
             "configurationKey": "Dapr:PubSubComponent"
+          },
+          {
+            "role": "rate-limit-configuration",
+            "capability": "configuration",
+            "recoveryClass": "authoritative-restore",
+            "configurationKey": "Dapr:ConfigurationStoreComponent"
           }
         ],
         "extensions": [
@@ -258,6 +264,11 @@
                 "key": "Authentication:WorkloadIssuer:TokenEndpoint",
                 "source": "configuration",
                 "reference": "workloadissuertokenendpoint"
+              },
+              {
+                "key": "EventStore:DomainServices:ConfigStoreName",
+                "source": "configuration",
+                "reference": "domainservicesconfigstorename"
               }
             ]
           }
