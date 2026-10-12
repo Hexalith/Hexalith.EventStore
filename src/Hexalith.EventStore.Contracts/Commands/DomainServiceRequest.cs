@@ -33,4 +33,8 @@ public record DomainServiceRequest(CommandEnvelope Command, object? CurrentState
     /// <summary>Gets the ordered verified effective command events, when supplied.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<VerifiedEffectiveCommandEvent>? VerifiedEffectiveEvents { get; init; }
+
+    /// <summary>Short-lived signed gateway proof of the human caller; never part of the command envelope or persisted state.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? HumanAuthorityReceipt { get; init; }
 }

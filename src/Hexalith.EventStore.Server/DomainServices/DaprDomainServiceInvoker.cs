@@ -70,7 +70,12 @@ public partial class DaprDomainServiceInvoker(
 
     /// <inheritdoc/>
     public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
-        string? snapshotCaptureProfileId, CancellationToken cancellationToken = default) {
+        string? snapshotCaptureProfileId, CancellationToken cancellationToken = default)
+        => await InvokeAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, null, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, string? humanAuthorityReceipt, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
 
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
@@ -99,6 +104,7 @@ public partial class DaprDomainServiceInvoker(
             {
                 IncludePostCommandState = includePostCommandState,
                 SnapshotCaptureProfileId = includePostCommandState ? snapshotCaptureProfileId : null,
+                HumanAuthorityReceipt = humanAuthorityReceipt,
             };
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
@@ -108,6 +114,18 @@ public partial class DaprDomainServiceInvoker(
             using HttpResponseMessage httpResponse = await httpClient
                 .SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, invocationCancellation.Token)
                 .ConfigureAwait(false);
+            if (!httpResponse.IsSuccessStatusCode
+                && string.Equals(command.Domain, "folders", StringComparison.Ordinal)
+                && (httpResponse.StatusCode is System.Net.HttpStatusCode.Unauthorized
+                    or System.Net.HttpStatusCode.Forbidden
+                    or System.Net.HttpStatusCode.NotFound
+                    or System.Net.HttpStatusCode.ServiceUnavailable)
+                && httpResponse.Headers.TryGetValues("X-Hexalith-Authorization-Denial", out IEnumerable<string>? denialVersions)
+                && denialVersions is not null
+                && denialVersions.SequenceEqual(["v1"], StringComparer.Ordinal)) {
+                throw new DomainServiceSafeDenialException((int)httpResponse.StatusCode);
+            }
+
             _ = httpResponse.EnsureSuccessStatusCode();
             const long maximumLegacyResultBytes = 128L * 1024 * 1024;
             if (httpResponse.Content.Headers.ContentLength is long declaredLength && declaredLength > maximumLegacyResultBytes) {
@@ -150,6 +168,9 @@ public partial class DaprDomainServiceInvoker(
         }
         catch (DomainServiceException) when (registration is null) {
             // Preserve configuration-store corruption diagnostics from the resolver.
+            throw;
+        }
+        catch (DomainServiceSafeDenialException) {
             throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException

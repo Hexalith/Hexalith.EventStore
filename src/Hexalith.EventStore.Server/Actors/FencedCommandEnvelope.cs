@@ -11,4 +11,5 @@ namespace Hexalith.EventStore.Server.Actors;
 [DataContract]
 public sealed record FencedCommandEnvelope(
     [property: DataMember] CommandEnvelope Command,
-    [property: DataMember] IdempotencyExecutionContext ExecutionContext);
+    [property: DataMember] IdempotencyExecutionContext ExecutionContext,
+    [property: DataMember] string? HumanAuthorityReceipt = null);

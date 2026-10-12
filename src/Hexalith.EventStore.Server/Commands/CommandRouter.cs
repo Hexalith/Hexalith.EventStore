@@ -52,14 +52,18 @@ public partial class CommandRouter(
             if (coordinationActorId is not null) {
                 ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
                     new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
-                return await coordinator.ProcessCommandAsync(envelope).ConfigureAwait(false);
+                return command.HumanAuthorityReceipt is null
+                    ? await coordinator.ProcessCommandAsync(envelope).ConfigureAwait(false)
+                    : await coordinator.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt)).ConfigureAwait(false);
             }
 
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(actorId),
                 actorOptions.Value.AggregateActorTypeName);
 
-            return await proxy.ProcessCommandAsync(envelope).ConfigureAwait(false);
+            return command.HumanAuthorityReceipt is null
+                ? await proxy.ProcessCommandAsync(envelope).ConfigureAwait(false)
+                : await proxy.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(envelope, command.HumanAuthorityReceipt)).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.ActorInvocationFailed(logger, ex, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
@@ -98,7 +102,7 @@ public partial class CommandRouter(
             command.AggregateId,
             command.CommandType,
             actorId);
-        var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext);
+        var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext, command.HumanAuthorityReceipt);
         string? coordinationActorId = GetCoordinationActorId(request.Command);
         try
         {

@@ -13,6 +13,18 @@ namespace Hexalith.EventStore.Aspire;
 public static class HexalithEventStoreDomainModuleExtensions {
     private const string DaprAppHealthCheckPath = "/alive";
 
+    /// <summary>Preserves the pre-app-port hosting contract for existing domain module binaries.</summary>
+    public static IResourceBuilder<ProjectResource> AddEventStoreDomainModule(
+        this IResourceBuilder<ProjectResource> domainModule,
+        HexalithEventStoreResources eventStore,
+        string appId,
+        string? daprConfigPath,
+        string? isolatedDaprResourcesPath,
+        string? daprPlacementHostAddress,
+        string? daprSchedulerHostAddress)
+        => AddEventStoreDomainModule(domainModule, eventStore, appId, daprConfigPath,
+            isolatedDaprResourcesPath, daprPlacementHostAddress, daprSchedulerHostAddress, appPort: null);
+
     /// <summary>
     /// Attaches a DAPR sidecar to a domain-module project so it can run on the Hexalith.EventStore platform.
     /// </summary>

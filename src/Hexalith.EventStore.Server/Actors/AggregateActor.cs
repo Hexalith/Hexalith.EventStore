@@ -160,7 +160,8 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Command);
         ArgumentNullException.ThrowIfNull(request.ExecutionContext);
-        return ProcessCommandCoreAsync(request.Command, request.ExecutionContext, CancellationToken.None);
+        return ProcessCommandCoreAsync(request.Command, request.ExecutionContext, CancellationToken.None,
+            humanAuthorityReceipt: request.HumanAuthorityReceipt);
     }
 
     /// <inheritdoc/>
@@ -604,6 +605,15 @@ public partial class AggregateActor(
         return ProcessCommandCoreAsync(command, executionContext: null, CancellationToken.None);
     }
 
+    /// <inheritdoc/>
+    public Task<CommandProcessingResult> ProcessAuthorizedCommandAsync(AuthorizedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Command);
+        return ProcessCommandCoreAsync(request.Command, executionContext: null, CancellationToken.None,
+            humanAuthorityReceipt: request.HumanAuthorityReceipt);
+    }
+
     /// <summary>
     /// Processes a command envelope within the aggregate actor context.
     /// </summary>
@@ -620,7 +630,8 @@ public partial class AggregateActor(
         CommandEnvelope command,
         IdempotencyExecutionContext? executionContext,
         CancellationToken cancellationToken,
-        TrustedEffectAdmission? effectAdmission = null) {
+        TrustedEffectAdmission? effectAdmission = null,
+        string? humanAuthorityReceipt = null) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
         if (effectAdmission is null && command.MessageId.StartsWith("wrk-", StringComparison.Ordinal))
@@ -1405,11 +1416,14 @@ public partial class AggregateActor(
                             }
                         }
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
-                        domainResult = snapshotRequestDue
-                            ? await domainServiceInvoker.InvokeAsync(command, currentState, true,
-                                snapshotQualification?.ProfileId, cancellationToken).ConfigureAwait(false)
-                            : await domainServiceInvoker.InvokeAsync(command, currentState, cancellationToken)
-                                .ConfigureAwait(false);
+                        domainResult = humanAuthorityReceipt is null
+                            ? snapshotRequestDue
+                                ? await domainServiceInvoker.InvokeAsync(command, currentState, true,
+                                    snapshotQualification?.ProfileId, cancellationToken).ConfigureAwait(false)
+                                : await domainServiceInvoker.InvokeAsync(command, currentState, cancellationToken)
+                                    .ConfigureAwait(false)
+                            : await domainServiceInvoker.InvokeAsync(command, currentState, snapshotRequestDue,
+                                snapshotQualification?.ProfileId, humanAuthorityReceipt, cancellationToken).ConfigureAwait(false);
 
                         logger.LogInformation(
                             "Domain service result: {ResultType} for ActorId={ActorId}, CorrelationId={CorrelationId}",
@@ -1418,6 +1432,14 @@ public partial class AggregateActor(
                             command.CorrelationId);
 
                         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+                    }
+                    catch (DomainServiceSafeDenialException denial) {
+                        _ = (activity?.SetStatus(ActivityStatusCode.Error, denial.SafeResultCode));
+                        return await CompleteTerminalAsync(
+                            command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
+                            accepted: false, eventCount: 0, errorMessage: denial.SafeResultCode,
+                            expectedPreCommitPipeline: pipelineState, intermediatePipeline: null,
+                            processActivity, startTicks, effectAdmission: effectAdmission).ConfigureAwait(false);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException) {
                         ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "domain-service-invoke");

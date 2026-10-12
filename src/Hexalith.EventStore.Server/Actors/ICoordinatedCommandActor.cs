@@ -10,6 +10,9 @@ public interface ICoordinatedCommandActor : IActor
     /// <summary>Processes a command under the source actor's coordination key.</summary>
     Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command);
 
+    /// <summary>Processes a coordinated command with separately signed human authority.</summary>
+    Task<CommandProcessingResult> ProcessAuthorizedCommandAsync(AuthorizedCommandEnvelope request);
+
     /// <summary>Processes a signed-fence command under the source actor's coordination key.</summary>
     Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request);
 }

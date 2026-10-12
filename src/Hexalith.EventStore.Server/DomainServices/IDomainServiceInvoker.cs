@@ -22,6 +22,11 @@ public interface IDomainServiceInvoker {
         string? snapshotCaptureProfileId, CancellationToken cancellationToken = default)
         => InvokeAsync(command, currentState, includePostCommandState, cancellationToken);
 
+    /// <summary>Invokes with ephemeral, separately signed human authority.</summary>
+    Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, string? humanAuthorityReceipt, CancellationToken cancellationToken = default)
+        => InvokeAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, cancellationToken);
+
     /// <summary>
     /// Invokes a domain service to process the specified command against the current aggregate state.
     /// </summary>

@@ -4,10 +4,12 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using MediatR;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace Hexalith.EventStore.Server.Pipeline;
 
@@ -27,7 +29,8 @@ public partial class SubmitCommandHandler(
     ILogger<SubmitCommandHandler> logger,
     ICommandCorrelationIndex? correlationIndex = null,
     IProjectionActivationOutbox? projectionActivationOutbox = null,
-    IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null,
+    IConfiguration? humanAuthorityConfiguration = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -186,6 +189,21 @@ public partial class SubmitCommandHandler(
                 CorrelationId = executionCorrelationId,
                 IdempotencyKey = null,
             };
+        if (executionRequest.HumanAuthority is HumanAuthoritySource humanAuthority)
+        {
+            string key = humanAuthorityConfiguration?["Authentication:HumanAuthorityReceipt:SigningKey"]
+                ?? throw new InvalidOperationException("Human authority receipt signing is unavailable.");
+            executionRequest = executionRequest with
+            {
+                HumanAuthorityReceipt = HumanAuthorityReceiptCodec.Issue(
+                    executionRequest.ToCommandEnvelope(),
+                    humanAuthority.Tenant,
+                    humanAuthority.Subject,
+                    humanAuthority.Permissions,
+                    key,
+                    DateTimeOffset.UtcNow),
+            };
+        }
         var result = new SubmitCommandResult(request.CorrelationId, MessageId: executionMessageId);
         if (reconcileUnknownOutcome)
         {
@@ -678,6 +696,12 @@ public partial class SubmitCommandHandler(
         if (string.Equals(processingResult.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
         {
             throw new IdempotencyKeyExpiredException(request.CorrelationId);
+        }
+
+        if (Hexalith.EventStore.Server.DomainServices.DomainServiceSafeDenialException.TryParse(
+            processingResult.ErrorMessage, out Hexalith.EventStore.Server.DomainServices.DomainServiceSafeDenialException? denial))
+        {
+            throw denial!;
         }
 
         if (processingResult.BackpressureExceeded)

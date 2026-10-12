@@ -22,6 +22,7 @@ public class FakeAggregateActor : IAggregateActor {
 
     private readonly ConcurrentQueue<CommandEnvelope> _receivedCommands = new();
     private readonly ConcurrentQueue<IdempotencyExecutionContext> _receivedExecutionContexts = new();
+    private readonly ConcurrentQueue<string> _receivedHumanAuthorityReceipts = new();
     private readonly ConcurrentDictionary<string, CommandProcessingResult> _processedCausationIds = new();
 
     /// <summary>Gets the list of received commands for assertion.</summary>
@@ -30,6 +31,9 @@ public class FakeAggregateActor : IAggregateActor {
     /// <summary>Gets internal execution contexts received through the fenced boundary.</summary>
     public IReadOnlyCollection<IdempotencyExecutionContext> ReceivedExecutionContexts
         => [.. _receivedExecutionContexts];
+
+    /// <summary>Gets ephemeral human receipts received by actor invocations.</summary>
+    public IReadOnlyCollection<string> ReceivedHumanAuthorityReceipts => [.. _receivedHumanAuthorityReceipts];
 
     /// <summary>Gets or sets the result to return from ProcessCommandAsync.</summary>
     public CommandProcessingResult? ConfiguredResult { get; set; }
@@ -97,6 +101,14 @@ public class FakeAggregateActor : IAggregateActor {
         => ProcessCommandAsync(command, CancellationToken.None);
 
     /// <inheritdoc/>
+    public Task<CommandProcessingResult> ProcessAuthorizedCommandAsync(AuthorizedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        _receivedHumanAuthorityReceipts.Enqueue(request.HumanAuthorityReceipt);
+        return ProcessCommandAsync(request.Command, CancellationToken.None);
+    }
+
+    /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request)
         => ProcessFencedCommandAsync(request, CancellationToken.None);
 
@@ -117,6 +129,10 @@ public class FakeAggregateActor : IAggregateActor {
     {
         ArgumentNullException.ThrowIfNull(request);
         _receivedExecutionContexts.Enqueue(request.ExecutionContext);
+        if (request.HumanAuthorityReceipt is not null)
+        {
+            _receivedHumanAuthorityReceipts.Enqueue(request.HumanAuthorityReceipt);
+        }
         return ProcessCommandAsync(request.Command, cancellationToken);
     }
 

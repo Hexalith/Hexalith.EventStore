@@ -263,6 +263,29 @@ public class CommandsController(
             IsGlobalAdmin: IsGlobalAdministrator(User),
             IdempotencyKey: request.IdempotencyKey);
 
+        if (!workloadOnly && string.Equals(request.Domain, HumanAuthorityReceiptCodec.Audience, StringComparison.OrdinalIgnoreCase))
+        {
+            // The request's tenant and user fields are not identity evidence. Capture only the
+            // authenticated, normalized JWT claims for signing after idempotency admission.
+            string? verifiedSubject = User.FindFirst("sub")?.Value;
+            bool hasVerifiedTenant = User.HasClaim("eventstore:tenant", request.Tenant);
+            if (!hasVerifiedTenant || !string.Equals(verifiedSubject, userId, StringComparison.Ordinal))
+            {
+                return Forbid();
+            }
+
+            command = command with
+            {
+                HumanAuthority = new HumanAuthoritySource(
+                    request.Tenant,
+                    verifiedSubject!,
+                    [.. User.FindAll("eventstore:permission")
+                        .Select(claim => claim.Value)
+                        .Where(value => !string.IsNullOrWhiteSpace(value))
+                        .Distinct(StringComparer.Ordinal)]),
+            };
+        }
+
         if (workloadOnly)
         {
             // The workload policy and signed tenant binding were checked at this gateway.

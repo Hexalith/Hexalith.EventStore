@@ -29,18 +29,26 @@ public sealed class CoordinatedCommandActor(
 
     /// <inheritdoc />
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
-        => ProcessAsync(command, executionContext: null);
+        => ProcessAsync(command, executionContext: null, humanAuthorityReceipt: null);
+
+    /// <inheritdoc />
+    public Task<CommandProcessingResult> ProcessAuthorizedCommandAsync(AuthorizedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProcessAsync(request.Command, executionContext: null, request.HumanAuthorityReceipt);
+    }
 
     /// <inheritdoc />
     public Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProcessAsync(request.Command, request.ExecutionContext);
+        return ProcessAsync(request.Command, request.ExecutionContext, request.HumanAuthorityReceipt);
     }
 
     private async Task<CommandProcessingResult> ProcessAsync(
         CommandEnvelope command,
-        IdempotencyExecutionContext? executionContext)
+        IdempotencyExecutionContext? executionContext,
+        string? humanAuthorityReceipt)
     {
         ArgumentNullException.ThrowIfNull(command);
         ICoordinatedCommandPolicy[] claiming = [.. policies.Where(policy => policy.Claims(command.Domain, command.CommandType)).Take(2)];
@@ -116,7 +124,9 @@ public sealed class CoordinatedCommandActor(
                 if (executionContext is null && (await target.GetEventsAsync(0).ConfigureAwait(false))
                     .Any(item => string.Equals(item.CausationId, command.MessageId, StringComparison.Ordinal)))
                 {
-                    return await target.ProcessCommandAsync(command).ConfigureAwait(false);
+                    return humanAuthorityReceipt is null
+                        ? await target.ProcessCommandAsync(command).ConfigureAwait(false)
+                        : await target.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(command, humanAuthorityReceipt)).ConfigureAwait(false);
                 }
 
                 var rejected = new CommandProcessingResult(false, "coordinated_source_conflict", command.CorrelationId,
@@ -129,7 +139,9 @@ public sealed class CoordinatedCommandActor(
         }
 
         return executionContext is null
-            ? await target.ProcessCommandAsync(command).ConfigureAwait(false)
-            : await target.ProcessFencedCommandAsync(new FencedCommandEnvelope(command, executionContext)).ConfigureAwait(false);
+            ? humanAuthorityReceipt is null
+                ? await target.ProcessCommandAsync(command).ConfigureAwait(false)
+                : await target.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(command, humanAuthorityReceipt)).ConfigureAwait(false)
+            : await target.ProcessFencedCommandAsync(new FencedCommandEnvelope(command, executionContext, humanAuthorityReceipt)).ConfigureAwait(false);
     }
 }

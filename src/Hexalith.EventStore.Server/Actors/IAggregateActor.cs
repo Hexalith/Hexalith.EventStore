@@ -34,6 +34,9 @@ public interface IAggregateActor : IActor {
     /// <returns>The result of processing the command.</returns>
     Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command);
 
+    /// <summary>Processes a command with separately signed, ephemeral human authority.</summary>
+    Task<CommandProcessingResult> ProcessAuthorizedCommandAsync(AuthorizedCommandEnvelope request);
+
     /// <summary>
     /// Reads events from the aggregate's event stream starting after the given sequence number.
     /// </summary>
