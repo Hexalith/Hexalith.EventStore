@@ -59,7 +59,7 @@ public class StreamReadContractTests {
                     CorrelationId: "corr-1",
                     CausationId: "cause-1",
                     Timestamp: DateTimeOffset.Parse("2026-05-15T07:01:00Z"),
-                    UserId: "user-1"),
+                    UserId: "user-1") { GlobalPosition = 4321 },
             ],
             Metadata: new StreamReadMetadata(
                 FromSequence: 10,
@@ -74,6 +74,11 @@ public class StreamReadContractTests {
         page.Metadata.IsTruncated.ShouldBeTrue();
         _ = page.Metadata.NextContinuationToken.ShouldNotBeNull();
         page.Events.Single().SequenceNumber.ShouldBe(11);
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        string json = JsonSerializer.Serialize(page, options);
+        json.ShouldContain("\"globalPosition\":4321");
+        StreamReadPage? restored = JsonSerializer.Deserialize<StreamReadPage>(json, options);
+        restored.ShouldNotBeNull().Events.Single().GlobalPosition.ShouldBe(4321);
     }
 
     [Fact]

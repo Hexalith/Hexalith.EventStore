@@ -45,6 +45,26 @@ public sealed class ReadModelBatchOperation {
     /// <summary>Gets the optional retention period applied when the final write becomes visible.</summary>
     public TimeSpan? TimeToLive { get; }
 
+    /// <summary>Returns the same immutable operation with its original staged concurrency policy.</summary>
+    public ReadModelBatchOperation WithConcurrency(ReadModelBatchConcurrency concurrency) {
+        ArgumentNullException.ThrowIfNull(concurrency);
+        if (concurrency.ExpectedETag is null)
+            throw new ArgumentException("The concurrency ETag is missing.", nameof(concurrency));
+        if (Kind == ReadModelBatchOperationKind.Delete
+            && !(concurrency.Mode == ReadModelBatchConcurrencyMode.IdempotentAbsent
+                    && concurrency.ExpectedETag.Length == 0)
+            && !(concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag
+                    && concurrency.ExpectedETag.Length > 0))
+            throw new ArgumentException("Invalid delete concurrency policy.", nameof(concurrency));
+        if (Kind == ReadModelBatchOperationKind.Write
+            && !(concurrency.Mode == ReadModelBatchConcurrencyMode.Unconditional
+                    && concurrency.ExpectedETag.Length == 0)
+            && concurrency.Mode != ReadModelBatchConcurrencyMode.ExpectedETag)
+            throw new ArgumentException("Invalid write concurrency policy.", nameof(concurrency));
+        return new ReadModelBatchOperation(Key, Kind, ValueTypeName,
+            CanonicalValue, concurrency, TimeToLive);
+    }
+
     /// <summary>
     /// Creates a write operation, serializing <paramref name="value"/> immediately into immutable
     /// canonical bytes.

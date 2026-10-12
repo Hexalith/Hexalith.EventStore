@@ -122,6 +122,12 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionDeliveryCutover, ProjectionDeliveryCutover>();
         services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();
         services.TryAddSingleton<IProjectionRebuildWriteGateway, DaprProjectionRebuildWriteGateway>();
+        _ = services.AddOptions<SharedProjectionSourceCaptureOptions>()
+            .Bind(configuration.GetSection("EventStore:SharedProjectionSourceCapture"))
+            .ValidateOnStart();
+        services.TryAddSingleton<ISharedProjectionSourceWriteFence, DaprSharedProjectionSourceWriteFence>();
+        services.TryAddSingleton<ISharedProjectionRebuildGateway, DaprSharedProjectionRebuildGateway>();
+        services.TryAddTransient<ISharedProjectionSourceRebuildOperator, SharedProjectionSourceBeginProducer>();
         services.TryAddSingleton<IProjectionSlotRegistry>(ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry);
         services.TryAddSingleton<IProjectionReadModelAddressFactory, ProjectionReadModelAddressFactory>();
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
@@ -255,6 +261,7 @@ public static class EventStoreServerServiceCollectionExtensions {
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);
             options.Actors.RegisterActor<ProjectionLifecycleActor>(ProjectionLifecycleActor.ActorTypeName);
+            options.Actors.RegisterActor<SharedProjectionSourceRosterActor>(SharedProjectionSourceRosterActor.ActorTypeName);
         });
 
         return services;

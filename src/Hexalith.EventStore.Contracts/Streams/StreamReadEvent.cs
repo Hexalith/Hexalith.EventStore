@@ -29,6 +29,10 @@ public sealed record StreamReadEvent(
     string? UserId,
     EventStorePayloadProtectionMetadata? ProtectionMetadata = null)
 {
+    /// <summary>Gets the persisted cross-aggregate position when the source retains one.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public long GlobalPosition { get; init; }
+
     /// <summary>Gets the stored payload version; null denotes version one.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? PayloadVersion { get; init; }

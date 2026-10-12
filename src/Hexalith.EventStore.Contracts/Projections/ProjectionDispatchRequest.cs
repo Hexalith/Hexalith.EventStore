@@ -11,4 +11,8 @@ public sealed record ProjectionDispatchRequest(
     ProjectionRequest Request,
     IReadOnlyList<string> ProjectionTypes,
     string DispatchId,
-    string CatalogFingerprint);
+    string CatalogFingerprint)
+{
+    /// <summary>Gets a durable bounded transport for a large mapped full replay.</summary>
+    public ProjectionRebuildTransportReference? RebuildTransport { get; init; }
+}

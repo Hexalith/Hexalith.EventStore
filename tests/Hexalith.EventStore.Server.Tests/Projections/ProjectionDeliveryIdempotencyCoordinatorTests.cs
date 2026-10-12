@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Configuration;
@@ -469,6 +472,145 @@ public class ProjectionDeliveryIdempotencyCoordinatorTests {
         store.ReconciliationWork.ShouldHaveSingleItem().ObservedSequence.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task MappedV2CompletedReceiptRejectsPositionAndProvenanceOnlyRedelivery() {
+        ProjectionEventDto source = Event(1) with { GlobalPosition = 19 };
+        ProjectionDeliveryFingerprintHistory original = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [source], positionSensitive: true);
+        ProjectionDeliveryEventDigest completed = original.Events[0];
+        ProjectionDeliveryState state = ProjectionDeliveryState.CreateEmpty(
+            Identity, "order-detail", original.InitialFingerprint, Now) with {
+            LastDeliveredSequence = 1,
+            LastCompletedMessageId = source.MessageId,
+            CompletedPrefixFingerprint = completed.PrefixFingerprint,
+            CompletedReceipts = [Receipt(completed)],
+            FirstRetainedSequence = 1,
+        };
+        var store = new InMemoryProjectionDeliveryStateStore(state);
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
+
+        (await coordinator.ReadAcceptedPrefixAsync(Identity, "order-detail")).ShouldBeNull();
+
+        (await coordinator.UseLegacyMappedIdentityAsync(Identity, "order-detail")).ShouldBeFalse();
+        foreach (ProjectionEventDto changed in new[] {
+            source with { GlobalPosition = 20 },
+            source with { StoredEventContractType = "stored-v2" },
+            source with { RegistryFingerprint = "registry-v2" },
+        }) {
+            ProjectionDeliveryFingerprintHistory variant = ProjectionDeliveryFingerprint.ComputeHistory(
+                Identity, "order-detail", [changed], positionSensitive: true);
+            ProjectionDeliveryAdmissionResult result = await coordinator.TryAdmitHistoryAsync(
+                Identity, "order-detail", variant, reclaimSafe: true);
+            result.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Failed);
+            result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            store.State.ShouldBe(state);
+        }
+    }
+
+    [Fact]
+    public async Task ExistingMappedV1ReceiptKeepsItsLegacyIdentity() {
+        ProjectionEventDto source = Event(1) with { GlobalPosition = 19 };
+        ProjectionDeliveryFingerprintHistory legacy = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [source]);
+        ProjectionDeliveryEventDigest completed = legacy.Events[0];
+        ProjectionDeliveryState state = EmptyState() with {
+            LastDeliveredSequence = 1,
+            LastCompletedMessageId = source.MessageId,
+            CompletedPrefixFingerprint = completed.PrefixFingerprint,
+            CompletedReceipts = [Receipt(completed)],
+            FirstRetainedSequence = 1,
+        };
+        var store = new InMemoryProjectionDeliveryStateStore(state);
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
+
+        (await coordinator.UseLegacyMappedIdentityAsync(Identity, "order-detail")).ShouldBeTrue();
+        ProjectionDeliveryFingerprintHistory replay = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [source with { GlobalPosition = 20 }]);
+        ProjectionDeliveryAdmissionResult result = await coordinator.TryAdmitHistoryAsync(
+            Identity, "order-detail", replay, reclaimSafe: true);
+        result.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.AlreadyCompleted);
+        store.State.ShouldBe(state);
+    }
+
+    [Fact]
+    public async Task AnchoredSuffixAdvancesDurablePrefixWithoutReplayingPriorEvents() {
+        ProjectionEventDto first = Event(1) with { GlobalPosition = 19 };
+        ProjectionEventDto second = Event(2) with { GlobalPosition = 20 };
+        ProjectionDeliveryFingerprintHistory original = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [first], positionSensitive: true);
+        ProjectionDeliveryEventDigest completed = original.Events[0];
+        ProjectionDeliveryState state = ProjectionDeliveryState.CreateEmpty(Identity, "order-detail",
+            original.InitialFingerprint, Now) with {
+            LastDeliveredSequence = 1,
+            LastCompletedMessageId = first.MessageId,
+            CompletedPrefixFingerprint = completed.PrefixFingerprint,
+            CompletedReceipts = [Receipt(completed)],
+            CompletedMessageIdDigests = [Convert.ToBase64String(SHA256.HashData(
+                Encoding.UTF8.GetBytes(first.MessageId)))],
+            FirstRetainedSequence = 1,
+        };
+        var store = new InMemoryProjectionDeliveryStateStore(state);
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
+        ProjectionDeliveryAcceptedPrefix checkpoint = (await coordinator.ReadAcceptedPrefixAsync(
+            Identity, "order-detail")).ShouldNotBeNull();
+        checkpoint.SequenceNumber.ShouldBe(1);
+        async IAsyncEnumerable<ProjectionEventDto[]> Suffix() {
+            yield return [second];
+            await Task.Yield();
+        }
+        ProjectionDeliveryFingerprintHistory history = await ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", checkpoint.SequenceNumber, checkpoint.Fingerprint,
+            Suffix(), 10_000, CancellationToken.None);
+
+        ProjectionDeliveryAdmissionResult admitted = await coordinator.TryAdmitHistoryAsync(
+            Identity, "order-detail", history, reclaimSafe: true);
+        admitted.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Dispatch);
+        (await coordinator.CompleteHistoryAsync(Identity, "order-detail", history,
+            admitted.Reservation.ShouldNotBeNull())).ShouldBe(ProjectionDeliveryCompletion.Completed);
+        store.State.ShouldNotBeNull().LastDeliveredSequence.ShouldBe(2);
+        store.State.CompletedPrefixFingerprint.ShouldBe(history.PrefixFingerprint);
+
+        ProjectionDeliveryFingerprintHistory changed = await ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", checkpoint.SequenceNumber, checkpoint.Fingerprint,
+            Changed(), 10_000, CancellationToken.None);
+        (await coordinator.TryAdmitHistoryAsync(Identity, "order-detail", changed,
+            reclaimSafe: true)).Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Failed);
+        async IAsyncEnumerable<ProjectionEventDto[]> Changed() {
+            yield return [second with { GlobalPosition = 21 }];
+            await Task.Yield();
+        }
+    }
+
+    [Fact]
+    public async Task IncrementalSuffixEnforcesTotalOwnerEventLimit() {
+        string prefix = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [Event(1)]).PrefixFingerprint;
+        async IAsyncEnumerable<ProjectionEventDto[]> OneEvent(long sequence) {
+            yield return [Event(sequence)];
+            await Task.Yield();
+        }
+
+        ProjectionDeliveryFingerprintHistory accepted = await ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", 9_999, prefix, OneEvent(10_000), 10_000,
+            CancellationToken.None);
+        accepted.Events.ShouldHaveSingleItem().SequenceNumber.ShouldBe(10_000);
+        _ = await Should.ThrowAsync<ArgumentException>(() => ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", 10_000, prefix, OneEvent(10_001), 10_000,
+            CancellationToken.None));
+        _ = await Should.ThrowAsync<ArgumentException>(() => ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", 9_999, prefix, TwoEvents(), 10_000,
+            CancellationToken.None));
+        ProjectionDeliveryFingerprintHistory completeOverLimit = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", [.. Enumerable.Range(1, 10_001).Select(sequence => Event(sequence))]);
+        ProjectionDeliveryFingerprint.IsValidHistory(Identity, "order-detail", completeOverLimit)
+            .ShouldBeFalse();
+
+        async IAsyncEnumerable<ProjectionEventDto[]> TwoEvents() {
+            yield return [Event(10_000), Event(10_001)];
+            await Task.Yield();
+        }
+    }
+
     [Theory]
     [InlineData(256)]
     [InlineData(4096)]
@@ -501,6 +643,38 @@ public class ProjectionDeliveryIdempotencyCoordinatorTests {
         store.State!.CompletedReceipts!.Count.ShouldBe(limit);
         store.State.FirstRetainedSequence.ShouldBe(2);
         store.State.CompletedPrefixFingerprint.ShouldBe(history.PrefixFingerprint);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IncrementalSuffixRejectsMessageIdOlderThanReceiptWindow(bool positionSensitive) {
+        ProjectionEventDto[] first = [Event(1), Event(2)];
+        ProjectionDeliveryFingerprintHistory initial = ProjectionDeliveryFingerprint.ComputeHistory(
+            Identity, "order-detail", first, positionSensitive);
+        ProjectionDeliveryReservation reservation = new(1, 2, first[^1].MessageId,
+            first[^1].MessageId, initial.PrefixFingerprint, 1, Now, Now.AddMinutes(5), 1);
+        var store = new InMemoryProjectionDeliveryStateStore(
+            EmptyState() with { ActiveReservation = reservation,
+                CompletedPrefixFingerprint = initial.InitialFingerprint });
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store, receiptLimit: 1);
+        (await coordinator.CompleteHistoryAsync(Identity, "order-detail", initial, reservation))
+            .ShouldBe(ProjectionDeliveryCompletion.Completed);
+        store.State!.CompletedReceipts!.Count.ShouldBe(1);
+        (await coordinator.ReadAcceptedPrefixAsync(Identity, "order-detail")).ShouldNotBeNull();
+
+        ProjectionEventDto reused = Event(3) with { MessageId = first[0].MessageId };
+        async IAsyncEnumerable<ProjectionEventDto[]> Suffix() {
+            yield return [reused];
+            await Task.Yield();
+        }
+        ProjectionDeliveryFingerprintHistory suffix = await ProjectionDeliveryFingerprint.ComputeSuffixAsync(
+            Identity, "order-detail", 2, initial.PrefixFingerprint, Suffix(), 10_000,
+            CancellationToken.None);
+        ProjectionDeliveryAdmissionResult result = await coordinator.TryAdmitHistoryAsync(
+            Identity, "order-detail", suffix, reclaimSafe: true);
+        result.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Failed);
+        result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
     }
 
     [Fact]

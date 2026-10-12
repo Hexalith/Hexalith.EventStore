@@ -13,6 +13,10 @@ public enum SharedProjectionJournalResult
     StaleLease,
     /// <summary>The bounded journal is full; retry after catch-up without acknowledgement.</summary>
     Backpressure,
+    /// <summary>An earlier owner sequence must be accepted before this delivery can be journaled.</summary>
+    DeliveryGap,
+    /// <summary>A legacy checkpoint lacks owner sequence continuity and requires an authoritative rebuild.</summary>
+    RebuildRequired,
     /// <summary>The same source position has a different canonical digest.</summary>
     IdentityConflict,
 }

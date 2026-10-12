@@ -5,4 +5,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// </summary>
 /// <param name="Exists">Indicates whether aggregate metadata exists for the stream.</param>
 /// <param name="CurrentSequence">The current highest sequence number, or zero when no events have been stored.</param>
-public readonly record struct AggregateStreamMetadata(bool Exists, long CurrentSequence);
+/// <param name="Erased">The aggregate actor has completed its authoritative stream erasure.</param>
+/// <param name="ErasedPosition">The last committed global position retained in completed erasure progress.</param>
+public readonly record struct AggregateStreamMetadata(bool Exists, long CurrentSequence, bool Erased = false,
+    long ErasedPosition = 0);

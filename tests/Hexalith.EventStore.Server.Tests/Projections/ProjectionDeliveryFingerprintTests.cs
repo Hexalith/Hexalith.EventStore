@@ -27,6 +27,40 @@ public class ProjectionDeliveryFingerprintTests {
     }
 
     [Fact]
+    public void MappedV2IdentityBindsPositionAndEveryOptionalProvenanceFieldWithoutChangingV1() {
+        ProjectionEventDto source = Event(1, "message-1", [1, 2]) with { GlobalPosition = 17 };
+        string frozenV1 = ProjectionDeliveryFingerprint.ComputeEvent(source);
+        string mappedV2 = ProjectionDeliveryFingerprint.ComputeEvent(source, positionSensitive: true);
+        mappedV2.ShouldStartWith("v2:");
+        ProjectionEventDto[] variants = [
+            source with { GlobalPosition = 18 },
+            source with { MetadataVersion = 2 },
+            source with { StoredEventContractType = "stored-contract" },
+            source with { StoredPayloadVersion = 2 },
+            source with { StoredSerializationFormat = "json-v2" },
+            source with { EffectiveEventContractType = "effective-contract" },
+            source with { EffectivePayloadVersion = 3 },
+            source with { EffectiveSerializationFormat = "json-v3" },
+            source with { EffectivePayload = [5] },
+            source with { StoredEventTypeName = "stored-event" },
+            source with { StoredDigest = [6] },
+            source with { RegistryFingerprint = "registry" },
+            source with { IsAdapted = false },
+        ];
+        foreach (ProjectionEventDto variant in variants) {
+            ProjectionDeliveryFingerprint.ComputeEvent(variant, positionSensitive: true)
+                .ShouldNotBe(mappedV2);
+            if (variant.GlobalPosition != source.GlobalPosition)
+                ProjectionDeliveryFingerprint.ComputeEvent(variant).ShouldBe(frozenV1);
+        }
+        string initial = ProjectionDeliveryFingerprint.ComputeInitial(Identity, "order-detail",
+            positionSensitive: true);
+        ProjectionDeliveryFingerprint.Extend(initial, mappedV2).ShouldStartWith("v2:");
+        Should.Throw<ArgumentException>(() => ProjectionDeliveryFingerprint.Extend(
+            ProjectionDeliveryFingerprint.ComputeInitial(Identity, "order-detail"), mappedV2));
+    }
+
+    [Fact]
     public void ValidateHistory_RejectsMissingIdentityAndNonContiguousInput() {
         ProjectionEventDto missingIdentity = Event(1, " ", [1]);
         ProjectionEventDto gap = Event(3, "01J00000000000000000000003", [3]);

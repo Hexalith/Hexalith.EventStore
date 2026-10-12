@@ -12,6 +12,7 @@ public sealed class NamedProjectionRouteCatalogEntry {
     /// <param name="dispatchCapability">The dispatch capability marker.</param>
     /// <param name="catalogFingerprint">The verified full-catalog fingerprint.</param>
     /// <param name="projectionTypes">The exact canonical projection types.</param>
+    /// <param name="fullReplayProjectionTypes">Routes that support one-owner full replay; omitted for legacy catalogs.</param>
     public NamedProjectionRouteCatalogEntry(
         string appId,
         string serviceVersion,
@@ -19,7 +20,12 @@ public sealed class NamedProjectionRouteCatalogEntry {
         int dispatchVersion,
         string dispatchCapability,
         string catalogFingerprint,
-        IEnumerable<string> projectionTypes) {
+        IEnumerable<string> projectionTypes,
+        IEnumerable<string>? fullReplayProjectionTypes = null,
+        IEnumerable<string>? mappedOnlyStreamedProjectionTypes = null,
+        IEnumerable<string>? sharedEpochProjectionTypes = null,
+        IEnumerable<string>? singleEventProjectionTypes = null,
+        IEnumerable<string>? incrementalReplayProjectionTypes = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
@@ -34,6 +40,30 @@ public sealed class NamedProjectionRouteCatalogEntry {
         DispatchCapability = dispatchCapability;
         CatalogFingerprint = catalogFingerprint;
         ProjectionTypes = projectionTypes.ToImmutableArray();
+        FullReplayProjectionTypes = (fullReplayProjectionTypes ?? ProjectionTypes).ToImmutableArray();
+        MappedOnlyStreamedProjectionTypes = (mappedOnlyStreamedProjectionTypes ?? []).ToImmutableArray();
+        SharedEpochProjectionTypes = (sharedEpochProjectionTypes ?? []).ToImmutableArray();
+        SingleEventProjectionTypes = (singleEventProjectionTypes ?? []).ToImmutableArray();
+        IncrementalReplayProjectionTypes = (incrementalReplayProjectionTypes ?? []).ToImmutableArray();
+        if (FullReplayProjectionTypes.Any(type => !ProjectionTypes.Contains(type, StringComparer.Ordinal))) {
+            throw new ArgumentException("A full-replay route is absent from the named catalog.", nameof(fullReplayProjectionTypes));
+        }
+        if (MappedOnlyStreamedProjectionTypes.Any(type => !FullReplayProjectionTypes.Contains(type, StringComparer.Ordinal))) {
+            throw new ArgumentException("A mapped-only streamed route is absent from full replay.", nameof(mappedOnlyStreamedProjectionTypes));
+        }
+        if (IncrementalReplayProjectionTypes.Any(type => !MappedOnlyStreamedProjectionTypes.Contains(type,
+            StringComparer.Ordinal))) {
+            throw new ArgumentException("An incremental replay route is absent from mapped streamed replay.",
+                nameof(incrementalReplayProjectionTypes));
+        }
+        if (SharedEpochProjectionTypes.Any(type => !ProjectionTypes.Contains(type, StringComparer.Ordinal)
+            || FullReplayProjectionTypes.Contains(type, StringComparer.Ordinal))) {
+            throw new ArgumentException("A shared epoch route is absent from the named catalog or belongs to full replay.", nameof(sharedEpochProjectionTypes));
+        }
+        if (SingleEventProjectionTypes.Any(type => !ProjectionTypes.Contains(type, StringComparer.Ordinal)
+            || FullReplayProjectionTypes.Contains(type, StringComparer.Ordinal))) {
+            throw new ArgumentException("A single-event route is absent from the named catalog or belongs to full replay.", nameof(singleEventProjectionTypes));
+        }
     }
 
     /// <summary>Gets the exact DAPR app id.</summary>
@@ -56,4 +86,19 @@ public sealed class NamedProjectionRouteCatalogEntry {
 
     /// <summary>Gets the exact canonical projection types in ordinal order.</summary>
     public IReadOnlyList<string> ProjectionTypes { get; }
+
+    /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
+    public IReadOnlyList<string> FullReplayProjectionTypes { get; }
+
+    /// <summary>Gets full-replay routes that can bypass legacy actor state and consume bounded source pages.</summary>
+    public IReadOnlyList<string> MappedOnlyStreamedProjectionTypes { get; }
+
+    /// <summary>Gets streamed full-replay routes that accept contiguous ordinary suffixes.</summary>
+    public IReadOnlyList<string> IncrementalReplayProjectionTypes { get; }
+
+    /// <summary>Gets named routes whose normal delivery is fenced by the shared epoch journal.</summary>
+    public IReadOnlyList<string> SharedEpochProjectionTypes { get; }
+
+    /// <summary>Gets named routes whose normal handler safely accepts repeated individual source events.</summary>
+    public IReadOnlyList<string> SingleEventProjectionTypes { get; }
 }

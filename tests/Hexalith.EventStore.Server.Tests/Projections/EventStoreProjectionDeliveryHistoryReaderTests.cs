@@ -29,10 +29,8 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
             null,
             null);
         IAggregateActor aggregate = Substitute.For<IAggregateActor>();
-        _ = aggregate.ReadEventsRangeAsync(0, 300, 256)
-            .Returns([.. Enumerable.Range(1, 256).Select(sequence => Envelope(sequence, metadata))]);
-        _ = aggregate.ReadEventsRangeAsync(256, 300, 256)
-            .Returns([.. Enumerable.Range(257, 44).Select(sequence => Envelope(sequence, metadata))]);
+        _ = aggregate.ReadEventsRangeAsync(Arg.Any<long>(), 300, 1)
+            .Returns(call => [Envelope(checked((int)call.ArgAt<long>(0) + 1), metadata)]);
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         _ = protection.TryUnprotectEventPayloadAsync(
                 Identity,
@@ -55,8 +53,9 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
         result[0].Payload.ShouldBe([(byte)1, (byte)255]);
         result[^1].Payload.ShouldBe([(byte)49, (byte)255]);
         result[^1].SequenceNumber.ShouldBe(300);
-        _ = await aggregate.Received(1).ReadEventsRangeAsync(0, 300, 256);
-        _ = await aggregate.Received(1).ReadEventsRangeAsync(256, 300, 256);
+        _ = await aggregate.Received(300).ReadEventsRangeAsync(Arg.Any<long>(), 300, 1);
+        _ = await aggregate.Received(1).ReadEventsRangeAsync(0, 300, 1);
+        _ = await aggregate.Received(1).ReadEventsRangeAsync(299, 300, 1);
         _ = await protection.Received(300).TryUnprotectEventPayloadAsync(
             Identity,
             "OrderChanged",
@@ -70,10 +69,10 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
     public async Task ReadAsync_CancellationAfterPage_PreventsNextActorCall() {
         using var cancellation = new CancellationTokenSource();
         IAggregateActor aggregate = Substitute.For<IAggregateActor>();
-        _ = aggregate.ReadEventsRangeAsync(0, 300, 256)
+        _ = aggregate.ReadEventsRangeAsync(0, 300, 1)
             .Returns(_ => {
                 cancellation.Cancel();
-                return [.. Enumerable.Range(1, 256).Select(sequence => Envelope(sequence, null))];
+                return [Envelope(1, null)];
             });
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         EventStoreProjectionDeliveryHistoryReader reader = CreateReader(aggregate, protection);
@@ -83,8 +82,8 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
             300,
             cancellation.Token));
 
-        _ = await aggregate.Received(1).ReadEventsRangeAsync(0, 300, 256);
-        _ = await aggregate.DidNotReceive().ReadEventsRangeAsync(256, 300, 256);
+        _ = await aggregate.Received(1).ReadEventsRangeAsync(0, 300, 1);
+        _ = await aggregate.DidNotReceive().ReadEventsRangeAsync(1, 300, 1);
         _ = await protection.DidNotReceiveWithAnyArgs().TryUnprotectEventPayloadAsync(
             default!,
             default!,
@@ -104,7 +103,7 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
             null,
             null);
         IAggregateActor aggregate = Substitute.For<IAggregateActor>();
-        _ = aggregate.ReadEventsRangeAsync(0, 1, 256).Returns([Envelope(1, metadata)]);
+        _ = aggregate.ReadEventsRangeAsync(0, 1, 1).Returns([Envelope(1, metadata)]);
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         _ = protection.TryUnprotectEventPayloadAsync(
                 Identity,
@@ -127,7 +126,7 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
     [Fact]
     public async Task ReadAsync_ForeignEnvelopeFailsBeforePayloadDecoding() {
         IAggregateActor aggregate = Substitute.For<IAggregateActor>();
-        _ = aggregate.ReadEventsRangeAsync(0, 1, 256)
+        _ = aggregate.ReadEventsRangeAsync(0, 1, 1)
             .Returns([Envelope(1, null) with { TenantId = "other-tenant" }]);
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         EventStoreProjectionDeliveryHistoryReader reader = CreateReader(aggregate, protection);
@@ -140,13 +139,32 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
     [Fact]
     public async Task ReadAsync_IncompleteSecondPageFailsClosed() {
         IAggregateActor aggregate = Substitute.For<IAggregateActor>();
-        _ = aggregate.ReadEventsRangeAsync(0, 257, 256)
-            .Returns([.. Enumerable.Range(1, 256).Select(sequence => Envelope(sequence, null))]);
-        _ = aggregate.ReadEventsRangeAsync(256, 257, 256).Returns([]);
+        _ = aggregate.ReadEventsRangeAsync(0, 257, 1).Returns([Envelope(1, null)]);
+        _ = aggregate.ReadEventsRangeAsync(1, 257, 1).Returns([]);
         IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
         EventStoreProjectionDeliveryHistoryReader reader = CreateReader(aggregate, protection);
 
         _ = await Should.ThrowAsync<ProjectionDeliveryHistoryValidationException>(() => reader.ReadAsync(Identity, 257));
+    }
+
+    [Fact]
+    public async Task ReadPagesFromAsync_StartsAtAcceptedCheckpointWithoutReadingPrefix() {
+        IAggregateActor aggregate = Substitute.For<IAggregateActor>();
+        _ = aggregate.ReadEventsRangeAsync(Arg.Any<long>(), 10_000, 1)
+            .Returns(call => [Envelope(checked((int)call.ArgAt<long>(0) + 1), null)]);
+        EventStoreProjectionDeliveryHistoryReader reader = CreateReader(
+            aggregate, Substitute.For<IEventPayloadProtectionService>());
+        var observed = new List<long>();
+
+        await foreach (Hexalith.EventStore.Contracts.Projections.ProjectionEventDto[] page
+            in reader.ReadPagesFromAsync(Identity, 9_989, 10_000)) {
+            observed.AddRange(page.Select(static item => item.SequenceNumber));
+        }
+
+        observed.ShouldBe(Enumerable.Range(9_990, 11).Select(static item => (long)item));
+        _ = await aggregate.Received(11).ReadEventsRangeAsync(Arg.Any<long>(), 10_000, 1);
+        _ = await aggregate.DidNotReceive().ReadEventsRangeAsync(0, 10_000, 1);
+        _ = await aggregate.Received(1).ReadEventsRangeAsync(9_989, 10_000, 1);
     }
 
     private static EventStoreProjectionDeliveryHistoryReader CreateReader(

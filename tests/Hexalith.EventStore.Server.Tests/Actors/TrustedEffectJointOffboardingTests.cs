@@ -10,11 +10,13 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
@@ -26,6 +28,43 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 public sealed class TrustedEffectJointOffboardingTests
 {
     private static readonly DateTimeOffset _now = new(2026, 9, 26, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task FencedErasureRetainsAuthoritativeGlobalTombstonePosition()
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        var state = new FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [target.MetadataKey] = new AggregateMetadata(1, _now, null),
+            [target.EventStreamKeyPrefix + "1"] = new Hexalith.EventStore.Server.Events.EventEnvelope(
+                "event-a", target.AggregateId, "work-item", target.TenantId, target.Domain,
+                1, 42, _now, "correlation-a", "cause-a", "operator-a", "v1",
+                "Occurred", 1, "json", [], null)
+        });
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ISharedProjectionSourceWriteFence fence = Substitute.For<ISharedProjectionSourceWriteFence>();
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton(fence)
+            .AddSingleton(Options.Create(new SharedProjectionSourceCaptureOptions
+                { EnabledDomains = [target.Domain] }))
+            .BuildServiceProvider();
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(stateManager: state,
+            trustedEffectErasureAuthority: authority, serviceProvider: services);
+
+        await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity));
+
+        AggregateStreamMetadata metadata = await actor.Actor.GetStreamMetadataAsync();
+        metadata.Erased.ShouldBeTrue();
+        metadata.ErasedPosition.ShouldBe(42);
+        ((TrustedEffectErasureProgress)state.CreateCommittedView()[TrustedEffectErasureProgress.StateName])
+            .LastGlobalPosition.ShouldBe(42);
+        await fence.Received(1).BeginWriteAsync(target, Arg.Any<string>(), true,
+            Arg.Any<CancellationToken>());
+        await fence.Received(1).CompleteWriteAsync(target, Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
 
     /// <summary>Legal hold retains both partitions; authorized retry erases both before final purge.</summary>
     [Fact]
@@ -553,6 +592,11 @@ public sealed class TrustedEffectJointOffboardingTests
             stateManager: state, trustedEffectErasureAuthority: authority);
 
         await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity));
+
+        AggregateStreamMetadata erasedStream = await actor.Actor.GetStreamMetadataAsync();
+        erasedStream.Exists.ShouldBeFalse();
+        erasedStream.CurrentSequence.ShouldBe(0);
+        erasedStream.Erased.ShouldBeTrue();
 
         IReadOnlyDictionary<string, object> committed = state.CreateCommittedView();
         committed.Keys.ShouldNotContain(key => key.StartsWith(target.EventStreamKeyPrefix, StringComparison.Ordinal));

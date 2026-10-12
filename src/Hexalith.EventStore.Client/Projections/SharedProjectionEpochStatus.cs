@@ -9,4 +9,8 @@ public sealed record SharedProjectionEpochStatus(
     bool IsBuilding,
     bool IsAborting,
     int PendingDeliveryCount,
-    bool IsOffboarded = false);
+    bool IsOffboarded = false)
+{
+    /// <summary>The tenant identity of the session retained by a global projection scope.</summary>
+    public string? OperationTenantId { get; init; }
+}

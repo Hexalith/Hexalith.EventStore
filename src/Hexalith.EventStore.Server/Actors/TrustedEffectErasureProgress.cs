@@ -5,8 +5,10 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="NextSequence">Next event sequence to erase.</param>
 /// <param name="Completed">Whether all stream and effect evidence was removed.</param>
 /// <param name="CapabilityNonce">Nonce consumed by the latest authorized purge turn.</param>
+/// <param name="LastGlobalPosition">Last committed global event position before source deletion.</param>
 internal sealed record TrustedEffectErasureProgress(
-    long LastSequence, long NextSequence, bool Completed, string CapabilityNonce)
+    long LastSequence, long NextSequence, bool Completed, string CapabilityNonce,
+    long LastGlobalPosition = 0)
 {
     /// <summary>Fixed actor-state name.</summary>
     public const string StateName = "effect_erasure_progress";

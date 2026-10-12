@@ -25,6 +25,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -1471,6 +1472,25 @@ public partial class AggregateActor(
                             await publicationRegistration.RegisterBeforeWriteAsync(command.AggregateIdentity, cancellationToken).ConfigureAwait(false);
                             await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         }
+                        ISharedProjectionSourceWriteFence? sourceFence = null;
+                        string? sourceIntentId = null;
+                        if (serviceProvider?.GetService<IOptions<SharedProjectionSourceCaptureOptions>>()?.Value
+                            .RequiresRegistration(command.Domain) == true)
+                        {
+                            sourceFence = serviceProvider.GetRequiredService<ISharedProjectionSourceWriteFence>();
+                            sourceIntentId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+                                command.AggregateIdentity.ActorId + ":" + command.MessageId)));
+                            await sourceFence.BeginWriteAsync(command.AggregateIdentity, sourceIntentId,
+                                cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+                            try { await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false); }
+                            catch
+                            {
+                                await sourceFence.CompleteWriteAsync(command.AggregateIdentity, sourceIntentId,
+                                    cancellationToken).ConfigureAwait(false);
+                                throw;
+                            }
+                        }
                         persistResult = await eventPersister
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,
@@ -1480,6 +1500,11 @@ public partial class AggregateActor(
                                 domainServiceVersion: domainServiceVersion,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
+                        if (sourceFence is not null)
+                        {
+                            await sourceFence.CompleteWriteAsync(command.AggregateIdentity, sourceIntentId!,
+                                cancellationToken).ConfigureAwait(false);
+                        }
 
                         // Step 5b: Snapshot creation (Story 3.9)
                         string? committedReplacementReasonClass = null;
@@ -2218,6 +2243,17 @@ public partial class AggregateActor(
             return;
         }
 
+        ISharedProjectionSourceWriteFence? erasureFence = null;
+        string? erasureIntentId = null;
+        if (serviceProvider?.GetService<IOptions<SharedProjectionSourceCaptureOptions>>()?.Value
+            .RequiresRegistration(identity.Domain) == true)
+        {
+            erasureFence = serviceProvider.GetRequiredService<ISharedProjectionSourceWriteFence>();
+            erasureIntentId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+                identity.ActorId + ":erase:" + request.Nonce)));
+            await erasureFence.BeginWriteAsync(identity, erasureIntentId, isErasure: true).ConfigureAwait(false);
+        }
+
         ConditionalValue<TrustedEffectEvidenceIndex> savedIndex = await StateManager
             .TryGetStateAsync<TrustedEffectEvidenceIndex>(TrustedEffectEvidenceIndex.StateName)
             .ConfigureAwait(false);
@@ -2269,7 +2305,18 @@ public partial class AggregateActor(
                 throw new InvalidOperationException("Aggregate stream metadata is corrupt.");
             }
 
-            progress = new TrustedEffectErasureProgress(lastSequence, 1, Completed: false, request.Nonce);
+            long lastGlobalPosition = 0;
+            if (lastSequence > 0 && erasureFence is not null)
+            {
+                ConditionalValue<EventEnvelope> lastEvent = await StateManager
+                    .TryGetStateAsync<EventEnvelope>(identity.EventStreamKeyPrefix + lastSequence)
+                    .ConfigureAwait(false);
+                if (!lastEvent.HasValue || lastEvent.Value.GlobalPosition <= 0)
+                    throw new InvalidOperationException("Aggregate erasure has no authoritative final event position.");
+                lastGlobalPosition = lastEvent.Value.GlobalPosition;
+            }
+            progress = new TrustedEffectErasureProgress(lastSequence, 1, Completed: false,
+                request.Nonce, lastGlobalPosition);
             await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
                 .ConfigureAwait(false);
             await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -2328,6 +2375,10 @@ public partial class AggregateActor(
                 throw new InvalidOperationException("Trusted effect erasure left receipt or collision evidence.");
             }
         }
+        if (erasureFence is not null)
+        {
+            await erasureFence.CompleteWriteAsync(identity, erasureIntentId!).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc/>
@@ -2346,7 +2397,13 @@ public partial class AggregateActor(
         }
 
         if (!metadataResult.HasValue) {
-            return new AggregateStreamMetadata(Exists: false, CurrentSequence: 0);
+            ConditionalValue<TrustedEffectErasureProgress> erasure = await StateManager
+                .TryGetStateAsync<TrustedEffectErasureProgress>(TrustedEffectErasureProgress.StateName)
+                .ConfigureAwait(false);
+            return new AggregateStreamMetadata(Exists: false, CurrentSequence: 0,
+                Erased: erasure.HasValue && erasure.Value.Completed,
+                ErasedPosition: erasure.HasValue && erasure.Value.Completed
+                    ? erasure.Value.LastGlobalPosition : 0);
         }
 
         long currentSequence = metadataResult.Value.CurrentSequence;

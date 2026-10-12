@@ -11,6 +11,9 @@ public sealed record SharedProjectionScope(
     string Family,
     IReadOnlyList<string> RequiredWriters)
 {
+    /// <summary>Enables sparse copy-on-write generations for this projection scope.</summary>
+    public bool CopyOnWrite { get; init; }
+
     /// <summary>Validates the durable fence boundary.</summary>
     public void Validate()
     {
@@ -42,6 +45,16 @@ public sealed record SharedProjectionScope(
         return "shared-generation:" + ComputeHash() + ":" + generation.ToString(System.Globalization.CultureInfo.InvariantCulture)
             + ":" + Convert.ToHexString(digest);
     }
+
+    internal string CopyOnWritePointerKey(string logicalKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(logicalKey);
+        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(logicalKey));
+        return "shared-cow-pointer:" + ComputeHash() + ":" + Convert.ToHexString(digest);
+    }
+
+    internal string CopyOnWriteCommitKey(long generation)
+        => StateKey + ":cow-committed:" + generation.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     internal string ReceiptKey(long epoch, string sourceStream, long position)
     {

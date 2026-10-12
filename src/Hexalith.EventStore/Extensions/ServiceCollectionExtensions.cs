@@ -227,6 +227,7 @@ public static class EventStoreServiceCollectionExtensions {
 
                 // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
                 string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value
+                    ?? EventStoreRateLimitPartition.TrustedTenantKey(context.User)
                     ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
                     ?? "anonymous";
 
@@ -252,7 +253,7 @@ public static class EventStoreServiceCollectionExtensions {
                     });
             });
 
-            // Per-consumer limiter keyed by JWT "sub" claim (Story 7.3)
+            // Per-consumer limiter keyed by human JWT subject or verified workload identity.
             var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
                 // Health endpoints must never be rate limited (same exemption as per-tenant)
                 string path = context.Request.Path.Value ?? string.Empty;
@@ -302,6 +303,7 @@ public static class EventStoreServiceCollectionExtensions {
 
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
                     string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
+                        ?? EventStoreRateLimitPartition.TrustedTenantKey(context.HttpContext.User)
                         ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
                         ?? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User)
                         ?? "unknown";

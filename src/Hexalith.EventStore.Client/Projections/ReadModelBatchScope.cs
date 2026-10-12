@@ -63,6 +63,9 @@ public sealed record ReadModelBatchScope(
         return Base64Url(digest);
     }
 
+    /// <summary>Gets the opaque durable marker key for this coordinated batch.</summary>
+    public string ComputeMarkerKey() => ReadModelBatchKeys.MarkerKey(ComputeScopeHash());
+
     private static void AppendComponent(StringBuilder builder, string value) =>
         builder.Append(value.Length.ToString(CultureInfo.InvariantCulture))
             .Append(':')

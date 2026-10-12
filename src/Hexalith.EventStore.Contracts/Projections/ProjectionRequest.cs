@@ -25,4 +25,19 @@ public record ProjectionRequest(
     /// <summary>Gets the untrusted event-evolution proof hint that requires route and complete-prefix verification.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public byte[]? EventEvolutionProof { get; init; }
+
+    /// <summary>
+    /// Gets the owner stream head observed by EventStore while preparing a mapped full replay.
+    /// This transport value is admitted only on the protected rebuild route; handlers must still
+    /// compare it with the supplied contiguous owner prefix and selected read model.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? RebuildSourceHeadSequence { get; init; }
+
+    /// <summary>
+    /// Gets the aggregate actor's completed-erasure observation for a protected, empty full replay.
+    /// The mapped rebuild route accepts this only with an empty prefix and a zero source head.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RebuildSourceErased { get; init; }
 }

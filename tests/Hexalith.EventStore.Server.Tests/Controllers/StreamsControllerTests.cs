@@ -96,8 +96,8 @@ public class StreamsControllerTests {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 4));
         _ = actor.ReadEventsRangeAsync(1, null, 3).Returns([
-            BuildEnvelope(2),
-            BuildEnvelope(3),
+            BuildEnvelope(2) with { GlobalPosition = 102 },
+            BuildEnvelope(3) with { GlobalPosition = 109 },
             BuildEnvelope(4),
         ]);
         (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
@@ -114,6 +114,7 @@ public class StreamsControllerTests {
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
         page.Events.Select(e => e.SequenceNumber).ShouldBe([2, 3]);
+        page.Events.Select(e => e.GlobalPosition).ShouldBe([102, 109]);
         page.Metadata.LastSequenceReturned.ShouldBe(3);
         page.Metadata.LatestSequence.ShouldBe(4);
         page.Metadata.IsTruncated.ShouldBeTrue();

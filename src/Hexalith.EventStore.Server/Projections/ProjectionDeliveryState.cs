@@ -32,6 +32,9 @@ internal sealed record ProjectionDeliveryState(
     ProjectionDeliveryReservation? ActiveReservation,
     ProjectionDeliveryMigrationProvenance MigrationProvenance,
     DateTimeOffset UpdatedAt) {
+    /// <summary>Complete ordered message-identity digests retained beyond the exact receipt window.</summary>
+    public IReadOnlyList<string>? CompletedMessageIdDigests { get; init; }
+
     /// <summary>The current persisted row schema.</summary>
     public const int CurrentSchemaVersion = 1;
 
@@ -61,6 +64,6 @@ internal sealed record ProjectionDeliveryState(
             0,
             null,
             ProjectionDeliveryMigrationProvenance.InitializedFromZero,
-            now);
+            now) { CompletedMessageIdDigests = [] };
     }
 }

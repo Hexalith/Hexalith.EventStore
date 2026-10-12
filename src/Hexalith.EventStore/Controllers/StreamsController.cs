@@ -438,7 +438,8 @@ public sealed partial class StreamsController(
             envelope.CausationId,
             envelope.Timestamp,
             string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
-            EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions));
+            EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions))
+                            { GlobalPosition = envelope.GlobalPosition };
 
     private static bool TryGetException<TException>(Exception exception, out TException? result)
         where TException : Exception {

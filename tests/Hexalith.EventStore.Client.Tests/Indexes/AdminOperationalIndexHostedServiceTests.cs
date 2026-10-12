@@ -24,6 +24,33 @@ namespace Hexalith.EventStore.Client.Tests.Indexes;
 
 public class AdminOperationalIndexHostedServiceTests {
     [Fact]
+    public async Task StartAsync_DuplicateDomainMetadataWithDistinctRoutesRejectsCatalog() {
+        ProjectionDispatchRoute[] routes = [new("counter", "counter-detail"), new("counter", "counter-index")];
+        var response = new AdminOperationalIndexMetadataResponse([
+            new AdminOperationalIndexDomainMetadata("counter", [], [], [], ["CounterAggregate"], []) {
+                NamedProjectionTypes = ["counter-detail"],
+            },
+            new AdminOperationalIndexDomainMetadata("counter", [], [], [], ["CounterAggregate"], []) {
+                NamedProjectionTypes = ["counter-index"],
+            },
+        ]) {
+            DispatchVersion = ProjectionDispatchProtocol.Version,
+            DispatchCapability = ProjectionDispatchProtocol.Capability,
+            AppId = "sample",
+            ServiceVersion = "v1",
+            CatalogFingerprint = ProjectionRouteCatalogFingerprint.Compute("sample", "v1", routes),
+        };
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory clientFactory = CreateHttpClientFactory(() => JsonResponse(response));
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService service = CreateHostedService(daprClient, clientFactory, catalog);
+
+        await service.StartAsync(CancellationToken.None);
+
+        catalog.DidNotReceiveWithAnyArgs().Replace(default!);
+    }
+
+    [Fact]
     public async Task StartAsync_CompleteNamedMetadata_PublishesExactLoadedCatalog() {
         ProjectionDispatchRoute[] routes = [new("counter", "counter-detail")];
         string fingerprint = ProjectionRouteCatalogFingerprint.Compute("sample", "v1", routes);

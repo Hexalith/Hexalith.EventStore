@@ -62,6 +62,23 @@ public sealed class ProjectionRebuildProductionPathTests {
     }
 
     [Fact]
+    public async Task Rebuild_ActorProvenErasedEmptyStreamDeletesSelectedNamedRows() {
+        using var harness = new ProjectionRebuildProductionHarness(eventCount: 0, erased: true);
+
+        await harness.RunAsync();
+
+        harness.ReadModels.Snapshot<AggregateReadModel>(
+            ProjectionRebuildProductionHarness.StoreName,
+            ProjectionRebuildProductionHarness.DetailKey).ShouldBeNull();
+        harness.ReadModels.Snapshot<AggregateIndexReadModel>(
+            ProjectionRebuildProductionHarness.StoreName,
+            ProjectionRebuildProductionHarness.IndexKey).ShouldBeNull();
+        harness.RebuildCheckpoints.Snapshot(harness.OperatorScope)!.Status
+            .ShouldBe(ProjectionRebuildStatus.Succeeded);
+        _ = await harness.AggregateActor.Received(4).GetStreamMetadataAsync();
+    }
+
+    [Fact]
     public async Task Rebuild_CanceledAfterFirstPage_PreservesEveryLiveSurfaceAndClearsLifecycle() {
         using var source = new CancellationTokenSource();
         using var harness = new ProjectionRebuildProductionHarness(eventCount: 7);

@@ -24,6 +24,7 @@ public static class EventStoreDomainServiceRoutes
         new("/project/v2", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
         new("/project/v2/reconcile", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
         new("/project/rebuild/v1", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
+        new("/project/rebuild/part/v1", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
         new("/project/rebuild/stage/v1", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
         new("/project/rebuild/commit/v1", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),
         new("/project/rebuild/abort/v1", EventStoreWorkloadOperations.DomainServiceProject, EventStoreDomainServicePolicies.Project),

@@ -1,5 +1,6 @@
 using Dapr.Actors;
 using Dapr.Actors.Client;
+using System.Runtime.CompilerServices;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
@@ -17,24 +18,52 @@ internal sealed class EventStoreProjectionDeliveryHistoryReader(
     IActorProxyFactory actorProxyFactory,
     IEventPayloadProtectionService payloadProtectionService,
     IOptions<EventStoreActorOptions> actorOptions) : IProjectionDeliveryHistoryReader {
-    private const int _readPageSize = 256;
+    // One valid event can carry a near-1-MiB stored payload. Keep each Dapr actor
+    // response below common transport limits for mapped normal delivery and retry.
+    private const int _readPageSize = 1;
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<ProjectionEventDto>> ReadAsync(
         AggregateIdentity identity,
         long throughSequence,
         CancellationToken cancellationToken = default) {
+        var readable = new List<ProjectionEventDto>();
+        await foreach (ProjectionEventDto[] page in ReadPagesAsync(identity, throughSequence, cancellationToken)
+            .ConfigureAwait(false)) {
+            readable.AddRange(page);
+        }
+
+        return readable;
+    }
+
+    /// <inheritdoc/>
+    public async IAsyncEnumerable<ProjectionEventDto[]> ReadPagesAsync(
+        AggregateIdentity identity,
+        long throughSequence,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+        await foreach (ProjectionEventDto[] page in ReadPagesFromAsync(identity, 0,
+            throughSequence, cancellationToken).ConfigureAwait(false)) {
+            yield return page;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async IAsyncEnumerable<ProjectionEventDto[]> ReadPagesFromAsync(
+        AggregateIdentity identity,
+        long afterSequence,
+        long throughSequence,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentOutOfRangeException.ThrowIfNegative(afterSequence);
         ArgumentOutOfRangeException.ThrowIfNegative(throughSequence);
-        if (throughSequence == 0) {
-            return [];
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(afterSequence, throughSequence);
+        if (throughSequence == afterSequence) {
+            yield break;
         }
 
         IAggregateActor aggregate = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(identity.ActorId),
             actorOptions.Value.AggregateActorTypeName);
-        var readable = new List<ProjectionEventDto>();
-        long afterSequence = 0;
         while (afterSequence < throughSequence) {
             cancellationToken.ThrowIfCancellationRequested();
             EventEnvelope[] page = await aggregate
@@ -63,15 +92,8 @@ internal sealed class EventStoreProjectionDeliveryHistoryReader(
                     "Authoritative projection history did not decode every event.");
             }
 
-            readable.AddRange(readability.Events);
+            yield return readability.Events;
             afterSequence = nextSequence;
         }
-
-        if (readable.Count != throughSequence) {
-            throw new ProjectionDeliveryHistoryValidationException(
-                "Authoritative projection history does not reach the persisted checkpoint.");
-        }
-
-        return readable;
     }
 }

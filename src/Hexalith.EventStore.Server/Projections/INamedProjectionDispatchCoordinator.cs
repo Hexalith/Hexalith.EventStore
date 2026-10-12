@@ -7,6 +7,31 @@ namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Coordinates pre-admitted named projection persistence for normal delivery only.</summary>
 internal interface INamedProjectionDispatchCoordinator {
+    /// <summary>Checks whether every named route is either streamed full replay or fenced shared epoch delivery.</summary>
+    Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration, CancellationToken cancellationToken);
+
+    /// <summary>Delivers one frozen actor head using bounded source pages and durable named route state.</summary>
+    Task<bool> TryDispatchMappedOnlyAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration,
+        long sourceHeadSequence, string headMessageId, CancellationToken cancellationToken);
+
+    /// <summary>Checks the verified mapped-only streamed capability for a full-replay operation.</summary>
+    Task<bool> SupportsMappedOnlyStreamedRebuildAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration,
+        string projectionName, CancellationToken cancellationToken);
+
+    /// <summary>Uploads bounded authoritative pages and stages the exact mapped request.</summary>
+    Task<ProjectionMappedReplayStageResult> StageMappedOnlyStreamedRebuildAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration, string operationId,
+        long sourceHead, Func<Stream, CancellationToken, Task<string?>> writeSource,
+        CancellationToken cancellationToken);
+
+    /// <summary>Completes one previously staged bounded mapped request.</summary>
+    Task<NamedProjectionRebuildResult> InvokeMappedOnlyStreamedRebuildAsync(
+        AggregateIdentity identity, DomainServiceRegistration registration,
+        ProjectionDispatchRequest header, ProjectionMappedReplayAction action,
+        CancellationToken cancellationToken);
     /// <summary>Acquires every catalog-required rebuild lifecycle before the stream boundary is frozen.</summary>
     Task<NamedProjectionRebuildResult> AcquireRebuildLifecyclesAsync(
         AggregateIdentity identity,
@@ -20,6 +45,7 @@ internal interface INamedProjectionDispatchCoordinator {
     /// <param name="identity">The aggregate identity.</param>
     /// <param name="registration">The resolved exact domain-service registration.</param>
     /// <param name="projectionEvents">The complete protected-data-readable event prefix.</param>
+    /// <param name="sourceHeadSequence">The authoritative owner head read from the aggregate actor.</param>
     /// <param name="operationId">The stable rebuild operation identity.</param>
     /// <param name="cancellationToken">Propagates rebuild cancellation.</param>
     /// <returns>A structured ownership and per-route durable outcome.</returns>
@@ -27,6 +53,7 @@ internal interface INamedProjectionDispatchCoordinator {
         AggregateIdentity identity,
         DomainServiceRegistration registration,
         ProjectionEventDto[] projectionEvents,
+        long sourceHeadSequence,
         string operationId,
         CancellationToken cancellationToken);
 

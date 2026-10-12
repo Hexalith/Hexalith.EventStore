@@ -59,7 +59,8 @@ public static class AdminOperationalIndexMetadata {
         string appId,
         string serviceVersion,
         ProjectionDispatchOptions options,
-        IReadOnlyCollection<string>? keyedProcessorDomains = null) {
+        IReadOnlyCollection<string>? keyedProcessorDomains = null,
+        IEnumerable<IDomainProjectionHandler>? legacyProjectionHandlers = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
         ArgumentNullException.ThrowIfNull(options);
@@ -72,7 +73,8 @@ public static class AdminOperationalIndexMetadata {
             appId,
             serviceVersion,
             options,
-            keyedProcessorDomains);
+            keyedProcessorDomains,
+            legacyProjectionHandlers);
     }
 
     private static Response CreateCore(
@@ -83,7 +85,8 @@ public static class AdminOperationalIndexMetadata {
         string? appId,
         string? serviceVersion,
         ProjectionDispatchOptions? options,
-        IReadOnlyCollection<string>? keyedProcessorDomains) {
+        IReadOnlyCollection<string>? keyedProcessorDomains,
+        IEnumerable<IDomainProjectionHandler>? legacyProjectionHandlers = null) {
         ArgumentNullException.ThrowIfNull(discovery);
 
         HashSet<string> requested = requestedDomains is { Count: > 0 }
@@ -100,10 +103,39 @@ public static class AdminOperationalIndexMetadata {
         ILookup<string, string> namedProjectionTypesByDomain = materializedNamedHandlers
             .Where(handler => requested.Contains(handler.Domain))
             .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
+        ILookup<string, string> fullReplayTypesByDomain = materializedNamedHandlers
+            .OfType<IAsyncDomainProjectionRebuildHandler>()
+            .Where(handler => requested.Contains(handler.Domain)
+                && handler.RebuildSemantics == DomainProjectionRebuildSemantics.FullReplay)
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
+        ILookup<string, string> sharedEpochTypesByDomain = materializedNamedHandlers
+            .OfType<IAsyncDomainSharedProjectionEpochHandler>()
+            .Where(handler => requested.Contains(handler.Domain) && handler.EpochEnabled)
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
+        ILookup<string, string> singleEventTypesByDomain = materializedNamedHandlers
+            .OfType<IAsyncDomainProjectionSingleEventHandler>()
+            .Where(handler => requested.Contains(handler.Domain))
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
+        ILookup<string, string> mappedOnlyStreamedTypesByDomain = materializedNamedHandlers
+            .OfType<IAsyncDomainProjectionRebuildHandler>()
+            .Where(handler => handler is IAsyncDomainProjectionStreamedRebuildHandler
+                && legacyProjectionHandlers is not null
+                && !legacyProjectionHandlers.Any(legacy => string.Equals(legacy.Domain, handler.Domain, StringComparison.Ordinal))
+                && requested.Contains(handler.Domain)
+                && handler.RebuildSemantics == DomainProjectionRebuildSemantics.FullReplay
+                && !discovery.Projections.Any(projection => string.Equals(projection.DomainName, handler.Domain, StringComparison.Ordinal))
+                && !discovery.Aggregates.Any(aggregate => string.Equals(aggregate.DomainName, handler.Domain, StringComparison.Ordinal)
+                    && DiscoverProjectionHandlerNames(aggregate.Type.Assembly, handler.Domain).Any()))
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
+        ILookup<string, string> incrementalReplayTypesByDomain = materializedNamedHandlers
+            .OfType<IAsyncDomainProjectionIncrementalReplayHandler>()
+            .Where(handler => requested.Contains(handler.Domain)
+                && handler.RebuildSemantics == DomainProjectionRebuildSemantics.FullReplay)
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
 
         List<DomainMetadata> domains = [.. discovery.Aggregates
             .Where(a => requested.Contains(a.DomainName))
-            .Select(a => CreateDomainMetadata(a, discovery, queryTypesByDomain, namedProjectionTypesByDomain))
+            .Select(a => CreateDomainMetadata(a, discovery, queryTypesByDomain, namedProjectionTypesByDomain, fullReplayTypesByDomain, mappedOnlyStreamedTypesByDomain, incrementalReplayTypesByDomain, sharedEpochTypesByDomain, singleEventTypesByDomain))
             .OrderBy(d => d.Domain, StringComparer.OrdinalIgnoreCase)];
 
         // A domain may use a keyed processor in place of EventStoreAggregate<TState>.
@@ -120,6 +152,21 @@ public static class AdminOperationalIndexMetadata {
                     .Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)]) {
                     NamedProjectionTypes = [.. namedProjectionTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                    FullReplayProjectionTypes = [.. fullReplayTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                    MappedOnlyStreamedProjectionTypes = [.. mappedOnlyStreamedTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                    IncrementalReplayProjectionTypes = [.. incrementalReplayTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                    SharedEpochProjectionTypes = [.. sharedEpochTypesByDomain[domain]
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)],
+                    SingleEventProjectionTypes = [.. singleEventTypesByDomain[domain]
                         .Distinct(StringComparer.Ordinal)
                         .Order(StringComparer.Ordinal)],
                 });
@@ -155,7 +202,12 @@ public static class AdminOperationalIndexMetadata {
         DiscoveredDomain aggregate,
         DiscoveryResult discovery,
         ILookup<string, string> queryTypesByDomain,
-        ILookup<string, string> namedProjectionTypesByDomain) {
+        ILookup<string, string> namedProjectionTypesByDomain,
+        ILookup<string, string> fullReplayTypesByDomain,
+        ILookup<string, string> mappedOnlyStreamedTypesByDomain,
+        ILookup<string, string> incrementalReplayTypesByDomain,
+        ILookup<string, string> sharedEpochTypesByDomain,
+        ILookup<string, string> singleEventTypesByDomain) {
         Type aggregateType = aggregate.Type;
         Type stateType = aggregate.StateType;
         List<string> commandTypes = [.. aggregateType
@@ -205,6 +257,21 @@ public static class AdminOperationalIndexMetadata {
             projectionNames,
             queryTypes) {
             NamedProjectionTypes = [.. namedProjectionTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            FullReplayProjectionTypes = [.. fullReplayTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            MappedOnlyStreamedProjectionTypes = [.. mappedOnlyStreamedTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            IncrementalReplayProjectionTypes = [.. incrementalReplayTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            SharedEpochProjectionTypes = [.. sharedEpochTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            SingleEventProjectionTypes = [.. singleEventTypesByDomain[aggregate.DomainName]
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)],
         };
@@ -280,5 +347,25 @@ public static class AdminOperationalIndexMetadata {
         /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<string>? NamedProjectionTypes { get; init; }
+
+        /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? FullReplayProjectionTypes { get; init; }
+
+        /// <summary>Gets streamed full-replay routes whose domain has no legacy projection handler.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? MappedOnlyStreamedProjectionTypes { get; init; }
+
+        /// <summary>Gets full-replay routes that support contiguous ordinary suffix delivery.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? IncrementalReplayProjectionTypes { get; init; }
+
+        /// <summary>Gets routes whose normal delivery uses the fenced shared epoch journal.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? SharedEpochProjectionTypes { get; init; }
+
+        /// <summary>Gets named routes whose normal handler safely accepts repeated individual source events.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? SingleEventProjectionTypes { get; init; }
     }
 }

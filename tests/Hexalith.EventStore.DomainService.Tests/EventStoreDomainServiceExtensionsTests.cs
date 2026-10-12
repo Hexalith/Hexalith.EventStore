@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -32,6 +33,17 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// Tier 1 coverage of the domain-service SDK host extensions and the moved router/metadata helpers.
 /// </summary>
 public sealed class EventStoreDomainServiceExtensionsTests {
+    [Fact]
+    public void AddEventStoreDomainService_RegistersDurableSharedScratchSweep()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+
+        _ = builder.AddEventStoreDomainService();
+
+        builder.Services.ShouldContain(descriptor => descriptor.ServiceType == typeof(IHostedService)
+            && descriptor.ImplementationType == typeof(DomainSharedProjectionScratchCleanupService));
+    }
+
     /// <summary>Proves the canonical domain-service registration supplies the shared DAPR client.</summary>
     [Fact]
     public void AddEventStoreDomainService_RegistersDaprClient() {
@@ -98,7 +110,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         using ServiceProvider provider = builder.Services.BuildServiceProvider();
         EventStoreDomainDiagnosticsRegistry registry = provider.GetRequiredService<EventStoreDomainDiagnosticsRegistry>();
 
-        registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["catalog", "counter", "gadget", "widget"]);
+        registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["catalog", "gadget", "widget"]);
         registry.GetDiagnostics("widget")!.ActivitySource.Name.ShouldBe(EventStoreDomainTelemetry.ActivitySourceName("widget"));
         registry.GetDiagnostics("gadget")!.Meter.Name.ShouldBe(EventStoreDomainTelemetry.MeterName("gadget"));
         registry.GetDiagnostics("catalog")!.Domain.ShouldBe("catalog");
@@ -644,6 +656,67 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         first.CatalogFingerprint.ShouldBe(second.CatalogFingerprint);
     }
 
+    [Fact]
+    public void AdminOperationalIndexMetadata_AdvertisesOnlyFullReplayRoutesWithinCompleteCatalog() {
+        DiscoveryResult discovery = new(
+            [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
+            []);
+        IAsyncDomainProjectionRebuildHandler detail = Substitute.For<IAsyncDomainProjectionRebuildHandler>();
+        detail.Domain.Returns("widget");
+        detail.ProjectionType.Returns("widget-detail");
+        detail.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
+        IAsyncDomainProjectionHandler shared = CreateNamedProjectionHandler("widget", "widget-index");
+
+        AdminOperationalIndexMetadata.Response metadata = AdminOperationalIndexMetadata.Create(
+            discovery, ["widget"], queryHandlers: null, namedProjectionHandlers: [shared, detail],
+            appId: "widget-service", serviceVersion: "v1", options: new ProjectionDispatchOptions());
+
+        AdminOperationalIndexMetadata.DomainMetadata domain = metadata.Domains.ShouldHaveSingleItem();
+        domain.NamedProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
+        domain.FullReplayProjectionTypes.ShouldBe(["widget-detail"]);
+        metadata.CatalogFingerprint.ShouldBe(ProjectionRouteCatalogFingerprint.Compute("widget-service", "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail"),
+                new ProjectionDispatchRoute("widget", "widget-index")]));
+    }
+
+    [Fact]
+    public void AdminOperationalIndexMetadata_AdvertisesStreamedOnlyWhenLegacyRouteIsAbsent() {
+        DiscoveryResult discovery = new([], []);
+        IAsyncDomainProjectionRebuildHandler streamed = Substitute.For<
+            IAsyncDomainProjectionRebuildHandler, IAsyncDomainProjectionStreamedRebuildHandler>();
+        streamed.Domain.Returns("timesheets");
+        streamed.ProjectionType.Returns("time-entry-evidence");
+        streamed.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
+
+        AdminOperationalIndexMetadata.Response mapped = AdminOperationalIndexMetadata.Create(
+            discovery, ["timesheets"], null, [streamed], "timesheets", "v1",
+            new ProjectionDispatchOptions(), ["timesheets"], []);
+        mapped.Domains.ShouldHaveSingleItem().MappedOnlyStreamedProjectionTypes
+            .ShouldBe(["time-entry-evidence"]);
+
+        IDomainProjectionHandler legacy = Substitute.For<IDomainProjectionHandler>();
+        legacy.Domain.Returns("timesheets");
+        AdminOperationalIndexMetadata.Response mixed = AdminOperationalIndexMetadata.Create(
+            discovery, ["timesheets"], null, [streamed], "timesheets", "v1",
+            new ProjectionDispatchOptions(), ["timesheets"], [legacy]);
+        mixed.Domains.ShouldHaveSingleItem().MappedOnlyStreamedProjectionTypes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AdminOperationalIndexMetadata_AdvertisesSingleEventHandlerCapability() {
+        DiscoveryResult discovery = new([], []);
+        IAsyncDomainProjectionSingleEventHandler single = Substitute.For<IAsyncDomainProjectionSingleEventHandler>();
+        single.Domain.Returns("timesheets");
+        single.ProjectionType.Returns("magic-link-token-hash-capability-index");
+
+        AdminOperationalIndexMetadata.Response metadata = AdminOperationalIndexMetadata.Create(
+            discovery, ["timesheets"], null, [single], "timesheets", "v1",
+            new ProjectionDispatchOptions(), ["timesheets"], []);
+
+        metadata.Domains.ShouldHaveSingleItem().SingleEventProjectionTypes
+            .ShouldBe(["magic-link-token-hash-capability-index"]);
+    }
+
     /// <summary>Proves app and service bindings participate in the route-catalog fingerprint.</summary>
     [Fact]
     public void AdminOperationalIndexMetadata_Create_BindsFingerprintToAppAndServiceVersion() {
@@ -998,6 +1071,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/project",
             "/project/rebuild/abort/v1",
             "/project/rebuild/commit/v1",
+            "/project/rebuild/part/v1",
             "/project/rebuild/shared/v1",
             "/project/rebuild/stage/v1",
             "/project/rebuild/v1",
@@ -1355,9 +1429,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "sample",
             "v1",
             [
-                new ProjectionDispatchRoute("widget", "fenced-widget-index"),
                 new ProjectionDispatchRoute("widget", "widget-detail"),
-                new ProjectionDispatchRoute("widget", "widget-index"),
             ]);
         var metadataRequest = new AdminOperationalIndexMetadata.Request(["widget"]) {
             AppId = "sample",
@@ -1372,7 +1444,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         metadataStatus.ShouldBe(StatusCodes.Status200OK, metadataBody);
         DomainProjectionCatalogRegistry catalogRegistry = app.Services.GetRequiredService<DomainProjectionCatalogRegistry>();
         catalogRegistry.Contains(fingerprint).ShouldBeTrue();
-        catalogRegistry.Authorizes(fingerprint, "widget", ["widget-index"]).ShouldBeTrue();
+        catalogRegistry.Authorizes(fingerprint, "widget", ["widget-detail"]).ShouldBeTrue();
 
         var validDispatch = new ProjectionDispatchRequest(
             new ProjectionRequest("tenant-a", "widget", "widget-1", []),

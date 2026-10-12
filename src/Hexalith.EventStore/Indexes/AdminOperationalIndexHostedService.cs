@@ -229,6 +229,10 @@ public sealed partial class AdminOperationalIndexHostedService(
         dispatchOptions.Validate();
 
         entries = [];
+        if (response.Domains.GroupBy(static domain => domain.Domain, StringComparer.Ordinal)
+            .Any(static group => group.Count() != 1)) {
+            return false;
+        }
         if (response.DispatchVersion != ProjectionDispatchProtocol.Version
             || !string.Equals(response.DispatchCapability, ProjectionDispatchProtocol.Capability, StringComparison.Ordinal)
             || !string.Equals(response.AppId, expectedAppId, StringComparison.Ordinal)
@@ -261,6 +265,37 @@ public sealed partial class AdminOperationalIndexHostedService(
                 return false;
             }
 
+            foreach (AdminOperationalIndexDomainMetadata domain in response.Domains) {
+                if (domain.FullReplayProjectionTypes is { } replayTypes
+                    && (replayTypes.Count != replayTypes.Distinct(StringComparer.Ordinal).Count()
+                        || replayTypes.Any(type => !(domain.NamedProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)))) {
+                    return false;
+                }
+                if (domain.MappedOnlyStreamedProjectionTypes is { } mappedOnlyTypes
+                    && (mappedOnlyTypes.Count != mappedOnlyTypes.Distinct(StringComparer.Ordinal).Count()
+                        || mappedOnlyTypes.Any(type => !(domain.FullReplayProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)))) {
+                    return false;
+                }
+                if (domain.IncrementalReplayProjectionTypes is { } incrementalTypes
+                    && (incrementalTypes.Count != incrementalTypes.Distinct(StringComparer.Ordinal).Count()
+                        || incrementalTypes.Any(type => !(domain.MappedOnlyStreamedProjectionTypes ?? [])
+                            .Contains(type, StringComparer.Ordinal)))) {
+                    return false;
+                }
+                if (domain.SharedEpochProjectionTypes is { } sharedEpochTypes
+                    && (sharedEpochTypes.Count != sharedEpochTypes.Distinct(StringComparer.Ordinal).Count()
+                        || sharedEpochTypes.Any(type => !(domain.NamedProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)
+                            || (domain.FullReplayProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)))) {
+                    return false;
+                }
+                if (domain.SingleEventProjectionTypes is { } singleEventTypes
+                    && (singleEventTypes.Count != singleEventTypes.Distinct(StringComparer.Ordinal).Count()
+                        || singleEventTypes.Any(type => !(domain.NamedProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)
+                            || (domain.FullReplayProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)))) {
+                    return false;
+                }
+            }
+
             string expectedFingerprint = ProjectionRouteCatalogFingerprint.Compute(
                 expectedAppId,
                 expectedServiceVersion,
@@ -279,7 +314,17 @@ public sealed partial class AdminOperationalIndexHostedService(
                     ProjectionDispatchProtocol.Version,
                     ProjectionDispatchProtocol.Capability,
                     expectedFingerprint,
-                    group.Select(static route => route.ProjectionType).Order(StringComparer.Ordinal)))];
+                    group.Select(static route => route.ProjectionType).Order(StringComparer.Ordinal),
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .FullReplayProjectionTypes,
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .MappedOnlyStreamedProjectionTypes,
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .SharedEpochProjectionTypes,
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .SingleEventProjectionTypes,
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .IncrementalReplayProjectionTypes))];
             return true;
         }
         catch (ArgumentException) {
@@ -549,6 +594,26 @@ public sealed partial class AdminOperationalIndexHostedService(
                 .SelectMany(static item => item.NamedProjectionTypes ?? [])
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)],
+            FullReplayProjectionTypes = [.. items
+                .SelectMany(static item => item.FullReplayProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            MappedOnlyStreamedProjectionTypes = [.. items
+                .SelectMany(static item => item.MappedOnlyStreamedProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            IncrementalReplayProjectionTypes = [.. items
+                .SelectMany(static item => item.IncrementalReplayProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            SharedEpochProjectionTypes = [.. items
+                .SelectMany(static item => item.SharedEpochProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+            SingleEventProjectionTypes = [.. items
+                .SelectMany(static item => item.SingleEventProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
         };
 
     private static string ToPascalCase(string value)
@@ -643,6 +708,25 @@ public sealed record AdminOperationalIndexDomainMetadata(
     /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? NamedProjectionTypes { get; init; }
+
+    /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? FullReplayProjectionTypes { get; init; }
+
+    /// <summary>Gets streamed full-replay routes whose domain has no legacy projection handler.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? MappedOnlyStreamedProjectionTypes { get; init; }
+
+    /// <summary>Gets routes that append contiguous ordinary source suffixes.</summary>
+    public IReadOnlyList<string>? IncrementalReplayProjectionTypes { get; init; }
+
+    /// <summary>Gets routes that use the fenced shared epoch journal for normal delivery.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? SharedEpochProjectionTypes { get; init; }
+
+    /// <summary>Gets named routes that safely accept repeated individual source events.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? SingleEventProjectionTypes { get; init; }
 }
 
 /// <summary>Materialized admin operational index payloads ready for state-store writes.</summary>

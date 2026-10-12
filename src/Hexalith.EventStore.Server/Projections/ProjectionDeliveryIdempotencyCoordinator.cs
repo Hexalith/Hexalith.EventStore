@@ -12,6 +12,36 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
     IOptions<ProjectionDeliveryIdempotencyOptions> options,
     TimeProvider timeProvider) : IProjectionDeliveryIdempotencyCoordinator {
     /// <inheritdoc/>
+    public async Task<ProjectionDeliveryAcceptedPrefix?> ReadAcceptedPrefixAsync(
+        AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        ProjectionDeliveryStateReadResult read = await stateStore.ReadAsync(identity, projectionName,
+            cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryState? state = read.State;
+        if (!read.WriterProtocolV2Active
+            || read.Classification != ProjectionDeliveryStateClassification.Current
+            || state is null || state.LastDeliveredSequence <= 0
+            || string.IsNullOrWhiteSpace(state.CompletedPrefixFingerprint)) return null;
+        bool positionSensitive = state.CompletedPrefixFingerprint.StartsWith("v2:", StringComparison.Ordinal);
+        string initial = ProjectionDeliveryFingerprint.ComputeInitial(identity, projectionName,
+            positionSensitive);
+        return IsValidCurrentState(state, identity, projectionName, initial)
+            && state.CompletedMessageIdDigests?.Count == state.LastDeliveredSequence
+            ? new(state.LastDeliveredSequence, state.CompletedPrefixFingerprint) : null;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> UseLegacyMappedIdentityAsync(AggregateIdentity identity,
+        string projectionName, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        ProjectionDeliveryStateReadResult read = await stateStore.ReadAsync(identity, projectionName,
+            cancellationToken).ConfigureAwait(false);
+        return read.State?.CompletedPrefixFingerprint?.StartsWith("v1:", StringComparison.Ordinal) == true;
+    }
+
+    /// <inheritdoc/>
     public async Task<ProjectionDeliveryAdmissionResult> TryAdmitAsync(
         AggregateIdentity identity,
         string projectionName,
@@ -31,6 +61,25 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             history = ProjectionDeliveryFingerprint.ComputeHistory(identity, projectionName, events);
         }
         catch (ArgumentException) {
+            return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        }
+
+        return await TryAdmitHistoryAsync(identity, projectionName, history, reclaimSafe,
+            cancellationToken, resumeFencingToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionDeliveryAdmissionResult> TryAdmitHistoryAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        ProjectionDeliveryFingerprintHistory history,
+        bool reclaimSafe,
+        CancellationToken cancellationToken = default,
+        long? resumeFencingToken = null) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(history);
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        if (!ProjectionDeliveryFingerprint.IsValidHistory(identity, projectionName, history)) {
             return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         }
 
@@ -109,6 +158,18 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
                 }
 
                 return completed;
+            }
+
+            if (history.BaseSequence > 0
+                && (current.LastDeliveredSequence != history.BaseSequence
+                    || !string.Equals(current.CompletedPrefixFingerprint, history.BaseFingerprint,
+                        StringComparison.Ordinal))) {
+                return Failed(ProjectionDispatchReasonCodes.DeliveryGap);
+            }
+
+            if (history.BaseSequence > 0
+                && current.CompletedMessageIdDigests?.Count != history.BaseSequence) {
+                return Failed(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
             }
 
             ProjectionDeliveryAdmissionResult? prefixConflict = ValidateCompletedPrefix(current, history);
@@ -218,6 +279,25 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             return ProjectionDeliveryCompletion.Fenced;
         }
 
+        return await CompleteHistoryAsync(identity, projectionName, history, reservation,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionDeliveryCompletion> CompleteHistoryAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        ProjectionDeliveryFingerprintHistory history,
+        ProjectionDeliveryReservation reservation,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(history);
+        ArgumentNullException.ThrowIfNull(reservation);
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        if (!ProjectionDeliveryFingerprint.IsValidHistory(identity, projectionName, history)) {
+            return ProjectionDeliveryCompletion.Fenced;
+        }
+
         if (history.Events[^1].SequenceNumber != reservation.EndSequence
             || !string.Equals(history.Events[^1].MessageId, reservation.HeadMessageId, StringComparison.Ordinal)
             || !string.Equals(history.PrefixFingerprint, reservation.ManifestFingerprint, StringComparison.Ordinal)
@@ -259,6 +339,18 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
                 return ProjectionDeliveryCompletion.AlreadyCompleted;
             }
 
+            if (history.BaseSequence > 0
+                && (current.LastDeliveredSequence != history.BaseSequence
+                    || !string.Equals(current.CompletedPrefixFingerprint, history.BaseFingerprint,
+                        StringComparison.Ordinal))) {
+                return ProjectionDeliveryCompletion.Fenced;
+            }
+
+            if (history.BaseSequence > 0
+                && current.CompletedMessageIdDigests?.Count != history.BaseSequence) {
+                return ProjectionDeliveryCompletion.Fenced;
+            }
+
             if (current.ActiveReservation != reservation
                 || current.LastDeliveredSequence != reservation.StartSequence - 1
                 || !PrefixMatches(current, history)) {
@@ -284,6 +376,10 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             ProjectionDeliveryEventDigest completedHead = history.Events[^1];
             ProjectionDeliveryState completed = current with {
                 LastDeliveredSequence = completedHead.SequenceNumber,
+                CompletedMessageIdDigests = history.BaseSequence == 0
+                    ? [.. history.Events.Select(static value => MessageIdentityDigest(value.MessageId))]
+                    : [.. current.CompletedMessageIdDigests!,
+                        .. history.Events.Select(static value => MessageIdentityDigest(value.MessageId))],
                 LastCompletedMessageId = completedHead.MessageId,
                 CompletedPrefixFingerprint = completedHead.PrefixFingerprint,
                 CompletedReceipts = compacted,
@@ -463,8 +559,10 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         }
 
         foreach (ProjectionDeliveryReceipt overlap in state.CompletedReceipts!
-            .Where(value => value.SequenceNumber <= head.SequenceNumber)) {
-            ProjectionDeliveryEventDigest supplied = history.Events[checked((int)overlap.SequenceNumber - 1)];
+            .Where(value => value.SequenceNumber > history.BaseSequence
+                && value.SequenceNumber <= head.SequenceNumber)) {
+            ProjectionDeliveryEventDigest supplied = history.Events[
+                checked((int)(overlap.SequenceNumber - history.BaseSequence - 1))];
             if (!ReceiptMatches(overlap, supplied)) {
                 return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
             }
@@ -479,7 +577,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
     private static ProjectionDeliveryAdmissionResult? ValidateCompletedPrefix(
         ProjectionDeliveryState state,
         ProjectionDeliveryFingerprintHistory history) {
-        if (state.LastDeliveredSequence >= history.Events.Count) {
+        if (state.LastDeliveredSequence >= history.Events[^1].SequenceNumber) {
             return Failed(ProjectionDispatchReasonCodes.DeliveryGap);
         }
 
@@ -488,8 +586,10 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         }
 
         foreach (ProjectionDeliveryReceipt receipt in state.CompletedReceipts!) {
-            if (receipt.SequenceNumber > history.Events.Count
-                || !ReceiptMatches(receipt, history.Events[checked((int)receipt.SequenceNumber - 1)])) {
+            if (receipt.SequenceNumber <= history.BaseSequence) continue;
+            if (receipt.SequenceNumber > history.Events[^1].SequenceNumber
+                || !ReceiptMatches(receipt, history.Events[
+                    checked((int)(receipt.SequenceNumber - history.BaseSequence - 1))])) {
                 return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
             }
         }
@@ -500,7 +600,11 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
     private static bool PrefixMatches(
         ProjectionDeliveryState state,
         ProjectionDeliveryFingerprintHistory history) =>
-        state.LastDeliveredSequence == 0
+        history.BaseSequence > 0
+            ? state.LastDeliveredSequence == history.BaseSequence
+                && string.Equals(state.CompletedPrefixFingerprint, history.BaseFingerprint,
+                    StringComparison.Ordinal)
+            : state.LastDeliveredSequence == 0
             ? string.Equals(state.CompletedPrefixFingerprint, history.InitialFingerprint, StringComparison.Ordinal)
             : state.LastDeliveredSequence <= history.Events.Count
                 && string.Equals(
@@ -512,10 +616,18 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         ProjectionDeliveryState state,
         ProjectionDeliveryFingerprintHistory history) {
         var supplied = history.Events.ToDictionary(static value => value.MessageId, StringComparer.Ordinal);
+        if (history.BaseSequence > 0 && state.CompletedMessageIdDigests is { } complete) {
+            var earlier = complete.ToHashSet(StringComparer.Ordinal);
+            if (history.Events.Any(value => earlier.Contains(MessageIdentityDigest(value.MessageId)))) return true;
+        }
         return state.CompletedReceipts!.Any(receipt =>
             supplied.TryGetValue(receipt.MessageId, out ProjectionDeliveryEventDigest? value)
             && (value.SequenceNumber != receipt.SequenceNumber || !ReceiptMatches(receipt, value)));
     }
+
+    private static string MessageIdentityDigest(string messageId)
+        => Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(messageId)));
 
     private static bool IsExactCompleted(ProjectionDeliveryState state, ProjectionDeliveryEventDigest head) =>
         state.LastDeliveredSequence >= head.SequenceNumber

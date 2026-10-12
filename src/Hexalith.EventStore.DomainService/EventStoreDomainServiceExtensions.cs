@@ -376,6 +376,30 @@ public static class EventStoreDomainServiceExtensions {
         }
 
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/v1", DomainProjectionRebuildBatchAction.Execute);
+        if (!IsRouteMapped(app, "/project/rebuild/part/v1", HttpMethods.Post))
+        {
+            _ = app.MapPost(
+                "/project/rebuild/part/v1",
+                async (ProjectionRebuildTransportPartRequest part,
+                       IServiceProvider serviceProvider,
+                       IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+                       IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+                       CancellationToken cancellationToken) =>
+                {
+                    try
+                    {
+                        await DomainProjectionRebuildTransport.StoreAsync(serviceProvider, part,
+                            projectionDispatchOptions.Value, projectionIdentityOptions.Value,
+                            cancellationToken).ConfigureAwait(false);
+                        return (IResult)Results.Ok();
+                    }
+                    catch (ProjectionDispatchValidationException exception)
+                    {
+                        return Results.BadRequest(exception.ReasonCode);
+                    }
+                })
+                .RequireEventStoreDomainServicePolicy("/project/rebuild/part/v1");
+        }
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/stage/v1", DomainProjectionRebuildBatchAction.Stage);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/commit/v1", DomainProjectionRebuildBatchAction.Commit);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/abort/v1", DomainProjectionRebuildBatchAction.Abort);
@@ -388,6 +412,7 @@ public static class EventStoreDomainServiceExtensions {
              DiscoveryResult discovery,
              IEnumerable<IDomainQueryHandler> queryHandlers,
              IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
+             IEnumerable<IDomainProjectionHandler> legacyProjectionHandlers,
              IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
              IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
              IServiceProviderIsKeyedService keyedServices,
@@ -415,7 +440,8 @@ public static class EventStoreDomainServiceExtensions {
                         request.Domains
                             .Where(domain => keyedServices.IsKeyedService(typeof(IDomainProcessor), domain)
                                 || keyedServices.IsKeyedService(typeof(IAsyncDomainProcessor), domain))
-                            .ToArray());
+                            .ToArray(),
+                        legacyProjectionHandlers);
                 }
 
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
@@ -547,6 +573,7 @@ public static class EventStoreDomainServiceExtensions {
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
         _ = builder.Services.AddOptions<ProjectionDispatchOptions>()
             .BindConfiguration("EventStore:ProjectionDispatch");
+        _ = builder.Services.AddHostedService<DomainSharedProjectionScratchCleanupService>();
         _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
             .BindConfiguration("EventStore:DomainService")
             .PostConfigure(options => {
@@ -582,7 +609,9 @@ public static class EventStoreDomainServiceExtensions {
     private static IEnumerable<string> GetHandlerDomainNames<THandler>(Assembly[] domainAssemblies) {
         foreach (Assembly assembly in domainAssemblies) {
             foreach (Type type in assembly.GetTypes()) {
-                if (type is not { IsClass: true, IsAbstract: false } || !typeof(THandler).IsAssignableFrom(type)) {
+                if (type is not { IsClass: true, IsAbstract: false }
+                    || (type.IsNestedPrivate && typeof(THandler) != typeof(IDomainQueryHandler))
+                    || !typeof(THandler).IsAssignableFrom(type)) {
                     continue;
                 }
 
@@ -630,7 +659,7 @@ public static class EventStoreDomainServiceExtensions {
         foreach (Assembly assembly in domainAssemblies) {
             foreach (Type type in assembly.GetTypes()) {
                 if (registerLegacyHandlers
-                    && type is { IsClass: true, IsAbstract: false }
+                    && type is { IsClass: true, IsAbstract: false, IsNestedPrivate: false }
                     && typeof(IDomainProjectionHandler).IsAssignableFrom(type)) {
                     // Full-replay projection handlers are stateless (Model a) — registered as singletons so the
                     // /project endpoint can resolve them without a request scope.
@@ -638,7 +667,7 @@ public static class EventStoreDomainServiceExtensions {
                 }
 
                 if (registerAsyncHandlers
-                    && type is { IsClass: true, IsAbstract: false }
+                    && type is { IsClass: true, IsAbstract: false, IsNestedPrivate: false }
                     && typeof(IAsyncDomainProjectionHandler).IsAssignableFrom(type)) {
                     // Named projection handlers own persistence resources and therefore resolve per request scope.
                     _ = services.AddScoped(typeof(IAsyncDomainProjectionHandler), type);

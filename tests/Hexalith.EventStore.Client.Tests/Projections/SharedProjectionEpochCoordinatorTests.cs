@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
@@ -14,6 +15,252 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         "widget",
         "widget-index",
         ["ordinary-dispatch"]);
+
+    [Fact]
+    public async Task CapturedPositionRequiresTheCapturedEventIdentity() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "captured-identity", "inventory",
+            new Dictionary<string, long> { ["widget-a"] = 1 });
+        await coordinator.StageAsync(s_scope, "captured-identity", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "captured-identity", requireOwnerSequenceHandoff: true);
+        byte[] capturedIdentity = SharedProjectionCapturedEventIdentity.Compute("widget-a", 1, 1, [7]);
+        await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "captured-identity", "widget-a", 1,
+            capturedEventDigests: capturedIdentity);
+        await coordinator.CompleteOwnerSequenceHandoffAsync(s_scope, "captured-identity");
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+
+        (await coordinator.JournalAsync(s_scope, lease,
+            new SharedProjectionDelivery("widget-a", 1, [7], [1], OwnerSequenceNumber: 1)))
+            .ShouldBe(SharedProjectionJournalResult.AlreadyCaptured);
+        (await coordinator.JournalAsync(s_scope, lease,
+            new SharedProjectionDelivery("widget-a", 1, [8], [1], OwnerSequenceNumber: 1)))
+            .ShouldBe(SharedProjectionJournalResult.IdentityConflict);
+
+        (await coordinator.JournalAsync(s_scope, lease,
+            new SharedProjectionDelivery("widget-a", 2, [9], [2], OwnerSequenceNumber: 2)))
+            .ShouldBe(SharedProjectionJournalResult.Journaled);
+        (await coordinator.GetCheckpointAsync(s_scope, "widget-a"))!.CapturedEventDigests!
+            .ShouldBe(capturedIdentity);
+    }
+
+    [Fact]
+    public async Task CapturedOwnerRejectsAnEarlierEventBeyondItsSealedWatermark() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "capture-every-position", "inventory",
+            new Dictionary<string, long> { ["widget-a"] = 3 });
+
+        (await coordinator.MatchesCapturedOwnerPositionAsync(s_scope, "capture-every-position",
+            "widget-a", [1, 3])).ShouldBeTrue();
+        (await coordinator.MatchesCapturedOwnerPositionAsync(s_scope, "capture-every-position",
+            "widget-a", [4, 3])).ShouldBeFalse();
+        (await coordinator.MatchesCapturedOwnerPositionAsync(s_scope, "capture-every-position",
+            "widget-a", [2, 1, 3])).ShouldBeFalse();
+        (await coordinator.MatchesCapturedOwnerPositionAsync(s_scope, "capture-every-position",
+            "widget-a", [1, 1, 3])).ShouldBeFalse();
+        (await coordinator.MatchesCapturedOwnerPositionAsync(s_scope, "capture-every-position",
+            "widget-a", [1, 2])).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SequenceSeedRejectsAheadCheckpointEvenWhenItsSequenceAlreadyMatches() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "seed-ahead", "inventory",
+            new Dictionary<string, long> { ["widget-a"] = 3 });
+        _ = await coordinator.StageAsync(s_scope, "seed-ahead", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "seed-ahead", requireOwnerSequenceHandoff: true);
+        (await store.TrySaveAsync(s_scope.StoreName, s_scope.CheckpointKey("widget-a"),
+            new SharedProjectionCheckpoint(4, [4], 1), string.Empty)).ShouldBeTrue();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator
+            .SeedCapturedOwnerSequenceAsync(s_scope, "seed-ahead", "widget-a", 1));
+        (await coordinator.GetCheckpointAsync(s_scope, "widget-a"))!.Position.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task SequenceSeedRejectsBehindCheckpointWhenItsSequenceAlreadyMatches() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "seed-behind", "inventory",
+            new Dictionary<string, long> { ["widget-a"] = 3 });
+        _ = await coordinator.StageAsync(s_scope, "seed-behind", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "seed-behind", requireOwnerSequenceHandoff: true);
+        (await store.TrySaveAsync(s_scope.StoreName, s_scope.CheckpointKey("widget-a"),
+            new SharedProjectionCheckpoint(2, [2], 1), string.Empty)).ShouldBeTrue();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator
+            .SeedCapturedOwnerSequenceAsync(s_scope, "seed-behind", "widget-a", 1));
+        (await coordinator.GetCheckpointAsync(s_scope, "widget-a"))!.Position.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task LegacyCheckpointRequiresCapturedRebuildBeforeSequenceDeliveryResumes() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        (await store.TrySaveAsync(s_scope.StoreName, s_scope.CheckpointKey("widget-a"),
+            new SharedProjectionCheckpoint(1, [1]), string.Empty)).ShouldBeTrue();
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        var next = new SharedProjectionDelivery("widget-a", 2, [2], [2], OwnerSequenceNumber: 2);
+
+        (await coordinator.JournalAsync(s_scope, lease, next))
+            .ShouldBe(SharedProjectionJournalResult.RebuildRequired);
+        _ = await coordinator.BeginAsync(s_scope, "legacy-upgrade", "captured-inventory",
+            new Dictionary<string, long> { ["widget-a"] = 1 });
+        _ = await coordinator.StageAsync(s_scope, "legacy-upgrade",
+            [ReadModelBatchOperation.Write("index", new Counter(1), ReadModelBatchConcurrency.LastWrite)]);
+        await coordinator.CommitAsync(s_scope, "legacy-upgrade", requireOwnerSequenceHandoff: true);
+        await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "legacy-upgrade", "widget-a", 1);
+        await coordinator.CompleteOwnerSequenceHandoffAsync(s_scope, "legacy-upgrade");
+        lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        (await coordinator.JournalAsync(s_scope, lease, next)).ShouldBe(SharedProjectionJournalResult.Journaled);
+    }
+
+    [Fact]
+    public async Task LegacyConsumerCheckpointWithoutOwnerIndexRequiresRebuild() {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        ReadModelEntry<SharedProjectionEpochState> entry = await store.GetAsync<SharedProjectionEpochState>(
+            s_scope.StoreName, s_scope.StateKey);
+        SharedProjectionEpochState state = entry.Value.ShouldNotBeNull();
+        (await store.TrySaveAsync(s_scope.StoreName, s_scope.StateKey, state with {
+            ConsumerCheckpoints = new Dictionary<string, SharedProjectionCheckpoint> {
+                ["widget-a"] = new(1, [1])
+            }
+        }, entry.ETag!)).ShouldBeTrue();
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+
+        (await coordinator.JournalAsync(s_scope, lease,
+            new SharedProjectionDelivery("widget-a", 2, [2], [2], OwnerSequenceNumber: 2)))
+            .ShouldBe(SharedProjectionJournalResult.RebuildRequired);
+    }
+
+    [Fact]
+    public async Task LargePreparedCatchUpSurvivesBatchFailureAndCleansReservedChunks() {
+        var store = new InMemoryReadModelStore();
+        var faultStore = new ChunkWriteFaultStore(store);
+        var coordinator = new SharedProjectionEpochCoordinator(faultStore, store);
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.JournalAsync(s_scope, lease, Delivery(1, 1));
+        string expected = new('x', 100_000);
+        static Task<IReadOnlyList<ReadModelBatchOperation>> FoldLarge(
+            SharedProjectionDelivery _, long __, CancellationToken ___)
+            => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                ReadModelBatchOperation.Write("large", new LargeRow(new string('x', 100_000)), ReadModelBatchConcurrency.LastWrite)]);
+        faultStore.FailNextChunkWrite = true;
+        _ = await Should.ThrowAsync<SharedProjectionWriteUnavailableException>(() => coordinator.CatchUpAsync(s_scope, FoldLarge));
+        SharedProjectionEpochState reserved = (await store.GetAsync<SharedProjectionEpochState>(s_scope.StoreName, s_scope.StateKey))
+            .Value.ShouldNotBeNull();
+        reserved.Journal.Single().PreparedChunks.ShouldNotBeNull();
+        reserved.Journal.Single().PreparedReady.ShouldBeFalse();
+        bool faulted = false;
+        store.BatchFaultHook = (phase, _, _) => {
+            if (phase == ReadModelBatchPhase.BeforeCommit && !faulted) {
+                faulted = true;
+                throw new IOException("injected selected-generation write failure");
+            }
+
+            return Task.CompletedTask;
+        };
+        _ = await Should.ThrowAsync<SharedProjectionWriteUnavailableException>(() => coordinator.CatchUpAsync(s_scope, FoldLarge));
+        SharedProjectionEpochState pending = (await store.GetAsync<SharedProjectionEpochState>(s_scope.StoreName, s_scope.StateKey))
+            .Value.ShouldNotBeNull();
+        SharedProjectionChunkReference reference = pending.Journal.Single().PreparedChunks.ShouldNotBeNull();
+        pending.Journal.Single().PreparedReady.ShouldBeTrue();
+        (await coordinator.ReadAsync<LargeRow>(s_scope, "large")).Value.ShouldBeNull();
+
+        store.BatchFaultHook = null;
+        var restarted = new SharedProjectionEpochCoordinator(faultStore, store);
+        (await restarted.CatchUpAsync(s_scope, FoldLarge)).ShouldBe(1);
+        (await restarted.ReadAsync<LargeRow>(s_scope, "large")).Value.ShouldNotBeNull().Value.ShouldBe(expected);
+        (await store.GetAsync<SharedProjectionChunk>(s_scope.StoreName,
+            SharedProjectionChunkStore.Key(s_scope, reference, 0))).Value.ShouldNotBeNull().Tombstone.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StoreOwnedCancellationDuringPreparedChunkReadAndWriteIsRetryable() {
+        var store = new InMemoryReadModelStore();
+        var faultStore = new ChunkWriteFaultStore(store);
+        var coordinator = new SharedProjectionEpochCoordinator(faultStore, store);
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.JournalAsync(s_scope, lease, Delivery(1, 1));
+        static Task<IReadOnlyList<ReadModelBatchOperation>> FoldLarge(
+            SharedProjectionDelivery _, long __, CancellationToken ___)
+            => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                ReadModelBatchOperation.Write("large", new LargeRow(new string('x', 100_000)),
+                    ReadModelBatchConcurrency.LastWrite)]);
+        bool failBatch = true;
+        store.BatchFaultHook = (phase, _, _) => {
+            if (phase == ReadModelBatchPhase.BeforeCommit && failBatch) {
+                failBatch = false;
+                throw new IOException("injected selected-generation write failure");
+            }
+
+            return Task.CompletedTask;
+        };
+        await Should.ThrowAsync<SharedProjectionWriteUnavailableException>(() =>
+            coordinator.CatchUpAsync(s_scope, FoldLarge));
+        store.BatchFaultHook = null;
+
+        faultStore.FailNextChunkReadWithCancellation = true;
+        await Should.ThrowAsync<SharedProjectionReadUnavailableException>(() =>
+            coordinator.CatchUpAsync(s_scope, FoldLarge));
+        (await coordinator.CatchUpAsync(s_scope, FoldLarge)).ShouldBe(1);
+
+        _ = await coordinator.JournalAsync(s_scope, lease, Delivery(2, 2));
+        faultStore.FailNextChunkWriteWithCancellation = true;
+        await Should.ThrowAsync<SharedProjectionWriteUnavailableException>(() =>
+            coordinator.CatchUpAsync(s_scope, FoldLarge));
+        (await coordinator.CatchUpAsync(s_scope, FoldLarge)).ShouldBe(1);
+        (await coordinator.ReadAsync<LargeRow>(s_scope, "large")).Value.ShouldNotBeNull();
+    }
+
+    private sealed record LargeRow(string Value);
+
+    private sealed class ChunkWriteFaultStore(InMemoryReadModelStore inner) : IReadModelStore {
+        public bool FailNextChunkWrite { get; set; }
+
+        public bool FailNextChunkReadWithCancellation { get; set; }
+
+        public bool FailNextChunkWriteWithCancellation { get; set; }
+
+        public Task<ReadModelEntry<TValue>> GetAsync<TValue>(
+            string storeName, string key, CancellationToken cancellationToken = default) where TValue : class
+        {
+            if (FailNextChunkReadWithCancellation && key.StartsWith("shared-chunk:", StringComparison.Ordinal)) {
+                FailNextChunkReadWithCancellation = false;
+                throw new TaskCanceledException("injected chunk read timeout");
+            }
+
+            return inner.GetAsync<TValue>(storeName, key, cancellationToken);
+        }
+
+        public Task SaveAsync<TValue>(
+            string storeName, string key, TValue value, CancellationToken cancellationToken = default) where TValue : class
+            => inner.SaveAsync(storeName, key, value, cancellationToken);
+
+        public Task<bool> TrySaveAsync<TValue>(
+            string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default) where TValue : class {
+            if (FailNextChunkWriteWithCancellation && key.StartsWith("shared-chunk:", StringComparison.Ordinal)) {
+                FailNextChunkWriteWithCancellation = false;
+                throw new TaskCanceledException("injected chunk write timeout");
+            }
+
+            if (FailNextChunkWrite && key.StartsWith("shared-chunk:", StringComparison.Ordinal)) {
+                FailNextChunkWrite = false;
+                throw new IOException("injected chunk write failure");
+            }
+
+            return inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
+        }
+    }
 
     [Fact]
     public async Task ConcurrentBeginAndOrdinaryDelivery_ConvergeWithoutLostWrite() {
@@ -219,6 +466,57 @@ public sealed class SharedProjectionEpochCoordinatorTests {
     }
 
     [Fact]
+    public async Task SingleKeyReadRetriesAfterPromotionDuringPhysicalRead() {
+        var inner = new InMemoryReadModelStore();
+        var intercepted = new SelectedReadInterleavingStore(inner);
+        var coordinator = new SharedProjectionEpochCoordinator(intercepted, inner);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "first-selected", "inventory-0", new Dictionary<string, long>());
+        await coordinator.StageAsync(s_scope, "first-selected", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "first-selected");
+        _ = await coordinator.BeginAsync(s_scope, "second-selected", "inventory-1", new Dictionary<string, long>());
+        await coordinator.StageAsync(s_scope, "second-selected", [Write(2)]);
+        intercepted.AfterPhysicalRead = () => coordinator.CommitAsync(s_scope, "second-selected");
+
+        SharedProjectionReadResult<Counter> selected = await coordinator.ReadAsync<Counter>(s_scope, "index");
+
+        selected.Generation.ShouldBe(2);
+        selected.Value.ShouldNotBeNull().Value.ShouldBe(2);
+        selected.IsStale.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SingleKeyReadClassifiesPostReadStateOutageAsUnavailable() {
+        var inner = new InMemoryReadModelStore();
+        var intercepted = new SelectedReadInterleavingStore(inner);
+        var coordinator = new SharedProjectionEpochCoordinator(intercepted, inner);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "selected-outage", "inventory-0", new Dictionary<string, long>());
+        await coordinator.StageAsync(s_scope, "selected-outage", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "selected-outage");
+        intercepted.FailStateAfterPhysicalRead = true;
+
+        _ = await Should.ThrowAsync<SharedProjectionReadUnavailableException>(() =>
+            coordinator.ReadAsync<Counter>(s_scope, "index"));
+    }
+
+    [Fact]
+    public async Task SingleKeyReadClassifiesDaprPostReadStateOutageAsUnavailable() {
+        var inner = new InMemoryReadModelStore();
+        var intercepted = new SelectedReadInterleavingStore(inner);
+        var coordinator = new SharedProjectionEpochCoordinator(intercepted, inner);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, "selected-dapr-outage", "inventory-0",
+            new Dictionary<string, long>());
+        await coordinator.StageAsync(s_scope, "selected-dapr-outage", [Write(1)]);
+        await coordinator.CommitAsync(s_scope, "selected-dapr-outage");
+        intercepted.FailDaprStateAfterPhysicalRead = true;
+
+        _ = await Should.ThrowAsync<SharedProjectionReadUnavailableException>(() =>
+            coordinator.ReadAsync<Counter>(s_scope, "index"));
+    }
+
+    [Fact]
     public async Task Journal_DifferentPayloadCheckpointSplitConflicts() {
         var store = new InMemoryReadModelStore();
         var coordinator = new SharedProjectionEpochCoordinator(store, store);
@@ -310,4 +608,54 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         => ReadModelBatchOperation.Write("index", new Counter(value), ReadModelBatchConcurrency.LastWrite);
 
     private sealed record Counter(int Value);
+
+    private sealed class SelectedReadInterleavingStore(InMemoryReadModelStore inner) : IReadModelStore {
+        public Func<Task>? AfterPhysicalRead { get; set; }
+
+        public bool FailStateAfterPhysicalRead { get; set; }
+
+        public bool FailDaprStateAfterPhysicalRead { get; set; }
+
+        private bool _failStateRead;
+
+        private bool _failDaprStateRead;
+
+        public async Task<ReadModelEntry<TValue>> GetAsync<TValue>(
+            string storeName, string key, CancellationToken cancellationToken = default) where TValue : class {
+            if (_failStateRead && key == s_scope.StateKey) {
+                _failStateRead = false;
+                throw new HttpRequestException("injected post-read state outage");
+            }
+            if (_failDaprStateRead && key == s_scope.StateKey) {
+                _failDaprStateRead = false;
+                throw new Dapr.DaprException("injected Dapr post-read state outage");
+            }
+
+            ReadModelEntry<TValue> result = await inner.GetAsync<TValue>(storeName, key, cancellationToken);
+            if (key.StartsWith("shared-generation:", StringComparison.Ordinal)) {
+                if (FailStateAfterPhysicalRead) {
+                    FailStateAfterPhysicalRead = false;
+                    _failStateRead = true;
+                }
+                if (FailDaprStateAfterPhysicalRead) {
+                    FailDaprStateAfterPhysicalRead = false;
+                    _failDaprStateRead = true;
+                }
+
+                Func<Task>? action = AfterPhysicalRead;
+                AfterPhysicalRead = null;
+                if (action is not null) await action();
+            }
+
+            return result;
+        }
+
+        public Task SaveAsync<TValue>(string storeName, string key, TValue value,
+            CancellationToken cancellationToken = default) where TValue : class
+            => inner.SaveAsync(storeName, key, value, cancellationToken);
+
+        public Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag,
+            CancellationToken cancellationToken = default) where TValue : class
+            => inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
+    }
 }

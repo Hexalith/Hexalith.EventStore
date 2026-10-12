@@ -11,4 +11,7 @@ internal sealed record SharedProjectionJournalEntry(
     SharedProjectionFailureStatus? Failure = null,
     bool Parked = false,
     SharedProjectionChunkReference? PayloadChunks = null,
-    bool PayloadReady = true);
+    bool PayloadReady = true,
+    SharedProjectionChunkReference? PreparedChunks = null,
+    bool PreparedReady = true,
+    long OwnerSequenceNumber = 0);

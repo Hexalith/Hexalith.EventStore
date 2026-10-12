@@ -392,6 +392,7 @@ public sealed class DomainServiceTrustBoundaryTests
     [InlineData("/project/v2")]
     [InlineData("/project/v2/reconcile")]
     [InlineData("/project/rebuild/v1")]
+    [InlineData("/project/rebuild/part/v1")]
     [InlineData("/project/rebuild/stage/v1")]
     [InlineData("/project/rebuild/commit/v1")]
     [InlineData("/project/rebuild/abort/v1")]

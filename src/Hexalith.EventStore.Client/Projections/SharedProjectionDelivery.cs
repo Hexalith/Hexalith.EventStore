@@ -6,4 +6,5 @@ public sealed record SharedProjectionDelivery(
     long EnvelopePosition,
     byte[] CanonicalPayload,
     byte[] Checkpoint,
-    SharedProjectionControlIndexIntent? ControlIndexIntent = null);
+    SharedProjectionControlIndexIntent? ControlIndexIntent = null,
+    long OwnerSequenceNumber = 0);

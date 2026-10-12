@@ -82,6 +82,18 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                 return;
             }
 
+            if (workItem.MappedOnlyStreamed) {
+                var mappedRegistration = new DomainServiceRegistration(
+                    workItem.AppId, "project/v2", workItem.TenantId, workItem.Domain,
+                    workItem.ServiceVersion);
+                bool mappedHandled = await coordinator.TryDispatchMappedOnlyAsync(identity,
+                    mappedRegistration, workItem.HeadSequence, workItem.HeadMessageId,
+                    cancellationToken).ConfigureAwait(false);
+                if (!mappedHandled)
+                    await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             EventEnvelope[] events = await LoadHistoryAsync(identity, workItem, cancellationToken).ConfigureAwait(false);
             if (events.Length == 0
                 || events[^1].SequenceNumber != workItem.HeadSequence

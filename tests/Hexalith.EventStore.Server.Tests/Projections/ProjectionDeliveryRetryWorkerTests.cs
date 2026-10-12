@@ -22,6 +22,36 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed class ProjectionDeliveryRetryWorkerTests {
     [Fact]
+    public async Task RunOnceAsync_MappedWorkRetriesRecordedHeadWithoutMaterializingHistory() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now) with { MappedOnlyStreamed = true };
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>())
+            .Returns([workItem]);
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        _ = coordinator.TryDispatchMappedOnlyAsync(
+                Arg.Any<AggregateIdentity>(), Arg.Any<DomainServiceRegistration>(),
+                workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>())
+            .Returns(false);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await worker.RunOnceAsync(CancellationToken.None);
+
+        _ = await coordinator.Received(1).TryDispatchMappedOnlyAsync(
+            Arg.Is<AggregateIdentity>(identity => identity.TenantId == workItem.TenantId
+                && identity.Domain == workItem.Domain && identity.AggregateId == workItem.AggregateId),
+            Arg.Is<DomainServiceRegistration>(registration => registration.AppId == workItem.AppId
+                && registration.Version == workItem.ServiceVersion),
+            workItem.HeadSequence, workItem.HeadMessageId, Arg.Any<CancellationToken>());
+        _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
+    }
+
+    [Fact]
     public async Task RunOnceAsync_ReloadsOnlyThroughRecordedHeadAndPreservesStableBinding() {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);

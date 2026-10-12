@@ -40,6 +40,42 @@ public sealed class NamedProjectionRouteCatalogTests {
         NamedProjectionRouteCatalogEntry entry = entries.ShouldHaveSingleItem();
         entry.Domain.ShouldBe("widget");
         entry.ProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
+        entry.FullReplayProjectionTypes.ShouldBe(["widget-detail"]);
+    }
+
+    [Fact]
+    public void MetadataValidation_CarriesAndBoundsMappedOnlyStreamedRoutes() {
+        AdminOperationalIndexMetadataResponse valid = CreateResponse();
+        AdminOperationalIndexDomainMetadata domain = valid.Domains.ShouldHaveSingleItem() with {
+            MappedOnlyStreamedProjectionTypes = ["widget-detail"],
+        };
+        AdminOperationalIndexMetadataResponse marked = valid with { Domains = [domain] };
+        AdminOperationalIndexHostedService.TryCreateNamedProjectionEntries(
+            marked, "widget-service", "v1", out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries)
+            .ShouldBeTrue();
+        entries.ShouldHaveSingleItem().MappedOnlyStreamedProjectionTypes.ShouldBe(["widget-detail"]);
+
+        AdminOperationalIndexMetadataResponse invalid = valid with {
+            Domains = [domain with { MappedOnlyStreamedProjectionTypes = ["widget-index"] }],
+        };
+        AdminOperationalIndexHostedService.TryCreateNamedProjectionEntries(
+            invalid, "widget-service", "v1", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void MetadataValidation_CarriesSingleEventCapabilityOnlyForNamedNonReplayRoute() {
+        AdminOperationalIndexMetadataResponse valid = CreateResponse();
+        AdminOperationalIndexDomainMetadata domain = valid.Domains.ShouldHaveSingleItem() with {
+            SingleEventProjectionTypes = ["widget-index"],
+        };
+        AdminOperationalIndexHostedService.TryCreateNamedProjectionEntries(
+            valid with { Domains = [domain] }, "widget-service", "v1",
+            out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries).ShouldBeTrue();
+        entries.ShouldHaveSingleItem().SingleEventProjectionTypes.ShouldBe(["widget-index"]);
+
+        AdminOperationalIndexHostedService.TryCreateNamedProjectionEntries(
+            valid with { Domains = [domain with { SingleEventProjectionTypes = ["widget-detail"] }] },
+            "widget-service", "v1", out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -125,6 +161,7 @@ public sealed class NamedProjectionRouteCatalogTests {
         return new AdminOperationalIndexMetadataResponse([
             new AdminOperationalIndexDomainMetadata("widget", [], [], [], [], [], []) {
                 NamedProjectionTypes = ["widget-index", "widget-detail"],
+                FullReplayProjectionTypes = ["widget-detail"],
             },
         ]) {
             AppId = "widget-service",

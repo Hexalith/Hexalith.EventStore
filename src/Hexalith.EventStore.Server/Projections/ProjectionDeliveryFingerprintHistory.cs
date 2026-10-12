@@ -7,4 +7,6 @@ namespace Hexalith.EventStore.Server.Projections;
 internal sealed record ProjectionDeliveryFingerprintHistory(
     string InitialFingerprint,
     string PrefixFingerprint,
-    IReadOnlyList<ProjectionDeliveryEventDigest> Events);
+    IReadOnlyList<ProjectionDeliveryEventDigest> Events,
+    long BaseSequence = 0,
+    string? BaseFingerprint = null);

@@ -4,6 +4,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +19,37 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 public class AdminProjectionRebuildControllerTests {
     private const string Tenant = "tenant-a";
     private const string Projection = "party-summary";
+
+    [Fact]
+    public async Task SharedSourceOperatorRouteRequiresGlobalAdministratorAndExactScope()
+    {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        ISharedProjectionSourceRebuildOperator rebuild = Substitute.For<ISharedProjectionSourceRebuildOperator>();
+        var response = new DomainSharedProjectionRebuildResponse(DomainSharedProjectionRebuildProtocol.Version,
+            DomainSharedProjectionRebuildPhase.Committed, ProjectionDispatchStatus.Completed, 1,
+            "inventory", "batch", null);
+        rebuild.RebuildAsync(Arg.Any<DomainSharedProjectionRebuildIdentity>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+        using ServiceProvider services = new ServiceCollection().AddSingleton(rebuild).BuildServiceProvider();
+        string catalog = new('a', 64);
+        var request = new SharedSourceRebuildRequest(catalog);
+        AdminProjectionRebuildController denied = CreateController(store, asGlobalAdmin: false,
+            serviceProvider: services);
+        (await denied.RebuildSharedSource("tenant-a", "timesheets", "capability", "operation-a", request))
+            .ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await rebuild.DidNotReceiveWithAnyArgs().RebuildAsync(default!, default);
+
+        AdminProjectionRebuildController admin = CreateController(store, asGlobalAdmin: true,
+            serviceProvider: services);
+        (await admin.RebuildSharedSource("tenant-a", "Timesheets", "capability", "operation-a", request))
+            .ShouldBeOfType<BadRequestObjectResult>();
+        (await admin.RebuildSharedSource("tenant-a", "timesheets", "capability", "operation-a", request))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBe(response);
+        _ = await rebuild.Received(1).RebuildAsync(Arg.Is<DomainSharedProjectionRebuildIdentity>(value =>
+            value.TenantId == "tenant-a" && value.Domain == "timesheets"
+            && value.ProjectionType == "capability" && value.OperationId == "operation-a"
+            && value.CatalogFingerprint == catalog), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult() {

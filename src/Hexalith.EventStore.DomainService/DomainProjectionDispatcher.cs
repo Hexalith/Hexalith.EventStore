@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Dapr;
+
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Events;
 using Hexalith.EventStore.Client.Projections;
@@ -29,23 +31,23 @@ public static class DomainProjectionDispatcher {
         var events = new ProjectionEventDto[request.Events.Length];
         for (int index = 0; index < events.Length; index++)
         {
-            ProjectionEventDto item = request.Events[index];
-            ResolvedEventPayload effective = evolution.Read(item.EventTypeName, item.StoredPayloadVersion,
-                item.Payload, item.SequenceNumber);
-            if (effective.EventType is not null
-                && !string.Equals(item.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new EventPayloadEvolutionException(item.EventTypeName, item.StoredPayloadVersion ?? 1,
-                    item.SequenceNumber, "unsupported serialization format");
-            }
-            events[index] = item with
-            {
-                EventTypeName = effective.EventTypeName,
-                Payload = effective.Payload,
-            };
+            events[index] = UpcastEvent(evolution, request.Events[index]);
         }
 
         return request with { Events = events };
+    }
+
+    internal static ProjectionEventDto UpcastEvent(EventPayloadEvolutionRegistry? evolution,
+        ProjectionEventDto item)
+    {
+        if (evolution is null) return item;
+        ResolvedEventPayload effective = evolution.Read(item.EventTypeName, item.StoredPayloadVersion,
+            item.Payload, item.SequenceNumber);
+        if (effective.EventType is not null
+            && !string.Equals(item.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
+            throw new EventPayloadEvolutionException(item.EventTypeName, item.StoredPayloadVersion ?? 1,
+                item.SequenceNumber, "unsupported serialization format");
+        return item with { EventTypeName = effective.EventTypeName, Payload = effective.Payload };
     }
     /// <summary>
     /// Projects a request by dispatching it to the matching domain projection handler.
@@ -359,15 +361,34 @@ public static class DomainProjectionDispatcher {
         DomainProjectionIdentityOptions identityOptions,
         DomainProjectionRebuildBatchAction action,
         CancellationToken cancellationToken) {
-        DomainProjectionRebuildPreparation preparation = await PrepareRebuildBatchAsync(
-                serviceProvider,
-                dispatchRequest,
-                options,
-                identityOptions,
-                cancellationToken)
-            .ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(dispatchRequest);
+        ProjectionDispatchRequest transportHeader = dispatchRequest;
+        DomainProjectionRebuildPreparation? streamed = transportHeader.RebuildTransport is null
+            ? null
+            : await PrepareStreamedRebuildBatchAsync(serviceProvider, transportHeader, options,
+                identityOptions, cancellationToken).ConfigureAwait(false);
+        DomainProjectionRebuildPreparation preparation;
+        if (streamed is not null) preparation = streamed;
+        else
+        {
+            dispatchRequest = await DomainProjectionRebuildTransport.ResolveAsync(
+                serviceProvider, dispatchRequest, options, identityOptions, cancellationToken).ConfigureAwait(false);
+            preparation = await PrepareRebuildBatchAsync(serviceProvider, dispatchRequest, options,
+                identityOptions, cancellationToken).ConfigureAwait(false);
+        }
         if (preparation.Failure is not null) {
             return preparation.Failure;
+        }
+
+        if (transportHeader.RebuildTransport is not null && preparation.Batch is not null) {
+            ReadModelBatch batch = action == DomainProjectionRebuildBatchAction.Stage
+                ? await DomainProjectionRebuildTransport.SavePlanAsync(serviceProvider,
+                    transportHeader, preparation.Batch, options, identityOptions, cancellationToken)
+                    .ConfigureAwait(false)
+                : await DomainProjectionRebuildTransport.RestorePlanAsync(serviceProvider,
+                    transportHeader, preparation.Batch, options, identityOptions, cancellationToken)
+                    .ConfigureAwait(false);
+            preparation = preparation with { Batch = batch };
         }
 
         IReadModelBatchStagingStore? stagingStore = serviceProvider.GetService<IReadModelBatchStagingStore>();
@@ -418,13 +439,92 @@ public static class DomainProjectionDispatcher {
             : stagingResult.Status == ReadModelBatchStagingStatus.Conflict
                 ? ProjectionDispatchReasonCodes.MalformedOutcome
                 : ProjectionDispatchReasonCodes.HandlerFailure;
-        return new ProjectionDispatchResponse(
+        ProjectionDispatchResponse response = new(
             ProjectionDispatchProtocol.Version,
             [.. preparation.Handlers.Select(handler => new ProjectionDispatchOutcome(
                 handler.ProjectionType,
                 status,
                 null,
                 reasonCode))]);
+        if (succeeded && action is DomainProjectionRebuildBatchAction.Verify or DomainProjectionRebuildBatchAction.Abort
+            && transportHeader.RebuildTransport is not null)
+        {
+            try
+            {
+                await DomainProjectionRebuildTransport.ReclaimAsync(serviceProvider, transportHeader,
+                    options, identityOptions, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Parts have a bounded TTL, and a retried operation can reclaim them later.
+            }
+        }
+
+        return response;
+    }
+
+    private static async Task<DomainProjectionRebuildPreparation?> PrepareStreamedRebuildBatchAsync(
+        IServiceProvider services, ProjectionDispatchRequest header, ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identity, CancellationToken cancellationToken)
+    {
+        string storeName = DomainProjectionRebuildTransport.ValidateAndGetStore(services, header, options, identity);
+        IAsyncDomainProjectionHandler[] handlers = [.. DomainProjectionHandlerRouteValidator
+            .MaterializeAndValidateNamed(services.GetServices<IAsyncDomainProjectionHandler>(), options)
+            .Where(handler => StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain)
+                && header.ProjectionTypes.Contains(handler.ProjectionType, StringComparer.Ordinal))];
+        if (handlers.Any(handler => handler is not IAsyncDomainProjectionStreamedRebuildHandler)) return null;
+
+        var operations = new List<ReadModelBatchOperation>();
+        var failures = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
+        foreach (IAsyncDomainProjectionHandler handler in handlers)
+        {
+            try
+            {
+                bool streamComplete = false;
+                async IAsyncEnumerable<ProjectionEventDto> VerifiedEvents()
+                {
+                    await foreach (ProjectionEventDto item in DomainProjectionRebuildTransport.ReadEventsAsync(
+                        services, header, options, identity, cancellationToken).ConfigureAwait(false))
+                        yield return item;
+                    streamComplete = true;
+                }
+                DomainProjectionRebuildPlan plan = await ((IAsyncDomainProjectionStreamedRebuildHandler)handler)
+                    .PrepareStreamedRebuildAsync(header.Request, VerifiedEvents(),
+                        header.DispatchId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!streamComplete)
+                    throw new DomainProjectionRebuildRejectedException(
+                        ProjectionDispatchReasonCodes.DeliveryGap);
+                if (!StringComparer.Ordinal.Equals(plan.StoreName, storeName))
+                    throw new DomainProjectionRebuildRejectedException(
+                        ProjectionDispatchReasonCodes.UnsupportedCapability);
+                operations.AddRange(plan.Operations);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (ProjectionDispatchValidationException) { throw; }
+            catch (DomainProjectionRebuildRejectedException exception)
+            {
+                failures[handler.ProjectionType] = new(handler.ProjectionType,
+                    ProjectionDispatchStatus.Failed, null, exception.ReasonCode);
+            }
+            catch (Exception)
+            {
+                failures[handler.ProjectionType] = new(handler.ProjectionType,
+                    ProjectionDispatchStatus.Indeterminate, null, ProjectionDispatchReasonCodes.HandlerFailure);
+            }
+        }
+        if (failures.Count != 0)
+            return new(handlers, null, new(ProjectionDispatchProtocol.Version,
+                [.. handlers.Select(handler => failures.TryGetValue(handler.ProjectionType, out var outcome)
+                    ? outcome : new ProjectionDispatchOutcome(handler.ProjectionType,
+                        ProjectionDispatchStatus.Retryable, null, ProjectionDispatchReasonCodes.PartialRetry))]));
+        var batch = new ReadModelBatch(new ReadModelBatchScope(storeName, header.Request.TenantId,
+            header.Request.Domain, header.Request.AggregateId, "rebuild", header.DispatchId), operations);
+        return new(handlers, batch, null);
     }
 
     private static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
@@ -440,7 +540,7 @@ public static class DomainProjectionDispatcher {
         options.Validate();
         identityOptions.Validate();
         ValidateRequest(dispatchRequest, options);
-        ValidateRebuildEventHistory(dispatchRequest.Request.Events, options.MaxRebuildEventCount);
+        ValidateRebuildEventHistory(dispatchRequest.Request, options.MaxRebuildEventCount);
 
         IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
             .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options);
@@ -459,8 +559,9 @@ public static class DomainProjectionDispatcher {
         }
 
         HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
-        if (requestedTypes.Count != authoritativeRoutes.Length
-            || authoritativeRoutes.Any(route => !requestedTypes.Contains(route.ProjectionType))) {
+        if (requestedTypes.Count == 0
+            || requestedTypes.Count != dispatchRequest.ProjectionTypes.Count
+            || requestedTypes.Any(type => !authoritativeRoutes.Any(route => string.Equals(route.ProjectionType, type, StringComparison.Ordinal)))) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
@@ -611,6 +712,31 @@ public static class DomainProjectionDispatcher {
                     null,
                     ProjectionDispatchReasonCodes.PartialRetry);
             }
+            catch (SharedProjectionReadUnavailableException)
+            {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+            }
+            catch (SharedProjectionWriteUnavailableException)
+            {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException
+                && IsReadModelStoreUnavailable(exception))
+            {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+            }
             catch (OperationCanceledException) {
                 outcome = new ProjectionDispatchOutcome(
                     handler.ProjectionType,
@@ -671,7 +797,11 @@ public static class DomainProjectionDispatcher {
         SharedProjectionScope scope = handler.CreateScope(request.TenantId);
         scope.Validate();
         if (!string.Equals(scope.StoreName, handler.RebuildStoreName, StringComparison.Ordinal)
-            || !string.Equals(scope.TenantId, request.TenantId, StringComparison.Ordinal)
+            || (!handler.GlobalEpochScope
+                && !string.Equals(scope.TenantId, request.TenantId, StringComparison.Ordinal))
+            || (handler.GlobalEpochScope
+                && !string.Equals(scope.TenantId,
+                    IAsyncDomainSharedProjectionEpochHandler.GlobalTenantSegment, StringComparison.Ordinal))
             || !string.Equals(scope.Domain, request.Domain, StringComparison.Ordinal)
             || !string.Equals(scope.Family, handler.ProjectionType, StringComparison.Ordinal)) {
             return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -698,15 +828,23 @@ public static class DomainProjectionDispatcher {
             previousPosition = item.GlobalPosition;
         }
 
-        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(
-            scope,
-            handler.OrdinaryWriterId,
-            cancellationToken).ConfigureAwait(false);
+        SharedProjectionLease lease;
+        try {
+            lease = await coordinator.RegisterWriterAsync(
+                scope,
+                handler.OrdinaryWriterId,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
+            && IsReadModelStoreUnavailable(exception)) {
+            return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+        }
         SharedProjectionControlIndexIntent? controlIndexIntent = handler.ControlIndexName is { } indexName
             ? new SharedProjectionControlIndexIntent(indexName)
             : null;
         bool accepted = false;
         bool retry = false;
+        bool ownerGap = false;
         bool catchUp = false;
         foreach (ProjectionEventDto item in request.Events) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -716,22 +854,36 @@ public static class DomainProjectionDispatcher {
                 request.AggregateId,
                 [item]);
             var delivery = new SharedProjectionDelivery(
-                request.AggregateId,
+                handler.SourceStreamKey(request.TenantId, request.AggregateId),
                 item.GlobalPosition,
                 JsonSerializer.SerializeToUtf8Bytes(singleEventRequest, SerializerOptions),
                 JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition, SerializerOptions),
-                controlIndexIntent);
-            SharedProjectionJournalResult journaled = await coordinator.JournalAsync(
-                scope,
-                lease,
-                delivery,
-                cancellationToken).ConfigureAwait(false);
+                controlIndexIntent,
+                item.SequenceNumber);
+            SharedProjectionJournalResult journaled;
+            try {
+                journaled = await coordinator.JournalAsync(
+                    scope,
+                    lease,
+                    delivery,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested
+                && IsReadModelStoreUnavailable(exception)) {
+                return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+            }
             if (journaled == SharedProjectionJournalResult.IdentityConflict) {
                 return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
             }
 
-            if (journaled is SharedProjectionJournalResult.StaleLease or SharedProjectionJournalResult.Backpressure) {
+            if (journaled == SharedProjectionJournalResult.RebuildRequired) {
+                return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryRebuildRequired);
+            }
+
+            if (journaled is SharedProjectionJournalResult.StaleLease or SharedProjectionJournalResult.Backpressure
+                or SharedProjectionJournalResult.DeliveryGap) {
                 retry = true;
+                ownerGap = journaled == SharedProjectionJournalResult.DeliveryGap;
                 break;
             }
             else if (journaled == SharedProjectionJournalResult.Journaled) {
@@ -744,17 +896,36 @@ public static class DomainProjectionDispatcher {
         }
 
         if (catchUp) {
-            _ = await coordinator.CatchUpAsync(
-                scope,
-                (delivery, generation, token) => handler.FoldCatchUpAsync(delivery, generation, coordinator, token),
-                cancellationToken).ConfigureAwait(false);
+            try {
+                _ = await coordinator.CatchUpAsync(
+                    scope,
+                    async (delivery, generation, token) => {
+                        try {
+                            return await handler.FoldCatchUpAsync(delivery, generation, coordinator, token)
+                                .ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException exception) when (!token.IsCancellationRequested) {
+                            throw new InvalidOperationException(
+                                "The shared projection handler cancelled independently of the request.", exception);
+                        }
+                    },
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+            }
         }
         return retry
-            ? DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.PartialRetry)
+            ? DomainProjectionHandlerResult.Retryable(ownerGap
+                ? ProjectionDispatchReasonCodes.DeliveryGap
+                : ProjectionDispatchReasonCodes.PartialRetry)
             : accepted
                 ? DomainProjectionHandlerResult.Completed()
                 : DomainProjectionHandlerResult.AlreadyCompleted();
     }
+
+    private static bool IsReadModelStoreUnavailable(Exception exception)
+        => exception is DaprException or IOException or HttpRequestException or TimeoutException or TaskCanceledException;
 
     private static ProjectionDispatchResponse FailureForEveryRoute(
         IEnumerable<IAsyncDomainProjectionHandler> handlers,
@@ -798,9 +969,12 @@ public static class DomainProjectionDispatcher {
     }
 
     private static void ValidateRebuildEventHistory(
-        IReadOnlyList<ProjectionEventDto> events,
+        ProjectionRequest request,
         int maxEventCount) {
-        if (events.Count == 0 || events.Count > maxEventCount) {
+        IReadOnlyList<ProjectionEventDto> events = request.Events;
+        if (events.Count > maxEventCount
+            || (events.Count == 0 && (!request.RebuildSourceErased || request.RebuildSourceHeadSequence != 0))
+            || (events.Count > 0 && request.RebuildSourceErased)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
         }
 

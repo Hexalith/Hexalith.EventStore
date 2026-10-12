@@ -534,28 +534,64 @@ public sealed class DomainProjectionDispatcherV2Tests {
     }
 
     [Fact]
-    public async Task RebuildAsync_SubsetOfAuthoritativeRoutesIsRejectedBeforePreparation() {
+    public async Task RebuildAsync_SealedErasedEmptyHistoryReachesFullReplayHandler() {
+        IAsyncDomainProjectionRebuildHandler handler = CreateRebuildHandler("widget", "widget-detail");
+        handler.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), "dispatch-erased", Arg.Any<CancellationToken>())
+            .Returns(new DomainProjectionRebuildPlan("statestore",
+                [ReadModelBatchOperation.Delete("widget-1:detail", ReadModelBatchConcurrency.IdempotentAbsent)]));
+        IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        _ = batchStore.ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>())
+            .Returns(new ReadModelBatchResult(ReadModelBatchStatus.Completed, "fingerprint",
+                ReadModelBatchConflictKind.None, null));
+        using ServiceProvider provider = BuildRebuildProvider(batchStore, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("widget-service", "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", []) {
+                RebuildSourceHeadSequence = 0,
+                RebuildSourceErased = true,
+            },
+            ["widget-detail"], "dispatch-erased", fingerprint);
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.RebuildAsync(
+            provider, request, new ProjectionDispatchOptions(),
+            new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+            CancellationToken.None);
+
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        _ = await handler.Received(1).PrepareRebuildAsync(
+            Arg.Is<ProjectionRequest>(item => item.RebuildSourceErased && item.Events.Length == 0),
+            "dispatch-erased", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RebuildAsync_AdmittedFullReplaySubsetUsesCompleteCatalogFingerprint() {
         IAsyncDomainProjectionRebuildHandler detail = CreateRebuildHandler("widget", "widget-detail");
         IAsyncDomainProjectionRebuildHandler index = CreateRebuildHandler("widget", "widget-index");
+        detail.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainProjectionRebuildPlan("statestore",
+                [ReadModelBatchOperation.Write("widget-1:detail", new Dictionary<string, int> { ["count"] = 2 },
+                    ReadModelBatchConcurrency.LastWrite)]));
         IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        _ = batchStore.ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>())
+            .Returns(new ReadModelBatchResult(ReadModelBatchStatus.Completed, "fingerprint", ReadModelBatchConflictKind.None, null));
         using ServiceProvider provider = BuildRebuildProvider(batchStore, detail, index);
         string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
             "widget-service",
             "v1",
             [new ProjectionDispatchRoute("widget", "widget-detail"), new ProjectionDispatchRoute("widget", "widget-index")]);
 
-        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
-            DomainProjectionDispatcher.RebuildAsync(
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.RebuildAsync(
                 provider,
                 CreateRequest(fingerprint, "widget-detail"),
                 new ProjectionDispatchOptions(),
                 new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
-                CancellationToken.None));
+                CancellationToken.None);
 
-        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.UnsupportedRoute);
-        _ = detail.DidNotReceiveWithAnyArgs().PrepareRebuildAsync(default!, default!, default);
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        _ = await detail.Received(1).PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = index.DidNotReceiveWithAnyArgs().PrepareRebuildAsync(default!, default!, default);
-        _ = await batchStore.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+        _ = await batchStore.Received(1).ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

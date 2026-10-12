@@ -48,7 +48,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
     private readonly HttpClient _httpClient;
     private readonly DaprClient _daprClient;
 
-    public ProjectionRebuildProductionHarness(int eventCount, long? toPosition = null) {
+    public ProjectionRebuildProductionHarness(int eventCount, long? toPosition = null, bool erased = false) {
         Identity = new AggregateIdentity(TenantId, Domain, AggregateId);
         Events = [.. Enumerable.Range(1, eventCount).Select(CreateEvent)];
         long effectiveBound = Math.Min(eventCount, toPosition ?? eventCount);
@@ -87,6 +87,11 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => {
+                if (call.ArgAt<ProjectionRequest>(0).RebuildSourceErased) {
+                    return new DomainProjectionRebuildPlan(StoreName,
+                        [ReadModelBatchOperation.Delete(DetailKey, ReadModelBatchConcurrency.IdempotentAbsent)]);
+                }
+
                 ProjectionRebuildEquivalenceSnapshot snapshot = BuildSnapshot(call.ArgAt<ProjectionRequest>(0));
                 return new DomainProjectionRebuildPlan(
                     StoreName,
@@ -100,6 +105,11 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
             .Returns(call => {
                 if (FailIndexPreparation) {
                     throw new InvalidOperationException("Injected named projection preparation failure.");
+                }
+
+                if (call.ArgAt<ProjectionRequest>(0).RebuildSourceErased) {
+                    return new DomainProjectionRebuildPlan(StoreName,
+                        [ReadModelBatchOperation.Delete(IndexKey, ReadModelBatchConcurrency.IdempotentAbsent)]);
                 }
 
                 ProjectionRebuildEquivalenceSnapshot snapshot = BuildSnapshot(call.ArgAt<ProjectionRequest>(0));
@@ -134,6 +144,8 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         ActorProxyFactory = Substitute.For<IActorProxyFactory>();
         AggregateActor = Substitute.For<IAggregateActor>();
         _ = AggregateActor.GetCurrentSequenceAsync().Returns(eventCount);
+        _ = AggregateActor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(
+            Exists: eventCount > 0, CurrentSequence: eventCount, Erased: erased));
         _ = AggregateActor.ReadEventsRangeAsync(Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<int>())
             .Returns(call => {
                 long cursor = call.ArgAt<long>(0);

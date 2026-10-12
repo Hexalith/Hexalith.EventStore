@@ -6,6 +6,7 @@ using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
 
@@ -28,6 +29,43 @@ public sealed partial class AdminProjectionRebuildController(
     IProjectionRebuildOrchestrator? rebuildOrchestrator = null,
     IProjectionEraseCoordinator? eraseCoordinator = null,
     IServiceProvider? serviceProvider = null) : ControllerBase {
+    /// <summary>
+    /// Starts or resumes an actor-grounded shared rebuild using a certified source roster.
+    /// The route supplies identity only; the producer discovers every owner from the held actor roster.
+    /// </summary>
+    [HttpPost("{tenantId}/{domain}/{projectionType}/shared-source-rebuild/{operationId}")]
+    [ProducesResponseType(typeof(DomainSharedProjectionRebuildResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    public async Task<IActionResult> RebuildSharedSource(
+        string tenantId, string domain, string projectionType, string operationId,
+        [FromBody] SharedSourceRebuildRequest? request, CancellationToken ct = default) {
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) return authFailure;
+        try {
+            _ = CreateScope(tenantId, domain);
+            _ = CreateScope(tenantId, projectionType);
+            if (string.IsNullOrWhiteSpace(operationId)
+                || System.Text.Encoding.UTF8.GetByteCount(operationId) > 256
+                || request?.CatalogFingerprint is not { Length: 64 } fingerprint
+                || !fingerprint.All(Uri.IsHexDigit)) {
+                return BadRequest("A stable operation ID and exact route-catalog fingerprint are required.");
+            }
+
+            ISharedProjectionSourceRebuildOperator? source = serviceProvider?
+                .GetService<ISharedProjectionSourceRebuildOperator>()
+                ?? HttpContext.RequestServices.GetService<ISharedProjectionSourceRebuildOperator>();
+            if (source is null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            DomainSharedProjectionRebuildResponse response = await source.RebuildAsync(new(
+                tenantId, domain, projectionType, operationId, fingerprint), ct).ConfigureAwait(false);
+            return Ok(response);
+        }
+        catch (ArgumentException ex) {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex) {
+            return Conflict(ex.Message);
+        }
+    }
     /// <summary>
     /// Gets the current rebuild status for a projection.
     /// </summary>

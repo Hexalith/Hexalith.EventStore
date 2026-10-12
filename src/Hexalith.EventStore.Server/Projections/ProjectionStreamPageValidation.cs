@@ -52,6 +52,7 @@ internal static class ProjectionStreamPageValidation
                 envelope.UserId)
             {
                 PayloadVersion = envelope.PayloadVersion,
+                GlobalPosition = envelope.GlobalPosition,
             };
         }
 
