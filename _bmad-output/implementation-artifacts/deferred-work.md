@@ -5765,3 +5765,9 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Bound owner-sidecar actor-state reads before parsing large snapshot values for Admin inspection.
   evidence: `ReadAsStringAsync` already reads the entire value before Story 6.2 redaction parses it; a large legacy snapshot can multiply allocations, and the unbounded read predates this story.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-12, chunk 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Detect PascalCase legacy `DomainServiceCurrentState` snapshots before treating them as folded state.
+  evidence: `SnapshotEnvelopeInspector` reads envelope fields case-insensitively, but `IsDomainServiceCurrentState` matches ordinal camelCase `currentSequence` and `events`, so a legacy snapshot written with PascalCase actor JSON options would rehydrate as an empty state plus the tail. This is pre-existing (the domain-side detector was already camelCase) and needs custom actor JSON options; no repository host configures them. A fix would renegotiate HX-FS-V1 §5.3.
