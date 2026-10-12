@@ -5881,3 +5881,18 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Verify authenticated human authority through controller, idempotency admission, handler signing, and invoker transport.
   evidence: R5-VG2: HumanAuthorityReceiptCodecTests construct authority/receipts directly; no test proves authenticated controller capture and receipt issuance against the final admitted command identity through the domain-service request. Removing controller capture leaves the existing helper tests green. This is separate signed-authority work.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-12, final acceptance chunk 1)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Settle the shared-projection source write intent only after the actor batch commits.
+  evidence: AggregateActor.cs:1505-1529 calls CompleteWriteAsync after PersistEventsAsync stages events but before SaveStateAsync; if PersistEventsAsync throws, the intent is never completed, and the cleanup path reuses a possibly canceled token. Introduced by cf43d21a shared-projection work, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Settle the erasure fence intent when validation fails after BeginWriteAsync.
+  evidence: AggregateActor.cs:2277 begins the erasure intent, and later inventory or pending-work validation can throw before CompleteWriteAsync at :2403; a retry uses a new nonce and intent. Introduced by cf43d21a, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Replace the hard-coded folders domain in safe-denial recognition with a declared domain capability.
+  evidence: DaprDomainServiceInvoker.cs:118 maps marked denials only when command.Domain equals "folders", so a safe denial from any other domain dead-letters. Introduced by 8eec9712 signed-authority work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Prevent the default six-argument IDomainServiceInvoker overload from silently dropping the human-authority receipt.
+  evidence: IDomainServiceInvoker.cs:27 delegates to the five-argument overload without humanAuthorityReceipt, and FakeDomainServiceInvoker does not override it, so a custom invoker loses the receipt with no error. Introduced by 8eec9712 signed-authority work.
