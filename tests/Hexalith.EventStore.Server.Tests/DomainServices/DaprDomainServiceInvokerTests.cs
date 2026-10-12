@@ -157,6 +157,29 @@ public class DaprDomainServiceInvokerTests {
     }
 
     [Fact]
+    public async Task InvokeAsync_CarriesHumanAuthorityReceiptWithTheCommandInTheDaprRequest()
+    {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        using var handler = new StaticResponseHandler(JsonSerializer.Serialize(
+            new DomainServiceWireResult(false, []), JsonSerializerOptions.Web));
+        using var httpClient = new HttpClient(handler);
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, _resolver, _options, TimeProvider.System, _logger);
+        CommandEnvelope command = CreateTestEnvelope();
+
+        _ = await invoker.InvokeAsync(command, null, false, null, "signed-human-receipt");
+
+        DomainServiceRequest sent = JsonSerializer.Deserialize<DomainServiceRequest>(
+            handler.RequestBody.ShouldNotBeNull(), JsonSerializerOptions.Web).ShouldNotBeNull();
+        sent.HumanAuthorityReceipt.ShouldBe("signed-human-receipt");
+        sent.Command.MessageId.ShouldBe(command.MessageId);
+        sent.Command.Payload.ShouldBe(command.Payload);
+    }
+
+    [Fact]
     public async Task InvokeAsync_UnsolicitedV2_RejectsBeforeReturningAnAdmittedResult() {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -783,13 +806,16 @@ public class DaprDomainServiceInvokerTests {
     }
 
     private sealed class StaticResponseHandler(string responseBody) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(
+        public string? RequestBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken) {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+            RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
-            });
+            };
         }
     }
 }
