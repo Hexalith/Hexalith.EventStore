@@ -191,7 +191,7 @@ public sealed class CheckpointedProcessRunner(
                         return Result(owned, processed);
                     }
 
-                    if (context is null)
+                    if (context is null || !string.Equals(context.CausationId, streamEvent.MessageId, StringComparison.Ordinal))
                     {
                         owned = await FailAsync(owned, "delegation-unavailable", streamEvent.SequenceNumber, false, sweepOwner, cancellationToken).ConfigureAwait(false);
                         return Result(owned, processed);

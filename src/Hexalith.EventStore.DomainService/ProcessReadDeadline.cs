@@ -38,6 +38,11 @@ internal static class ProcessReadDeadline
         }
         catch
         {
+            // A worker can fault after its caller's deadline. Observe that fault
+            // without releasing its slot before the adapter actually finishes.
+            _ = task.ContinueWith(static completed => _ = completed.Exception,
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
             if (!task.IsCompleted)
             {
                 try

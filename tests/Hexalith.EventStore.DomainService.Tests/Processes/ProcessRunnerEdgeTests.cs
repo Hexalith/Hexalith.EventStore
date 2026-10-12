@@ -529,6 +529,33 @@ public sealed class ProcessRunnerEdgeTests
         await submitter.DidNotReceive().SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>());
     }
 
+    /// <summary>A delegation for another cause cannot submit this envelope and remains recoverable.</summary>
+    [Theory]
+    [InlineData("other-message")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task MismatchedDelegationCausationRetriesBeforeSubmission(string? causation)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new();
+        IProcessDelegationProvider delegation = Substitute.For<IProcessDelegationProvider>();
+        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new TrustedEffectContext("synthetic", "process", causation!, "token")));
+        ITrustedEffectSubmitter submitter = Submitter();
+        CheckpointedProcessRunner runner = Runner(store, options, Gateway(OneEventPage()), Translator([Effect([1])]), delegation, submitter);
+        ProcessRunResult result = await runner.RunAsync(Source);
+        result.Status.ShouldBe(ProcessSourceStatus.Retrying);
+        result.Checkpoint.ShouldBe(0);
+        ProcessSourceState persisted = await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source);
+        persisted.Attempts.ShouldBe(1);
+        persisted.ReasonCode.ShouldBe("delegation-unavailable");
+        await submitter.DidNotReceive().SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>());
+        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new TrustedEffectContext("synthetic", "process", call.ArgAt<string>(1), "token")));
+        (await runner.RunAsync(Source)).Checkpoint.ShouldBe(1);
+        (await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Active);
+    }
+
     /// <summary>A null receipt is invalid target evidence and cannot advance the checkpoint.</summary>
     [Fact]
     public async Task NullReceiptQuarantinesWithoutCheckpoint()
@@ -677,10 +704,10 @@ public sealed class ProcessRunnerEdgeTests
         ManualProcessTimeProvider clock = new(DateTimeOffset.UtcNow);
         ProcessCheckpointStore checkpoints = new(store, Options.Create(options), clock);
         IProcessDelegationProvider delegation = Substitute.For<IProcessDelegationProvider>();
-        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             clock.Advance(TimeSpan.FromMilliseconds(240));
-            return Task.FromResult(new TrustedEffectContext("synthetic", "process", "cause", "token"));
+            return Task.FromResult(new TrustedEffectContext("synthetic", "process", call.ArgAt<string>(1), "token"));
         });
         ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
         submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -833,7 +860,7 @@ public sealed class ProcessRunnerEdgeTests
     {
         IProcessDelegationProvider provider = Substitute.For<IProcessDelegationProvider>();
         provider.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new TrustedEffectContext("synthetic", "process", "cause", "token")));
+            .Returns(call => Task.FromResult(new TrustedEffectContext("synthetic", "process", call.ArgAt<string>(1), "token")));
         return provider;
     }
 

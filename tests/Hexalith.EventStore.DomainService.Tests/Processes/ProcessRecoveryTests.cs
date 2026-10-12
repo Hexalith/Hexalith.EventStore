@@ -1541,6 +1541,342 @@ public sealed class ProcessRecoveryTests
         }
     }
 
+    /// <summary>Worker pressure retains every registry cursor until the same page can be read.</summary>
+    [Theory]
+    [InlineData("tenant-page")]
+    [InlineData("tenant-tail")]
+    [InlineData("candidate-page")]
+    [InlineData("candidate-tail")]
+    [InlineData("source-state")]
+    public async Task CandidateReadAdmissionRetainsCursorAndIncompleteCoverage(string phase)
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with
+        {
+            CatalogComplete = true, NextCatalog = false,
+            TenantOffset = phase == "tenant-tail" ? 1 : 0,
+            CandidateOffset = phase == "candidate-tail" ? 1 : 0,
+        });
+        await initialSweeps.ReleaseAsync(owned);
+        string key = phase switch
+        {
+            "tenant-page" => ProcessStateKeys.Tenants(0),
+            "tenant-tail" => ProcessStateKeys.TenantsTail,
+            "candidate-page" => ProcessStateKeys.Candidates(source.Tenant, 0),
+            "candidate-tail" => ProcessStateKeys.CandidatesTail(source.Tenant),
+            _ => ProcessStateKeys.Source(source),
+        };
+        AdmissionFaultProcessStore faulting = new(inner, key);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(faulting, options, Catalog([]));
+        using (reconciler)
+        {
+            ProcessReconciliationPass pass = await reconciler.RunPassAsync();
+            faulting.Fired.ShouldBeTrue();
+            faulting.Refusals.ShouldBe(1);
+            pass.CycleComplete.ShouldBeFalse();
+            ProcessSweepState after = await sweeps.GetAsync();
+            after.TenantPage.ShouldBe(owned.TenantPage);
+            after.TenantOffset.ShouldBe(owned.TenantOffset);
+            after.CandidatePage.ShouldBe(owned.CandidatePage);
+            after.CandidateOffset.ShouldBe(owned.CandidateOffset);
+            after.CandidatesComplete.ShouldBeFalse();
+            after.Reasons["read-worker-exhausted"].ShouldBe(1);
+            after.Reasons.Keys.ShouldNotContain("tenant-page-unreadable");
+            after.Reasons.Keys.ShouldNotContain("candidate-page-unreadable");
+            for (int attempt = 0; attempt < 12 && !(await sweeps.GetAsync()).Complete; attempt++)
+                _ = await reconciler.RunPassAsync();
+            (await sweeps.GetAsync()).Complete.ShouldBeTrue();
+        }
+    }
+
+    /// <summary>Admission loss after completed execution retains the source marker and does not run it twice.</summary>
+    [Fact]
+    public async Task PostRunAdmissionRetainsCandidateCursorWithoutRepeatingSourceRun()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "post-run-admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with { CatalogComplete = true, NextCatalog = false });
+        await initialSweeps.ReleaseAsync(owned);
+        AdmissionFaultProcessStore faulting = new(inner, ProcessStateKeys.Source(source), afterSourceRelease: true);
+        int reads = 0;
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(faulting, options, Catalog([]), request =>
+        {
+            reads++;
+            StreamReadEvent[] events = request.FromSequence == 0
+                ? [new(1, "SyntheticEvent", [1], "json", 1, "message-1", null, null, DateTimeOffset.UtcNow, null)] : [];
+            return new StreamReadPage(request.Tenant, request.Domain, request.AggregateId, events,
+                new StreamReadMetadata(request.FromSequence, null, events.Length == 0 ? null : 1, 1, events.Length, false, null));
+        });
+        using (reconciler)
+        {
+            _ = await reconciler.RunPassAsync();
+            faulting.Fired.ShouldBeTrue();
+            ProcessSweepState afterFailure = await sweeps.GetAsync();
+            afterFailure.CandidateOffset.ShouldBe(0);
+            afterFailure.CandidatesComplete.ShouldBeFalse();
+            afterFailure.Reasons["read-worker-exhausted"].ShouldBe(1);
+            ProcessSourceState persisted = await checkpoints.GetAsync(source);
+            persisted.Checkpoint.ShouldBe(1);
+            persisted.ObservedCycle.ShouldBe(afterFailure.Cycle);
+            persisted.ObservedUnresolved.ShouldBeTrue();
+            for (int pass = 0; pass < 12 && !(await sweeps.GetAsync()).Complete; pass++) _ = await reconciler.RunPassAsync();
+            (await sweeps.GetAsync()).Complete.ShouldBeTrue();
+            reads.ShouldBe(1);
+        }
+    }
+
+    /// <summary>A refused tail read after missing or unreadable pages yields without losing any persisted cursor.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task TailAdmissionAfterUnavailablePageYieldsOncePerPassAndCountsOncePerCycle(bool candidate, bool missing)
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "tail-admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        inner.SeedRaw(options.StateStoreName, ProcessStateKeys.Tenants(2), new ProcessIndexPage<string>(1, 2, [source.Tenant], null));
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with
+        {
+            CatalogComplete = true, NextCatalog = false, TenantPage = 2, TenantOffset = 0,
+            CandidatePage = 3, CandidateOffset = 1, ExpectedTenantPage = true, ExpectedCandidatePage = true,
+            TenantProbeMisses = 2, CandidateProbeMisses = 3,
+        });
+        await initialSweeps.ReleaseAsync(owned);
+        string pageKey = candidate ? ProcessStateKeys.Candidates(source.Tenant, 3) : ProcessStateKeys.Tenants(2);
+        string tailKey = candidate ? ProcessStateKeys.CandidatesTail(source.Tenant) : ProcessStateKeys.TenantsTail;
+        FaultOnProcessPageReadStore pageFault = new(inner, pageKey, missing);
+        AdmissionFaultProcessStore tailFault = new(pageFault, tailKey, refusals: 2);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(tailFault, options, Catalog([]));
+        using (reconciler)
+        {
+            for (int pass = 1; pass <= 2; pass++)
+            {
+                (await reconciler.RunPassAsync()).CycleComplete.ShouldBeFalse();
+                pageFault.PageReads.ShouldBe(pass);
+                tailFault.Refusals.ShouldBe(pass);
+                ProcessSweepState persisted = await sweeps.GetAsync();
+                persisted.Cycle.ShouldBe(owned.Cycle);
+                persisted.TenantPage.ShouldBe(owned.TenantPage);
+                persisted.TenantOffset.ShouldBe(owned.TenantOffset);
+                persisted.CandidatePage.ShouldBe(owned.CandidatePage);
+                persisted.CandidateOffset.ShouldBe(owned.CandidateOffset);
+                persisted.ExpectedTenantPage.ShouldBe(owned.ExpectedTenantPage);
+                persisted.ExpectedCandidatePage.ShouldBe(owned.ExpectedCandidatePage);
+                persisted.TenantProbeMisses.ShouldBe(owned.TenantProbeMisses);
+                persisted.CandidateProbeMisses.ShouldBe(owned.CandidateProbeMisses);
+                persisted.CandidatesComplete.ShouldBeFalse();
+                persisted.Complete.ShouldBeFalse();
+                persisted.Unresolved.ShouldBe(1);
+                persisted.Reasons.Single().Key.ShouldBe("read-worker-exhausted");
+                persisted.Reasons["read-worker-exhausted"].ShouldBe(1);
+            }
+        }
+    }
+
+    /// <summary>A folded admission reason stays counted once across passes and resets with the next cycle.</summary>
+    [Fact]
+    public async Task FoldedScanAdmissionIsCountedOnceAndResetsWithCycle()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "folded-admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with
+        {
+            CatalogComplete = true, NextCatalog = false, Unresolved = 15,
+            Reasons = Enumerable.Range(0, 15).ToDictionary(index => $"reason-{index}", _ => 1, StringComparer.Ordinal),
+        });
+        await initialSweeps.ReleaseAsync(owned);
+        AdmissionFaultProcessStore refused = new(inner, ProcessStateKeys.Tenants(0), refusals: 2);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(refused, options, Catalog([]));
+        using (reconciler)
+        {
+            for (int pass = 1; pass <= 2; pass++)
+            {
+                (await reconciler.RunPassAsync()).CycleComplete.ShouldBeFalse();
+                refused.Refusals.ShouldBe(pass);
+                ProcessSweepState persisted = await sweeps.GetAsync();
+                persisted.Reasons["other"].ShouldBe(1);
+                persisted.Reasons.Count.ShouldBe(16);
+                persisted.Unresolved.ShouldBe(16);
+                persisted.ScanReadAdmissionRecorded.ShouldBeTrue();
+            }
+            (await reconciler.RunPassAsync()).CycleComplete.ShouldBeTrue();
+            ProcessSweepState fresh = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+            try
+            {
+                fresh.Cycle.ShouldBeGreaterThan(owned.Cycle);
+                fresh.ScanReadAdmissionRecorded.ShouldBeFalse();
+                fresh.Unresolved.ShouldBe(0);
+            }
+            finally { await sweeps.ReleaseAsync(fresh, CancellationToken.None); }
+        }
+    }
+
+    /// <summary>Unavailable durable state preserves locally known reasons without asserting unseen durable counts.</summary>
+    [Theory]
+    [InlineData("disabled", "reconciliation-disabled")]
+    [InlineData("stopped", "reconciler-stopped")]
+    [InlineData("failed", "hosted-pass-failed")]
+    public async Task UnavailableSweepRetainsLocalReadinessReasons(string mode, string reason)
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { ReconciliationEnabled = mode != "disabled" };
+        FaultOnProcessPageReadStore unavailable = new(inner, ProcessStateKeys.Sweep);
+        (_, _, ProcessReconciler reconciler) = Runtime(mode == "failed" ? unavailable : inner, options, Catalog([]));
+        using (reconciler)
+        {
+            try
+            {
+                if (mode != "disabled")
+                {
+                    await reconciler.StartAsync(CancellationToken.None);
+                    if (mode == "failed")
+                    {
+                        for (int attempt = 0; attempt < 100 && reconciler.LocalFailureReason is null; attempt++) await Task.Delay(10);
+                        reconciler.LocalFailureReason.ShouldBe(reason);
+                        reconciler.IsRunning.ShouldBeTrue();
+                    }
+                    else await reconciler.StopAsync(CancellationToken.None);
+                }
+                ProcessSweepStore sweeps = new(unavailable, Options.Create(options), TimeProvider.System);
+                HealthCheckResult result = await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System, reconciler)
+                    .CheckHealthAsync(new HealthCheckContext());
+                result.Status.ShouldBe(HealthStatus.Degraded);
+                result.Data["stateAvailable"].ShouldBe(false);
+                ((IReadOnlyDictionary<string, int>)result.Data["reasonCounts"]).Single().ShouldBe(new KeyValuePair<string, int>(reason, 1));
+                result.Data.Keys.ShouldNotContain("complete");
+                result.Data.Keys.ShouldNotContain("unresolved");
+                result.Data.Keys.ShouldNotContain("cycle");
+            }
+            finally { await reconciler.StopAsync(CancellationToken.None); }
+        }
+    }
+
+    /// <summary>An acquisition crash contributes one durable source-operation reason across both indexes.</summary>
+    [Fact]
+    public async Task RunnerAcquisitionFaultIsRecordedAsSourceOperation()
+    {
+        InMemoryReadModelStore inner = new();
+        ProcessSource source = new("tenant-a", "sample", "operation-fault");
+        FaultInjectingProcessStore faulting = new(inner, (_, value) => value is ProcessSourceState { Owner: not null });
+        EventStoreProcessOptions options = new() { SourcesPerPass = 4 };
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(faulting, options, Catalog([source]));
+        using (reconciler) _ = await reconciler.RunPassAsync();
+        faulting.Fired.ShouldBeTrue();
+        ProcessSweepState state = await sweeps.GetAsync();
+        state.Reasons["source-operation"].ShouldBe(1);
+        state.Unresolved.ShouldBe(1);
+        ProcessSourceState persisted = await checkpoints.GetAsync(source);
+        persisted.Checkpoint.ShouldBe(0);
+        persisted.ObservedCycle.ShouldBe(state.Cycle);
+        persisted.ObservedUnresolved.ShouldBeTrue();
+    }
+
+    /// <summary>A sixteenth distinct source reason folds into other without losing its count.</summary>
+    [Fact]
+    public async Task SixteenthReasonFoldsIntoOther()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 1 };
+        ProcessSource source = new("tenant-a", "sample", "reason-fold");
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]));
+        await checkpoints.EnsureCandidateAsync(source);
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(source),
+            new ProcessSourceState(1, source, 0, ProcessSourceStatus.Parked, 3, 1, "sixteenth", null, null, 0, 0, DateTimeOffset.UtcNow));
+        ProcessSweepState owned = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await sweeps.UpdateOwnedAsync(owned, current => current with
+        {
+            CatalogComplete = true, NextCatalog = false, Unresolved = 15,
+            Reasons = Enumerable.Range(0, 15).ToDictionary(index => $"reason-{index}", _ => 1, StringComparer.Ordinal),
+        });
+        await sweeps.ReleaseAsync(owned);
+        using (reconciler) _ = await reconciler.RunPassAsync();
+        ProcessSweepState result = await sweeps.GetAsync();
+        result.Reasons.Count.ShouldBe(16);
+        result.Reasons["other"].ShouldBe(1);
+        result.Reasons.Keys.ShouldNotContain("sixteenth");
+        result.Unresolved.ShouldBe(16);
+        (await checkpoints.GetAsync(source)).ObservedUnresolved.ShouldBeTrue();
+    }
+
+    /// <summary>Persisted source text above the category limit never enters readiness reason data.</summary>
+    [Theory]
+    [InlineData(64)]
+    [InlineData(65)]
+    public async Task SourceReasonLengthIsBoundedInSweepData(int length)
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 1 };
+        ProcessSource source = new("tenant-a", "sample", "reason-length");
+        (ProcessCheckpointStore checkpoints, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]));
+        await checkpoints.EnsureCandidateAsync(source);
+        string reason = new('x', length);
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(source),
+            new ProcessSourceState(1, source, 0, ProcessSourceStatus.Parked, 3, 1, reason, null, null, 0, 0, DateTimeOffset.UtcNow));
+        ProcessSweepState owned = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await sweeps.UpdateOwnedAsync(owned, current => current with { CatalogComplete = true, NextCatalog = false });
+        await sweeps.ReleaseAsync(owned);
+        using (reconciler) _ = await reconciler.RunPassAsync();
+        ProcessSweepState result = await sweeps.GetAsync();
+        result.Reasons.Single().Key.ShouldBe(length == 64 ? reason : nameof(ProcessSourceStatus.Parked));
+        result.Unresolved.ShouldBe(1);
+        (await checkpoints.GetAsync(source)).ObservedUnresolved.ShouldBeTrue();
+    }
+
+    /// <summary>A near-full sweep retains its cursor and exposes the record-budget reason and pending count.</summary>
+    [Fact]
+    public async Task SweepRecordBudgetHasDurableReadinessEvidence()
+    {
+        InMemoryReadModelStore store = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 2 };
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(store, options, Catalog([]));
+        ProcessSweepState owned = (await sweeps.AcquireAsync()).ShouldNotBeNull();
+        var observations = new Dictionary<string, ProcessPendingObservation>(StringComparer.Ordinal);
+        ProcessSweepState pressure = owned;
+        for (int index = 0; pressure.SerializedSize() < ProcessSweepState.MaxSerializedBytes - 8192; index++)
+        {
+            ProcessSource source = new("tenant-a", "sample", $"{index:0000}" + new string('x', 252));
+            observations.Add(ProcessStateKeys.SourceId(source), new(source, owned.Cycle, true));
+            store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(source),
+                new ProcessSourceState(2, source, 0, ProcessSourceStatus.Active, 0, null, null, null, null, 0, 0, DateTimeOffset.UtcNow));
+            pressure = owned with { PendingObservations = observations };
+        }
+        pressure.Validate();
+        store.SeedRaw(options.StateStoreName, ProcessStateKeys.Sweep, pressure with { Owner = null, LeaseUntil = null });
+        using (reconciler) _ = await reconciler.RunPassAsync();
+        ProcessSweepState persisted = await sweeps.GetAsync();
+        persisted.PendingObservations.Count.ShouldBe(observations.Count);
+        persisted.CatalogComplete.ShouldBeFalse();
+        persisted.CandidatesComplete.ShouldBeFalse();
+        persisted.Reasons["sweep-record-budget"].ShouldBe(1);
+        HealthCheckResult health = await new ProcessReadinessHealthCheck(sweeps, Options.Create(options), TimeProvider.System)
+            .CheckHealthAsync(new HealthCheckContext());
+        health.Status.ShouldBe(HealthStatus.Degraded);
+        health.Data["pendingObservations"].ShouldBe(observations.Count);
+        ((IReadOnlyDictionary<string, int>)health.Data["reasonCounts"])["sweep-record-budget"].ShouldBe(1);
+    }
+
     private static IProcessSourceCatalog Catalog(IReadOnlyList<ProcessSource> sources)
     {
         IProcessSourceCatalog catalog = Substitute.For<IProcessSourceCatalog>();
@@ -1564,12 +1900,14 @@ public sealed class ProcessRecoveryTests
         return [];
     }
 
-    private static (ProcessCheckpointStore Checkpoints, ProcessSweepStore Sweeps, ProcessReconciler Reconciler) Runtime(
+    /// <summary>Composes a persisted synthetic process runtime for recovery and renewal fault tests.</summary>
+    internal static (ProcessCheckpointStore Checkpoints, ProcessSweepStore Sweeps, ProcessReconciler Reconciler) Runtime(
         IReadModelStore store, EventStoreProcessOptions options, IProcessSourceCatalog catalog,
-        Func<StreamReadRequest, StreamReadPage>? pageFactory = null, IProcessTranslator? processTranslator = null)
+        Func<StreamReadRequest, StreamReadPage>? pageFactory = null, IProcessTranslator? processTranslator = null, TimeProvider? time = null)
     {
-        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), TimeProvider.System);
-        ProcessSweepStore sweeps = new(store, Options.Create(options), TimeProvider.System);
+        TimeProvider clock = time ?? TimeProvider.System;
+        ProcessCheckpointStore checkpoints = new(store, Options.Create(options), clock);
+        ProcessSweepStore sweeps = new(store, Options.Create(options), clock);
         IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();
         gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -1587,12 +1925,12 @@ public sealed class ProcessRecoveryTests
                 .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([]));
         IProcessDelegationProvider delegation = Substitute.For<IProcessDelegationProvider>();
         ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
-        CheckpointedProcessRunner runner = new(gateway, translator, delegation, submitter, checkpoints, Options.Create(options));
+        CheckpointedProcessRunner runner = new(gateway, translator, delegation, submitter, checkpoints, Options.Create(options), clock);
         var services = new ServiceCollection();
         services.AddSingleton(catalog);
         services.AddSingleton(runner);
         ServiceProvider provider = services.BuildServiceProvider();
-        ProcessReconciler reconciler = new(provider.GetRequiredService<IServiceScopeFactory>(), sweeps, checkpoints, Options.Create(options), TimeProvider.System);
+        ProcessReconciler reconciler = new(provider.GetRequiredService<IServiceScopeFactory>(), sweeps, checkpoints, Options.Create(options), clock);
         return (checkpoints, sweeps, reconciler);
     }
 

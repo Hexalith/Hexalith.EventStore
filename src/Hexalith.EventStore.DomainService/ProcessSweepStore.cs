@@ -513,6 +513,7 @@ public sealed class ProcessSweepStore(IReadModelStore store, IOptions<EventStore
         CandidateProbeMisses = 0,
         CandidatesComplete = false,
         Unresolved = 0,
+        ScanReadAdmissionRecorded = false,
         Reasons = new Dictionary<string, int>(StringComparer.Ordinal),
         PendingObservations = new Dictionary<string, ProcessPendingObservation>(StringComparer.Ordinal),
     };

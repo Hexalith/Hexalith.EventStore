@@ -106,7 +106,7 @@ public sealed class ProcessPersistenceContractTests
             "reasons", "pending", "owner", "leaseUntil", "fence", "pendingObservations", "pendingPublications", "pendingTransitions",
             "publicationRepairAfterKey", "dispositionRepairAfterKey", "nextPublicationRepair", "publicationCandidateRepairPages",
             "publicationTenantRepairPages", "publicationCandidateUnknownPages", "publicationTenantUnknownPages", "expectedTenantPage",
-            "expectedCandidatePage", "tenantProbeMisses", "candidateProbeMisses", "retainedCandidates", "capacityExceeded",
+            "expectedCandidatePage", "tenantProbeMisses", "candidateProbeMisses", "retainedCandidates", "capacityExceeded", "scanReadAdmissionRecorded",
         ]);
         sweepDocument.RootElement.GetProperty("pending").GetProperty(sourceId).EnumerateObject()
             .Select(static value => value.Name).ShouldBe([
@@ -120,6 +120,7 @@ public sealed class ProcessPersistenceContractTests
             .Select(static value => value.Name).ShouldBe(["source", "generation", "token"]);
         ProcessSweepState restored = JsonSerializer.Deserialize<ProcessSweepState>(sweepJson, SerializerOptions).ShouldNotBeNull();
         restored.Validate();
+        restored.ScanReadAdmissionRecorded.ShouldBeFalse();
         restored.CatalogAfterKey.ShouldBe(source.CatalogKey);
         restored.TenantPage.ShouldBe(1);
         restored.TenantOffset.ShouldBe(2);
@@ -150,6 +151,22 @@ public sealed class ProcessPersistenceContractTests
         JsonSerializer.Serialize(restored, SerializerOptions).ShouldBe(sweepJson);
     }
 
+    /// <summary>A nondefault cycle admission marker survives the persisted Web JSON contract.</summary>
+    [Fact]
+    public void ScanAdmissionMarkerRoundTripsWithFoldedReason()
+    {
+        ProcessSweepState state = new(1, 1, 1, false, DateTimeOffset.UtcNow, null, null, false,
+            0, 0, 0, 0, false, true, 1, new Dictionary<string, int> { ["other"] = 1 },
+            new Dictionary<string, ProcessPendingDisposition>(), null, null, 0) { ScanReadAdmissionRecorded = true };
+        state.Validate();
+        string json = JsonSerializer.Serialize(state, SerializerOptions);
+        using JsonDocument document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("scanReadAdmissionRecorded").GetBoolean().ShouldBeTrue();
+        ProcessSweepState restored = JsonSerializer.Deserialize<ProcessSweepState>(json, SerializerOptions).ShouldNotBeNull();
+        restored.Validate();
+        restored.ScanReadAdmissionRecorded.ShouldBeTrue();
+    }
+
     /// <summary>A stored version-one sweep still reads its disposition, observation, and transition records.</summary>
     [Fact]
     public void VersionOneNestedSweepRecordsRemainReadable()
@@ -178,6 +195,7 @@ public sealed class ProcessPersistenceContractTests
 
         ProcessSweepState restored = JsonSerializer.Deserialize<ProcessSweepState>(json, SerializerOptions).ShouldNotBeNull();
         restored.Validate();
+        restored.ScanReadAdmissionRecorded.ShouldBeFalse();
         restored.Pending[sourceId].PreparedGeneration.ShouldBe(2);
         restored.Pending[sourceId].ClaimToken.ShouldBe("claim-v1");
         restored.Pending[sourceId].ClaimUntil.ShouldBe(new DateTimeOffset(2026, 10, 1, 9, 31, 0, TimeSpan.Zero));

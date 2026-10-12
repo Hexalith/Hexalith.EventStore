@@ -118,8 +118,9 @@ public sealed class ProcessReconciler(
                 }
                 else
                 {
-                    (state, bool observed) = await ScanCandidateAsync(state, runner, cancellationToken).ConfigureAwait(false);
+                    (state, bool observed, bool refused) = await ScanCandidateAsync(state, runner, cancellationToken).ConfigureAwait(false);
                     if (observed) examined++;
+                    if (refused) break;
                 }
 
                 work++;
@@ -258,21 +259,40 @@ public sealed class ProcessReconciler(
         return (state, false, retained && nextOffset == page.Sources.Count ? null : page, nextOffset);
     }
 
-    private async Task<(ProcessSweepState State, bool Observed)> ScanCandidateAsync(ProcessSweepState state, CheckpointedProcessRunner runner, CancellationToken cancellationToken)
+    private async Task<(ProcessSweepState State, bool Observed, bool Refused)> ScanCandidateAsync(ProcessSweepState state, CheckpointedProcessRunner runner, CancellationToken cancellationToken)
+    {
+        try
+        {
+            (ProcessSweepState next, bool observed) = await ScanCandidatePageAsync(state, runner, cancellationToken).ConfigureAwait(false);
+            return (next, observed, false);
+        }
+        catch (ProcessReadAdmissionException)
+        {
+            // Worker pressure is not evidence about this page. Retain its exact
+            // cursor so the next pass must read it before completing coverage.
+            state = await _sweeps.UpdateOwnedAsync(state, current =>
+                (current.ScanReadAdmissionRecorded || current.Reasons.ContainsKey("read-worker-exhausted")
+                    ? current : AddReason(current, "read-worker-exhausted"))
+                    with { NextCatalog = true, ScanReadAdmissionRecorded = true }, cancellationToken).ConfigureAwait(false);
+            return (state, false, true);
+        }
+    }
+
+    private async Task<(ProcessSweepState State, bool Observed)> ScanCandidatePageAsync(ProcessSweepState state, CheckpointedProcessRunner runner, CancellationToken cancellationToken)
     {
         ProcessIndexPage<string>? tenants;
         try
         {
             tenants = await WithDeadline(ct => _checkpoints.ReadTenantPageAsync(state.TenantPage, ct), cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+        catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
         {
             int? tail = null;
             try
             {
                 tail = await WithDeadline(ct => _checkpoints.ReadTenantTailAsync(ct), cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception tailException) when (IsRecoverable(tailException, cancellationToken))
+            catch (Exception tailException) when (tailException is not ProcessReadAdmissionException && IsRecoverable(tailException, cancellationToken))
             {
                 // The page failure remains unresolved; a finite probe yields to other work.
             }
@@ -295,7 +315,7 @@ public sealed class ProcessReconciler(
             {
                 tail = await WithDeadline(ct => _checkpoints.ReadTenantTailAsync(ct), cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+            catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
             {
                 bool probe = state.TenantProbeMisses < LinkedPageFallbackProbes;
                 state = await RecordScanFailureAsync(state, "tenant-tail-unreadable", current => current with
@@ -355,7 +375,7 @@ public sealed class ProcessReconciler(
                 {
                     tail = await WithDeadline(ct => _checkpoints.ReadTenantTailAsync(ct), cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+                catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
                 {
                     state = await RecordScanFailureAsync(state, "tenant-tail-unreadable", current => current with
                     {
@@ -390,7 +410,7 @@ public sealed class ProcessReconciler(
         {
             candidates = await WithDeadline(ct => _checkpoints.ReadCandidatePageAsync(tenant, state.CandidatePage, ct), cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+        catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
         {
             // Sequential page keys let the next page be probed even when this page cannot be decoded.
             int? tail = null;
@@ -398,7 +418,7 @@ public sealed class ProcessReconciler(
             {
                 tail = await WithDeadline(ct => _checkpoints.ReadCandidateTailAsync(tenant, ct), cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception tailException) when (IsRecoverable(tailException, cancellationToken))
+            catch (Exception tailException) when (tailException is not ProcessReadAdmissionException && IsRecoverable(tailException, cancellationToken))
             {
                 // The unreadable page remains unresolved while the finite fallback advances.
             }
@@ -421,7 +441,7 @@ public sealed class ProcessReconciler(
             {
                 tail = await WithDeadline(ct => _checkpoints.ReadCandidateTailAsync(tenant, ct), cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+            catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
             {
                 bool probe = state.CandidateProbeMisses < LinkedPageFallbackProbes;
                 state = await RecordScanFailureAsync(state, "candidate-tail-unreadable", current => current with
@@ -476,7 +496,7 @@ public sealed class ProcessReconciler(
                 {
                     tail = await WithDeadline(ct => _checkpoints.ReadCandidateTailAsync(tenant, ct), cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+                catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
                 {
                     state = await RecordScanFailureAsync(state, "candidate-tail-unreadable", current => current with
                     {
@@ -508,7 +528,14 @@ public sealed class ProcessReconciler(
         {
             state = await ObserveAsync(state, candidate, runner, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
+        catch (ProcessReadAdmissionException)
+        {
+            // Keep both the candidate cursor and its once-per-cycle source marker
+            // when admission is lost after the runner has already completed.
+            state = await RecordSourceFailureAsync(state, candidate, "read-worker-exhausted", cancellationToken).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
         {
             state = await RecordSourceFailureAsync(state, candidate, "source-state-unavailable", cancellationToken).ConfigureAwait(false);
         }
@@ -615,7 +642,15 @@ public sealed class ProcessReconciler(
         finally
         {
             work.Cancel();
-            await renewal.ConfigureAwait(false);
+            try
+            {
+                await renewal.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Preserve a completed source result. The observation and every
+                // later coverage write still verify the durable sweep owner.
+            }
         }
     }
 

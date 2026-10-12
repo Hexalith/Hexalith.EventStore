@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Client.Processes;
 
@@ -85,6 +86,11 @@ public sealed record ProcessSweepState(
     /// <summary>Whether retained population exceeds the configured coverage capacity.</summary>
     public bool CapacityExceeded { get; init; }
 
+    /// <summary>Whether this cycle already counted a refused candidate-registry read, even if its reason folded to other.</summary>
+    [JsonInclude]
+    [JsonPropertyName("scanReadAdmissionRecorded")]
+    internal bool ScanReadAdmissionRecorded { get; init; }
+
     /// <summary>Validates flags, cursors, timestamps, and pending evidence together.</summary>
     public void Validate(TimeProvider? time = null)
     {
@@ -97,6 +103,7 @@ public sealed record ProcessSweepState(
             || Reasons.Count > 16 || Pending.Count > 1024 || PendingObservations.Count > 4096 || PendingPublications.Count > 128 || PendingTransitions.Count > 1024
             || Reasons.Any(static pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Value < 0)
             || Reasons.Sum(static pair => (long)pair.Value) != Unresolved
+            || ScanReadAdmissionRecorded && (Cycle == 0 || Unresolved == 0)
             || Pending.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Value is null
                 || pair.Value.Source is null || pair.Key != ProcessStateKeys.SourceId(pair.Value.Source)
                 || pair.Value.PreparedGeneration < 1 || pair.Value.PreparedGeneration > Generation

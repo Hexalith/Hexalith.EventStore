@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Runtime.CompilerServices;
 
 using Hexalith.EventStore.Client.Effects;
 using Hexalith.EventStore.Client.Gateway;
@@ -20,6 +21,52 @@ namespace Hexalith.EventStore.DomainService.Tests.Processes;
 [Collection("Process read slots")]
 public sealed class ProcessReadDeadlineTests
 {
+    /// <summary>A pure worker fault arriving after timeout is observed without waiting past the deadline.</summary>
+    [Fact]
+    public async Task LateWorkerFaultIsObservedAfterDeadline()
+    {
+        bool unobservedWorker = false;
+        bool controlCollected = false;
+        void OnUnobserved(object? sender, UnobservedTaskExceptionEventArgs args)
+        {
+            string[] messages = args.Exception.Flatten().InnerExceptions.Select(exception => exception.Message).ToArray();
+            if (messages.Contains("synthetic-late-process-fault", StringComparer.Ordinal)) unobservedWorker = true;
+            if (messages.Contains("synthetic-unobserved-control", StringComparer.Ordinal)) controlCollected = true;
+            if (messages.Contains("synthetic-late-process-fault", StringComparer.Ordinal)
+                || messages.Contains("synthetic-unobserved-control", StringComparer.Ordinal)) args.SetObserved();
+        }
+        TaskScheduler.UnobservedTaskException += OnUnobserved;
+        try
+        {
+            await CompleteLateWorkerFaultAsync();
+            CreateUnobservedControl();
+            for (int attempt = 0; attempt < 50 && !controlCollected; attempt++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                await Task.Delay(10);
+            }
+            controlCollected.ShouldBeTrue();
+            unobservedWorker.ShouldBeFalse();
+            (await ProcessReadDeadline.RunAsync(_ => Task.FromResult(1), TimeSpan.FromSeconds(1), CancellationToken.None)).ShouldBe(1);
+        }
+        finally { TaskScheduler.UnobservedTaskException -= OnUnobserved; }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task CompleteLateWorkerFaultAsync()
+    {
+        TaskCompletionSource<int> late = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await Should.ThrowAsync<TimeoutException>(() => ProcessReadDeadline.RunAsync(_ => late.Task,
+            TimeSpan.FromMilliseconds(100), CancellationToken.None));
+        late.SetException(new InvalidOperationException("synthetic-late-process-fault"));
+        await Task.Delay(100);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CreateUnobservedControl()
+        => _ = Task.FromException<int>(new InvalidOperationException("synthetic-unobserved-control"));
+
     /// <summary>Timed-out uncooperative workers exhaust a finite pool without blocking later callers in its queue.</summary>
     [Fact]
     public async Task ExhaustedWorkersRejectPromptlyAndRecoverAfterRelease()

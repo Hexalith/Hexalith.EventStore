@@ -1189,7 +1189,9 @@ public sealed class ProcessPublicationTests
 
             await reconciler.StopAsync(CancellationToken.None);
 
-            (await health.CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+            HealthCheckResult stopped = await health.CheckHealthAsync(new HealthCheckContext());
+            stopped.Status.ShouldBe(HealthStatus.Degraded);
+            ((IReadOnlyDictionary<string, int>)stopped.Data["reasonCounts"])["reconciler-stopped"].ShouldBe(1);
         }
     }
 
@@ -1382,6 +1384,11 @@ public sealed class ProcessPublicationTests
         await reconciler.StartAsync(CancellationToken.None);
         await reconciler.ExecuteTask.ShouldNotBeNull().WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         reconciler.IsRunning.ShouldBeFalse();
+        HealthCheckResult disabled = await new ProcessReadinessHealthCheck(
+            new ProcessSweepStore(store, Options.Create(options), TimeProvider.System), Options.Create(options), TimeProvider.System, reconciler)
+            .CheckHealthAsync(new HealthCheckContext());
+        disabled.Status.ShouldBe(HealthStatus.Degraded);
+        ((IReadOnlyDictionary<string, int>)disabled.Data["reasonCounts"])["reconciliation-disabled"].ShouldBe(1);
         await reconciler.StopAsync(CancellationToken.None);
 
         await catalog.DidNotReceive().ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());

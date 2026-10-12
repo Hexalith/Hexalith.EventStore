@@ -395,6 +395,7 @@ def write_consumer_project(
             processServices.AddEventStoreProcesses<SyntheticProcessCatalog, SyntheticProcessTranslator>(options => {
                 options.ReconciliationInterval = TimeSpan.FromSeconds(1);
                 options.ReadinessMaxAge = TimeSpan.FromMinutes(1);
+                options.LeaseDuration = TimeSpan.FromSeconds(3);
                 options.SupportedCandidateCount = 1;
             });
             using (ServiceProvider processProvider = processServices.BuildServiceProvider()) {

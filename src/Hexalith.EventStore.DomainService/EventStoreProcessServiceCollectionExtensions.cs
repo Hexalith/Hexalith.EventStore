@@ -4,6 +4,7 @@ using Hexalith.EventStore.Client.Registration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
 
@@ -34,7 +35,8 @@ public static class EventStoreProcessServiceCollectionExtensions
         var options = services.AddOptions<EventStoreProcessOptions>();
         _ = options.BindConfiguration(EventStoreProcessOptions.SectionName);
         if (configure is not null) _ = options.Configure(configure);
-        _ = options.Validate(static value => value.Validate().Count == 0, "EventStore:Processes options are invalid.").ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<EventStoreProcessOptions>, EventStoreProcessOptionsValidator>());
+        _ = options.ValidateOnStart();
         _ = services.AddEventStoreReadModelStore();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IProcessSourceCatalog, TCatalog>();

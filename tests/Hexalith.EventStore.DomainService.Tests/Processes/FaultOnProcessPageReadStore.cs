@@ -4,7 +4,7 @@ using Hexalith.EventStore.Testing.Fakes;
 namespace Hexalith.EventStore.DomainService.Tests.Processes;
 
 /// <summary>Fails one discovery page read while retaining the persisted index and other pages.</summary>
-internal sealed class FaultOnProcessPageReadStore(InMemoryReadModelStore inner, string pageKey) : IReadModelStore
+internal sealed class FaultOnProcessPageReadStore(InMemoryReadModelStore inner, string pageKey, bool missing = false) : IReadModelStore
 {
     /// <summary>Gets the number of failed reads.</summary>
     public int PageReads { get; private set; }
@@ -15,7 +15,8 @@ internal sealed class FaultOnProcessPageReadStore(InMemoryReadModelStore inner, 
         if (key == pageKey)
         {
             PageReads++;
-            return Task.FromException<ReadModelEntry<T>>(new TimeoutException("Synthetic process page-read timeout."));
+            return missing ? Task.FromResult(new ReadModelEntry<T>(null, null))
+                : Task.FromException<ReadModelEntry<T>>(new TimeoutException("Synthetic process page-read timeout."));
         }
 
         return inner.GetAsync<T>(storeName, key, cancellationToken);

@@ -195,7 +195,9 @@ public sealed class CheckpointedProcessRunnerTests
                 value.MaxPageBytes = 512;
             });
         }).Build();
-        await Should.ThrowAsync<OptionsValidationException>(() => host.StartAsync());
+        OptionsValidationException failure = await Should.ThrowAsync<OptionsValidationException>(() => host.StartAsync());
+        failure.Failures.ShouldBe(options.Validate());
+        failure.Message.ShouldContain("MaxPageBytes");
     }
 
     /// <summary>Each next page reuses the last returned sequence as the exclusive lower bound.</summary>
@@ -383,10 +385,10 @@ public sealed class CheckpointedProcessRunnerTests
         });
         var submitted = new List<byte>();
         IProcessDelegationProvider delegation = Substitute.For<IProcessDelegationProvider>();
-        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             reusable[0] = 99;
-            return Task.FromResult(new TrustedEffectContext("synthetic", "process", "cause", "token"));
+            return Task.FromResult(new TrustedEffectContext("synthetic", "process", call.ArgAt<string>(1), "token"));
         });
         ITrustedEffectSubmitter submitter = Substitute.For<ITrustedEffectSubmitter>();
         submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -635,7 +637,7 @@ public sealed class CheckpointedProcessRunnerTests
     {
         IProcessDelegationProvider provider = Substitute.For<IProcessDelegationProvider>();
         provider.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new TrustedEffectContext("synthetic", "process", "cause", "token")));
+            .Returns(call => Task.FromResult(new TrustedEffectContext("synthetic", "process", call.ArgAt<string>(1), "token")));
         return provider;
     }
 

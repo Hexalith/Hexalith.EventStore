@@ -24,9 +24,8 @@ public sealed class ProcessReadinessHealthCheck(
             deadline.CancelAfter(_options.OperationTimeout);
             ProcessSweepState state = await _sweeps.GetAsync(deadline.Token).WaitAsync(_options.OperationTimeout, cancellationToken).ConfigureAwait(false);
             bool capacityExceeded = state.RetainedCandidates > _options.SupportedCandidateCount;
-            string? localFailure = _reconciler?.LocalFailureReason;
             var reasons = new Dictionary<string, int>(state.Reasons, StringComparer.Ordinal);
-            if (localFailure is not null) reasons[localFailure] = Math.Max(1, reasons.GetValueOrDefault(localFailure));
+            string? localFailure = AddLocalReasons(reasons);
             var data = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["cycle"] = state.Cycle,
@@ -35,6 +34,7 @@ public sealed class ProcessReadinessHealthCheck(
                 ["pendingDispositions"] = state.Pending.Count,
                 ["pendingPublications"] = state.PendingPublications.Count,
                 ["pendingTransitions"] = state.PendingTransitions.Count,
+                ["pendingObservations"] = state.PendingObservations.Count,
                 ["retainedCandidates"] = state.RetainedCandidates,
                 ["capacityExceeded"] = capacityExceeded,
                 ["reasonCounts"] = reasons,
@@ -49,7 +49,22 @@ public sealed class ProcessReadinessHealthCheck(
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Degraded("Process recovery state is unavailable.");
+            var reasons = new Dictionary<string, int>(StringComparer.Ordinal);
+            _ = AddLocalReasons(reasons);
+            return HealthCheckResult.Degraded("Process recovery state is unavailable.", data: new Dictionary<string, object>(StringComparer.Ordinal)
+            {
+                ["stateAvailable"] = false,
+                ["reasonCounts"] = reasons,
+            });
         }
+    }
+
+    private string? AddLocalReasons(Dictionary<string, int> reasons)
+    {
+        string? failure = _reconciler?.LocalFailureReason;
+        if (failure is not null) reasons[failure] = Math.Max(1, reasons.GetValueOrDefault(failure));
+        if (!_options.ReconciliationEnabled) reasons["reconciliation-disabled"] = Math.Max(1, reasons.GetValueOrDefault("reconciliation-disabled"));
+        else if (_reconciler is { IsRunning: false }) reasons["reconciler-stopped"] = Math.Max(1, reasons.GetValueOrDefault("reconciler-stopped"));
+        return failure;
     }
 }
