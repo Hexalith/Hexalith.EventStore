@@ -2,8 +2,9 @@
 title: 'Story 6.2: Folded Snapshot Actor Proofs'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
+baseline_commit: '1b7b8ce287d510487946b7db3babd3323b4c52b3'
 review_loop_iteration: 0
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-folded-snapshot.md'
@@ -44,12 +45,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- recompute the normative digest and stop on mismatch.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorDomainResultTests.cs` -- assert qualified due-check arguments, the 9-argument `CreateSnapshotAsync` for "does not stage", no `SaveStateAsync` on pre-commit cancellation, the replacement allowlist including `SnapshotUnprotectUnavailable` and an unlisted rejection, the `SnapshotPolicyUnavailable` log class, and remove the Story 3.9 / H2 / M2 comments.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs` -- restore the concrete `(tenant, domain, 2, 0)` due-check stub.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Events/FoldedSnapshotReadTests.cs` -- drive protected and ambiguous retention through `LoadSnapshotForCommandAsync` with a verified head; add negative, fractional, string, and duplicate `snapshotEnvelopeVersion` cases.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorManualSnapshotTests.cs` -- cover `UnreadableProtected`, `ProviderOpaque`, shape-colliding `Corrupt`, and equality-only `AlreadyCurrent`; drop the unreachable setup in `CreateManualSnapshotAsync_RenamedEnvelopeSerializerIsUnsupported`.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorFoldedSnapshotMigrationTests.cs` -- assert `result.Message`, `snapshotLogger`, and no exception object on snapshot logs; assert bounded `SnapshotStreamUnavailable` for the orphan snapshot.
+- [x] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- recompute the normative digest and stop on mismatch.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorDomainResultTests.cs` -- assert qualified due-check arguments, the 9-argument `CreateSnapshotAsync` for "does not stage", no `SaveStateAsync` on pre-commit cancellation, the replacement allowlist including `SnapshotUnprotectUnavailable` and an unlisted rejection, the `SnapshotPolicyUnavailable` log class, and remove the Story 3.9 / H2 / M2 comments.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs` -- restore the concrete `(tenant, domain, 2, 0)` due-check stub.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Events/FoldedSnapshotReadTests.cs` -- drive protected and ambiguous retention through `LoadSnapshotForCommandAsync` with a verified head; add negative, fractional, string, and duplicate `snapshotEnvelopeVersion` cases.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorManualSnapshotTests.cs` -- cover `UnreadableProtected`, `ProviderOpaque`, shape-colliding `Corrupt`, and equality-only `AlreadyCurrent`; drop the unreachable setup in `CreateManualSnapshotAsync_RenamedEnvelopeSerializerIsUnsupported`.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorFoldedSnapshotMigrationTests.cs` -- assert `result.Message`, `snapshotLogger`, and no exception object on snapshot logs; assert bounded `SnapshotStreamUnavailable` for the orphan snapshot.
 
 **Acceptance Criteria:**
 - Given the approved artifact, when the normative digest is recomputed, then it is `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` and no marker byte changed.
@@ -58,9 +59,30 @@ context:
 
 ## Implementation Notes
 
+- The actor now observes caller cancellation immediately before the event-batch save. Snapshot replacement staging logs an allowlisted reason class; manual refusal/failure messages and orphan-stream results preserve only support-safe reason codes.
+- Matrix coverage: the qualified due and pre-commit cancel rows run in `AggregateActorDomainResultTests`; manual retain runs in `AggregateActorManualSnapshotTests` and `AggregateActorFoldedSnapshotMigrationTests`; redacted replacement runs in `AggregateActorFoldedSnapshotMigrationTests`.
+- The tracked-content scan initially flagged two generated RSA variable declarations in an existing workload test. Renaming those local variables preserved behavior and restored the Server gate without changing the scan rules.
+
 ## Spec Change Log
 
+- 2026-10-12: Added actor decision proofs and the narrow runtime corrections those proofs exposed. The frozen intent and normative HX-FS-V1 bytes remain unchanged.
+- 2026-10-12: Closed seven verified review proof gaps. The final full Server run passed after the existing generated-RSA test fixture was renamed to satisfy its tracked-content scan.
+
 ## Review Triage Log
+
+| Finding | Verdict and evidence | Route |
+| --- | --- | --- |
+| BH1 replacement logger can throw after staging | low — A custom `ILogger` that throws could interrupt optional capture after staging, but normal logging providers do not do this and the actor already has many logger calls in the command path. A special guard adds failure handling for a rare logger defect. | reject |
+| BH2 orphan reason recognized outside reconstruction | low — An unrelated `InvalidOperationException` with the exact `SnapshotStreamUnavailable` message could be mislabeled at another diagnostic stage. The emitted reason remains support-safe; restricting stage alone would lose the orphan's Processing result, so a distinct exception type would be needed. | reject |
+| BH3 cancellation test omits cache-discard assertion | false — `InspectEventBatchSaveFailureAsync` clears the actor cache with `CancellationToken.None` before rethrowing the cancellation; the stated later-save commit cannot occur on the demonstrated path. | reject |
+| BH4 manual retain test accepts wrong outcome | medium — The new theory only excludes `Created` and `AlreadyCurrent`, so a `NotFound` regression would pass for a proven existing stream. | patch |
+| BH5 false-policy test is unqualified | medium — The test stubs an old overload and has no qualification, so it does not exercise the actor's actual false-policy decision even though its new assertion uses the current create overload. | patch |
+| BH6 version-zero non-positive fixture removed | medium — Changing the fixture to version 1 loses the local command-path zero/negative legacy sequence proof required by V17. | patch |
+| BH7 unprotect replacement proof lacks durable/redaction checks | medium — The new `SnapshotUnprotectUnavailable` branch asserts staging and reason class but does not check batch save or absence of the provider detail from diagnostics. | patch |
+| BH8 failure-log exception argument is untested | medium — Successful replacement logs cannot prove warning redaction when optional snapshot creation fails. | patch |
+| BH9 orphan result bound is loosely asserted | low — `Contains` and one excluded field allow additional data in `FailureReason` and leave `ErrorMessage` unchecked; exact safe-text assertions are direct corrections. | patch |
+| VG1 manual address mismatch has no actor proof | medium — `AddressMismatch` is newly allowlisted for the manual result, but existing tests stop at manager inspection; removing it would silently degrade the API and saved job reason. | patch |
+| VG2 manual warning redaction is untested | medium — The provider-message test verifies the result only, so logging exception text or attaching an exception would pass. | patch |
 
 ## Verification
 
@@ -68,3 +90,7 @@ context:
 - `python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-folded-snapshot.md').read_bytes(); b=b'<!-- HX-FS-V1-NORMATIVE-BEGIN -->\n'; e=b'<!-- HX-FS-V1-NORMATIVE-END -->\n'; assert p.count(b)==p.count(e)==1 and b'\r' not in p and not p.startswith(b'\xef\xbb\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"` -- expected: `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release` -- expected: pass, warnings as errors
 - `git diff --check` -- expected: no whitespace errors
+
+**Results (2026-10-12):** The normative digest matched `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` and the approved overhead is 4096 bytes. The Release Server test project build passed with zero warnings and errors. All five affected Server test classes passed on the reviewed binaries: 207 tests, zero failures or skips. The workload controller class passed 7/7, and the isolated tracked-content scan passed after the fixture rename. `git diff --check` passed.
+
+The final full Server project command `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-build` passed: 4,437 succeeded, 0 failed, and 25 pre-existing DW1 ATDD skips. The earlier full-run secret-scan failure was resolved without changing the scan rules. The review deferred no findings; two low-impact findings were rejected and one was refuted after tracing the cache-discard path.

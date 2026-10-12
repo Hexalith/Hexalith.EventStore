@@ -1614,6 +1614,7 @@ public partial class AggregateActor(
                         bool eventBatchSaveAttempted = false;
                         try {
                             await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
                             eventBatchSaveAttempted = true;
                             await StateManager.SaveStateAsync().ConfigureAwait(false);
                         }
@@ -2400,13 +2401,21 @@ public partial class AggregateActor(
                 or SnapshotLoadOutcome.ProviderOpaque
                 or SnapshotLoadOutcome.Corrupt)
                 && snapshotInspection.ReasonCode != "SnapshotStateShapeCollision") {
+                string reasonClass = snapshotInspection.ReasonCode switch
+                {
+                    "SnapshotUnreadableProtected" or "SnapshotProtectionOpaque" or
+                    "SnapshotEnvelopeVersionUnknown" or "SnapshotRecordUnavailable" or
+                    "AddressMismatch" or "SnapshotStateInvalid" or
+                    "SnapshotSequenceInvalid" or "CorruptSnapshot" => snapshotInspection.ReasonCode,
+                    _ => snapshotInspection.Outcome.ToString(),
+                };
                 return new ManualSnapshotResult(
                     snapshotInspection.ReasonCode is "SnapshotStateInvalid" or "SnapshotSequenceInvalid"
                         ? ManualSnapshotOutcome.InfrastructureFailure : ManualSnapshotOutcome.UnreadableProtected,
                     metadata.CurrentSequence,
                     identity.SnapshotKey,
-                    snapshotInspection.ReasonCode ?? snapshotInspection.Outcome.ToString(),
-                    "Existing snapshot cannot be safely read.");
+                    reasonClass,
+                    $"Existing snapshot cannot be safely read: {reasonClass}.");
             }
 
             if ((snapshotInspection.Snapshot?.SequenceNumber ?? snapshotInspection.CoveredSequence) is long coveredSequence
@@ -2557,18 +2566,7 @@ public partial class AggregateActor(
                 }
             }
 
-            logger.LogWarning(
-                "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}",
-                correlationId,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                ex.GetType().Name);
-            return new ManualSnapshotResult(
-                ManualSnapshotOutcome.InfrastructureFailure,
-                currentSequence,
-                identity.SnapshotKey,
-                LogicalEventReadRejection.IsRejection(ex)
+            string reasonCode = LogicalEventReadRejection.IsRejection(ex)
                     ? LogicalEventReadRejection.ReasonCode
                     : ex is InvalidOperationException && ex.Message is
                         ("SnapshotSerializerUnsupported" or "SnapshotCaptureUnsupported" or
@@ -2577,8 +2575,13 @@ public partial class AggregateActor(
                         "SnapshotReadbackMismatch" or "SnapshotSequenceInvalid" or
                         "SnapshotStateChangedByNoOpProtection")
                     ? ex.Message
-                    : "InfrastructureFailure",
-                "Manual snapshot creation failed.");
+                    : "InfrastructureFailure";
+            logger.LogWarning(
+                "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass={FailureClass}",
+                correlationId, identity.TenantId, identity.Domain, identity.AggregateId, reasonCode);
+            return new ManualSnapshotResult(
+                ManualSnapshotOutcome.InfrastructureFailure, currentSequence, identity.SnapshotKey,
+                reasonCode, $"Manual snapshot creation failed: {reasonCode}.");
         }
     }
 

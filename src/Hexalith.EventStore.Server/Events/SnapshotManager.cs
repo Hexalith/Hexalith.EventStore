@@ -86,7 +86,7 @@ public partial class SnapshotManager(
             limits, correlationId, cancellationToken, throwOnFailure);
 
     /// <summary>Stages an actor-owned automatic replacement with an allowlisted retained-key reason.</summary>
-    internal Task<bool> CreateAutomaticReplacementAsync(
+    internal async Task<bool> CreateAutomaticReplacementAsync(
         AggregateIdentity identity,
         long sequenceNumber,
         object state,
@@ -105,8 +105,16 @@ public partial class SnapshotManager(
         {
             throw new ArgumentOutOfRangeException(nameof(replacementReasonClass));
         }
-        return CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
-            limits, correlationId, cancellationToken, throwOnFailure: false);
+        bool staged = await CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
+            limits, correlationId, cancellationToken, throwOnFailure: false).ConfigureAwait(false);
+        if (staged)
+        {
+            logger.LogInformation(
+                "Snapshot replacement staged: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}",
+                correlationId, identity.TenantId, identity.Domain, identity.AggregateId,
+                sequenceNumber, replacementReasonClass);
+        }
+        return staged;
     }
 
     private async Task<bool> CreateSnapshotCoreAsync(

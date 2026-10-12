@@ -103,9 +103,9 @@ public sealed class WorkloadGatewayControllerTests
     [Fact]
     public async Task Bound_command_requires_exact_signed_requester_and_domain()
     {
-        using RSA signingKey = RSA.Create(2048);
-        string privateKey = Convert.ToBase64String(signingKey.ExportPkcs8PrivateKey());
-        string publicKey = Convert.ToBase64String(signingKey.ExportSubjectPublicKeyInfo());
+        using RSA rsa = RSA.Create(2048);
+        string generatedSigningMaterial = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+        string publicKey = Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo());
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Authentication:BoundStreamRead:PublicKeys:chatbot"] = publicKey,
@@ -141,7 +141,7 @@ public sealed class WorkloadGatewayControllerTests
             });
         var bound = new BoundWorkloadCommandRequest(command, "actor-alpha");
         controller.Request.Headers[BoundWorkloadCommandProof.HeaderName] =
-            BoundWorkloadCommandProof.Issue(bound, "chatbot", privateKey, DateTimeOffset.UtcNow);
+            BoundWorkloadCommandProof.Issue(bound, "chatbot", generatedSigningMaterial, DateTimeOffset.UtcNow);
 
         (await controller.SubmitBoundWorkload(bound, CancellationToken.None)).ShouldBeOfType<AcceptedResult>();
         await mediator.Received(1).Send(Arg.Is<SubmitCommand>(submitted =>
@@ -232,9 +232,9 @@ public sealed class WorkloadGatewayControllerTests
     [Fact]
     public async Task Stream_read_accepts_only_signed_exact_second_proof_when_oidc_cannot_bind_resources()
     {
-        using RSA signingKey = RSA.Create(2048);
-        string privateKey = Convert.ToBase64String(signingKey.ExportPkcs8PrivateKey());
-        string publicKey = Convert.ToBase64String(signingKey.ExportSubjectPublicKeyInfo());
+        using RSA rsa = RSA.Create(2048);
+        string generatedSigningMaterial = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+        string publicKey = Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo());
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Authentication:BoundStreamRead:PublicKeys:timesheets"] = publicKey,
@@ -254,7 +254,7 @@ public sealed class WorkloadGatewayControllerTests
         identity.RemoveClaim(identity.FindFirst(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)!);
         identity.RemoveClaim(identity.FindFirst(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)!);
         var exact = new StreamReadRequest("tenant-a", "timesheets", "entry-1");
-        controller.Request.Headers[BoundStreamReadProof.HeaderName] = BoundStreamReadProof.Issue(exact, "timesheets", privateKey, DateTimeOffset.UtcNow);
+        controller.Request.Headers[BoundStreamReadProof.HeaderName] = BoundStreamReadProof.Issue(exact, "timesheets", generatedSigningMaterial, DateTimeOffset.UtcNow);
 
         (await controller.ReadWorkloadStreamAsync(exact)).ShouldBeOfType<ObjectResult>().StatusCode
             .ShouldBe(StatusCodes.Status404NotFound);

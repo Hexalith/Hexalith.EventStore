@@ -84,6 +84,8 @@ internal static class ProtectedDataDiagnosticRedactor {
             : stage == "rehydrate"
                 && LogicalEventReadRejection.IsRejection(exception)
                 ? LogicalEventReadRejection.ReasonCode
+                : exception is InvalidOperationException { Message: "SnapshotStreamUnavailable" }
+                    ? "SnapshotStreamUnavailable"
                 : DefaultReasonCode;
 
     private static string? GetStage(Exception exception, string? fallbackStage)
@@ -96,6 +98,7 @@ internal static class ProtectedDataDiagnosticRedactor {
         => value switch {
             DefaultReasonCode => DefaultReasonCode,
             LogicalEventReadRejection.ReasonCode => LogicalEventReadRejection.ReasonCode,
+            "SnapshotStreamUnavailable" => "SnapshotStreamUnavailable",
             ProtectedDataReadabilityDecision.ReadableCode => ProtectedDataReadabilityDecision.ReadableCode,
             ProtectedDataReadabilityDecision.DeferredValidationCode => ProtectedDataReadabilityDecision.DeferredValidationCode,
             ProtectedDataReadabilityDecision.RestoreConflictCode => ProtectedDataReadabilityDecision.RestoreConflictCode,

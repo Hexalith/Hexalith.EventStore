@@ -36,15 +36,24 @@ public sealed class FoldedSnapshotReadTests
         replay.Events.Count.ShouldBe(1);
     }
 
-    [Fact]
-    public async Task UnknownVersionIsRetainedBeforeStateInterpretation()
+    [Theory]
+    [InlineData("2")]
+    [InlineData("-1")]
+    [InlineData("1.5")]
+    [InlineData("\"1\"")]
+    [InlineData("1,\"snapshotEnvelopeVersion\":1")]
+    public async Task UnknownVersionIsRetainedBeforeStateInterpretation(string versionJson)
     {
         var store = new InMemoryStateManager();
         await store.SetStateAsync(Identity.SnapshotKey,
-            JsonSerializer.Deserialize<JsonElement>("""{"snapshotEnvelopeVersion":2,"sequenceNumber":1,"state":"secret"}"""));
+            JsonSerializer.Deserialize<JsonElement>(
+                "{\"snapshotEnvelopeVersion\":" + versionJson + ",\"sequenceNumber\":1,\"state\":\"secret\"}"));
         await store.SaveStateAsync();
 
-        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+        result.ReasonCode.ShouldBe("SnapshotEnvelopeVersionUnknown");
         (await Manager().InspectSnapshotForManualOverwriteAsync(Identity, store)).Outcome
             .ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
@@ -105,18 +114,24 @@ public sealed class FoldedSnapshotReadTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public async Task NonPositiveCoveredSequenceIsRetainedAndBypassed(long sequence)
+    [InlineData(0, 0)]
+    [InlineData(0, -1)]
+    [InlineData(1, 0)]
+    [InlineData(1, -1)]
+    public async Task NonPositiveCoveredSequenceIsRetainedAndBypassed(int version, long sequence)
     {
         var store = new InMemoryStateManager();
         JsonElement raw = JsonSerializer.Deserialize<JsonElement>(
-            "{\"snapshotEnvelopeVersion\":0,\"sequenceNumber\":" + sequence
+            "{\"snapshotEnvelopeVersion\":" + version + ",\"sequenceNumber\":" + sequence
             + ",\"state\":{},\"createdAt\":\"2026-01-01T00:00:00Z\",\"domain\":\"domain\",\"aggregateId\":\"aggregate\",\"tenantId\":\"tenant\"}");
         await store.SetStateAsync(Identity.SnapshotKey, raw);
         await store.SaveStateAsync();
 
-        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        SnapshotLoadResult commandResult = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        commandResult.Snapshot.ShouldBeNull();
+        commandResult.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+        commandResult.ReasonCode.ShouldBe("SnapshotSequenceInvalid");
         (await Manager().InspectSnapshotForManualOverwriteAsync(Identity, store)).ReasonCode
             .ShouldBe("SnapshotSequenceInvalid");
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
@@ -137,7 +152,22 @@ public sealed class FoldedSnapshotReadTests
             JsonSerializer.Deserialize<JsonElement>(
                 """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":"cipher","createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"metadataVersion":1}}"""));
         await store.SaveStateAsync();
-        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        SnapshotLoadResult protectedMalformed = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        protectedMalformed.Snapshot.ShouldBeNull();
+        protectedMalformed.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+        protectedMalformed.ReasonCode.ShouldBe("CorruptSnapshot");
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+
+        await store.SetStateAsync(Identity.SnapshotKey,
+            JsonSerializer.Deserialize<JsonElement>(
+                """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":"cipher","createdAt":"2026-01-01T00:00:00Z","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"metadataVersion":1,"scheme":"test-provider"}}"""));
+        await store.SaveStateAsync();
+        SnapshotLoadResult protectedUnreadable = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        protectedUnreadable.Snapshot.ShouldBeNull();
+        protectedUnreadable.Outcome.ShouldBe(SnapshotLoadOutcome.UnreadableProtected);
+        protectedUnreadable.ReasonCode.ShouldBe("SnapshotUnreadableProtected");
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }
 
@@ -185,7 +215,11 @@ public sealed class FoldedSnapshotReadTests
             """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"state":0,"metadataVersion":1}}"""));
         await store.SaveStateAsync();
 
-        (await Manager().LoadSnapshotAsync(Identity, store)).ShouldBeNull();
+        SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        result.Snapshot.ShouldBeNull();
+        result.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+        result.ReasonCode.ShouldBe("CorruptSnapshot");
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }
 

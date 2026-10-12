@@ -56,6 +56,111 @@ public class AggregateActorManualSnapshotTests {
             Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(SnapshotLoadOutcome.UnreadableProtected, "SnapshotUnreadableProtected", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.ProviderOpaque, "SnapshotProtectionOpaque", ManualSnapshotOutcome.UnreadableProtected)]
+    [InlineData(SnapshotLoadOutcome.Corrupt, "SnapshotStateInvalid", ManualSnapshotOutcome.InfrastructureFailure)]
+    public async Task CreateManualSnapshotAsync_UnreadableOrCorruptInspectionRetainsKey(
+        SnapshotLoadOutcome outcome, string reason, ManualSnapshotOutcome expectedOutcome)
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        SnapshotRecord retained = new(1, JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""),
+            DateTimeOffset.UnixEpoch, identity.Domain, identity.AggregateId, identity.TenantId);
+        await stateManager.SetStateAsync(identity.SnapshotKey, retained);
+        await stateManager.SaveStateAsync();
+        int writesBefore = stateManager.Trace.Count(entry => entry == $"SetState:{identity.SnapshotKey}");
+        int savesBefore = stateManager.Trace.Count(entry => entry == "SaveState");
+        ISnapshotManager snapshots = Substitute.For<ISnapshotManager>();
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new SnapshotLoadResult(outcome, null, reason));
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-retain");
+
+        result.Outcome.ShouldBe(expectedOutcome);
+        result.ReasonCode.ShouldBe(reason);
+        result.Message.ShouldBe($"Existing snapshot cannot be safely read: {reason}.");
+        stateManager.Trace.Count(entry => entry == $"SetState:{identity.SnapshotKey}").ShouldBe(writesBefore);
+        stateManager.Trace.Count(entry => entry == "SaveState").ShouldBe(savesBefore);
+        stateManager.CommittedState[identity.SnapshotKey].ShouldBe(retained);
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_WrongAddressRetainsKeyWithSafeReason()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        JsonElement retained = JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{"count":1},"createdAt":"2026-01-01T00:00:00Z","domain":"orders","aggregateId":"other-order","tenantId":"tenant-a"}""");
+        await stateManager.SetStateAsync(identity.SnapshotKey, retained);
+        await stateManager.SaveStateAsync();
+        int writesBefore = stateManager.Trace.Count(entry => entry == $"SetState:{identity.SnapshotKey}");
+        int savesBefore = stateManager.Trace.Count(entry => entry == "SaveState");
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-address-mismatch");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.UnreadableProtected);
+        result.ReasonCode.ShouldBe("AddressMismatch");
+        result.Message.ShouldBe("Existing snapshot cannot be safely read: AddressMismatch.");
+        stateManager.Trace.Count(entry => entry == $"SetState:{identity.SnapshotKey}").ShouldBe(writesBefore);
+        stateManager.Trace.Count(entry => entry == "SaveState").ShouldBe(savesBefore);
+        JsonElement.DeepEquals(stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<JsonElement>(),
+            retained).ShouldBeTrue();
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(1, ManualSnapshotOutcome.Created)]
+    [InlineData(2, ManualSnapshotOutcome.AlreadyCurrent)]
+    public async Task CreateManualSnapshotAsync_OnlyEqualFoldedSnapshotIsAlreadyCurrent(
+        long existingSequence, ManualSnapshotOutcome expected)
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshots = CreateStagingSnapshotManager(identity, stateManager);
+        SnapshotRecord existing = new(existingSequence,
+            JsonSerializer.Deserialize<JsonElement>("""{"status":"old"}"""),
+            DateTimeOffset.UnixEpoch, identity.Domain, identity.AggregateId, identity.TenantId)
+            { SnapshotEnvelopeVersion = 1 };
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.Readable(existing));
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(expected);
+        if (expected == ManualSnapshotOutcome.AlreadyCurrent)
+        {
+            stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+            stateManager.Trace.ShouldNotContain("SaveState");
+            _ = await reconstructor.DidNotReceive().ReconstructAsync(
+                Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SequenceNumber.ShouldBe(2);
+            stateManager.Trace.ShouldContain("SaveState");
+        }
+    }
+
     [Fact]
     public async Task CreateManualSnapshotAsync_ProviderMessageWithSnapshotPrefixIsNotReturned()
     {
@@ -71,12 +176,27 @@ public class AggregateActorManualSnapshotTests {
                 2, false, "corr-sensitive", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<AggregateReconstructionResult>(
                 new InvalidOperationException("Snapshot private provider detail")));
-        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor,
+            logger: logger);
 
         ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-sensitive");
 
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
         result.ReasonCode.ShouldBe("InfrastructureFailure");
+        result.Message.ShouldNotBeNull().ShouldContain("InfrastructureFailure");
+        result.Message.ShouldNotContain("Snapshot private provider detail");
+        logger.ReceivedCalls().Any(call => call.GetArguments().Length > 3
+            && call.GetArguments()[0] is LogLevel.Warning
+            && call.GetArguments()[2]?.ToString()?.Contains("FailureClass=InfrastructureFailure",
+                StringComparison.Ordinal) == true).ShouldBeTrue();
+        logger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
+            && call.GetArguments()[2]?.ToString()?.Contains("Manual snapshot creation failed",
+                StringComparison.Ordinal) == true)
+            .All(call => call.GetArguments()[3] is null
+                && !call.GetArguments()[2]!.ToString()!.Contains("Snapshot private provider detail",
+                    StringComparison.Ordinal)).ShouldBeTrue();
         stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
     }
 
@@ -136,6 +256,32 @@ public class AggregateActorManualSnapshotTests {
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(savesBefore);
         JsonElement.DeepEquals(stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<JsonElement>(), retained)
             .ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_ShapeCollisionCanMigrateOnlyAfterValidFold()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        JsonElement retained = JsonSerializer.Deserialize<JsonElement>(
+            """{"sequenceNumber":1,"state":{"currentSequence":1,"events":[]},"createdAt":"2026-01-01T00:00:00Z","domain":"orders","aggregateId":"order-1","tenantId":"tenant-a"}""");
+        await stateManager.SetStateAsync(identity.SnapshotKey, retained);
+        await stateManager.SaveStateAsync();
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(identity, "OrderAggregate", Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                2, false, "corr-migrate", Arg.Any<CancellationToken>())
+            .Returns(AggregateReconstructionResult.Succeeded("""{"status":"ready"}""", 2));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-migrate");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
+        SnapshotRecord replacement = stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        replacement.SequenceNumber.ShouldBe(2);
+        replacement.State.ShouldBeOfType<JsonElement>().GetProperty("status").GetString().ShouldBe("ready");
     }
 
     [Fact]
@@ -355,37 +501,6 @@ public class AggregateActorManualSnapshotTests {
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(SnapshotLoadResult.Absent());
-        SnapshotRecord? attempted = null;
-        _ = snapshotManager.CreateSnapshotAsync(
-                identity,
-                2,
-                Arg.Any<object>(),
-                stateManager,
-                Arg.Any<JsonSerializerOptions>(),
-                Arg.Any<FoldedSnapshotCaptureLimits>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>(),
-                true)
-            .Returns(async _ => {
-                attempted = new SnapshotRecord(
-                    2,
-                    new { CurrentStatus = "ready" },
-                    DateTimeOffset.UnixEpoch,
-                    identity.Domain,
-                    identity.AggregateId,
-                    identity.TenantId) { SnapshotEnvelopeVersion = 1 };
-                await stateManager.SetStateAsync(identity.SnapshotKey, attempted).ConfigureAwait(false);
-            });
-        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
-        stateManager.ActBeforeCall(
-            $"TryGetState:{identity.SnapshotKey}",
-            2,
-            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object> {
-                [identity.SnapshotKey] = attempted! with {
-                    State = JsonSerializer.Deserialize<JsonElement>(
-                        """{"current_status":"ready"}"""),
-                },
-            }));
         var actorStateOptions = new JsonSerializerOptions {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         };
@@ -573,10 +688,11 @@ public class AggregateActorManualSnapshotTests {
         ISnapshotManager snapshotManager,
         IAggregateStateReconstructor reconstructor,
         JsonSerializerOptions? actorStateJsonSerializerOptions = null,
-        string? qualifiedAggregateType = "OrderAggregate") {
+        string? qualifiedAggregateType = "OrderAggregate",
+        ILogger<AggregateActor>? logger = null) {
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(identity.ActorId) });
-        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        logger ??= Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
 
         var actor = new AggregateActor(

@@ -171,8 +171,13 @@ public class AggregateActorInfrastructureFailureTests
             .Returns(DomainResult.Success([new TestEvent()])
                 with { PostCommandStateJson = """{"count":2}""" });
         _ = context.SnapshotManager.ShouldCreateSnapshotAsync(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<long>(), Arg.Any<long>(),
+                command.TenantId, command.Domain, command.Domain,
+                1, 0,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = context.SnapshotManager.ShouldCreateSnapshotAsync(
+                command.TenantId, command.Domain, command.Domain,
+                2, 0,
                 Arg.Any<CancellationToken>())
             .Returns(true);
         _ = context.SnapshotManager.CreateSnapshotAsync(

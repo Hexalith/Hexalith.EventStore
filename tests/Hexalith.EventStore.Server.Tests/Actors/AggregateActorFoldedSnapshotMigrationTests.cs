@@ -43,8 +43,12 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
         ActorTestContext actor = CreateActor(stateManager: stateManager, snapshotManager: snapshots);
 
-        _ = await actor.Actor.ProcessCommandAsync(command);
+        CommandProcessingResult result = await actor.Actor.ProcessCommandAsync(command);
 
+        result.Accepted.ShouldBeFalse();
+        const string safeFailure = "Protected data diagnostic details were redacted. ReasonCode=SnapshotStreamUnavailable; Stage=Processing.";
+        result.FailureReason.ShouldBe(safeFailure);
+        result.ErrorMessage.ShouldBe(safeFailure);
         stateManager.Trace.ShouldContain($"TryGetState:{identity.MetadataKey}");
         stateManager.Trace.ShouldContain($"ContainsState:{identity.SnapshotKey}");
         stateManager.Trace.ShouldNotContain($"TryGetState:{identity.SnapshotKey}");
@@ -54,12 +58,42 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
     }
 
+    [Fact]
+    public async Task SnapshotCreationFailureLogsOnlySafeClassWithoutException()
+    {
+        AggregateIdentity identity = CreateTestEnvelope().AggregateIdentity;
+        ILogger<SnapshotManager> snapshotLogger = Substitute.For<ILogger<SnapshotManager>>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(identity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SnapshotProtectionResult>(
+                new IOException("provider-secret-detail")));
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), snapshotLogger, protection);
+        var stateManager = new FaultInjectingActorStateManager();
+
+        bool staged = await manager.CreateAutomaticReplacementAsync(identity, 1,
+            JsonSerializer.Deserialize<JsonElement>("""{"count":1}"""), stateManager,
+            JsonSerializerOptions.Web, SnapshotTestLimits.ForState(),
+            "SnapshotUnreadableProtected", "corr-safe-warning", CancellationToken.None);
+
+        staged.ShouldBeFalse();
+        snapshotLogger.ReceivedCalls().Any(call => call.GetArguments().Length > 3
+            && call.GetArguments()[0] is LogLevel.Warning
+            && call.GetArguments()[2]?.ToString()?.Contains("FailureClass=SnapshotCreateUnavailable",
+                StringComparison.Ordinal) == true).ShouldBeTrue();
+        snapshotLogger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
+            && call.GetArguments()[0] is LogLevel.Warning)
+            .All(call => call.GetArguments()[3] is null
+                && !call.GetArguments()[2]!.ToString()!.Contains("provider-secret-detail",
+                    StringComparison.Ordinal)).ShouldBeTrue();
+        stateManager.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+    }
+
     [Theory]
-    [InlineData(false, "SnapshotEnvelopeVersionUnknown")]
-    [InlineData(true, "SnapshotProviderOpaque")]
-    [InlineData(null, "SnapshotUnreadableProtected")]
+    [InlineData(false, "SnapshotEnvelopeVersionUnknown", "SnapshotEnvelopeVersionUnknown")]
+    [InlineData(true, "SnapshotProviderOpaque", "SnapshotProtectionOpaque")]
+    [InlineData(null, "SnapshotUnreadableProtected", "SnapshotUnreadableProtected")]
     public async Task RetainedUnknownOpaqueOrUnreadableSnapshotIsReplacedWithSafeReasonAndCommittedFold(
-        bool? opaque, string expectedReasonClass)
+        bool? opaque, string expectedReasonClass, string expectedManualReasonClass)
     {
         CommandEnvelope command = CreateTestEnvelope(correlationId: "folded-replacement");
         AggregateIdentity identity = command.AggregateIdentity;
@@ -72,6 +106,13 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         using ServiceProvider services = QualificationProvider(identity);
         ActorTestContext actor = CreateActor(stateManager: stateManager,
             serviceProvider: services, payloadProtectionService: protection, snapshotManager: snapshots);
+        ManualSnapshotResult manualResult = await actor.Actor.CreateManualSnapshotAsync("folded-manual-retain");
+        manualResult.Outcome.ShouldBe(ManualSnapshotOutcome.UnreadableProtected);
+        manualResult.ReasonCode.ShouldBe(expectedManualReasonClass);
+        manualResult.Message.ShouldNotBeNull().ShouldContain(expectedManualReasonClass);
+        manualResult.Message.ShouldNotContain("retained-sensitive-value");
+        JsonElement.DeepEquals(stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<JsonElement>(),
+            retained).ShouldBeTrue();
         _ = actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
                 "test-profile", Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new TestEvent()])
@@ -101,6 +142,14 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             StringComparison.Ordinal)).ShouldBeTrue();
         messages.Any(message => message.Contains("retained-sensitive-value", StringComparison.Ordinal))
             .ShouldBeFalse();
+        snapshotLogger.ReceivedCalls().Any(call => call.GetArguments().Length > 2
+            && call.GetArguments()[2]?.ToString()?.Contains($"ReplacementReasonClass={expectedReasonClass}",
+                StringComparison.Ordinal) == true).ShouldBeTrue();
+        actor.Logger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
+            && call.GetArguments()[2]?.ToString()?.Contains("snapshot", StringComparison.OrdinalIgnoreCase) == true)
+            .All(call => call.GetArguments()[3] is null).ShouldBeTrue();
+        snapshotLogger.ReceivedCalls().Where(call => call.GetArguments().Length > 3)
+            .All(call => call.GetArguments()[3] is null).ShouldBeTrue();
     }
 
     [Fact]
