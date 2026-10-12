@@ -5874,3 +5874,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Exercise successor support-boundary measurement through real validation.
   evidence: R4-VG1: tests handcraft successor tables and mock validation; no owned test calls measure_successor_support_table or measure-boundary. Removing the measured refused treatment leaves all eleven SupportBoundaryTests green but produces an invalid owner boundary.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound shared aggregate replay response buffering before deserialization.
+  evidence: R5-BH3: DaprAggregateStateReconstructor uses default buffered SendAsync followed by ReadFromJsonAsync before the manual candidate size check. The shared transport is unchanged since the story baseline; a separate bounded replay response/resource contract must cover ordinary Admin reconstruction as well as manual snapshots.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Verify authenticated human authority through controller, idempotency admission, handler signing, and invoker transport.
+  evidence: R5-VG2: HumanAuthorityReceiptCodecTests construct authority/receipts directly; no test proves authenticated controller capture and receipt issuance against the final admitted command identity through the domain-service request. Removing controller capture leaves the existing helper tests green. This is separate signed-authority work.

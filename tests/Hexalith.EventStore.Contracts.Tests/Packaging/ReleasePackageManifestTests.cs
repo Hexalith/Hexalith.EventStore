@@ -1701,6 +1701,7 @@ public sealed class ReleasePackageManifestTests
                 "Hexalith.EventStore.Contracts",
                 "Hexalith.EventStore.DomainService",
             ],
+            ServiceDefaultsPackageId => ["Hexalith.EventStore.Contracts"],
             "Hexalith.EventStore.SignalR" => ["Hexalith.EventStore.Contracts"],
             "Hexalith.EventStore.Testing" =>
             [

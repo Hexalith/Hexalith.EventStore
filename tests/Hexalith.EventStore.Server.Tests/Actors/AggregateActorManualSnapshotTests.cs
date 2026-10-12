@@ -215,6 +215,47 @@ public class AggregateActorManualSnapshotTests {
         }
     }
 
+    /// <summary>Requires manual inspection to read durable state before reporting a current snapshot.</summary>
+    [Fact]
+    public async Task CreateManualSnapshotAsync_CachedCurrentSnapshotDoesNotOverrideDurableFutureSnapshot()
+    {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var durable = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(durable, identity);
+        SnapshotRecord retained = new(3, JsonSerializer.Deserialize<JsonElement>("""{"count":3}"""),
+            DateTimeOffset.UnixEpoch, identity.Domain, identity.AggregateId, identity.TenantId)
+            { SnapshotEnvelopeVersion = 1 };
+        await durable.SetStateAsync(identity.SnapshotKey, retained);
+        await durable.SaveStateAsync();
+        SnapshotRecord cachedSnapshot = retained with { SequenceNumber = 2 };
+        bool cacheCleared = false;
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(call => durable.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey,
+                call.Arg<CancellationToken>()));
+        _ = stateManager.TryGetStateAsync<object>(identity.SnapshotKey, Arg.Any<CancellationToken>())
+            .Returns(_ => new ConditionalValue<object>(true, cacheCleared ? retained : cachedSnapshot));
+        _ = stateManager.ClearCacheAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            cacheCleared = true;
+            return Task.CompletedTask;
+        });
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-cached-current");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("SnapshotSequenceInvalid");
+        durable.CommittedState[identity.SnapshotKey].ShouldBe(retained);
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task CreateManualSnapshotAsync_ProviderMessageWithSnapshotPrefixIsNotReturned()
     {

@@ -42,6 +42,11 @@ public sealed class SharedProjectionChunkedStageTests
         first.Value!.Value.ShouldBe(0);
         last.Generation.ShouldBe(1);
         last.Value!.Value.ShouldBe(9999);
+        using var cleanupDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (store.Snapshot<SharedProjectionEpochState>(s_scope.StoreName, s_scope.StateKey)!.CleanupChunks is not null)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), cleanupDeadline.Token);
+        }
         store.Snapshot<SharedProjectionEpochState>(s_scope.StoreName, s_scope.StateKey)!.CleanupChunks.ShouldBeNull();
         _ = await Should.ThrowAsync<InvalidOperationException>(() => new SharedProjectionChunkStore(store)
             .ReadAsync(s_scope, reference, CancellationToken.None));

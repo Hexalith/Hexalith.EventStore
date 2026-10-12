@@ -2,7 +2,7 @@
 title: 'Story 6.2: Folded Snapshot Implementation'
 type: 'feature'
 created: '2026-10-11'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: 'e4532baa64f4cdabdbf766b9e38c36289a00adba'
 review_loop_iteration: 1
@@ -214,6 +214,7 @@ Code review 2026-10-12, gap review: the snapshot `src/` and `docs/` changes no e
 
 ## Spec Change Log
 
+- 2026-10-12 final resumed build: Added fresh durable manual inspection for `AlreadyCurrent`, its stale-cache regression, and the two user-approved test-only fixture corrections. All five project suites passed through the documented fallback lanes; the spec is complete and sprint tracking moves to `review`. The frozen intent and normative HX-FS-V1 bytes remain unchanged.
 - 2026-10-11: Completed the implementation task checks and recorded focused verification. The frozen intent and approved normative snapshot specification were not changed.
 - 2026-10-12: Closed the current gap-review patches and the five previously unowned chunk-2 proof items. Recorded completed actor-proof work and explicitly split proof groups; the frozen intent and normative HX-FS-V1 bytes remain unchanged.
 
@@ -298,6 +299,22 @@ Code review 2026-10-12, gap review: the snapshot `src/` and `docs/` changes no e
 | R4-EC1 manual pre-commit deadline | medium — manual staging can finish and its cached record can be read after the local deadline expires; no cancellation check preceded `snapshotSaveAttempted`. Added the final check and a real-timeout regression proving no save and unchanged committed state; 34/34 manual tests passed. | patch |
 | R4-VG1 successor-boundary measurement | medium — filed evidence shows tests handcraft successor tables/mock validation and never execute `measure_successor_support_table`; removing measured refusal treatment leaves the test suite green but makes produced boundaries invalid. This is separate P1R tooling. | defer |
 
+| R5-BH1 custom capture output bound | low — carried: chunk 1 already rejected a custom processor exceeding its escaped-state reservation under the trusted qualified callback contract; the bounded parser and actor still refuse excessive evidence. | reject |
+| R5-BH2 operation-budget debit | false — carried: the earlier workspace-admission verdict and owner decision retain declared simultaneous-representation limits plus the existing wire gate; the finite constructor sums and CanReserveOptionalState remain in place. | reject |
+| R5-BH3 manual replay response buffer | medium — the shared DaprAggregateStateReconstructor buffers and deserializes the replay response before the manual candidate limit. That transport is unchanged since the story baseline and serves ordinary Admin reconstruction as well; closing it needs a separate bounded replay transport contract. | defer |
+| R5-BH4 state-dependent envelope converter | low — a custom SnapshotRecord converter can alter real state while passing the empty-record probe. No host configures such a converter, and it violates the deployment-owned round-trip qualification; defending against it adds another parse/equivalence guard and resource accounting for a rare trusted configuration defect. | reject |
+| R5-BH5 gateway constructor | medium — carried: R3-VG4/R4-BH1 already record the removed three-argument CLR constructor; it remains separate gateway binary-compatibility work. | defer (carried) |
+| R5-BH6 fenced positional API | medium — carried: R4-BH2 already records the third positional FencedCommandEnvelope member replacing its constructor/deconstruction. | defer (carried) |
+| R5-BH7 proof purpose | high — carried: R4-BH6 already records shared stream/command/query proof purpose and request-digest substitution. | defer (carried) |
+| R5-BH8 owner-query domain binding | high — carried: R4-BH5 already records QueryType-only permission matching and prevalidated admission for another domain. | defer (carried) |
+| R5-BH9 workload polling admission | medium — carried: R4-BH7 already records accepted bound submission with no JWT tenant/domain bindings followed by forbidden status polling. | defer (carried) |
+| R5-BH10 proof identity limit | medium — carried: R3-BH6 already records the proof's 200-character cap against AggregateIdentity's 256-character admission. | defer (carried) |
+| R5-EC1 state-dependent envelope converter | low — independently confirms R5-BH4; the proposed extra encoded-state guard addresses an unconfigured converter that violates trusted round-trip qualification. | reject |
+| R5-EC2 AlreadyCurrent durable readback | medium — a healthy activation's initial barrier does not clear cached state, so inspection can return cached equality despite a different durable snapshot. Refresh the cache before reading both the addressed head and snapshot; a cached-current/durable-future fixture must refuse success and preserve the durable key (§7.4). | patch |
+| R5-VG1 client-issued stream proof | medium — carried: R3-VG1 already records that no client test supplies IEventStoreGatewayStreamReadProofSource while controller tests inject their own header. | defer (carried) |
+| R5-VG2 human-authority handoff verification | medium — direct codec tests construct HumanAuthoritySource/Receipt themselves; no test proves controller capture, post-idempotency handler issuance, and invoker transmission together. This is separate signed-authority work. | defer |
+| R5-VG3 gateway constructor | medium — carried: R3-VG4/R4-BH1 and R5-BH5 already record the same removed CLR constructor. | defer (carried) |
+
 ## Verification
 
 **Commands:**
@@ -357,3 +374,23 @@ Code review 2026-10-12, gap review: the snapshot `src/` and `docs/` changes no e
 - `timeout 300s dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --configuration Debug --no-build --no-restore` ran 1,497 cases with two projection failures. The full fallback `timeout 600s dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -parallelMode none -nocolor` ran all 1,497: 1,496 passed and `SharedProjectionChunkedStageTests.TenThousandAggregateManifestPromotesOneGenerationAndSealsChunks` failed because `CleanupChunks` remained non-null. The initial pre-edit run had already failed that case; isolated checks passed, but the full serial run demonstrates the unresolved broad-gate failure.
 - Two full Server project runs were canceled before completion when subsequent review patches required new binaries; no full-Server summary is claimed for this resumed run. The original run reproduced the stale invoker-signature guard, now fixed and passing in the final 418-case matrix. The later `timeout 900s dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug --no-build --no-restore` produced no failures before cancellation but no completed summary. The focused evidence is separate from the incomplete broad gate.
 - Story status stays `in-review`; the frozen scope excludes independent projection/package work. No staging, commit, push, branch change or submodule mutation was performed. Permission to extend the run to the remaining gate blockers has been requested separately.
+
+
+**Current completion run (2026-10-12, HEAD e55f5ac91ee1c749a4058fd8fd77119e144d8ece):**
+- Resumed the existing in-review spec. The approved normative digest matched, and the initial Debug/source-reference solution build passed with zero warnings/errors. The exact AppHost started with Keycloak disabled, all 27 described resources were Running/Healthy, and the AppHost stopped successfully before edits.
+- The initial focused snapshot matrix passed 418/418; the real-Dapr persisted-snapshot/restart test passed 1/1; the Debug variant of the published/current package harness passed, including both legacy snapshot-manager default overloads. Bash syntax, actionlint, and whitespace checks passed.
+- Independent review traced the snapshot runtime and its directly referenced callees plus selected gateway paths. The 635-file baseline diff also contains independent work; no reviewer claims exhaustive coverage of every section. Each of the 15 findings received its own triage row above; carried issues were not deferred again.
+- The user explicitly approved two test-only scope extensions: add the required ServiceDefaults -> Contracts dependency to synthetic package archives, and wait for durable background cleanup in the existing chunked projection fixture. Production projection and package behavior remain unchanged.
+- R5-EC2 is corrected by refreshing actor state before manual inspection. The regression presents a cached current record and a different durable future record; success must be refused without reconstruction/save or modifying the durable snapshot. The focused manual class passed 35/35 and the full final Server suite passed 4,537 tests with 25 existing DW1 skips.
+
+
+**Final verification for the current completion run (2026-10-12):**
+- `dotnet build Hexalith.EventStore.slnx --configuration Debug -p:UseHexalithProjectReferences=true -m:1 -v:q` passed with zero warnings/errors after the runtime and fixture corrections (45.51 seconds).
+- `timeout 1200s dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -nocolor` passed all 4,562 cases: 4,537 succeeded, 25 existing DW1 skips, zero failures (754.701 seconds). The new cached-current/durable-future regression is included. The earlier project-level full Server run also completed: 4,536 succeeded, 25 existing skips, zero failures.
+- `timeout 900s dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -nocolor` passed 2,337 tests with two existing package-inventory skips, zero failures (347.100 seconds). The initial four synthetic-dependency failures were repaired by the user-approved fixture correction; the initial process-fixture timeout passed in the focused 128-case rerun and this full rerun without changing its deadline.
+- `timeout 300s dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -parallelMode none -nocolor` passed 1,497/1,497 (21.887 seconds). The approved cleanup fixture now awaits the persisted background cleanup within ten seconds and retains the chunk-sealing assertion.
+- `timeout 600s dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -parallelMode none -nocolor` passed 830/830 (207.861 seconds). The initial parallel run's process-publication timeout did not reproduce in this full serial fallback; no process code or timeout was changed.
+- `timeout 900s dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true --no-build --no-restore` passed 761 tests with 18 existing DW2 skips, zero failures.
+- The affected classes passed on the final binaries: manual snapshots 35/35, package/process fixtures 128/128, and chunked projections 2/2. The prior 418-case snapshot matrix, real-Dapr reload 1/1, and published/current compatibility harness passed; the latter runtime seams are unchanged by the final manual-inspection correction.
+- Bash syntax, actionlint, and `git diff --check` passed. The normative digest remained `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5`; the frozen intent block remained byte-for-byte unchanged. All snapshot-specific review findings are closed, with the two new independent findings appended to the deferred ledger and carried findings left in their existing entries.
+- The build spec is complete. Per the build workflow, sprint story `6-2-folded-snapshot-implementation` moves to `review` for the maintainer's final acceptance.

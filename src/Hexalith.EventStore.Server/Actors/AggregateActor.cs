@@ -2455,6 +2455,8 @@ public partial class AggregateActor(
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             CancellationToken cancellationToken = timeout.Token;
 
+            // Manual completion must inspect persisted state, including the AlreadyCurrent path.
+            await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
             AggregateStreamMetadata metadata = await GetStreamMetadataAsync().ConfigureAwait(false);
             currentSequence = metadata.CurrentSequence;
             if (!metadata.Exists || metadata.CurrentSequence <= 0) {
