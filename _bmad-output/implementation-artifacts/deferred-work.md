@@ -5798,3 +5798,9 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: Enumerate every `IDomainServiceInvoker.InvokeAsync` overload against the metadata-parameter allowlist.
   evidence: Split from the 1660-token Server proof spec; the `DomainServiceIsolationTests` scan does not depend on the actor decision proofs.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-12, gap review)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Close the five chunk-2 proof items that no Story 6.2 split owns: capture from a snapshot-plus-tail JSON `DomainServiceCurrentState` pre-state, stale typed `TryGetStateAsync<SnapshotRecord>` stubs in `SnapshotManagerTests`, a raw-byte parity compare in `FoldedSnapshotParityTests`, the V5 counts reported through `Console.WriteLine`, and `NUGET_PACKAGES` isolation in `tools/folded-snapshot-compatibility/run.sh`.
+  evidence: These chunk-2 `[Review][Patch]` items remain open at `cf43d21a`; `883db9fe` touched none of those files, and the 2026-10-12 split entries above cover only the harness CI job, LiveSidecar reload, capture limits and qualification, Admin pins and delegation, byte identity, and the `InvokeAsync` scan. Story acceptance still depends on them.
