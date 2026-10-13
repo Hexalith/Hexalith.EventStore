@@ -148,6 +148,26 @@ public sealed class BoundedV1DomainResponseParserTests
     }
 
     [Fact]
+    public async Task OversizedEscapeDenseOptionalScalarPreservesEventsAcrossReadBoundaries()
+    {
+        // HX-FS-V1 §§8.3/12, V11/V12/V16: 65,535-byte reads step by 8 mod 23, so they split every unit offset.
+        const string unit = """\"\\\u0001\ud83d\ude00a""";
+        unit.Length.ShouldBe(23);
+        byte[] json = Encoding.UTF8.GetBytes("{\"postCommandStateJson\":\""
+            + string.Concat(Enumerable.Repeat(unit, 8 * 1024 * 1024 / unit.Length))
+            + "\",\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"resultPayload\":\"ok\"}");
+        using var stream = new BoundedReadDomainResponseStream(json, 65_535);
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.ResultPayload.ShouldBe("ok");
+        result.PostCommandStateJson.ShouldBeNull();
+        parser.LiveBytes.ShouldBeLessThan(16L * 1024 * 1024);
+    }
+
+    [Fact]
     public async Task OversizedOptionalScalarRejectsIncompleteTrailingUtf8CodeUnit()
     {
         byte[] prefix = Encoding.UTF8.GetBytes("{\"events\":[],\"postCommandStateJson\":\""

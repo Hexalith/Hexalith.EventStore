@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// </param>
 public record DomainServiceRequest(CommandEnvelope Command, object? CurrentState) {
     /// <summary>Requests optional post-command folded state for a snapshot-due invocation.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool IncludePostCommandState { get; init; }
 
     /// <summary>Gets the deployment-owned capture qualification selected for this request.</summary>

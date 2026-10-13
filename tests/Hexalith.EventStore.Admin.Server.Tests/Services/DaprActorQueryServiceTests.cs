@@ -8,7 +8,9 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -24,7 +26,8 @@ public class DaprActorQueryServiceTests {
     private static DaprInfrastructureQueryService CreateService(
         DaprClient? daprClient = null,
         AdminServerOptions? serverOptions = null,
-        IHttpClientFactory? httpClientFactory = null) {
+        IHttpClientFactory? httpClientFactory = null,
+        ILogger<DaprInfrastructureQueryService>? logger = null) {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions {
             StateStoreName = StateStoreName,
@@ -37,7 +40,7 @@ public class DaprActorQueryServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            NullLogger<DaprInfrastructureQueryService>.Instance);
+            logger ?? NullLogger<DaprInfrastructureQueryService>.Instance);
     }
 
     [Fact]
@@ -582,6 +585,47 @@ public class DaprActorQueryServiceTests {
         snapshot.JsonValue.ShouldNotContain("private");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetActorInstanceStateAsync_SnapshotReadFailureLogsOnlySafeFailureClass(bool ownerSidecar) {
+        const string actorId = "tenant:domain:aggregate";
+        const string sentinel = "provider-detail-sentinel";
+        var logger = new RecordingLogger<DaprInfrastructureQueryService>();
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar) {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new SnapshotReadFailureHandler(sentinel)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory, logger: logger);
+        }
+        else {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException(sentinel));
+            service = CreateService(daprClient, logger: logger);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
+        result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot").Found.ShouldBeFalse();
+        result.Message.ShouldNotBeNull().ShouldNotContain(sentinel);
+        logger.Records.Where(record => record.Level == LogLevel.Warning).ShouldHaveSingleItem()
+            .Message.ShouldContain("FailureClass=SnapshotReadUnavailable");
+        foreach (RecordingLogger<DaprInfrastructureQueryService>.LogRecord record in logger.Records) {
+            record.Exception.ShouldBeNull();
+            record.Message.ShouldNotContain(sentinel);
+            record.Message.ShouldNotContain(actorId);
+        }
+    }
+
     [Fact]
     public async Task GetActorInstanceStateAsync_UsesConfiguredOwnerAppId_ForAggregateMetadataLookup() {
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -645,6 +689,13 @@ public class DaprActorQueryServiceTests {
                 Content = new StringContent(content, Encoding.UTF8, "application/json"),
             });
         }
+    }
+
+    private sealed class SnapshotReadFailureHandler(string detail) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => request.RequestUri!.OriginalString.EndsWith("snapshot", StringComparison.Ordinal)
+                ? throw new HttpRequestException(detail)
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     }
 
     private static JsonElement? JsonState(string json) {

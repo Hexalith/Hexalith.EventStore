@@ -35,6 +35,10 @@ public sealed class VersionedWireRoundTripTests
         var command = AggregateActorTestHelper.CreateTestEnvelope();
         var handler = new VersionedActorResponseHandler(async (requestJson, token) =>
         {
+            using (JsonDocument sent = JsonDocument.Parse(requestJson))
+            {
+                sent.RootElement.TryGetProperty("includePostCommandState", out _).ShouldBe(includePostCommandState);
+            }
             DomainServiceRequest routed = JsonSerializer.Deserialize<DomainServiceRequest>(
                 requestJson, JsonSerializerOptions.Web)!;
             routed.IncludePostCommandState.ShouldBe(includePostCommandState);

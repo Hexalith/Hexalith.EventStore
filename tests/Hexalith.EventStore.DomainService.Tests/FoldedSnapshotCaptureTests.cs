@@ -182,6 +182,33 @@ public sealed class FoldedSnapshotCaptureTests
     }
 
     [Fact]
+    public async Task QualifiedCaptureWithoutBoundedV1ProducerOmitsStateWithoutChangingEvents()
+    {
+        // HX-FS-V1 §8.3: profile parity covers bounded V1 bytes, never legacy FromDomainResult events.
+        var processor = new SnapshotCaptureTestProcessor { IncludeResultPayload = true };
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IAsyncDomainProcessor>("d", processor);
+        services.AddEventStoreFoldedSnapshotQualification<SnapshotCaptureTestState>(
+            "d", "aggregate", "test-profile", "test-parity-evidence", SnapshotCaptureTestLimits.Value);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
+        {
+            CurrentState = new SnapshotCaptureTestState { Count = 41 },
+        };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false, CurrentState = new SnapshotCaptureTestState { Count = 41 } });
+
+        processor.CopiedCount.ShouldBeNull();
+        wire.PostCommandStateJson.ShouldBeNull();
+        JsonSerializer.SerializeToUtf8Bytes(wire.Events.ShouldHaveSingleItem()).ShouldBe(
+            JsonSerializer.SerializeToUtf8Bytes(baseline.Events.ShouldHaveSingleItem()));
+        wire.ResultPayload.ShouldBe(baseline.ResultPayload);
+        wire.IsRejection.ShouldBe(baseline.IsRejection);
+    }
+
+    [Fact]
     public async Task CaptureApplyFailureLeavesTheOnceAdmittedEventAndReturnedGraphUnchanged()
     {
         var processor = new SnapshotCaptureTestProcessor();

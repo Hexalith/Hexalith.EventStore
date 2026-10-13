@@ -5951,3 +5951,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Confirm whether a 503 safe denial should be a terminal idempotent rejection (unverified; medium if true).
   evidence: DaprDomainServiceInvoker.cs:116-127 maps 401/403/404/503 with the denial header to DomainServiceSafeDenialException, and the actor completes it terminally with an idempotency record, so a transient domain outage marked as a denial permanently rejects that message ID. Settle by confirming whether the signed-authority design intends 503 as a uniform terminal denial. Introduced by 8eec9712, outside Story 6.2.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-13, maintainer acceptance chunk 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Document the shared-projection source capture settings, the projection-workers switch and the rebuild-part endpoint.
+  evidence: ServiceCollectionExtensions.cs:127 binds `EventStore:SharedProjectionSourceCapture` (which enables the mandatory source write fence), ServiceCollectionExtensions.cs:204 reads `EventStore:Projections:WorkersEnabled`, and EventStoreDomainServiceRoutes.cs:27 maps `/project/rebuild/part/v1`. None of these appears under `docs/`, so operators cannot discover them. Introduced by cf43d21a/0c748708, outside Story 6.2.

@@ -96,7 +96,7 @@ Hexalith uses the state store for:
 
 - **Actor state** — each Aggregate Actor stores its current state, enabling fast command processing without rehydrating from scratch every time
 - **Event streams** — the ordered sequence of domain events for each aggregate, keyed by tenant, domain, and aggregate identity
-- **Snapshots** — periodic snapshots of aggregate state to speed up rehydration when the event stream grows long
+- **Snapshots** — folded aggregate state at a committed sequence, so rehydration replays only later events; automatic capture requires [enrolled capture profiles](../guides/configuration-reference.md#snapshots)
 - **Command status** — tracking whether a command is pending, succeeded, or failed, with a 24-hour time-to-live
 - **Idempotency admission** — protected tenant/key authority, exact replay results, monotonic fences, rotation directories, legacy inventory, and metadata-only consumed-key tombstones
 - **Aggregate command checkpoints** — exact `MessageId`-keyed recovery evidence for event mutation and read-only outcome reconciliation
@@ -175,7 +175,7 @@ The `AggregateActor` is the core processing unit. Each actor instance handles co
 2. **Tenant validation** — verify that the requesting tenant matches the aggregate's tenant
 3. **State rehydration** — load the most recent snapshot, then replay any events after that snapshot to reconstruct the current aggregate state
 4. **Domain service invocation** — call the domain service through DAPR service invocation, passing the command and current state. The domain service returns a result containing new events
-5. **Persist and publish** — save new events to the state store, create a snapshot if the interval threshold is reached, and publish events to the pub/sub topic
+5. **Persist and publish** — save new events to the state store, committing a folded snapshot at the new head in the same write when the snapshot interval is due and the domain service returned qualified state evidence, then publish events to the pub/sub topic
 
 This pipeline runs with single-threaded actor guarantees — no concurrent actor-dispatched commands execute for the same aggregate at the same time. Callers do not add application locks around this supported path. A provider-portable append fence is still required to enforce actor-only ownership against an unsupported second writer: the current actor state commit supplies neither an ETag nor a first-write concurrency option, and the Story 4.5 Dapr/Redis profile surfaced no conflict or retry. Other providers require their own live qualification.
 
@@ -247,9 +247,8 @@ sequenceDiagram
     Sidecar->>Domain: POST /process (IncrementCounter + state)
     Domain-->>Sidecar: CounterIncremented event
     Sidecar-->>Actor: Domain result
-    Actor->>Sidecar: 5a. Persist events to state store
+    Actor->>Sidecar: 5a. Persist events (+ folded snapshot when due)
     Actor->>Sidecar: 5b. Publish events to pub/sub
-    Actor->>Sidecar: 5c. Create snapshot (if threshold reached)
     Actor-->>Router: Command result
     Router-->>MediatR: Result
     MediatR->>Admission: Complete exact result under same fence
