@@ -27,6 +27,43 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>Proves retained snapshot migration occurs only with the event batch.</summary>
 public sealed class AggregateActorFoldedSnapshotMigrationTests
 {
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(3, 0)]
+    [InlineData(3, -1)]
+    [InlineData(3, 5)]
+    public async Task InvalidStreamHeadOrRetainedFloorRetainsCorruptPlaintextBeforeSnapshotLoad(
+        long head, long retainedFloor)
+    {
+        // HX-FS-V1 §§9.1/9.2, V9/V17: an untrusted stream cannot authorize derived-state deletion.
+        CommandEnvelope command = CreateTestEnvelope();
+        AggregateIdentity identity = command.AggregateIdentity;
+        JsonElement corrupt = JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""");
+        var stateManager = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(head, DateTimeOffset.UnixEpoch, null) { RetainedFloor = retainedFloor };
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = metadata,
+            [identity.SnapshotKey] = corrupt,
+        });
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
+        ActorTestContext actor = CreateActor(stateManager: stateManager, snapshotManager: snapshots);
+
+        CommandProcessingResult result = await actor.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        stateManager.Trace.ShouldContain($"TryGetState:{identity.MetadataKey}");
+        stateManager.Trace.ShouldNotContain($"TryGetState:{identity.SnapshotKey}");
+        stateManager.Trace.ShouldNotContain($"RemoveState:{identity.SnapshotKey}");
+        stateManager.CommittedState[identity.MetadataKey].ShouldBe(metadata);
+        JsonElement.DeepEquals(stateManager.CommittedState[identity.SnapshotKey].ShouldBeOfType<JsonElement>(),
+            corrupt).ShouldBeTrue();
+        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+    }
+
     [Fact]
     public async Task OrphanCorruptPlaintextSnapshotIsRetainedBeforeSnapshotLoad()
     {
@@ -100,8 +137,10 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions { DefaultInterval = 10 }),
             snapshotLogger, protection);
         using ServiceProvider services = QualificationProvider(identity);
+        var actorLogger = new SnapshotCaptureLogger();
         ActorTestContext actor = CreateActor(stateManager: stateManager,
-            serviceProvider: services, payloadProtectionService: protection, snapshotManager: snapshots);
+            serviceProvider: services, payloadProtectionService: protection, snapshotManager: snapshots,
+            logger: actorLogger);
         ManualSnapshotResult manualResult = await actor.Actor.CreateManualSnapshotAsync("folded-manual-retain");
         manualResult.Outcome.ShouldBe(ManualSnapshotOutcome.UnreadableProtected);
         manualResult.ReasonCode.ShouldBe(expectedManualReasonClass);
@@ -131,9 +170,7 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             .All(view => JsonElement.DeepEquals(view[identity.SnapshotKey].ShouldBeOfType<JsonElement>(), retained))
             .ShouldBeTrue();
 
-        string[] messages = actor.Logger.ReceivedCalls()
-            .Select(call => call.GetArguments().Length > 2 ? call.GetArguments()[2]?.ToString() ?? "" : "")
-            .ToArray();
+        string[] messages = actorLogger.Messages.ToArray();
         messages.Any(message => message.Contains($"ReplacementReasonClass={expectedReasonClass}",
             StringComparison.Ordinal)).ShouldBeTrue();
         messages.Any(message => message.Contains("retained-sensitive-value", StringComparison.Ordinal))
@@ -144,14 +181,15 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         {
             snapshotLogger.EventIds.ShouldContain(eventId => eventId.Id == 7100);
         }
-        actor.Logger.ReceivedCalls().Where(call => call.GetArguments().Length > 3
-            && call.GetArguments()[2]?.ToString()?.Contains("snapshot", StringComparison.OrdinalIgnoreCase) == true)
-            .All(call => call.GetArguments()[3] is null).ShouldBeTrue();
+        actorLogger.EventIds.ShouldContain(eventId => eventId.Id == 2033);
+        actorLogger.Exceptions.ShouldAllBe(exception => exception == null);
         snapshotLogger.Exceptions.ShouldAllBe(exception => exception == null);
     }
 
-    [Fact]
-    public async Task LegacyDscsIsBypassedAndNextQualifiedAutomaticBatchOverwritesIt()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyDscsIsBypassedAndNextQualifiedAutomaticBatchOverwritesIt(bool receiptBearing)
     {
         CommandEnvelope command = CreateTestEnvelope(correlationId: "folded-dscs-migration");
         AggregateIdentity identity = command.AggregateIdentity;
@@ -164,20 +202,34 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         using ServiceProvider services = QualificationProvider(identity);
         ActorTestContext actor = CreateActor(stateManager: stateManager,
             serviceProvider: services, payloadProtectionService: protection, snapshotManager: snapshots);
-        _ = actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
-                "test-profile", Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()])
-                with { PostCommandStateJson = """{"count":11}""" });
+        const string receipt = "signed-human-authority-receipt";
+        DomainResult evidence = DomainResult.Success([new TestEvent()])
+            with { PostCommandStateJson = """{"count":11}""" };
+        if (receiptBearing)
+        {
+            _ = actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", receipt, Arg.Any<CancellationToken>()).Returns(evidence);
+        }
+        else
+        {
+            _ = actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>()).Returns(evidence);
+        }
 
-        CommandProcessingResult processed = await actor.Actor.ProcessCommandAsync(command);
+        CommandProcessingResult processed = receiptBearing
+            ? await actor.Actor.ProcessAuthorizedCommandAsync(new AuthorizedCommandEnvelope(command, receipt))
+            : await actor.Actor.ProcessCommandAsync(command);
 
         processed.Accepted.ShouldBeTrue();
-        await AssertFullPrefixInvocationAsync(actor, command);
+        await AssertFullPrefixInvocationAsync(actor, command, receiptBearing ? receipt : null);
         IReadOnlyDictionary<string, object> committedBatch = stateManager.CommittedSnapshots
             .First(view => view.ContainsKey($"{identity.EventStreamKeyPrefix}11"));
         SnapshotRecord folded = committedBatch[identity.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
         folded.SnapshotEnvelopeVersion.ShouldBe(1);
         folded.SequenceNumber.ShouldBe(11);
+        committedBatch[identity.MetadataKey].ShouldBeOfType<AggregateMetadata>().CurrentSequence.ShouldBe(11);
+        committedBatch[$"{identity.EventStreamKeyPrefix}11"].ShouldBeOfType<EventEnvelope>()
+            .SequenceNumber.ShouldBe(11);
         folded.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(11);
         stateManager.Trace.ShouldNotContain($"RemoveState:{identity.SnapshotKey}");
         stateManager.CommittedSnapshots.TakeWhile(view => !view.ContainsKey($"{identity.EventStreamKeyPrefix}11"))
@@ -193,12 +245,21 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
             ]))
             .BuildServiceProvider();
 
-    private static async Task AssertFullPrefixInvocationAsync(ActorTestContext actor, CommandEnvelope command)
+    private static async Task AssertFullPrefixInvocationAsync(ActorTestContext actor, CommandEnvelope command,
+        string? receipt = null)
     {
-        _ = await actor.Invoker.Received(1).InvokeAsync(command, Arg.Any<object?>(), true,
-            "test-profile", Arg.Any<CancellationToken>());
+        if (receipt is null)
+        {
+            _ = await actor.Invoker.Received(1).InvokeAsync(command, Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            _ = await actor.Invoker.Received(1).InvokeAsync(command, Arg.Any<object?>(), true,
+                "test-profile", receipt, Arg.Any<CancellationToken>());
+        }
         object? currentState = actor.Invoker.ReceivedCalls()
-            .Single(call => call.GetMethodInfo().Name == "InvokeAsync" && call.GetArguments().Length == 5)
+            .Single(call => call.GetMethodInfo().Name == "InvokeAsync" && call.GetArguments().Length == (receipt is null ? 5 : 6))
             .GetArguments()[1];
         DomainServiceCurrentState current = currentState.ShouldBeOfType<DomainServiceCurrentState>();
         current.LastSnapshotSequence.ShouldBe(0);

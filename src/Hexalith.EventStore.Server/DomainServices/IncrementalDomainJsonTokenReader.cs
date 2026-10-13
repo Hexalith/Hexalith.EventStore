@@ -190,7 +190,7 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
                 }
                 if (value == (byte)'"' || value == (byte)'\\')
                 {
-                    _ = utf8.GetCharCount(ReadOnlySpan<byte>.Empty, flush: true);
+                    ValidateUtf8Segment(utf8, ReadOnlySpan<byte>.Empty, flush: true);
                     utf8.Reset();
                     if (value == (byte)'"')
                     {
@@ -221,7 +221,7 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
                 if (value < 0x20) { throw new JsonException("Unescaped control byte in JSON string."); }
                 int run = consumed + 1;
                 while (run < span.Length && span[run] >= 0x20 && span[run] is not ((byte)'"' or (byte)'\\')) { run++; }
-                _ = utf8.GetCharCount(span.Slice(consumed, run - consumed), flush: false);
+                ValidateUtf8Segment(utf8, span.Slice(consumed, run - consumed), flush: false);
                 consumed = run;
             }
             _consumed += consumed;
@@ -230,6 +230,25 @@ internal sealed class IncrementalDomainJsonTokenReader : IDisposable
             int read = await _source.ReadAsync(_owner.AsMemory(0, 64 * 1024), _token).ConfigureAwait(false);
             if (read == 0) { throw new JsonException("Incomplete optional state scalar."); }
             _end = read;
+        }
+    }
+
+    /// <summary>Advances a strict stateful decoder using a fixed destination across chunk boundaries.</summary>
+    private static void ValidateUtf8Segment(Decoder decoder, ReadOnlySpan<byte> input, bool flush)
+    {
+        Span<char> output = stackalloc char[256];
+        try
+        {
+            bool completed;
+            do
+            {
+                decoder.Convert(input, output, flush, out int consumed, out _, out completed);
+                input = input[consumed..];
+            } while (!completed);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new JsonException("Invalid UTF8 in optional state scalar.", exception);
         }
     }
 

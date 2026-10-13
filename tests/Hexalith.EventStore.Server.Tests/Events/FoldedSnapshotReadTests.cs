@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Security;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
@@ -7,6 +9,8 @@ using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -16,6 +20,37 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 public sealed class FoldedSnapshotReadTests
 {
     private static readonly AggregateIdentity Identity = new("tenant", "domain", "aggregate");
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    public async Task CachedUnknownVersionRetainsAndBypassesBeforeAnyStateConverter(int version)
+    {
+        // HX-FS-V1 §9.2, V8/V12/V17: Dapr can return the actual cached typed envelope.
+        var state = new SnapshotVersionProbeState();
+        var record = new SnapshotRecord(1, state, DateTimeOffset.UnixEpoch,
+            Identity.Domain, Identity.AggregateId, Identity.TenantId) { SnapshotEnvelopeVersion = version };
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, record);
+        await store.SaveStateAsync();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            NullLogger<SnapshotManager>.Instance, protection);
+
+        SnapshotLoadResult command = await manager.LoadSnapshotForCommandAsync(Identity, store, authoritativeHead: 1);
+        SnapshotLoadResult manual = await manager.InspectSnapshotForManualOverwriteAsync(Identity, store);
+
+        foreach (SnapshotLoadResult result in new[] { command, manual })
+        {
+            result.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+            result.ReasonCode.ShouldBe("SnapshotEnvelopeVersionUnknown");
+            result.Snapshot.ShouldBeNull();
+        }
+        state.SerializationCount.ShouldBe(0);
+        protection.ReceivedCalls().ShouldBeEmpty();
+        await store.SaveStateAsync();
+        store.CommittedState[Identity.SnapshotKey].ShouldBeSameAs(record);
+    }
 
     [Fact]
     public async Task LegacyDscsIsRetainedAndDoesNotContributeASequence()
@@ -224,10 +259,12 @@ public sealed class FoldedSnapshotReadTests
     }
 
     [Theory]
-    [InlineData("{\"count\":1,\"COUNT\":2}")]
-    [InlineData("{\"nested\":{\"count\":1,\"COUNT\":2}}")]
-    [InlineData("{\"items\":[{\"count\":1,\"COUNT\":2}]}")]
-    public async Task CommandReadBypassesCaseInsensitiveDuplicateFoldedStateWithoutDeletingIt(string stateJson)
+    [InlineData("{\"count\":1,\"COUNT\":2}", false)]
+    [InlineData("{\"nested\":{\"count\":1,\"COUNT\":2}}", true)]
+    [InlineData("{\"items\":[{\"count\":1,\"COUNT\":2}]}", true)]
+    [InlineData("{\"nested\":{\"count\":1,\"count\":2}}", false)]
+    [InlineData("{\"items\":[{\"count\":1,\"count\":2}]}", false)]
+    public async Task CommandReadUsesCaseInsensitiveTopLevelAndExactNestedNames(string stateJson, bool admitted)
     {
         var store = new InMemoryStateManager();
         await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
@@ -238,9 +275,18 @@ public sealed class FoldedSnapshotReadTests
         SnapshotLoadResult result = await Manager().LoadSnapshotForCommandAsync(
             Identity, store, authoritativeHead: 1);
 
-        result.Snapshot.ShouldBeNull();
-        result.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
-        result.ReasonCode.ShouldBe("SnapshotStateInvalid");
+        if (admitted)
+        {
+            result.Outcome.ShouldBe(SnapshotLoadOutcome.Readable);
+            JsonElement.DeepEquals(result.Snapshot.ShouldNotBeNull().State.ShouldBeOfType<JsonElement>(),
+                JsonSerializer.Deserialize<JsonElement>(stateJson)).ShouldBeTrue();
+        }
+        else
+        {
+            result.Snapshot.ShouldBeNull();
+            result.Outcome.ShouldBe(SnapshotLoadOutcome.Corrupt);
+            result.ReasonCode.ShouldBe("SnapshotStateInvalid");
+        }
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }
 

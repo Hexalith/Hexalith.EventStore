@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Snapshots;
@@ -23,7 +24,7 @@ public partial class SnapshotManager(
     IEventPayloadProtectionService payloadProtectionService,
     ISnapshotPolicyResolver? snapshotPolicyResolver = null) : ISnapshotManager {
     private const int MaximumFoldedStateBytes = 1024 * 1024;
-    private const int MaximumProtectedEnvelopeBytes = 4 * 1024 * 1024;
+    private const int MaximumProtectedEnvelopeBytes = MaximumFoldedStateBytes + 4096;
 
     /// <inheritdoc/>
     public async Task<bool> ShouldCreateSnapshotAsync(
@@ -133,9 +134,16 @@ public partial class SnapshotManager(
         int maximumStateBytes = limits?.MaximumCanonicalStateMeasurementBytes ?? MaximumFoldedStateBytes;
         int maximumEnvelopeBytes = limits?.MaximumCanonicalEnvelopeBytes ?? MaximumProtectedEnvelopeBytes;
         int maximumDepth = limits?.MaximumDepth ?? 64;
+        long scratchBytes = limits?.MaximumSerializerScratchBytes ?? 32L * 1024 * 1024;
+        long maximumStateInputBytes = limits?.MaximumActorParsedStateBytes ?? MaximumFoldedStateBytes;
+        long maximumEnvelopeInputBytes = SnapshotEnvelopeInspector.EnvelopeInputBytes(checked((int)maximumStateInputBytes));
 
         try {
-            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(serializerOptions)) {
+            if (!BoundedSnapshotJsonBuffer.CanSerialize(maximumStateBytes, serializerOptions, scratchBytes, maximumStateInputBytes)
+                || !BoundedSnapshotJsonBuffer.CanSerialize(maximumEnvelopeBytes, serializerOptions, scratchBytes, maximumEnvelopeInputBytes)) {
+                throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+            }
+            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(serializerOptions, scratchBytes)) {
                 throw new InvalidOperationException("SnapshotSerializerUnsupported");
             }
             if (sequenceNumber <= 0) {
@@ -143,8 +151,9 @@ public partial class SnapshotManager(
             }
             // Reserve the complete state serializer buffer before invoking a converter.
             // The actor admits optional evidence at or below this same ceiling.
-            using var stateOutput = new BoundedSnapshotByteStream(maximumStateBytes);
-            JsonSerializer.Serialize(stateOutput, state, state.GetType(), serializerOptions);
+            using var stateOutput = new BoundedSnapshotByteStream(maximumStateBytes, serializerOptions, scratchBytes, maximumStateInputBytes);
+            BoundedSnapshotJsonBuffer.Serialize(stateOutput, state, state.GetType(), serializerOptions,
+                maximumStateBytes, scratchBytes, maximumStateInputBytes);
             byte[] stateBytes = stateOutput.ToArray();
             using JsonDocument stateDocument = JsonDocument.Parse(stateBytes, new JsonDocumentOptions { MaxDepth = maximumDepth });
             JsonElement folded = stateDocument.RootElement.Clone();
@@ -173,16 +182,19 @@ public partial class SnapshotManager(
                 ProtectionMetadata: protectionResult.Metadata) { SnapshotEnvelopeVersion = 1 };
 
             if (protectionResult.Metadata.State == PayloadProtectionState.Unprotected) {
-                using var protectedStateOutput = new BoundedSnapshotByteStream(maximumStateBytes);
-                JsonSerializer.Serialize(protectedStateOutput, protectionResult.State,
-                    protectionResult.State.GetType(), serializerOptions);
+                using var protectedStateOutput = new BoundedSnapshotByteStream(maximumStateBytes, serializerOptions, scratchBytes, maximumStateInputBytes);
+                BoundedSnapshotJsonBuffer.Serialize(protectedStateOutput, protectionResult.State,
+                    protectionResult.State.GetType(), serializerOptions, maximumStateBytes, scratchBytes, maximumStateInputBytes);
                 byte[] protectedStateBytes = protectedStateOutput.ToArray();
                 if (!stateBytes.AsSpan().SequenceEqual(protectedStateBytes)) {
                     throw new InvalidOperationException("SnapshotStateChangedByNoOpProtection");
                 }
                 using var envelopeOutput = new BoundedSnapshotByteStream(
-                    Math.Min(checked(stateBytes.Length + 4096), maximumEnvelopeBytes));
-                try { JsonSerializer.Serialize(envelopeOutput, snapshot, serializerOptions); }
+                    Math.Min(checked(stateBytes.Length + 4096), maximumEnvelopeBytes), serializerOptions, scratchBytes, maximumEnvelopeInputBytes);
+                try {
+                    BoundedSnapshotJsonBuffer.Serialize(envelopeOutput, snapshot, typeof(SnapshotRecord),
+                        serializerOptions, envelopeOutput.CapacityLimit, scratchBytes, maximumEnvelopeInputBytes);
+                }
                 catch (InvalidOperationException exception) when (exception.Message == "SnapshotCaptureLimitExceeded") {
                     throw new InvalidOperationException("SnapshotEnvelopeBoundExceeded", exception);
                 }
@@ -192,8 +204,9 @@ public partial class SnapshotManager(
                 }
             }
             else {
-                using var protectedEnvelopeOutput = new BoundedSnapshotByteStream(maximumEnvelopeBytes);
-                JsonSerializer.Serialize(protectedEnvelopeOutput, snapshot, serializerOptions);
+                using var protectedEnvelopeOutput = new BoundedSnapshotByteStream(maximumEnvelopeBytes, serializerOptions, scratchBytes, maximumEnvelopeInputBytes);
+                BoundedSnapshotJsonBuffer.Serialize(protectedEnvelopeOutput, snapshot, typeof(SnapshotRecord),
+                    serializerOptions, maximumEnvelopeBytes, scratchBytes, maximumEnvelopeInputBytes);
             }
 
             // Stage the snapshot write -- committed by caller's SaveStateAsync (D1)
@@ -291,10 +304,15 @@ public partial class SnapshotManager(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch
         {
-            logger.LogWarning("Snapshot read unavailable: CorrelationId={CorrelationId}, FailureClass=SnapshotReadUnavailable", correlationId);
+            Log.ReadUnavailable(logger, correlationId, identity.TenantId, identity.Domain, identity.AggregateId);
             return SnapshotLoadResult.InfrastructureFailure("SnapshotReadUnavailable");
         }
+        cancellationToken.ThrowIfCancellationRequested();
         if (!rawResult.HasValue) { return SnapshotLoadResult.Absent(); }
+        if (rawResult.Value is SnapshotRecord { SnapshotEnvelopeVersion: not (0 or 1) })
+        {
+            return SnapshotLoadResult.ProviderOpaque("SnapshotEnvelopeVersionUnknown");
+        }
         JsonElement raw;
         try
         {
@@ -362,7 +380,7 @@ public partial class SnapshotManager(
             {
                 try { await stateManager.RemoveStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-                catch { logger.LogWarning("Corrupt snapshot removal unavailable: FailureClass=SnapshotRemovalUnavailable"); }
+                catch { Log.RemovalUnavailable(logger, correlationId, identity.TenantId, identity.Domain, identity.AggregateId); }
             }
             return SnapshotLoadResult.Corrupt("CorruptSnapshot");
         }
@@ -566,6 +584,20 @@ public partial class SnapshotManager(
             decision.ReasonCode);
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 7103,
+            Level = LogLevel.Warning,
+            Message = "Snapshot read unavailable: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass=SnapshotReadUnavailable")]
+        public static partial void ReadUnavailable(
+            ILogger logger, string? correlationId, string tenantId, string domain, string aggregateId);
+
+        [LoggerMessage(
+            EventId = 7104,
+            Level = LogLevel.Warning,
+            Message = "Corrupt snapshot removal unavailable: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, FailureClass=SnapshotRemovalUnavailable")]
+        public static partial void RemovalUnavailable(
+            ILogger logger, string? correlationId, string tenantId, string domain, string aggregateId);
+
         [LoggerMessage(
             EventId = 7102,
             Level = LogLevel.Information,

@@ -1,8 +1,10 @@
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Configuration;
@@ -48,6 +50,316 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
         JsonElement raw = JsonSerializer.SerializeToElement(snapshot, JsonSerializerOptions.Web);
         _ = stateManager.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<object>(true, raw));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CancellationAfterNormallyCompletedRawReadPreventsAnyInterpretation(bool present, bool corrupt)
+    {
+        // HX-FS-V1 §9.2, V11: a provider may complete normally after canceling the caller.
+        using var cancellation = new CancellationTokenSource();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (SnapshotManager manager, IActorStateManager store) = CreateManager(protection: protection);
+        JsonElement raw = JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""");
+        if (!corrupt)
+        {
+            raw = JsonSerializer.Deserialize<JsonElement>(raw.GetRawText().Replace(
+                "\"createdAt\":\"bad\"", "\"createdAt\":\"1970-01-01T00:00:00+00:00\"", StringComparison.Ordinal));
+        }
+        _ = store.TryGetStateAsync<object>(TestIdentity.SnapshotKey, cancellation.Token).Returns(_ =>
+        {
+            cancellation.Cancel();
+            return new ConditionalValue<object>(present, raw);
+        });
+
+        await Should.ThrowAsync<OperationCanceledException>(() => manager.LoadSnapshotForCommandAsync(
+            TestIdentity, store, cancellationToken: cancellation.Token, authoritativeHead: 1));
+
+        await protection.DidNotReceive().TryUnprotectSnapshotAsync(TestIdentity,
+            Arg.Any<object>(), Arg.Any<EventStorePayloadProtectionMetadata>(), Arg.Any<CancellationToken>());
+        await store.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
+        await store.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SerializerScratchRefusalPrecedesProbeProtectionAndStaging(bool throwOnFailure)
+    {
+        var serializerOptions = new JsonSerializerOptions(JsonSerializerOptions.Web)
+        {
+            DefaultBufferSize = 64 * 1024 * 1024,
+        };
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (SnapshotManager manager, IActorStateManager store) = CreateManager(protection: protection);
+        if (throwOnFailure)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => manager.CreateSnapshotAsync(
+                TestIdentity, 1, JsonSerializer.Deserialize<JsonElement>("{}"), store,
+                serializerOptions, SnapshotTestLimits.ForState(), throwOnFailure: true)))
+                .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+        }
+        else
+        {
+            await manager.CreateSnapshotAsync(TestIdentity, 1, JsonSerializer.Deserialize<JsonElement>("{}"),
+                store, serializerOptions, SnapshotTestLimits.ForState());
+        }
+        await protection.DidNotReceive().ProtectSnapshotAsync(TestIdentity,
+            Arg.Any<object>(), Arg.Any<CancellationToken>());
+        await store.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(159_744, true)]
+    [InlineData(159_743, false)]
+    [InlineData(16_384, false)]
+    public async Task SerializerWorkspaceBoundaryStagesOnlyTheAdmittedCandidate(long scratchBytes, bool admitted)
+    {
+        // HX-FS-V1 §8.6, V5/V16: the final envelope maximum governs pre-admission, even for a tiny state.
+        var logger = new SnapshotManagerCaptureLogger();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), logger,
+            new NoOpEventPayloadProtectionService());
+        var store = new InMemoryStateManager();
+        var limits = SnapshotTestLimits.ForState(1024, serializerScratchBytes: scratchBytes, envelopeBytes: 8192);
+        JsonElement state = JsonSerializer.Deserialize<JsonElement>("""{"count":1}""");
+
+        await manager.CreateSnapshotAsync(TestIdentity, 1, state, store, JsonSerializerOptions.Web, limits);
+        store.CommittedState.ContainsKey(TestIdentity.SnapshotKey).ShouldBeFalse();
+        await store.SaveStateAsync();
+        store.CommittedState.ContainsKey(TestIdentity.SnapshotKey).ShouldBe(admitted);
+        if (admitted)
+        {
+            SnapshotRecord persisted = store.CommittedState[TestIdentity.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+            JsonSerializer.SerializeToUtf8Bytes(persisted.State, JsonSerializerOptions.Web)
+                .ShouldBe(JsonSerializer.SerializeToUtf8Bytes(state, JsonSerializerOptions.Web));
+            persisted.SnapshotEnvelopeVersion.ShouldBe(1);
+        }
+        else
+        {
+            logger.Messages.ShouldContain(message => message.Contains(
+                "FailureClass=SnapshotCaptureLimitExceeded", StringComparison.Ordinal));
+            (await Should.ThrowAsync<InvalidOperationException>(() => manager.CreateSnapshotAsync(
+                TestIdentity, 1, state, store, JsonSerializerOptions.Web, limits, throwOnFailure: true)))
+                .Message.ShouldBe("SnapshotCaptureLimitExceeded");
+        }
+    }
+
+    [Fact]
+    public void OversizedEscapableInputCannotAllocateBeyondItsEncoderScratchReservation()
+    {
+        // HX-FS-V1 §8.6, V5/V16: a valid 132,096-byte graph can contain this source scalar.
+        const int maximumOutput = 1024;
+        const long maximumInput = 132_096;
+        const long scratch = 262_144;
+        const long requiredScratch = 16_384 + 24 * maximumInput + 4096 + 64 * 64;
+        BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, requiredScratch, maximumInput)
+            .ShouldBeTrue();
+        BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, requiredScratch - 1, maximumInput)
+            .ShouldBeFalse();
+        BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, requiredScratch, long.MaxValue)
+            .ShouldBeFalse();
+        string oversized = new('\u0001', 65_536);
+        using var outputBuffer = new MemoryStream(maximumOutput);
+        BoundedSnapshotJsonBuffer.CanSerialize(maximumOutput, JsonSerializerOptions.Web, scratch, maximumInput)
+            .ShouldBeFalse();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        Exception failure = Record.Exception(() => BoundedSnapshotJsonBuffer.Serialize(outputBuffer,
+            oversized, typeof(string), JsonSerializerOptions.Web, maximumOutput, scratch, maximumInput)).ShouldNotBeNull();
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        failure.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("SnapshotCaptureLimitExceeded");
+        outputBuffer.Length.ShouldBe(0);
+        allocated.ShouldBeLessThan(scratch);
+        output.WriteLine($"Refused oversized source string before encoding: allocated={allocated}, reservedScratch={scratch}.");
+    }
+
+    [Fact]
+    public void FixedSerializerScratchBoundaryPreservesCanonicalStateAndEnvelopeBytes()
+    {
+        // HX-FS-V1 §§6.2/8.6, V5/V16: equal options produce exact canonical bytes at the admitted boundary.
+        JsonSerializerOptions options = JsonSerializerOptions.Web;
+        const int maximum = 8192;
+        const long requiredScratch = 3 * maximum + 4096 + 24 * maximum + 4096 + 64 * 64;
+        BoundedSnapshotJsonBuffer.CanSerialize(maximum, options, requiredScratch, maximumInputBytes: maximum).ShouldBeTrue();
+        BoundedSnapshotJsonBuffer.CanSerialize(maximum, options, requiredScratch - 1, maximumInputBytes: maximum).ShouldBeFalse();
+        object[] values = [JsonSerializer.Deserialize<JsonElement>("""{"name":"<界>","items":[1,2,3]}"""),
+            new SnapshotRecord(7, JsonSerializer.Deserialize<JsonElement>("""{"count":7}"""),
+                DateTimeOffset.UnixEpoch, "d", "a", "t", EventStorePayloadProtectionMetadata.Unprotected())
+                { SnapshotEnvelopeVersion = 1 }];
+        foreach (object value in values)
+        {
+            using var output = new BoundedSnapshotByteStream(maximum, options, requiredScratch, maximumInputBytes: maximum);
+            BoundedSnapshotJsonBuffer.Serialize(output, value, value.GetType(), options, maximum, requiredScratch, maximumInputBytes: maximum);
+            output.ToArray().ShouldBe(JsonSerializer.SerializeToUtf8Bytes(value, value.GetType(), options));
+        }
+
+        // One escape near the start rents a worst-case encoder buffer for the entire suffix.
+        const int largeMaximum = 128 * 1024;
+        const long largeScratch = 27L * largeMaximum + 4096 + 4096 + 64 * 64;
+        string sparseEscaping = "<" + new string('a', 100_000);
+        using var largeOutput = new BoundedSnapshotByteStream(largeMaximum, options, largeScratch, maximumInputBytes: largeMaximum);
+        BoundedSnapshotJsonBuffer.Serialize(largeOutput, sparseEscaping, typeof(string), options, largeMaximum, largeScratch, maximumInputBytes: largeMaximum);
+        largeOutput.ToArray().ShouldBe(JsonSerializer.SerializeToUtf8Bytes(sparseEscaping, options));
+
+        string deepJson = new string('[', 65) + "0" + new string(']', 65);
+        using JsonDocument deep = JsonDocument.Parse(deepJson, new JsonDocumentOptions { MaxDepth = 100 });
+        Exception canonicalFailure = Record.Exception(() => JsonSerializer.SerializeToUtf8Bytes(
+            deep.RootElement, options)).ShouldNotBeNull();
+        using var boundedOutput = new BoundedSnapshotByteStream(maximum, options, requiredScratch, maximumInputBytes: maximum);
+        Exception boundedFailure = Record.Exception(() => BoundedSnapshotJsonBuffer.Serialize(
+            boundedOutput, deep.RootElement, typeof(JsonElement), options, maximum, requiredScratch, maximumInputBytes: maximum)).ShouldNotBeNull();
+        boundedFailure.GetType().ShouldBe(canonicalFailure.GetType());
+    }
+
+    [Theory]
+    [InlineData(false, 7103, "SnapshotReadUnavailable")]
+    [InlineData(true, 7104, "SnapshotRemovalUnavailable")]
+    public async Task SnapshotInfrastructureLogsCarrySafeClassAndIdentityWithoutException(
+        bool duringRemoval, int eventId, string failureClass)
+    {
+        // HX-FS-V1 §11, V11: capture generated messages before their pooled state is released.
+        var logger = new SnapshotManagerCaptureLogger();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), logger,
+            new NoOpEventPayloadProtectionService());
+        IActorStateManager store = Substitute.For<IActorStateManager>();
+        if (duringRemoval)
+        {
+            _ = store.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<object>(true, JsonSerializer.Deserialize<JsonElement>(
+                    """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{},"createdAt":"bad","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant","protectionMetadata":null}""")));
+            _ = store.RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+                .ThrowsAsync(new IOException("provider-private-detail"));
+        }
+        else
+        {
+            _ = store.TryGetStateAsync<object>(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>())
+                .ThrowsAsync(new IOException("provider-private-detail"));
+        }
+
+        SnapshotLoadResult result = await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, store, "corr-infrastructure", authoritativeHead: 1);
+
+        result.ReasonCode.ShouldBe(duringRemoval ? "CorruptSnapshot" : "SnapshotReadUnavailable");
+        logger.EventIds.ShouldHaveSingleItem().Id.ShouldBe(eventId);
+        string message = logger.Messages.ShouldHaveSingleItem();
+        message.ShouldContain($"FailureClass={failureClass}");
+        message.ShouldContain("CorrelationId=corr-infrastructure");
+        message.ShouldContain("TenantId=test-tenant");
+        message.ShouldContain("Domain=test-domain");
+        message.ShouldContain("AggregateId=agg-001");
+        message.ShouldNotContain("provider-private-detail");
+        logger.Exceptions.ShouldAllBe(exception => exception == null);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NoOpProtectionCannotChangeTheAdmittedFold(bool throwOnFailure)
+    {
+        // HX-FS-V1 §6.3, V5/V6: freeze the canonical state before invoking the provider.
+        JsonElement folded = JsonSerializer.Deserialize<JsonElement>("""{"count":1}""");
+        JsonElement changed = JsonSerializer.Deserialize<JsonElement>("""{"count":2}""");
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new SnapshotProtectionResult(changed, EventStorePayloadProtectionMetadata.Unprotected()));
+        var logger = new SnapshotManagerCaptureLogger();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), logger, protection);
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+
+        if (throwOnFailure)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => manager.CreateSnapshotAsync(
+                TestIdentity, 1, folded, stateManager, throwOnFailure: true)))
+                .Message.ShouldBe("SnapshotStateChangedByNoOpProtection");
+        }
+        else
+        {
+            await manager.CreateSnapshotAsync(TestIdentity, 1, folded, stateManager);
+            logger.Messages.ShouldContain(message => message.Contains(
+                "FailureClass=SnapshotStateChangedByNoOpProtection", StringComparison.Ordinal));
+        }
+        folded.GetProperty("count").GetInt32().ShouldBe(1);
+        await stateManager.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        logger.Exceptions.ShouldAllBe(exception => exception == null);
+    }
+
+    [Fact]
+    public async Task ProtectedVersionOneEnvelopePersistsMetadataAndReloadsThroughUnprotection()
+    {
+        // HX-FS-V1 §§5/6/9, V3/V7/V10: protected sizes are outside the no-op overhead bound.
+        JsonElement folded = JsonSerializer.Deserialize<JsonElement>("""{"count":7}""");
+        var metadata = new EventStorePayloadProtectionMetadata(
+            PayloadProtectionState.Protected, 1, "test-protection", "test-reference", "application/json", null);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        _ = protection.ProtectSnapshotAsync(TestIdentity, Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new SnapshotProtectionResult("provider-opaque-value", metadata));
+        _ = protection.TryUnprotectSnapshotAsync(TestIdentity, Arg.Any<object>(), metadata, Arg.Any<CancellationToken>())
+            .Returns(SnapshotUnprotectionOutcome.Readable(folded, metadata));
+        (SnapshotManager manager, _) = CreateManager(protection: protection);
+        var store = new InMemoryStateManager();
+
+        await manager.CreateSnapshotAsync(TestIdentity, 7, folded, store, JsonSerializerOptions.Web,
+            SnapshotTestLimits.ForState(), throwOnFailure: true);
+        store.CommittedState.ContainsKey(TestIdentity.SnapshotKey).ShouldBeFalse();
+        await store.SaveStateAsync();
+        SnapshotRecord persisted = store.CommittedState[TestIdentity.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        persisted.SnapshotEnvelopeVersion.ShouldBe(1);
+        persisted.SequenceNumber.ShouldBe(7);
+        persisted.State.ShouldBe("provider-opaque-value");
+        persisted.ProtectionMetadata.ShouldBe(metadata);
+
+        // Use serialized durable bytes, so the read exercises raw version and typed binding.
+        var restarted = new InMemoryStateManager();
+        JsonElement raw = JsonSerializer.SerializeToElement(persisted, JsonSerializerOptions.Web);
+        raw.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(1);
+        raw.GetProperty("protectionMetadata").GetProperty("state").GetInt32()
+            .ShouldBe((int)PayloadProtectionState.Protected);
+        await restarted.SetStateAsync(TestIdentity.SnapshotKey, raw);
+        await restarted.SaveStateAsync();
+        SnapshotLoadResult loaded = await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, restarted, authoritativeHead: 7);
+
+        loaded.Outcome.ShouldBe(SnapshotLoadOutcome.Readable);
+        loaded.Snapshot.ShouldNotBeNull().SnapshotEnvelopeVersion.ShouldBe(1);
+        JsonElement.DeepEquals(loaded.Snapshot.State.ShouldBeOfType<JsonElement>(), folded).ShouldBeTrue();
+        await protection.Received(1).TryUnprotectSnapshotAsync(TestIdentity,
+            Arg.Is<object>(state => state is JsonElement && ((JsonElement)state).GetString() == "provider-opaque-value"),
+            metadata, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StringEnumActorSerializerIsUnsupportedBeforeProtectionOrStaging(bool throwOnFailure)
+    {
+        // HX-FS-V1 §§6.2/9.2, V5/V12: the durable Web reader requires numeric protection enums.
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Web);
+        options.Converters.Add(new JsonStringEnumConverter());
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (SnapshotManager manager, IActorStateManager stateManager) = CreateManager(protection: protection);
+
+        if (throwOnFailure)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => manager.CreateSnapshotAsync(
+                TestIdentity, 1, JsonSerializer.Deserialize<JsonElement>("{}"), stateManager, options,
+                throwOnFailure: true))).Message.ShouldBe("SnapshotSerializerUnsupported");
+        }
+        else
+        {
+            await manager.CreateSnapshotAsync(TestIdentity, 1,
+                JsonSerializer.Deserialize<JsonElement>("{}"), stateManager, options);
+        }
+        await protection.DidNotReceive().ProtectSnapshotAsync(TestIdentity,
+            Arg.Any<object>(), Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(TestIdentity.SnapshotKey,
+            Arg.Any<SnapshotRecord>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -25,6 +25,8 @@ public sealed class FoldedSnapshotCaptureLimitsTests
     [Fact]
     public void RangeAndRepresentationConsistencyRejectInvalidDeclarations()
     {
+        Refused(() => Create(serializerScratch: 1));
+        Refused(() => Create(serializerScratch: 2048));
         Refused(() => Create(eventCount: 0));
         Refused(() => Create(eventCount: 1001));
         Refused(() => Create(maximumDepth: 65));
@@ -49,9 +51,10 @@ public sealed class FoldedSnapshotCaptureLimitsTests
         int? actorState = null,
         int? measurement = null,
         int? envelope = null,
-        int? maximumDepth = null)
+        int? maximumDepth = null,
+        long? serializerScratch = null)
         => new(
-            maximumCaptureWorkspaceBytes: captureWorkspace ?? 40_000,
+            maximumCaptureWorkspaceBytes: captureWorkspace ?? 512_000,
             maximumPreCommandStateGraphBytes: 1024,
             maximumWorkingStateGraphBytes: 1024,
             maximumDetachedEventGraphBytes: detachedGraph ?? 4096,
@@ -66,7 +69,7 @@ public sealed class FoldedSnapshotCaptureLimitsTests
             maximumCanonicalEnvelopeBytes: envelope ?? 8192,
             maximumNodeCount: 100,
             maximumDepth: maximumDepth ?? 16,
-            maximumSerializerScratchBytes: 2048,
-            maximumSimultaneousLiveBytes: simultaneousLive ?? 40_000,
-            maximumActorWorkspaceBytes: actorWorkspace ?? 40_000);
+            maximumSerializerScratchBytes: serializerScratch ?? 262_144,
+            maximumSimultaneousLiveBytes: simultaneousLive ?? 512_000,
+            maximumActorWorkspaceBytes: actorWorkspace ?? 512_000);
 }

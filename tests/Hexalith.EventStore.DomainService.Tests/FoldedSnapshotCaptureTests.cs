@@ -17,6 +17,88 @@ namespace Hexalith.EventStore.DomainService.Tests;
 public sealed class FoldedSnapshotCaptureTests
 {
     [Fact]
+    public async Task PreCommandCopyPrecedesHandlerOnlyMutationAndPreservesAdmittedResult()
+    {
+        // HX-FS-V1 §8.2, V4/V6/V7: only persisted events advance the captured state.
+        var processor = new SnapshotCaptureTestProcessor { HandlerMutation = 100, IncludeResultPayload = true };
+        using ServiceProvider provider = BuildProvider(processor);
+        var state = new SnapshotCaptureTestState { Count = 41 };
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with { CurrentState = state };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false, CurrentState = new SnapshotCaptureTestState { Count = 41 } });
+
+        state.Count.ShouldBe(141);
+        processor.CopiedCount.ShouldBe(41);
+        processor.CapturedState.ShouldNotBeNull().Count.ShouldBe(42);
+        using JsonDocument captured = JsonDocument.Parse(wire.PostCommandStateJson.ShouldNotBeNull());
+        captured.RootElement.GetProperty("count").GetInt32().ShouldBe(42);
+        DomainServiceWireEvent admitted = wire.Events.ShouldHaveSingleItem();
+        admitted.Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        JsonSerializer.SerializeToUtf8Bytes(admitted).ShouldBe(
+            JsonSerializer.SerializeToUtf8Bytes(baseline.Events.ShouldHaveSingleItem()));
+        wire.ResultPayload.ShouldBe("{\"result\":7}");
+        wire.ResultPayload.ShouldBe(baseline.ResultPayload);
+        wire.IsRejection.ShouldBe(baseline.IsRejection);
+        processor.ReturnedEvent.ShouldNotBeNull().Amount.ShouldBe(99);
+    }
+
+    [Fact]
+    public async Task OversizedEscapableInputRefusesScratchBeforeCopyOrApplyWithoutChangingResult()
+    {
+        // HX-FS-V1 §8.6, V6/V16: output rejection cannot admit the encoder's source-string scratch.
+        FoldedSnapshotCaptureLimits limits = SnapshotCaptureTestLimits.For(
+            maximumStateGraphBytes: 132_096, maximumCaptureWorkspaceBytes: 1_048_576);
+        var processor = new SnapshotCaptureTestProcessor(limits) { IncludeResultPayload = true };
+        using ServiceProvider provider = BuildProvider(processor, limits);
+        var state = new SnapshotCaptureTestState { Count = 41, Text = new string('\u0001', 65_536) };
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with { CurrentState = state };
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false });
+
+        processor.CopiedCount.ShouldBeNull();
+        processor.CapturedState.ShouldBeNull();
+        state.Count.ShouldBe(41);
+        wire.PostCommandStateJson.ShouldBeNull();
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        JsonSerializer.SerializeToUtf8Bytes(wire.Events[0]).ShouldBe(
+            JsonSerializer.SerializeToUtf8Bytes(baseline.Events[0]));
+        wire.ResultPayload.ShouldBe("{\"result\":7}");
+        wire.ResultPayload.ShouldBe(baseline.ResultPayload);
+        wire.IsRejection.ShouldBe(baseline.IsRejection);
+    }
+
+    [Fact]
+    public async Task QualifiedDomainFoldForwardsCollisionEvidenceForActorClassification()
+    {
+        // HX-FS-V1 §§5.3/8.3, V8: the actor emits SnapshotStateShapeCollision instead of absent evidence.
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton<IAsyncDomainProcessor>("d", new SnapshotCollisionTestProcessor());
+        services.AddEventStoreFoldedSnapshotQualification<SnapshotCollisionTestState>(
+            "d", "aggregate", "collision-profile", "collision-parity", SnapshotCaptureTestLimits.Value);
+        services.AddEventStoreBoundedV1DomainSerialization("d", profile => profile.Add<SnapshotCaptureTestEvent>(
+            typeof(SnapshotCaptureTestEvent).FullName!, "json", 64,
+            static (_, sink, _) => { sink.Write("{\"amount\":1}"u8); return Task.CompletedTask; }));
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        DomainServiceWireResult wire = await DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: true, "collision-profile"));
+
+        wire.Events.ShouldHaveSingleItem().Payload.ShouldBe("{\"amount\":1}"u8.ToArray());
+        using JsonDocument evidence = JsonDocument.Parse(wire.PostCommandStateJson.ShouldNotBeNull());
+        evidence.RootElement.GetProperty("currentSequence").GetInt32().ShouldBe(1);
+        evidence.RootElement.GetProperty("events").GetArrayLength().ShouldBe(0);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(
+            provider, CreateRequest(include: false, "collision-profile"));
+        wire.Events[0].Payload.ShouldBe(baseline.Events[0].Payload);
+        wire.ResultPayload.ShouldBe(baseline.ResultPayload);
+        wire.IsRejection.ShouldBe(baseline.IsRejection);
+    }
+
+    [Fact]
     public async Task RequestedQualifiedCaptureUsesOnceAdmittedBytesAndDetachedApplyInput()
     {
         var processor = new SnapshotCaptureTestProcessor();
@@ -336,6 +418,41 @@ public sealed class FoldedSnapshotCaptureTests
             [eventBytes, eventBytes], CancellationToken.None)).Message.ShouldBe("SnapshotCaptureLimitExceeded");
     }
 
+    [Theory]
+    [InlineData(122_880, true)]
+    [InlineData(122_879, false)]
+    [InlineData(16_384, false)]
+    public async Task SerializerScratchIsAdmittedBeforeOptionalStateCopy(long scratchBytes, bool admitted)
+    {
+        // HX-FS-V1 §8.6, V6/V16: fixed buffer + encoder and depth scratch precede the copier.
+        FoldedSnapshotCaptureLimits limits = SnapshotCaptureTestLimits.For(
+            maximumSerializerScratchBytes: scratchBytes, maximumStateGraphBytes: 4096);
+        var processor = new SnapshotCaptureTestProcessor(limits);
+        using ServiceProvider provider = BuildProvider(processor, limits);
+        DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
+        {
+            CurrentState = new SnapshotCaptureTestState { Count = 41 },
+        };
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, request);
+        DomainServiceWireResult baseline = await DomainServiceRequestRouter.ProcessAsync(provider,
+            request with { IncludePostCommandState = false });
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe(baseline.Events.ShouldHaveSingleItem().Payload);
+        result.ResultPayload.ShouldBe(baseline.ResultPayload);
+        result.IsRejection.ShouldBe(baseline.IsRejection);
+        if (admitted)
+        {
+            processor.CapturedState.ShouldNotBeNull().Count.ShouldBe(42);
+            result.PostCommandStateJson.ShouldNotBeNull();
+        }
+        else
+        {
+            processor.CapturedState.ShouldBeNull();
+            result.PostCommandStateJson.ShouldBeNull();
+        }
+    }
+
     [Fact]
     public async Task TokenDenseIgnoredFieldRefusesBeforeApplyAndCapturesAtTheAdmittedBoundary()
     {
@@ -345,9 +462,9 @@ public sealed class FoldedSnapshotCaptureTests
         // Outer envelopes, wrapper, captured references/prepared inputs, then 128 bytes/token.
         long exactGraphBytes = 128 + 256 + 256 + 128 + 2 * IntPtr.Size + 256 + 128L * tokens;
         FoldedSnapshotCaptureLimits exactLimits = SnapshotCaptureTestLimits.For(
-            maximumDetachedEventGraphBytes: exactGraphBytes, maximumCaptureWorkspaceBytes: 64_000);
+            maximumDetachedEventGraphBytes: exactGraphBytes, maximumCaptureWorkspaceBytes: 512_000);
         FoldedSnapshotCaptureLimits shortLimits = SnapshotCaptureTestLimits.For(
-            maximumDetachedEventGraphBytes: exactGraphBytes - 1, maximumCaptureWorkspaceBytes: 64_000);
+            maximumDetachedEventGraphBytes: exactGraphBytes - 1, maximumCaptureWorkspaceBytes: 512_000);
         var refusedProcessor = new SnapshotCaptureTestProcessor(shortLimits);
         DomainServiceRequest request = CreateRequest(include: true, "test-profile") with
         {

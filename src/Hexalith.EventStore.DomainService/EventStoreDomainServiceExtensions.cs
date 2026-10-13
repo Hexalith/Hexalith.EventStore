@@ -47,6 +47,30 @@ namespace Hexalith.EventStore.DomainService;
 /// </code>
 /// </remarks>
 public static class EventStoreDomainServiceExtensions {
+    /// <summary>Enrolls a reviewed profile on the actor host without a domain state assembly dependency.</summary>
+    /// <param name="services">The actor host service collection.</param>
+    /// <param name="domain">The exact domain.</param>
+    /// <param name="aggregateType">The exact aggregate type.</param>
+    /// <param name="profileId">The profile identifier shared with the domain host.</param>
+    /// <param name="parityEvidenceId">The reviewed round-trip and canonical-event parity evidence identifier.</param>
+    /// <param name="limits">The finite capture limits shared with the domain host.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>Domain hosts must use the typed qualification registration. This enrollment declares actor-side eligibility only.</remarks>
+    public static IServiceCollection AddEventStoreFoldedSnapshotActorQualification(
+        this IServiceCollection services,
+        string domain,
+        string aggregateType,
+        string profileId,
+        string parityEvidenceId,
+        Hexalith.EventStore.Contracts.Snapshots.FoldedSnapshotCaptureLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton(new FoldedSnapshotQualification(
+            domain, aggregateType, typeof(object), profileId, parityEvidenceId, limits));
+        services.TryAddSingleton<FoldedSnapshotQualificationRegistry>();
+        return services;
+    }
+
     /// <summary>Enrolls one reviewed aggregate/state capture profile in the serving deployment.</summary>
     public static IServiceCollection AddEventStoreFoldedSnapshotQualification<TState>(
         this IServiceCollection services,

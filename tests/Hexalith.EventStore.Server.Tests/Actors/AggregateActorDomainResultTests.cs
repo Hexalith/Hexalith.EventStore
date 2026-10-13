@@ -1,4 +1,5 @@
 
+using System.Text;
 using System.Text.Json;
 
 using Dapr.Actors.Runtime;
@@ -30,6 +31,99 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorDomainResultTests {
+    [Theory]
+    [InlineData("bytes", false)]
+    [InlineData("bytes", true)]
+    [InlineData("graph", false)]
+    [InlineData("graph", true)]
+    public async Task ProcessCommandAsync_ActorEvidenceCeilingsAdmitTheBoundaryAndSkipOnlyExcess(
+        string ceiling, bool atLimit)
+    {
+        // HX-FS-V1 §8.6, V16: UTF-8 and parsed graph limits are independent of the node ceiling.
+        const string evidence = """{"value":"é"}""";
+        int byteCount = Encoding.UTF8.GetByteCount(evidence);
+        long graphBytes = 16L * byteCount + 64L * 4;
+        FoldedSnapshotCaptureLimits limits = ceiling == "bytes"
+            ? SnapshotTestLimits.ForState(byteCount - (atLimit ? 0 : 1))
+            : SnapshotTestLimits.ForState(1024, actorGraphBytes: graphBytes - (atLimit ? 0 : 1));
+        using ServiceProvider services = new ServiceCollection()
+            .AddEventStoreFoldedSnapshotActorQualification("test-domain", "test-domain",
+                "test-profile", "test-parity", limits)
+            .BuildServiceProvider();
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(),
+                Arg.Any<CancellationToken>()).Returns(true);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+                "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with { PostCommandStateJson = evidence });
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        await ctx.StateManager.Received().SetStateAsync("test-tenant:test-domain:agg-001:events:4",
+            Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+        if (atLimit)
+        {
+            await ctx.SnapshotManager.Received(1).CreateSnapshotAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), 4,
+                Arg.Is<object>(state => state is JsonElement && ((JsonElement)state).GetProperty("value").GetString() == "é"),
+                ctx.StateManager, Arg.Any<JsonSerializerOptions>(), limits,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>(), false);
+            snapshotLogger.Messages.ShouldNotContain(message => message.Contains(
+                "FailureClass=SnapshotCaptureLimitExceeded", StringComparison.Ordinal));
+        }
+        else
+        {
+            await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), Arg.Any<long>(),
+                Arg.Any<object>(), Arg.Any<IActorStateManager>(), Arg.Any<JsonSerializerOptions>(),
+                Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+            snapshotLogger.Messages.ShouldContain(message => message.Contains(
+                "FailureClass=SnapshotCaptureLimitExceeded", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_UnadmittedSerializerBufferSkipsCaptureAndCommitsEvents()
+    {
+        // HX-FS-V1 §8.6, V6/V16: buffer refusal is advisory before even the envelope probe.
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Web)
+        {
+            DefaultBufferSize = 64 * 1024 * 1024,
+        };
+        using ServiceProvider services = new ServiceCollection()
+            .AddEventStoreFoldedSnapshotActorQualification("test-domain", "test-domain",
+                "test-profile", "test-parity", SnapshotTestLimits.ForState())
+            .Configure<ActorRuntimeOptions>(value => value.JsonSerializerOptions = options)
+            .BuildServiceProvider();
+        var snapshotLogger = new SnapshotCaptureLogger();
+        ActorTestContext ctx = CreateActor(serviceProvider: services, logger: snapshotLogger);
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        await ctx.StateManager.Received().SetStateAsync("test-tenant:test-domain:agg-001:events:4",
+            Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+        await ctx.SnapshotManager.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), Arg.Any<long>(),
+            Arg.Any<object>(), Arg.Any<IActorStateManager>(), Arg.Any<JsonSerializerOptions>(),
+            Arg.Any<FoldedSnapshotCaptureLimits>(), Arg.Any<string?>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        snapshotLogger.Messages.ShouldContain(message => message.Contains(
+            "FailureClass=SnapshotCaptureLimitExceeded", StringComparison.Ordinal));
+    }
+
     // === Story 3.4: State Rehydration Tests ===
 
     [Fact]
@@ -993,8 +1087,8 @@ public class AggregateActorDomainResultTests {
     [Theory]
     [InlineData("{\"count\":4", "SnapshotStateInvalid")]
     [InlineData("{\"count\":4,\"Count\":5}", "SnapshotStateInvalid")]
-    [InlineData("{\"nested\":{\"count\":4,\"Count\":5}}", "SnapshotStateInvalid")]
-    [InlineData("{\"items\":[{\"count\":4,\"Count\":5}]}", "SnapshotStateInvalid")]
+    [InlineData("{\"nested\":{\"count\":4,\"count\":5}}", "SnapshotStateInvalid")]
+    [InlineData("{\"items\":[{\"count\":4,\"count\":5}]}", "SnapshotStateInvalid")]
     [InlineData("over-depth", "SnapshotStateInvalid")]
     public async Task ProcessCommandAsync_InvalidPresentEvidenceSkipsSnapshotWithSafeReason(
         string evidence, string reason)
@@ -1038,8 +1132,10 @@ public class AggregateActorDomainResultTests {
             "FailureClass=SnapshotEvidenceAbsent", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public async Task ProcessCommandAsync_AdmittedNestedStateRemainsReadableAfterSnapshotStaging()
+    [Theory]
+    [InlineData("{\"nested\":{\"count\":11},\"items\":[{\"count\":12}]}")]
+    [InlineData("{\"nested\":{\"count\":11,\"Count\":12},\"items\":[{\"count\":13,\"Count\":14}]}")]
+    public async Task ProcessCommandAsync_AdmittedNestedStateRemainsReadableAfterSnapshotStaging(string evidence)
     {
         // HX-FS-V1 §§5/9, V7/V17: write and read use the same recursive property-name validator.
         using ServiceProvider services = new ServiceCollection()
@@ -1053,7 +1149,6 @@ public class AggregateActorDomainResultTests {
         ActorTestContext ctx = CreateActor(serviceProvider: services, snapshotManager: snapshots);
         ConfigureNoDuplicate(ctx.StateManager);
         ConfigureExistingAggregate(ctx.StateManager, 10);
-        const string evidence = """{"nested":{"count":11},"items":[{"count":12}]}""";
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
                 "test-profile", Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new TestEvent()]) with { PostCommandStateJson = evidence });

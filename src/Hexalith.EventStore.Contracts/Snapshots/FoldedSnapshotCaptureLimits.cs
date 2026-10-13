@@ -45,7 +45,7 @@ public sealed record FoldedSnapshotCaptureLimits
             || maximumCanonicalEnvelopeBytes is < 1 or > 4 * 1024 * 1024
             || maximumNodeCount is < 1 or > 1_000_000
             || maximumDepth is < 1 or > 64
-            || maximumSerializerScratchBytes is < 1 or > 32L * 1024 * 1024)
+            || maximumSerializerScratchBytes is < 16 * 1024 or > 32L * 1024 * 1024)
         {
             throw new ArgumentOutOfRangeException(nameof(maximumCaptureWorkspaceBytes), "SnapshotCaptureLimitExceeded");
         }

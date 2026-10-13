@@ -10,6 +10,9 @@ internal sealed class SnapshotCaptureLogger : ILogger<AggregateActor>
     /// <summary>Gets rendered log messages from the actor.</summary>
     internal List<string> Messages { get; } = [];
 
+    /// <summary>Gets event identifiers captured while logging state is still valid.</summary>
+    internal List<EventId> EventIds { get; } = [];
+
     /// <summary>Gets exception objects passed to the actor logger.</summary>
     internal List<Exception?> Exceptions { get; } = [];
 
@@ -24,6 +27,7 @@ internal sealed class SnapshotCaptureLogger : ILogger<AggregateActor>
         Exception? exception, Func<TState, Exception?, string> formatter)
     {
         Messages.Add(formatter(state, exception));
+        EventIds.Add(eventId);
         Exceptions.Add(exception);
     }
 }

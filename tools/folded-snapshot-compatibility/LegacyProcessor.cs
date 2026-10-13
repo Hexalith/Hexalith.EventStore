@@ -19,6 +19,9 @@ public sealed class LegacyProcessor : IAsyncDomainProcessor
     /// <summary>Gets the cancellation token passed to the old binary.</summary>
     public static CancellationToken LastCancellationToken { get; private set; }
 
+    /// <summary>Gets the original result returned by the old binary.</summary>
+    public static DomainResult? LastResult { get; private set; }
+
     /// <inheritdoc/>
     public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState,
         CancellationToken cancellationToken)
@@ -27,6 +30,12 @@ public sealed class LegacyProcessor : IAsyncDomainProcessor
         LastCommand = command;
         LastState = currentState;
         LastCancellationToken = cancellationToken;
-        return Task.FromResult(DomainResult.NoOp());
+        LastResult = command.CommandType switch
+        {
+            "LegacySuccess" => new LegacyEventfulResult([new LegacySuccessEvent()], "legacy-success-result"),
+            "LegacyRejection" => new LegacyEventfulResult([new LegacyRejectionEvent()], "legacy-rejection-result"),
+            _ => DomainResult.NoOp(),
+        };
+        return Task.FromResult(LastResult);
     }
 }

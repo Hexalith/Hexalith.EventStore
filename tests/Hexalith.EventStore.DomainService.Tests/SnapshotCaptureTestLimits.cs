@@ -15,11 +15,13 @@ internal static class SnapshotCaptureTestLimits
         int maximumNodeCount = 100,
         int maximumDepth = 16,
         long maximumDetachedEventGraphBytes = 4096,
-        long maximumCaptureWorkspaceBytes = 40_000)
+        long maximumCaptureWorkspaceBytes = 512_000,
+        long maximumSerializerScratchBytes = 262_144,
+        long maximumStateGraphBytes = 1024)
         => new(
         maximumCaptureWorkspaceBytes: maximumCaptureWorkspaceBytes,
-        maximumPreCommandStateGraphBytes: 1024,
-        maximumWorkingStateGraphBytes: 1024,
+        maximumPreCommandStateGraphBytes: maximumStateGraphBytes,
+        maximumWorkingStateGraphBytes: maximumStateGraphBytes,
         maximumDetachedEventGraphBytes: maximumDetachedEventGraphBytes,
         maximumEventCount: maximumEventCount,
         maximumEventBytes: maximumEventBytes,
@@ -32,7 +34,7 @@ internal static class SnapshotCaptureTestLimits
         maximumCanonicalEnvelopeBytes: 8192,
         maximumNodeCount: maximumNodeCount,
         maximumDepth: maximumDepth,
-        maximumSerializerScratchBytes: 2048,
+        maximumSerializerScratchBytes: maximumSerializerScratchBytes,
         maximumSimultaneousLiveBytes: maximumCaptureWorkspaceBytes,
-        maximumActorWorkspaceBytes: 40_000);
+        maximumActorWorkspaceBytes: 512_000);
 }

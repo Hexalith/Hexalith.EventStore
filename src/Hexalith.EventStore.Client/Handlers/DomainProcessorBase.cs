@@ -82,7 +82,10 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
             {
                 profile = FoldedSnapshotCapture;
                 if (profile is null || !string.Equals(profile.ProfileId, qualifiedProfileId, StringComparison.Ordinal)
-                    || !Equals(profile.Limits, qualifiedLimits))
+                    || !Equals(profile.Limits, qualifiedLimits)
+                    || !BoundedSnapshotJsonBuffer.CanSerialize(profile.MaximumStateJsonBytes,
+                        EventStorePayloadSerialization.Options, profile.Limits.MaximumSerializerScratchBytes,
+                        profile.Limits.MaximumWorkingStateGraphBytes))
                 {
                     profile = null;
                 }
@@ -162,8 +165,12 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
             DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState)), cancellationToken,
             admittedInput: replayInput)
             ?? throw new InvalidOperationException("SnapshotCaptureStateInvalid");
-        using var output = new BoundedSnapshotJsonStream(profile.MaximumStateJsonBytes);
-        JsonSerializer.Serialize(output, folded, EventStorePayloadSerialization.Options);
+        using var output = new BoundedSnapshotJsonStream(profile.MaximumStateJsonBytes,
+            EventStorePayloadSerialization.Options, profile.Limits.MaximumSerializerScratchBytes,
+            profile.Limits.MaximumWorkingStateGraphBytes);
+        BoundedSnapshotJsonBuffer.Serialize(output, folded, typeof(TState), EventStorePayloadSerialization.Options,
+            profile.MaximumStateJsonBytes, profile.Limits.MaximumSerializerScratchBytes,
+            profile.Limits.MaximumWorkingStateGraphBytes);
         byte[] bytes = output.ToArray();
         cancellationToken.ThrowIfCancellationRequested();
         var reader = new Utf8JsonReader(bytes, new JsonReaderOptions { MaxDepth = profile.MaximumDepth });
@@ -178,10 +185,9 @@ public abstract class DomainProcessorBase<TState> : IDomainProcessor, IAsyncDoma
         }
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement state = document.RootElement;
-        if (state.ValueKind != JsonValueKind.Object
-            || (state.TryGetProperty("currentSequence", out _) && state.TryGetProperty("events", out _)))
+        if (state.ValueKind != JsonValueKind.Object)
         {
-            throw new InvalidOperationException("SnapshotStateShapeCollision");
+            throw new InvalidOperationException("SnapshotCaptureStateInvalid");
         }
         return Encoding.UTF8.GetString(bytes);
     }

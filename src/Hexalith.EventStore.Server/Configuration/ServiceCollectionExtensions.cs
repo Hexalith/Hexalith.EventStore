@@ -95,6 +95,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<IGlobalPositionAllocator, DaprGlobalPositionAllocator>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
+        _ = services.AddHostedService<FoldedSnapshotQualificationHostedService>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();

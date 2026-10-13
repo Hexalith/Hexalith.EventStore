@@ -5896,3 +5896,40 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Prevent the default six-argument IDomainServiceInvoker overload from silently dropping the human-authority receipt.
   evidence: IDomainServiceInvoker.cs:27 delegates to the five-argument overload without humanAuthorityReceipt, and FakeDomainServiceInvoker does not override it, so a custom invoker loses the receipt with no error. Introduced by 8eec9712 signed-authority work.
+
+## Deferred from: Story 6.2 independent review, iteration 2 (2026-10-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Validate malformed shared-projection transport parts before storage.
+  evidence: R6-BH3: null Header or ProjectionTypes reaches dereferences/collection construction outside the endpoint's ProjectionDispatchValidationException catch; independent shared-projection work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Align prerelease P1R successor input and support-table admission.
+  evidence: R6-BH4: 3.121.0-rc.1 can omit tag_builds_commit during validate_inputs but reaches direct indexing in successor support-table validation and raises KeyError; independent P1R tooling.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound human-authority receipt issuance consistently with verification.
+  evidence: R6-BH6: Issue accepts arbitrarily large subject/permission inputs while TryVerify rejects receipts above 16,384 characters; independent signed-authority work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Clear private decoded signing-key copies after human-authority HMAC use.
+  evidence: R6-BH7: ReadKey produces byte arrays retained through normal completion/failure without zeroing in Issue/TryVerify; independent signing-key lifetime hygiene.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Split shared-projection production types into their own C# files.
+  evidence: R6-BH10: SharedProjectionSourceWriteFence.cs contains options, interface and implementation, and SharedProjectionSourceRosterActor.cs has additional types, contrary to the one-type-per-file baseline; independent shared-projection work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Prove bound gateway resource-proof expiration at the exact boundary.
+  evidence: R6-VG1: existing proof tests use fresh issuance and changed fields; none exercises a valid signed proof at or after expiration, so removing the expiry predicate leaves them green; independent gateway verification.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Admit actual protected snapshot representation input before built-in encoding when enabling real protection providers.
+  evidence: R8-BH3: SnapshotManager encoder scratch uses the original folded-state ceiling, while a protection provider can return a larger string/object before protected envelope serialization. The configured no-op returns the admitted fold; real provider/ciphertext integration requires a reviewed input bound independent of plaintext output sizing under the separate Epic 8 scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Bound synchronous delegation-provider and submitter calls in the process runner.
+  evidence: R8-BH8: CheckpointedProcessRunner.WithDeadline invokes operation(deadline.Token) before attaching WaitAsync; an implementation blocking before returning a Task can hold reconciliation beyond OperationTimeout. This is independent process work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Include returned process-effect collection access and copying inside translation deadline and cancellation handling.
+  evidence: R8-BH9: CaptureEnvelopeAsync awaits the bounded translator then reads translated.Count and enumerates outside the deadline with no caller-cancellation observation during copying; a blocking/lazy returned collection can hold the independent runner.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Enforce process effect limits against the number actually yielded by a translator collection.
+  evidence: R8-BH10: CaptureEnvelopeAsync compares only translated.Count with MaxEffectsPerEnvelope, then adds every enumerated distinct effect until the byte ceiling. An inconsistent/changing IReadOnlyList can bypass the count limit in this independent process path.

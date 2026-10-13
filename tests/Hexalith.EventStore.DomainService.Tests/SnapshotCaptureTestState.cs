@@ -6,6 +6,9 @@ public sealed class SnapshotCaptureTestState
     /// <summary>Gets or sets the count.</summary>
     public int Count { get; set; }
 
+    /// <summary>Gets or sets a scalar used to verify input-based encoder admission.</summary>
+    public string Text { get; set; } = string.Empty;
+
     /// <summary>Forces the capture Apply callback to fail after receiving its detached input.</summary>
     public bool ThrowOnApply { get; set; }
 

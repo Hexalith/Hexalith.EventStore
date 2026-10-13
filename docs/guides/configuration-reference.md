@@ -162,7 +162,25 @@ Configuration section: `EventStore:Snapshots`
 }
 ```
 
-Automatic capture also requires the same deployment-owned `AddEventStoreFoldedSnapshotQualification<TState>` declaration on the actor and domain-service hosts, a matching `FoldedSnapshotCaptureProfile<TState>` in the processor, finite `FoldedSnapshotCaptureLimits`, and event serialization that passes the bounded V1 response gate. Before invoking the domain service, the actor checks whether the existing stream sequence is due under the snapshot policy. It requests folded state only when due. If a command first reaches the interval, capture waits for a later command that emits events. Absent or unqualified evidence skips the automatic snapshot while the valid event batch still commits. Event 2031 logs the skip with a safe `FailureClass`, such as `SnapshotEvidenceAbsent`, `SnapshotStateInvalid`, `SnapshotPolicyUnavailable`, `SnapshotCaptureUnsupported`, or `SnapshotCaptureLimitExceeded`. Manual snapshot creation fails with a bounded reason when capture is unsupported.
+Automatic capture requires deployment-owned enrollment on both hosts. Call `AddEventStoreFoldedSnapshotQualification<TState>` on the domain-service host and `AddEventStoreFoldedSnapshotActorQualification` on the actor host. The actor registration does not require the domain state assembly. Both declarations must identify the same domain, aggregate type, profile ID, reviewed parity evidence, and finite `FoldedSnapshotCaptureLimits`. The domain processor must expose a matching `FoldedSnapshotCaptureProfile<TState>`, and event serialization must pass the bounded V1 response gate.
+
+Enroll the domain host first, then the actor host, after verifying state round-trip and event-replay parity. When withdrawing or changing a qualification, withdraw it from the actor host first, then change the domain deployment. Manual snapshot creation relies on the actor-host declaration and its existing full-prefix replay request; it does not negotiate a capture profile with the domain host. This ordering prevents the actor from authorizing manual writes against an ineligible domain deployment.
+
+Before invoking the domain service, the actor checks whether the existing stream sequence is due under the snapshot policy. It requests folded state only when due. If a command first reaches the interval, capture waits for a later command that emits events. Absent or unqualified evidence skips the automatic snapshot while the valid event batch still commits. Event 2031 logs capture failures with a safe `FailureClass`, such as `SnapshotEvidenceAbsent`, `SnapshotStateInvalid`, `SnapshotStateShapeCollision`, `SnapshotPolicyUnavailable`, `SnapshotCaptureUnsupported`, or `SnapshotCaptureLimitExceeded`. If no qualification registry is registered on the actor host, startup event 7105 warns with `Stage=FoldedSnapshotQualificationAbsent` and `FailureClass=SnapshotCaptureUnsupported`. Manual snapshot creation fails with a bounded reason when capture is unsupported.
+
+The runnable [capture processor](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestProcessor.cs), [detached copier](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestProcessor.cs#L14), [finite limits](../../tests/Hexalith.EventStore.DomainService.Tests/SnapshotCaptureTestLimits.cs), and [bounded event serialization and capture tests](../../tests/Hexalith.EventStore.DomainService.Tests/FoldedSnapshotCaptureTests.cs) illustrate a matched declaration. These fixture declarations are examples; an application must review its own state restore, Apply behavior, serializer scratch, and simultaneous representations before enrollment.
+
+```csharp
+// Domain-service host, after reviewing this specific OrderState/profile:
+services.AddEventStoreFoldedSnapshotQualification<OrderState>(
+    "orders", "OrderAggregate", "orders-fold-v1", "orders-parity-v1", reviewedLimits);
+
+// Actor host: use the same profile, parity evidence, and finite limits.
+services.AddEventStoreFoldedSnapshotActorQualification(
+    "orders", "OrderAggregate", "orders-fold-v1", "orders-parity-v1", reviewedLimits);
+```
+
+The declaration must reserve the built-in writer buffer, encoder scratch, and depth stack before optional serialization, including envelope probes and measurements. A positive scratch limit alone is insufficient; limits below the required serializer capacity skip automatic capture and refuse manual creation before reconstruction. Fixed output capacity bounds library-owned serialization growth while trusted callbacks remain part of the reviewed deployment contract.
 
 The actor serializer must write compact JSON and support the version-1 snapshot envelope. Both writers measure the folded state and final envelope before staging; unprotected and legacy no-op envelopes must fit within folded-state bytes plus 4096 bytes. A legacy or malformed snapshot never supplies stream authority on its own.
 

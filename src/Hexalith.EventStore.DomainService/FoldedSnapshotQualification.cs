@@ -34,7 +34,7 @@ public sealed class FoldedSnapshotQualification
     /// <summary>Gets the exact aggregate type.</summary>
     public string AggregateType { get; }
 
-    /// <summary>Gets the exact state CLR type.</summary>
+    /// <summary>Gets the exact domain state CLR type, or <see cref="object"/> for actor-only enrollment.</summary>
     public Type StateType { get; }
 
     /// <summary>Gets the exact serializer/deployment profile identifier.</summary>

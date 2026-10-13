@@ -32,6 +32,7 @@ public enum SnapshotLoadOutcome {
     /// <summary>A snapshot exists with provider-opaque protection metadata (cannot be read here).</summary>
     ProviderOpaque = 3,
 
-    /// <summary>A snapshot exists but failed plaintext deserialization (would have been deleted by the command-time path).</summary>
+    /// <summary>A snapshot exists but fails deserialization, identity, sequence, or folded-state validation.</summary>
+    /// <remarks>Command-time deletion is permitted only for known-version, proven-unprotected deserialization failures under a verified stream head.</remarks>
     Corrupt = 4,
 }

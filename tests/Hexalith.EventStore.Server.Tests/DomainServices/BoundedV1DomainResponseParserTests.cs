@@ -131,6 +131,35 @@ public sealed class BoundedV1DomainResponseParserTests
     }
 
     [Fact]
+    public async Task OversizedMultibyteOptionalScalarPreservesEventsAcrossReadBoundaries()
+    {
+        // HX-FS-V1 §§8.3/12, V11/V12/V16: chunk ends split raw three-byte UTF8 scalars.
+        byte[] json = Encoding.UTF8.GetBytes("{\"postCommandStateJson\":\""
+            + new string('界', 3 * 1024 * 1024) + "\",\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"resultPayload\":\"ok\"}");
+        using var stream = new BoundedReadDomainResponseStream(json, 65_535);
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        DomainServiceWireResult result = await parser.ParseAsync();
+
+        result.Events.ShouldHaveSingleItem().Payload.ShouldBe("{}"u8.ToArray());
+        result.ResultPayload.ShouldBe("ok");
+        result.PostCommandStateJson.ShouldBeNull();
+        parser.LiveBytes.ShouldBeLessThan(16L * 1024 * 1024);
+    }
+
+    [Fact]
+    public async Task OversizedOptionalScalarRejectsIncompleteTrailingUtf8CodeUnit()
+    {
+        byte[] prefix = Encoding.UTF8.GetBytes("{\"events\":[],\"postCommandStateJson\":\""
+            + new string('a', 6 * 1024 * 1024 + 1));
+        byte[] invalid = [.. prefix, 0xe7, 0x95, (byte)'"', (byte)'}'];
+        using var stream = new BoundedReadDomainResponseStream(invalid, 65_535);
+        using var parser = new BoundedV1DomainResponseParser(stream, CancellationToken.None);
+
+        await Should.ThrowAsync<JsonException>(() => parser.ParseAsync());
+    }
+
+    [Fact]
     public async Task OversizedOptionalScalarStillRejectsMalformedJsonEscape()
     {
         using var stream = Input("{\"events\":[],\"postCommandStateJson\":\""

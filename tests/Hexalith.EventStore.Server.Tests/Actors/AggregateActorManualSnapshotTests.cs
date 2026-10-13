@@ -31,8 +31,49 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorManualSnapshotTests {
     [Theory]
-    [InlineData("{\"nested\":{\"count\":2,\"Count\":3}}", false)]
-    [InlineData("{\"items\":[{\"count\":2,\"Count\":3}]}", false)]
+    [InlineData(2L, 0L, false)]
+    [InlineData(2L, 4L, false)]
+    [InlineData(2L, 3L, true)]
+    [InlineData(long.MaxValue, long.MaxValue, true)]
+    public async Task CreateManualSnapshotAsync_AlreadyCurrentRequiresValidDurableRetainedFloor(
+        long head, long floor, bool admitted)
+    {
+        // HX-FS-V1 §§7.4/9.1, V11/V17: equality cannot grant authority to invalid stream metadata.
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var store = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(head, DateTimeOffset.UnixEpoch, null, floor);
+        var retained = new SnapshotRecord(head, JsonSerializer.Deserialize<JsonElement>("{\"count\":2}"),
+            DateTimeOffset.UnixEpoch, identity.Domain, identity.AggregateId, identity.TenantId)
+            { SnapshotEnvelopeVersion = 1 };
+        await store.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = metadata,
+            [identity.SnapshotKey] = retained,
+        });
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            NullLogger<SnapshotManager>.Instance, new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, store, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-floor");
+
+        result.Outcome.ShouldBe(admitted ? ManualSnapshotOutcome.AlreadyCurrent : ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe(admitted ? null : "SnapshotStreamUnavailable");
+        store.CommittedState[identity.MetadataKey].ShouldBeSameAs(metadata);
+        store.CommittedState[identity.SnapshotKey].ShouldBeSameAs(retained);
+        store.Trace.ShouldNotContain("SaveState");
+        store.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+        store.Trace.ShouldNotContain($"RemoveState:{identity.SnapshotKey}");
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("{\"nested\":{\"count\":2,\"Count\":3}}", true)]
+    [InlineData("{\"items\":[{\"count\":2,\"Count\":3}]}", true)]
+    [InlineData("{\"nested\":{\"count\":2,\"count\":3}}", false)]
+    [InlineData("{\"items\":[{\"count\":2,\"count\":3}]}", false)]
     [InlineData("{\"nested\":{\"count\":2},\"items\":[{\"count\":3}]}", true)]
     public async Task CreateManualSnapshotAsync_RecursiveCandidateValidationMatchesSnapshotRead(
         string stateJson, bool admitted)
@@ -649,6 +690,34 @@ public class AggregateActorManualSnapshotTests {
 
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
         ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SnapshotEnvelopeVersion.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_UnadmittedSerializerBufferRefusesBeforeReconstruction()
+    {
+        // HX-FS-V1 §8.6, V3/V16: even the qualification probe must be pre-admitted.
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-serializer");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshots = Substitute.For<ISnapshotManager>();
+        _ = snapshots.InspectSnapshotForManualOverwriteAsync(identity, stateManager,
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(SnapshotLoadResult.Absent());
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Web)
+        {
+            DefaultBufferSize = 64 * 1024 * 1024,
+        };
+        AggregateActor actor = CreateActor(identity, stateManager, snapshots, reconstructor, options);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-serializer");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("SnapshotCaptureLimitExceeded");
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        stateManager.CommittedState.ContainsKey(identity.SnapshotKey).ShouldBeFalse();
+        stateManager.Trace.ShouldNotContain(entry => entry.StartsWith("SaveState", StringComparison.Ordinal));
     }
 
     [Fact]

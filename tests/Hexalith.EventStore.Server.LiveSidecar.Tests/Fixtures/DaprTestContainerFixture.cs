@@ -471,7 +471,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     }
 
     private static FoldedSnapshotCaptureLimits CreateFoldedCounterCaptureLimits() => new(
-        maximumCaptureWorkspaceBytes: 32L * 1024 * 1024,
+        maximumCaptureWorkspaceBytes: 64L * 1024 * 1024,
         maximumPreCommandStateGraphBytes: 1024 * 1024,
         maximumWorkingStateGraphBytes: 1024 * 1024,
         maximumDetachedEventGraphBytes: 2 * 1024 * 1024,
@@ -483,12 +483,12 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         maximumActorParsedStateBytes: 1024 * 1024,
         maximumActorParsedGraphBytes: 8L * 1024 * 1024,
         maximumCanonicalStateMeasurementBytes: 1024 * 1024,
-        maximumCanonicalEnvelopeBytes: 4 * 1024 * 1024,
+        maximumCanonicalEnvelopeBytes: 1024 * 1024 + 4096,
         maximumNodeCount: 100_000,
         maximumDepth: 64,
-        maximumSerializerScratchBytes: 4L * 1024 * 1024,
-        maximumSimultaneousLiveBytes: 32L * 1024 * 1024,
-        maximumActorWorkspaceBytes: 32L * 1024 * 1024);
+        maximumSerializerScratchBytes: 32L * 1024 * 1024,
+        maximumSimultaneousLiveBytes: 64L * 1024 * 1024,
+        maximumActorWorkspaceBytes: 64L * 1024 * 1024);
 
     /// <summary>
     /// Reads aggregate actor state directly from Redis using the fixture's isolated actor type name.

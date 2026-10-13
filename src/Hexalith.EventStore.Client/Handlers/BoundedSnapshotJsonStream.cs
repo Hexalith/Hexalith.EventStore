@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Hexalith.EventStore.Client.Handlers;
 
 /// <summary>Stops a qualified folded-state serializer at its pre-admitted byte ceiling.</summary>
@@ -6,12 +8,18 @@ internal sealed class BoundedSnapshotJsonStream : Stream
     private readonly MemoryStream _buffer;
     private readonly int _maximumBytes;
 
-    internal BoundedSnapshotJsonStream(int maximumBytes)
+    /// <summary>Admits serializer scratch before allocating the optional state output buffer.</summary>
+    internal BoundedSnapshotJsonStream(int maximumBytes, JsonSerializerOptions options, long scratchBytes, long maximumInputBytes)
     {
+        if (!BoundedSnapshotJsonBuffer.CanSerialize(maximumBytes, options, scratchBytes, maximumInputBytes))
+        {
+            throw new InvalidOperationException("SnapshotCaptureLimitExceeded");
+        }
         _maximumBytes = maximumBytes;
         _buffer = new MemoryStream(maximumBytes);
     }
 
+    /// <summary>Copies admitted state bytes into their independently reserved canonical buffer.</summary>
     internal byte[] ToArray() => _buffer.ToArray();
 
     public override bool CanRead => false;

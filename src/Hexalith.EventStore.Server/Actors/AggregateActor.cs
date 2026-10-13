@@ -12,6 +12,7 @@ using Dapr.Actors.Runtime;
 using Grpc.Core;
 
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Identity;
@@ -1397,7 +1398,20 @@ public partial class AggregateActor(
                                 "SnapshotCaptureUnsupported");
                         }
                         if (snapshotQualification is not null
-                            && SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions))
+                            && !BoundedSnapshotJsonBuffer.CanSerialize(snapshotQualification.Limits.MaximumCanonicalEnvelopeBytes,
+                                ActorStateJsonSerializerOptions, snapshotQualification.Limits.MaximumSerializerScratchBytes,
+                                SnapshotEnvelopeInspector.EnvelopeInputBytes(snapshotQualification.Limits.MaximumActorParsedStateBytes)))
+                        {
+                            Log.SnapshotAdvisorySkip(logger, command.CorrelationId,
+                                command.TenantId, command.Domain, command.AggregateId,
+                                "SnapshotCaptureLimitExceeded");
+                        }
+                        if (snapshotQualification is not null
+                            && BoundedSnapshotJsonBuffer.CanSerialize(snapshotQualification.Limits.MaximumCanonicalEnvelopeBytes,
+                                ActorStateJsonSerializerOptions, snapshotQualification.Limits.MaximumSerializerScratchBytes,
+                                SnapshotEnvelopeInspector.EnvelopeInputBytes(snapshotQualification.Limits.MaximumActorParsedStateBytes))
+                            && SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions,
+                                snapshotQualification.Limits.MaximumSerializerScratchBytes))
                         {
                             try
                             {
@@ -1767,8 +1781,7 @@ public partial class AggregateActor(
 
                         if (committedReplacementReasonClass is not null)
                         {
-                            logger.LogInformation(
-                                "Folded snapshot replacement committed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}",
+                            Log.SnapshotReplacementCommitted(logger,
                                 command.CorrelationId, command.TenantId, command.Domain,
                                 command.AggregateId, persistResult.NewSequenceNumber,
                                 committedReplacementReasonClass);
@@ -2448,6 +2461,7 @@ public partial class AggregateActor(
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
         long currentSequence = 0;
         SnapshotRecord? attemptedSnapshot = null;
+        FoldedSnapshotCaptureLimits? attemptedLimits = null;
         bool snapshotSaveAttempted = false;
 
         try {
@@ -2457,8 +2471,14 @@ public partial class AggregateActor(
 
             // Manual completion must inspect persisted state, including the AlreadyCurrent path.
             await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
-            AggregateStreamMetadata metadata = await GetStreamMetadataAsync().ConfigureAwait(false);
-            currentSequence = metadata.CurrentSequence;
+            ConditionalValue<AggregateMetadata> durableMetadata = await StateManager
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken).ConfigureAwait(false);
+            currentSequence = durableMetadata.HasValue ? durableMetadata.Value.CurrentSequence : 0;
+            if (currentSequence < 0)
+            {
+                throw new InvalidOperationException("SnapshotStreamUnavailable");
+            }
+            var metadata = new AggregateStreamMetadata(durableMetadata.HasValue, currentSequence);
             if (!metadata.Exists || metadata.CurrentSequence <= 0) {
                 return new ManualSnapshotResult(
                     ManualSnapshotOutcome.NotFound,
@@ -2466,6 +2486,15 @@ public partial class AggregateActor(
                     identity.SnapshotKey,
                     "NotFound",
                     "Aggregate stream was not found.");
+            }
+
+            long retainedFloor = durableMetadata.Value.RetainedFloor;
+            if (retainedFloor < 1
+                || (retainedFloor > currentSequence && retainedFloor - currentSequence > 1))
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    currentSequence, identity.SnapshotKey, "SnapshotStreamUnavailable",
+                    "Aggregate stream metadata is invalid.");
             }
 
             SnapshotLoadResult snapshotInspection = await snapshotManager
@@ -2521,12 +2550,6 @@ public partial class AggregateActor(
                     null);
             }
 
-            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions))
-            {
-                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
-                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSerializerUnsupported",
-                    "Snapshot serializer is not qualified.");
-            }
             ConditionalValue<EventEnvelope> firstEvent = await StateManager.TryGetStateAsync<EventEnvelope>(
                 $"{identity.EventStreamKeyPrefix}1", cancellationToken).ConfigureAwait(false);
             if (!firstEvent.HasValue)
@@ -2552,6 +2575,22 @@ public partial class AggregateActor(
                     "No qualified snapshot capture is registered.");
             }
 
+            if (!BoundedSnapshotJsonBuffer.CanSerialize(qualification.Limits.MaximumCanonicalEnvelopeBytes,
+                ActorStateJsonSerializerOptions, qualification.Limits.MaximumSerializerScratchBytes,
+                SnapshotEnvelopeInspector.EnvelopeInputBytes(qualification.Limits.MaximumActorParsedStateBytes)))
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotCaptureLimitExceeded",
+                    "Snapshot serializer workspace is not admitted.");
+            }
+            if (!SnapshotEnvelopeInspector.IsSupportedWriteSerializer(ActorStateJsonSerializerOptions,
+                qualification.Limits.MaximumSerializerScratchBytes))
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence, identity.SnapshotKey, "SnapshotSerializerUnsupported",
+                    "Snapshot serializer is not qualified.");
+            }
+
             var eventStreamReader = new EventStreamReader(
                 StateManager,
                 Host.LoggerFactory.CreateLogger<EventStreamReader>());
@@ -2575,8 +2614,7 @@ public partial class AggregateActor(
             if (snapshotState is not JsonElement candidate
                 || !SnapshotEnvelopeInspector.IsFoldedObject(candidate)
                 || !IsWithinBoundedSnapshotState(candidate,
-                    qualification.Limits.MaximumCanonicalStateMeasurementBytes,
-                    ActorStateJsonSerializerOptions))
+                    qualification.Limits, ActorStateJsonSerializerOptions))
             {
                 return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
                     metadata.CurrentSequence, identity.SnapshotKey,
@@ -2585,6 +2623,7 @@ public partial class AggregateActor(
                     "Reconstructed state is not eligible for a folded snapshot.");
             }
 
+            attemptedLimits = qualification.Limits;
             await snapshotManager.CreateSnapshotAsync(
                 identity,
                 metadata.CurrentSequence,
@@ -2607,7 +2646,7 @@ public partial class AggregateActor(
             await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
             ConditionalValue<SnapshotRecord> durableSnapshot = await StateManager
                 .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey, CancellationToken.None).ConfigureAwait(false);
-            if (!durableSnapshot.HasValue || !SnapshotRecordsMatch(durableSnapshot.Value, attemptedSnapshot))
+            if (!durableSnapshot.HasValue || !SnapshotRecordsMatch(durableSnapshot.Value, attemptedSnapshot, qualification.Limits))
             {
                 throw new InvalidOperationException("SnapshotReadbackMismatch");
             }
@@ -2634,14 +2673,14 @@ public partial class AggregateActor(
         }
         catch (Exception ex) {
             (bool discarded, _) = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
-            if (discarded && snapshotSaveAttempted && attemptedSnapshot is not null)
+            if (discarded && snapshotSaveAttempted && attemptedSnapshot is not null && attemptedLimits is not null)
             {
                 try
                 {
                     ConditionalValue<SnapshotRecord> observed = await StateManager
                         .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
                         .ConfigureAwait(false);
-                    if (observed.HasValue && SnapshotRecordsMatch(observed.Value, attemptedSnapshot))
+                    if (observed.HasValue && SnapshotRecordsMatch(observed.Value, attemptedSnapshot, attemptedLimits))
                     {
                         return new ManualSnapshotResult(
                             ManualSnapshotOutcome.Created,
@@ -2675,7 +2714,7 @@ public partial class AggregateActor(
         }
     }
 
-    private bool SnapshotRecordsMatch(SnapshotRecord observed, SnapshotRecord expected)
+    private bool SnapshotRecordsMatch(SnapshotRecord observed, SnapshotRecord expected, FoldedSnapshotCaptureLimits limits)
         => observed.SequenceNumber == expected.SequenceNumber
             && observed.SnapshotEnvelopeVersion == expected.SnapshotEnvelopeVersion
             && observed.CreatedAt == expected.CreatedAt
@@ -2683,11 +2722,22 @@ public partial class AggregateActor(
             && string.Equals(observed.AggregateId, expected.AggregateId, StringComparison.Ordinal)
             && string.Equals(observed.TenantId, expected.TenantId, StringComparison.Ordinal)
             && Equals(observed.ProtectionMetadata, expected.ProtectionMetadata)
-            && JsonSerializer.SerializeToUtf8Bytes(observed.State, ActorStateJsonSerializerOptions)
-                .AsSpan()
-                .SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(
-                    expected.State,
-                    ActorStateJsonSerializerOptions));
+            && SnapshotStatesMatch(observed.State, expected.State, limits);
+
+    private bool SnapshotStatesMatch(object observed, object expected, FoldedSnapshotCaptureLimits limits)
+    {
+        using var observedOutput = new BoundedSnapshotByteStream(limits.MaximumCanonicalEnvelopeBytes,
+            ActorStateJsonSerializerOptions, limits.MaximumSerializerScratchBytes, limits.MaximumActorParsedStateBytes);
+        using var expectedOutput = new BoundedSnapshotByteStream(limits.MaximumCanonicalEnvelopeBytes,
+            ActorStateJsonSerializerOptions, limits.MaximumSerializerScratchBytes, limits.MaximumActorParsedStateBytes);
+        BoundedSnapshotJsonBuffer.Serialize(observedOutput, observed, observed.GetType(),
+            ActorStateJsonSerializerOptions, limits.MaximumCanonicalEnvelopeBytes, limits.MaximumSerializerScratchBytes,
+            limits.MaximumActorParsedStateBytes);
+        BoundedSnapshotJsonBuffer.Serialize(expectedOutput, expected, expected.GetType(),
+            ActorStateJsonSerializerOptions, limits.MaximumCanonicalEnvelopeBytes, limits.MaximumSerializerScratchBytes,
+            limits.MaximumActorParsedStateBytes);
+        return observedOutput.WrittenSpan.SequenceEqual(expectedOutput.WrittenSpan);
+    }
 
     private static bool TryParseFoldedSnapshotEvidence(
         string? json, FoldedSnapshotCaptureLimits limits, out JsonElement foldedState,
@@ -2740,12 +2790,14 @@ public partial class AggregateActor(
     }
 
     private static bool IsWithinBoundedSnapshotState(
-        JsonElement state, int maximumBytes, JsonSerializerOptions serializerOptions)
+        JsonElement state, FoldedSnapshotCaptureLimits limits, JsonSerializerOptions serializerOptions)
     {
         try
         {
-            using var output = new BoundedSnapshotByteStream(maximumBytes);
-            JsonSerializer.Serialize(output, state, serializerOptions);
+            using var output = new BoundedSnapshotByteStream(limits.MaximumCanonicalStateMeasurementBytes,
+                serializerOptions, limits.MaximumSerializerScratchBytes, limits.MaximumActorParsedStateBytes);
+            BoundedSnapshotJsonBuffer.Serialize(output, state, typeof(JsonElement), serializerOptions,
+                limits.MaximumCanonicalStateMeasurementBytes, limits.MaximumSerializerScratchBytes, limits.MaximumActorParsedStateBytes);
             return true;
         }
         catch (OperationCanceledException) { throw; }
@@ -6810,6 +6862,14 @@ public partial class AggregateActor(
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 2033,
+            Level = LogLevel.Information,
+            Message = "Folded snapshot replacement committed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReplacementReasonClass={ReplacementReasonClass}")]
+        public static partial void SnapshotReplacementCommitted(
+            ILogger logger, string correlationId, string tenantId, string domain,
+            string aggregateId, long sequenceNumber, string replacementReasonClass);
+
         [LoggerMessage(
             EventId = 2032,
             Level = LogLevel.Warning,

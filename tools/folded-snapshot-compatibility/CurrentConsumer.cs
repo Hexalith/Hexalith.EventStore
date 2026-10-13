@@ -6,6 +6,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Snapshots;
@@ -128,11 +129,19 @@ public static class CurrentConsumer
         IAsyncDomainProcessor oldProcessor = (IAsyncDomainProcessor)Activator.CreateInstance(processorType)!;
         var registrations = new ServiceCollection();
         registrations.AddKeyedSingleton<IAsyncDomainProcessor>("domain", oldProcessor);
-        registrations.AddEventStoreBoundedV1DomainSerialization("domain", _ => { });
+        registrations.AddEventStoreBoundedV1DomainSerialization("domain", profile =>
+        {
+            MethodInfo add = typeof(CurrentConsumer).GetMethod(nameof(AddLegacySerializer),
+                BindingFlags.Static | BindingFlags.NonPublic)!;
+            add.MakeGenericMethod(oldAssembly.GetType("FoldedSnapshotCompatibility.LegacySuccessEvent", true)!)
+                .Invoke(null, [profile, "legacy-success-event"]);
+            add.MakeGenericMethod(oldAssembly.GetType("FoldedSnapshotCompatibility.LegacyRejectionEvent", true)!)
+                .Invoke(null, [profile, "legacy-rejection-event"]);
+        });
         registrations.AddEventStoreFoldedSnapshotQualification<object>("domain", "aggregate",
             "qualified-profile", "compat-parity", new FoldedSnapshotCaptureLimits(
-                40_000, 1024, 1024, 4096, 2, 1024, 1024, 8192, 6146,
-                1024, 8192, 1024, 8192, 100, 16, 2048, 40_000, 40_000));
+                512_000, 1024, 1024, 4096, 2, 1024, 1024, 8192, 6146,
+                1024, 8192, 1024, 8192, 100, 16, 262_144, 512_000, 512_000));
         using ServiceProvider services = registrations.BuildServiceProvider();
         if (services.GetRequiredService<FoldedSnapshotQualificationRegistry>()
             .FindByProfile("domain", "qualified-profile") is null)
@@ -150,8 +159,57 @@ public static class CurrentConsumer
             throw new InvalidOperationException("The qualified router did not use the old processor without capture evidence.");
         }
 
-        Console.WriteLine("PASS: published old package, old binary on current package, observable fallbacks, bounded old/new wire and positional APIs");
+        foreach (bool rejection in new[] { false, true })
+        {
+            CommandEnvelope eventfulCommand = command with
+            {
+                CommandType = rejection ? "LegacyRejection" : "LegacySuccess",
+            };
+            DomainServiceWireResult eventful = await DomainServiceRequestRouter.ProcessAsync(services,
+                request with { Command = eventfulCommand, CurrentState = priorState }, cancellation.Token)
+                .ConfigureAwait(false);
+            var original = (DomainResult)processorType.GetProperty("LastResult")!.GetValue(null)!;
+            string originalResult = rejection ? "legacy-rejection-result" : "legacy-success-result";
+            if ((int)processorType.GetProperty("Calls")!.GetValue(null)! != (rejection ? 3 : 2)
+                || !ReferenceEquals(processorType.GetProperty("LastCommand")!.GetValue(null), eventfulCommand)
+                || !ReferenceEquals(processorType.GetProperty("LastState")!.GetValue(null), priorState)
+                || (CancellationToken)processorType.GetProperty("LastCancellationToken")!.GetValue(null)! != cancellation.Token
+                || original.GetType().Assembly != oldAssembly || original.Events.Count != 1
+                || original.Events[0].GetType().Assembly != oldAssembly
+                || original.IsRejection != rejection || original.IsSuccess == rejection || original.IsNoOp
+                || original.ResultPayload != originalResult || original.PostCommandStateJson is not null)
+            {
+                throw new InvalidOperationException("The old binary did not preserve its eventful result and original arguments.");
+            }
+            AssertLegacyEventfulWire(eventful, rejection);
+            AssertLegacyEventfulWire(await ParseBoundedWireAsync(
+                await WriteBoundedWireAsync(eventful).ConfigureAwait(false)).ConfigureAwait(false), rejection);
+        }
+
+        Console.WriteLine("PASS: published old package, old binary on current package, eventful success/rejection fallbacks, bounded old/new wire and positional APIs");
         return 0;
+    }
+
+    private static void AddLegacySerializer<TPayload>(BoundedV1DomainSerializerProfile profile, string alias)
+        where TPayload : IEventPayload
+        => profile.Add<TPayload>(alias, "json", 128, static (_, _, _) =>
+            throw new InvalidOperationException("Old serialized event bytes must bypass serializer callbacks."));
+
+    private static void AssertLegacyEventfulWire(DomainServiceWireResult wire, bool rejection)
+    {
+        byte[] expectedBytes = rejection
+            ? " { \"amount\":3, \"kind\":\"rejection\" } "u8.ToArray()
+            : " { \"amount\":7, \"kind\":\"success\" } "u8.ToArray();
+        string alias = rejection ? "legacy-rejection-event" : "legacy-success-event";
+        if (wire.Events.Count != 1 || wire.IsRejection != rejection
+            || wire.ResultPayload != (rejection ? null : "legacy-success-result")
+            || wire.PostCommandStateJson is not null || wire.WriterMode is not null || wire.RegistryFingerprint is not null
+            || wire.Events[0].EventTypeName != alias || wire.Events[0].SerializationFormat != "json"
+            || wire.Events[0].MetadataVersion is not null || wire.Events[0].EventContractType is not null
+            || wire.Events[0].PayloadVersion is not null || !wire.Events[0].Payload.SequenceEqual(expectedBytes))
+        {
+            throw new InvalidOperationException("Qualified old-processor fallback changed exact event bytes, metadata, result semantics or capture evidence.");
+        }
     }
 
     private static async Task AssertLegacySnapshotManagerDelegationAsync(
@@ -166,8 +224,8 @@ public static class CurrentConsumer
             "Dapr.Actors.Runtime.ActorStateManager", throwOnError: true)!;
         var actorManager = (IActorStateManager)RuntimeHelpers.GetUninitializedObject(actorManagerType);
         var limits = new FoldedSnapshotCaptureLimits(
-            40_000, 1024, 1024, 4096, 2, 1024, 1024, 8192, 6146,
-            1024, 8192, 1024, 8192, 100, 16, 2048, 40_000, 40_000);
+            512_000, 1024, 1024, 4096, 2, 1024, 1024, 8192, 6146,
+            1024, 8192, 1024, 8192, 100, 16, 262_144, 512_000, 512_000);
         var providerFailure = new InvalidOperationException("legacy provider failure");
         int calls = 0;
         foreach (bool failProvider in new[] { false, true })
