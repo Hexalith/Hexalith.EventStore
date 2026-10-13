@@ -290,6 +290,26 @@ public sealed class FoldedSnapshotReadTests
         (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task ProtectedStateWithDuplicateNamesIsClassifiedOpaqueNotCorruptPlaintext()
+    {
+        var store = new InMemoryStateManager();
+        await store.SetStateAsync(Identity.SnapshotKey, JsonSerializer.Deserialize<JsonElement>(
+            """{"snapshotEnvelopeVersion":1,"sequenceNumber":1,"state":{"count":1,"COUNT":2},"createdAt":"2026-01-01T00:00:00Z","domain":"domain","aggregateId":"aggregate","tenantId":"tenant","protectionMetadata":{"state":1,"metadataVersion":1,"scheme":"test-provider"}}"""));
+        await store.SaveStateAsync();
+
+        SnapshotLoadResult commandResult = await Manager().LoadSnapshotForCommandAsync(
+            Identity, store, authoritativeHead: 1);
+        SnapshotLoadResult manualResult = await Manager().InspectSnapshotForManualOverwriteAsync(Identity, store);
+
+        commandResult.Snapshot.ShouldBeNull();
+        commandResult.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+        commandResult.ReasonCode.ShouldBe("SnapshotProtectionOpaque");
+        manualResult.Outcome.ShouldBe(SnapshotLoadOutcome.ProviderOpaque);
+        manualResult.ReasonCode.ShouldBe("SnapshotProtectionOpaque");
+        (await store.ContainsStateAsync(Identity.SnapshotKey)).ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData("\"protectionMetadata\":null,\"ProtectionMetadata\":{\"state\":0}")]
     [InlineData("\"protectionMetadata\":{\"state\":1,\"State\":0,\"metadataVersion\":1}")]

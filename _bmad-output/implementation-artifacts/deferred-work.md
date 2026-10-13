@@ -5933,3 +5933,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Enforce process effect limits against the number actually yielded by a translator collection.
   evidence: R8-BH10: CaptureEnvelopeAsync compares only translated.Count with MaxEffectsPerEnvelope, then adds every enumerated distinct effect until the byte ceiling. An inconsistent/changing IReadOnlyList can bypass the count limit in this independent process path.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation.md (2026-10-13, maintainer acceptance chunk 1)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Re-check the execution fence before completing a command on a domain-service safe denial.
+  evidence: AggregateActor.cs:1450 catches DomainServiceSafeDenialException and calls CompleteTerminalAsync, which saves the terminal state and idempotency record without EnsureExecutionFenceAsync; the no-op path at :1472 re-checks first, so an executor that lost its fence during the domain call can still record the denial. Introduced by 8eec9712 signed-authority work, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Record a denial disposition, not NoOp, when a trusted-effect command receives a safe denial.
+  evidence: CompleteTerminalAsync (AggregateActor.cs:6677-6682) always stages TrustedEffectDisposition.NoOp when effectAdmission is set, and the safe-denial catch at :1450 passes effectAdmission, so an authorization denial is recorded as accepted without events. Introduced by 8eec9712 signed-authority work, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Validate SharedProjectionSourceCaptureOptions.EnabledDomains at startup.
+  evidence: ServiceCollectionExtensions.cs:126-128 calls ValidateOnStart() with no validator registered, and SharedProjectionSourceWriteFence.cs:15-16 matches EnabledDomains with StringComparer.Ordinal, so a blank, padded or differently cased entry silently disables the mandatory source write fence for that domain. Introduced by cf43d21a shared-projection work, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Add actor-level tests for the command-path shared-projection source write fence.
+  evidence: AggregateActor.cs:1511-1543 brackets PersistEventsAsync with BeginWriteAsync/CompleteWriteAsync for enabled domains, but the only fence test (TrustedEffectJointOffboardingTests.FencedErasureRetainsAuthoritativeGlobalTombstonePosition) drives erasure; deleting either command-path call or the fence-failure cleanup keeps every test green. Introduced by cf43d21a shared-projection work, outside Story 6.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
+  summary: Confirm whether a 503 safe denial should be a terminal idempotent rejection (unverified; medium if true).
+  evidence: DaprDomainServiceInvoker.cs:116-127 maps 401/403/404/503 with the denial header to DomainServiceSafeDenialException, and the actor completes it terminally with an idempotency record, so a transient domain outage marked as a denial permanently rejects that message ID. Settle by confirming whether the signed-authority design intends 503 as a uniform terminal denial. Introduced by 8eec9712, outside Story 6.2.

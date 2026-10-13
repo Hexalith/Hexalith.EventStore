@@ -70,6 +70,38 @@ public class AggregateActorManualSnapshotTests {
     }
 
     [Theory]
+    [InlineData(0L)]
+    [InlineData(-1L)]
+    public async Task CreateManualSnapshotAsync_NonPositiveExistingHeadFailsAsStreamUnavailable(long head)
+    {
+        // HX-FS-V1 §9.1: non-positive existing metadata is a stream validation failure, not a missing stream.
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var store = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(head, DateTimeOffset.UnixEpoch, null);
+        await store.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [identity.MetadataKey] = metadata,
+        });
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions()),
+            NullLogger<SnapshotManager>.Instance, new NoOpEventPayloadProtectionService());
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        AggregateActor actor = CreateActor(identity, store, snapshots, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-head");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        result.ReasonCode.ShouldBe("SnapshotStreamUnavailable");
+        result.SequenceNumber.ShouldBe(0);
+        store.CommittedState[identity.MetadataKey].ShouldBeSameAs(metadata);
+        store.CommittedState.ContainsKey(identity.SnapshotKey).ShouldBeFalse();
+        store.Trace.ShouldNotContain("SaveState");
+        store.Trace.ShouldNotContain($"SetState:{identity.SnapshotKey}");
+        _ = await reconstructor.DidNotReceive().ReconstructAsync(
+            Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
     [InlineData("{\"nested\":{\"count\":2,\"Count\":3}}", true)]
     [InlineData("{\"items\":[{\"count\":2,\"Count\":3}]}", true)]
     [InlineData("{\"nested\":{\"count\":2,\"count\":3}}", false)]

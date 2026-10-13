@@ -220,17 +220,6 @@ public partial class EventStreamReader(
 
     private static partial class Log {
         [LoggerMessage(
-            EventId = 6000,
-            Level = LogLevel.Debug,
-            Message = "Rehydration complete (snapshot-only, no events): TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ElapsedMs={ElapsedMs}, Stage=RehydrationSnapshotOnly")]
-        public static partial void RehydrationCompleteSnapshotOnly(
-            ILogger logger,
-            string tenantId,
-            string domain,
-            string aggregateId,
-            long elapsedMs);
-
-        [LoggerMessage(
             EventId = 6001,
             Level = LogLevel.Debug,
             Message = "New aggregate detected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=NewAggregateDetected")]

@@ -2473,13 +2473,7 @@ public partial class AggregateActor(
             await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
             ConditionalValue<AggregateMetadata> durableMetadata = await StateManager
                 .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken).ConfigureAwait(false);
-            currentSequence = durableMetadata.HasValue ? durableMetadata.Value.CurrentSequence : 0;
-            if (currentSequence < 0)
-            {
-                throw new InvalidOperationException("SnapshotStreamUnavailable");
-            }
-            var metadata = new AggregateStreamMetadata(durableMetadata.HasValue, currentSequence);
-            if (!metadata.Exists || metadata.CurrentSequence <= 0) {
+            if (!durableMetadata.HasValue) {
                 return new ManualSnapshotResult(
                     ManualSnapshotOutcome.NotFound,
                     0,
@@ -2487,6 +2481,14 @@ public partial class AggregateActor(
                     "NotFound",
                     "Aggregate stream was not found.");
             }
+            if (durableMetadata.Value.CurrentSequence <= 0)
+            {
+                return new ManualSnapshotResult(ManualSnapshotOutcome.InfrastructureFailure,
+                    0, identity.SnapshotKey, "SnapshotStreamUnavailable",
+                    "Aggregate stream metadata is invalid.");
+            }
+            currentSequence = durableMetadata.Value.CurrentSequence;
+            var metadata = new AggregateStreamMetadata(true, currentSequence);
 
             long retainedFloor = durableMetadata.Value.RetainedFloor;
             if (retainedFloor < 1

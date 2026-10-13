@@ -355,8 +355,13 @@ public partial class SnapshotManager(
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
         }
-        if (SnapshotEnvelopeInspector.HasDuplicatePropertyNames(rawState)) { return SnapshotLoadResult.Corrupt("SnapshotStateInvalid"); }
         bool provenUnprotected = IsProvenUnprotected(raw);
+        if (SnapshotEnvelopeInspector.HasDuplicatePropertyNames(rawState))
+        {
+            return provenUnprotected
+                ? SnapshotLoadResult.Corrupt("SnapshotStateInvalid")
+                : SnapshotLoadResult.ProviderOpaque("SnapshotProtectionOpaque");
+        }
         if (provenUnprotected && rawState.ValueKind != JsonValueKind.Object)
         {
             return SnapshotLoadResult.Corrupt("SnapshotStateInvalid");
