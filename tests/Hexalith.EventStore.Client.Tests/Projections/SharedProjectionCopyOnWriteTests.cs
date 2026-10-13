@@ -158,12 +158,15 @@ public sealed class SharedProjectionCopyOnWriteTests
             new SharedProjectionDelivery("owner-one", 1, [1], [1], OwnerSequenceNumber: 1)))
             .ShouldBe(SharedProjectionJournalResult.Journaled);
 
-        int batches = 0;
-        store.BatchFaultHook = (phase, _, _) =>
+        // Background cleanup shares the hook; interrupt retirement whenever the new root is durable.
+        store.BatchFaultHook = async (phase, _, cancellationToken) =>
         {
-            if (phase == ReadModelBatchPhase.BeforeDispatch && ++batches == 2)
+            if (phase == ReadModelBatchPhase.BeforeDispatch
+                && (await store.GetAsync<Sample>(s_scope.StoreName,
+                    s_scope.PhysicalKey(1, "root"), cancellationToken)).Value?.Value == "new")
+            {
                 throw new IOException("Interrupted after the new root batch.");
-            return Task.CompletedTask;
+            }
         };
         await Should.ThrowAsync<SharedProjectionWriteUnavailableException>(() =>
             coordinator.CatchUpAsync(s_scope, Fold));
@@ -182,13 +185,17 @@ public sealed class SharedProjectionCopyOnWriteTests
         (await coordinator.ReadAsync<Sample>(s_scope, "root")).Value.ShouldNotBeNull().Value
             .ShouldBe("later");
 
-        static Task<IReadOnlyList<ReadModelBatchOperation>> Fold(
-            SharedProjectionDelivery delivery, long _, CancellationToken __)
+        async Task<IReadOnlyList<ReadModelBatchOperation>> Fold(
+            SharedProjectionDelivery delivery, long _, CancellationToken cancellationToken)
         {
             if (delivery.SourceStream == "owner-two")
-                return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
-                    ReadModelBatchOperation.Write("root", new Sample("later"),
-                        ReadModelBatchConcurrency.LastWrite)]);
+            {
+                (await store.GetAsync<Sample>(s_scope.StoreName,
+                    s_scope.PhysicalKey(1, "node-old"), cancellationToken)).Value.ShouldBeNull();
+                return [ReadModelBatchOperation.Write("root", new Sample("later"),
+                    ReadModelBatchConcurrency.LastWrite)];
+            }
+
             var operations = new List<ReadModelBatchOperation>();
             for (int index = 0; index < 30; index++)
                 operations.Add(ReadModelBatchOperation.Write($"padding-{index:D2}",
@@ -198,7 +205,7 @@ public sealed class SharedProjectionCopyOnWriteTests
             operations.Add(ReadModelBatchOperation.Write("root", new Sample("new"),
                 ReadModelBatchConcurrency.LastWrite));
             operations.Add(SharedProjectionRetiredValue.Stage(0, 1, "node-old"));
-            return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>(operations);
+            return operations;
         }
     }
 
