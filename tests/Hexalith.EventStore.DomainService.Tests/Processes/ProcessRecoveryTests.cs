@@ -1733,6 +1733,103 @@ public sealed class ProcessRecoveryTests
         }
     }
 
+    /// <summary>A refused catalog source read keeps its key and is not stored as unavailable state.</summary>
+    [Fact]
+    public async Task CatalogSourceAdmissionRetainsCursorAndReadWorkerReason()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "catalog-admission");
+        AdmissionFaultProcessStore faulting = new(inner, ProcessStateKeys.Source(source));
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(faulting, options, Catalog([source]));
+        using (reconciler)
+        {
+            ProcessReconciliationPass pass = await reconciler.RunPassAsync();
+            faulting.Fired.ShouldBeTrue();
+            faulting.Refusals.ShouldBe(1);
+            pass.CycleComplete.ShouldBeFalse();
+            ProcessSweepState after = await sweeps.GetAsync();
+            after.CatalogAfterKey.ShouldBeNull();
+            after.CatalogComplete.ShouldBeFalse();
+            after.Unresolved.ShouldBe(1);
+            after.ScanReadAdmissionRecorded.ShouldBeTrue();
+            after.Reasons["read-worker-exhausted"].ShouldBe(1);
+            after.Reasons.Keys.ShouldNotContain("source-state-unavailable");
+            for (int attempt = 0; attempt < 12 && !(await sweeps.GetAsync()).Complete; attempt++)
+                _ = await reconciler.RunPassAsync();
+            (await sweeps.GetAsync()).Complete.ShouldBeTrue();
+        }
+    }
+
+    /// <summary>A source-read admission folded into other still counts once.</summary>
+    [Fact]
+    public async Task FoldedSourceAdmissionIsCountedOnce()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "folded-source-admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with
+        {
+            CatalogComplete = true, NextCatalog = false, Unresolved = 15,
+            Reasons = Enumerable.Range(0, 15).ToDictionary(index => $"reason-{index}", _ => 1, StringComparer.Ordinal),
+        });
+        await initialSweeps.ReleaseAsync(owned);
+        AdmissionFaultProcessStore refused = new(inner, ProcessStateKeys.Source(source), refusals: 4);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(refused, options, Catalog([]));
+        using (reconciler)
+        {
+            _ = await reconciler.RunPassAsync();
+            refused.Fired.ShouldBeTrue();
+            ProcessSweepState persisted = await sweeps.GetAsync();
+            persisted.Reasons["other"].ShouldBe(1);
+            persisted.Reasons.Keys.ShouldNotContain("read-worker-exhausted");
+            persisted.Unresolved.ShouldBe(16);
+            persisted.ScanReadAdmissionRecorded.ShouldBeTrue();
+            _ = await reconciler.RunPassAsync();
+            persisted = await sweeps.GetAsync();
+            persisted.Reasons["other"].ShouldBe(1);
+            persisted.Unresolved.ShouldBe(16);
+        }
+    }
+
+    /// <summary>A refused yield write keeps the recorded admission and does not fault the pass.</summary>
+    [Fact]
+    public async Task AdmissionYieldWriteFailureRetainsCursor()
+    {
+        InMemoryReadModelStore inner = new();
+        EventStoreProcessOptions options = new() { SourcesPerPass = 64 };
+        ProcessSource source = new("tenant-a", "sample", "yield-admission");
+        ProcessCheckpointStore initial = new(inner, Options.Create(options), TimeProvider.System);
+        await initial.EnsureCandidateAsync(source);
+        ProcessSweepStore initialSweeps = new(inner, Options.Create(options), TimeProvider.System);
+        ProcessSweepState owned = (await initialSweeps.AcquireAsync()).ShouldNotBeNull();
+        owned = await initialSweeps.UpdateOwnedAsync(owned, current => current with { CatalogComplete = true, NextCatalog = false });
+        await initialSweeps.ReleaseAsync(owned);
+        AdmissionFaultProcessStore sourceFault = new(inner, ProcessStateKeys.Source(source));
+        SweepYieldAdmissionFaultStore yieldFault = new(sourceFault);
+        (_, ProcessSweepStore sweeps, ProcessReconciler reconciler) = Runtime(yieldFault, options, Catalog([]));
+        using (reconciler)
+        {
+            ProcessReconciliationPass pass = await reconciler.RunPassAsync();
+            sourceFault.Fired.ShouldBeTrue();
+            yieldFault.Fired.ShouldBeTrue();
+            pass.CycleComplete.ShouldBeFalse();
+            ProcessSweepState after = await sweeps.GetAsync();
+            after.CandidateOffset.ShouldBe(0);
+            after.CandidatesComplete.ShouldBeFalse();
+            after.Unresolved.ShouldBe(1);
+            after.ScanReadAdmissionRecorded.ShouldBeTrue();
+            after.Reasons["read-worker-exhausted"].ShouldBe(1);
+            for (int attempt = 0; attempt < 12 && !(await sweeps.GetAsync()).Complete; attempt++)
+                _ = await reconciler.RunPassAsync();
+            (await sweeps.GetAsync()).Complete.ShouldBeTrue();
+        }
+    }
+
     /// <summary>Unavailable durable state preserves locally known reasons without asserting unseen durable counts.</summary>
     [Theory]
     [InlineData("disabled", "reconciliation-disabled")]

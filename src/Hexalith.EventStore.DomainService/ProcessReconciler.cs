@@ -112,9 +112,10 @@ public sealed class ProcessReconciler(
                 bool catalogTurn = state.NextCatalog && !state.CatalogComplete || state.CandidatesComplete;
                 if (catalogTurn)
                 {
-                    (state, bool observed, catalogPage, catalogOffset) = await ScanCatalogAsync(
+                    (state, bool observed, catalogPage, catalogOffset, bool refused) = await ScanCatalogAsync(
                         state, catalog, runner, catalogPage, catalogOffset, budget - work, cancellationToken).ConfigureAwait(false);
                     if (observed) examined++;
+                    if (refused) break;
                 }
                 else
                 {
@@ -170,7 +171,7 @@ public sealed class ProcessReconciler(
         }
     }
 
-    private async Task<(ProcessSweepState State, bool Observed, ProcessSourcePage? Page, int Offset)> ScanCatalogAsync(
+    private async Task<(ProcessSweepState State, bool Observed, ProcessSourcePage? Page, int Offset, bool Refused)> ScanCatalogAsync(
         ProcessSweepState state, IProcessSourceCatalog catalog, CheckpointedProcessRunner runner,
         ProcessSourcePage? page, int offset, int remainingBudget, CancellationToken cancellationToken)
     {
@@ -217,6 +218,13 @@ public sealed class ProcessReconciler(
                 {
                     state = await ObserveAsync(state, source, runner, cancellationToken).ConfigureAwait(false);
                 }
+                catch (ProcessReadAdmissionException)
+                {
+                    // A refused source read is worker pressure, not unavailable state.
+                    // Keep this catalog key for the next pass and count the refusal once.
+                    state = await RecordSourceFailureAsync(state, source, "read-worker-exhausted", cancellationToken, recordScanAdmission: true).ConfigureAwait(false);
+                    return (state, false, page, offset, true);
+                }
                 catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
                 {
                     state = await RecordSourceFailureAsync(state, source, "source-state-unavailable", cancellationToken).ConfigureAwait(false);
@@ -228,22 +236,22 @@ public sealed class ProcessReconciler(
                     NextCatalog = false,
                 }, cancellationToken).ConfigureAwait(false);
                 offset++;
-                return (state, true, offset == page.Sources.Count ? null : page, offset);
+                return (state, true, offset == page.Sources.Count ? null : page, offset, false);
             }
 
             state = await _sweeps.UpdateOwnedAsync(state, current => current with { CatalogComplete = true, NextCatalog = false }, cancellationToken).ConfigureAwait(false);
-            return (state, false, null, 0);
+            return (state, false, null, 0, false);
         }
         catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
         {
             // Keep the catalog cursor for the next cycle, while serving retained candidates now.
             string reason = exception is ProcessReadAdmissionException ? "read-worker-exhausted" : "catalog-unavailable";
             state = await RecordScanFailureAsync(state, reason, current => current with { CatalogComplete = true, NextCatalog = false }, cancellationToken).ConfigureAwait(false);
-            return (state, false, null, 0);
+            return (state, false, null, 0, false);
         }
     }
 
-    private async Task<(ProcessSweepState State, bool Observed, ProcessSourcePage? Page, int Offset)> ContinueAfterPublicationFailureAsync(
+    private async Task<(ProcessSweepState State, bool Observed, ProcessSourcePage? Page, int Offset, bool Refused)> ContinueAfterPublicationFailureAsync(
         ProcessSweepState state, ProcessSource source, ProcessSourcePage page, int offset, CancellationToken cancellationToken)
     {
         // The durable intent owns recovery after catalog removal, so this entry may yield
@@ -256,7 +264,7 @@ public sealed class ProcessReconciler(
             NextCatalog = false,
         }, cancellationToken).ConfigureAwait(false);
         int nextOffset = retained ? offset + 1 : offset;
-        return (state, false, retained && nextOffset == page.Sources.Count ? null : page, nextOffset);
+        return (state, false, retained && nextOffset == page.Sources.Count ? null : page, nextOffset, false);
     }
 
     private async Task<(ProcessSweepState State, bool Observed, bool Refused)> ScanCandidateAsync(ProcessSweepState state, CheckpointedProcessRunner runner, CancellationToken cancellationToken)
@@ -270,10 +278,26 @@ public sealed class ProcessReconciler(
         {
             // Worker pressure is not evidence about this page. Retain its exact
             // cursor so the next pass must read it before completing coverage.
-            state = await _sweeps.UpdateOwnedAsync(state, current =>
-                (current.ScanReadAdmissionRecorded || current.Reasons.ContainsKey("read-worker-exhausted")
-                    ? current : AddReason(current, "read-worker-exhausted"))
-                    with { NextCatalog = true, ScanReadAdmissionRecorded = true }, cancellationToken).ConfigureAwait(false);
+            // A source failure recorded before this rethrow already set the
+            // once-per-cycle marker, including when its category folded to other.
+            try
+            {
+                state = await _sweeps.UpdateOwnedAsync(state, current =>
+                    (current.ScanReadAdmissionRecorded ? current : AddReason(current, "read-worker-exhausted"))
+                        with { NextCatalog = true, ScanReadAdmissionRecorded = true }, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ProcessReadAdmissionException)
+            {
+                try
+                {
+                    state = await WithDeadline(ct => _sweeps.GetAsync(ct), cancellationToken).ConfigureAwait(false);
+                }
+                catch (ProcessReadAdmissionException)
+                {
+                    throw;
+                }
+            }
+
             return (state, false, true);
         }
     }
@@ -532,7 +556,7 @@ public sealed class ProcessReconciler(
         {
             // Keep both the candidate cursor and its once-per-cycle source marker
             // when admission is lost after the runner has already completed.
-            state = await RecordSourceFailureAsync(state, candidate, "read-worker-exhausted", cancellationToken).ConfigureAwait(false);
+            state = await RecordSourceFailureAsync(state, candidate, "read-worker-exhausted", cancellationToken, recordScanAdmission: true).ConfigureAwait(false);
             throw;
         }
         catch (Exception exception) when (exception is not ProcessReadAdmissionException && IsRecoverable(exception, cancellationToken))
@@ -598,16 +622,22 @@ public sealed class ProcessReconciler(
         return await _sweeps.CoverAsync(state, source, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<ProcessSweepState> RecordSourceFailureAsync(ProcessSweepState state, ProcessSource source, string reason, CancellationToken cancellationToken)
+    private async Task<ProcessSweepState> RecordSourceFailureAsync(ProcessSweepState state, ProcessSource source, string reason, CancellationToken cancellationToken, bool recordScanAdmission = false)
     {
         string key = ProcessStateKeys.SourceId(source);
         if (state.PendingObservations.TryGetValue(key, out ProcessPendingObservation? pending))
-            return await FinishObservationAsync(state, pending, cancellationToken).ConfigureAwait(false);
+        {
+            state = await FinishObservationAsync(state, pending, cancellationToken).ConfigureAwait(false);
+            return await RememberScanAdmissionAsync(state, recordScanAdmission, cancellationToken).ConfigureAwait(false);
+        }
         try
         {
             ProcessSourceState observed = await WithDeadline(ct => _checkpoints.GetAsync(source, ct), cancellationToken).ConfigureAwait(false);
             if (observed.ObservedCycle == state.Cycle && observed.ObservedUnresolved)
-                return await _sweeps.CoverAsync(state, source, cancellationToken).ConfigureAwait(false);
+            {
+                state = await _sweeps.CoverAsync(state, source, cancellationToken).ConfigureAwait(false);
+                return await RememberScanAdmissionAsync(state, recordScanAdmission, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception exception) when (IsRecoverable(exception, cancellationToken))
         {
@@ -616,19 +646,29 @@ public sealed class ProcessReconciler(
         }
         state = await _sweeps.UpdateOwnedAsync(state, current =>
         {
-            if (current.PendingObservations.ContainsKey(key)) return current;
+            if (current.PendingObservations.ContainsKey(key)) return WithScanAdmission(current, recordScanAdmission);
             if (current.PendingObservations.Count >= 4096)
                 throw new InvalidOperationException("Process pending-observation budget exhausted.");
             ProcessSweepState counted = AddReason(current, reason);
-            return counted with
+            return WithScanAdmission(counted with
             {
                 PendingObservations = new Dictionary<string, ProcessPendingObservation>(current.PendingObservations, StringComparer.Ordinal)
                 {
                     [key] = new ProcessPendingObservation(source, current.Cycle, true),
                 },
-            };
+            }, recordScanAdmission);
         }, cancellationToken).ConfigureAwait(false);
         return await FinishObservationAsync(state, state.PendingObservations[key], cancellationToken).ConfigureAwait(false);
+    }
+
+    private static ProcessSweepState WithScanAdmission(ProcessSweepState state, bool record)
+        => record ? state with { ScanReadAdmissionRecorded = true } : state;
+
+    private Task<ProcessSweepState> RememberScanAdmissionAsync(ProcessSweepState state, bool record, CancellationToken cancellationToken)
+    {
+        if (!record || state.ScanReadAdmissionRecorded) return Task.FromResult(state);
+        return _sweeps.UpdateOwnedAsync(state, static current =>
+            current.ScanReadAdmissionRecorded ? current : current with { ScanReadAdmissionRecorded = true }, cancellationToken);
     }
 
     private async Task<ProcessRunResult> RunWithSweepRenewalAsync(ProcessSweepState state, ProcessSource source, CheckpointedProcessRunner runner, CancellationToken cancellationToken)

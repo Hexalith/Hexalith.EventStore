@@ -25,7 +25,8 @@ public sealed class ProcessReadinessHealthCheck(
             ProcessSweepState state = await _sweeps.GetAsync(deadline.Token).WaitAsync(_options.OperationTimeout, cancellationToken).ConfigureAwait(false);
             bool capacityExceeded = state.RetainedCandidates > _options.SupportedCandidateCount;
             var reasons = new Dictionary<string, int>(state.Reasons, StringComparer.Ordinal);
-            string? localFailure = AddLocalReasons(reasons);
+            bool reconcilerRunning = _reconciler?.IsRunning ?? true;
+            string? localFailure = AddLocalReasons(reasons, reconcilerRunning);
             var data = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["cycle"] = state.Cycle,
@@ -43,14 +44,14 @@ public sealed class ProcessReadinessHealthCheck(
                 && _time.GetUtcNow() - completed <= _options.ReadinessMaxAge;
             return state.Complete && state.Unresolved == 0 && state.Pending.Count == 0 && state.PendingPublications.Count == 0
                 && state.PendingTransitions.Count == 0
-                && !capacityExceeded && fresh && localFailure is null && _options.ReconciliationEnabled && (_reconciler?.IsRunning ?? true)
+                && !capacityExceeded && fresh && localFailure is null && _options.ReconciliationEnabled && reconcilerRunning
                 ? HealthCheckResult.Healthy("Process recovery is complete.", data)
                 : HealthCheckResult.Degraded("Process recovery is incomplete, unresolved, or overdue.", data: data);
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             var reasons = new Dictionary<string, int>(StringComparer.Ordinal);
-            _ = AddLocalReasons(reasons);
+            _ = AddLocalReasons(reasons, _reconciler?.IsRunning ?? true);
             return HealthCheckResult.Degraded("Process recovery state is unavailable.", data: new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["stateAvailable"] = false,
@@ -59,12 +60,12 @@ public sealed class ProcessReadinessHealthCheck(
         }
     }
 
-    private string? AddLocalReasons(Dictionary<string, int> reasons)
+    private string? AddLocalReasons(Dictionary<string, int> reasons, bool reconcilerRunning)
     {
         string? failure = _reconciler?.LocalFailureReason;
         if (failure is not null) reasons[failure] = Math.Max(1, reasons.GetValueOrDefault(failure));
         if (!_options.ReconciliationEnabled) reasons["reconciliation-disabled"] = Math.Max(1, reasons.GetValueOrDefault("reconciliation-disabled"));
-        else if (_reconciler is { IsRunning: false }) reasons["reconciler-stopped"] = Math.Max(1, reasons.GetValueOrDefault("reconciler-stopped"));
+        else if (!reconcilerRunning) reasons["reconciler-stopped"] = Math.Max(1, reasons.GetValueOrDefault("reconciler-stopped"));
         return failure;
     }
 }
