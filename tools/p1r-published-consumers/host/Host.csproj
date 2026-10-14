@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup></PropertyGroup>
   <ItemGroup><Compile Include="../PublishedIdentity.cs" Link="PublishedIdentity.cs" /></ItemGroup>
-  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.119.0'">
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0'">
     <Compile Include="../domain/FixtureEvolutionManifest.cs" Link="FixtureEvolutionManifest.cs" />
     <Content Include="../domain/fixture-evolution-manifest.json" Link="fixture-evolution-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0'">
+    <Compile Include="../FixtureSnapshotQualification.cs" Link="FixtureSnapshotQualification.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseCurrentSource)' != 'true'">
     <PackageReference Include="Hexalith.EventStore.Client" />

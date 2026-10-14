@@ -1,0 +1,6 @@
+{"built": "3.110.0"}
+{"built": "3.70.1"}
+{"built": "3.121.0"}
+{"lane": "post-upgrade-restore", "execution": "failed", "compatibility": "unverified", "assertions": {"attempted": 57, "passed": 55, "failed": 2}}
+{"snapshot_restore_smoke": "failed", "out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/development-smoke-2206f0454a024362bf4b5a934377eba4"}
+{"out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/development-smoke-2206f0454a024362bf4b5a934377eba4", "errors": [], "cleanup": "passed", "p1r_usable": false}

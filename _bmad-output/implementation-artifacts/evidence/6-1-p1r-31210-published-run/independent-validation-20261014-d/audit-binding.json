@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py",
+    "--repo",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "--run",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba",
+    "--inputs",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/owner-inputs.json",
+    "--boundary",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/successor-support-boundary.json",
+    "--out",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/independent-validation-20261014-d"
+  ],
+  "claim": "evidence validation only; pending disposition and four-role acceptance are unchanged",
+  "python": "/usr/bin/python3",
+  "script_sha256": "e549c589c51722ff2c55514fa22a33605f747027aeb4605dd14e4311d703923a"
+}

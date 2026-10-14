@@ -19,12 +19,21 @@ Container discovery requests only IDs, image IDs, names, running/start state
 and the invocation ownership label; environment and credential fields are
 never read into retained command output.
 
-The selected logical-event-evolution addition remains incompatible. The live
-Domain readiness observation proves this fixture registers its bounded V1
-CLR-name serializer and has no registered logical evolution manifest. Legacy
-hydration, unknown metadata refusal and unchanged application-envelope readback
-remain measured, but cannot qualify registered logical alias or upcast execution.
-The fixture does not create an authoritative gateway pin or readiness decision.
+The explicitly selected 3.121.0 consumer registers the pinned qualification-only
+logical evolution manifest and bounded V1 serializer. Live Domain readiness,
+legacy alias hydration, unknown metadata refusal and unchanged application-envelope
+readback measure the addition. Historical comparisons retain their own bounded
+fixtures. The fixture does not create an authoritative gateway pin or readiness decision.
+
+The 3.121.0 and distinct Debug/source consumers enroll the same finite Counter
+folded-snapshot limits on both hosts. The domain measures detached state
+round-trip, canonical increment bytes and Apply parity before enrollment. The
+Counter has no automatic snapshot processor. Snapshot fixtures commit nine real
+events, invoke the published manual snapshot API, stop the writer and retain the
+persisted version-one envelope and folded count nine, then append three real
+events. Original event and snapshot hashes must survive those appends. Historical
+comparison fixtures retain their original stopped-writer snapshot diagnostic;
+they cannot establish genuine successor snapshot creation.
 
 The Host declares a bounded Test fixture semantic adapter and effect admission
 policy. The invocation generates private keys and credentials; they are never

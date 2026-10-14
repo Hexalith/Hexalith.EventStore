@@ -1203,7 +1203,8 @@ def bind_lane(receipt, outcome, context):
                     require(isinstance(command["output"], str)
                             and digest(command["output"].encode()) == command["output_sha256"],
                             "retained executed command output differs")
-            check_witnesses.validate_case(row, case, context["source_binding"], receipt["lane"], evidence.get("predicate_sources"))
+            check_witnesses.validate_case(row, case, context["source_binding"], receipt["lane"], evidence.get("predicate_sources"),
+                                          candidate_version=selection["candidate"]["version"])
         require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
                 "measured executor lacks the selected historical directions")
         require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),

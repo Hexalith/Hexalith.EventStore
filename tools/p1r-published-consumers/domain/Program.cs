@@ -17,6 +17,14 @@ builder.Services.AddEventStoreBoundedV1DomainSerialization("counter", profile =>
         }));
 string fixtureFingerprint = FixtureEvolutionManifest.Register(builder.Services);
 #endif
+#if P1R_FOLDED_SNAPSHOT
+object snapshotQualification = CounterSnapshotParity.Measure();
+builder.Services.AddEventStoreFoldedSnapshotQualification<CounterState>("counter", "counter",
+    FixtureSnapshotQualification.ProfileId, FixtureSnapshotQualification.ParityEvidenceId,
+    FixtureSnapshotQualification.Limits);
+#else
+object snapshotQualification = new { registered = false };
+#endif
 object evolutionRegistration = new
 {
     manifest_registered = builder.Services.Any(descriptor =>
@@ -35,9 +43,9 @@ object evolutionRegistration = new
 WebApplication app = builder.Build();
 app.UseEventStoreDomainService();
 #if P1R_CANDIDATE || P1R_SOURCE
-app.MapGet("/ready", () => Results.Ok(new { ready = true, identity = PublishedIdentity.Read(), evolution_registration = evolutionRegistration })).AllowAnonymous();
+app.MapGet("/ready", () => Results.Ok(new { ready = true, identity = PublishedIdentity.Read(), evolution_registration = evolutionRegistration, snapshot_qualification = snapshotQualification })).AllowAnonymous();
 #else
-app.MapGet("/ready", () => Results.Ok(new { ready = true, evolution_registration = evolutionRegistration })).AllowAnonymous();
+app.MapGet("/ready", () => Results.Ok(new { ready = true, evolution_registration = evolutionRegistration, snapshot_qualification = snapshotQualification })).AllowAnonymous();
 app.MapGet("/identity", () => Results.Ok(PublishedIdentity.Read())).AllowAnonymous();
 #endif
 app.Run();

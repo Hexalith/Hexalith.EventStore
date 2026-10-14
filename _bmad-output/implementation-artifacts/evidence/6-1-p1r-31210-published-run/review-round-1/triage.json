@@ -1,0 +1,129 @@
+{
+  "review_layers": [
+    "blind",
+    "edge",
+    "verification"
+  ],
+  "findings": [
+    {
+      "id": "B1",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Probe physical binding",
+      "evidence": "The new guard checks only Probe.dll basename. Full validate_case admits a substituted /tmp/unverified/Probe.dll, and bind_lane verifies archive identities without associating this invocation path with them."
+    },
+    {
+      "id": "B2",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Probe exit status",
+      "evidence": "probe_command parses retained output without checking successful exit. A manual exit_code=1 is admitted; the audit adds this check for only the restore case."
+    },
+    {
+      "id": "B3",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Restart endpoint binding",
+      "evidence": "The seed/manual endpoints match, but the tail endpoint is unbound. Launch/configuration evidence exists and can bind the restarted sidecar to the same persisted stream."
+    },
+    {
+      "id": "B4",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Provider database binding",
+      "evidence": "The provider selector accepts any docker exec containing psql. The owned container/configuration evidence does not guard that selector; substitution is admitted."
+    },
+    {
+      "id": "B5",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Tail observation recomputation",
+      "evidence": "The helper compares seed.tail to output but never recomputes the tenant-a:committed-count predicate from it. Changing both to committed=2/sequence=11 leaves a true check admitted."
+    },
+    {
+      "id": "B6",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Inventory temporal binding",
+      "evidence": "Both snapshots can match any inventory output. Reusing before_tail as after_tail is admitted, so preservation alone does not demonstrate the three appends."
+    },
+    {
+      "id": "B7",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Prefix inventory completeness",
+      "evidence": "The new positive helper fixture has zero prefix events. No guard requires head nine/events1..9 before tail or head twelve/events1..12 afterward."
+    },
+    {
+      "id": "B8",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Full snapshot contract",
+      "evidence": "Version/state/sequence omit embedded tenant/domain/aggregate and protection metadata. Those fields are available in the retained genuine snapshot envelope but are not recomputed."
+    },
+    {
+      "id": "B9",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Finite profile completeness",
+      "evidence": "Only maximumSimultaneousLiveBytes is bound. Other limits and derived reservations from the retained shared fixture can be replaced and admitted."
+    },
+    {
+      "id": "B10",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Supplement recovery completeness",
+      "evidence": "The explicit21-receipt selection includes original cleanup/restore but omits the contributing fallback invocation cleanup. The audit does not require its independent validation."
+    },
+    {
+      "id": "E1",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Recovery admission completeness",
+      "evidence": "Removing both original recovery receipts leaves the canonical19-lane inventory and rederived table unchanged. The audit can return valid_evidence without auditing retained recovery failures."
+    },
+    {
+      "id": "V1",
+      "verdict": "medium",
+      "route": "patch",
+      "root_cause": "Successor admission coverage",
+      "evidence": "The filed mutation disables requires_qualified_snapshot only at validate_case and all124 focused controls pass. Add an intact/deleted-proof pair through admission with candidate3.121.0."
+    }
+  ],
+  "resolution": {
+    "status": "all12 findings patched",
+    "root_controls": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "tests": 134,
+      "reported_duration_seconds": 21.816,
+      "output_sha256": "8be549e8c71614a129b527e16ae2db43577320b5553b5751ee05de790aab068d",
+      "source_binding_sha256": "c6b04948b7202878b729ca78c246792355c403f64f06b570d00f7be8d9c3e3e3",
+      "completed_before_fresh_execution": true
+    },
+    "live_verification": {
+      "completed": true,
+      "lanes": 19,
+      "cases": 163,
+      "assertions": {
+        "attempted": 4774,
+        "passed": 4758,
+        "failed": 16
+      },
+      "independent_audit": "independent-validation-20261014-d/independent-validation.json",
+      "valid_evidence": true,
+      "qualification": "blocked; pending disposition/roles and failed gates",
+      "all_review_findings_fixed": true
+    }
+  }
+}

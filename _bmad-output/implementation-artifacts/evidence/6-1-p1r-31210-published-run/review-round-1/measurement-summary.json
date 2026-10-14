@@ -1,0 +1,313 @@
+{
+  "schema": "hexalith.p1r.review-fixed-measurement-summary.v1",
+  "candidate": "3.121.0",
+  "source": "21b34c01ec919769cfba9cfe0d47e50886b57ded",
+  "run": "execution-review-fixed-347d58d411184960bcd6412a8c1950ba",
+  "invocation": "a276a89fac1943fe813c7af07f84ae5a",
+  "started_utc": "2026-10-14T09:31:02.973119+00:00",
+  "finished_utc": "2026-10-14T10:01:44.486115+00:00",
+  "executor_errors": [],
+  "lane_count": 19,
+  "case_count": 163,
+  "assertions": {
+    "attempted": 4774,
+    "failed": 16,
+    "passed": 4758
+  },
+  "treatments": {
+    "supported": 123,
+    "refused": 39,
+    "containment": 1
+  },
+  "nonpassing_cases": [
+    {
+      "lane": "metadata-write",
+      "id": "3.110.0-to-3.121.0",
+      "failed_checks": [
+        "primary-expected-hydration",
+        "append-effect-accepted",
+        "append-thirteen"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "lane": "metadata-write",
+      "id": "3.70.1-to-3.121.0",
+      "failed_checks": [
+        "primary-expected-hydration",
+        "append-effect-accepted",
+        "append-thirteen"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "lane": "retained-covered",
+      "id": "3.110.0-to-3.121.0",
+      "failed_checks": [
+        "primary-expected-hydration"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "lane": "retained-covered",
+      "id": "3.70.1-to-3.121.0",
+      "failed_checks": [
+        "primary-expected-hydration"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "lane": "checkout",
+      "id": "retained-covered",
+      "failed_checks": [
+        "package:primary-expected-hydration",
+        "source:primary-expected-hydration"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    },
+    {
+      "lane": "checkout",
+      "id": "metadata-write",
+      "failed_checks": [
+        "package:primary-expected-hydration",
+        "package:append-effect-accepted",
+        "package:append-thirteen",
+        "source:primary-expected-hydration",
+        "source:append-effect-accepted",
+        "source:append-thirteen"
+      ],
+      "operation": "supported",
+      "outcome": "refusal"
+    }
+  ],
+  "lanes": [
+    {
+      "lane": "provenance",
+      "assertions": {
+        "attempted": 33,
+        "failed": 0,
+        "passed": 33
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "legacy-metadata",
+      "assertions": {
+        "attempted": 20,
+        "failed": 0,
+        "passed": 20
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "metadata-read",
+      "assertions": {
+        "attempted": 40,
+        "failed": 0,
+        "passed": 40
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "metadata-write",
+      "assertions": {
+        "attempted": 218,
+        "failed": 6,
+        "passed": 212
+      },
+      "execution": "failed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "full-replay",
+      "assertions": {
+        "attempted": 270,
+        "failed": 0,
+        "passed": 270
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "snapshot-tail",
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "retained-covered",
+      "assertions": {
+        "attempted": 298,
+        "failed": 2,
+        "passed": 296
+      },
+      "execution": "failed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "retained-uncovered",
+      "assertions": {
+        "attempted": 596,
+        "failed": 0,
+        "passed": 596
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "missing-event",
+      "assertions": {
+        "attempted": 540,
+        "failed": 0,
+        "passed": 540
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "invalid-evidence",
+      "assertions": {
+        "attempted": 354,
+        "failed": 0,
+        "passed": 354
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "query-wire",
+      "assertions": {
+        "attempted": 192,
+        "failed": 0,
+        "passed": 192
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "projection-wire",
+      "assertions": {
+        "attempted": 34,
+        "failed": 0,
+        "passed": 34
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "mixed-api",
+      "assertions": {
+        "attempted": 641,
+        "failed": 0,
+        "passed": 641
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "checkout",
+      "assertions": {
+        "attempted": 696,
+        "failed": 8,
+        "passed": 688
+      },
+      "execution": "failed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "post-upgrade-restore",
+      "assertions": {
+        "attempted": 61,
+        "failed": 0,
+        "passed": 61
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "pre-upgrade-restore",
+      "assertions": {
+        "attempted": 44,
+        "failed": 0,
+        "passed": 44
+      },
+      "execution": "passed",
+      "compatibility": "incompatible"
+    },
+    {
+      "lane": "failure-cleanup",
+      "assertions": {
+        "attempted": 115,
+        "failed": 0,
+        "passed": 115
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "reminder-recovery",
+      "assertions": {
+        "attempted": 131,
+        "failed": 0,
+        "passed": 131
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    },
+    {
+      "lane": "logical-event-evolution",
+      "assertions": {
+        "attempted": 193,
+        "failed": 0,
+        "passed": 193
+      },
+      "execution": "passed",
+      "compatibility": "compatible"
+    }
+  ],
+  "recovery": [
+    {
+      "schema": "hexalith.p1r.cleanup-receipt.v1",
+      "assertions": {
+        "attempted": 7,
+        "failed": 1,
+        "passed": 6
+      },
+      "execution": "failed",
+      "failed_checks": [
+        "shared-preserved"
+      ]
+    },
+    {
+      "schema": "hexalith.p1r.restore-receipt.v1",
+      "assertions": {
+        "attempted": 12,
+        "failed": 1,
+        "passed": 11
+      },
+      "execution": "failed",
+      "failed_checks": [
+        "owned-cleanup-complete"
+      ]
+    }
+  ],
+  "independent_valid_evidence": true,
+  "independent_errors": [],
+  "four_role_acceptance": "pending",
+  "conformance": "pending",
+  "support_disposition": "pending",
+  "p1r_usable": false,
+  "story_6_1": "blocked"
+}

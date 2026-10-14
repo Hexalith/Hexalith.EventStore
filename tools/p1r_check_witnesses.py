@@ -126,7 +126,285 @@ def validate_shape(node, tree):
             require(tree.get('value') is bool(node.value),'predicate literal outcome differs')
 
 
-def validate_case(row, evidence, binding, lane, retained_sources):
+def requires_qualified_snapshot(candidate_version, lane, identifier):
+    """Derive the genuine successor seed requirement without trusting optional observations."""
+    return candidate_version == '3.121.0' and (lane == 'post-upgrade-restore' or (
+        lane in ('snapshot-tail','retained-covered','retained-uncovered','metadata-write')
+        and identifier.split('-to-',1)[0] in ('3.121.0','source')))
+
+
+def snapshot_profile_limits(evidence, binding):
+    """Read the full private fixture declaration from source bytes bound to the closure."""
+    import re
+    source = evidence.get('snapshot_fixture_source', {})
+    path = str(Path(binding['repository']) / 'tools/p1r-published-consumers/FixtureSnapshotQualification.cs')
+    declared = {str(Path(binding['repository']) / item['path']): item['sha256'] for item in binding['main']['files']}
+    require(source.get('path') == path and source.get('sha256') == declared.get(path)
+            and isinstance(source.get('content'), str) and digest(source['content'].encode()) == source['sha256'],
+            'qualified snapshot finite profile lacks its retained shared fixture source')
+    limits = {name:int(number.replace('_','')) for name,number in
+              re.findall(r'(maximum\w+):\s*([0-9_]+)', source['content'])}
+    names = ('CaptureWorkspaceBytes','PreCommandStateGraphBytes','WorkingStateGraphBytes','DetachedEventGraphBytes',
+             'EventCount','EventBytes','StateJsonBytes','DomainParsedStateGraphBytes','EscapedWireStateBytes',
+             'ActorParsedStateBytes','ActorParsedGraphBytes','CanonicalStateMeasurementBytes','CanonicalEnvelopeBytes',
+             'NodeCount','Depth','SerializerScratchBytes','SimultaneousLiveBytes','ActorWorkspaceBytes')
+    require(set(limits) == {'maximum'+name for name in names}, 'qualified snapshot finite declaration is incomplete')
+    limits['domainReservationBytes'] = (limits['maximumPreCommandStateGraphBytes'] + limits['maximumWorkingStateGraphBytes']
+        + limits['maximumDetachedEventGraphBytes'] + 2 * limits['maximumEventBytes'] + 2 * limits['maximumStateJsonBytes']
+        + limits['maximumDomainParsedStateGraphBytes'] + limits['maximumEscapedWireStateBytes']
+        + limits['maximumSerializerScratchBytes'] + 256 * limits['maximumEventCount'])
+    limits['actorReservationBytes'] = (2 * limits['maximumActorParsedStateBytes'] + limits['maximumActorParsedGraphBytes']
+        + 4 * limits['maximumCanonicalStateMeasurementBytes'] + 2 * limits['maximumCanonicalEnvelopeBytes']
+        + limits['maximumSerializerScratchBytes'])
+    return limits
+
+
+def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, writer_version):
+    """Bind genuine snapshot creation to physical consumers, owned launches and persisted stream."""
+    import json
+    import p1r_qualification as preparation
+    import p1r_qualification_runtime as runtime
+    required = ('snapshot-fixture-enrolled','snapshot-state-roundtrip-parity','snapshot-canonical-event-parity',
+                'snapshot-detached-apply-parity','snapshot-nine-events-committed','tenant-a:committed-count',
+                'qualified-snapshot-created-by-published-actor','qualified-snapshot-envelope-version-one',
+                'qualified-snapshot-persisted-nine','qualified-snapshot-prefix-coordinate-exact',
+                'qualified-snapshot-tail-coordinate-exact','qualified-snapshot-and-prefix-bytes-preserved')
+    require(all(prefix + identity in checks for identity in required), 'qualified snapshot proof drops a required check')
+    seed = observed.get('seed_snapshot')
+    require(isinstance(seed,dict), 'qualified snapshot proof omits its genuine seed observations')
+    commands = {command['id']:command for command in evidence['commands']}
+    outputs = {}
+    for identity,command in commands.items():
+        if command.get('exit_code') == 0 and command.get('output') is not None:
+            try:
+                outputs[identity] = json.loads(command['output'])
+            except (ValueError,TypeError):
+                pass
+    role, configuration = ('source','Debug') if writer_version == 'source' else ('candidate','Release')
+    require(writer_version in ('3.121.0','source'), 'qualified snapshot writer is not the selected successor')
+    def probe_command(check_prefix, operation):
+        identities = {record.get('command') for record in evidence['check_witnesses']
+                      if record.get('kind') == 'probe' and record.get('id','').startswith(prefix + check_prefix)}
+        require(len(identities) == 1, 'qualified snapshot lacks one exact ' + operation + ' probe')
+        command = commands.get(next(iter(identities)))
+        require(command is not None and command.get('exit_code') == 0 and len(command['argv']) >= 6
+                and command['argv'][:1] == ['dotnet'] and command['argv'][2] == operation
+                and command['argv'][4:6] == ['tenant-a','fixture'],
+                'qualified snapshot ' + operation + ' probe command substituted or failed')
+        binary = command.get('probe_binary',{})
+        path = Path(command['argv'][1])
+        require(path.is_absolute() and path.name == 'Probe.dll' and len(path.parents) >= 7,
+                'qualified snapshot probe physical binary path differs')
+        root = path.parents[4]
+        manifest = json.loads(preparation.regular(root / 'evidence.json'))
+        projects = [item for item in manifest.get('projects',[]) if item.get('name') == 'Probe']
+        require(root.parent.name == 'consumers' and root.name == role and manifest.get('role') == role
+                and manifest.get('configuration') == configuration and len(projects) == 1
+                and path == root / projects[0]['output'] / 'Probe.dll'
+                and projects[0]['output'] == 'probe/bin/'+configuration+'/net10.0'
+                and binary == json.loads(preparation.regular(root / 'probe-binary.json'))
+                and binary == {'role':role,'configuration':configuration,'path':str(path),
+                               'sha256':digest(preparation.regular(path))},
+                'qualified snapshot probe binary role, configuration or physical digest differs')
+        output = outputs.get(command['id'])
+        require(isinstance(output,dict) and isinstance(output.get('observation'),dict), 'qualified snapshot probe output missing')
+        return command,output['observation'],root
+    nine_command,nine,consumer = probe_command('tenant-a:prefix:','seed')
+    manual_command,manual,manual_consumer = probe_command('snapshot:','manual-snapshot')
+    tail_command,tail,tail_consumer = probe_command('tenant-a:tail:','seed')
+    require(consumer == manual_consumer == tail_consumer and nine_command['argv'][-1] == '9'
+            and len(nine_command['argv']) == len(tail_command['argv']) == 7 and tail_command['argv'][-1] == '3'
+            and len(manual_command['argv']) == 6 and nine_command['id'] < manual_command['id'] < tail_command['id']
+            and nine_command['argv'][3] == manual_command['argv'][3],
+            'qualified snapshot lacks nine commits followed by manual creation and three actual appends')
+    require(seed.get('manual') == manual and seed.get('tail') == tail,
+            'qualified snapshot result differs from retained probe output')
+    for command,observed_probe,count in ((nine_command,nine,9),(tail_command,tail,3)):
+        appends = outputs[command['id']]['measurement']['checks']
+        require(0 < len(appends) <= count*2 and len(appends) % 2 == 0
+                and [item['id'] for item in appends] == [identity for index in range(1,len(appends)//2+1)
+                    for identity in ('append-'+str(index)+'-accepted','append-'+str(index)+'-one-event')],
+                'qualified snapshot actual append measurement inventory differs')
+        committed = 0
+        for index in range(0,len(appends),2):
+            if appends[index]['passed'] and appends[index+1]['passed']:
+                committed += 1
+            else:
+                require(index+2 == len(appends), 'qualified snapshot append continues after recorded refusal')
+        require(observed_probe.get('committed') == committed and (committed < count or len(appends) == count*2),
+                'qualified snapshot committed count contradicts actual append results')
+    times = {identity:preparation.validate_times(command) for identity,command in commands.items()}
+    configurations = {item['id']:item for item in evidence.get('configurations',[])}
+    def argument(command, name):
+        argv = command['argv']
+        return argv[argv.index(name)+1] if argv.count(name) == 1 and argv.index(name)+1 < len(argv) else None
+    def launched(probe, project, appid, endpoint=None):
+        start,end = times[probe['id']]
+        matches = []
+        def stopped(command):
+            return command.get('exit_code') in (0,-15) and bool(command.get('cleanup')) and all(
+                not attempt.get('remaining') and not attempt.get('errors') for attempt in command['cleanup'])
+        for sidecar in commands.values():
+            if (not stopped(sidecar) or argument(sidecar,'--app-id') != appid
+                    or argument(sidecar,'--app-channel-address') != '127.0.0.1'
+                    or endpoint is not None and endpoint != 'http://127.0.0.1:'+str(argument(sidecar,'--dapr-http-port'))):
+                continue
+            side_start,side_end = times[sidecar['id']]
+            if not side_start < start <= end < side_end:
+                continue
+            config = configurations.get(sidecar.get('runtime_configuration'))
+            require(config is not None and config.get('version') == writer_version and config.get('snapshot_interval') == 10
+                    and sidecar.get('runtime_configuration_sha256') == digest(canonical(config)),
+                    'qualified snapshot launch configuration differs')
+            hosts = [command for command in commands.values() if stopped(command)
+                     and command['argv'] == ['dotnet',str(consumer / project.lower() / 'bin' / configuration / 'net10.0' / (project+'.dll'))]
+                     and times[command['id']][0] < start <= end < times[command['id']][1]
+                     and 'Now listening on: http://127.0.0.1:'+str(argument(sidecar,'--app-port')) in command.get('output','')]
+            require(len(hosts) == 1, 'qualified snapshot endpoint lacks its successful physical host launch')
+            for process in (sidecar,hosts[0]):
+                preparation.validate_identity(process.get('process'))
+                owned_processes = process.get('owned_processes')
+                preparation.validate_identity_list(owned_processes)
+                require(process['process'] in owned_processes and all(
+                    isinstance(attempt.get('before'),list) and all(item in owned_processes for item in attempt['before'])
+                    and attempt.get('remaining') == [] and attempt.get('errors') == [] for attempt in process['cleanup']),
+                    'qualified snapshot launch cleanup ownership differs')
+            for url,ready_start in (('http://127.0.0.1:'+str(argument(sidecar,'--app-port'))+'/ready',times[hosts[0]['id']][0]),
+                        ('http://127.0.0.1:'+str(argument(sidecar,'--dapr-http-port'))+'/v1.0/healthz/outbound',side_start)):
+                require(any(command.get('exit_code') == 0 and command['argv'][:3] == ['HTTP','GET',url]
+                            and ready_start <= times[command['id']][0]
+                            and times[command['id']][1] < start for command in commands.values()),
+                        'qualified snapshot launch lacks successful endpoint readiness')
+            matches.append((sidecar,hosts[0],config))
+        require(len(matches) == 1, 'qualified snapshot endpoint is unbound or ambiguous')
+        return matches[0]
+    first_sidecar,first_host,first_config = launched(nine_command,'Host','eventstore',nine_command['argv'][3])
+    manual_launch = launched(manual_command,'Host','eventstore',manual_command['argv'][3])
+    tail_sidecar,tail_host,tail_config = launched(tail_command,'Host','eventstore',tail_command['argv'][3])
+    require(manual_launch[0]['id'] == first_sidecar['id'] and first_sidecar['process'] != tail_sidecar['process']
+            and first_host['process'] != tail_host['process']
+            and max(times[first_sidecar['id']][1],times[first_host['id']][1]) <
+                min(times[tail_sidecar['id']][0],times[tail_host['id']][0]),
+            'qualified snapshot tail does not use a distinct restarted writer')
+    database = first_config.get('state_container')
+    def state_file(config):
+        values = [item for item in config.get('files',[]) if item.get('name') == 'state.yaml']
+        require(len(values) == 1, 'qualified snapshot lacks state-store configuration')
+        return values[0]
+    require(database == tail_config.get('state_container') and first_config.get('backend_image') == tail_config.get('backend_image')
+            and first_config.get('state_component_sha256') == tail_config.get('state_component_sha256')
+            and state_file(first_config) == state_file(tail_config),
+            'qualified snapshot tail state-store configuration or persisted stream differs')
+    run_root = consumer.parent.parent
+    execution = json.loads(preparation.regular(run_root / 'execution.json'))
+    require(json.loads(preparation.regular(run_root / 'executor-source.json')) == binding
+            and execution.get('executor_source_sha256') == digest(preparation.regular(run_root / 'executor-source.json')),
+            'qualified snapshot consumer invocation source differs')
+    owned = execution.get('owned_containers',{}).get(database)
+    require(isinstance(owned,dict) and owned.get('image') == first_config.get('backend_image')
+            and owned.get('name','').startswith('p1r-'+execution['invocation']+'-'),
+            'qualified snapshot provider is not the invocation-owned database')
+    retained_commands = json.loads(preparation.regular(run_root / 'commands.json'))
+    require(any(command.get('exit_code') == 0 and command['argv'][:2] == ['docker','inspect']
+                and any(value.get('Id') == database and value.get('Name') == '/'+owned['name']
+                        and value.get('Config',{}).get('Labels',{}).get('hexalith.p1r.invocation') == execution['invocation']
+                        for value in (json.loads(line) for line in command.get('output','').splitlines() if line.strip()))
+                for command in retained_commands), 'qualified snapshot database lacks retained container ownership inspection')
+    domain_sidecar,domain_host,domain_config = launched(nine_command,'Domain','counter')
+    require(domain_config['id'] == first_config['id'], 'qualified snapshot registration uses another state-store configuration')
+    registration = seed.get('registration')
+    require(isinstance(registration,dict) and any(command['argv'][:3] == ['HTTP','GET',
+                'http://127.0.0.1:'+str(argument(domain_sidecar,'--app-port'))+'/ready']
+                and isinstance(outputs.get(identity),dict) and outputs[identity].get('snapshot_qualification') == registration
+                and times[domain_host['id']][0] <= times[identity][0] <= times[identity][1] < times[nine_command['id']][0]
+                for identity,command in commands.items()), 'qualified snapshot registration differs from retained Domain readiness')
+    require(registration.get('profile_id') == 'p1r-counter-folded-v1'
+            and registration.get('parity_evidence_id') == 'p1r-counter-roundtrip-event-parity-v1'
+            and registration.get('state_json') == {'count':registration.get('roundtrip_count')}
+            and registration.get('state_sha256') == digest(canonical(registration['state_json']))
+            and registration.get('limits') == snapshot_profile_limits(evidence,binding),
+            'qualified snapshot parity or finite profile binding differs')
+    expected = {
+        'snapshot-fixture-enrolled': registration.get('registered') is True and registration.get('test_only') is True,
+        'snapshot-state-roundtrip-parity': registration.get('state_roundtrip') is True
+            and registration.get('original_count') == registration.get('roundtrip_count') == 9,
+        'snapshot-canonical-event-parity': registration.get('canonical_event_parity') is True
+            and registration.get('canonical_event_sha256') == digest(b'{}'),
+        'snapshot-detached-apply-parity': registration.get('detached_apply') is True and registration.get('applied_count') == 10,
+        'snapshot-nine-events-committed': nine.get('committed') == 9 and nine.get('sequence') == 9,
+        'tenant-a:committed-count': nine.get('committed') == 9 and tail.get('committed') == 3 and tail.get('sequence') == 12,
+        'qualified-snapshot-created-by-published-actor': manual.get('outcome') == 'Created' and manual.get('sequence') == 9,
+    }
+    manual_checks = {item['id']:item['passed'] for item in outputs[manual_command['id']]['measurement']['checks']}
+    expected_manual = {'manual-snapshot-created': manual.get('outcome') == 'Created',
+                       'manual-snapshot-at-nine': manual.get('sequence') == 9,
+                       'manual-snapshot-no-failure': manual.get('reason_code') is None and manual.get('message') is None}
+    require(manual_checks == expected_manual and manual.get('snapshot_key') == 'tenant-a:counter:fixture:snapshot',
+            'qualified snapshot manual probe checks or stream contradict its result')
+    for identity,passed in expected_manual.items():
+        require(checks.get(prefix+'snapshot:'+identity) is passed, 'qualified snapshot drops or substitutes a manual result check')
+    snapshot = seed.get('persisted_snapshot')
+    require(isinstance(snapshot,dict), 'qualified snapshot envelope observation missing')
+    snapshot_key = 'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:snapshot'
+    query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
+    provider_matches = []
+    for identity,value in outputs.items():
+        command = commands[identity]
+        if (command['argv'] == ['docker','exec','-i',database,'psql','-U','postgres','-d','eventstore','-At','-v','ON_ERROR_STOP=1','-f','-']
+                and command.get('input_sha256') == digest(query.encode()) and command.get('input_bytes') == len(query.encode())
+                and max(times[first_sidecar['id']][1],times[first_host['id']][1]) <= times[identity][0]
+                and times[identity][1] < times[tail_command['id']][0] and isinstance(value,list)):
+            values = {pair[0]:pair[1] for pair in value if isinstance(pair,list) and len(pair) == 2}
+            actual = values.get(snapshot_key,{})
+            if isinstance(actual,str):
+                actual = json.loads(base64.b64decode(actual,validate=True))
+            provider_matches.append((command,actual))
+    matches = [command for command,actual in provider_matches if actual == snapshot]
+    require(matches, 'qualified snapshot envelope differs from exact stopped-writer owned provider output')
+    if snapshot:
+        require(set(snapshot) == {'tenantId','domain','aggregateId','sequenceNumber','snapshotEnvelopeVersion','state','createdAt','protectionMetadata'}
+                and snapshot.get('tenantId') == 'tenant-a' and snapshot.get('domain') == 'counter' and snapshot.get('aggregateId') == 'fixture'
+                and snapshot.get('protectionMetadata') == {'state':0,'metadataVersion':1,'scheme':None,'keyAlias':None,'contentHint':None,'compatibilityFlags':None},
+                'qualified snapshot envelope stream identity or supported protection contract differs')
+        import datetime
+        created = datetime.datetime.fromisoformat(snapshot['createdAt'].replace('Z','+00:00'))
+        require(times[manual_command['id']][0] <= created <= times[manual_command['id']][1],
+                'qualified snapshot envelope creation time is outside the manual invocation')
+    expected['qualified-snapshot-envelope-version-one'] = snapshot.get('snapshotEnvelopeVersion') == 1
+    expected['qualified-snapshot-persisted-nine'] = snapshot.get('sequenceNumber') == 9 and snapshot.get('state') == {'count':9}
+    inventory_commands = {}
+    for name in ('before_tail','after_tail'):
+        runtime.validate_rows(seed.get(name))
+        matches = [command for identity,command in commands.items() if command.get('exit_code') == 0
+                   and command['argv'][1:] == ['-I',str(Path(binding['repository'])/'tools/p1r-published-executor.py'),'inventory',
+                        '--container',database,'--invocation',execution['invocation'],'--backend','state.postgresql']
+                   and outputs.get(identity) == seed[name]
+                   and (times[identity][1] < min(times[tail_sidecar['id']][0],times[tail_host['id']][0])
+                        and times[identity][0] >= max(times[first_sidecar['id']][1],times[first_host['id']][1])
+                        if name == 'before_tail' else times[identity][0] > times[tail_command['id']][1])]
+        require(matches, 'qualified snapshot tail inventory differs from distinct ordered owned commands')
+        inventory_commands[name] = matches[0]
+    require(inventory_commands['before_tail']['id'] < tail_command['id'] < inventory_commands['after_tail']['id']
+            and any(times[command['id']][1] <= times[inventory_commands['before_tail']['id']][0] for command,_ in provider_matches),
+            'qualified snapshot provider and before/after tail inventories are reordered')
+    for name,head,identity in (('before_tail',9,'qualified-snapshot-prefix-coordinate-exact'),
+                               ('after_tail',12,'qualified-snapshot-tail-coordinate-exact')):
+        rows = seed[name]
+        metadata,_,events = runtime.stream(rows,'tenant-a')
+        require(all(item['key'].startswith('eventstore||AggregateActor||tenant-a:counter:fixture||')
+                    for item in runtime.domain(rows,'tenant-a')), 'qualified snapshot inventory substitutes another tenant stream')
+        expected[identity] = metadata is not None and metadata['sequence'] == head and sorted(events) == list(range(1,head+1))
+    originals = {item['key']:item['sha256'] for item in seed['before_tail'] if item['kind'] in ('event','snapshot')}
+    after = {item['key']:item['sha256'] for item in seed['after_tail']}
+    expected['qualified-snapshot-and-prefix-bytes-preserved'] = all(after.get(key) == value for key,value in originals.items())
+    snapshot_rows = [item for item in seed['before_tail'] if item['key'] == snapshot_key]
+    require((snapshot == {} and snapshot_rows == []) or len(snapshot_rows) == 1
+            and snapshot_rows[0]['sha256'] == digest(canonical(snapshot)),
+            'qualified snapshot envelope differs from persisted inventory hash')
+    for identity,passed in expected.items():
+        require(checks[prefix+identity] is passed, 'qualified snapshot check contradicts retained execution output')
+
+def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0'):
     """Recompute check, probe, inventory and rendered-runtime consistency."""
     import json
     import p1r_qualification as preparation
@@ -246,7 +524,10 @@ def validate_case(row, evidence, binding, lane, retained_sources):
                 require(observed[name] in measured_observations, 'case semantic observation contradicts retained probe result')
         coordinate_lane = row['id'] if lane == 'checkout' else lane
         coordinate_identifier = (observation['comparison']['source_case' if prefix == 'source:' else 'selected_case']
-                                 if lane == 'checkout' and row['id'] != 'current-build' else row['id'])
+                                 if not incomplete and lane == 'checkout' and row['id'] != 'current-build' else row['id'])
+        if not incomplete and row['operation'] != 'unsupported' and requires_qualified_snapshot(candidate_version, coordinate_lane, coordinate_identifier):
+            validate_qualified_snapshot(observed, prefix, checks, evidence, binding,
+                '3.121.0' if coordinate_lane == 'post-upgrade-restore' else coordinate_identifier.split('-to-',1)[0])
         if not incomplete and row['operation'] != 'unsupported' and coordinate_lane in ('legacy-metadata','metadata-read'):
             expected_floor = coordinate_identifier.rsplit('-',1)[1]
             expected_floor = 1 if expected_floor == 'None' else int(expected_floor)
@@ -329,7 +610,7 @@ def validate_case(row, evidence, binding, lane, retained_sources):
     require(incomplete or bound == set(by_id), 'rendered configuration lacks executed sidecar binding')
     if not incomplete and lane == 'checkout' and row['id'] != 'current-build':
         comparison = observation.get('comparison')
-        require(isinstance(comparison,dict) and comparison.get('selected_version') == '3.119.0', 'source case lacks actual selected-package comparison')
+        require(isinstance(comparison,dict) and comparison.get('selected_version') == candidate_version, 'source case lacks actual selected-package comparison')
         def normalize(branch):
             value = paired[branch]
             result = {'outcome': 'refusal' if value.get('primary',value.get('actor',{})).get('accepted') is False else 'effect'}
