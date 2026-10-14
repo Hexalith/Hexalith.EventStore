@@ -5,6 +5,12 @@ namespace Hexalith.EventStore.Client.Gateway;
 /// </summary>
 public sealed class EventStoreGatewayClientOptions {
     /// <summary>
+    /// Gets or sets whether ordinary command submission and stream reads use the supported workload-only
+    /// transport. A host must also register an independently configured workload assertion source.
+    /// </summary>
+    public bool UseWorkloadTransport { get; set; }
+
+    /// <summary>
     /// Gets or sets the EventStore gateway base address.
     /// </summary>
     public Uri? BaseAddress { get; set; }

@@ -18,6 +18,7 @@ public sealed class SharedProjectionEpochCoordinator
     private const int MaxDeliveryBytes = 32 * 1024 * 1024;
     private const int MaxJournalBytes = 64 * 1024;
     private const int MaxEpochStateBytes = 512 * 1024;
+    private const int ConflictEvidenceReserveBytes = 8 * 1024;
     private const int MaxCheckpointBytes = 8 * 1024;
     private const int ChunkedDeliveryThresholdBytes = 16 * 1024;
     private const int MaxFailureAttempts = 1000;
@@ -691,7 +692,9 @@ public sealed class SharedProjectionEpochCoordinator
             {
                 if (!string.Equals(existing.Digest, digest, StringComparison.Ordinal))
                 {
-                    return SharedProjectionJournalResult.IdentityConflict;
+                    if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery, existing.Digest,
+                        digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
+                    continue;
                 }
 
                 if (!existing.PayloadReady)
@@ -703,7 +706,9 @@ public sealed class SharedProjectionEpochCoordinator
                             new SharedProjectionPayload(delivery.CanonicalPayload, delivery.Checkpoint)));
                     if (existing.PayloadChunks != expected)
                     {
-                        return SharedProjectionJournalResult.IdentityConflict;
+                        if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery, existing.Digest,
+                            digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
+                        continue;
                     }
 
                     await new SharedProjectionChunkStore(_store)
@@ -748,7 +753,9 @@ public sealed class SharedProjectionEpochCoordinator
             {
                 if (!string.Equals(receipt.Value.Digest, digest, StringComparison.Ordinal))
                 {
-                    return SharedProjectionJournalResult.IdentityConflict;
+                    if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery, receipt.Value.Digest,
+                        digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
+                    continue;
                 }
 
                 string[] retained = RetainControlIndexName(state, delivery.ControlIndexIntent);
@@ -806,9 +813,11 @@ public sealed class SharedProjectionEpochCoordinator
                             {
                                 return SharedProjectionJournalResult.RebuildRequired;
                             }
-                            return string.Equals(previous.Value.Digest, digest, StringComparison.Ordinal)
-                                ? SharedProjectionJournalResult.AlreadyCaptured
-                                : SharedProjectionJournalResult.IdentityConflict;
+                            if (string.Equals(previous.Value.Digest, digest, StringComparison.Ordinal))
+                                return SharedProjectionJournalResult.AlreadyCaptured;
+                            if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery, previous.Value.Digest,
+                                digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
+                            continue;
                         }
                         if (delivery.OwnerSequenceNumber > identities.Length / 32)
                         {
@@ -820,7 +829,10 @@ public sealed class SharedProjectionEpochCoordinator
                                 delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan()
                             .SequenceEqual(identities.AsSpan(offset, 32)))
                         {
-                            return SharedProjectionJournalResult.IdentityConflict;
+                            if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery,
+                                Convert.ToHexString(identities.AsSpan(offset, 32)), digest, cancellationToken)
+                                .ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
+                            continue;
                         }
                     }
                     return SharedProjectionJournalResult.AlreadyCaptured;
@@ -844,7 +856,12 @@ public sealed class SharedProjectionEpochCoordinator
                         .Select(static item => item.OwnerSequenceNumber).DefaultIfEmpty().Max());
                 if (delivery.OwnerSequenceNumber != acceptedSequence + 1)
                 {
-                    return SharedProjectionJournalResult.DeliveryGap;
+                    string acceptedDigest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(acceptedSequence)));
+                    bool futureGap = delivery.OwnerSequenceNumber > acceptedSequence + 1;
+                    if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery, acceptedDigest,
+                        digest, cancellationToken, futureGap ? delivery.OwnerSequenceNumber : null).ConfigureAwait(false))
+                        return futureGap ? SharedProjectionJournalResult.DeliveryGap : SharedProjectionJournalResult.IdentityConflict;
+                    continue;
                 }
             }
 
@@ -1904,6 +1921,16 @@ public sealed class SharedProjectionEpochCoordinator
                         state.ActiveGeneration,
                         cancellationToken).ConfigureAwait(false);
                 }
+                catch (SharedProjectionCapacityExceededException)
+                {
+                    var capacityFailure = new SharedProjectionFailureStatus(head.SourceStream, head.EnvelopePosition,
+                        Math.Min(MaxFailureAttempts, (head.Failure is { ReasonCode: "capacity" } priorCapacity ? priorCapacity.FailureCount : 0) + 1)) { ReasonCode = "capacity" };
+                    if (!await SaveAsync(scope, state with
+                    {
+                        Journal = [head with { Failure = capacityFailure }, .. state.Journal.Skip(1)],
+                    }, entry.ETag, cancellationToken).ConfigureAwait(false)) continue;
+                    throw new SharedProjectionRetryableFoldException(capacityFailure);
+                }
                 catch (SharedProjectionFoldFailureException failure)
                 {
                     if (!string.Equals(failure.SourceStream, head.SourceStream, StringComparison.Ordinal)
@@ -1914,7 +1941,7 @@ public sealed class SharedProjectionEpochCoordinator
                             failure);
                     }
 
-                    int previousCount = head.Failure is { } previous
+                    int previousCount = head.Failure is { ReasonCode: "fold-failure" } previous
                         && string.Equals(previous.SourceStream, failure.SourceStream, StringComparison.Ordinal)
                         && previous.SourcePosition == failure.SourcePosition
                         ? previous.FailureCount
@@ -2121,7 +2148,30 @@ public sealed class SharedProjectionEpochCoordinator
                 Journal = [.. state.Journal.Skip(1)],
                 CleanupChunks = head.PayloadChunks,
                 CleanupPreparedChunks = head.PreparedChunks,
+                DeliveryConflicts = [.. state.DeliveryConflicts.Select(conflict => !head.Parked
+                    && !conflict.IsResolved && conflict.RequiredOwnerSequenceNumber == head.OwnerSequenceNumber
+                    && conflict.SourceStream == head.SourceStream && conflict.EnvelopePosition == head.EnvelopePosition
+                    && conflict.ConflictingDigest == head.Digest
+                        ? conflict with { ResolvedByOwnerSequenceNumber = head.OwnerSequenceNumber } : conflict)],
             };
+            if (head.Parked)
+            {
+                var evidence = new SharedProjectionParkingEvidence(head.SourceStream, head.EnvelopePosition,
+                    state.Epoch, head.Failure!.FailureCount);
+                if (!state.ParkingEvidence.Any(item => item.SourceStream == head.SourceStream
+                    && item.EnvelopePosition == head.EnvelopePosition))
+                {
+                    var recorded = dequeued with { ParkingEvidence = [.. state.ParkingEvidence, evidence] };
+                    if (recorded.ParkingEvidence.Length > MaxJournalEntries || IsConflictEvidenceCapacityLimited(recorded))
+                    {
+                        if (state.ParkingEvidenceOverflow is { } overflow
+                            && (overflow.SourceStream != head.SourceStream || overflow.EnvelopePosition != head.EnvelopePosition))
+                            throw new InvalidOperationException("The parking evidence capacity is exhausted; restore or offboard the scope.");
+                        dequeued = dequeued with { ParkingEvidenceOverflow = state.ParkingEvidenceOverflow ?? evidence };
+                    }
+                    else dequeued = recorded;
+                }
+            }
             if (dequeued.Journal.Length == 0 && dequeued.Phase == SharedProjectionEpochPhase.CatchingUp)
             {
                 dequeued = dequeued with { Phase = SharedProjectionEpochPhase.Open };
@@ -2390,7 +2440,11 @@ public sealed class SharedProjectionEpochCoordinator
                 if (string.Equals(before.ETag, after.ETag, StringComparison.Ordinal))
                 {
                     return new SharedProjectionReadResult<TValue>(selected.Value, state.ActiveGeneration,
-                        state.Journal.Length > 0, true) { SelectedETag = selected.ETag };
+                        state.Journal.Length > 0 || state.Phase is SharedProjectionEpochPhase.Capturing or SharedProjectionEpochPhase.Building, true)
+                    {
+                        SelectedETag = selected.ETag,
+                        IsDegraded = HasConflictReadinessIssue(state),
+                    };
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -2463,7 +2517,16 @@ public sealed class SharedProjectionEpochCoordinator
             state.Phase is SharedProjectionEpochPhase.Building or SharedProjectionEpochPhase.Capturing,
             state.Phase == SharedProjectionEpochPhase.Aborting,
             state.Journal.Length,
-            state.OffboardingAuditId is not null) { OperationTenantId = state.OperationTenantId };
+            state.OffboardingAuditId is not null)
+        {
+            OperationTenantId = state.OperationTenantId,
+            DeliveryConflicts = state.DeliveryConflicts.ToArray(),
+            DeliveryConflictOverflow = state.DeliveryConflictOverflow,
+            ParkingEvidence = state.ParkingEvidence.ToArray(),
+            ParkingEvidenceOverflow = state.ParkingEvidenceOverflow,
+            PendingFoldFailures = [.. state.Journal.Where(item => item.Failure is not null).Select(item => item.Failure!)],
+            IsCapacityLimited = IsConflictEvidenceCapacityLimited(state),
+        };
     }
 
     /// <summary>
@@ -2645,7 +2708,7 @@ public sealed class SharedProjectionEpochCoordinator
             }
 
             bool stale = state.Journal.Length > 0
-                || state.Phase is SharedProjectionEpochPhase.CatchingUp or SharedProjectionEpochPhase.Aborting;
+                || state.Phase is SharedProjectionEpochPhase.Capturing or SharedProjectionEpochPhase.Building or SharedProjectionEpochPhase.CatchingUp or SharedProjectionEpochPhase.Aborting;
             if (state.Phase is SharedProjectionEpochPhase.CatchingUp or SharedProjectionEpochPhase.Aborting
                 || (state.Phase == SharedProjectionEpochPhase.Open && state.Journal.Length > 0))
             {
@@ -2666,7 +2729,10 @@ public sealed class SharedProjectionEpochCoordinator
             ReadModelEntry<SharedProjectionEpochState> after = await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false);
             if (string.Equals(before.ETag, after.ETag, StringComparison.Ordinal))
             {
-                return new SharedProjectionReadResult<IReadOnlyDictionary<string, TValue?>>(values, state.ActiveGeneration, stale, true);
+                return new SharedProjectionReadResult<IReadOnlyDictionary<string, TValue?>>(values, state.ActiveGeneration, stale, true)
+                {
+                    IsDegraded = HasConflictReadinessIssue(state),
+                };
             }
         }
 
@@ -3178,6 +3244,87 @@ public sealed class SharedProjectionEpochCoordinator
     private static string HashIdentity(string sourceStream, long position)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sourceStream + "\0" + position)));
 
+    private Task<bool> RecordDeliveryConflictAsync(SharedProjectionScope scope, SharedProjectionEpochState state,
+        string? etag, SharedProjectionDelivery delivery, string acceptedDigest, string conflictingDigest,
+        CancellationToken cancellationToken, long? requiredOwnerSequenceNumber = null)
+    {
+        if (state.DeliveryConflicts.Any(conflict => conflict.SourceStream == delivery.SourceStream
+            && conflict.EnvelopePosition == delivery.EnvelopePosition
+            && conflict.RequiredOwnerSequenceNumber == requiredOwnerSequenceNumber
+            && (requiredOwnerSequenceNumber is not null || conflict.AcceptedDigest == acceptedDigest)
+            && conflict.ConflictingDigest == conflictingDigest)) return Task.FromResult(true);
+        var conflictEvidence = new SharedProjectionDeliveryConflict(delivery.SourceStream, delivery.EnvelopePosition,
+            acceptedDigest, conflictingDigest, state.Epoch) { RequiredOwnerSequenceNumber = requiredOwnerSequenceNumber };
+        SharedProjectionEpochState updated = state with { DeliveryConflicts = [.. state.DeliveryConflicts, conflictEvidence] };
+        if (state.DeliveryConflicts.Length >= MaxJournalEntries || IsConflictEvidenceCapacityLimited(updated))
+        {
+            if (state.DeliveryConflictOverflow is { } overflow)
+            {
+                if (overflow.SourceStream == delivery.SourceStream && overflow.EnvelopePosition == delivery.EnvelopePosition
+                    && overflow.RequiredOwnerSequenceNumber == requiredOwnerSequenceNumber
+                    && (requiredOwnerSequenceNumber is not null || overflow.AcceptedDigest == acceptedDigest)
+                    && overflow.ConflictingDigest == conflictingDigest)
+                    return Task.FromResult(true);
+                throw new InvalidOperationException("The durable delivery conflict capacity is exhausted; restore or offboard the scope.");
+            }
+            return SaveAsync(scope, state with
+            {
+                DeliveryConflictOverflow = conflictEvidence,
+            }, etag, cancellationToken);
+        }
+        return SaveAsync(scope, updated, etag, cancellationToken);
+    }
+
+    /// <summary>
+    /// Explicitly resolves retained identity conflicts after a newer authoritative rebuild covers every
+    /// affected source position, has been promoted, and has fully drained. Promotion or abort alone
+    /// never clears the evidence. Resolved identities remain durable for idempotent rejected redelivery.
+    /// </summary>
+    public async Task ResolveDeliveryConflictsAsync(SharedProjectionScope scope, string operationId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        scope.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        for (int attempt = 0; attempt < MaxRetries; attempt++)
+        {
+            ReadModelEntry<SharedProjectionEpochState> entry = await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false);
+            SharedProjectionEpochState state = entry.Value ?? throw new InvalidOperationException("The shared projection has no epoch state.");
+            ValidateState(state);
+            ValidateBoundary(state, scope);
+            ThrowIfOffboarded(state);
+            RequireOperation(state, operationId, SharedProjectionEpochPhase.Open);
+            if (state.DeliveryConflictOverflow is not null || state.ParkingEvidenceOverflow is not null)
+                throw new InvalidOperationException("The durable delivery conflict capacity is exhausted; restore or offboard the scope.");
+            if (state.ActiveGeneration != state.Epoch || state.StageFingerprint is null
+                || state.Journal.Length != 0 || state.OwnerSequenceHandoffPending)
+                throw new InvalidOperationException("Conflict repair requires a promoted and fully drained authoritative rebuild.");
+            SharedProjectionDeliveryConflict[] unresolved = [.. state.DeliveryConflicts.Where(conflict => !conflict.IsResolved)];
+            SharedProjectionParkingEvidence[] unresolvedParking = [.. state.ParkingEvidence.Where(item => item.ResolvedByOperationId is null)];
+            if (unresolved.Length == 0 && unresolvedParking.Length == 0) return;
+            foreach (SharedProjectionParkingEvidence parked in unresolvedParking)
+            {
+                long? captured = await GetCapturedPositionAsync(scope, state, parked.SourceStream, cancellationToken).ConfigureAwait(false);
+                if (parked.ObservedEpoch >= state.Epoch || captured is null || captured < parked.EnvelopePosition)
+                    throw new InvalidOperationException("The authoritative rebuild does not cover retained parking evidence.");
+            }
+            foreach (SharedProjectionDeliveryConflict conflict in unresolved)
+            {
+                long? captured = await GetCapturedPositionAsync(scope, state, conflict.SourceStream, cancellationToken).ConfigureAwait(false);
+                if (conflict.ObservedEpoch >= state.Epoch || captured is null || captured < conflict.EnvelopePosition)
+                    throw new InvalidOperationException("The authoritative rebuild does not cover the retained delivery conflict.");
+            }
+            if (await SaveAsync(scope, state with
+            {
+                DeliveryConflicts = [.. state.DeliveryConflicts.Select(conflict => !conflict.IsResolved
+                    ? conflict with { ResolvedByOperationId = operationId } : conflict)],
+                ParkingEvidence = [.. state.ParkingEvidence.Select(parked => parked.ResolvedByOperationId is null
+                    ? parked with { ResolvedByOperationId = operationId } : parked)],
+            }, entry.ETag, cancellationToken).ConfigureAwait(false)) return;
+        }
+        throw RetryExhausted();
+    }
+
     private static string[] RetainControlIndexName(
         SharedProjectionEpochState state,
         SharedProjectionControlIndexIntent? intent)
@@ -3239,13 +3386,41 @@ public sealed class SharedProjectionEpochCoordinator
         string? etag,
         CancellationToken cancellationToken)
     {
-        if (JsonSerializer.SerializeToUtf8Bytes(state).Length > MaxEpochStateBytes)
+        int limit = state.DeliveryConflictOverflow is null && state.ParkingEvidenceOverflow is null ? MaxEpochStateBytes - ConflictEvidenceReserveBytes : MaxEpochStateBytes;
+        if (JsonSerializer.SerializeToUtf8Bytes(state).Length > limit)
         {
-            throw new InvalidOperationException("The shared projection epoch exceeds its bounded state-store limit.");
+            throw new InvalidOperationException("The shared projection epoch exceeds its bounded state-store limit or conflict reserve.");
         }
 
         return _store.TrySaveAsync(scope.StoreName, scope.StateKey, state, etag ?? string.Empty, cancellationToken);
     }
+
+    private static bool IsConflictEvidenceCapacityLimited(SharedProjectionEpochState state)
+        => JsonSerializer.SerializeToUtf8Bytes(state).Length > MaxEpochStateBytes - ConflictEvidenceReserveBytes;
+
+    private static bool HasConflictReadinessIssue(SharedProjectionEpochState state)
+        => state.Journal.Any(item => item.Failure is not null)
+            || state.ParkingEvidenceOverflow is not null || state.ParkingEvidence.Any(item => item.ResolvedByOperationId is null)
+            || state.DeliveryConflictOverflow is not null || IsConflictEvidenceCapacityLimited(state)
+            || state.DeliveryConflicts.Any(conflict => !conflict.IsResolved);
+
+    private static bool IsValidParking(SharedProjectionEpochState state, SharedProjectionParkingEvidence? parked)
+        => parked is not null && !string.IsNullOrWhiteSpace(parked.SourceStream)
+            && Encoding.UTF8.GetByteCount(parked.SourceStream) <= ReadModelBatchScope.MaxComponentByteLength
+            && parked.EnvelopePosition >= 0 && parked.ObservedEpoch >= 0 && parked.ObservedEpoch <= state.Epoch
+            && parked.FailureCount is >= 1 and <= MaxFailureAttempts
+            && (parked.ResolvedByOperationId is null || !string.IsNullOrWhiteSpace(parked.ResolvedByOperationId));
+
+    private static bool IsValidConflict(SharedProjectionEpochState state, SharedProjectionDeliveryConflict? conflict)
+        => conflict is not null && !string.IsNullOrWhiteSpace(conflict.SourceStream)
+            && Encoding.UTF8.GetByteCount(conflict.SourceStream) <= ReadModelBatchScope.MaxComponentByteLength
+            && conflict.EnvelopePosition >= 0 && conflict.ObservedEpoch >= 0 && conflict.ObservedEpoch <= state.Epoch
+            && conflict.AcceptedDigest is { Length: 64 } && conflict.AcceptedDigest.All(Uri.IsHexDigit)
+            && conflict.ConflictingDigest is { Length: 64 } && conflict.ConflictingDigest.All(Uri.IsHexDigit)
+            && (conflict.ResolvedByOperationId is null || !string.IsNullOrWhiteSpace(conflict.ResolvedByOperationId))
+            && conflict.RequiredOwnerSequenceNumber is not <= 0
+            && (conflict.ResolvedByOwnerSequenceNumber is null || conflict.RequiredOwnerSequenceNumber is > 0
+                && conflict.ResolvedByOwnerSequenceNumber == conflict.RequiredOwnerSequenceNumber);
 
     private static void ValidateState(SharedProjectionEpochState state)
     {
@@ -3255,7 +3430,15 @@ public sealed class SharedProjectionEpochCoordinator
             || state.CopyOnWriteAnchorGeneration > state.ActiveGeneration
             || state.CaptureHighWatermarks is null || state.ConsumerCheckpoints is null
             || state.RequiredWriters is null || state.RegisteredWriters is null
-            || state.Journal is null || state.StageKeys is null
+            || state.Journal is null || state.StageKeys is null || state.DeliveryConflicts is null
+            || state.ParkingEvidence is null || state.ParkingEvidence.Length > MaxJournalEntries
+            || state.ParkingEvidence.Any(item => !IsValidParking(state, item))
+            || state.ParkingEvidenceOverflow is not null && (!IsValidParking(state, state.ParkingEvidenceOverflow)
+                || state.ParkingEvidenceOverflow.ResolvedByOperationId is not null)
+            || state.DeliveryConflicts.Length > MaxJournalEntries
+            || state.DeliveryConflicts.Any(conflict => !IsValidConflict(state, conflict))
+            || state.DeliveryConflictOverflow is { } overflow
+                && (!IsValidConflict(state, overflow) || overflow.IsResolved)
             || (state.RetainedControlIndexNames?.Length ?? 0) > MaxRetainedControlIndexes
             || (state.RetainedControlIndexNames?.Any(string.IsNullOrWhiteSpace) ?? false)
             || (state.RetainedControlIndexNames?.Distinct(StringComparer.Ordinal).Count() ?? 0)
@@ -3288,6 +3471,7 @@ public sealed class SharedProjectionEpochCoordinator
                 && (string.IsNullOrWhiteSpace(failure.SourceStream)
                     || !string.Equals(failure.SourceStream, item.SourceStream, StringComparison.Ordinal)
                     || failure.SourcePosition < 0
+                    || failure.ReasonCode is not ("fold-failure" or "capacity")
                     || failure.FailureCount < 1
                     || failure.FailureCount > MaxFailureAttempts))
             || state.Journal.Any(item => item.Parked && (item.Prepared is null && item.PreparedChunks is null || item.Failure is null)))

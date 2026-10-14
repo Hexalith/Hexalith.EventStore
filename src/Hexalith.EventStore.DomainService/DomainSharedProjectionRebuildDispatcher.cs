@@ -1999,7 +1999,10 @@ public static class DomainSharedProjectionRebuildDispatcher {
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (routes.Length == 0
             || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(identityOptions.AppId, identityOptions.ServiceVersion, routes),
+                ProjectionRouteCatalogFingerprint.Compute(identityOptions.AppId, identityOptions.ServiceVersion, routes,
+                    [.. handlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                        && string.Equals(handler.Domain, identity.Domain, StringComparison.Ordinal))
+                        .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))]),
                 identity.CatalogFingerprint,
                 StringComparison.Ordinal)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);

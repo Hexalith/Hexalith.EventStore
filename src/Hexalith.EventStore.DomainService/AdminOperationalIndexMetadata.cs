@@ -173,6 +173,12 @@ public static class AdminOperationalIndexMetadata {
             }
         }
 
+        domains = [.. domains.Select(domain => domain with {
+            OrdinaryProjectionTypes = [.. materializedNamedHandlers
+                .Where(handler => handler.OrdinaryDeliveryEnabled && string.Equals(handler.Domain, domain.Domain, StringComparison.Ordinal))
+                .Select(static handler => handler.ProjectionType).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+        })];
+
         if (materializedNamedHandlers.Length == 0 || appId is null || serviceVersion is null) {
             return new Response(domains);
         }
@@ -194,7 +200,9 @@ public static class AdminOperationalIndexMetadata {
             DispatchCapability = ProjectionDispatchProtocol.Capability,
             AppId = appId,
             ServiceVersion = serviceVersion,
-            CatalogFingerprint = ProjectionRouteCatalogFingerprint.Compute(appId, serviceVersion, admittedRoutes),
+            CatalogFingerprint = ProjectionRouteCatalogFingerprint.Compute(appId, serviceVersion, admittedRoutes,
+                domains.SelectMany(domain => (domain.OrdinaryProjectionTypes ?? [])
+                    .Select(type => new ProjectionDispatchRoute(domain.Domain, type)))),
         };
     }
 
@@ -347,6 +355,10 @@ public static class AdminOperationalIndexMetadata {
         /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<string>? NamedProjectionTypes { get; init; }
+
+        /// <summary>Gets named routes that accept ordinary delivery; an empty set keeps rebuild-only routes available.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? OrdinaryProjectionTypes { get; init; }
 
         /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

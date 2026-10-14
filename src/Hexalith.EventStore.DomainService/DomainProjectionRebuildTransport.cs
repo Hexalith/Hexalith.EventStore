@@ -180,7 +180,10 @@ internal static class DomainProjectionRebuildTransport
             .Where(handler => StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (routes.Length == 0 || !StringComparer.Ordinal.Equals(
-            ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, routes),
+            ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, routes,
+                allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                    && StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain))
+                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),
             header.CatalogFingerprint))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         HashSet<string> types = new(header.ProjectionTypes, StringComparer.Ordinal);

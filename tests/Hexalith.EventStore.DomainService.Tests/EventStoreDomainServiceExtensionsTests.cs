@@ -662,6 +662,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
             []);
         IAsyncDomainProjectionRebuildHandler detail = Substitute.For<IAsyncDomainProjectionRebuildHandler>();
+        detail.OrdinaryDeliveryEnabled.Returns(true);
         detail.Domain.Returns("widget");
         detail.ProjectionType.Returns("widget-detail");
         detail.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
@@ -1671,6 +1672,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
     private static IAsyncDomainProjectionHandler CreateNamedProjectionHandler(string domain, string projectionType) {
         IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         handler.Domain.Returns(domain);
         handler.ProjectionType.Returns(projectionType);
         return handler;

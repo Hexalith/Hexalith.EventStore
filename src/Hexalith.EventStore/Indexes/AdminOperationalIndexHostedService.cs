@@ -169,7 +169,9 @@ public sealed partial class AdminOperationalIndexHostedService(
             registration.AppId,
             MetadataMethodName,
             request);
-        HttpClient httpClient = httpClientFactory.CreateClient();
+        // Metadata discovery is advisory and may probe absent development modules. Isolate its target's
+        // resilience circuit so an unavailable module cannot block ordinary domain-service delivery.
+        HttpClient httpClient = httpClientFactory.CreateClient($"eventstore-domain-metadata:{registration.AppId}");
         using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) {
             Log.MetadataEndpointAbsent(logger, registration.AppId);
@@ -299,7 +301,8 @@ public sealed partial class AdminOperationalIndexHostedService(
             string expectedFingerprint = ProjectionRouteCatalogFingerprint.Compute(
                 expectedAppId,
                 expectedServiceVersion,
-                routes);
+                routes, response.Domains.SelectMany(domain => (domain.OrdinaryProjectionTypes ?? domain.NamedProjectionTypes ?? [])
+                    .Select(type => new ProjectionDispatchRoute(domain.Domain, type))));
             if (!string.Equals(response.CatalogFingerprint, expectedFingerprint, StringComparison.Ordinal)) {
                 return false;
             }
@@ -324,7 +327,9 @@ public sealed partial class AdminOperationalIndexHostedService(
                     response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
                         .SingleEventProjectionTypes,
                     response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
-                        .IncrementalReplayProjectionTypes))];
+                        .IncrementalReplayProjectionTypes,
+                    response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
+                        .OrdinaryProjectionTypes))];
             return true;
         }
         catch (ArgumentException) {
@@ -590,6 +595,8 @@ public sealed partial class AdminOperationalIndexHostedService(
             [.. items.SelectMany(i => i.AggregateTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.ProjectionNames).Where(static p => !IsProjectionActorStateKey(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]) {
+            OrdinaryProjectionTypes = [.. items.SelectMany(static item => item.OrdinaryProjectionTypes ?? item.NamedProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             NamedProjectionTypes = [.. items
                 .SelectMany(static item => item.NamedProjectionTypes ?? [])
                 .Distinct(StringComparer.Ordinal)
@@ -708,6 +715,10 @@ public sealed record AdminOperationalIndexDomainMetadata(
     /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? NamedProjectionTypes { get; init; }
+
+    /// <summary>Gets named routes currently enabled for ordinary delivery; omitted catalogs retain historical behavior.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? OrdinaryProjectionTypes { get; init; }
 
     /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

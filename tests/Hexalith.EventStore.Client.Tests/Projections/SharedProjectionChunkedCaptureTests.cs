@@ -48,6 +48,10 @@ public sealed class SharedProjectionChunkedCaptureTests
         var store = new InMemoryReadModelStore();
         var coordinator = new SharedProjectionEpochCoordinator(store, store);
         _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        SharedProjectionLease priorLease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.JournalAsync(s_scope, priorLease, new("prior", 1, [1], [1]));
+        _ = await coordinator.CatchUpAsync(s_scope, (_, _, _) => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>(
+            [ReadModelBatchOperation.Write("index", new Counter(41), ReadModelBatchConcurrency.LastWrite)]));
         Dictionary<string, long> capture = Enumerable.Range(0, 1_500)
             .ToDictionary(index => "widget-" + index.ToString("D5"), _ => 1L, StringComparer.Ordinal);
         int writes = 0;
@@ -65,6 +69,14 @@ public sealed class SharedProjectionChunkedCaptureTests
         SharedProjectionChunkReference reference = reserved.CaptureChunks!;
 
         var restarted = new SharedProjectionEpochCoordinator(store, store);
+        var single = await restarted.ReadAsync<Counter>(s_scope, "index");
+        single.IsAvailable.ShouldBeTrue();
+        single.IsStale.ShouldBeTrue();
+        single.Value!.Value.ShouldBe(41);
+        var related = await restarted.ReadManyAsync<Counter>(s_scope, ["index"]);
+        related.IsAvailable.ShouldBeTrue();
+        related.IsStale.ShouldBeTrue();
+        related.Value!["index"]!.Value.ShouldBe(41);
         SharedProjectionLease lease = await restarted.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
         var delivery = new SharedProjectionDelivery("widget-01499", 1, [1], [1]);
         (await restarted.JournalAsync(s_scope, lease, delivery)).ShouldBe(SharedProjectionJournalResult.Backpressure);

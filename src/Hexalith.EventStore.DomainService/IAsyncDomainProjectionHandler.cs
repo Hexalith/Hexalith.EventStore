@@ -12,6 +12,9 @@ public interface IAsyncDomainProjectionHandler {
     /// <summary>Gets the canonical kebab-case projection type served by the handler.</summary>
     string ProjectionType { get; }
 
+    /// <summary>Gets whether this route accepts ordinary delivery in the current host mode.</summary>
+    bool OrdinaryDeliveryEnabled => true;
+
     /// <summary>Projects the supplied event slice for a stable dispatch identity.</summary>
     /// <param name="request">The aggregate event slice to project.</param>
     /// <param name="dispatchId">The stable identity used for idempotent persistence.</param>

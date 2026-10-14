@@ -141,7 +141,10 @@ public static class DomainProjectionDispatcher {
                 ProjectionRouteCatalogFingerprint.Compute(
                     identityOptions.AppId,
                     identityOptions.ServiceVersion,
-                    authoritativeRoutes),
+                    authoritativeRoutes,
+                    allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                        && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                        .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),
                 dispatchRequest.CatalogFingerprint,
                 StringComparison.Ordinal)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -339,7 +342,10 @@ public static class DomainProjectionDispatcher {
                 ProjectionRouteCatalogFingerprint.Compute(
                     identityOptions.AppId,
                     identityOptions.ServiceVersion,
-                    authoritativeRoutes),
+                    authoritativeRoutes,
+                    allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                        && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                        .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),
                 dispatchRequest.CatalogFingerprint,
                 StringComparison.Ordinal)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -552,7 +558,10 @@ public static class DomainProjectionDispatcher {
                 ProjectionRouteCatalogFingerprint.Compute(
                     identityOptions.AppId,
                     identityOptions.ServiceVersion,
-                    authoritativeRoutes),
+                    authoritativeRoutes,
+                    allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                        && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                        .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),
                 dispatchRequest.CatalogFingerprint,
                 StringComparison.Ordinal)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -682,6 +691,9 @@ public static class DomainProjectionDispatcher {
         if (handlers.Length != requestedTypes.Count) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
+
+        if (handlers.Any(handler => !handler.OrdinaryDeliveryEnabled))
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
 
         ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
 

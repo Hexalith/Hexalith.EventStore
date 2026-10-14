@@ -139,7 +139,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         SharedProjectionReadResult<Index> old = await coordinator.ReadAsync<Index>(scope, IndexKey);
         old.Generation.ShouldBe(0);
         old.Value!.Count.ShouldBe(1);
-        old.IsStale.ShouldBeFalse();
+        old.IsStale.ShouldBeTrue();
 
         current = await RebuildAsync(provider, new DomainSharedProjectionRebuildRequest(
             DomainSharedProjectionRebuildProtocol.Version,

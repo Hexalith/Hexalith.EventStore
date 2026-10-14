@@ -49,7 +49,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             && entry is not null && entry.FullReplayProjectionTypes.Count == 1
             && entry.FullReplayProjectionTypes.All(type =>
                 entry.MappedOnlyStreamedProjectionTypes.Contains(type, StringComparer.Ordinal))
-            && entry.ProjectionTypes.All(type =>
+            && entry.OrdinaryProjectionTypes.Count > 0
+            && entry.OrdinaryProjectionTypes.All(type =>
                 entry.FullReplayProjectionTypes.Contains(type, StringComparer.Ordinal)
                 || entry.SharedEpochProjectionTypes.Contains(type, StringComparer.Ordinal)
                 || entry.SingleEventProjectionTypes.Contains(type, StringComparer.Ordinal));
@@ -440,6 +441,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             }
         }
 
+        if (catalogEntry.OrdinaryProjectionTypes.Count == 0) return false;
+
         if (mappedOnly && !await SupportsMappedOnlyStreamedDeliveryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false)) return false;
         if (string.IsNullOrWhiteSpace(headMessageId)) {
@@ -469,7 +472,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             serviceVersion,
             highestSequence,
             headMessageId,
-            [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)],
+            [.. catalogEntry.OrdinaryProjectionTypes.Order(StringComparer.Ordinal)],
             [],
             headMessageId,
             catalogEntry.CatalogFingerprint,
@@ -534,7 +537,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         Dictionary<string, ProjectionDeliveryFingerprintHistory>? mappedHistories = null;
         if (mappedOnly) {
             mappedHistories = new Dictionary<string, ProjectionDeliveryFingerprintHistory>(StringComparer.Ordinal);
-            foreach (string projectionType in catalogEntry.ProjectionTypes) {
+            foreach (string projectionType in catalogEntry.OrdinaryProjectionTypes) {
                 ProjectionDeliveryAcceptedPrefix? accepted = await idempotencyCoordinator!
                     .ReadAcceptedPrefixAsync(identity, projectionType, cancellationToken).ConfigureAwait(false);
                 ProjectionDeliveryFingerprintHistory history;
@@ -584,7 +587,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         // delivery reservation's own lease bound.
         string deliveryLeaseToken = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
         try {
-            foreach (string projectionType in catalogEntry.ProjectionTypes
+            foreach (string projectionType in catalogEntry.OrdinaryProjectionTypes
                 .Where(pendingRoutes.Contains)
                 .Order(StringComparer.Ordinal)) {
                 cancellationToken.ThrowIfCancellationRequested();
