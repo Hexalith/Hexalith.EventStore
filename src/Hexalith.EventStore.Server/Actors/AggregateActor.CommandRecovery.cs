@@ -48,6 +48,7 @@ public partial class AggregateActor
             || end - start + 1 != count || string.IsNullOrWhiteSpace(correlationId)
             || string.IsNullOrWhiteSpace(causationId))
         {
+            ReportRecoveryRetention(correlationId, "range_identity_invalid");
             return null;
         }
 
@@ -55,14 +56,16 @@ public partial class AggregateActor
         {
             IReadOnlyList<EventEnvelope> events = await LoadPersistedEventsRangeAsync(identity, start, end)
                 .ConfigureAwait(false);
-            return HasVerifiedEventRange(identity, events, start, end, count, correlationId, causationId)
-                ? events : null;
+            if (!HasVerifiedEventRange(identity, events, start, end, count, correlationId, causationId))
+            {
+                ReportRecoveryRetention(correlationId, "range_envelope_identity_invalid");
+                return null;
+            }
+            return events;
         }
         catch (Exception exception) when (exception is not (OperationCanceledException or DrainStateStoreException))
         {
-            logger.LogWarning(exception,
-                "Persisted recovery range could not be verified; evidence retained: CorrelationId={CorrelationId}",
-                correlationId);
+            ReportRecoveryRetention(correlationId, "range_preparation_invalid");
             return null;
         }
     }
@@ -124,7 +127,6 @@ public partial class AggregateActor
             && (intent.EventCount == 0
                 ? intent.StartSequence is null && intent.EndSequence is null
                 : intent.StartSequence is > 0 && intent.EndSequence >= intent.StartSequence
-                    && intent.EndSequence <= int.MaxValue
                     && intent.EndSequence - intent.StartSequence + 1 == intent.EventCount)
             && intent.Status is { Status: CommandStatus.Completed or CommandStatus.Rejected }
             && (intent.Status.EventCount == intent.EventCount
@@ -148,15 +150,19 @@ public partial class AggregateActor
             if (state.HasValue && state.Value is { } intent && TerminalAdvisoryMatchesActor(intent)
                 && string.Equals(command.AggregateIdentity.ActorId, Host.Id.GetId(), StringComparison.Ordinal)
                 && string.Equals(intent.CorrelationId, cached.CorrelationId, StringComparison.Ordinal)
-                && intent.EventCount == cached.EventCount
+                && TerminalAdvisoryMatchesResult(intent, cached)
                 && CreateCommandProcessingIdentity(command).Matches(intent.MessageId, intent.CausationId, intent.CommandType))
             {
                 await TryRepairTerminalAdvisoryAsync(intent).ConfigureAwait(false);
             }
+            else if (state.HasValue)
+            {
+                ReportRecoveryRetention(command.MessageId, "advisory_cached_result_conflict");
+            }
         }
         catch (Exception exception) when (exception is not (OperationCanceledException or ActorStateRemediationException))
         {
-            logger.LogWarning(exception, "Pending terminal advisory lookup failed: MessageId={MessageId}", command.MessageId);
+            ReportRecoveryRetention(command.MessageId, "advisory_lookup_failed");
         }
     }
 
@@ -168,13 +174,13 @@ public partial class AggregateActor
         }
         catch (Exception exception) when (exception is not (OperationCanceledException or ActorStateRemediationException))
         {
-            logger.LogWarning(exception, "Terminal advisory repair remains pending: MessageId={MessageId}", intent.MessageId);
+            ReportRecoveryRetention(intent.MessageId, "advisory_repair_failed");
         }
     }
 
     private async Task RepairTerminalAdvisoryAsync(TerminalAdvisoryIntent intent, TerminalAdvisoryRepairIndex? committedIndex)
     {
-        if (!TerminalAdvisoryMatchesActor(intent))
+        if (!await CanRepairTerminalAdvisoryAsync(intent, intent.MessageId).ConfigureAwait(false))
         {
             return;
         }
@@ -195,11 +201,9 @@ public partial class AggregateActor
         {
             throw;
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            logger.LogWarning(exception,
-                "Terminal advisory remains pending: MessageId={MessageId}, CorrelationId={CorrelationId}",
-                intent.MessageId, intent.CorrelationId);
+            ReportRecoveryRetention(intent.MessageId, "advisory_write_failed");
             await ArmTerminalAdvisoryReminderAsync(intent, original).ConfigureAwait(false);
             return;
         }
@@ -243,16 +247,16 @@ public partial class AggregateActor
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogWarning(exception, "Terminal advisory reminder cleanup failed: MessageId={MessageId}", intent.MessageId);
+            ReportRecoveryRetention(intent.MessageId, "advisory_reminder_cleanup_failed");
         }
     }
 
-    private async Task ArmTerminalAdvisoryReminderAsync(TerminalAdvisoryIntent intent, TerminalAdvisoryRepairIndex index)
+    private async Task<TerminalAdvisoryRepairIndex> ArmTerminalAdvisoryReminderAsync(TerminalAdvisoryIntent intent, TerminalAdvisoryRepairIndex index)
     {
         if (index.Entries.Any(entry => entry is not null && entry.MessageId == intent.MessageId
             && entry.ReminderArmedAt is not null))
         {
-            return;
+            return index;
         }
 
         try
@@ -263,8 +267,8 @@ public partial class AggregateActor
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogWarning(exception, "Terminal advisory reminder remains unarmed: MessageId={MessageId}", intent.MessageId);
-            return;
+            ReportRecoveryRetention(intent.MessageId, "advisory_reminder_registration_failed");
+            return index;
         }
 
         TerminalAdvisoryRepairIndex updated = new([.. index.Entries.Select(entry => entry is not null
@@ -277,13 +281,15 @@ public partial class AggregateActor
         }
         catch (Exception exception)
         {
-            await InspectTerminalAdvisoryMutationFailureAsync(intent, index, updated, exception,
+            bool committed = await InspectTerminalAdvisoryMutationFailureAsync(intent, index, updated, exception,
                 removing: false).ConfigureAwait(false);
             if (exception is OperationCanceledException)
             {
                 throw;
             }
+            return committed ? updated : index;
         }
+        return updated;
     }
 
     private async Task<bool> InspectTerminalAdvisoryMutationFailureAsync(TerminalAdvisoryIntent intent,
@@ -345,38 +351,141 @@ public partial class AggregateActor
             || !string.Equals(entry.MessageId, intent.MessageId, StringComparison.Ordinal)));
     }
 
+    private static bool TerminalAdvisoryMatchesResult(TerminalAdvisoryIntent intent, CommandProcessingResult result)
+        => intent.EventCount == result.EventCount
+            && string.Equals(intent.CorrelationId, result.CorrelationId, StringComparison.Ordinal)
+            && (result.Accepted
+                ? intent.Status.Status == CommandStatus.Completed
+                    && string.IsNullOrWhiteSpace(result.RejectionEventType)
+                    && string.IsNullOrWhiteSpace(intent.Status.RejectionEventType)
+                : intent.Status.Status == CommandStatus.Rejected
+                    && HasDomainRejectionEvidence(result)
+                    && (intent.Status.RejectionEventType is null
+                        || string.Equals(intent.Status.RejectionEventType, result.RejectionEventType, StringComparison.Ordinal)));
+
+    private static bool HasDomainRejectionEvidence(CommandProcessingResult result)
+        => !result.Accepted && !result.BackpressureExceeded
+            && !string.Equals(result.FailureReason, "BackpressureExceeded", StringComparison.Ordinal)
+            && (!string.IsNullOrWhiteSpace(result.RejectionEventType)
+                || string.Equals(result.FailureReason, "DomainRejected", StringComparison.Ordinal));
+
+    private async Task<bool> CanRepairTerminalAdvisoryAsync(TerminalAdvisoryIntent intent, string indexedMessageId)
+    {
+        if (!string.Equals(intent.MessageId, indexedMessageId, StringComparison.Ordinal) || !TerminalAdvisoryMatchesActor(intent))
+        {
+            ReportRecoveryRetention(indexedMessageId, "advisory_key_or_status_identity");
+            return false;
+        }
+        ConditionalValue<IdempotencyRecord> cached = await StateManager
+            .TryGetStateAsync<IdempotencyRecord>(IdempotencyChecker.GetRecordKey(indexedMessageId)).ConfigureAwait(false);
+        if (cached.HasValue)
+        {
+            IdempotencyRecord record = cached.Value;
+            if (record.Disposition != IdempotencyRecordDisposition.Terminal
+                || !new CommandProcessingIdentity(intent.MessageId, intent.CausationId, intent.CommandType)
+                    .Matches(record.MessageId, record.CausationId, record.CommandType)
+                || !TerminalAdvisoryMatchesResult(intent, record.ToResult()))
+            {
+                ReportRecoveryRetention(indexedMessageId, "advisory_terminal_outcome_conflict");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void ReportRecoveryRetention(string? owner, string reason)
+    {
+        static string SafeOwner(string? value)
+            => string.IsNullOrWhiteSpace(value) ? "(none)" : new string(value.Take(128)
+                .Select(character => char.IsAsciiLetterOrDigit(character) || character is '-' or ':' or '_' ? character : '?').ToArray());
+        AggregateActorRecoveryLog.Retained(logger, SafeOwner(Host.Id.GetId()), SafeOwner(owner), reason);
+    }
+
+    private async Task<int> ReadRecoveryScanOffsetAsync(string key, int count)
+    {
+        ConditionalValue<RecoveryScanProgress> stored = await StateManager.TryGetStateAsync<RecoveryScanProgress>(key).ConfigureAwait(false);
+        return count == 0 || !stored.HasValue || stored.Value.NextOffset < 0 ? 0 : stored.Value.NextOffset % count;
+    }
+
+    private async Task PersistRecoveryScanOffsetAsync(string key, int originalOffset, int nextOffset)
+    {
+        if (originalOffset == nextOffset) { return; }
+        ConditionalValue<RecoveryScanProgress> original = await StateManager.TryGetStateAsync<RecoveryScanProgress>(key).ConfigureAwait(false);
+        var updated = new RecoveryScanProgress(nextOffset);
+        try
+        {
+            await StateManager.SetStateAsync(key, updated).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            (bool discarded, string discardType) = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+            if (!discarded)
+            {
+                throw CreateStateRemediationException(key, "RecoveryScan", exception, "DiscardRecoveryScanBatch",
+                    exception, discardType, false, "Unobserved");
+            }
+            try
+            {
+                ConditionalValue<RecoveryScanProgress> observed = await StateManager.TryGetStateAsync<RecoveryScanProgress>(key).ConfigureAwait(false);
+                if (observed.HasValue && observed.Value == updated
+                    || observed.HasValue == original.HasValue && (!observed.HasValue || observed.Value == original.Value))
+                {
+                    if (exception is OperationCanceledException) { throw; }
+                    return;
+                }
+                throw new InvalidOperationException("Recovery scan durable continuation is ambiguous.");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception inspectionException)
+            {
+                _stateCacheUnsafe = true;
+                throw CreateStateRemediationException(key, "RecoveryScan", exception, "InspectRecoveryScanCommit",
+                    inspectionException, discardType, true, "DurableInspectionFailed");
+            }
+        }
+    }
+
     private async Task RearmTerminalAdvisoriesAsync()
     {
         TerminalAdvisoryRepairIndex index = await ReadTerminalAdvisoryIndexAsync().ConfigureAwait(false);
+        int start = await ReadRecoveryScanOffsetAsync(RecoveryScanProgress.AdvisoryKey, index.Entries.Count).ConfigureAwait(false);
+        int next = start;
         int probes = 0;
         int rearmed = 0;
-        foreach (TerminalAdvisoryRepairEntry? entry in index.Entries)
+        for (int visited = 0; visited < index.Entries.Count && rearmed < MaxActivationRearmEntries; visited++)
         {
-            if (entry is null || entry.ReminderArmedAt is not null)
+            int position = (int)(((long)start + visited) % index.Entries.Count);
+            TerminalAdvisoryRepairEntry? entry = index.Entries[position];
+            if (entry?.ReminderArmedAt is not null)
             {
+                next = (position + 1) % index.Entries.Count;
                 continue;
             }
-
-            if (probes++ >= MaxActivationProbeEntries || rearmed >= MaxActivationRearmEntries)
+            if (probes >= MaxActivationProbeEntries) { break; }
+            probes++;
+            next = (position + 1) % index.Entries.Count;
+            if (entry is null) { ReportRecoveryRetention(null, "advisory_index_identity"); continue; }
+            try
             {
-                break;
+                ConditionalValue<TerminalAdvisoryIntent> state = await StateManager
+                    .TryGetStateAsync<TerminalAdvisoryIntent>(TerminalAdvisoryIntent.GetStateKey(entry.MessageId)).ConfigureAwait(false);
+                if (!state.HasValue || state.Value is not { } intent)
+                {
+                    ReportRecoveryRetention(entry.MessageId, "advisory_intent_missing");
+                    continue;
+                }
+                if (!await CanRepairTerminalAdvisoryAsync(intent, entry.MessageId).ConfigureAwait(false)) { continue; }
+                index = await ArmTerminalAdvisoryReminderAsync(intent, index).ConfigureAwait(false);
+                if (index.Entries.Any(candidate => candidate is not null && candidate.MessageId == entry.MessageId
+                    && candidate.ReminderArmedAt is not null)) { rearmed++; }
             }
-
-            ConditionalValue<TerminalAdvisoryIntent> state = await StateManager
-                .TryGetStateAsync<TerminalAdvisoryIntent>(TerminalAdvisoryIntent.GetStateKey(entry.MessageId))
-                .ConfigureAwait(false);
-            if (!state.HasValue || state.Value is not { } intent || !TerminalAdvisoryMatchesActor(intent))
+            catch (Exception exception) when (exception is not (OperationCanceledException or ActorStateRemediationException)
+                && !_stateCacheUnsafe)
             {
-                continue;
-            }
-
-            await ArmTerminalAdvisoryReminderAsync(intent, index).ConfigureAwait(false);
-            index = await ReadTerminalAdvisoryIndexAsync().ConfigureAwait(false);
-            if (index.Entries.Any(candidate => candidate is not null && candidate.MessageId == entry.MessageId
-                && candidate.ReminderArmedAt is not null))
-            {
-                rearmed++;
+                ReportRecoveryRetention(entry.MessageId, "advisory_owner_read_or_rearm_failed");
             }
         }
+        await PersistRecoveryScanOffsetAsync(RecoveryScanProgress.AdvisoryKey, start, next).ConfigureAwait(false);
     }
 }

@@ -160,8 +160,8 @@ public class AggregateActorIdempotencyTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert -- message id is both the primary key and normalized causation when causation is absent.
-        _ = await ctx.StateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
+        // Admission and terminal advisory validation both inspect the same normalized MessageId key.
+        _ = await ctx.StateManager.Received(2).TryGetStateAsync<IdempotencyRecord>(
             $"idempotency:{envelope.MessageId}",
             Arg.Any<CancellationToken>());
     }

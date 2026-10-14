@@ -246,7 +246,8 @@ public class PublicationRecoveryActivationTests {
     }
 
     [Fact]
-    public async Task OnActivate_MissingCheckpoint_RetainsRecoverableIdempotency() {
+    // Keep this historical executable selector for CI; missing evidence now retains recovery ownership.
+    public async Task OnActivate_MissingCheckpointPruned_ReleasesTheRecoverableIdempotencyRecord() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-nocheckpoint", "corr-nocheckpoint"));
         SeedRecoverableIdempotency(ctx.StateManager, "msg-nocheckpoint");
@@ -1424,6 +1425,10 @@ public class PublicationRecoveryActivationTests {
         ConfigureCommandDefaults(ctx);
         CommandEnvelope envelope = CreateEnvelope("msg-happy", "corr-happy");
         SeedPublicationIndex(ctx.StateManager, Entry("msg-happy", "corr-happy"));
+        // A pre-existing publication owner must be backed by this command's committed checkpoint.
+        SeedCheckpoint(ctx.StateManager, envelope.CorrelationId, new PipelineState(envelope.CorrelationId,
+            CommandStatus.EventsStored, envelope.CommandType, DateTimeOffset.UnixEpoch, 1, null,
+            MessageId: envelope.MessageId, CausationId: envelope.MessageId, StartSequence: 1, EndSequence: 1));
         _ = ctx.EventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),

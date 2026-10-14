@@ -77,7 +77,7 @@ public class Dw8DrainReasonClassifierTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 0,
-            LastFailureReason: "Pub/sub unavailable");
+            LastFailureReason: "Pub/sub unavailable", MessageId: correlationId, CausationId: "cause-drain");
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             $"drain:{correlationId}", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
@@ -87,7 +87,8 @@ public class Dw8DrainReasonClassifierTests {
 
         Activity activity = await CaptureDrainActivityAsync(
             correlationId,
-            () => actor.ReceiveReminderAsync($"drain-unpublished-{correlationId}", [], TimeSpan.Zero, TimeSpan.Zero));
+            async () => { await Should.ThrowAsync<DrainStateStoreException>(() => actor.ReceiveReminderAsync(
+                $"drain-unpublished-{correlationId}", [], TimeSpan.Zero, TimeSpan.Zero)); });
 
         activity.GetTagItem("eventstore.failure_reason").ShouldBe(DrainReasonCodes.StateStoreFailure);
     }
@@ -105,7 +106,7 @@ public class Dw8DrainReasonClassifierTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 0,
-            LastFailureReason: "Pub/sub unavailable");
+            LastFailureReason: "Pub/sub unavailable", MessageId: correlationId, CausationId: "cause-drain");
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             $"drain:{correlationId}", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
@@ -217,7 +218,7 @@ public class Dw8DrainReasonClassifierTests {
                 0,
                 DateTimeOffset.UtcNow,
                 correlationId,
-                $"cause-{seq}",
+                "cause-drain",
                 "user-1",
                 "1.0.0",
                 "OrderCreated",

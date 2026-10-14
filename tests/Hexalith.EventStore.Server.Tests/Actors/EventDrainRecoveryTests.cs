@@ -356,8 +356,11 @@ public class EventDrainRecoveryTests {
             var idempotency = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null,
                 DateTimeOffset.UtcNow, EventCount: 2, MessageId: "command-8", CommandType: "CreateOrder",
                 Disposition: IdempotencyRecordDisposition.Recoverable);
+            // The actor's Recoverable -> Terminal staging must be visible to advisory validation.
             state.TryGetStateAsync<IdempotencyRecord>("idempotency:command-8", Arg.Any<CancellationToken>())
-                .Returns(new ConditionalValue<IdempotencyRecord>(true, idempotency));
+                .Returns(_ => new ConditionalValue<IdempotencyRecord>(true, idempotency));
+            state.When(manager => manager.SetStateAsync("idempotency:command-8", Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>()))
+                .Do(call => idempotency = call.ArgAt<IdempotencyRecord>(1));
         }
         state.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(30, DateTimeOffset.UtcNow, null)));

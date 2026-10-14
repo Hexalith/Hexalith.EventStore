@@ -917,13 +917,14 @@ public class AggregateActorInfrastructureFailureTests
                 stateManager,
                 first,
                 new HttpRequestException("primary-secret")));
-        stateManager.FaultOnCall(
-            $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
-            1,
-            new IOException("owner-read-1"));
+        // Read1 is the new admission ownership guard; fail the original finalizer reads2 and3.
         stateManager.FaultOnCall(
             $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
             2,
+            new IOException("owner-read-1"));
+        stateManager.FaultOnCall(
+            $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
+            3,
             new IOException("owner-read-2"));
 
         CommandProcessingResult firstResult = await context.Actor.ProcessCommandAsync(first);
@@ -2746,7 +2747,8 @@ public class AggregateActorInfrastructureFailureTests
                 stateManager.FaultOnCall("ClearCache", 2, exception);
                 break;
             case "OwnerRead":
-                stateManager.FaultOnCall($"TryGetState:{UnpublishedPublicationIndex.StateKey}", 1, exception);
+                // Admission inspects publication ownership first; target the finalizer's next read.
+                stateManager.FaultOnCall($"TryGetState:{UnpublishedPublicationIndex.StateKey}", 2, exception);
                 break;
             case "Read":
                 stateManager.FaultOnCall($"TryGetState:{PendingCountKey}", 2, exception);
