@@ -2,7 +2,7 @@
 title: 'Repair current CI and publish a verified EventStore release'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'e74408c46e70750a7767091be87d1107ba8d66c4'
@@ -58,8 +58,8 @@ context:
 - [x] Make gateway provider dynamic reads recognizable without changing token validation or credential requirements.
 - [x] Generate authority transport credentials and access tokens at runtime; preserve exact cached-token and rejected-renewal assertions.
 - [x] Inspect the diff and compile affected projects without executing tests. Report any local build blocker exactly; the parent may verify compilation through GitHub instead.
-- [ ] Parent: review, validate the commit message, commit/push and monitor exact-source CI.
-- [ ] Parent: dispatch Release, automate its required-reviewer approval, verify tag/source and all fourteen GitHub and NuGet packages.
+- [x] Parent: review, validate the commit message, commit/push and monitor exact-source CI.
+- [x] Parent: dispatch Release, automate its required-reviewer approval, verify tag/source and all fourteen GitHub and NuGet packages.
 
 **Acceptance Criteria:**
 
@@ -96,3 +96,9 @@ Edge-case review returned no actionable findings; verification-gap review return
 - Compile affected test projects with .NET 10.0.401; do not invoke tests.
 - Parent validates full commit message using `node_modules/.bin/commitlint --edit` and retains passing output in a temporary evidence file.
 - Parent monitors pushed-source CI and Commitlint, Release and the production approval endpoint, then downloads all manifest NuGet packages and compares package identity, version, repository commit and payloads with GitHub release assets.
+
+## Publication Outcome
+
+Release v3.122.0 completed from `1dac529c4690910c89d4090784a7d46cb9433a9d`. All seven push workflows and Release succeeded; all fourteen NuGet packages were downloaded and matched their GitHub payloads, version and source identity. Production approval was automated through the authenticated required reviewer, while environment protections stayed intact. The workflow supported validation-bypass input was used; CI completed successfully in parallel. Both OCI platforms and smoke results passed. No local tests ran. See [verification evidence](evidence/ci-release-2026-10-14/README.md).
+
+This final documentation-only completion record uses `[skip ci]` to avoid repeating configured CI suites after the released source has already passed.
