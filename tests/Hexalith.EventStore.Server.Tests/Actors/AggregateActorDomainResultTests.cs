@@ -910,7 +910,10 @@ public class AggregateActorDomainResultTests {
                 call.GetMethodInfo().Name == "SaveStateAsync").ShouldBeTrue();
             snapshotLogger.Messages.ShouldNotContain(message => message.Contains(
                 "provider detail", StringComparison.Ordinal));
-            managerLogger.ReceivedCalls().Where(call => call.GetArguments().Length > 3)
+            NSubstitute.Core.ICall[] managerLogCalls = managerLogger.ReceivedCalls()
+                .Where(call => call.GetArguments().Length > 3).ToArray();
+            managerLogCalls.ShouldNotBeEmpty();
+            managerLogCalls
                 .All(call => call.GetArguments()[3] is null
                     && !call.GetArguments()[2]!.ToString()!.Contains("provider detail",
                         StringComparison.Ordinal)).ShouldBeTrue();
