@@ -32,7 +32,7 @@ internal sealed class GatewayAuthorityAccessTokenProvider(IConfiguration configu
             string grant = settings["GrantType"] ?? "client_credentials";
             var form = new Dictionary<string, string> { ["grant_type"] = grant, ["client_id"] = Required(settings, "ClientId") };
             if (!string.IsNullOrWhiteSpace(settings["Scope"])) form["scope"] = settings["Scope"]!;
-            if (!string.IsNullOrWhiteSpace(settings["ClientSecret"])) form["client_secret"] = settings["ClientSecret"]!;
+            if (!string.IsNullOrWhiteSpace(settings["ClientSecret"])) form["client_secret"] = Required(settings, "ClientSecret");
             if (grant == "password")
             {
                 form["username"] = Required(settings, "Username");
@@ -58,12 +58,13 @@ internal sealed class GatewayAuthorityAccessTokenProvider(IConfiguration configu
             }
             using JsonDocument document = JsonDocument.Parse(bytes.ToArray());
             JsonElement root = document.RootElement;
-            if (!root.TryGetProperty("access_token", out JsonElement token) || token.ValueKind != JsonValueKind.String
-                || string.IsNullOrWhiteSpace(token.GetString())
+            string? value = root.TryGetProperty("access_token", out JsonElement token) && token.ValueKind == JsonValueKind.String
+                ? token.GetString() : null;
+            if (string.IsNullOrWhiteSpace(value)
                 || !root.TryGetProperty("token_type", out JsonElement type) || !string.Equals(type.GetString(), "Bearer", StringComparison.OrdinalIgnoreCase)
                 || !root.TryGetProperty("expires_in", out JsonElement expires) || !expires.TryGetInt32(out int seconds) || seconds < 1)
                 throw new InvalidOperationException("The gateway authority returned an invalid token response.");
-            _token = token.GetString()!;
+            _token = value;
             _expires = DateTimeOffset.UtcNow.AddSeconds(Math.Max(0, Math.Min(seconds, 300) - 15));
             return _token;
         }

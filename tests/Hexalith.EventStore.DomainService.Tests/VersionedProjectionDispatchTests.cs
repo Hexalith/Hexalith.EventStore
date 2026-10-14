@@ -137,6 +137,7 @@ public sealed class VersionedProjectionDispatchTests
         IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
         handler.Domain.Returns("counter");
         handler.ProjectionType.Returns("counter-summary");
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         ProjectionRequest? delivered = null;
         handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call =>

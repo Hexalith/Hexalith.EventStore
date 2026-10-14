@@ -396,6 +396,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         IAsyncDomainProjectionRebuildHandler handler = Substitute.For<IAsyncDomainProjectionRebuildHandler>();
         handler.Domain.Returns(Domain);
         handler.ProjectionType.Returns(projectionType);
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         handler.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
         return handler;
     }
