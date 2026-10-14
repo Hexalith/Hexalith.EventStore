@@ -2,7 +2,7 @@
 title: 'Story 6.2: Folded Snapshot Actor Proofs'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '1b7b8ce287d510487946b7db3babd3323b4c52b3'
 review_loop_iteration: 0
@@ -118,7 +118,7 @@ Code review 2026-10-14, diff `1b7b8ce2..HEAD` on the 7 Code Map files. Scope cav
 
 #### Narrowed re-review (`883db9fe`+`17e7b53e`, 944 lines, 4 layers)
 
-- [ ] [Review][Patch] The `managerLogger` "no exception object / no provider detail" check passes vacuously when no manager-logger call has more than 3 arguments; assert the filtered set is non-empty first (spec: every new assertion must be able to fail) [AggregateActorDomainResultTests.cs:911-916]
+- [x] [Review][Patch] The `managerLogger` "no exception object / no provider detail" check passes vacuously when no manager-logger call has more than 3 arguments; assert the filtered set is non-empty first (spec: every new assertion must be able to fail) [AggregateActorDomainResultTests.cs:911-916]
 
 Rejected (narrowed pass):
 - Shape-colliding `Corrupt` migrates in `ShapeCollisionCanMigrateOnlyAfterValidFold`, against the matrix row "key retained" — false: that case seeds a legacy snapshot below the head; the retain case (sequence above head) is the one at line 445, and the parent spec lets future writes overwrite legacy snapshots. Matrix wording is loose; fix would edit the spec.
