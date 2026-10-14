@@ -1234,7 +1234,6 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             violations.ShouldHaveSingleItem().ShouldContain($"/project: the effective endpoint must require policy '{EventStoreDomainServicePolicies.Project}'.");
         }
     }
-
     /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
     /// <param name="route">The literal public route.</param>
     /// <param name="method">Its single HTTP method.</param>

@@ -153,6 +153,18 @@ public partial class AggregateActor(
             _pendingCountReconciliationRequired = true;
             Log.PublicationRecoveryDegraded(logger, Host.Id.GetId(), ex.GetType().Name);
         }
+
+        try
+        {
+            if (!_stateCacheUnsafe)
+            {
+                await RearmTerminalAdvisoriesAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Terminal advisory activation repair degraded: ActorId={ActorId}", Host.Id.GetId());
+        }
     }
 
     /// <inheritdoc/>
@@ -871,6 +883,11 @@ public partial class AggregateActor(
                         Host.Id);
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
+                    if (idempotencyCheck.Outcome == IdempotencyCheckOutcome.ExactTerminalDuplicate)
+                    {
+                        await RepairMatchingTerminalAdvisoryAsync(command, cached).ConfigureAwait(false);
+                    }
+
                     return cached;
                 }
 
@@ -909,6 +926,15 @@ public partial class AggregateActor(
                     .LoadPipelineStateAsync(pipelineKeyPrefix, command.CorrelationId)
                     .ConfigureAwait(false);
 
+                if ((await ReadPublicationIndexAsync().ConfigureAwait(false)).Contains(command.MessageId)
+                    && (existingPipeline is null || !CanRepresentCommittedEvents(existingPipeline)
+                        || !commandIdentity.Matches(existingPipeline)
+                        || !string.Equals(existingPipeline.CorrelationId, command.CorrelationId, StringComparison.Ordinal)))
+                {
+                    ReportRecoveryRetention(command.MessageId, "publication_owner_missing_command");
+                    return new CommandProcessingResult(false, "command_identity_conflict", command.CorrelationId);
+                }
+
                 if (existingPipeline is not null) {
                     logger.LogWarning(
                         "Resume detected: Actor {ActorId} resuming from stage {Stage}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
@@ -920,8 +946,16 @@ public partial class AggregateActor(
                         command.AggregateId,
                         command.CommandType);
 
-                    bool exactIdentity = commandIdentity.Matches(existingPipeline);
+                    bool exactIdentity = commandIdentity.Matches(existingPipeline)
+                        && string.Equals(command.CorrelationId, existingPipeline.CorrelationId, StringComparison.Ordinal)
+                        && string.Equals(command.AggregateIdentity.ActorId, Host.Id.GetId(), StringComparison.Ordinal);
                     bool committedCheckpoint = CanRepresentCommittedEvents(existingPipeline);
+                    if (committedCheckpoint
+                        && (!string.Equals(command.AggregateIdentity.ActorId, Host.Id.GetId(), StringComparison.Ordinal)
+                            || !string.Equals(existingPipeline.CorrelationId, command.CorrelationId, StringComparison.Ordinal)))
+                    {
+                        return new CommandProcessingResult(false, "command_identity_conflict", command.CorrelationId);
+                    }
 
                     if (exactIdentity && committedCheckpoint)
                     {
@@ -966,6 +1000,10 @@ public partial class AggregateActor(
                         catch (OperationCanceledException)
                         {
                             _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+                            throw;
+                        }
+                        catch (DrainStateStoreException)
+                        {
                             throw;
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -1531,7 +1569,7 @@ public partial class AggregateActor(
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,
                                 aggregateType: aggregateType,
-                                command: command,
+                                command: command with { CausationId = commandIdentity.CausationId },
                                 domainResult: domainResult,
                                 domainServiceVersion: domainServiceVersion,
                                 cancellationToken: cancellationToken)
@@ -2977,6 +3015,30 @@ public partial class AggregateActor(
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {
         ArgumentNullException.ThrowIfNull(reminderName);
 
+        if (reminderName.StartsWith(TerminalAdvisoryIntent.ReminderPrefix, StringComparison.Ordinal))
+        {
+            string messageId = reminderName[TerminalAdvisoryIntent.ReminderPrefix.Length..];
+            await EnsureStateCacheBarrierAsync(messageId, activity: null).ConfigureAwait(false);
+            ConditionalValue<TerminalAdvisoryIntent> intent = await StateManager
+                .TryGetStateAsync<TerminalAdvisoryIntent>(TerminalAdvisoryIntent.GetStateKey(messageId))
+                .ConfigureAwait(false);
+            if (intent.HasValue && intent.Value is not null
+                && string.Equals(intent.Value.MessageId, messageId, StringComparison.Ordinal))
+            {
+                await TryRepairTerminalAdvisoryAsync(intent.Value).ConfigureAwait(false);
+            }
+            else if (!intent.HasValue)
+            {
+                await UnregisterReminderAsync(reminderName).ConfigureAwait(false);
+            }
+            else
+            {
+                ReportRecoveryRetention(messageId, "advisory_key_identity");
+            }
+
+            return;
+        }
+
         if (!reminderName.StartsWith("drain-unpublished-", StringComparison.Ordinal)) {
             logger.LogWarning(
                 "Unknown reminder ignored: ReminderName={ReminderName}, ActorId={ActorId}",
@@ -3057,6 +3119,35 @@ public partial class AggregateActor(
         _ = (activity?.SetTag("eventstore.drain_start_sequence", record.StartSequence));
         _ = (activity?.SetTag("eventstore.drain_end_sequence", record.EndSequence));
 
+        // Verification is outside publication-failure accounting: an unverifiable range must
+        // retain its original evidence and retry budget, even when the budget is already spent.
+        string? committedCausationId;
+        IReadOnlyList<EventEnvelope>? verifiedEvents;
+        try
+        {
+            committedCausationId = await ReadVerifiedDrainCausationAsync(record, trackingId).ConfigureAwait(false);
+            verifiedEvents = !string.IsNullOrWhiteSpace(record.CommandType)
+                && (string.IsNullOrWhiteSpace(record.MessageId)
+                    || string.Equals(record.MessageId, trackingId, StringComparison.Ordinal))
+                    ? await TryVerifyPersistedRangeAsync(identity, record.StartSequence, record.EndSequence,
+                        record.EventCount, record.CorrelationId, committedCausationId).ConfigureAwait(false)
+                    : null;
+        }
+        catch (DrainStateStoreException exception)
+        {
+            string reason = ClassifyDrainFailure(exception);
+            _ = activity?.SetTag("eventstore.failure_reason", reason);
+            _ = activity?.SetStatus(ActivityStatusCode.Error, reason);
+            throw;
+        }
+        if (verifiedEvents is null)
+        {
+            ReportRecoveryRetention(trackingId, "drain_evidence_invalid");
+            _ = activity?.SetTag("eventstore.failure_reason", "command_identity_conflict");
+            _ = activity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict");
+            return;
+        }
+
         // Story 4.4: the bound is checked BEFORE publication so it is a real bound -- an
         // unpublishable range can never consume another attempt once its budget is spent.
         int maxDrainAttempts = MaxDrainAttempts;
@@ -3077,31 +3168,7 @@ public partial class AggregateActor(
             record.EventCount);
 
         try {
-            long expectedEventCount = record.EndSequence - record.StartSequence + 1;
-            if (record.EventCount != expectedEventCount) {
-                throw new DrainEventCountMismatchException(
-                    identity.ActorId,
-                    record.StartSequence,
-                    record.EndSequence,
-                    record.EventCount,
-                    expectedEventCount);
-            }
-
-            // Load exact persisted event range for this failed command
-            IReadOnlyList<EventEnvelope> events;
-            try {
-                events = await LoadPersistedEventsRangeAsync(
-                    identity,
-                    record.StartSequence,
-                    record.EndSequence)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) when (IsDrainStateStoreBoundaryFailure(ex)) {
-                throw new DrainStateStoreException("Failed to read persisted drain events from state store.", ex);
-            }
+            IReadOnlyList<EventEnvelope> events = verifiedEvents;
 
             // Re-publish events
             EventPublishResult publishResult;
@@ -3118,12 +3185,19 @@ public partial class AggregateActor(
             }
 
             if (publishResult.Success) {
-                // A causation carried on the drain record is authoritative, including stale-checkpoint
-                // handoff, which has no recoverable idempotency record. Only records written before
-                // the field existed consult idempotency.
-                string? committedCausationId = record.CausationId is not null
-                    ? record.CausationId
-                    : await TryReadDrainCausationIdAsync(record, trackingId).ConfigureAwait(false);
+                CommandStatus drainStatus = record.IsRejection ? CommandStatus.Rejected : CommandStatus.Completed;
+                string drainedMessageId = record.GetTrackingIdentity(trackingId);
+                var terminalAdvisory = new TerminalAdvisoryIntent(identity.TenantId, identity.Domain,
+                    identity.AggregateId, drainedMessageId, record.CorrelationId, committedCausationId!,
+                    record.CommandType, record.EventCount, record.StartSequence, record.EndSequence,
+                    new CommandStatusRecord(drainStatus, IdempotencyTimeProvider.GetUtcNow(), identity.AggregateId,
+                        record.EventCount, null, null, null, drainedMessageId, record.CorrelationId,
+                        Retryable: false, DrainAttemptCount: record.RetryCount)
+                    {
+                        Domain = identity.Domain,
+                        CommittedEventSequence = record.IsRejection ? null : record.EndSequence,
+                    });
+                TerminalAdvisoryRepairIndex? expectedAdvisoryIndex = null;
                 // Success: remove record, decrement backpressure counter, unregister reminder, update advisory status.
                 // The try region starts before the first mutation so a staging failure cannot hitchhike
                 // any earlier cleanup mutation onto the retry-record save in the outer failure path.
@@ -3147,6 +3221,7 @@ public partial class AggregateActor(
                     // that might belong to another recovery owner.
                     await StagePendingCommandCountAsync(remainingOwners.OwnerCount).ConfigureAwait(false);
 
+                    expectedAdvisoryIndex = await StageTerminalAdvisoryAsync(terminalAdvisory).ConfigureAwait(false);
                     cleanupSaveAttempted = true;
                     await StateManager.SaveStateAsync().ConfigureAwait(false);
                 }
@@ -3165,7 +3240,9 @@ public partial class AggregateActor(
                     bool cleanupCommitted = await InspectDrainCleanupSaveFailureAsync(
                         trackingId,
                         record,
-                        cleanupSaveException).ConfigureAwait(false);
+                        cleanupSaveException,
+                        terminalAdvisory,
+                        expectedAdvisoryIndex).ConfigureAwait(false);
                     if (cleanupSaveException is OperationCanceledException)
                     {
                         throw;
@@ -3188,48 +3265,7 @@ public partial class AggregateActor(
                         commandCorrelationId);
                 }
 
-                // Advisory status: Completed or Rejected based on event type
-                CommandStatus drainStatus = record.IsRejection ? CommandStatus.Rejected : CommandStatus.Completed;
-                try {
-                    await commandStatusStore.WriteStatusAsync(
-                        identity.TenantId,
-                        record.MessageId ?? trackingId,
-                        new CommandStatusRecord(
-                            drainStatus,
-                            DateTimeOffset.UtcNow,
-                            identity.AggregateId,
-                            EventCount: record.EventCount,
-                            RejectionEventType: null,
-                            FailureReason: null,
-                            TimeoutDuration: null,
-                            MessageId: record.MessageId,
-                            CorrelationId: commandCorrelationId,
-                            // Story 4.4: the drain completed, so no further automatic attempt follows.
-                            Retryable: false,
-                            RecoveryReasonCode: null,
-                            DrainAttemptCount: record.RetryCount) {
-                                Domain = identity.Domain,
-                                CommittedEventSequence = !record.IsRejection
-                                    && !string.IsNullOrWhiteSpace(record.MessageId)
-                                    && string.Equals(record.MessageId, trackingId, StringComparison.Ordinal)
-                                    && !string.IsNullOrWhiteSpace(record.CommandType)
-                                    && HasVerifiedEventRange(identity, events, record.StartSequence,
-                                        record.EndSequence, record.EventCount, record.CorrelationId,
-                                        committedCausationId)
-                                        ? record.EndSequence : null,
-                            }).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) {
-                    throw;
-                }
-                catch (Exception ex) {
-                    // Rule #12: Advisory status writes -- failure logged, never thrown.
-                    logger.LogWarning(
-                        ex,
-                        "Advisory status write failed after drain success: CorrelationId={CorrelationId}, Status={Status}",
-                        commandCorrelationId,
-                        drainStatus);
-                }
+                await TryRepairTerminalAdvisoryAsync(terminalAdvisory, expectedAdvisoryIndex).ConfigureAwait(false);
 
                 logger.LogInformation(
                     "Drain succeeded: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
@@ -4104,180 +4140,102 @@ public partial class AggregateActor(
     /// later siblings still get a chance in this one.
     /// </para>
     /// <para>
-    /// Malformed entries and entries whose target no longer exists are pruned rather than skipped,
-    /// because skipping permanently consumes index capacity. Pruning commits the Recoverable →
-    /// Terminal idempotency transition immediately so a later handoff failure's
-    /// <c>ClearCacheAsync</c> cannot wipe it.
+    /// Unverifiable entries retain their checkpoint, envelopes, drain and index ownership for exact
+    /// restore through the owning recovery path. Verification precedes any reminder stamp or handoff.
     /// </para>
     /// </summary>
     private async Task RearmOutstandingPublicationsAsync(UnpublishedPublicationIndex index) {
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
-        var stateMachine = new ActorStateMachine(
-            StateManager,
-            Host.LoggerFactory.CreateLogger<ActorStateMachine>());
-        string pipelineKeyPrefix = identity.PipelineKeyPrefix;
-        var stale = new List<string>();
-        int probed = 0;
+        var stateMachine = new ActorStateMachine(StateManager, Host.LoggerFactory.CreateLogger<ActorStateMachine>());
+        int start = await ReadRecoveryScanOffsetAsync(RecoveryScanProgress.PublicationKey, index.Entries.Count).ConfigureAwait(false);
+        int next = start;
+        int probes = 0;
         int work = 0;
-
-        foreach (UnpublishedPublicationEntry entry in index.Entries) {
-            if (work >= MaxActivationRearmEntries) {
-                break;
-            }
-
-            string messageId = entry.MessageId ?? string.Empty;
-            string correlationId = entry.CorrelationId ?? string.Empty;
-            if (!entry.IsWellFormed) {
-                // Story 4.4: pruning ends the "events genuinely outstanding" condition that exempts
-                // the idempotency record from expiry, so release it in the same batch. A blank
-                // message id is handled inside the helper, which returns false without staging.
-                // Every nonblank identity performs an idempotency state read (and may save), so it
-                // consumes the finite activation probe budget. Unprocessed entries remain durable.
-                if (messageId.Length > 0)
+        for (int visited = 0; visited < index.Entries.Count && work < MaxActivationRearmEntries; visited++)
+        {
+            int position = (int)(((long)start + visited) % index.Entries.Count);
+            UnpublishedPublicationEntry? entry = index.Entries[position];
+            string messageId = entry?.MessageId ?? string.Empty;
+            bool charged = false;
+            bool mutationStarted = false;
+            try
+            {
+                if (entry is null || !entry.IsWellFormed)
                 {
-                    if (probed >= MaxActivationProbeEntries)
-                    {
-                        break;
-                    }
-
-                    probed++;
-                }
-
-                await CommitRecoverableCompletionAsync(messageId).ConfigureAwait(false);
-                stale.Add(messageId);
-                Log.PublicationRecoveryEntryDropped(
-                    logger,
-                    Host.Id.GetId(),
-                    messageId.Length == 0 ? "(none)" : messageId,
-                    "malformed_entry");
-                continue;
-            }
-
-            ConditionalValue<UnpublishedEventsRecord> drainRecord = await StateManager
-                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(messageId))
-                .ConfigureAwait(false);
-
-            if (drainRecord.HasValue) {
-                UnpublishedEventsRecord persisted = drainRecord.Value;
-                if (persisted.ReminderArmedAt is not null) {
-                    // A reminder is already confirmed armed. Re-registering it would reset its due
-                    // time to InitialDrainDelay, so an aggregate that activates more often than that
-                    // delay would postpone its own drain forever. Do not charge the probe budget —
-                    // otherwise a long armed head permanently starves unarmed entries behind it.
+                    if (probes >= MaxActivationProbeEntries) { break; }
+                    probes++;
+                    charged = true;
+                    next = (position + 1) % index.Entries.Count;
+                    ReportRecoveryRetention(messageId, "publication_index_identity");
                     continue;
                 }
 
-                if (probed >= MaxActivationProbeEntries) {
-                    break;
+                ConditionalValue<UnpublishedEventsRecord> drain = await StateManager
+                    .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(messageId)).ConfigureAwait(false);
+                if (drain.HasValue && drain.Value.ReminderArmedAt is not null)
+                {
+                    next = (position + 1) % index.Entries.Count;
+                    continue;
+                }
+                if (probes >= MaxActivationProbeEntries) { break; }
+                probes++;
+                charged = true;
+                next = (position + 1) % index.Entries.Count;
+                if (drain.HasValue)
+                {
+                    UnpublishedEventsRecord record = drain.Value;
+                    string? causation = await ReadVerifiedDrainCausationAsync(record, messageId).ConfigureAwait(false);
+                    if (!string.Equals(record.CorrelationId, entry.CorrelationId, StringComparison.Ordinal)
+                        || !string.Equals(record.GetTrackingIdentity(messageId), messageId, StringComparison.Ordinal)
+                        || string.IsNullOrWhiteSpace(record.CommandType)
+                        || await TryVerifyPersistedRangeAsync(identity, record.StartSequence, record.EndSequence,
+                            record.EventCount, record.CorrelationId, causation).ConfigureAwait(false) is null)
+                    {
+                        ReportRecoveryRetention(messageId, "drain_evidence_invalid");
+                        continue;
+                    }
+                    if (await RegisterDrainReminderAsync(messageId).ConfigureAwait(false))
+                    {
+                        mutationStarted = true;
+                        await PersistReminderStampAsync(messageId, record).ConfigureAwait(false);
+                        work++;
+                    }
+                    continue;
                 }
 
-                probed++;
-
-                // The drain record committed but the reminder registration may not have survived.
-                // Re-register and stamp the record -- RetryCount is left exactly as persisted.
-                // Charge the work budget only after confirmed registration so a failing reminder
-                // store cannot burn every re-arm slot in one activation.
-                if (await RegisterDrainReminderAsync(messageId).ConfigureAwait(false)) {
-                    work++;
-                    await PersistReminderStampAsync(messageId, persisted).ConfigureAwait(false);
-                    Log.PublicationRecoveryReminderRearmed(logger, Host.Id.GetId(), messageId);
+                PipelineState? checkpoint = await stateMachine.LoadPipelineStateAsync(identity.PipelineKeyPrefix,
+                    entry.CorrelationId).ConfigureAwait(false);
+                if (checkpoint is null || checkpoint.CurrentStage != CommandStatus.EventsStored
+                    || !string.Equals(checkpoint.MessageId, messageId, StringComparison.Ordinal)
+                    || !string.Equals(checkpoint.CorrelationId, entry.CorrelationId, StringComparison.Ordinal)
+                    || checkpoint.EventCount is not > 0 || !HasVerifiedCheckpointIdentity(identity, checkpoint))
+                {
+                    ReportRecoveryRetention(messageId, "checkpoint_evidence_invalid");
+                    continue;
                 }
 
-                continue;
+                // Handoff verifies the exact envelopes once, before its first mutation.
+                mutationStarted = true;
+                await HandoffStaleCommittedCheckpointAsync(checkpoint, stateMachine, identity.PipelineKeyPrefix).ConfigureAwait(false);
+                work++;
             }
-
-            if (probed >= MaxActivationProbeEntries) {
-                break;
-            }
-
-            probed++;
-
-            PipelineState? checkpoint = await stateMachine
-                .LoadPipelineStateAsync(pipelineKeyPrefix, correlationId)
-                .ConfigureAwait(false);
-
-            if (checkpoint is null) {
-                // Nothing left to recover: neither a drain record nor a checkpoint. Drop the entry
-                // instead of skipping it -- skipping permanently consumes index capacity.
-                // Story 4.4: the events are no longer outstanding, so the Recoverable exemption from
-                // bounded expiry must end here too or the record becomes immortal.
-                await CommitRecoverableCompletionAsync(messageId).ConfigureAwait(false);
-                stale.Add(messageId);
-                Log.PublicationRecoveryEntryDropped(
-                    logger, Host.Id.GetId(), messageId, "checkpoint_missing");
-                continue;
-            }
-
-            // Every term can decide on its own. Checking them here means a deterministically
-            // inconsistent checkpoint is PRUNED once instead of throwing on every activation forever
-            // while holding a re-arm slot and an index capacity slot.
-            //
-            // CurrentStage is load-bearing and is NOT enforced downstream:
-            // HandoffStaleCommittedCheckpointAsync validates only identity, event count and range,
-            // and its other caller admits the wider CanRepresentCommittedEvents set (EventsPublished,
-            // Completed, PublishFailed). EventsStored is the only stage that means "committed but not
-            // yet published", so without this term an already-published checkpoint left behind by a
-            // failed terminal batch would be rebuilt into a drain record and republished.
-            bool convertible = checkpoint.CurrentStage == CommandStatus.EventsStored
-                && string.Equals(checkpoint.MessageId, messageId, StringComparison.Ordinal)
-                && checkpoint.EventCount is int checkpointEventCount
-                && checkpointEventCount > 0
-                && checkpoint.StartSequence is long checkpointStart
-                && checkpoint.EndSequence is long checkpointEnd
-                && checkpointStart >= 1
-                && checkpointEnd >= checkpointStart
-                && (checkpointEnd - checkpointStart + 1) == checkpointEventCount;
-
-            if (!convertible) {
-                // Never fabricate a range from the mutable stream head.
-                // Story 4.4: this entry will never be recovered, so end the Recoverable exemption
-                // from bounded expiry along with it.
-                await CommitRecoverableCompletionAsync(messageId).ConfigureAwait(false);
-                stale.Add(messageId);
-                Log.PublicationRecoveryEntryDropped(
-                    logger, Host.Id.GetId(), messageId, "checkpoint_incomplete");
-                continue;
-            }
-
-            work++;
-            try {
-                await HandoffStaleCommittedCheckpointAsync(checkpoint, stateMachine, pipelineKeyPrefix)
-                    .ConfigureAwait(false);
-                Log.PublicationRecoveryDrainRecordRebuilt(logger, Host.Id.GetId(), messageId);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                // Leave the entry and the checkpoint intact for the next activation. ClearCache only
-                // discards uncommitted handoff staging — Recoverable completions were already
-                // SaveState'd by CommitRecoverableCompletionAsync above.
-                (bool discarded, _) = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
-                if (!discarded)
+            catch (Exception exception) when (exception is not (OperationCanceledException or ActorStateRemediationException)
+                && !_stateCacheUnsafe)
+            {
+                if (!charged)
+                {
+                    if (probes >= MaxActivationProbeEntries) { break; }
+                    probes++;
+                    next = (position + 1) % index.Entries.Count;
+                }
+                if (mutationStarted && !(await TryDiscardFailedBatchAsync().ConfigureAwait(false)).Discarded)
                 {
                     throw;
                 }
-
-                Log.PublicationRecoveryRearmFailed(
-                    logger, Host.Id.GetId(), messageId, ex.GetType().Name);
+                ReportRecoveryRetention(messageId, "publication_owner_read_or_rearm_failed");
             }
         }
-
-        if (stale.Count > 0) {
-            UnpublishedPublicationIndex pruned = index.Prune(stale);
-            await StateManager.SetStateAsync(UnpublishedPublicationIndex.StateKey, pruned)
-                .ConfigureAwait(false);
-            await StateManager.SaveStateAsync().ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>
-    /// Stages and commits the <c>Recoverable</c> → <c>Terminal</c> transition so a later
-    /// <c>ClearCacheAsync</c> in the same activation cannot discard it.
-    /// </summary>
-    private async Task CommitRecoverableCompletionAsync(string messageId) {
-        if (!await CompleteRecoverableIdempotencyAsync(messageId).ConfigureAwait(false)) {
-            return;
-        }
-
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await PersistRecoveryScanOffsetAsync(RecoveryScanProgress.PublicationKey, start, next).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -4514,9 +4472,16 @@ public partial class AggregateActor(
     {
         string staleMessageId = stalePipeline.MessageId
             ?? throw new InvalidOperationException("A stale committed checkpoint requires a message identity.");
-        int eventCount = stalePipeline.EventCount ?? 0;
+        IReadOnlyList<EventEnvelope>? verified = await TryVerifyCheckpointAsync(
+            GetAggregateIdentityFromActorId(), stalePipeline).ConfigureAwait(false);
+        if (verified is null)
+        {
+            throw new InvalidOperationException("A stale checkpoint has unverifiable persisted recovery evidence.");
+        }
 
-        if (eventCount <= 0)
+        int eventCount = stalePipeline.EventCount!.Value;
+
+        if (eventCount == 0)
         {
             await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, stalePipeline.CorrelationId)
                 .ConfigureAwait(false);
@@ -4628,60 +4593,23 @@ public partial class AggregateActor(
         string pipelineKeyPrefix,
         Activity? processActivity,
         long startTicks) {
-        int eventCount = existingPipeline.EventCount ?? 0;
-        bool rangeProofVerified = false;
+        IReadOnlyList<EventEnvelope>? persistedEvents = await TryVerifyCheckpointAsync(
+            command.AggregateIdentity, existingPipeline).ConfigureAwait(false);
+        if (persistedEvents is null
+            || !CreateCommandProcessingIdentity(command).Matches(existingPipeline)
+            || !string.Equals(command.CorrelationId, existingPipeline.CorrelationId, StringComparison.Ordinal))
+        {
+            Log.PipelineIdentityConflict(logger, command.CorrelationId, command.MessageId,
+                existingPipeline.CurrentStage.ToString());
+            _ = processActivity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict");
+            return new CommandProcessingResult(false, "command_identity_conflict", command.CorrelationId);
+        }
+
+        int eventCount = existingPipeline.EventCount!.Value;
+        bool rangeProofVerified = eventCount > 0;
         PipelineState? eventsPublishedState = null;
 
         if (eventCount > 0) {
-            if (existingPipeline.StartSequence is not long resumeStart
-                || existingPipeline.EndSequence is not long resumeEnd) {
-                // Legacy committed checkpoint without a persisted event range: the exact events cannot
-                // be identified safely (an interleaved command may have advanced the stream head), so
-                // fail closed rather than re-publishing a guessed range. The checkpoint is preserved.
-                Log.PipelineIdentityConflict(
-                    logger,
-                    command.CorrelationId,
-                    command.MessageId,
-                    existingPipeline.CurrentStage.ToString());
-                _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
-                return new CommandProcessingResult(
-                    Accepted: false,
-                    ErrorMessage: "command_identity_conflict",
-                    CorrelationId: command.CorrelationId);
-            }
-
-            IReadOnlyList<EventEnvelope> persistedEvents;
-            try {
-                persistedEvents = await LoadPersistedEventsRangeAsync(command.AggregateIdentity, resumeStart, resumeEnd)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                logger.LogError(
-                    ex,
-                    "Resume publication preparation failed: CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExpectedEventCount={EventCount}",
-                    command.CorrelationId,
-                    command.TenantId,
-                    command.Domain,
-                    command.AggregateId,
-                    eventCount);
-
-                return await CompletePublishFailedAsync(
-                    command,
-                    causationId,
-                    stateMachine,
-                    pipelineKeyPrefix,
-                    idempotencyChecker,
-                    existingPipeline,
-                    "Unable to prepare persisted events for resume publication",
-                    persistedEvents: null,
-                    processActivity,
-                    startTicks).ConfigureAwait(false);
-            }
-
-            rangeProofVerified = HasVerifiedCommandRange(command, existingPipeline, eventCount)
-                && HasVerifiedEventRange(command.AggregateIdentity, persistedEvents, resumeStart, resumeEnd,
-                    eventCount, command.CorrelationId, existingPipeline.CausationId);
-
             EventPublishResult publishResult = await eventPublisher
                 .PublishEventsAsync(
                     command.AggregateIdentity,
@@ -4767,12 +4695,17 @@ public partial class AggregateActor(
                 $"Invalid drain event range for {identity.ActorId}: startSequence={startSequence}, endSequence={endSequence}.");
         }
 
+        if (endSequence > int.MaxValue)
+        {
+            throw new InvalidOperationException("The persisted range exceeds the current reader sequence boundary.");
+        }
+
         int count = checked((int)(endSequence - startSequence + 1));
         if (count == 0) {
             return [];
         }
 
-        EventEnvelope[] events = await ReadEventsRangeAsync(identity, (int)startSequence, count)
+        EventEnvelope[] events = await ReadEventsRangeAsync(identity, (int)startSequence, count, recoveryRead: true)
             .ConfigureAwait(false);
 
         return events
@@ -5036,18 +4969,31 @@ public partial class AggregateActor(
     private async Task<EventEnvelope[]> ReadEventsRangeAsync(
         AggregateIdentity identity,
         int startSequence,
-        int count) {
+        int count,
+        bool recoveryRead = false) {
         if (count <= 0) {
             return [];
         }
 
-        var events = new List<EventEnvelope>(count);
-        int endExclusive = startSequence + count;
+        long endExclusive = (long)startSequence + count;
+        if (startSequence < 1 || endExclusive - 1 > int.MaxValue)
+        {
+            throw new InvalidOperationException("The event range exceeds the current reader sequence boundary.");
+        }
 
-        for (int seq = startSequence; seq < endExclusive; seq++) {
-            ConditionalValue<EventEnvelope> result = await StateManager
-                .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
-                .ConfigureAwait(false);
+        // Missing evidence must be inspected before a persisted count can force a huge allocation.
+        var events = new List<EventEnvelope>(Math.Min(count, 256));
+        for (long seq = startSequence; seq < endExclusive; seq++) {
+            ConditionalValue<EventEnvelope> result;
+            try
+            {
+                result = await StateManager.TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (recoveryRead && exception is not (OperationCanceledException or JsonException or EventDeserializationException or InvalidDataException))
+            {
+                throw new DrainStateStoreException("Persisted recovery event read failed; original evidence remains retained.", exception);
+            }
 
             if (!result.HasValue) {
                 throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
@@ -5618,7 +5564,9 @@ public partial class AggregateActor(
     private async Task<bool> InspectDrainCleanupSaveFailureAsync(
         string trackingId,
         UnpublishedEventsRecord record,
-        Exception saveException)
+        Exception saveException,
+        TerminalAdvisoryIntent? expectedAdvisory = null,
+        TerminalAdvisoryRepairIndex? expectedAdvisoryIndex = null)
     {
         (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
             .ConfigureAwait(false);
@@ -5642,7 +5590,9 @@ public partial class AggregateActor(
                 .ConfigureAwait(false);
             if (observedDrain.HasValue)
             {
-                if (observedDrain.Value == record)
+                if (observedDrain.Value == record
+                    && (expectedAdvisory is null || expectedAdvisoryIndex is not null
+                        && await TerminalAdvisoryPreCommitStateMatchesAsync(expectedAdvisory, expectedAdvisoryIndex).ConfigureAwait(false)))
                 {
                     return false;
                 }
@@ -5653,7 +5603,9 @@ public partial class AggregateActor(
             UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
             int pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
             if (!index.Contains(record.GetTrackingIdentity(trackingId))
-                && pendingCount == index.OwnerCount)
+                && pendingCount == index.OwnerCount
+                && (expectedAdvisory is null || expectedAdvisoryIndex is not null
+                    && await TerminalAdvisoryStateMatchesAsync(expectedAdvisory, expectedAdvisoryIndex).ConfigureAwait(false)))
             {
                 return true;
             }
@@ -6137,7 +6089,9 @@ public partial class AggregateActor(
         PipelineState expectedPreCommitPipeline,
         IdempotencyCheckOutcome expectedCommittedOutcome,
         Exception saveException,
-        UnpublishedPublicationIndex? expectedPublicationIndex = null)
+        UnpublishedPublicationIndex? expectedPublicationIndex = null,
+        TerminalAdvisoryIntent? expectedAdvisory = null,
+        TerminalAdvisoryRepairIndex? expectedAdvisoryIndex = null)
     {
         (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
             .ConfigureAwait(false);
@@ -6178,14 +6132,18 @@ public partial class AggregateActor(
             if (idempotency.Outcome == expectedCommittedOutcome
                 && idempotency.Result == expectedResult
                 && !pipeline.HasValue
-                && exactPublicationState)
+                && exactPublicationState
+                && (expectedAdvisory is null || expectedAdvisoryIndex is not null
+                    && await TerminalAdvisoryStateMatchesAsync(expectedAdvisory, expectedAdvisoryIndex).ConfigureAwait(false)))
             {
                 return true;
             }
 
             bool exactPreCommitPipeline = pipeline.HasValue
                 && pipeline.Value == expectedPreCommitPipeline;
-            if (idempotency.Outcome == IdempotencyCheckOutcome.Miss && exactPreCommitPipeline)
+            if (idempotency.Outcome == IdempotencyCheckOutcome.Miss && exactPreCommitPipeline
+                && (expectedAdvisory is null || expectedAdvisoryIndex is not null
+                    && await TerminalAdvisoryPreCommitStateMatchesAsync(expectedAdvisory, expectedAdvisoryIndex).ConfigureAwait(false)))
             {
                 return false;
             }
@@ -6589,8 +6547,9 @@ public partial class AggregateActor(
 
     private async Task<string?> TryReadDrainCausationIdAsync(UnpublishedEventsRecord record, string trackingId)
     {
-        if (string.IsNullOrWhiteSpace(record.MessageId)
-            || !string.Equals(record.MessageId, trackingId, StringComparison.Ordinal)
+        string messageId = record.GetTrackingIdentity(trackingId);
+        if (string.IsNullOrWhiteSpace(messageId)
+            || !string.Equals(messageId, trackingId, StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(record.CommandType))
         {
             return null;
@@ -6599,25 +6558,30 @@ public partial class AggregateActor(
         try
         {
             ConditionalValue<IdempotencyRecord> stored = await StateManager
-                .TryGetStateAsync<IdempotencyRecord>(IdempotencyChecker.GetRecordKey(record.MessageId))
+                .TryGetStateAsync<IdempotencyRecord>(IdempotencyChecker.GetRecordKey(messageId))
                 .ConfigureAwait(false);
             IdempotencyRecord? command = stored.HasValue ? stored.Value : null;
             return command is not null
                 && command.Disposition is IdempotencyRecordDisposition.Recoverable
-                && command.Accepted
+                && (record.IsRejection
+                    ? HasDomainRejectionEvidence(command.ToResult())
+                    : command.Accepted && !command.BackpressureExceeded && string.IsNullOrWhiteSpace(command.RejectionEventType))
                 && command.EventCount == record.EventCount
                 && !string.IsNullOrWhiteSpace(command.CausationId)
-                && string.Equals(command.MessageId, record.MessageId, StringComparison.Ordinal)
+                && string.Equals(command.MessageId, messageId, StringComparison.Ordinal)
                 && string.Equals(command.CorrelationId, record.CorrelationId, StringComparison.Ordinal)
                 && string.Equals(command.CommandType, record.CommandType, StringComparison.Ordinal)
                     ? command.CausationId : null;
         }
+        catch (Exception exception) when (exception is JsonException or EventDeserializationException or InvalidDataException)
+        {
+            ReportRecoveryRetention(trackingId, "identity_deserialization");
+            return null;
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogWarning(exception,
-                "Drain identity lookup failed; committed sequence proof is unavailable: TrackingId={TrackingId}",
-                trackingId);
-            return null;
+            ReportRecoveryRetention(trackingId, "identity_read_failed");
+            throw new DrainStateStoreException("Persisted recovery command identity read failed; original evidence remains retained.", exception);
         }
     }
 
@@ -6629,10 +6593,12 @@ public partial class AggregateActor(
         {
             return false;
         }
+        var messageIds = new HashSet<string>(StringComparer.Ordinal);
         for (int index = 0; index < events.Count; index++)
         {
             EventEnvelope envelope = events[index];
-            if (envelope.SequenceNumber != start + index
+            if (!messageIds.Add(envelope.MessageId)
+                || envelope.SequenceNumber != start + index
                 || !string.Equals(envelope.TenantId, identity.TenantId, StringComparison.Ordinal)
                 || !string.Equals(envelope.Domain, identity.Domain, StringComparison.Ordinal)
                 || !string.Equals(envelope.AggregateId, identity.AggregateId, StringComparison.Ordinal)
@@ -6672,6 +6638,21 @@ public partial class AggregateActor(
             FailureReason: accepted ? null : "DomainRejected",
             ResultPayloadWithheld: !accepted);
 
+        CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
+        var terminalAdvisory = new TerminalAdvisoryIntent(command.TenantId, command.Domain, command.AggregateId,
+            command.MessageId, command.CorrelationId, CreateCommandProcessingIdentity(command).CausationId,
+            command.CommandType, eventCount, expectedPreCommitPipeline.StartSequence, expectedPreCommitPipeline.EndSequence,
+            new CommandStatusRecord(terminalStatus, IdempotencyTimeProvider.GetUtcNow(), command.AggregateId,
+                EventCount: accepted || eventCount > 0 ? eventCount : null,
+                RejectionEventType: rejectionEventType, FailureReason: null, TimeoutDuration: null,
+                MessageId: command.MessageId, CorrelationId: command.CorrelationId)
+            {
+                Domain = command.Domain,
+                CommittedEventSequence = accepted && rangeProofVerified
+                    && HasVerifiedCommandRange(command, expectedPreCommitPipeline, eventCount)
+                        ? expectedPreCommitPipeline.EndSequence : null,
+            });
+        TerminalAdvisoryRepairIndex? expectedAdvisoryIndex = null;
         UnpublishedPublicationIndex? expectedPublicationIndex = null;
         bool terminalSaveAttempted = false;
         try
@@ -6707,6 +6688,7 @@ public partial class AggregateActor(
                 .ConfigureAwait(false);
             _ = await StateManager.TryRemoveStateAsync(EventBatchCommitWitnessKey).ConfigureAwait(false);
 
+            expectedAdvisoryIndex = await StageTerminalAdvisoryAsync(terminalAdvisory).ConfigureAwait(false);
             terminalSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
         }
@@ -6751,7 +6733,9 @@ public partial class AggregateActor(
                 IdempotencyCheckOutcome.ExactTerminalDuplicate,
                 conflict ?? ex,
                 expectedPublicationIndex
-                    ?? throw new InvalidOperationException("Terminal publication index was not staged."))
+                    ?? throw new InvalidOperationException("Terminal publication index was not staged."),
+                terminalAdvisory,
+                expectedAdvisoryIndex)
                 .ConfigureAwait(false);
             if (ex is OperationCanceledException)
             {
@@ -6769,15 +6753,8 @@ public partial class AggregateActor(
             }
         }
 
-        CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;
         LogStageTransition(terminalStatus, command, causationId, startTicks);
-        await WriteAdvisoryStatusAsync(
-            command, terminalStatus,
-            eventCount: accepted || eventCount > 0 ? eventCount : null,
-            rejectionEventType: rejectionEventType,
-            committedEventSequence: accepted && rangeProofVerified
-                && HasVerifiedCommandRange(command, expectedPreCommitPipeline, eventCount)
-                    ? expectedPreCommitPipeline.EndSequence : null).ConfigureAwait(false);
+        await TryRepairTerminalAdvisoryAsync(terminalAdvisory, expectedAdvisoryIndex).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 
         _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));

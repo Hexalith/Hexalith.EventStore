@@ -83,19 +83,8 @@ development_status:
   1-16-complete-projection-freshness-lifecycle: done
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
-  # >>> GUARDED BLOCK -- THE 5 PROTECTED LINES BEGIN AFTER THIS NOTICE, AT '1-19-' <<<
-  # Those 5 lines are the declared output of the frozen awk transform in
-  # 1-20-owner-approved-parity-closure-proof-packet.md, and
-  # ProofPacketValidatorIntegrityTests asserts them as ONE exact, ordered, CONTIGUOUS
-  # block. Do not reflow, reorder, reword or insert into them. Commit d45206f7 deleted
-  # three of them as 'outdated comments' on 2026-09-07 and turned the suite red.
-  # The failure message names only the FIRST missing line -- check all five.
   1-19-correct-paged-rebuild-and-replay-equivalence: done
-  # Story 1.20 owner-approved parity closure is complete; authorizing commit C
-  # verified every pinned artifact, approval, prerequisite, and migration decision.
-  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: done
-  # >>> END GUARDED BLOCK <<<
   1-21-frozen-story-1-20-evidence-integrity-repair: done
   epic-1-retrospective: done
 
@@ -135,33 +124,7 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
-  # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
-  # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
-  # requires this file to restate Story 3.15's CURRENT canonical subject digest from
-  # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
-  # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
-  # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-26 fresh curl-isolated smokes and limitation 4 re-minted the subject.
-  # All five prior acceptance rounds remain under story-3-15/superseded-acceptances/.
-  # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
-  # lineages. The current canonical subject is
-  # 66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6; it has 3/3
-  # receipts and the verifier exits 0. The prior accepted subject and its three receipts are
-  # retained byte-for-byte in the superseded audit area, with no authority for this subject.
-  # closure.json's deployed_runtime_parity/selected_deployed_identity are claims validated by
-  # the three receipts; the result is evidence only, with no operational authority.
-  # Caveat: both owner roles resolve to one authenticated account and the Test Architect
-  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its
-  # matrix, validator, assurance-level check, and sealed CI control.
-  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
-  # the three caveat lines above, this note, the next four lines, the row, and the fence's END
-  # marker as one verbatim block and pins this row's value; change them only together.
-  # 2026-09-26 owner decision (sprint-change-proposal-2026-09-26) closes this row at FR36-C2
-  # evidence validation only and supersedes the 2026-09-24 review hold without rewriting it.
-  # G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; backlog Story 9.2 owns G-HIGH-RISK. The
-  # row grants no release, promotion, deployment, readiness, or consumer-removal authority.
   3-15-corrected-deployed-runtime-parity-closure: done
-  # >>> END GUARDED COMMENTS <<<
   3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
   3-17-dapr-boundary-inventory-and-enforcement: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-COMPAT, FR36-C3 publication

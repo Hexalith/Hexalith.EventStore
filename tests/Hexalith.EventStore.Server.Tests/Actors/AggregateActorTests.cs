@@ -71,7 +71,8 @@ public class AggregateActorTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Admission and terminal cleanup each commit once; terminal cleanup owns the counter update.
-        await ctx.StateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Confirmed advisory acknowledgement adds one save after the unchanged terminal batch.
+        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

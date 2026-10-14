@@ -559,7 +559,7 @@ public class AggregateActorDomainResultTests {
     // === Story 3.7: Event Persistence (Step 5) Tests ===
 
     [Fact]
-    public async Task ProcessCommandAsync_AfterEventPersistence_SaveStateAsyncCalledThreeTimes() {
+    public async Task ProcessCommandAsync_AfterEventPersistence_IncludesTerminalAdvisoryAcknowledgement() {
         // Arrange -- Story 3.11: Processing checkpoint + EventsStored atomic commit + terminal commit
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
@@ -571,7 +571,8 @@ public class AggregateActorDomainResultTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Processing, EventsStored+events, and terminal+counter each commit once.
-        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Confirmed advisory acknowledgement adds one save after the unchanged terminal batch.
+        await ctx.StateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -586,7 +587,8 @@ public class AggregateActorDomainResultTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Admission and terminal cleanup each commit once; terminal cleanup owns the counter update.
-        await ctx.StateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Confirmed advisory acknowledgement adds one save after the unchanged terminal batch.
+        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
