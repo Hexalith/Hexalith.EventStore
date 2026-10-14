@@ -564,7 +564,8 @@ public class EventPublicationIntegrationTests {
         stageCheckpoints.IndexOf(CommandStatus.EventsPublished).ShouldBeGreaterThan(stageCheckpoints.IndexOf(CommandStatus.EventsStored));
 
         // Processing, EventsStored+events, and EventsPublished+terminal+counter each commit once.
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // The confirmed terminal advisory is acknowledged by one additional actor save.
+        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // Test event types

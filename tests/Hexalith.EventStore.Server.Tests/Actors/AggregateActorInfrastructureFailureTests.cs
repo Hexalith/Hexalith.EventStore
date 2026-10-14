@@ -347,7 +347,8 @@ public class AggregateActorInfrastructureFailureTests
         ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
             .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
         durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(5);
     }
 
     [Fact]
@@ -396,7 +397,8 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.Trace.Count(operation => operation ==
                 $"TryGetState:{AggregateActor.EventBatchCommitWitnessKey}")
             .ShouldBe(1);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -462,7 +464,8 @@ public class AggregateActorInfrastructureFailureTests
             .ShouldBe(1);
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -1260,6 +1263,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
             [AggregateActor.EventBatchCommitWitnessKey] = "stale-event-batch",
         });
@@ -1306,6 +1313,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
@@ -1356,6 +1367,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
@@ -1396,6 +1411,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall(
@@ -2124,7 +2143,8 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -2284,7 +2304,8 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -2337,7 +2358,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 0,
             LastFailureReason: null,
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         var index = new UnpublishedPublicationIndex([
             new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
         ]);
@@ -2347,7 +2368,7 @@ public class AggregateActorInfrastructureFailureTests
             [UnpublishedPublicationIndex.StateKey] = index,
             [PendingCountKey] = 1,
             [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] =
-                CreateEvent(command.AggregateIdentity, 1, command.MessageId),
+                CreateEvent(command.AggregateIdentity, 1, command.MessageId) with { CorrelationId = command.CorrelationId, CausationId = command.MessageId },
         });
         stateManager.FaultOnCall(
             $"SetState:{UnpublishedPublicationIndex.StateKey}",
@@ -2389,7 +2410,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 1,
             LastFailureReason: "publish failed",
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
@@ -2397,6 +2418,10 @@ public class AggregateActorInfrastructureFailureTests
                 new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
             ]),
             [PendingCountKey] = 1,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, command.MessageId) with
+            {
+                CorrelationId = command.CorrelationId, CausationId = command.MessageId,
+            },
         });
         stateManager.FaultAfterCall(
             $"SetState:{UnpublishedEventsRecord.GetStateKey(trackingId)}",
@@ -2435,7 +2460,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 1,
             LastFailureReason: "publish failed",
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
@@ -2443,6 +2468,10 @@ public class AggregateActorInfrastructureFailureTests
                 new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
             ]),
             [PendingCountKey] = 1,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, command.MessageId) with
+            {
+                CorrelationId = command.CorrelationId, CausationId = command.MessageId,
+            },
         });
         stateManager.FaultOnCall(
             $"SetState:{UnpublishedPublicationIndex.StateKey}",

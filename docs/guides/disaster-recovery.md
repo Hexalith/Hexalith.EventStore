@@ -416,6 +416,14 @@ WHERE STARTSWITH(c.id, "tenant-a:")
 
 ## Pub/Sub Recovery
 
+### Unverifiable command recovery evidence
+
+Command resume, stale-checkpoint handoff and publication reminders verify the original persisted command and envelope range before publication. Missing or inconsistent identity, actor scope, count, sequence, correlation or causation is refused with zero publication. Direct resume returns `command_identity_conflict`; its checkpoint and envelopes remain retained. An unverifiable drain retains its evidence and does not spend the ordinary retry budget or proceed to exhaustion cleanup. This retained-evidence refusal is the platform's recovery boundary; it introduces no public quarantine status. Transient state-store read failures retain evidence and follow the existing retry path; cancellation propagates.
+
+Preserve an immutable backup of the affected evidence and identify the original command and aggregate through the existing actor/operator boundaries. The infrastructure recovery owner must separately authorize restoration or reconciliation from a trusted backup that supplies the exact original identities and range. Keep the aggregate quiescent under the existing restore procedure. Restore related actor control state and event evidence coherently; do not fabricate a range from the current aggregate head, substitute another command's events, skip missing events or rewrite application state through backend access. After restoration, retry the same command or existing reminder: verification runs again and only a verified range proceeds. If no trusted evidence exists, the range remains refused. This bundle supplies no automatic data migration, production replay authority or new recovery endpoint.
+
+Terminal advisory repair is separate from event publication recovery. The actor saves a terminal repair intent atomically with terminal cleanup, then retries its exact status through a dedicated reminder after write failure or restart. The intent preserves original command scope, event range and status timestamp; it cannot turn an aggregate head into command proof. Successful repair acknowledges only that intent and preserves other commands' recovery state. Status remains advisory and ephemeral. See the [owning command recovery contract](../architecture/command-recovery-integrity.md); local fault-injection evidence does not establish a production recovery SLA.
+
 The pub/sub system (DAPR's event distribution mechanism) is **not** the source of truth — the state store is. Events published through pub/sub can always be reconstructed from the state store.
 
 ### How Missed Deliveries Are Handled

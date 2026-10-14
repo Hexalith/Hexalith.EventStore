@@ -106,7 +106,7 @@ public class EventDrainRecoveryTests {
         FailedAt: DateTimeOffset.UtcNow,
         RetryCount: retryCount,
         LastFailureReason: "Pub/sub unavailable",
-        MessageId: messageId);
+        MessageId: messageId ?? correlationId, CausationId: "cause-drain");
 
     /// <summary>
     /// Seeds the persisted event range with distinct, valid stored message IDs.
@@ -126,7 +126,7 @@ public class EventDrainRecoveryTests {
         for (int seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
                 Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
-                correlationId, causationId ?? $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                correlationId, causationId ?? "cause-drain", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -148,7 +148,7 @@ public class EventDrainRecoveryTests {
 
             var evt = new EventEnvelope(
                 Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
-                correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                correlationId, "cause-drain", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -176,18 +176,9 @@ public class EventDrainRecoveryTests {
         await timerManager.DidNotReceive().UnregisterReminderAsync(
             Arg.Any<ActorReminderToken>());
 
-        await stateManager.Received(1).SetStateAsync(
-            $"drain:{correlationId}",
-            Arg.Is<UnpublishedEventsRecord>(r =>
-                r.RetryCount == expectedRetryCount
-                && r.LastFailureReason != null
-                && r.LastFailureReason.Contains("Protected data diagnostic details were redacted.")
-                && r.LastFailureReason.Contains("ReasonCode=protected-data-diagnostic-redacted")
-                && r.LastFailureReason.Contains("Stage=drain")
-                && !r.LastFailureReason.Contains(expectedRedactedFailureMustNotContain)),
-            Arg.Any<CancellationToken>());
-
-        await stateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(
+            $"drain:{correlationId}", Arg.Any<UnpublishedEventsRecord>(), Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
 
         await stateManager.DidNotReceive().SetStateAsync(
             "pending_command_count",
@@ -316,13 +307,13 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert
-        await timerManager.Received(1).UnregisterReminderAsync(
+        await timerManager.Received().UnregisterReminderAsync(
             Arg.Any<ActorReminderToken>());
     }
 
     [Theory]
     [InlineData("valid", 8L)]
-    [InlineData("legacy", null)]
+    [InlineData("legacy", 8L)]
     [InlineData("wrong-identity", null)]
     [InlineData("wrong-scope", null)]
     [InlineData("wrong-sequence", null)]
@@ -335,7 +326,7 @@ public class EventDrainRecoveryTests {
     [InlineData("wrong-count", null)]
     [InlineData("missing-command-type", null)]
     [InlineData("record-wrong-identity", null)]
-    [InlineData("record-legacy", null)]
+    [InlineData("record-legacy", 8L)]
     [InlineData("record-missing-command-type", null)]
     [InlineData("wrong-domain", null)]
     [InlineData("wrong-aggregate", null)]
@@ -360,7 +351,7 @@ public class EventDrainRecoveryTests {
         state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
         ConfigureEventsInState(state, 2, startSequence: 7, causationId: "cause-drain");
-        if (scenario is not "missing-idempotency" && !recordCarriesCausation)
+        if (scenario is not "missing-idempotency" && (!recordCarriesCausation || scenario == "record-legacy"))
         {
             var idempotency = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null,
                 DateTimeOffset.UtcNow, EventCount: 2, MessageId: "command-8", CommandType: "CreateOrder",
@@ -384,7 +375,7 @@ public class EventDrainRecoveryTests {
             Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
         await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
-        if (scenario is "wrong-count")
+        if (expected is null && scenario != "record-rejection")
         {
             // Invalid durable range/count is rejected before publication and must never report committed completion.
             await store.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
@@ -415,7 +406,7 @@ public class EventDrainRecoveryTests {
     {
         (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
         UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
-            StartSequence = 7, EndSequence = 8, MessageId = "command-8",
+            StartSequence = 7, EndSequence = 8, MessageId = "command-8", CausationId = null,
         };
         state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
@@ -451,18 +442,23 @@ public class EventDrainRecoveryTests {
             Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
-        await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
+        if (scenario == "state-fault")
+        {
+            await Should.ThrowAsync<DrainStateStoreException>(() => actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero));
+        }
+        else
+        {
+            await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
+        }
 
-        CommandStatusRecord completed = store.ReceivedCalls().Select(call => call.GetArguments())
-            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord { Status: CommandStatus.Completed })
-            .Select(args => (CommandStatusRecord)args[2]!).Single();
-        completed.CommittedEventSequence.ShouldBeNull();
         await store.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.PublishFailed), Arg.Any<CancellationToken>());
-        await state.DidNotReceive().SetStateAsync("drain:command-8", Arg.Any<UnpublishedEventsRecord>(), Arg.Any<CancellationToken>());
-        _ = await publisher.Received(1).PublishEventsAsync(
+            Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>());
+        await state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        await state.DidNotReceive().RemoveStateAsync("drain:command-8", Arg.Any<CancellationToken>());
+        _ = await publisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+
     }
 
     [Fact]
@@ -760,7 +756,7 @@ public class EventDrainRecoveryTests {
             messageId: "msg-cleanup-ambiguous");
         EventEnvelope persistedEvent = new(
             Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-cleanup", "user-1", "1.0.0",
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-cleanup-ambiguous"] = record,
@@ -787,8 +783,8 @@ public class EventDrainRecoveryTests {
 
         stateManager.CommittedState.ShouldNotContainKey("drain:msg-cleanup-ambiguous");
         stateManager.CommittedState["pending_command_count"].ShouldBe(0);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
-        await timerManager.Received(1).UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
+        await timerManager.Received().UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
         await statusStore.Received(1).WriteStatusAsync(
             "test-tenant",
             "msg-cleanup-ambiguous",
@@ -805,7 +801,7 @@ public class EventDrainRecoveryTests {
             messageId: "msg-cleanup-cancel");
         EventEnvelope persistedEvent = new(
             Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-cleanup", "user-1", "1.0.0",
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-cleanup-cancel"] = record,
@@ -846,9 +842,8 @@ public class EventDrainRecoveryTests {
             correlationId: "corr-retry-ambiguous",
             eventCount: 1,
             messageId: "msg-retry-ambiguous");
-        EventEnvelope persistedEvent = new(
-            "evt-retry", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-retry", "user-1", "1.0.0",
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-retry-ambiguous"] = record,
@@ -885,9 +880,8 @@ public class EventDrainRecoveryTests {
             correlationId: "corr-retry-cancel",
             eventCount: 1,
             messageId: "msg-retry-cancel");
-        EventEnvelope persistedEvent = new(
-            "evt-retry-cancel", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-retry", "user-1", "1.0.0",
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-retry-cancel"] = record,
@@ -927,9 +921,8 @@ public class EventDrainRecoveryTests {
             correlationId: "corr-retry-precommit",
             eventCount: 1,
             messageId: "msg-retry-precommit");
-        EventEnvelope persistedEvent = new(
-            "evt-retry-precommit", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-retry", "user-1", "1.0.0",
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-retry-precommit"] = record,
@@ -969,7 +962,7 @@ public class EventDrainRecoveryTests {
             messageId: "msg-retry-remediation");
         EventEnvelope persistedEvent = new(
             Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
-            DateTimeOffset.UtcNow, record.CorrelationId, "cause-retry", "user-1", "1.0.0",
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
             "OrderCreated", 1, "json", [1], null);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             ["drain:msg-retry-remediation"] = record,
@@ -1225,7 +1218,7 @@ public class EventDrainRecoveryTests {
         Activity activity = await CaptureDrainActivityAsync(() =>
             actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
 
-        activity.GetTagItem("eventstore.failure_reason").ShouldBe(DrainReasonCodes.EventCountMismatch);
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe("command_identity_conflict");
         // Negative assertion: high-cardinality leak guard. The integrity exception message
         // contained the aggregate ActorId; that must never reach the activity tag.
         (activity.GetTagItem("eventstore.failure_reason")?.ToString() ?? string.Empty)
@@ -1263,7 +1256,7 @@ public class EventDrainRecoveryTests {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
 
         UnpublishedEventsRecord record1 = CreateDrainRecord(correlationId: "corr-1");
-        UnpublishedEventsRecord record2 = CreateDrainRecord(correlationId: "corr-2");
+        UnpublishedEventsRecord record2 = CreateDrainRecord(correlationId: "corr-2") with { StartSequence = 3, EndSequence = 4 };
 
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-1", Arg.Any<CancellationToken>())
@@ -1273,6 +1266,7 @@ public class EventDrainRecoveryTests {
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record2));
 
         ConfigureEventsInState(stateManager, 2, "corr-1");
+        ConfigureEventsInState(stateManager, 2, "corr-2", startSequence: 3);
 
         // First drain succeeds
         _ = eventPublisher.PublishEventsAsync(
@@ -1325,7 +1319,7 @@ public class EventDrainRecoveryTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 0,
-            LastFailureReason: "unavailable");
+            LastFailureReason: "unavailable", MessageId: "corr-1", CausationId: "cause-drain");
 
         var record2 = new UnpublishedEventsRecord(
             CorrelationId: "corr-2",
@@ -1336,7 +1330,7 @@ public class EventDrainRecoveryTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 0,
-            LastFailureReason: "unavailable");
+            LastFailureReason: "unavailable", MessageId: "corr-2", CausationId: "cause-drain");
 
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-1", Arg.Any<CancellationToken>())
@@ -1385,7 +1379,7 @@ public class EventDrainRecoveryTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 1,
-            LastFailureReason: "Connection reset after event 2");
+            LastFailureReason: "Connection reset after event 2", MessageId: "corr-partial", CausationId: "cause-drain");
 
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-partial", Arg.Any<CancellationToken>())
@@ -1428,7 +1422,7 @@ public class EventDrainRecoveryTests {
             IsRejection: false,
             FailedAt: DateTimeOffset.UtcNow,
             RetryCount: 0,
-            LastFailureReason: "initial failure");
+            LastFailureReason: "initial failure", MessageId: "corr-overlap", CausationId: "cause-drain");
 
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-overlap", Arg.Any<CancellationToken>())
@@ -1727,7 +1721,7 @@ public class EventDrainRecoveryTests {
             RetryCount: retryCount,
             LastFailureReason: "Pub/sub unavailable",
             MessageId: ExhaustedTrackingId,
-            DeadLettered: deadLettered);
+            DeadLettered: deadLettered, CausationId: "cause-drain");
 
         _ = context.StateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             $"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>())
@@ -1761,7 +1755,7 @@ public class EventDrainRecoveryTests {
             RetryCount: EventDrainOptions.DefaultMaxDrainAttempts,
             LastFailureReason: "Pub/sub unavailable",
             MessageId: ExhaustedTrackingId,
-            DeadLettered: deadLettered);
+            DeadLettered: deadLettered, CausationId: "cause-drain");
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             [$"drain:{ExhaustedTrackingId}"] = record,
             [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
@@ -1769,6 +1763,10 @@ public class EventDrainRecoveryTests {
                     ExhaustedTrackingId, ExhaustedCorrelationId, DateTimeOffset.UtcNow),
             ]),
             ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+                DateTimeOffset.UtcNow, record.CorrelationId, "cause-drain", "system", "1.0.0", "Created", 1, "json", [1], null),
+            ["test-tenant:test-domain:agg-001:events:2"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 2, 0,
+                DateTimeOffset.UtcNow, record.CorrelationId, "cause-drain", "system", "1.0.0", "Created", 1, "json", [1], null),
         });
         return record;
     }
@@ -2260,7 +2258,7 @@ public class EventDrainRecoveryTests {
                 CausationId: "msg-capacity",
                 StartSequence: 1,
                 EndSequence: 2)));
-        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity");
+        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity", causationId: "msg-capacity");
         _ = ctx.EventPublisher.PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
@@ -2338,7 +2336,7 @@ public class EventDrainRecoveryTests {
                 CausationId: "msg-capacity",
                 StartSequence: 1,
                 EndSequence: 2)));
-        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity");
+        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity", causationId: "msg-capacity");
         _ = ctx.StateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:msg-capacity", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, new UnpublishedEventsRecord(
@@ -2447,7 +2445,7 @@ public class EventDrainRecoveryTests {
         // A legacy record has no MessageId, so the reminder suffix is a correlation id. The
         // eventstore.message_id tag must stay unset rather than mislabel it.
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
-        UnpublishedEventsRecord record = CreateDrainRecord();
+        UnpublishedEventsRecord record = CreateDrainRecord() with { MessageId = null, CausationId = null };
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));

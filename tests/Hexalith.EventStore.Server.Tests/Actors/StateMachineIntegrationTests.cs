@@ -147,7 +147,8 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>());
 
         // Processing, EventsStored+events, and terminal+counter each commit once.
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Terminal advisory acknowledgement is a separate durable actor save.
+        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -275,8 +276,8 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
 
-        // Processing and terminal+counter each commit once.
-        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Processing, terminal batch and terminal advisory acknowledgement each commit once.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
@@ -318,7 +319,7 @@ public class StateMachineIntegrationTests {
                     0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
-                    "cause-1",
+                    "msg-sm-test",
                     "system",
                     "1.0.0",
                     "TestEvent",
@@ -342,7 +343,7 @@ public class StateMachineIntegrationTests {
                     0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
-                    "cause-2",
+                    "msg-sm-test",
                     "system",
                     "1.0.0",
                     "TestEvent",
@@ -396,7 +397,7 @@ public class StateMachineIntegrationTests {
     [InlineData("correlation", null)]
     [InlineData("causation", null)]
     [InlineData("sequence", null)]
-    public async Task Committed_resume_completes_without_proof_when_persisted_envelopes_mismatch(string mismatch, long? expectedProof)
+    public async Task Committed_resume_refuses_unverifiable_persisted_envelopes(string mismatch, long? expectedProof)
     {
         var state = new InMemoryStateManager();
         var statuses = new InMemoryCommandStatusStore();
@@ -431,6 +432,17 @@ public class StateMachineIntegrationTests {
         ActorStateManagerTestHelper.SetStateManager(actor, state);
 
         CommandProcessingResult result = await actor.ProcessCommandAsync(command);
+
+        if (mismatch != "valid")
+        {
+            result.Accepted.ShouldBeFalse();
+            result.ErrorMessage.ShouldBe("command_identity_conflict");
+            publisher.PublishCalls.ShouldBeEmpty();
+            state.CommittedState[pipelineKey].ShouldBe(checkpoint);
+            state.CommittedState.ContainsKey($"idempotency:{command.MessageId}").ShouldBeFalse();
+            await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+            return;
+        }
 
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(2);
@@ -512,7 +524,7 @@ public class StateMachineIntegrationTests {
     }
 
     [Fact]
-    public async Task ProcessCommand_ResumeFromEventsStored_WithholdsProofWhenEnvelopeCausationIsMissing()
+    public async Task ProcessCommand_ResumeFromEventsStored_RefusesWhenEnvelopeCausationDoesNotMatch()
     {
         // EventPersister stamps CausationId ?? CorrelationId. A null envelope causation therefore
         // persists "corr-sm-test", while the checkpoint stores CausationId ?? MessageId ("msg-sm-test").
@@ -547,17 +559,16 @@ public class StateMachineIntegrationTests {
 
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
 
-        result.Accepted.ShouldBeTrue();
-        _ = await eventPublisher.Received(1).PublishEventsAsync(
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
-            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1),
-            "corr-sm-test",
-            Arg.Any<CancellationToken>(),
-            Arg.Any<bool>());
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
         _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
-        await statusStore.Received().WriteStatusAsync("test-tenant", envelope.MessageId,
-            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed
-                && status.CommittedEventSequence == null && status.Domain == envelope.Domain));
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        await statusStore.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>());
+
     }
 
     [Fact]
@@ -601,7 +612,7 @@ public class StateMachineIntegrationTests {
                     0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
-                    "cause-1",
+                    "msg-sm-test",
                     "system",
                     "1.0.0",
                     "TestEvent",
@@ -625,7 +636,7 @@ public class StateMachineIntegrationTests {
                     0,
                     DateTimeOffset.UtcNow,
                     "corr-sm-test",
-                    "cause-2",
+                    "msg-sm-test",
                     "system",
                     "1.0.0",
                     "TestEvent",
