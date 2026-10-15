@@ -1,0 +1,19 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published*.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "tests": 134,
+  "reported_duration_seconds": 21.816,
+  "output_sha256": "8be549e8c71614a129b527e16ae2db43577320b5553b5751ee05de790aab068d",
+  "source_binding_sha256": "c6b04948b7202878b729ca78c246792355c403f64f06b570d00f7be8d9c3e3e3",
+  "completed_before_fresh_execution": true
+}

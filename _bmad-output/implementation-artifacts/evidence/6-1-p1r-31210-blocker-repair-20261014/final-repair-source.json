@@ -1,0 +1,54 @@
+{
+  "created_utc": "2026-10-14T12:37:32.553968+00:00",
+  "owner_baseline": "5c10a3c73f381abb75016125192401f516818797",
+  "scope": "Six tracked repair paths plus three new isolation source/test files; preserved historical evidence and new measurement artifacts are separate. No Git index writes.",
+  "diff": "final-repair-source.diff",
+  "diff_sha256": "fcfd0cffa578437da6b81558af2ff94babdaf71f6e79434697fd251e099ea5ac",
+  "files": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "bytes": 1334,
+      "sha256": "10c21aad3ae16d58a2dfe6bf3d6b5116b21155230570d95cef70ea3032310db1"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs",
+      "bytes": 58612,
+      "sha256": "788407891ca53793e881e9249359358891b209fbf081247fae9238837f1420da"
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "bytes": 9929,
+      "sha256": "d7574169dac59597353c69c9aad96db9efd24811695de2df8c19631eacc6ac49"
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "bytes": 5010,
+      "sha256": "b019ff7a57705ee3bf5834a4213de1bc4dc2366fadcd323fa46ddc83973f0191"
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "bytes": 118527,
+      "sha256": "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "bytes": 115435,
+      "sha256": "9d0706b72fb1aa6b1ec5d221ded56c6f7957ccfa1b73e1f77724eb44215ab85d"
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "bytes": 298,
+      "sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a"
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "bytes": 30042,
+      "sha256": "a0d526c8e9a10911e2f0f6378c881797b1d15abe2b720ecbde3e7f06b4d01fb4"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "bytes": 29013,
+      "sha256": "88ede2374bb92cb04ee114eb9a1062ee5102ee95817b6ead1e9519387abed807"
+    }
+  ]
+}

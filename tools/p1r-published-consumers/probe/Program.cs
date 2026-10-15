@@ -76,6 +76,23 @@ try
         checks.Record("actor-sequence-observed", sequence >= 0);
         observation = new { sequence };
     }
+#if P1R_FOLDED_SNAPSHOT
+    else if (args[0] == "manual-snapshot")
+    {
+        // The published result is a JSON record, so use Dapr's published JSON
+        // method invocation instead of the typed DataContract remoting path.
+        ActorProxy proxy = ActorProxy.Create(new ActorId($"{args[2]}:counter:{args[3]}"), "AggregateActor",
+            new ActorProxyOptions { HttpEndpoint = args[1] });
+        ManualSnapshotResult result = await proxy.InvokeMethodAsync<string, ManualSnapshotResult>(
+            nameof(IAggregateActor.CreateManualSnapshotAsync),
+            Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId());
+        checks.Record("manual-snapshot-created", result.Outcome == ManualSnapshotOutcome.Created);
+        checks.Record("manual-snapshot-at-nine", result.SequenceNumber == 9);
+        checks.Record("manual-snapshot-no-failure", result.ReasonCode is null && result.Message is null);
+        observation = new { outcome = result.Outcome.ToString(), sequence = result.SequenceNumber,
+            snapshot_key = result.SnapshotKey, reason_code = result.ReasonCode, message = result.Message };
+    }
+#endif
     else if (args[0] is "actor" or "seed")
     {
         ActorProxyFactory factory = new(new ActorProxyOptions { HttpEndpoint = args[1] });

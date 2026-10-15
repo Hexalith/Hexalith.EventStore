@@ -1,0 +1,32 @@
+{
+  "inputs_sha256": "f062ac7be753c0563e21223e3298d10f0ea3372ec824dcf143c99b0d1d089002",
+  "lanes": [
+    "metadata-write",
+    "retained-covered",
+    "retained-uncovered",
+    "missing-event",
+    "invalid-evidence",
+    "checkout",
+    "post-upgrade-restore",
+    "failure-cleanup",
+    "reminder-recovery",
+    "logical-event-evolution"
+  ],
+  "official_run_admission": {
+    "accepted": false,
+    "claim": "official run admission unchanged; separate repair measurements only",
+    "reason": "successor tag, exact source, or tag Builds identity substituted"
+  },
+  "p1r_usable": false,
+  "production": {
+    "claim": "current production bytes equal published source; tooling/tests differ; no immutable qualification claim",
+    "current_head": "5c10a3c73f381abb75016125192401f516818797",
+    "new_production_files": [],
+    "production_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tag_commit": "21b34c01ec919769cfba9cfe0d47e50886b57ded"
+  },
+  "run": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/attempt/measurement",
+  "scope": "nonqualifying-existing-package-fixture-repair",
+  "scripts_binding_sha256": "0e44437dbfc2afec677545932d7af09a7f0a11da9ba9c68595ced70787195c6c",
+  "story_6_1": "blocked"
+}

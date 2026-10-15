@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "docker",
+    "create",
+    "--cidfile",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt/sentinel.cid",
+    "--name",
+    "p1r-repair-sentinel-5d7efba4bb9841058613726f51432ead",
+    "--label",
+    "hexalith.p1r.repair=922a87a46d1e4376944fa214c3a4173c",
+    "--network",
+    "none",
+    "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf"
+  ],
+  "exit_code": 0,
+  "output": "Unable to find image 'redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf' locally\ndocker.io/library/redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf: Pulling from library/redis\nc02d17997ce3: Pulling fs layer\n5a8a1ddac675: Pulling fs layer\nc8d70ddedb79: Pulling fs layer\n413f71042199: Pulling fs layer\nd716dc14921c: Pulling fs layer\n7c97629f31c9: Pulling fs layer\n4f4fb700ef54: Pulling fs layer\n5d5d22859aa5: Pulling fs layer\n7c97629f31c9: Waiting\nd716dc14921c: Waiting\n5d5d22859aa5: Waiting\n413f71042199: Waiting\n5a8a1ddac675: Verifying Checksum\n5a8a1ddac675: Download complete\nc8d70ddedb79: Verifying Checksum\nc8d70ddedb79: Download complete\n413f71042199: Verifying Checksum\n413f71042199: Download complete\n7c97629f31c9: Download complete\n4f4fb700ef54: Verifying Checksum\n4f4fb700ef54: Download complete\n5d5d22859aa5: Download complete\nd716dc14921c: Download complete\nc02d17997ce3: Verifying Checksum\nc02d17997ce3: Download complete\nc02d17997ce3: Pull complete\n5a8a1ddac675: Pull complete\nc8d70ddedb79: Pull complete\n413f71042199: Pull complete\nd716dc14921c: Pull complete\n7c97629f31c9: Pull complete\n4f4fb700ef54: Pull complete\n5d5d22859aa5: Pull complete\nDigest: sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\nStatus: Downloaded newer image for redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\n507168395abd65e79745ab725d0ba8d434023d7e6f3fc57cae786306c79ea3fd\n",
+  "output_sha256": "d3c47fa64b69a0bd37b28420f12b1557ba227e0f82b4dad67c94617129164410"
+}

@@ -1,0 +1,1 @@
+{"case_count": 163, "errors": [], "out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/independent-validation-20261014-d", "p1r_usable": false, "valid_evidence": true}

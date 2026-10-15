@@ -1,0 +1,67 @@
+{
+  "errors": [],
+  "executor_source_sha256": "03bbfc2f9b686a27b5c15d18f524d4936f3468e2b76557fd156162e70b4d54e5",
+  "finished_utc": "2026-10-14T12:40:17.950553+00:00",
+  "inputs_sha256": "f062ac7be753c0563e21223e3298d10f0ea3372ec824dcf143c99b0d1d089002",
+  "invocation": "ef9dbe9d76c1400695f51ce6d0f46b62",
+  "owned_containers": {
+    "4152ae6ec8fff9e17071f0b8e12e7a9810140e123c20adf2cfdc21f04aea9960": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-ef9dbe9d76c1400695f51ce6d0f46b62-pubsub-6fa1948e",
+      "port": 16963,
+      "role": "pubsub"
+    },
+    "aee1a2282bd3b1230ff668132b2339ab41615e93c1d6fda286ee46b5d360dda1": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-ef9dbe9d76c1400695f51ce6d0f46b62-scheduler-ad054e26",
+      "port": 14886,
+      "role": "scheduler"
+    },
+    "cf96a6480031322a03e482fdfcb44eeb974cd91b642d572c9c4eb917dce11a8a": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-ef9dbe9d76c1400695f51ce6d0f46b62-source-28e74261",
+      "port": 11724,
+      "role": "source"
+    },
+    "ee9b891abd570354aaf415657d65fafb004cbee24a572ed080c07ca245073f29": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-ef9dbe9d76c1400695f51ce6d0f46b62-placement-f4e3dc54",
+      "port": 13190,
+      "role": "placement"
+    },
+    "f30f2695468e0a6a94f9026a825e5b22465f862499d7b739a4a28f6421426a54": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-ef9dbe9d76c1400695f51ce6d0f46b62-restored-099b11c8",
+      "port": 18214,
+      "role": "restored"
+    }
+  },
+  "p1r_usable": false,
+  "production_guard": {
+    "claim": "current production bytes equal published source; tooling/tests differ; no immutable qualification claim",
+    "current_head": "5c10a3c73f381abb75016125192401f516818797",
+    "new_production_files": [],
+    "production_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tag_commit": "21b34c01ec919769cfba9cfe0d47e50886b57ded"
+  },
+  "receipts": [
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/62eed7f7a4eb47f59f74af6e77786618.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/eb599eb808354566a1a555614a3f4bbf.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/41a8319b2e5f41dfb3e73f41ef327c4b.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/3d62a3ac7fba4f7ebe5314686b533626.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/a876eb17674d46b6808820de1dff63ae.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/46e36ae860144c42966b138bc23bef76.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/785c2eefd7e54bbc92aa51bbdb111625.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/3f55821a3061451493ffa09d4559fe87.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/13110834ba9a4e58ad2c5ea34ebc28a4.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/416103936b6943fba98d7992cd59a6a7.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/59ff8885e23044c29253f40a5326d363.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/84cc75dd1cfa4be6b73538a49ec70e2b.json"
+  ],
+  "repair_attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt",
+  "repair_driver_sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd",
+  "repair_scripts_binding_sha256": "814c0a17352e3adbb98fc0799b84826bf44e511e7572a4caf69181121097fb7a",
+  "repair_verification_scope": "existing-3.121.0-packages-with-repaired-fixture; no immutable successor qualification",
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-14T12:24:05.795922+00:00"
+}

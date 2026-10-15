@@ -5,6 +5,9 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
+#if P1R_FOLDED_SNAPSHOT
+using Hexalith.EventStore.DomainService;
+#endif
 #if P1R_CANDIDATE
 using P1R.Counter;
 #endif
@@ -14,6 +17,11 @@ builder.Services.AddSingleton(new DaprClientBuilder().Build());
 builder.Services.AddEventStoreServer(builder.Configuration);
 #if P1R_CANDIDATE
 FixtureEvolutionManifest.Register(builder.Services);
+#endif
+#if P1R_FOLDED_SNAPSHOT
+builder.Services.AddEventStoreFoldedSnapshotActorQualification("counter", "counter",
+    FixtureSnapshotQualification.ProfileId, FixtureSnapshotQualification.ParityEvidenceId,
+    FixtureSnapshotQualification.Limits);
 #endif
 builder.Services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
 #if P1R_CAPABILITIES

@@ -1,0 +1,170 @@
+[
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-37a9740512cb4e7087387082d3982728-19787uxp",
+    "exit_code": 0,
+    "finished_utc": "2026-10-14T12:43:59.496944+00:00",
+    "id": 1,
+    "output": "507168395abd\n",
+    "output_sha256": "94531d0325c3006e119f9ab4169fd3f7dac3cf837f997d2e280c39bc56dc9173",
+    "owned_processes": [
+      {
+        "pgid": 625,
+        "pid": 625,
+        "session": 625,
+        "start_ticks": 8147885
+      }
+    ],
+    "process": {
+      "pgid": 625,
+      "pid": 625,
+      "session": 625,
+      "start_ticks": 8147885
+    },
+    "started_utc": "2026-10-14T12:43:59.444438+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "507168395abd"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/tmp/p1r-published-37a9740512cb4e7087387082d3982728-19787uxp",
+    "exit_code": 0,
+    "finished_utc": "2026-10-14T12:43:59.550917+00:00",
+    "id": 2,
+    "output": "{\"Id\":\"507168395abd65e79745ab725d0ba8d434023d7e6f3fc57cae786306c79ea3fd\",\"Image\":\"sha256:fa2f52630fa9863cf3acafc39b384b6ceda8ce732a8fd646c415b7224c819460\",\"Name\":\"/p1r-repair-sentinel-5d7efba4bb9841058613726f51432ead\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-14T12:43:58.37953593Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "01206cc63eeeb3fb2ed2eed3bec54f934604109f15ab343c3bf760029db0c6de",
+    "owned_processes": [
+      {
+        "pgid": 635,
+        "pid": 635,
+        "session": 635,
+        "start_ticks": 8147891
+      }
+    ],
+    "process": {
+      "pgid": 635,
+      "pid": 635,
+      "session": 635,
+      "start_ticks": 8147891
+    },
+    "started_utc": "2026-10-14T12:43:59.498877+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "ps",
+      "-aq"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-14T12:43:59.678857+00:00",
+    "id": 3,
+    "output": "507168395abd\n",
+    "output_sha256": "94531d0325c3006e119f9ab4169fd3f7dac3cf837f997d2e280c39bc56dc9173",
+    "owned_processes": [
+      {
+        "pgid": 681,
+        "pid": 681,
+        "session": 681,
+        "start_ticks": 8147903
+      }
+    ],
+    "process": {
+      "pgid": 681,
+      "pid": 681,
+      "session": 681,
+      "start_ticks": 8147903
+    },
+    "started_utc": "2026-10-14T12:43:59.626953+00:00",
+    "timeout_seconds": 180
+  },
+  {
+    "argv": [
+      "docker",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+      "507168395abd"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "finished_utc": "2026-10-14T12:43:59.733000+00:00",
+    "id": 4,
+    "output": "{\"Id\":\"507168395abd65e79745ab725d0ba8d434023d7e6f3fc57cae786306c79ea3fd\",\"Image\":\"sha256:fa2f52630fa9863cf3acafc39b384b6ceda8ce732a8fd646c415b7224c819460\",\"Name\":\"/p1r-repair-sentinel-5d7efba4bb9841058613726f51432ead\",\"State\":{\"Running\":false,\"StartedAt\":\"2026-10-14T12:43:58.37953593Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+    "output_sha256": "5e23dd1ac9b93f0223f95fafa081e6eb96aaa3d284d61204ee998628ed69464b",
+    "owned_processes": [
+      {
+        "pgid": 692,
+        "pid": 692,
+        "session": 692,
+        "start_ticks": 8147909
+      }
+    ],
+    "process": {
+      "pgid": 692,
+      "pid": 692,
+      "session": 692,
+      "start_ticks": 8147909
+    },
+    "started_utc": "2026-10-14T12:43:59.680922+00:00",
+    "timeout_seconds": 180
+  }
+]

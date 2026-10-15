@@ -1,0 +1,87 @@
+{
+  "errors": [],
+  "executor_source_sha256": "c6b04948b7202878b729ca78c246792355c403f64f06b570d00f7be8d9c3e3e3",
+  "finished_utc": "2026-10-14T10:01:44.486115+00:00",
+  "inputs_sha256": "f062ac7be753c0563e21223e3298d10f0ea3372ec824dcf143c99b0d1d089002",
+  "invocation": "a276a89fac1943fe813c7af07f84ae5a",
+  "owned_containers": {
+    "10b3a819b37210a2f66e533cbb511895f06231e260c42adf9802ce7e117496a6": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-placement-ee3ad557",
+      "port": 13010,
+      "role": "placement"
+    },
+    "10efd0840daa7796582b87c87354924298d8f77d93b30e950721d00f5b458e6b": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-pubsub-529779ee",
+      "port": 13514,
+      "role": "pubsub"
+    },
+    "39e2ccf4ed761829b2a439187ecb9eb743b9a98f22a9f049c0a9884eb7f64f11": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-restored-e156fc80",
+      "port": 11200,
+      "role": "restored"
+    },
+    "5a0ccf5d452977bce9400ff16b8df4ead2b8ca5e246146f8e8d88cf861f4e1e6": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-source-9dd7ffcd",
+      "port": 20235,
+      "role": "source"
+    },
+    "a65589b4728780757dfd4526c5124e0c1d6886c0cf504528f0bb122bc77cc5d8": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-scheduler-46c0a326",
+      "port": 28773,
+      "role": "scheduler"
+    },
+    "aa5df29883502df23fff549fe8637ebc9c3fc0e58ee9c54cd8c95f5e2ef61eee": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-a276a89fac1943fe813c7af07f84ae5a-containment-80d7180d",
+      "port": 14249,
+      "role": "containment"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/6353b46055864e94b321b7d451a60851.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/9c05c6b3a1ec442ba8bbd943b79f99e4.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/db766aa7cb7a4bf598e9ff91c993a271.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/df0e38bac3ed4674bb272e74777954d6.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/fa661fb1a3914ebca2c607e3e61f2de2.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/bd39eadf49f14826a648ad81b6e51700.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/b275c63830de4493a3addda76aef7221.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/5e726f2d2f554324b422b8ea105eefc9.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/0444fcf900774ea1b80500a5f4b3932f.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/3c48a06462a145119a3eab22d72feca0.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/e8f08b49b52b495eb936b08c0bee7d6a.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/75afe29dd72a4c3094735c4f1fdb39a4.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/05084d6f6cb64be5a8a1d5690bfad17c.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/e9f227b97e134d11b767a903c5200a43.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/7e2f0ed64b664bc180d8b83411d92328.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/54ac8a8cc1a34ef0b73ff6ec51a65e6b.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/96b2ff7f1a9c40c2938d758d1ddf5a3d.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/2c059877e4fc47ba88056892f603f5af.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/2ada389890e84606853a6504534898da.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/9d7da8987ff44d53a82cef3c664741d4.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-review-fixed-347d58d411184960bcd6412a8c1950ba/receipts/64b1fd94e39d48eba003dc544d2f6803.json"
+  ],
+  "review_fixed_execution": {
+    "driver_sha256": "cac280dbd02a3bbef4f8fb62d92657fdef0c9b4e7ef0a94089abb2ada4dc68fa",
+    "plan_sha256": "74daa5a6c15ca74591cba8bfa1fbbd77923c7ff1506e63339492759d56831624",
+    "previous_run": "execution-f47a56499f0542c1b171e110aa48de2f",
+    "private_copy_excludes": [
+      "bin",
+      "obj",
+      "packages"
+    ],
+    "source_restore_flags": [
+      "--disable-parallel",
+      "-m:1",
+      "-p:BuildInParallel=false",
+      "-p:Configuration=Debug"
+    ]
+  },
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-14T09:31:02.973119+00:00"
+}

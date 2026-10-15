@@ -1,0 +1,419 @@
+{
+  "attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt",
+  "checks": [
+    {
+      "id": "exact-successful-attempt-coordinates",
+      "passed": true
+    },
+    {
+      "id": "final-report-binds-current-retained-receipts",
+      "passed": true
+    },
+    {
+      "id": "frozen-script-launcher-final-audit-and-stage-hashes",
+      "passed": true
+    },
+    {
+      "id": "current-source-closure-and-private-python",
+      "passed": true
+    },
+    {
+      "id": "complete-passing-chain-with-exact-final-check-inventory",
+      "passed": true
+    },
+    {
+      "id": "private-outer-namespace-toolchain-and-recorded-observation-bindings",
+      "passed": true
+    },
+    {
+      "id": "exact-owner-input-binding",
+      "passed": true
+    },
+    {
+      "id": "package-proof-reconstruction:candidate",
+      "passed": true
+    },
+    {
+      "id": "package-proof-reconstruction:comparison-3.70.1",
+      "passed": true
+    },
+    {
+      "id": "package-proof-reconstruction:comparison-3.110.0",
+      "passed": true
+    },
+    {
+      "id": "exact-package-role-inventory",
+      "passed": true
+    },
+    {
+      "id": "exact-twelve-persisted-registered-receipts-and-ten-lanes",
+      "passed": true
+    },
+    {
+      "id": "exact-recovery-invocation-and-full-embedded-cleanup",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:metadata-write",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:retained-covered",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:retained-uncovered",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:missing-event",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:invalid-evidence",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:checkout",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:post-upgrade-restore",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:failure-cleanup",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:reminder-recovery",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:logical-event-evolution",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:hexalith.p1r.cleanup-receipt.v1",
+      "passed": true
+    },
+    {
+      "id": "persisted-schema-witness-and-binding:hexalith.p1r.restore-receipt.v1",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:metadata-write",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:retained-covered",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:retained-uncovered",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:missing-event",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:invalid-evidence",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:checkout",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:post-upgrade-restore",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:failure-cleanup",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:reminder-recovery",
+      "passed": true
+    },
+    {
+      "id": "case-completeness:logical-event-evolution",
+      "passed": true
+    },
+    {
+      "id": "3218-assertions-72-cases-and-all-summary-bindings",
+      "passed": true
+    },
+    {
+      "id": "all-per-lane-summary-counters-match",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:metadata-write/3.110.0-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:metadata-write/3.70.1-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:retained-covered/3.110.0-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:retained-covered/3.70.1-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:checkout/retained-covered",
+      "passed": true
+    },
+    {
+      "id": "original-supported-direction:checkout/metadata-write",
+      "passed": true
+    },
+    {
+      "id": "exact-six-cases-sixteen-original-checks",
+      "passed": true
+    },
+    {
+      "id": "strict-nonempty-cleanup-seven-and-dependent-restore-twelve",
+      "passed": true
+    },
+    {
+      "id": "pending-role-conformance-support-usability-story-and-pinned-profile",
+      "passed": true
+    }
+  ],
+  "checks_total": 46,
+  "errors": [],
+  "final_report_sha256": "f52f8b3d66d54d4234d7b9a485d9bc34afe0e4d1224198f09cd3c3fdf87016df",
+  "finished_utc": "2026-10-14T13:03:59.474541+00:00",
+  "p1r_usable": false,
+  "packages": [
+    {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "receipt_sha256": "c0015128cd9c0a23ea249a078c041699c09e5461fc7b2914df35d1e69bfb1f4c",
+      "retained_files": 15,
+      "role": "candidate"
+    },
+    {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "receipt_sha256": "90b13a99fd7ccc394620fd8ccb560c9a8168fea78df7f4902cfed03b81da8eca",
+      "retained_files": 15,
+      "role": "comparison-3.70.1"
+    },
+    {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "receipt_sha256": "38ca51e2af947a36d977fc8ef498afef97a0c89b2f774a674e4d1c4d534133ba",
+      "retained_files": 15,
+      "role": "comparison-3.110.0"
+    }
+  ],
+  "passed": true,
+  "qualified": false,
+  "receipts": [
+    {
+      "assertions": {
+        "attempted": 226,
+        "failed": 0,
+        "passed": 226
+      },
+      "group": "scenarios",
+      "lane": "metadata-write",
+      "sha256": "a453cf7b9468a7930d127d6b21e69e371afab8ee834f51e0f4230363fb9094d7"
+    },
+    {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "group": "scenarios",
+      "lane": "retained-covered",
+      "sha256": "6a297cf4739b536f1f4e7c118e429695d1210198f2e580b27a61746b5fc1d85f"
+    },
+    {
+      "assertions": {
+        "attempted": 596,
+        "failed": 0,
+        "passed": 596
+      },
+      "group": "scenarios",
+      "lane": "retained-uncovered",
+      "sha256": "4a78b348bf428db1704a0086795347687b33ddc4ab3377e67c5cb0c66c7f1a6c"
+    },
+    {
+      "assertions": {
+        "attempted": 540,
+        "failed": 0,
+        "passed": 540
+      },
+      "group": "scenarios",
+      "lane": "missing-event",
+      "sha256": "6fc6bed0ce5cc55c5a0c65f971efaf29e6650c116b3cf443f75314e69f8979de"
+    },
+    {
+      "assertions": {
+        "attempted": 354,
+        "failed": 0,
+        "passed": 354
+      },
+      "group": "scenarios",
+      "lane": "invalid-evidence",
+      "sha256": "e30e8a303574958097f32be89addfccac8ef580543953e29304ffa2dfd2ee535"
+    },
+    {
+      "assertions": {
+        "attempted": 704,
+        "failed": 0,
+        "passed": 704
+      },
+      "group": "scenarios",
+      "lane": "checkout",
+      "sha256": "959e4ed9a8a64b44f58bae2829670fa6157785d6a84e812c5bf2c779904a1945"
+    },
+    {
+      "assertions": {
+        "attempted": 61,
+        "failed": 0,
+        "passed": 61
+      },
+      "group": "scenarios",
+      "lane": "post-upgrade-restore",
+      "sha256": "52c2b61573317695c73a7539bc78ef6b73071b1537c79e3982ef74d76bbbac2d"
+    },
+    {
+      "assertions": {
+        "attempted": 115,
+        "failed": 0,
+        "passed": 115
+      },
+      "group": "scenarios",
+      "lane": "failure-cleanup",
+      "sha256": "7b834c969600327a3a21a6425b4aaf71a2e1ff6091d78c8bdd71e79240e7d4f3"
+    },
+    {
+      "assertions": {
+        "attempted": 131,
+        "failed": 0,
+        "passed": 131
+      },
+      "group": "additions",
+      "lane": "reminder-recovery",
+      "sha256": "59c4787e6647097822d4b7b5ce1ac2a38906b49a5524d28bd7084539673884e3"
+    },
+    {
+      "assertions": {
+        "attempted": 193,
+        "failed": 0,
+        "passed": 193
+      },
+      "group": "additions",
+      "lane": "logical-event-evolution",
+      "sha256": "1dfcf6c853ac6a268bfa4565bc99b6451a51798291f689c11f2d8ba65b9d5e6d"
+    },
+    {
+      "assertions": {
+        "attempted": 7,
+        "failed": 0,
+        "passed": 7
+      },
+      "group": "recovery",
+      "lane": "container-cleanup",
+      "sha256": "8e8f8b7e53f543f15349cb3d3cbc47a081c398d588d12f6d8e025b647a809278"
+    },
+    {
+      "assertions": {
+        "attempted": 12,
+        "failed": 0,
+        "passed": 12
+      },
+      "group": "recovery",
+      "lane": "candidate-restore",
+      "sha256": "62664dbfcaa491fbff946ea3a5cea582b17625bb07d6360225514f8592b824e5"
+    }
+  ],
+  "reconstructed_assertions": {
+    "attempted": 3218,
+    "failed": 0,
+    "passed": 3218
+  },
+  "reconstructed_cases": 72,
+  "repaired_cases": [
+    {
+      "case": "3.110.0-to-3.121.0",
+      "lane": "metadata-write",
+      "original_checks": [
+        "primary-expected-hydration",
+        "append-effect-accepted",
+        "append-thirteen"
+      ]
+    },
+    {
+      "case": "3.70.1-to-3.121.0",
+      "lane": "metadata-write",
+      "original_checks": [
+        "primary-expected-hydration",
+        "append-effect-accepted",
+        "append-thirteen"
+      ]
+    },
+    {
+      "case": "3.110.0-to-3.121.0",
+      "lane": "retained-covered",
+      "original_checks": [
+        "primary-expected-hydration"
+      ]
+    },
+    {
+      "case": "3.70.1-to-3.121.0",
+      "lane": "retained-covered",
+      "original_checks": [
+        "primary-expected-hydration"
+      ]
+    },
+    {
+      "case": "retained-covered",
+      "lane": "checkout",
+      "original_checks": [
+        "package:primary-expected-hydration",
+        "source:primary-expected-hydration"
+      ]
+    },
+    {
+      "case": "metadata-write",
+      "lane": "checkout",
+      "original_checks": [
+        "package:primary-expected-hydration",
+        "package:append-effect-accepted",
+        "package:append-thirteen",
+        "source:primary-expected-hydration",
+        "source:append-effect-accepted",
+        "source:append-thirteen"
+      ]
+    }
+  ],
+  "schema": "hexalith.p1r.final-handoff-recheck.v1",
+  "scope": "independent-read-only-reconstruction-of-retained-successful-chain",
+  "stage_interpreter": {
+    "argv_path": "/opt/python/bin/python3",
+    "bound_resolved_path": "/opt/python/bin/python3.12",
+    "note": "The command records sys.executable; source_binding records Path(sys.executable).resolve()."
+  },
+  "started_utc": "2026-10-14T13:03:04.569148+00:00",
+  "story_6_1": "blocked"
+}

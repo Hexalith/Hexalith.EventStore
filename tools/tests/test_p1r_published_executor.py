@@ -20,7 +20,957 @@ import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
 
 
+class QualifiedSnapshotWitnessTests(unittest.TestCase):
+    candidate_version = '3.121.0'
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+
+    def testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof(self):
+        for lane in ('snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
+            for writer in (self.candidate_version,'source'):
+                with self.subTest(lane=lane,writer=writer):
+                    self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
+            for writer in ('3.110.0','3.70.1','3.122.2',
+                           '3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
+                with self.subTest(lane=lane,writer=writer):
+                    self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
+        self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
+        for version in ('3.119.0','3.122.0','3.122.2'):
+            self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
+            self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
+
+    def validate(self,fixture,lane='post-upgrade-restore'):
+        row,evidence,binding,sources = fixture
+        executor.witnesses.validate_case(row,evidence,binding,lane,sources,candidate_version=self.candidate_version)
+
+    def testEveryRequiredCaseExecutesActualStrictValidatorWithSelectedPhysicalWriter(self):
+        for lane in ('post-upgrade-restore','snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
+            for writer in ((self.candidate_version,) if lane == 'post-upgrade-restore' else (self.candidate_version,'source')):
+                with self.subTest(lane=lane,writer=writer):
+                    fixture = self.fixture(writer_version=writer,lane=lane)
+                    actual_validator = executor.witnesses.validate_qualified_snapshot
+                    with mock.patch.object(executor.witnesses,'validate_qualified_snapshot',wraps=actual_validator) as validator:
+                        self.validate(fixture,lane)
+                    validator.assert_called_once()
+                    self.assertEqual(validator.call_args.args[-1],writer)
+                    changed = copy.deepcopy(fixture)
+                    del changed[1]['observations']['seed_snapshot']
+                    with self.assertRaisesRegex(preparation.InvalidPacket,'genuine seed'):
+                        self.validate(changed,lane)
+
+    def testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing(self):
+        for mutation in ('source','envelope','probe','launch','provider'):
+            fixture = self.fixture(writer_version='source',lane='snapshot-tail')
+            with self.subTest(mutation=mutation):
+                if mutation == 'source':
+                    del fixture[1]['snapshot_fixture_source']
+                elif mutation == 'envelope':
+                    seed = fixture[1]['observations']['seed_snapshot']
+                    seed['persisted_snapshot']['snapshotEnvelopeVersion'] = 0
+                    self.change_output(fixture[1]['commands'][11],lambda value:value[0].__setitem__(1,seed['persisted_snapshot']))
+                    for name,index in (('before_tail',12),('after_tail',16)):
+                        next(item for item in seed[name] if item['kind']=='snapshot')['sha256'] = executor.digest(executor.canonical(seed['persisted_snapshot']))
+                        fixture[1]['commands'][index]['output'] = executor.canonical(seed[name]).decode()
+                        fixture[1]['commands'][index]['output_sha256'] = executor.digest(fixture[1]['commands'][index]['output'].encode())
+                elif mutation == 'probe':
+                    fixture[1]['commands'][5]['probe_binary']['configuration'] = 'Release'
+                elif mutation == 'launch':
+                    configuration = fixture[1]['configurations'][0]
+                    configuration['version'] = self.candidate_version
+                    for command in fixture[1]['commands']:
+                        if command.get('runtime_configuration') == configuration['id']:
+                            command['runtime_configuration_sha256'] = executor.digest(executor.canonical(configuration))
+                else:
+                    fixture[1]['commands'][11]['input_sha256'] = executor.digest(b'SELECT substituted')
+                self.rehash_inventory(fixture)
+                with self.assertRaises(preparation.InvalidPacket):
+                    self.validate(fixture,'snapshot-tail')
+
+    def testFullSuccessorAdmissionPassesIntactAndRejectsDeletedProof(self):
+        fixture = self.fixture()
+        self.validate(fixture)
+        removed = copy.deepcopy(fixture)
+        del removed[1]['observations']['seed_snapshot']
+        with self.assertRaisesRegex(preparation.InvalidPacket,'genuine seed'):
+            self.validate(removed)
+        # Historical admission remains independent of the successor-only proof.
+        executor.witnesses.validate_case(removed[0],removed[1],removed[2],'post-upgrade-restore',removed[3])
+        for name in ('registration','manual','persisted_snapshot','before_tail','after_tail','tail'):
+            changed = copy.deepcopy(fixture)
+            del changed[1]['observations']['seed_snapshot'][name]
+            with self.subTest(name=name), self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+        for identity in ('qualified-snapshot-created-by-published-actor','qualified-snapshot-prefix-coordinate-exact',
+                         'qualified-snapshot-tail-coordinate-exact'):
+            changed = copy.deepcopy(fixture)
+            index = next(i for i,item in enumerate(changed[0]['checks']) if item['id'] == identity)
+            del changed[0]['checks'][index]
+            del changed[1]['check_witnesses'][index]
+            changed[0]['assertions'] = preparation.checks_counter(changed[0]['checks'])
+            with self.subTest(identity=identity), self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+
+    def testProviderBindsExactBase64SnapshotBytesIncludingCSharpPropertyOrder(self):
+        fixture = self.fixture()
+        seed = fixture[1]['observations']['seed_snapshot']
+        raw = json.dumps(seed['persisted_snapshot'],separators=(',',':')).encode()
+        self.assertNotEqual(raw,executor.canonical(seed['persisted_snapshot']))
+        self.change_output(fixture[1]['commands'][11],lambda value:value[0].__setitem__(1,base64.b64encode(raw).decode()))
+        for name,index in (('before_tail',12),('after_tail',16)):
+            next(item for item in seed[name] if item['kind']=='snapshot')['sha256'] = executor.digest(raw)
+            fixture[1]['commands'][index]['output'] = executor.canonical(seed[name]).decode()
+            fixture[1]['commands'][index]['output_sha256'] = executor.digest(fixture[1]['commands'][index]['output'].encode())
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+        self.change_output(fixture[1]['commands'][11],lambda value:value[0].__setitem__(1,
+            base64.b64encode(executor.canonical(seed['persisted_snapshot'])).decode()))
+        with self.assertRaisesRegex(preparation.InvalidPacket,'persisted inventory hash'):
+            self.validate(fixture)
+
+    def testChronologicalSeedCompletionCannotBeSubstituted(self):
+        fixture = self.fixture()
+        fixture[1]['commands'][6]['started_utc'] = '2026-10-14T00:00:07.500000+00:00'
+        self.rehash_inventory(fixture)
+        with self.assertRaisesRegex(preparation.InvalidPacket,'not chronological'):
+            self.validate(fixture)
+
+    def testServingBinariesMustPhysicallyExistAndMatchRetainedDigest(self):
+        for project in ('Host','Domain'):
+            for replacement in (None,b'replaced serving binary'):
+                fixture = self.fixture()
+                command = next(item for item in fixture[1]['commands'] if item.get('consumer_binary',{}).get('project')==project)
+                path = Path(command['argv'][1])
+                if replacement is None:
+                    path.unlink()
+                else:
+                    path.write_bytes(replacement)
+                with self.subTest(project=project,replacement=replacement), self.assertRaises((preparation.InvalidPacket,FileNotFoundError)):
+                    self.validate(fixture)
+
+    def testProviderMutationInsideGenuineSeedWindowIsRejectedButLaterDiagnosticsRemainAllowed(self):
+        fixture = self.fixture()
+        command = copy.deepcopy(fixture[1]['commands'][11])
+        command.update(id=100,provider_sql='TRUNCATE TABLE state;',input_sha256=executor.digest(b'TRUNCATE TABLE state;'),
+                       input_bytes=len(b'TRUNCATE TABLE state;'),output='',output_sha256=executor.digest(b''))
+        fixture[1]['commands'].append(command)
+        self.rehash_inventory(fixture)
+        with self.assertRaisesRegex(preparation.InvalidPacket,'provider mutation'):
+            self.validate(fixture)
+        command.update(started_utc='2026-10-14T00:00:22+00:00',finished_utc='2026-10-14T00:00:22.500000+00:00')
+        self.validate(fixture)
+
+    def import_fixture(self,scope='published-package'):
+        row,evidence,binding,sources = self.fixture()
+        evidence['id'] = row['id']
+        profile = {'runtime':'dapr','runtime_version':'1.18.2','backend':'state.postgresql',
+                   'backend_image':executor.POSTGRES,'selected_by':'test-owner','reference':'synthetic control only'}
+        for command in evidence['commands']:
+            command['cwd'] = str(preparation.ROOT)
+        template = (preparation.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_text()
+        for config in evidence['configurations']:
+            config['runtime_version'] = profile['runtime_version']
+            for file in config['files']:
+                file['content'] = template if file.get('name') == 'state.yaml' else 'synthetic configuration'
+                file['sha256'] = executor.digest(file['content'].encode())
+                if file.get('name') == 'state.yaml':
+                    file['credential_redacted'] = True
+                    config['state_component_sha256'] = file['sha256']
+            for command in evidence['commands']:
+                if command.get('runtime_configuration') == config['id']:
+                    command['runtime_configuration_sha256'] = executor.digest(executor.canonical(config))
+        selection = {'candidate':{'version':self.candidate_version},'rollback':None,
+            'comparisons':[{'version':version} for version in qualification.COMPARISON_VERSIONS],
+            'selected_additions':[],'operational_profile':profile,'assertion_instrumentation':{'mechanism':executor.MECHANISM}}
+        verified = {role:{'archives':{'Hexalith.EventStore.Server':str(index)*64},'dlls':{str(index+4)*64}}
+                    for index,role in enumerate(('candidate',*('comparison-'+version for version in qualification.COMPARISON_VERSIONS)),1)}
+        context = {'inputs':{'value':selection,'scope':'owner-selected','sha256':'1'*64},
+                   'source_binding':binding,'verified':verified}
+        executed = {'mechanism':executor.MECHANISM,'cases':[evidence],'executor_source':binding,'predicate_sources':sources,
+                    'executor_source_sha256':executor.digest(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n')}
+        receipt = {'schema':qualification.LANE_RECEIPT_SCHEMA,'id':'2'*32,'lane':'post-upgrade-restore','scope':scope,
+            'fixture':{'id':'p1r-'+'b'*32,'synthetic':False},'inputs_sha256':'1'*64,'instrumentation':executor.MECHANISM,
+            'profile':profile if scope=='operational' else None,'argv':['python3','synthetic control'],
+            'cwd':str(preparation.ROOT),'started_utc':'2026-10-14T00:00:00+00:00','finished_utc':'2026-10-14T00:00:30+00:00',
+            'exit_code':0,'identities':{'configuration':'Release',
+                'packages':[{'id':key,'sha256':value} for entry in verified.values() for key,value in entry['archives'].items()],
+                'loaded_assemblies':[{'name':'Hexalith.EventStore.Server','version':self.candidate_version,'path':'/synthetic/Server.dll',
+                    'sha256':value} for entry in verified.values() for value in entry['dlls']]},
+            'cases':[row],'execution_evidence':executed,'output_sha256':executor.digest(executor.canonical(executed)),
+            'assertions':row['assertions'],'execution':'passed','compatibility':'compatible'}
+        if self.candidate_version == '3.122.1':
+            receipt = self.attach_isolation(receipt,context)
+        return receipt,context
+
+    def attach_isolation(self,receipt,context):
+        import p1r_isolation as isolation
+        root = Path(self.temporary.name)
+        wrapper_root = root/'wrapper'
+        path = root/'receipts'/(receipt['id']+'.json')
+        executor.write_json(path,receipt)
+        execution = json.loads((root/'execution.json').read_bytes())
+        execution.update(schema='hexalith.p1r.executor.v1',started_utc='2026-10-14T00:00:00+00:00',
+            finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=receipt['inputs_sha256'],receipts=[str(path)])
+        executor.write_json(root/'execution.json',execution)
+        command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(root/'inputs.json')]
+        invocation,sdk,daemon = 'f'*32,'c'*64,'d'*64
+        scratch,volume = str(root/'removed-scratch'),'owned-volume'
+        private = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
+            'finished_utc':'2026-10-14T00:00:32+00:00','passed':True,'exit_code':0,'errors':[],'command':command,
+            'source_binding':context['source_binding'],'source_checked_after_cleanup':True,
+            'cleanup':[{'remaining':[],'errors':[]} for _ in range(2)],
+            'proof':{'outer_daemon_id':'outer','daemon':{'ID':'private','DockerRootDir':'/var/lib/docker/data'},
+                'socket':isolation.SOCKET,'namespaces':{'net':'net:[1]','pid':'pid:[2]'},
+                'daemon_namespaces':{'net':'net:[1]','pid':'pid:[2]'}}}
+        python = context['source_binding']['python']
+        private['proof'].update(executables={'python':{'path':python['path'],'sha256':python['sha256']}},python_version=python['version'])
+        private_path = wrapper_root/'private-execution.json'
+        executor.write_json(private_path,private)
+        wrapper = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
+            'finished_utc':'2026-10-14T00:00:40+00:00','passed':True,'command_exit_code':0,'errors':[],'inner_command':command,
+            'images':{'sdk':isolation.SDK_IMAGE,'daemon':isolation.DAEMON_IMAGE,'python':isolation.PYTHON_IMAGE},
+            'outer_daemon_id':'outer','pending_containers':{},'sdk':sdk,'daemon':daemon,
+            'owned_containers':{sdk:{'role':'sdk','image':isolation.SDK_IMAGE},daemon:{'role':'daemon','image':isolation.DAEMON_IMAGE}},
+            'owned_volume':volume,'owned_scratch':scratch,
+            'private_execution':{'path':str(private_path),'sha256':executor.digest(private_path.read_bytes())},
+            'runner_proof':{'Id':sdk,'Labels':{isolation.LABEL:invocation},'NetworkMode':'container:'+daemon,'PidMode':'container:'+daemon,
+                'Ports':{},'Privileged':False,'Mounts':[{'Destination':'/var/lib/docker','Type':'volume','Name':volume},
+                    {'Destination':str(preparation.ROOT),'Source':str(preparation.ROOT),'Type':'bind'}]},
+            'cleanup':[{'remaining':[],'errors':[],'absent_containers':[sdk,daemon],'absent_volumes':[volume],
+                'absent_scratch':[scratch],'nested_inventory':{'complete':True,'containers':[]}} for _ in range(2)]}
+        wrapper.update(outer_host='unix:///outer',commands=[])
+        prefix = ['docker','--host',wrapper['outer_host'],'--config',str(Path(scratch)/'docker-config')]
+        for index,attempt in enumerate(wrapper['cleanup']):
+            second = 34+2*index
+            attempt.update(started_utc=f'2026-10-14T00:00:{second}+00:00',finished_utc=f'2026-10-14T00:00:{second+1}+00:00')
+            arguments = [(['exec',daemon,'docker','--host',isolation.SOCKET,'ps','-aq','--no-trunc'],0,'')]
+            arguments += [(['inspect','--format',isolation.INSPECT,identity],1,'No such container') for identity in (sdk,sdk,daemon,daemon)]
+            arguments += [(['volume','inspect','--format','{{json .}}',volume],1,'no such volume') for _ in range(2)]
+            for sequence,(argv,code,output) in enumerate(arguments):
+                wrapper['commands'].append({'argv':prefix+argv,'exit_code':code,'output':output,'output_sha256':executor.digest(output.encode()),
+                    'started_utc':f'2026-10-14T00:00:{second}.{sequence+1:06d}+00:00',
+                    'finished_utc':f'2026-10-14T00:00:{second}.{sequence+2:06d}+00:00'})
+        executor.write_json(wrapper_root/'isolation.json',wrapper)
+        qualification.finalize_isolation_receipts(root,wrapper_root,context['inputs']['value'])
+        return json.loads(path.read_bytes())
+
+    def testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof(self):
+        receipt,context = self.import_fixture()
+        self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        for mutation in ('missing','provider'):
+            changed = copy.deepcopy(receipt)
+            evidence = changed['execution_evidence']['cases'][0]
+            if mutation == 'missing':
+                del evidence['observations']['seed_snapshot']
+            else:
+                self.change_output(evidence['commands'][11],lambda value:value[0][1].update(state={'count':8}))
+            changed['output_sha256'] = executor.digest(executor.canonical(changed['execution_evidence']))
+            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
+                qualification.receipt_outcome(changed,context)
+        changed = copy.deepcopy(receipt)
+        del changed['execution_evidence']['cases'][0]['observations']['seed_snapshot']
+        changed['output_sha256'] = executor.digest(executor.canonical(changed['execution_evidence']))
+        actual = executor.witnesses.validate_case
+        def drop_forwarding(row,evidence,binding,lane,sources,**kwargs):
+            return actual(row,evidence,binding,lane,sources)
+        # The missing-proof refusal control itself fails when candidate forwarding is removed.
+        with mock.patch.object(executor.witnesses,'validate_case',side_effect=drop_forwarding):
+            with self.assertRaises(AssertionError):
+                with self.assertRaises(preparation.InvalidPacket):
+                    qualification.receipt_outcome(changed,context)
+    def testUnverifiedProbePathsDigestsFailedExitsAndTailEndpointsAreRejected(self):
+        fixture = self.fixture()
+        for identity in (6,7,16):
+            for field,value in ((1,'/unverified/Probe.dll'),('exit_code',1)):
+                changed = copy.deepcopy(fixture)
+                command = changed[1]['commands'][identity-1]
+                if field == 1:
+                    command['argv'][1] = value
+                else:
+                    command[field] = value
+                with self.subTest(identity=identity,field=field), self.assertRaises((preparation.InvalidPacket,FileNotFoundError)):
+                    self.validate(changed)
+        for mutate in (lambda command:command['argv'].__setitem__(3,'http://127.0.0.1:29999'),
+                       lambda command:command['probe_binary'].update(role='comparison-3.110.0'),
+                       lambda command:command['probe_binary'].update(configuration='Debug'),
+                       lambda command:command['probe_binary'].update(sha256='f'*64)):
+            changed = copy.deepcopy(fixture)
+            mutate(changed[1]['commands'][15])
+            with self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+        binary = Path(fixture[1]['commands'][5]['argv'][1])
+        binary.write_bytes(b'replaced at the same physical path')
+        with self.assertRaisesRegex(preparation.InvalidPacket,'physical digest'):
+            self.validate(fixture)
+
+    def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
+        fixture = self.fixture()
+        for version in ('source','3.122.2','3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
+            changed = copy.deepcopy(fixture)
+            config = changed[1]['configurations'][0]
+            config['version'] = version
+            for command in changed[1]['commands']:
+                if command.get('runtime_configuration') == config['id']:
+                    command['runtime_configuration_sha256'] = executor.digest(executor.canonical(config))
+            with self.subTest(version=version), self.assertRaisesRegex(preparation.InvalidPacket,'launch configuration'):
+                self.validate(changed)
+        for identity,field,value in ((8,'exit_code',1),(11,'process',None),(19,'process',fixture[1]['commands'][10]['process']),
+                                     (3,'exit_code',1),(4,'exit_code',1),(15,'exit_code',1)):
+            changed = copy.deepcopy(fixture)
+            changed[1]['commands'][identity-1][field] = value
+            with self.subTest(identity=identity,field=field), self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+        changed = copy.deepcopy(fixture)
+        config = changed[1]['configurations'][1]
+        config['state_container'] = 'f'*64
+        changed[1]['commands'][18]['runtime_configuration_sha256'] = executor.digest(executor.canonical(config))
+        with self.assertRaisesRegex(preparation.InvalidPacket,'persisted stream'):
+            self.validate(changed)
+        # Graceful cleanup can intentionally terminate a launch, after readiness and the calls.
+        changed = copy.deepcopy(fixture)
+        for index in (7,8,9,10,17,18):
+            changed[1]['commands'][index]['exit_code'] = -15
+        self.validate(changed)
+
+    def testProviderMustReadExactStateQueryFromOwnedDatabaseSuccessfully(self):
+        fixture = self.fixture()
+        for mutate in (lambda command:command['argv'].__setitem__(3,'f'*64),
+                       lambda command:command.update(exit_code=1),
+                       lambda command:command.update(input_sha256=executor.digest(b'SELECT fake')),
+                       lambda command:command['argv'].__setitem__(8,'other-database')):
+            changed = copy.deepcopy(fixture)
+            mutate(changed[1]['commands'][11])
+            with self.assertRaisesRegex(preparation.InvalidPacket,'owned provider'):
+                self.validate(changed)
+        execution_path = Path(self.temporary.name)/'execution.json'
+        execution_value = json.loads(execution_path.read_text())
+        execution_value['owned_containers'] = {}
+        executor.write_json(execution_path,execution_value)
+        with self.assertRaisesRegex(preparation.InvalidPacket,'invocation-owned database'):
+            self.validate(fixture)
+
+    def testTailCountAndDistinctOrderedInventoriesCannotBeSubstituted(self):
+        fixture = self.fixture()
+        changed = copy.deepcopy(fixture)
+        self.change_output(changed[1]['commands'][15],lambda value:value['observation'].update(committed=2,sequence=11))
+        changed[1]['observations']['seed_snapshot']['tail'].update(committed=2,sequence=11)
+        with self.assertRaisesRegex(preparation.InvalidPacket,'actual append'):
+            self.validate(changed)
+        for identity,field,value in ((17,'started_utc','2026-10-14T00:00:13+00:00'),(13,'exit_code',1),(17,'exit_code',1)):
+            changed = copy.deepcopy(fixture)
+            changed[1]['commands'][identity-1][field] = value
+            with self.subTest(identity=identity,field=field), self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+        changed = copy.deepcopy(fixture)
+        before = changed[1]['observations']['seed_snapshot']['before_tail']
+        changed[1]['observations']['seed_snapshot']['after_tail'] = before
+        del changed[1]['commands'][16]
+        with self.assertRaises(preparation.InvalidPacket):
+            self.validate(changed)
+        for name,command_index in (('before_tail',12),('after_tail',16)):
+            changed = copy.deepcopy(fixture)
+            rows = changed[1]['observations']['seed_snapshot'][name]
+            next(item for item in rows if item['tenant']=='tenant-a' and item['kind']=='metadata')['sequence'] -= 1
+            rows[:] = [item for item in rows if not(item['tenant']=='tenant-a' and item['kind']=='event' and item['sequence']==5)]
+            changed[1]['commands'][command_index]['output'] = executor.canonical(rows).decode()
+            self.rehash_inventory(changed)
+            with self.subTest(name=name), self.assertRaisesRegex(preparation.InvalidPacket,'contradicts retained execution'):
+                self.validate(changed)
+
+    def testFailedActualTailAndCoordinatesRemainRecordedFailures(self):
+        fixture = self.fixture()
+        row,evidence,_,_ = fixture
+        tail = evidence['observations']['seed_snapshot']['tail']
+        tail.clear()
+        tail.update(committed=2,accepted=False,event_count=0,error='retained failed append')
+        command = evidence['commands'][15]
+        value = json.loads(command['output'])
+        value['observation'] = tail
+        for check in value['measurement']['checks'][-2:]:
+            check['passed'] = False
+        value['measurement']['assertions'] = preparation.checks_counter(value['measurement']['checks'])
+        command['output'] = executor.canonical(value).decode()
+        rows = evidence['observations']['seed_snapshot']['after_tail']
+        rows[:] = [item for item in rows if not(item['tenant']=='tenant-a' and item['kind']=='event' and item['sequence']==12)]
+        next(item for item in rows if item['tenant']=='tenant-a' and item['kind']=='metadata')['sequence'] = 11
+        evidence['commands'][16]['output'] = executor.canonical(rows).decode()
+        failed = {'tenant-a:tail:append-3-accepted','tenant-a:tail:append-3-one-event',
+                  'tenant-a:committed-count','seed-persisted-fifteen-events','qualified-snapshot-tail-coordinate-exact'}
+        for check,witness in zip(row['checks'],evidence['check_witnesses']):
+            if check['id'] in failed:
+                check['passed'] = False
+                if witness['kind'] == 'predicate':
+                    witness['predicate']['value'] = False
+        row['assertions'] = preparation.checks_counter(row['checks'])
+        row['disposition'] = 'incompatible'
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+        self.assertEqual(row['assertions']['failed'],5)
+
+    def testEveryLimitAndDerivedReservationIsBoundToSharedFixtureSource(self):
+        fixture = self.fixture()
+        for name in fixture[1]['observations']['seed_snapshot']['registration']['limits']:
+            changed = copy.deepcopy(fixture)
+            registration = changed[1]['observations']['seed_snapshot']['registration']
+            registration['limits'][name] += 1
+            for command in changed[1]['commands']:
+                if command['id'] in (1,5):
+                    self.change_output(command,lambda value:value.update(snapshot_qualification=registration))
+            with self.subTest(name=name), self.assertRaisesRegex(preparation.InvalidPacket,'finite profile'):
+                self.validate(changed)
+        changed = copy.deepcopy(fixture)
+        del changed[1]['snapshot_fixture_source']
+        with self.assertRaisesRegex(preparation.InvalidPacket,'retained shared fixture source'):
+            self.validate(changed)
+
+    def testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope(self):
+        fixture = self.fixture()
+        for name,value in (('tenantId','tenant-b'),('domain','other'),('aggregateId','other'),
+                           ('snapshotEnvelopeVersion',0),('state',{'count':8}),
+                           ('protectionMetadata',{'state':0,'metadataVersion':2}),
+                           ('createdAt','2026-10-14T00:00:01+00:00')):
+            changed = copy.deepcopy(fixture)
+            snapshot = changed[1]['observations']['seed_snapshot']['persisted_snapshot']
+            snapshot[name] = value
+            self.change_output(changed[1]['commands'][11],lambda raw:raw[0].__setitem__(1,snapshot))
+            for inventory in (changed[1]['observations']['seed_snapshot']['before_tail'],changed[1]['observations']['seed_snapshot']['after_tail']):
+                next(item for item in inventory if item['kind']=='snapshot')['sha256'] = executor.digest(executor.canonical(snapshot))
+            changed[1]['commands'][12]['output'] = executor.canonical(changed[1]['observations']['seed_snapshot']['before_tail']).decode()
+            changed[1]['commands'][16]['output'] = executor.canonical(changed[1]['observations']['seed_snapshot']['after_tail']).decode()
+            self.rehash_inventory(changed)
+            with self.subTest(name=name), self.assertRaises(preparation.InvalidPacket):
+                self.validate(changed)
+
+    @staticmethod
+    def change_output(command,mutate):
+        value = json.loads(command['output'])
+        mutate(value)
+        command['output'] = executor.canonical(value).decode()
+        command['output_sha256'] = executor.digest(command['output'].encode())
+
+    @staticmethod
+    def rehash_inventory(fixture):
+        row,evidence,_,_ = fixture
+        row['inventory'] = {name+'_sha256':executor.digest(executor.canonical([item for item in evidence['observations'][name]
+                          if item['kind']!='bookkeeping'])) for name in ('before','after')}
+
+    def fixture(self,writer_version=None,lane='post-upgrade-restore'):
+        writer_version = self.candidate_version if writer_version is None else writer_version
+        role,configuration = ('source','Debug') if writer_version == 'source' else ('candidate','Release')
+        root = Path(self.temporary.name)
+        consumer = root/'consumers'/role
+        binary = consumer/'probe/bin'/configuration/'net10.0/Probe.dll'
+        binary.parent.mkdir(parents=True,exist_ok=True)
+        binary.write_bytes(b'private synthetic probe binary')
+        serving_binaries = {}
+        for project in ('Host','Domain'):
+            path = consumer/project.lower()/'bin'/configuration/'net10.0'/(project+'.dll')
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(('physical synthetic '+project).encode())
+            serving_binaries[project] = {'role':role,'configuration':configuration,'project':project,
+                'path':str(path),'sha256':executor.digest(path.read_bytes())}
+        executor.write_json(consumer/'serving-binaries.json',serving_binaries)
+        binary_witness = {'role':role,'configuration':configuration,'path':str(binary),'sha256':executor.digest(binary.read_bytes())}
+        executor.write_json(consumer/'probe-binary.json',binary_witness)
+        executor.write_json(consumer/'evidence.json',{'role':role,'configuration':configuration,
+            'projects':[{'name':'Probe','output':'probe/bin/'+configuration+'/net10.0'}]})
+        fixture_path = preparation.ROOT/'tools/p1r-published-consumers/FixtureSnapshotQualification.cs'
+        fixture_source = {'path':str(fixture_path),'sha256':executor.digest(fixture_path.read_bytes()),'content':fixture_path.read_text()}
+        test_path = Path(__file__).resolve()
+        test_source = {'path':str(test_path),'sha256':executor.digest(test_path.read_bytes()),'content':test_path.read_text()}
+        binding = {'repository':str(preparation.ROOT),'main':{'files':[
+            {'path':str(path.relative_to(preparation.ROOT)),'sha256':executor.digest(path.read_bytes())}
+            for path in (fixture_path,test_path)]}}
+        python_path = Path(sys.executable).resolve()
+        binding['python'] = {'path':str(python_path),'sha256':executor.digest(python_path.read_bytes()),'version':list(sys.version_info[:3])}
+        executor.write_json(root/'executor-source.json',binding)
+        database,invocation = 'a'*64,'b'*32
+        owned = {'name':'p1r-'+invocation+'-source-control','image':executor.POSTGRES,'role':'source','port':15432}
+        executor.write_json(root/'execution.json',{'invocation':invocation,'owned_containers':{database:owned},
+            'executor_source_sha256':executor.digest((root/'executor-source.json').read_bytes())})
+        executor.write_json(root/'commands.json',[{'argv':['docker','inspect',database],'exit_code':0,
+            'output':json.dumps({'Id':database,'Name':'/'+owned['name'],'Config':{'Labels':{'hexalith.p1r.invocation':invocation}}})}])
+        state = {'name':'state.yaml','path':str(root/'resources/state.yaml'),'sha256':'c'*64,'rendered_sha256':'d'*64,'content':'state.postgresql'}
+        configurations = [{'id':identity,'version':writer_version,'state_container':database,'snapshot_interval':10,
+            'state_component_sha256':'c'*64,'backend_image':executor.POSTGRES,'files':[state,
+            {'path':str(root/'resources/pubsub.yaml')},{'path':str(root/'discovery.yaml')}]} for identity in ('first','restarted')]
+        snapshot = {'tenantId':'tenant-a','domain':'counter','aggregateId':'fixture','sequenceNumber':9,
+            'snapshotEnvelopeVersion':1,'state':{'count':9},'createdAt':'2026-10-14T00:00:09.500000+00:00',
+            'protectionMetadata':{'state':0,'metadataVersion':1,'scheme':None,'keyAlias':None,'contentHint':None,'compatibilityFlags':None}}
+        key = 'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:'
+        def inventory(head,second=False):
+            rows = [{'key':key+'metadata','tenant':'tenant-a','kind':'metadata','sequence':head,'floor':1,'sha256':str(head).zfill(64)},
+                    {'key':key+'snapshot','tenant':'tenant-a','kind':'snapshot','sequence':9,'floor':None,'sha256':executor.digest(executor.canonical(snapshot))}]
+            rows.extend({'key':key+'events:'+str(index),'tenant':'tenant-a','kind':'event','sequence':index,'floor':None,'sha256':str(index).zfill(64)} for index in range(1,head+1))
+            if second:
+                rows.extend({'key':'tenant-b:event:'+str(index),'tenant':'tenant-b','kind':'event','sequence':index,'floor':None,'sha256':'e'*64} for index in range(1,4))
+            return sorted(rows,key=lambda row:row['key'])
+        before,after = inventory(9),inventory(12,True)
+        limits = {'maximumCaptureWorkspaceBytes':512000,'maximumPreCommandStateGraphBytes':1024,'maximumWorkingStateGraphBytes':1024,
+            'maximumDetachedEventGraphBytes':8192,'maximumEventCount':16,'maximumEventBytes':1024,'maximumStateJsonBytes':1024,
+            'maximumDomainParsedStateGraphBytes':8192,'maximumEscapedWireStateBytes':6146,'maximumActorParsedStateBytes':1024,
+            'maximumActorParsedGraphBytes':8192,'maximumCanonicalStateMeasurementBytes':1024,'maximumCanonicalEnvelopeBytes':8192,
+            'maximumNodeCount':100,'maximumDepth':16,'maximumSerializerScratchBytes':262144,'maximumSimultaneousLiveBytes':512000,
+            'maximumActorWorkspaceBytes':512000,'domainReservationBytes':294914,'actorReservationBytes':292864}
+        registration = {'registered':True,'test_only':True,'profile_id':'p1r-counter-folded-v1',
+            'parity_evidence_id':'p1r-counter-roundtrip-event-parity-v1','state_json':{'count':9},
+            'state_sha256':executor.digest(executor.canonical({'count':9})),'state_roundtrip':True,
+            'original_count':9,'roundtrip_count':9,'canonical_event_parity':True,'canonical_event_sha256':executor.digest(b'{}'),
+            'detached_apply':True,'applied_count':10,'limits':limits}
+        manual = {'outcome':'Created','sequence':9,'snapshot_key':'tenant-a:counter:fixture:snapshot','reason_code':None,'message':None}
+        tail = {'committed':3,'sequence':12}
+        measurements = executor.Measurements()
+        commands = []
+        import datetime
+        def timestamp(second):
+            return (datetime.datetime(2026,10,14,tzinfo=datetime.timezone.utc)+datetime.timedelta(seconds=second)).isoformat()
+        def record(argv,value,start,end,launch=False,config=None):
+            output = value if isinstance(value,str) else executor.canonical(value).decode()
+            command = {'id':len(commands)+1,'argv':argv,'exit_code':0,'started_utc':timestamp(start),'finished_utc':timestamp(end),
+                       'output':output,'output_sha256':executor.digest(output.encode())}
+            if launch:
+                command.update(process={'pid':command['id'],'pgid':command['id'],'session':command['id'],'start_ticks':command['id']},
+                               cleanup=[{'remaining':[],'errors':[]}])
+                command['owned_processes'] = [command['process']]
+                command['cleanup'][0]['before'] = [command['process']]
+            if config is not None:
+                command.update(runtime_configuration=config['id'],runtime_configuration_sha256=executor.digest(executor.canonical(config)))
+            if argv[:1] == ['dotnet'] and argv[1] == str(binary):
+                command['probe_binary'] = dict(binary_witness)
+            commands.append(command)
+            return command
+        def probe(value,identities):
+            checks = [{'id':identity,'passed':True} for identity in identities]
+            return {'instrumentation':executor.MECHANISM,'observation':value,
+                    'measurement':{'checks':checks,'assertions':preparation.checks_counter(checks)}}
+        def append_checks(count):
+            return [identity for index in range(1,count+1) for identity in ('append-'+str(index)+'-accepted','append-'+str(index)+'-one-event')]
+        def sidecar(appid,app,port,config,start,end):
+            return record(['/owned/daprd','--app-id',appid,'--app-channel-address','127.0.0.1','--app-port',str(app),
+                '--dapr-http-port',str(port),'--config',str(root/'discovery.yaml'),'--resources-path',str(root/'resources')],
+                'sidecar started',start,end,True,config)
+        def host(project,app,start,end):
+            command = record(['dotnet',str(consumer/project.lower()/'bin'/configuration/'net10.0'/(project+'.dll'))],
+                'Now listening on: http://127.0.0.1:'+str(app),start,end,True)
+            command['consumer_binary'] = serving_binaries[project]
+            return command
+        record(['HTTP','GET','http://127.0.0.1:10002/ready'],{'snapshot_qualification':registration},2,2.1)
+        record(['HTTP','GET','http://127.0.0.1:10003/v1.0/healthz/outbound'],{},2.6,2.7)
+        record(['HTTP','GET','http://127.0.0.1:10004/ready'],{},4,4.1)
+        record(['HTTP','GET','http://127.0.0.1:10001/v1.0/healthz/outbound'],{},5,5.1)
+        record(['HTTP','GET','http://127.0.0.1:10002/ready'],{'snapshot_qualification':registration},6,6.1)
+        command = record(['dotnet',str(binary),'seed','http://127.0.0.1:10001','tenant-a','fixture','9'],probe({'committed':9,'sequence':9},append_checks(9)),7,8)
+        measurements.import_probe(json.loads(command['output']),'tenant-a:prefix:',command['id'])
+        command = record(['dotnet',str(binary),'manual-snapshot','http://127.0.0.1:10001','tenant-a','fixture'],probe(manual,
+            ('manual-snapshot-created','manual-snapshot-at-nine','manual-snapshot-no-failure')),9,10)
+        measurements.import_probe(json.loads(command['output']),'snapshot:',command['id'])
+        host('Host',10004,3,11)
+        host('Domain',10002,1,11)
+        sidecar('counter',10002,10003,configurations[0],2.5,11)
+        sidecar('eventstore',10004,10001,configurations[0],4.5,11)
+        command = record(['docker','exec','-i',database,'psql','-U','postgres','-d','eventstore','-At','-v','ON_ERROR_STOP=1','-f','-'],[[key+'snapshot',snapshot]],12,12.5)
+        query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
+        command.update(input_sha256=executor.digest(query.encode()),input_bytes=len(query.encode()),provider_sql=query)
+        argv = [sys.executable,'-I',str(preparation.ROOT/'tools/p1r-published-executor.py'),'inventory','--container',database,
+                '--invocation',invocation,'--backend','state.postgresql']
+        record(argv,before,13,13.5)
+        record(['HTTP','GET','http://127.0.0.1:10006/ready'],{},15.5,15.6)
+        record(['HTTP','GET','http://127.0.0.1:10005/v1.0/healthz/outbound'],{},16.5,16.6)
+        command = record(['dotnet',str(binary),'seed','http://127.0.0.1:10005','tenant-a','fixture','3'],probe(tail,append_checks(3)),17,18)
+        measurements.import_probe(json.loads(command['output']),'tenant-a:tail:',command['id'])
+        record(argv,after,21,21.5)
+        host('Host',10006,15,20)
+        sidecar('eventstore',10006,10005,configurations[1],16,20)
+        for identity in ('snapshot-fixture-enrolled','snapshot-state-roundtrip-parity','snapshot-canonical-event-parity',
+                'snapshot-detached-apply-parity','snapshot-nine-events-committed','tenant-a:committed-count','tenant-b:committed-count',
+                'seed-persisted-fifteen-events','qualified-snapshot-created-by-published-actor','qualified-snapshot-envelope-version-one',
+                'qualified-snapshot-persisted-nine','qualified-snapshot-prefix-coordinate-exact','qualified-snapshot-tail-coordinate-exact',
+                'qualified-snapshot-and-prefix-bytes-preserved'):
+            passed = True
+            measurements.check(identity,passed)
+        observation = {'before':after,'after':after,'seed_snapshot':{'registration':registration,'manual':manual,'persisted_snapshot':snapshot,
+            'before_tail':before,'after_tail':after,'tail':tail}}
+        if lane != 'post-upgrade-restore':
+            operational_before,operational_after = copy.deepcopy(after),copy.deepcopy(after)
+            if lane in ('retained-covered','retained-uncovered','metadata-write'):
+                for rows in (operational_before,operational_after):
+                    rows[:] = [item for item in rows if not(item['tenant']=='tenant-a' and item['kind']=='event' and item['sequence']<5)]
+                    next(item for item in rows if item['kind']=='metadata')['floor'] = 5
+                    if lane == 'retained-uncovered':
+                        next(item for item in rows if item['kind']=='snapshot')['sequence'] = 2
+            if lane == 'metadata-write':
+                next(item for item in operational_after if item['kind']=='metadata')['sequence'] = 13
+                operational_after.append({'key':key+'events:13','tenant':'tenant-a','kind':'event','sequence':13,'floor':None,'sha256':'f'*64})
+                operational_after.sort(key=lambda item:item['key'])
+            observation.update(before=operational_before,after=operational_after,
+                primary={'accepted':lane!='retained-uncovered','sequence':12,'event_count':0})
+            record(argv,operational_before,22,22.1)
+            record(argv,operational_after,23,23.1)
+            record(['dotnet',str(binary),'actor'],probe(observation['primary'],()),24,24.1)
+            for identity in ('primary-expected-hydration','hydration-no-events','second-tenant-hydrates','primary-sequence-twelve',
+                             'persisted-current-sequence-exact','persisted-event-sequence-set-exact','persisted-snapshot-coordinate-exact',
+                             'prior-event-and-snapshot-bytes-preserved','second-tenant-state-preserved'):
+                passed = True
+                measurements.check(identity,passed)
+            if lane == 'metadata-write':
+                observation.update(append={'accepted':True,'event_count':1,'sequence':13},
+                    replay={'accepted':True,'event_count':0,'sequence':13})
+                for name in ('append','replay'):
+                    record(['dotnet',str(binary),'actor'],probe(observation[name],()),25,25.1)
+                for identity in ('append-effect-accepted','append-thirteen','retained-floor-five-preserved','supported-append-restart-rehydrates-thirteen'):
+                    passed = True
+                    measurements.check(identity,passed)
+        evidence = {'commands':commands,'configurations':configurations,'observations':observation,
+            'snapshot_fixture_source':fixture_source,'check_witnesses':measurements.witnesses}
+        identifier = 'fresh-backup-restore-append-restart' if lane == 'post-upgrade-restore' else writer_version+'-to-3.110.0'
+        outcome = 'refusal' if lane == 'retained-uncovered' else 'effect'
+        row = {'id':identifier,'operation':'supported','expected':outcome,'outcome':outcome,
+            'disposition':'compatible','checks':measurements.checks,'assertions':measurements.counter}
+        fixture = row,evidence,binding,[test_source]
+        self.rehash_inventory(fixture)
+        return fixture
+
+
+class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
+    candidate_version = '3.122.1'
+
+    @staticmethod
+    def change_isolation(receipt,name,mutate):
+        reference = receipt['execution_evidence']['isolation']
+        record = reference[name]
+        value = json.loads(record['content'])
+        mutate(value)
+        path = Path(record['path'])
+        executor.write_json(path,value)
+        data = path.read_bytes()
+        record.update(content=data.decode(),sha256=executor.digest(data))
+        if name == 'private':
+            wrapper = reference['wrapper']
+            value = json.loads(wrapper['content'])
+            value['private_execution']['sha256'] = record['sha256']
+            path = Path(wrapper['path'])
+            executor.write_json(path,value)
+            data = path.read_bytes()
+            wrapper.update(content=data.decode(),sha256=executor.digest(data))
+        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+
+    def testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands(self):
+        receipt,context = self.import_fixture(scope='operational')
+        self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        mutations = (
+            ('wrapper',lambda value:value.update(passed=False)),
+            ('private',lambda value:value.update(passed=False)),
+            ('private',lambda value:value.update(invocation='e'*32)),
+            ('private',lambda value:value.update(source_checked_after_cleanup=False)),
+            ('private',lambda value:value['proof']['namespaces'].update(pid='pid:[foreign]')),
+            ('private',lambda value:value['proof']['executables']['python'].update(path='/substituted/python')),
+            ('private',lambda value:value['proof']['executables']['python'].update(sha256='9'*64)),
+            ('private',lambda value:value['proof'].update(python_version=[3,0,0])),
+            ('wrapper',lambda value:value['owned_containers'][value['sdk']].update(image=executor.POSTGRES)),
+            ('wrapper',lambda value:value['owned_containers'][value['daemon']].update(image=executor.POSTGRES)),
+            ('wrapper',lambda value:value['runner_proof'].update(Ports={'2375/tcp':[{'HostPort':'2375'}]})),
+            ('wrapper',lambda value:value['runner_proof']['Mounts'][1].update(Source='/var/run/docker.sock')),
+            ('private',lambda value:value['command'].__setitem__(4,'/substituted-output')),
+            ('execution',lambda value:value.update(inputs_sha256='9'*64)),
+            ('wrapper',lambda value:value['cleanup'][0].update(remaining=['sdk-still-live'])),
+            ('wrapper',lambda value:value['cleanup'][0].update(absent_volumes=[])),
+            ('wrapper',lambda value:value['commands'].pop(1)),
+            ('wrapper',lambda value:value['commands'][0].update(output='foreign-container',output_sha256=executor.digest(b'foreign-container'))),
+        )
+        for index,(name,mutate) in enumerate(mutations):
+            receipt,context = self.import_fixture(scope='operational')
+            self.change_isolation(receipt,name,mutate)
+            with self.subTest(index=index),self.assertRaises(preparation.InvalidPacket):
+                qualification.receipt_outcome(receipt,context)
+        receipt,context = self.import_fixture(scope='operational')
+        del receipt['execution_evidence']['isolation']
+        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+        with self.assertRaisesRegex(preparation.InvalidPacket,'final isolation evidence'):
+            qualification.receipt_outcome(receipt,context)
+        receipt,context = self.import_fixture(scope='operational')
+        Path(receipt['execution_evidence']['isolation']['wrapper']['path']).write_text('substituted physical receipt')
+        with self.assertRaisesRegex(preparation.InvalidPacket,'physical reference substituted'):
+            qualification.receipt_outcome(receipt,context)
+
+    def testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope(self):
+        receipt,context = self.import_fixture()
+        del receipt['execution_evidence']['isolation']
+        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+        with self.assertRaisesRegex(preparation.InvalidPacket,'final isolation evidence'):
+            qualification.receipt_outcome(receipt,context)
+
+    def testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes(self):
+        receipt,context = self.import_fixture(scope='operational')
+        self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        def backwards(value):
+            from datetime import datetime,timedelta
+            for item in [*value['cleanup'],*value['commands']]:
+                for field in ('started_utc','finished_utc'):
+                    item[field] = (datetime.fromisoformat(item[field])-timedelta(seconds=24)).isoformat()
+        for mutate in (backwards,lambda value:value['cleanup'].reverse(),
+                       lambda value:value['cleanup'][1].update(started_utc='2026-10-14T00:00:34.500000+00:00')):
+            receipt,context = self.import_fixture(scope='operational')
+            self.change_isolation(receipt,'wrapper',mutate)
+            with self.assertRaisesRegex(preparation.InvalidPacket,'outer cleanup'):
+                qualification.receipt_outcome(receipt,context)
+        for name,mutate in (
+                ('private',lambda value:value.update(started_utc='2026-10-14T00:00:01+00:00')),
+                ('execution',lambda value:value.update(finished_utc='2026-10-14T00:00:33+00:00'))):
+            receipt,context = self.import_fixture(scope='operational')
+            self.change_isolation(receipt,name,mutate)
+            with self.assertRaisesRegex(preparation.InvalidPacket,'teardown timestamps'):
+                qualification.receipt_outcome(receipt,context)
+        for field,value in (('started_utc','2026-10-13T23:59:59+00:00'),('finished_utc','2026-10-14T00:00:50+00:00')):
+            receipt,context = self.import_fixture(scope='operational')
+            receipt[field] = value
+            receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+            with self.subTest(field=field),self.assertRaisesRegex(preparation.InvalidPacket,'lane receipt escapes'):
+                qualification.receipt_outcome(receipt,context)
+        for start,end in (('2026-10-13T23:59:59+00:00','2026-10-14T00:00:02+00:00'),
+                          ('2026-10-14T00:00:45+00:00','2026-10-14T00:00:45.100000+00:00')):
+            receipt,context = self.import_fixture(scope='operational')
+            command = receipt['execution_evidence']['cases'][0]['commands'][0]
+            command.update(started_utc=start,finished_utc=end)
+            receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+            with self.subTest(start=start),self.assertRaisesRegex(preparation.InvalidPacket,'receipt command escapes'):
+                qualification.receipt_outcome(receipt,context)
+
+    def testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract(self):
+        from tools.tests.test_p1r_published_qualification import restore_receipt
+        receipt,context = self.import_fixture(scope='operational')
+        root = Path(self.temporary.name)
+        restore = restore_receipt(scope='operational')
+        cleanup = restore['cleanup']
+        for value in (restore,cleanup):
+            value.update(inputs_sha256=receipt['inputs_sha256'],profile=receipt['profile'],fixture=receipt['fixture'],compatibility='compatible')
+        cleanup['invocation'] = 'b'*32
+        previous_container = next(item['id'] for item in cleanup['owned'] if item['kind']=='container')
+        for owned in cleanup['owned']:
+            owned['label'] = 'hexalith.p1r.invocation='+cleanup['invocation']
+            if owned['kind'] == 'container':
+                owned['id'] = 'a'*64
+        for attempt in cleanup['attempts']:
+            for key in ('targeted','removed','remaining'):
+                attempt[key] = ['a'*64 if identity == previous_container else identity for identity in attempt[key]]
+        from datetime import datetime,timedelta,timezone
+        for index,command in enumerate(restore['commands']):
+            command['started_utc'] = command['finished_utc'] = (datetime(2026,10,14,tzinfo=timezone.utc)+timedelta(seconds=index+1)).isoformat()
+        for index,attempt in enumerate(cleanup['attempts']):
+            attempt['started_utc'] = f'2026-10-14T00:00:{25+2*index}+00:00'
+            attempt['finished_utc'] = f'2026-10-14T00:00:{26+2*index}+00:00'
+        restore['packages'] = context['verified']['candidate']['archives']
+        paths = []
+        for value in (cleanup,restore):
+            path = root/'receipts'/(value['id']+'.json')
+            executor.write_json(path,value)
+            paths.append(str(path))
+        execution = json.loads((root/'execution.json').read_bytes())
+        execution['receipts'].extend(paths)
+        executor.write_json(root/'execution.json',execution)
+        qualification.finalize_isolation_receipts(root,root/'wrapper',context['inputs']['value'])
+        cleanup,restore = (json.loads(Path(path).read_bytes()) for path in paths)
+        self.assertEqual(restore['cleanup'],cleanup)
+        self.assertEqual(qualification.receipt_outcome(restore,context)[2]['execution'],'passed')
+        self.assertEqual(qualification.receipt_outcome(cleanup,context)[2]['execution'],'passed')
+        for original in (cleanup,restore):
+            changed = copy.deepcopy(original)
+            observed = changed if changed['schema'] == runtime.CLEANUP_SCHEMA else changed['cleanup']
+            observed['invocation'] = 'a'*32
+            for owned in observed['owned']:
+                owned['label'] = 'hexalith.p1r.invocation='+observed['invocation']
+            with self.subTest(schema=original['schema']),self.assertRaisesRegex(preparation.InvalidPacket,'cleanup invocation differs'):
+                qualification.receipt_outcome(changed,context)
+        for original in (cleanup,restore):
+            changed = copy.deepcopy(original)
+            observed = changed if changed['schema'] == runtime.CLEANUP_SCHEMA else changed['cleanup']
+            old_id = next(item['id'] for item in observed['owned'] if item['kind']=='container')
+            next(item for item in observed['owned'] if item['kind']=='container')['id'] = 'e'*64
+            for attempt in observed['attempts']:
+                for key in ('targeted','removed','remaining'):
+                    attempt[key] = ['e'*64 if identity == old_id else identity for identity in attempt[key]]
+            with self.subTest(schema=original['schema']),self.assertRaisesRegex(preparation.InvalidPacket,'cleanup containers differ'):
+                qualification.receipt_outcome(changed,context)
+
+
+class IndependentRecoverySelectionTests(unittest.TestCase):
+    def setUp(self):
+        import importlib.util
+        path = preparation.ROOT/'_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py'
+        spec = importlib.util.spec_from_file_location('p1r_next_independent_audit',path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.validate = module.require_recovery_selection
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.binding = {'private':'same frozen source closure'}
+        self.inputs_sha256 = 'a'*64
+        self.root = Path(self.temporary.name)/'original'
+        self.supplement = Path(self.temporary.name)/'supplement'
+        self.selected = []
+        for directory,lane,restore in ((self.root,'post-upgrade-restore',True),(self.supplement,'checkout',False)):
+            invocation = directory.name
+            rows = [('lane',{'lane':lane})]
+            if restore:
+                rows.append(('restore',{'schema':runtime.RESTORE_SCHEMA,'role':'candidate'}))
+            rows.append(('cleanup',{'schema':runtime.CLEANUP_SCHEMA,'invocation':invocation,'execution':'failed'}))
+            paths = []
+            for name,row in rows:
+                row['inputs_sha256'] = self.inputs_sha256
+                path = directory/'receipts'/(name+'.json')
+                executor.write_json(path,row)
+                paths.append(str(path))
+            executor.write_json(directory/'executor-source.json',self.binding)
+            executor.write_json(directory/'execution.json',{'invocation':invocation,'finished_utc':'2026-10-14T00:00:01+00:00',
+                'inputs_sha256':self.inputs_sha256,'executor_source_sha256':executor.digest((directory/'executor-source.json').read_bytes()),
+                'receipts':paths})
+            self.selected.extend(paths)
+
+    def testEveryContributingInvocationRetainsRecoveryEvenWhenCleanupFailed(self):
+        coverage = self.validate(self.selected,self.root,self.inputs_sha256,self.binding)
+        self.assertEqual(len(coverage),2)
+        self.assertEqual(sum(len(row['required_recovery_receipts']) for row in coverage),3)
+
+    def testOriginalRestoreCleanupAndSupplementCleanupCannotBeOmitted(self):
+        for path in self.selected:
+            if Path(path).name == 'lane.json':
+                continue
+            reduced = [name for name in self.selected if name != path]
+            with self.subTest(path=path), self.assertRaisesRegex(preparation.InvalidPacket,'omits contributing invocation'):
+                self.validate(reduced,self.root,self.inputs_sha256,self.binding)
+
+    def testRemovingRestoreRegistrationOrChangingSupplementBindingIsRefused(self):
+        path = self.root/'execution.json'
+        execution = json.loads(path.read_text())
+        original_execution = copy.deepcopy(execution)
+        execution['receipts'] = [name for name in execution['receipts'] if not name.endswith('restore.json')]
+        executor.write_json(path,execution)
+        selected = [name for name in self.selected if not name.endswith('restore.json')]
+        with self.assertRaisesRegex(preparation.InvalidPacket,'candidate restore'):
+            self.validate(selected,self.root,self.inputs_sha256,self.binding)
+        executor.write_json(path,original_execution)
+        executor.write_json(self.supplement/'executor-source.json',{'private':'substituted source'})
+        with self.assertRaisesRegex(preparation.InvalidPacket,'different source closure'):
+            self.validate(self.selected,self.root,self.inputs_sha256,self.binding)
+
+
 class MeasurementTests(unittest.TestCase):
+    def testHistoricalSnapshotRepairReplacesEntireDtoAndPreservesOtherPersistedState(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.active, worker.redis = [], "owned"
+        key = "eventstore||tenant-a:counter:fixture:snapshot"
+        snapshot = {"sequenceNumber": 10, "state": {"currentSequence": 10, "events": [{"payload": "e30="}],
+                    "snapshotState": None, "Count": 10}, "createdAt": "2026-01-01T00:00:00Z",
+                    "tenantId": "tenant-a", "domain": "counter", "aggregateId": "fixture",
+                    "protectionMetadata": {"state": 0}, "snapshotEnvelopeVersion": 0}
+        values = {key: executor.canonical(snapshot),
+                  "eventstore||tenant-a:counter:fixture:events:7": executor.canonical({"payload": "original"}),
+                  "eventstore||tenant-a:counter:fixture:metadata": executor.canonical({"currentSequence": 12, "retainedFloor": 5}),
+                  "eventstore||tenant-b:counter:fixture:snapshot": executor.canonical(snapshot | {"tenantId": "tenant-b"})}
+        before = copy.deepcopy(values)
+        worker.raw_state = mock.Mock(return_value=values)
+        worker.postgres_write = mock.Mock()
+        worker.postgres_delete = mock.Mock()
+
+        worker.mutate("snapshot-nine")
+
+        worker.postgres_write.assert_called_once_with("owned", key, snapshot | {"sequenceNumber": 9, "state": {"count": 9}})
+        worker.postgres_delete.assert_not_called()
+        self.assertEqual(values, before)
+
+    def testHistoricalSnapshotRepairRefusesAnActiveWriterBeforeAnyProviderRead(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.active = ["live-writer"]
+        worker.raw_state = mock.Mock()
+        worker.postgres_write = mock.Mock()
+        with self.assertRaisesRegex(executor.InvalidPacket, "writer is active"):
+            worker.mutate("snapshot-nine")
+        worker.raw_state.assert_not_called()
+        worker.postgres_write.assert_not_called()
+
+    def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
+        for version in ("3.121.0", "3.122.1", "source"):
+            with self.subTest(version=version):
+                worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
+                    candidate="3.121.0" if version == "3.121.0" else "3.122.1")
+                worker.seed(version, 10, checks)
+                self.assertEqual([call.args[0] for call in worker.probe.call_args_list], [version] * 4)
+                self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
+                self.assertEqual([call.args[1][-1] for call in worker.probe.call_args_list if call.args[1][0] == "seed"], ["9", "3", "3"])
+                worker.mutate.assert_not_called()
+                self.assertEqual(checks.counter["failed"], 0)
+                self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
+
+    def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
+        for version in ("3.121.0", "3.122.1", "source"):
+            for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
+                             {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
+                with self.subTest(version=version,snapshot=snapshot):
+                    worker, checks = self.snapshotSeedWorker(snapshot,candidate="3.122.1")
+                    worker.seed(version, 10, checks)
+                    self.assertGreater(checks.counter["failed"], 0)
+                    worker.mutate.assert_not_called()
+
+    def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
+        for version in ("3.122.0", "3.122.2"):
+            worker, checks = self.snapshotSeedWorker(None,candidate="3.122.1")
+            with self.subTest(version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
+                worker.seed(version,10,checks)
+            worker.probe.assert_not_called()
+            worker.mutate.assert_not_called()
+            worker.raw_state.assert_not_called()
+
+    def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
+        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.122.1","source"),("3.122.2","3.122.2"),("3.122.1",None)):
+            with self.subTest(candidate=candidate,writer=writer):
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.commands, worker.configurations, worker.errors = [], [], []
+                worker.candidate = candidate
+                worker.last_snapshot_creation = {"writer":writer} if writer is not None else None
+                def action(checks):
+                    worker.commands.append({"id":1})
+                    return {"seed_snapshot":worker.last_snapshot_creation},"effect","compatible"
+                _,evidence = worker.case("snapshot-tail",(writer or candidate)+"-to-3.110.0",action,False)
+                if candidate == "3.122.2" or writer is None:
+                    self.assertNotIn("snapshot_fixture_source",evidence)
+                else:
+                    path = preparation.ROOT/"tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
+                    self.assertEqual(evidence["snapshot_fixture_source"],
+                        {"path":str(path),"sha256":executor.digest(path.read_bytes()),"content":path.read_text()})
+
+    def testHistoricalSnapshotSeedPreservesSeparateDiagnosticFixture(self):
+        worker, checks = self.snapshotSeedWorker(None)
+        worker.mutate = mock.Mock()
+        worker.probe = mock.Mock(side_effect=[{"committed": 12}, {"committed": 3}])
+        worker.inventory = mock.Mock(return_value=self.snapshotSeedRows(15))
+        worker.seed("3.110.0", 10, checks)
+        worker.mutate.assert_called_once_with("snapshot-nine")
+        worker.raw_state.assert_not_called()
+        self.assertIsNone(worker.last_snapshot_creation)
+
+    @staticmethod
+    def snapshotSeedRows(count):
+        head = 9 if count == 9 else 12
+        return [{"key": "event-" + str(index), "kind": "event", "tenant": "tenant-a" if index < head else "tenant-b",
+                 "sequence": index + 1 if index < head else index - head + 1, "sha256": "a" * 64}
+                for index in range(count)] + [{"key": "metadata", "kind": "metadata", "tenant": "tenant-a", "sequence": head, "sha256": "b" * 64}]
+
+    def snapshotSeedWorker(self, snapshot, candidate="3.121.0"):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.candidate, worker.redis, worker.sidecar_port, worker.domain_port = candidate, "owned", 10001, 10002
+        worker.stop_nodes = worker.postgres_query = worker.start_nodes = mock.Mock()
+        worker.mutate = mock.Mock(side_effect=AssertionError("successor snapshot cannot be synthesized"))
+        worker.http = mock.Mock(return_value={"snapshot_qualification": {
+            "registered": True, "test_only": True, "state_roundtrip": True, "original_count": 9,
+            "roundtrip_count": 9, "canonical_event_parity": True, "canonical_event_sha256": executor.digest(b"{}"),
+            "detached_apply": True, "applied_count": 10}})
+        worker.probe = mock.Mock(side_effect=[{"committed": 9, "sequence": 9}, {"outcome": "Created", "sequence": 9},
+            {"committed": 3, "sequence": 12}, {"committed": 3, "sequence": 3}])
+        worker.raw_state = mock.Mock(return_value={} if snapshot is None else
+            {"tenant-a:counter:fixture:snapshot": executor.canonical(snapshot)})
+        worker.inventory = mock.Mock(side_effect=[self.snapshotSeedRows(9), self.snapshotSeedRows(15)])
+        return worker, executor.Measurements()
+
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
         with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
             worker = CleanupTests.worker(self, scratch)
@@ -63,6 +1013,29 @@ class MeasurementTests(unittest.TestCase):
                 recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
                 for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
                     self.assertEqual(commands[step][field], recorded[field])
+
+    def testPrivateProbeBinaryAndExactInputDigestAreCapturedByCommands(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            worker = CleanupTests.worker(self,scratch)
+            binary = worker.scratch/'Probe.dll'
+            binary.write_bytes(b'private synthetic binary')
+            witness = {'path':str(binary),'sha256':executor.digest(binary.read_bytes()),'role':'candidate','configuration':'Release'}
+            worker.probe_binaries = {str(binary):witness}
+            command = worker.record(['dotnet',binary,'identity'],worker.scratch,executor.stamp(),0,b'{}')
+            self.assertEqual(command['probe_binary'],witness)
+            serving = dict(witness,project='Host')
+            worker.consumer_binaries = {str(binary):serving}
+            command = worker.record(['dotnet',binary],worker.scratch,executor.stamp(),0,b'host ready')
+            self.assertEqual(command['consumer_binary'],serving)
+            query = 'SELECT fixture'
+            command = worker.record(['docker','exec','-i','owned','psql'],worker.scratch,executor.stamp(),0,b'[]',input_bytes=query.encode())
+            self.assertEqual(command['provider_sql'],query)
+            self.assertEqual(command['input_sha256'],executor.digest(query.encode()))
+            payload = b'private exact query input'
+            result = worker.run([sys.executable,'-I','-c','import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())'],input_bytes=payload)
+            self.assertEqual(result,payload)
+            self.assertEqual(worker.commands[-1]['input_sha256'],executor.digest(payload))
+            self.assertEqual(worker.commands[-1]['input_bytes'],len(payload))
 
     def testHttpCommandRecordClampsEarlierFinish(self):
         worker = executor.Executor.__new__(executor.Executor)

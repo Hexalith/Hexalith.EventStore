@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+    "ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a"
+  ],
+  "exit_code": 0,
+  "output": "{\"Id\":\"ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a\",\"Image\":\"sha256:fa2f52630fa9863cf3acafc39b384b6ceda8ce732a8fd646c415b7224c819460\",\"Name\":\"/p1r-repair-sentinel-0116945dd72948e189bda124bc6defe3\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-14T12:24:05.680773348Z\"},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":null}}}\n",
+  "output_sha256": "65cc370b92b4b4bd19222bb7ba7c78363455c4cfc11967ec6abc4c448ebd7377"
+}

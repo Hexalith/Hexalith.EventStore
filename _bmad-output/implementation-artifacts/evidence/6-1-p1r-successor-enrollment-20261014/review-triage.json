@@ -1,0 +1,113 @@
+{
+  "source_review": "review-content-v3.diff",
+  "findings": [
+    {
+      "id": "B1",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Original provider bytes vs canonical snapshot hash rejects valid base64 envelopes."
+    },
+    {
+      "id": "B2",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Host preparation interpreter differs from pinned execution; handoff now uses pinned isolated runner for boundary/preparation/validation and independently reviewed."
+    },
+    {
+      "id": "B3",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Four dated CI helper sources were omitted from publication diff; required-ci-test-dependencies.json now binds unchanged helper bytes and final closure must include them."
+    },
+    {
+      "id": "B4",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Operational imports must bind successful matching final private/outer isolation receipts rather than accepting inner receipts after failed teardown."
+    },
+    {
+      "id": "B5",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Nonempty isolation marker is not real daemon/namespace proof; marked direct admission must revalidate private_proof."
+    },
+    {
+      "id": "B6",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Cleanup handler can mutate source after source check; verify again after all owned processes stop."
+    },
+    {
+      "id": "B7",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Successful rm is not observed absence; retain exact identity and repeated container/volume absence proofs."
+    },
+    {
+      "id": "B8",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "Pre-existing TLS-authenticated remote outer Docker controller profile loses authentication. Current observed qualification profile uses local Unix outer endpoint; no TLS profile qualification is claimed."
+    },
+    {
+      "id": "B9",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Serving Host/Domain binaries need independent physical digest binding and missing/substitution controls."
+    },
+    {
+      "id": "B10",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Successful provider mutation inside genuine seed proof window must be refused, while later allowed diagnostics remain intact."
+    },
+    {
+      "id": "E1",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Independent duplicate of B5: inherited marker bypasses actual namespace proof."
+    },
+    {
+      "id": "E2",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Pending create ownership dropped after first absent inspection allows late container to escape retry."
+    },
+    {
+      "id": "E3",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Command ID ordering does not guarantee nine seed finishes before manual creation; enforce actual times."
+    },
+    {
+      "id": "V1",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Imported successor receipts lack forwarding coverage; real receipt_outcome/bind_lane controls must fail if selected-version argument is dropped."
+    },
+    {
+      "id": "R1",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Publication command snippets could continue after failed tests; all blocks now set -euo pipefail."
+    },
+    {
+      "id": "R2",
+      "verdict": "medium",
+      "route": "patched",
+      "evidence": "Process-substitution errors could yield partial receipt arguments; checked producer now validates all paths before emitting data."
+    },
+    {
+      "id": "R3",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Rehashed final-isolation cleanup timing or escaped lane/case interval accepted; actual importer now bounds nested execution and commands and ordered disjoint post-private cleanup. Blind independent final recheck: 3 tests passed."
+    },
+    {
+      "id": "R4",
+      "verdict": "high",
+      "route": "patched",
+      "evidence": "Standalone/embedded cleanup could declare another invocation; importer now binds invocation and exact container IDs to final executor. Edge independent final recheck: 1 test with positive imports and four substitution refusals passed."
+    }
+  ]
+}

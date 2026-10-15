@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup></PropertyGroup>
+  <ItemGroup><Content Update="fixture-evolution-manifest.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.119.0' and '$(EventStoreVersion)' != '3.121.0'">
+    <Compile Remove="FixtureEvolutionManifest.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0'">
+    <Compile Include="../FixtureSnapshotQualification.cs" Link="FixtureSnapshotQualification.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.121.0'">
+    <Compile Remove="CounterSnapshotParity.cs" />
+  </ItemGroup>
+  <ItemGroup><Compile Include="../PublishedIdentity.cs" Link="PublishedIdentity.cs" /></ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true'">
+    <PackageReference Include="Hexalith.EventStore.Client" />
+    <PackageReference Include="Hexalith.EventStore.Contracts" />
+    <PackageReference Include="Hexalith.EventStore.DomainService" />
+    <PackageReference Include="Hexalith.EventStore.Server" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true'">
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" />
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj" />
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
+    <ProjectReference Include="$(EventStoreSourceRoot)/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

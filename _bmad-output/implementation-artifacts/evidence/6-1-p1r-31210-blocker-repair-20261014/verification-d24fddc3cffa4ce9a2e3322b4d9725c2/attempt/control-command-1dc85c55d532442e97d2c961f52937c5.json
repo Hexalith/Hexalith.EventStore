@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "docker",
+    "info",
+    "--format",
+    "{{json .ID}}"
+  ],
+  "exit_code": 0,
+  "output": "\"c1ec97bc-3cf2-45f5-8f84-58d2b23ed064\"\n",
+  "output_sha256": "15eeed3aa2d7f2b3f3b0bfbe5ffdf8029ed8ee9876e239dff3287ab5bdb8502c"
+}

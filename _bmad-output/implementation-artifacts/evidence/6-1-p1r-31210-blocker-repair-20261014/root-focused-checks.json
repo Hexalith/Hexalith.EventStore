@@ -1,0 +1,75 @@
+[
+  {
+    "name": "root-python-published-controls",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published*.py",
+      "-v"
+    ],
+    "started_utc": "2026-10-14T11:53:56.671806+00:00",
+    "exit_code": 0,
+    "output": "root-python-published-controls.txt",
+    "output_sha256": "afdf4d5b580cda789d07ee101d3e4c8daf52012909d1bde4e1ce97a9701d7474"
+  },
+  {
+    "name": "root-python-isolation-controls",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation.py",
+      "-v"
+    ],
+    "started_utc": "2026-10-14T11:54:13.762420+00:00",
+    "exit_code": 0,
+    "output": "root-python-isolation-controls.txt",
+    "output_sha256": "1eb3e40398d6f0e2a906aec443d3bb888c95f67954934ac29d95d1c54ce6ccda"
+  },
+  {
+    "name": "root-server-build",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:NuGetAudit=false",
+      "--no-restore"
+    ],
+    "started_utc": "2026-10-14T11:54:14.348942+00:00",
+    "exit_code": 0,
+    "output": "root-server-build.txt",
+    "output_sha256": "80ea9e49932300aeb0c73fb02618d953b52ea5b3b8105933d78aad5aa5ad597f"
+  },
+  {
+    "name": "root-server-controls",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Events.EventStreamReaderTests",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Events.SnapshotManagerTests",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Actors.AggregateActorManualSnapshotTests",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Actors.AggregateActorFoldedSnapshotMigrationTests"
+    ],
+    "started_utc": "2026-10-14T11:54:25.178053+00:00",
+    "exit_code": 0,
+    "output": "root-server-controls.txt",
+    "output_sha256": "39ea4239a539d866b5d1b196c6b1e7e8f4c912729976f29bcb57adc9ba93fa77"
+  }
+]

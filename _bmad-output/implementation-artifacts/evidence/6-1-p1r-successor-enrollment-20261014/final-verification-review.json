@@ -1,0 +1,22 @@
+{
+  "agent": "verification_review",
+  "scope": "final bounded independent verification, no historical rescan",
+  "result": "no discrepancies",
+  "source_files": 23,
+  "source_diff_sha256": "54263498531e2efe7b3c100d4244269a57dbf0afb8d23f3a21ed0708a91cde7d",
+  "python_tests": 228,
+  "server_tests": 178,
+  "compiler_checks": 24,
+  "source_sizes_hashes_and_aliases_match": true,
+  "retained_logs_and_compiler_outputs_match": true,
+  "four_helper_hashes_unchanged": true,
+  "four_strict_shell_blocks_match_and_bash_n_pass": true,
+  "fresh_private_cleanup_proof_passed": true,
+  "historical_preservation": "separate root audit: preservation-result-v3.json",
+  "package_qualified": false,
+  "p1r_usable": false,
+  "four_role_acceptance": "pending",
+  "conformance": "pending",
+  "disposition": "pending",
+  "story_6_1": "blocked"
+}

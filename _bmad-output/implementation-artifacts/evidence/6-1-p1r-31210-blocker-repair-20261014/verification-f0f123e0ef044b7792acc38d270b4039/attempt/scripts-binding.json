@@ -1,0 +1,22 @@
+{
+  "attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/attempt",
+  "created_utc": "2026-10-14T12:20:10.307099+00:00",
+  "schema": "hexalith.p1r.repair-scripts.v1",
+  "scripts": {
+    "independent-repair-audit.py": {
+      "executed_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/attempt/scripts/independent-repair-audit.py",
+      "sha256": "badfe2d4836a393c6a78388a11aba6076d6b375db3fef01efcde88aa38cc9bc7",
+      "source_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py"
+    },
+    "verify-and-audit.py": {
+      "executed_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/attempt/scripts/verify-and-audit.py",
+      "sha256": "8616171ca7a54c7fe9b1ff2a449320fd9443aee66077909a6fc4bdd788250f06",
+      "source_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py"
+    },
+    "verify-repair.py": {
+      "executed_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/attempt/scripts/verify-repair.py",
+      "sha256": "2754271b23b75471ce664fbcf4abbb67d18697f3a8df010156cb48e28effb410",
+      "source_path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-repair.py"
+    }
+  }
+}

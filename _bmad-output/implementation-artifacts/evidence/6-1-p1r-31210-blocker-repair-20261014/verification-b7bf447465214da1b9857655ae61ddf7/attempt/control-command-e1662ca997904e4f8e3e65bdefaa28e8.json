@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{{index .Config.Labels \"hexalith.p1r.repair\"}}",
+    "ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a"
+  ],
+  "exit_code": 0,
+  "output": "bc770162dd304ddb8f0e491d675768a7\n",
+  "output_sha256": "17f280ff7f4687c600295e5e263954850bf50bde6d781585dde33f195a933620"
+}

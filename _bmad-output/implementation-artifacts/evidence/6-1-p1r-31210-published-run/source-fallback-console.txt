@@ -1,0 +1,7 @@
+{"built_package_consumer": "3.110.0"}
+{"built_package_consumer": "3.70.1"}
+{"built_package_consumer": "3.121.0"}
+{"built_source_consumer": true}
+{"lane": "checkout", "execution": "failed", "compatibility": "incompatible", "assertions": {"attempted": 696, "passed": 688, "failed": 8}}
+{"checkout": "failed", "assertions": {"attempted": 696, "passed": 688, "failed": 8}, "out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-fallback-a4b7ce69757b43f99199bc0688f6c67e"}
+{"out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-fallback-a4b7ce69757b43f99199bc0688f6c67e", "errors": [], "cleanup": "failed", "p1r_usable": false}

@@ -1,0 +1,175 @@
+{
+  "scope": "source/tooling verification only, no successor package qualification",
+  "observed_head": "210b90da172cc7ca946fbb06cfd44390bffa707b",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py",
+        "-v"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "executor-final-v3.log",
+      "log_sha256": "74681fb4213b0a4e2a90ff9e0d0c5fec824d8468a072153952cca3d8f536f2a3",
+      "tests": 104,
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py",
+        "-v"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "isolation-postreview-controls.log",
+      "log_sha256": "d9627f11a6b5c2eb8cd04a631323d2d79bfe4c19e742957b05db6947cb1efe66",
+      "tests": 28,
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_qualification.py",
+        "-v"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "published-final-v3.log",
+      "log_sha256": "b7ee6a80ae35aabb51690a0e29532fadb12d0722a47d554825ed5f82d180abb8",
+      "tests": 61,
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_qualification.py",
+        "-v"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "preparation-controls.log",
+      "log_sha256": "f7ed27f57363d84a87115d5f5f405d277db29de58be50ae98a1bf2bdf6ebaf7c",
+      "tests": 35,
+      "passed": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--configuration",
+        "Debug",
+        "-m:1",
+        "-p:UseHexalithProjectReferences=true"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "server-build.log",
+      "log_sha256": "ba602dabfd693e4073a736ab62b9d9d91ad7b4728afb25c01726960ca1073ea5",
+      "tests": null,
+      "passed": true
+    },
+    {
+      "argv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "*EventStreamReaderTests",
+        "-class",
+        "*SnapshotManagerTests",
+        "-class",
+        "*AggregateActorManualSnapshotTests",
+        "-class",
+        "*AggregateActorFoldedSnapshotMigrationTests"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "log": "server-controls.log",
+      "log_sha256": "463c46485a0f33ce73ca88840f58f0b0a922f8a6b2f76d9faf6d42ac5e51f907",
+      "tests": 178,
+      "passed": true
+    }
+  ],
+  "python_tests": 228,
+  "server_tests": 178,
+  "compiler_checks": 24,
+  "compiler_passed": true,
+  "source_closure_matches_reviewed_manifest": true,
+  "source_diff_sha256": "54263498531e2efe7b3c100d4244269a57dbf0afb8d23f3a21ed0708a91cde7d",
+  "future_published_version": null,
+  "package_qualified": false,
+  "p1r_usable": false,
+  "story_6_1": "blocked",
+  "passed": true,
+  "review_content_sha256": "0de86ddab844569e3336c4c90497544522ade3ef66413a3ead748d74b2acb719",
+  "live_isolation": {
+    "command": "python3 -B tools/p1r-isolated-runner.py --out _bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/isolation-final-v3-live -- python3 -c 'import json;print(json.dumps({\"scope\":\"source-only private runner and cleanup verification\",\"package_qualified\":False,\"p1r_usable\":False}))'",
+    "exit_code": 0,
+    "scope": "empty source-only command; no successor package/scenario qualification",
+    "receipts": [
+      {
+        "path": "isolation-final-v3-live/isolation.json",
+        "sha256": "983b60cf06bef79c962df17bcecc0c603b5d5ff2f974e71d510ba0f727d3f1db",
+        "passed": true
+      },
+      {
+        "path": "isolation-final-v3-live/private-execution.json",
+        "sha256": "b73936ed777618c9eab1cf3b089689a2bbc8d83c44e30525f1c206941b61d061",
+        "passed": true
+      }
+    ],
+    "source_checked_after_cleanup": true
+  },
+  "independent_reviews": {
+    "blind": {
+      "finding": "R3",
+      "tests": 3,
+      "exit_code": 0,
+      "resolved": true
+    },
+    "edge": {
+      "finding": "R4",
+      "tests": 1,
+      "exit_code": 0,
+      "resolved": true
+    },
+    "verification": {
+      "original_forwarding_finding": "V1",
+      "negative_omission_controls_failed_as_required": 4,
+      "resolved": true
+    },
+    "deferred": [
+      "B8: pre-existing remote TLS-authenticated outer controller; observed local Unix profile only"
+    ]
+  }
+}

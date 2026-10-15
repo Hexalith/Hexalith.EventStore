@@ -33,3 +33,6 @@ jobs:
 
       - name: Verify P1R published executor regressions
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_published_executor.py'
+
+      - name: Verify P1R private isolation controls
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_isolation.py'

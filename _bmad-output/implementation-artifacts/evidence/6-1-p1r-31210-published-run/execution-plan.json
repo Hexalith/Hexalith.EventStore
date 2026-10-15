@@ -1,0 +1,20 @@
+{
+  "canonical_cases": 163,
+  "canonical_lanes": 19,
+  "command": [
+    "python3",
+    "tools/p1r-published-executor.py",
+    "run",
+    "--out",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-f47a56499f0542c1b171e110aa48de2f",
+    "--inputs",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/owner-inputs.json"
+  ],
+  "console": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-f47a56499f0542c1b171e110aa48de2f-console.txt",
+  "inputs": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/owner-inputs.json",
+  "out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/execution-f47a56499f0542c1b171e110aa48de2f",
+  "p1r_usable": false,
+  "pending": "all four roles, conformance and Solution Architect support disposition",
+  "schema": "hexalith.p1r.execution-plan.v1",
+  "source_freeze": "all qualification source and configuration edits completed before execution"
+}

@@ -276,6 +276,7 @@ class Executor:
         preparation.subreaper()
         self.receipts, self.identities, self.evidence = [], {}, {}
         self.configurations = []
+        self.probe_binaries = {}
         self.witness_sources = {}
         self.shared_before = None
         self.fixture = {"id": "p1r-" + self.invocation, "synthetic": False}
@@ -310,13 +311,23 @@ class Executor:
         self.result.update(receipts=self.receipts, errors=self.errors)
         write_json(self.output / "execution.json", self.result)
 
-    def record(self, argv, cwd, started, code, data, retain=True, ownership=None, cleanup=None, timeout=None):
+    def record(self, argv, cwd, started, code, data, retain=True, ownership=None, cleanup=None, timeout=None, input_bytes=None):
         output = data.decode("utf-8", "replace") if retain else None
         row = {"id": len(self.commands) + 1, "argv": [str(arg) for arg in argv], "cwd": str(cwd),
                "started_utc": started, "finished_utc": max(started, stamp()), "exit_code": code,
                "output_sha256": digest(output.encode() if retain else data), "output": output}
         if timeout is not None:
             row["timeout_seconds"] = timeout
+        if input_bytes is not None:
+            row.update(input_sha256=digest(input_bytes), input_bytes=len(input_bytes))
+            if "psql" in row["argv"]:
+                row["provider_sql"] = input_bytes.decode()
+        binary = getattr(self, "probe_binaries", {}).get(row["argv"][1] if len(row["argv"]) > 1 else None)
+        if row["argv"][:1] == ["dotnet"] and binary is not None:
+            row["probe_binary"] = dict(binary)
+        serving = getattr(self, "consumer_binaries", {}).get(row["argv"][1] if len(row["argv"]) > 1 else None)
+        if row["argv"][:1] == ["dotnet"] and serving is not None:
+            row["consumer_binary"] = dict(serving)
         if ownership is not None:
             row.update(process=ownership.root, owned_processes=list(ownership.owned.values()), cleanup=cleanup or [])
             if ownership.cleanup_diagnostics:
@@ -330,6 +341,9 @@ class Executor:
 
     def run(self, argv, cwd=None, env=None, timeout=180, input_bytes=None, retain=True, check=True):
         """Own synchronous trees, including nonce-registered detached descendants."""
+        if os.environ.get("HEXALITH_P1R_ISOLATION"):
+            from p1r_isolation import private_environment
+            env = private_environment(os.environ if env is None else env)
         cwd = Path(cwd or self.scratch)
         started, interrupted, code = stamp(), False, 127
         ownership = preparation.OwnedProcesses()
@@ -370,7 +384,7 @@ class Executor:
                     log.write(b"\nexecutor interrupted\n")
                 log.seek(0)
                 data = log.read()
-                self.record(argv, cwd, started, code, data, retain, ownership, cleanup, timeout)
+                self.record(argv, cwd, started, code, data, retain, ownership, cleanup, timeout, input_bytes)
             finally:
                 log.close()
                 if input_file is not None:
@@ -446,6 +460,9 @@ class Executor:
         return identity
 
     def launch(self, argv, env):
+        if os.environ.get("HEXALITH_P1R_ISOLATION"):
+            from p1r_isolation import private_environment
+            env = private_environment(env)
         log = self.scratch / ("process-" + uuid.uuid4().hex + ".log")
         ownership = preparation.OwnedProcesses()
         environment = dict(env, HEXALITH_P1R_CONTROL_NONCE=ownership.nonce)
@@ -502,6 +519,7 @@ class Executor:
             props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(ROOT)]
         manifest = {"schema": qualification.EVIDENCE_SCHEMA, "role": role, "fixture": None,
                     "packages_root": "packages", "configuration": configuration, "projects": []}
+        serving_binaries = {}
         for project in PROJECTS:
             csproj = root / project.lower() / (project + ".csproj")
             self.run(["dotnet", "restore", csproj, *props], cwd=root, env=environment, timeout=300)
@@ -510,9 +528,23 @@ class Executor:
             output = project.lower() + "/bin/" + configuration + "/net10.0"
             # Physically load all five package assemblies in each actual consumer.
             if project == "Probe":
+                binary = {"role": role, "configuration": configuration,
+                          "path": str(root / output / "Probe.dll"),
+                          "sha256": digest(regular(root / output / "Probe.dll"))}
+                self.probe_binaries[binary["path"]] = binary
+                # Private executor witness; the published package manifest stays unchanged.
+                write_json(root / "probe-binary.json", binary)
                 observed = json.loads(self.run(["dotnet", root / output / "Probe.dll", "identity"], cwd=root, env=environment))
                 identity = observed["observation"]
             else:
+                binary = {"role":role,"configuration":configuration,"project":project,
+                          "path":str(root / output / (project + ".dll")),
+                          "sha256":digest(regular(root / output / (project + ".dll")))}
+                if not hasattr(self, "consumer_binaries"):
+                    self.consumer_binaries = {}
+                self.consumer_binaries[binary["path"]] = binary
+                serving_binaries[project] = binary
+                write_json(root / "serving-binaries.json", serving_binaries)
                 app_port = reserve_port()
                 item = self.launch(["dotnet", root / output / (project + ".dll")],
                                    dict(environment, ASPNETCORE_URLS=f"http://127.0.0.1:{app_port}", ASPNETCORE_ENVIRONMENT="Development"))
@@ -846,9 +878,11 @@ class Executor:
                 changed = True
             if key.endswith(":snapshot") and kind == "snapshot-nine":
                 value["sequenceNumber"] = 9
-                state = value["state"]
-                count_key = "Count" if "Count" in state else "count"
-                state[count_key] = 9
+                # Historical automatic capture serialized DomainServiceCurrentState.
+                # Adding a count leaves that ambiguous replay DTO intact. This
+                # stopped-writer Counter fixture needs the exact folded state;
+                # envelope, identity and protection fields retain their values.
+                value["state"] = {"count": 9}
                 changed = True
             if changed:
                 self.postgres_write(self.redis, key, value)
@@ -860,14 +894,56 @@ class Executor:
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
         self.start_nodes(version, interval=interval, write_alias=write_alias)
-        for tenant, count in (("tenant-a", 12), ("tenant-b", 3)):
-            result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(count)], checks, tenant + ":")
-            checks.check(tenant + ":committed-count", result.get("committed") == count)
+        genuine = interval == 10 and qualification.is_successor_selection(
+            {"candidate": {"version": self.candidate if version == "source" else version}})
+        self.last_snapshot_creation = None
+        if genuine:
+            require(version in ("3.121.0", "3.122.1", "source"), "successor snapshot fixture is not explicitly enabled")
+            registration = self.http("GET", f"http://127.0.0.1:{self.domain_port}/ready")["snapshot_qualification"]
+            checks.check("snapshot-fixture-enrolled", registration.get("registered") is True and registration.get("test_only") is True)
+            checks.check("snapshot-state-roundtrip-parity", registration.get("state_roundtrip") is True
+                         and registration.get("original_count") == registration.get("roundtrip_count") == 9)
+            checks.check("snapshot-canonical-event-parity", registration.get("canonical_event_parity") is True
+                         and registration.get("canonical_event_sha256") == digest(b"{}"))
+            checks.check("snapshot-detached-apply-parity", registration.get("detached_apply") is True and registration.get("applied_count") == 10)
+            nine = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "9"], checks, "tenant-a:prefix:")
+            checks.check("snapshot-nine-events-committed", nine.get("committed") == 9 and nine.get("sequence") == 9)
+            created = self.probe(version, ["manual-snapshot", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"], checks, "snapshot:")
+            checks.check("qualified-snapshot-created-by-published-actor", created.get("outcome") == "Created" and created.get("sequence") == 9)
+            self.stop_nodes()
+            raw = self.raw_state(self.redis)
+            snapshots = [json.loads(data) for key, data in raw.items() if "tenant-a" in key and key.endswith(":snapshot")]
+            snapshot = snapshots[0] if len(snapshots) == 1 else {}
+            checks.check("qualified-snapshot-envelope-version-one", len(snapshots) == 1 and snapshot.get("snapshotEnvelopeVersion") == 1)
+            checks.check("qualified-snapshot-persisted-nine", snapshot.get("sequenceNumber") == 9 and snapshot.get("state") == {"count": 9})
+            before_tail = self.inventory()
+            metadata, _, events = runtime.stream(before_tail, "tenant-a")
+            checks.check("qualified-snapshot-prefix-coordinate-exact", metadata is not None
+                         and metadata["sequence"] == 9 and sorted(events) == list(range(1, 10)))
+            self.start_nodes(version, interval=interval, write_alias=write_alias)
+            tail = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "3"], checks, "tenant-a:tail:")
+            checks.check("tenant-a:committed-count", nine.get("committed") == 9 and tail.get("committed") == 3 and tail.get("sequence") == 12)
+            self.last_snapshot_creation = {"registration": registration, "manual": created,
+                "persisted_snapshot": snapshot, "before_tail": before_tail, "tail": tail}
+        else:
+            result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "12"], checks, "tenant-a:")
+            checks.check("tenant-a:committed-count", result.get("committed") == 12)
+        second = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-b", "fixture", "3"], checks, "tenant-b:")
+        checks.check("tenant-b:committed-count", second.get("committed") == 3)
         self.stop_nodes()
-        if interval == 10:
+        if interval == 10 and not genuine:
+            # Historical fixtures retain their original diagnostic semantics.
             self.mutate("snapshot-nine")
         rows = self.inventory()
         checks.check("seed-persisted-fifteen-events", len([row for row in rows if row["kind"] == "event"]) == 15)
+        if genuine:
+            metadata, _, events = runtime.stream(rows, "tenant-a")
+            checks.check("qualified-snapshot-tail-coordinate-exact", metadata is not None
+                         and metadata["sequence"] == 12 and sorted(events) == list(range(1, 13)))
+            originals = {row["key"]: row["sha256"] for row in before_tail if row["kind"] in ("event", "snapshot")}
+            after_tail = {row["key"]: row["sha256"] for row in rows}
+            checks.check("qualified-snapshot-and-prefix-bytes-preserved", all(after_tail.get(key) == value for key, value in originals.items()))
+            self.last_snapshot_creation["after_tail"] = rows
         return rows
 
     def live_case(self, lane, identifier, checks):
@@ -876,6 +952,7 @@ class Executor:
         reader, _, variant = tail.partition("-")
         interval = 10 if lane in ("snapshot-tail", "retained-covered", "metadata-write", "retained-uncovered") else 1000
         self.seed(writer, interval, checks)
+        seed_snapshot = getattr(self, "last_snapshot_creation", None)
         if lane in ("retained-covered", "metadata-write", "retained-uncovered"):
             self.mutate("retained")
         if lane == "retained-uncovered":
@@ -927,7 +1004,7 @@ class Executor:
         checks.check("persisted-event-sequence-set-exact", sorted(events) == expected_sequences)
         checks.check("persisted-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == expected_snapshot)
         disposition = "compatible" if all(check["passed"] for check in checks.checks) else "incompatible"
-        return {"before": before, "after": after, "primary": result, "secondary": second,
+        return {"before": before, "after": after, "primary": result, "secondary": second, "seed_snapshot": seed_snapshot,
                 "append": append, "replay": replay, "appended_inventory": appended,
                 "expected_coordinates": {"head": expected_head, "events": expected_sequences, "snapshot": expected_snapshot}},             "refusal" if result.get("accepted") is False else "effect", disposition
 
@@ -1045,6 +1122,10 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
+        if self.candidate in ("3.121.0", "3.122.1") and getattr(self, "last_snapshot_creation", None) is not None:
+            path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
+            data = regular(path)
+            evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
         if interrupted:
             write_json(self.output / "interrupted" / (uuid.uuid4().hex + ".json"),
                        {"lane": lane, "case": row, "execution_evidence": evidence,
@@ -1250,6 +1331,7 @@ class Executor:
 
     def restore_case(self, identifier, checks):
         self.seed(self.candidate, 10, checks)
+        seed_snapshot = getattr(self, "last_snapshot_creation", None)
         self.mutate("retained")
         commands, inventories = [], {}
         source_db = digest(self.redis.encode())
@@ -1310,7 +1392,7 @@ class Executor:
             "backup": {"command": backup_id, "sha256": digest(backup), "bytes": len(backup)}, "inventories": inventories,
             "observations": {"state_before_append": 12 if before.get("accepted") else None,
                 "appended_sequence": 13 if append.get("accepted") else None, "state_after_restart": 13 if replay.get("accepted") else None}}
-        return {"before": source, "after": restarted, "backup_sha256": digest(backup), "backup_bytes": len(backup),
+        return {"before": source, "after": restarted, "seed_snapshot": seed_snapshot, "backup_sha256": digest(backup), "backup_bytes": len(backup),
                 "restored_inventory": copied, "appended_inventory": appended}, "effect", "compatible"
 
     def containment_case(self, identifier, checks):

@@ -1,0 +1,61 @@
+{
+  "scope": "independent bounded source review; no publication or qualification",
+  "source_manifest": "reviewed-source-v3.json",
+  "reviews": [
+    {
+      "agent": "blind_review",
+      "resolved_findings": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B9",
+        "B10",
+        "R3"
+      ],
+      "deferred": [
+        "B8"
+      ],
+      "final_command": [
+        "python3",
+        "-m",
+        "unittest",
+        "-v",
+        "tools.tests.test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes",
+        "tools.tests.test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands",
+        "tools.tests.test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract"
+      ],
+      "exit_code": 0,
+      "tests": 3,
+      "seconds": 3.78
+    },
+    {
+      "agent": "edge_review",
+      "resolved_findings": [
+        "E1",
+        "E2",
+        "E3",
+        "R4"
+      ],
+      "final_command": [
+        "python3",
+        "-m",
+        "unittest",
+        "tools.tests.test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "exit_code": 0,
+      "tests": 1,
+      "substitution_refusals": 4
+    }
+  ],
+  "verification_review": "clean completed final recheck: final-verification-review.json",
+  "package_qualified": false,
+  "p1r_usable": false,
+  "story_6_1": "blocked"
+}

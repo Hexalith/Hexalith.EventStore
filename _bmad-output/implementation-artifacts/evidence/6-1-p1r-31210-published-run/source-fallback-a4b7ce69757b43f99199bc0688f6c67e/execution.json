@@ -1,0 +1,50 @@
+{
+  "errors": [],
+  "executor_source_sha256": "ab97883a43952f85c58d248a9b2680ebd9087af8fcd7d7c31b474e893a897ad1",
+  "finished_utc": "2026-10-14T08:34:20.452183+00:00",
+  "inputs_sha256": "f062ac7be753c0563e21223e3298d10f0ea3372ec824dcf143c99b0d1d089002",
+  "invocation": "afc418cdf02c4e09b9cca4a42d62ca8a",
+  "owned_containers": {
+    "2bc090a5ba451f1834e61a593d46055371c0ac035a7fa1ae6837c38f5297ed5b": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-afc418cdf02c4e09b9cca4a42d62ca8a-source-7f82cae3",
+      "port": 17663,
+      "role": "source"
+    },
+    "34bac1e5c1513d76dc013b2ec7eb9c5d288e94ab7551b26e6986006ab95ef667": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-afc418cdf02c4e09b9cca4a42d62ca8a-pubsub-556a675d",
+      "port": 11454,
+      "role": "pubsub"
+    },
+    "37c4345ceb04958d068a65a7dca58e89a4a556634d399f89eb31e5894a96ff83": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-afc418cdf02c4e09b9cca4a42d62ca8a-placement-8243eddd",
+      "port": 19963,
+      "role": "placement"
+    },
+    "998025b9239c17f3c007a1e16930b581499c7d66f1350182623a66bcb4f0b51c": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-afc418cdf02c4e09b9cca4a42d62ca8a-scheduler-ef1579f7",
+      "port": 24736,
+      "role": "scheduler"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-fallback-a4b7ce69757b43f99199bc0688f6c67e/receipts/0c9874acd4c14f8d807086e6f7f087d5.json",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-fallback-a4b7ce69757b43f99199bc0688f6c67e/receipts/fb4e21dd443d4db98237eb9ce0c8e657.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-14T08:30:45.274325+00:00",
+  "supplement": {
+    "driver_sha256": "2f4b3bca693e607c6aad28c32748f1ced47b8da9e9816029f3ec8ac0e065cfee",
+    "original_run": "execution-f47a56499f0542c1b171e110aa48de2f",
+    "private_copy_excludes": [
+      "bin",
+      "obj",
+      "packages"
+    ],
+    "scope": "fresh checkout lane with explicit serialized Debug/source restore on unchanged frozen sources"
+  }
+}

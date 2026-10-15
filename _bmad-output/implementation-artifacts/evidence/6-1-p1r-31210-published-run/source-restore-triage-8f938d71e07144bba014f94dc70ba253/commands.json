@@ -1,0 +1,52 @@
+[
+  {
+    "argv": [
+      "dotnet",
+      "restore",
+      "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-restore-triage-8f938d71e07144bba014f94dc70ba253/consumer/host/Host.csproj",
+      "--disable-parallel",
+      "-m:1",
+      "-p:BuildInParallel=false",
+      "-p:Configuration=Debug",
+      "-p:EventStoreVersion=3.121.0",
+      "-p:NuGetAudit=false",
+      "-p:UseCurrentSource=true",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:EventStoreSourceRoot=/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore"
+    ],
+    "cleanup": [
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      },
+      {
+        "before": [],
+        "errors": [],
+        "remaining": []
+      }
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-restore-triage-8f938d71e07144bba014f94dc70ba253/consumer",
+    "exit_code": 0,
+    "finished_utc": "2026-10-14T08:24:18.679758+00:00",
+    "id": 1,
+    "output": "  Determining projects to restore...\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj (in 2.54 sec).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 1.64 sec).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 7 ms).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 201 ms).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj (in 12 ms).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 373 ms).\n  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-restore-triage-8f938d71e07144bba014f94dc70ba253/consumer/host/Host.csproj (in 58 ms).\n",
+    "output_sha256": "63909c2cac63fd145c6ea5214d7074e49b6930ed61937b8c7bca8cd724921474",
+    "owned_processes": [
+      {
+        "pgid": 2684979,
+        "pid": 2684979,
+        "session": 2684979,
+        "start_ticks": 6589087
+      }
+    ],
+    "process": {
+      "pgid": 2684979,
+      "pid": 2684979,
+      "session": 2684979,
+      "start_ticks": 6589087
+    },
+    "started_utc": "2026-10-14T08:24:12.218299+00:00",
+    "timeout_seconds": 180
+  }
+]

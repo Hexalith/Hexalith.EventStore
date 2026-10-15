@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/final-controller-audit.py",
+    "--repo",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "--launch",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/launch.json",
+    "--out",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/final-independent-validation.json"
+  ],
+  "exit_code": 2,
+  "output": "{\"out\": \"/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/final-independent-validation.json\", \"valid_evidence\": false, \"errors\": [\"actual-distinct-daemon-namespaces-toolchain-and-command: InvalidPacket: private or outer execution failed\", \"independent-measurements-and-six-supported-cases-sixteen-assertions: InvalidPacket: independent measurement audit failed\"], \"p1r_usable\": false}\n",
+  "output_sha256": "38d5dac8c6883624db022a20fe66c2c4ca66c0910317db596c2b7b224799b204"
+}
