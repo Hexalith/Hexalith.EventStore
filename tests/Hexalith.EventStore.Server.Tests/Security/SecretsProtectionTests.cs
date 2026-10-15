@@ -23,6 +23,16 @@ public sealed partial class SecretsProtectionTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/source-candidate.diff";
     private const string SealedP1RRemediationSourceCaptureSha256 =
         "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa";
+    // Existing Story 5.3 approvals from df3828740c244d8add3c40ce2bbfd0d2da680b30.
+    // The mutable registry cannot approve new content by re-pinning its digest.
+    private static readonly IReadOnlyDictionary<string, string> ApprovedRetirementHashes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/builds/eadddc7b5d8e9392e5931758ffb608b57b5fdc6c/Github/publish-containers/smoke_container_platforms.py"] =
+                "7f1161d6f477c77ddf6a1e2f381df03451168565dd8cabc28010ab23db443491",
+            ["_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"] =
+                "cb1ccde9d5cc5ca6cb52cbeab30fb9cd59bd89771e14f4b489e20bd5e3d46743",
+        };
 
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
@@ -35,9 +45,7 @@ public sealed partial class SecretsProtectionTests
         trackedFiles.ShouldNotBeEmpty("Git should return tracked repository content.");
 
         string[] violations = trackedFiles
-            .SelectMany(path => ReadTrackedText(path) is { } content
-                ? FindViolations(path, content)
-                : [])
+            .SelectMany(path => ScanTrackedFile(path))
             .Order(StringComparer.Ordinal)
             .ToArray();
 
@@ -1074,6 +1082,7 @@ public sealed partial class SecretsProtectionTests
 
     private static IEnumerable<string> FindViolations(string relativePath, string content)
     {
+        content = MaskBoundedPythonSecurityProbes(relativePath, content);
         content = MaskSealedPublishedExecutorSource(relativePath, content);
         content = MaskKnownSyntheticBindingTestNames(relativePath, content);
         content = MaskKnownSyntheticTrxTestNames(relativePath, content);
@@ -1254,8 +1263,9 @@ public sealed partial class SecretsProtectionTests
             bool isInsideCSharpString = isCSharp
                 && !isCSharpConfigurationIndexer
                 && IsInsideCSharpString(content, match.Groups["name"].Index);
-            bool isInsideJavaScriptOrPythonString = (isJavaScript || isPython)
-                && IsInsideCSharpString(content, match.Groups["name"].Index);
+            bool isInsideJavaScriptOrPythonString = isPython
+                ? IsInsidePythonSourceLiteral(effectivePath, content, match.Groups["name"].Index)
+                : isJavaScript && IsInsideCSharpString(content, match.Groups["name"].Index);
             if ((isCSharp || isPython)
                 && !isInsideCSharpString
                 && !usesEquals)
@@ -1305,7 +1315,15 @@ public sealed partial class SecretsProtectionTests
                 isBare = false;
             }
 
-            if (!IsNonCredentialFixtureAssignment(effectivePath, content, match)
+            if (isPython && (isInsideJavaScriptOrPythonString
+                || match.Groups["name"].Value == "account_key" && value.StartsWith('(')))
+            {
+                // Embedded source strings contain literal bytes unless a bounded rule proves otherwise.
+                isBare = false;
+            }
+
+            if (!IsBoundedPythonSourceAssignment(effectivePath, content, match)
+                && !IsNonCredentialFixtureAssignment(effectivePath, content, match)
                 && IsUsableLiteral(
                 effectivePath,
                 match.Groups["name"].Value,
@@ -1618,18 +1636,24 @@ public sealed partial class SecretsProtectionTests
         return output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
-    private static string? ReadTrackedText(string path)
+    private static IEnumerable<string> ScanTrackedFile(string path, string? repositoryRoot = null)
+        => ReadTrackedText(path, repositoryRoot) is { } content
+            ? FindViolations(path, content)
+            : [];
+
+    private static string? ReadTrackedText(string path, string? repositoryRoot = null)
     {
-        if (IsRetiredEvidenceCapture(path) || IsExplicitGeneratedPath(path))
+        string root = repositoryRoot ?? RepoRoot;
+        if (IsRetiredEvidenceCapture(path, root) || IsExplicitGeneratedPath(path))
         {
             if (string.Equals(path, SealedP1RRemediationSourceCapture, StringComparison.Ordinal))
             {
-                VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(RepoRoot, path)));
+                VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(root, path)));
             }
             return null;
         }
 
-        string fullPath = Path.Combine(RepoRoot, path);
+        string fullPath = Path.Combine(root, path);
         if (!File.Exists(fullPath))
         {
             return null;
@@ -1689,17 +1713,17 @@ public sealed partial class SecretsProtectionTests
         }
     }
 
-    private static bool IsRetiredEvidenceCapture(string path)
+    private static bool IsRetiredEvidenceCapture(string path, string root)
     {
-        string manifestPath = Path.Combine(RepoRoot, RetiredEvidenceManifest);
+        string manifestPath = Path.Combine(root, RetiredEvidenceManifest);
         using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
-        foreach (JsonElement retired in document.RootElement.GetProperty("retired").EnumerateArray())
+        document.RootElement.GetProperty("schema").GetString().ShouldBe("hexalith.eventstore.retired-evidence.v1");
+        JsonElement[] matches = document.RootElement.GetProperty("retired").EnumerateArray()
+            .Where(retired => string.Equals(retired.GetProperty("path").GetString(), path, StringComparison.Ordinal))
+            .ToArray();
+        matches.Length.ShouldBeLessThanOrEqualTo(1, "Duplicate retirement records cannot establish unambiguous approval.");
+        foreach (JsonElement retired in matches)
         {
-            if (!string.Equals(retired.GetProperty("path").GetString(), path, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
             IsGovernedRetirementPath(path).ShouldBeTrue(
                 "Only governed historical evidence or explicitly owner-approved proof packets may be retired from scanning.");
             retired.GetProperty("status").GetString().ShouldBe("retired");
@@ -1707,7 +1731,10 @@ public sealed partial class SecretsProtectionTests
             retired.GetProperty("reason").GetString().ShouldNotBeNullOrWhiteSpace();
             string expectedHash = retired.GetProperty("sha256").GetString()!;
             expectedHash.ShouldMatch("^[0-9a-f]{64}$");
-            string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(RepoRoot, path))))
+            ApprovedRetirementHashes.TryGetValue(path, out string? approvedHash).ShouldBeTrue(
+                "Retirement requires an existing verified approval; a registry entry alone is not approval.");
+            expectedHash.ShouldBe(approvedHash, "A registry edit cannot re-pin approved retired content.");
+            string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path))))
                 .ToLowerInvariant();
             actualHash.ShouldBe(expectedHash, "Retired evidence must remain byte-preserved.");
             return true;
@@ -1752,7 +1779,7 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsExplicitGeneratedPath(string path)
         => ExplicitUiTestArtifactPathPattern().IsMatch(path)
-            || ExplicitEvidenceArtifactPathPattern().IsMatch(path);
+            || string.Equals(path, SealedP1RRemediationSourceCapture, StringComparison.Ordinal);
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
@@ -2842,7 +2869,8 @@ public sealed partial class SecretsProtectionTests
             "c#" or "csharp" or "cs" => relativePath + ".cs",
             "python" or "py" => relativePath + ".py",
             "javascript" or "js" or "typescript" or "ts" or "tsx" or "jsx" => relativePath + ".js",
-            "bash" or "shell" or "sh" => relativePath + ".sh",
+            "bash" or "shell" or "sh" => IsInClosedMarkdownPythonHereDocument(content, index)
+                ? relativePath + ".py" : relativePath + ".sh",
             "powershell" or "ps1" => relativePath + ".ps1",
             _ => relativePath,
         };
@@ -3642,6 +3670,4 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"^(?:src|tests)/[^/]+/\.artifacts/ui-test-obj/(?:project\.assets\.json|[^/]+\.csproj\.nuget\.(?:dgspec\.json|g\.props|g\.targets))$", RegexOptions.CultureInvariant)]
     private static partial Regex ExplicitUiTestArtifactPathPattern();
 
-    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/(?:evidence/(?:.+\.ctrf\.json|6-1-p1r-3110/verification/.+|6-1-p1r-remediation/source-candidate\.diff)|6-5d-simplification/previous-candidate\.md)$", RegexOptions.CultureInvariant)]
-    private static partial Regex ExplicitEvidenceArtifactPathPattern();
 }

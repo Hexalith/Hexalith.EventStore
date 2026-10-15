@@ -89,7 +89,9 @@ class PostgresqlComponentTests(unittest.TestCase):
 
     def testRenderedSubstitutedOrUnredactedComponentIsInvalidPacket(self):
         template = self.component()["content"]
-        for changes in ({"content": template.replace("{env:POSTGRES_CONNECTION_STRING}", "host=127.0.0.1 password=secret")},
+        fixture_value = uuid.uuid4().hex
+        private_rendering = f"host=127.0.0.1 password={fixture_value}"
+        for changes in ({"content": template.replace("{env:POSTGRES_CONNECTION_STRING}", private_rendering)},
                         {"content": template + "# substituted\n"},
                         {"credential_redacted": MISSING}, {"credential_redacted": False},
                         {"rendered_sha256": MISSING}, {"rendered_sha256": "A" * 64}):

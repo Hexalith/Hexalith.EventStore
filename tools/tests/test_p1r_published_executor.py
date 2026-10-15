@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -386,8 +387,10 @@ class MeasurementTests(unittest.TestCase):
             cases = [lane_case(identity) for identity in qualification.executed_case_inventory(inputs)["full-replay"]]
             receipt = lane_receipt("full-replay", cases=cases, scope="published-package", compatibility="compatible")
             receipt["inputs_sha256"], receipt["instrumentation"] = "a" * 64, executor.MECHANISM
+            fixture_value = uuid.uuid4().hex
+            private_rendering = f"host=127.0.0.1 password={fixture_value}"
             rendered = (executor.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text().replace(
-                "{env:POSTGRES_CONNECTION_STRING}", "host=127.0.0.1 password=private-secret")
+                "{env:POSTGRES_CONNECTION_STRING}", private_rendering)
             configuration = {"backend_image": inputs["operational_profile"]["backend_image"],
                              "runtime_version": inputs["operational_profile"]["runtime_version"],
                              "files": [{"name": "state.yaml", "content": rendered, "sha256": executor.digest(rendered.encode()),
