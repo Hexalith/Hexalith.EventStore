@@ -1,0 +1,35 @@
+{
+  "backend_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+  "dotnet_polling_file_watcher": true,
+  "dotnet_reload_config_on_change": false,
+  "files": [
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: \"/tmp/p1r-published-b491042d79ba467ca657ef016a05c62d-mnpk8l2j/discovery.sqlite\"\n",
+      "name": "discovery.yaml",
+      "path": "/tmp/p1r-published-b491042d79ba467ca657ef016a05c62d-mnpk8l2j/discovery.yaml",
+      "sha256": "cce593ead1bf34cacc5087246c06e11a4f48ed98bf2cc8ddd6c8097d3798239e"
+    },
+    {
+      "content": "# DAPR State Store Component -- Production PostgreSQL (D1, NFR13)\n# =================================================================\n# PostgreSQL-backed state store for actor state, snapshots, and command status tracking.\n# Composite key pattern: {tenant}||{domain}||{aggregateId} (D1)\n#\n# Component Scoping (AC #2, AC #4, AC #13):\n#   eventstore accesses actor state, snapshots, and command status.\n#   eventstore-admin reads admin indexes and performs direct health/state probes.\n#   Domain services have zero state store access -- no read, no write.\n#\n# Adding New Domain Services:\n#   DO NOT add new domain services to scopes. Domain services have zero state store\n#   access (D4). If a domain service needs configuration data, use a separate scoped\n#   component (not the actor state store).\napiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.postgresql\n  version: v1\n  metadata:\n    - name: connectionString\n      # PostgreSQL pgx/libpq connection string. Format: host=<host> port=5432 user=<user> password=<pass> dbname=<db> sslmode=require\n      # The deployment pipeline resolves this placeholder from its environment/secret provider.\n      # NEVER hardcode secrets in this file (NFR14).\n      value: \"{env:POSTGRES_CONNECTION_STRING}\"\n    - name: actorStateStore\n      value: \"true\"\n# Component-level scoping: eventstore and eventstore-admin can access this state store.\n# Actors run in-process under the eventstore app-id. Admin.Server performs read-only\n# admin queries and health probes. Domain services have zero state store access --\n# no read, no write. This enforces the zero-trust posture (D4).\nscopes:\n  - eventstore\n  - eventstore-admin\n",
+      "credential_redacted": true,
+      "name": "state.yaml",
+      "path": "/tmp/p1r-published-b491042d79ba467ca657ef016a05c62d-mnpk8l2j/resources/state.yaml",
+      "rendered_sha256": "33eafd0fa63e44474c113eda82f0fa8a34a61ba4cc2333fd791347bdb8e58caa",
+      "sha256": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb"
+    },
+    {
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"127.0.0.1:28341\"\nscopes:\n  - eventstore\n",
+      "name": "pubsub.yaml",
+      "path": "/tmp/p1r-published-b491042d79ba467ca657ef016a05c62d-mnpk8l2j/resources/pubsub.yaml",
+      "sha256": "3e320e067b377d64ff5a48f8a80d45fe820e97d2bc715f000e8ed8b5bdf2b8c7"
+    }
+  ],
+  "id": "ae0c99e9cb74469f8ddd1e7a4cd04bfe",
+  "observed_utc": "2026-10-14T12:55:57.270018+00:00",
+  "runtime_version": "1.18.2",
+  "snapshot_interval": 10,
+  "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending",
+  "state_component_sha256": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+  "state_container": "afb7da2f6ae128dded2b2445cc28b9b96c294334dc7e1ca50991a11151349383",
+  "version": "source"
+}

@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+    "ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a"
+  ],
+  "exit_code": 1,
+  "output": "\nerror: no such object: ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a\n",
+  "output_sha256": "712c2657af2c40d910b80a82ef4c75a8a8b18c9ece0270360f15a961b237b0a9"
+}

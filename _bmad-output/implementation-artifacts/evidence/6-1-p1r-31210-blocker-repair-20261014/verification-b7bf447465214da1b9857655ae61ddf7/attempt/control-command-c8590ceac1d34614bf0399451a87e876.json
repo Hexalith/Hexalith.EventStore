@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "docker",
+    "rm",
+    "-f",
+    "ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a"
+  ],
+  "exit_code": 0,
+  "output": "ea5888ac624b03b38e524018cba9bc9e88ad00c6c2df329dafe28e39abdef74a\n",
+  "output_sha256": "b567f1a71b8003b3147a52d67c3a0da5f9824bf661cf38032d0cd220ae5705d4"
+}

@@ -1,0 +1,464 @@
+{
+  "attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt",
+  "errors": [],
+  "final_outer_isolation_audit": "pending",
+  "finished_utc": "2026-10-14T12:59:32.609518+00:00",
+  "interrupted_signals": [],
+  "measurement_and_audit_passed": true,
+  "p1r_usable": false,
+  "scope": "repair-measurement-and-audit",
+  "scripts_binding_sha256": "bfefa4c39de007c8729a15f7cdedccb15377efb490aaee00610da424ae572c0f",
+  "scripts_verified_after_audit": true,
+  "stages": [
+    {
+      "argv": [
+        "/opt/python/bin/python3",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt/scripts/verify-repair.py",
+        "--attempt",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt",
+        "--repo",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore"
+      ],
+      "cleanup": [
+        {
+          "before": [],
+          "errors": [],
+          "remaining": []
+        },
+        {
+          "before": [],
+          "errors": [],
+          "remaining": []
+        }
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:59:20.501069+00:00",
+      "owned_processes": [
+        {
+          "pgid": 402,
+          "pid": 402,
+          "session": 402,
+          "start_ticks": 8146867
+        },
+        {
+          "pgid": 402,
+          "pid": 421,
+          "session": 402,
+          "start_ticks": 8146887
+        },
+        {
+          "pgid": 402,
+          "pid": 451,
+          "session": 402,
+          "start_ticks": 8146897
+        },
+        {
+          "pgid": 402,
+          "pid": 456,
+          "session": 402,
+          "start_ticks": 8146899
+        },
+        {
+          "pgid": 402,
+          "pid": 510,
+          "session": 402,
+          "start_ticks": 8147776
+        },
+        {
+          "pgid": 402,
+          "pid": 584,
+          "session": 402,
+          "start_ticks": 8147813
+        },
+        {
+          "pgid": 402,
+          "pid": 585,
+          "session": 402,
+          "start_ticks": 8147839
+        },
+        {
+          "pgid": 402,
+          "pid": 703,
+          "session": 402,
+          "start_ticks": 8147914
+        },
+        {
+          "pgid": 402,
+          "pid": 716,
+          "session": 402,
+          "start_ticks": 8147916
+        },
+        {
+          "pgid": 402,
+          "pid": 787,
+          "session": 402,
+          "start_ticks": 8147951
+        },
+        {
+          "pgid": 402,
+          "pid": 788,
+          "session": 402,
+          "start_ticks": 8147976
+        },
+        {
+          "pgid": 402,
+          "pid": 3364,
+          "session": 402,
+          "start_ticks": 8158250
+        },
+        {
+          "pgid": 402,
+          "pid": 3365,
+          "session": 402,
+          "start_ticks": 8158277
+        },
+        {
+          "pgid": 402,
+          "pid": 7036,
+          "session": 402,
+          "start_ticks": 8163944
+        },
+        {
+          "pgid": 402,
+          "pid": 7037,
+          "session": 402,
+          "start_ticks": 8163970
+        },
+        {
+          "pgid": 402,
+          "pid": 11418,
+          "session": 402,
+          "start_ticks": 8170495
+        },
+        {
+          "pgid": 402,
+          "pid": 11419,
+          "session": 402,
+          "start_ticks": 8170521
+        },
+        {
+          "pgid": 402,
+          "pid": 20873,
+          "session": 402,
+          "start_ticks": 8184436
+        },
+        {
+          "pgid": 402,
+          "pid": 20874,
+          "session": 402,
+          "start_ticks": 8184462
+        },
+        {
+          "pgid": 402,
+          "pid": 26795,
+          "session": 402,
+          "start_ticks": 8196179
+        },
+        {
+          "pgid": 402,
+          "pid": 31163,
+          "session": 402,
+          "start_ticks": 8205167
+        },
+        {
+          "pgid": 402,
+          "pid": 39619,
+          "session": 402,
+          "start_ticks": 8222411
+        },
+        {
+          "pgid": 402,
+          "pid": 41082,
+          "session": 402,
+          "start_ticks": 8225526
+        },
+        {
+          "pgid": 402,
+          "pid": 41083,
+          "session": 402,
+          "start_ticks": 8225553
+        },
+        {
+          "pgid": 402,
+          "pid": 41106,
+          "session": 402,
+          "start_ticks": 8225581
+        },
+        {
+          "pgid": 402,
+          "pid": 42461,
+          "session": 402,
+          "start_ticks": 8228937
+        },
+        {
+          "pgid": 402,
+          "pid": 42462,
+          "session": 402,
+          "start_ticks": 8228966
+        },
+        {
+          "pgid": 402,
+          "pid": 44216,
+          "session": 402,
+          "start_ticks": 8235363
+        },
+        {
+          "pgid": 402,
+          "pid": 44217,
+          "session": 402,
+          "start_ticks": 8235389
+        },
+        {
+          "pgid": 402,
+          "pid": 46046,
+          "session": 402,
+          "start_ticks": 8239950
+        }
+      ],
+      "script": "verify-repair.py",
+      "script_sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd",
+      "started_utc": "2026-10-14T12:43:49.268830+00:00"
+    },
+    {
+      "argv": [
+        "/opt/python/bin/python3",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt/scripts/independent-repair-audit.py",
+        "--attempt",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-d24fddc3cffa4ce9a2e3322b4d9725c2/attempt",
+        "--repo",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore"
+      ],
+      "cleanup": [
+        {
+          "before": [],
+          "errors": [],
+          "remaining": []
+        },
+        {
+          "before": [],
+          "errors": [],
+          "remaining": []
+        }
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:59:32.607498+00:00",
+      "owned_processes": [
+        {
+          "pgid": 46101,
+          "pid": 46101,
+          "session": 46101,
+          "start_ticks": 8239994
+        },
+        {
+          "pgid": 46101,
+          "pid": 46121,
+          "session": 46101,
+          "start_ticks": 8240005
+        },
+        {
+          "pgid": 46101,
+          "pid": 46133,
+          "session": 46101,
+          "start_ticks": 8240071
+        },
+        {
+          "pgid": 46101,
+          "pid": 46195,
+          "session": 46101,
+          "start_ticks": 8240116
+        },
+        {
+          "pgid": 46101,
+          "pid": 46203,
+          "session": 46101,
+          "start_ticks": 8240131
+        },
+        {
+          "pgid": 46101,
+          "pid": 46221,
+          "session": 46101,
+          "start_ticks": 8240162
+        },
+        {
+          "pgid": 46101,
+          "pid": 46229,
+          "session": 46101,
+          "start_ticks": 8240173
+        },
+        {
+          "pgid": 46101,
+          "pid": 46247,
+          "session": 46101,
+          "start_ticks": 8240196
+        },
+        {
+          "pgid": 46101,
+          "pid": 46255,
+          "session": 46101,
+          "start_ticks": 8240209
+        },
+        {
+          "pgid": 46101,
+          "pid": 46274,
+          "session": 46101,
+          "start_ticks": 8240233
+        },
+        {
+          "pgid": 46101,
+          "pid": 46282,
+          "session": 46101,
+          "start_ticks": 8240244
+        },
+        {
+          "pgid": 46101,
+          "pid": 46299,
+          "session": 46101,
+          "start_ticks": 8240269
+        },
+        {
+          "pgid": 46101,
+          "pid": 46307,
+          "session": 46101,
+          "start_ticks": 8240279
+        },
+        {
+          "pgid": 46101,
+          "pid": 46324,
+          "session": 46101,
+          "start_ticks": 8240304
+        },
+        {
+          "pgid": 46101,
+          "pid": 46332,
+          "session": 46101,
+          "start_ticks": 8240316
+        },
+        {
+          "pgid": 46101,
+          "pid": 46350,
+          "session": 46101,
+          "start_ticks": 8240348
+        },
+        {
+          "pgid": 46101,
+          "pid": 46358,
+          "session": 46101,
+          "start_ticks": 8240359
+        },
+        {
+          "pgid": 46101,
+          "pid": 46375,
+          "session": 46101,
+          "start_ticks": 8240385
+        },
+        {
+          "pgid": 46101,
+          "pid": 46383,
+          "session": 46101,
+          "start_ticks": 8240396
+        },
+        {
+          "pgid": 46101,
+          "pid": 46401,
+          "session": 46101,
+          "start_ticks": 8240428
+        },
+        {
+          "pgid": 46101,
+          "pid": 46409,
+          "session": 46101,
+          "start_ticks": 8240440
+        },
+        {
+          "pgid": 46101,
+          "pid": 46427,
+          "session": 46101,
+          "start_ticks": 8240468
+        },
+        {
+          "pgid": 46101,
+          "pid": 46435,
+          "session": 46101,
+          "start_ticks": 8240478
+        },
+        {
+          "pgid": 46101,
+          "pid": 46452,
+          "session": 46101,
+          "start_ticks": 8240504
+        },
+        {
+          "pgid": 46101,
+          "pid": 46460,
+          "session": 46101,
+          "start_ticks": 8240515
+        },
+        {
+          "pgid": 46101,
+          "pid": 46479,
+          "session": 46101,
+          "start_ticks": 8240537
+        },
+        {
+          "pgid": 46101,
+          "pid": 46487,
+          "session": 46101,
+          "start_ticks": 8240548
+        },
+        {
+          "pgid": 46101,
+          "pid": 46506,
+          "session": 46101,
+          "start_ticks": 8240571
+        },
+        {
+          "pgid": 46101,
+          "pid": 46514,
+          "session": 46101,
+          "start_ticks": 8240586
+        },
+        {
+          "pgid": 46101,
+          "pid": 46533,
+          "session": 46101,
+          "start_ticks": 8240609
+        },
+        {
+          "pgid": 46101,
+          "pid": 46541,
+          "session": 46101,
+          "start_ticks": 8240618
+        },
+        {
+          "pgid": 46101,
+          "pid": 46559,
+          "session": 46101,
+          "start_ticks": 8240643
+        },
+        {
+          "pgid": 46101,
+          "pid": 46567,
+          "session": 46101,
+          "start_ticks": 8240658
+        },
+        {
+          "pgid": 46101,
+          "pid": 46588,
+          "session": 46101,
+          "start_ticks": 8241108
+        },
+        {
+          "pgid": 46101,
+          "pid": 46589,
+          "session": 46101,
+          "start_ticks": 8241148
+        }
+      ],
+      "script": "independent-repair-audit.py",
+      "script_sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676",
+      "started_utc": "2026-10-14T12:59:20.502122+00:00"
+    }
+  ],
+  "story_6_1": "blocked",
+  "valid_evidence": null
+}

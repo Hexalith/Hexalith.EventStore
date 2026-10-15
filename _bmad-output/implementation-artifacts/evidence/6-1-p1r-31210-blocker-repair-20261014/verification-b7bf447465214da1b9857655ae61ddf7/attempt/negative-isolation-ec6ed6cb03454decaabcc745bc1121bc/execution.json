@@ -1,0 +1,12 @@
+{
+  "consumer_cleanup": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/negative-isolation-ec6ed6cb03454decaabcc745bc1121bc/receipts/74e86d52f95f4495a849cd472641a391.json",
+  "errors": [],
+  "executor_source_sha256": "03bbfc2f9b686a27b5c15d18f524d4936f3468e2b76557fd156162e70b4d54e5",
+  "finished_utc": "2026-10-14T12:24:05.640957+00:00",
+  "inputs_sha256": null,
+  "invocation": "9d5b3e0e6ffa4ff4b693f8867b144eb7",
+  "p1r_usable": false,
+  "receipts": [],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-14T12:24:04.393389+00:00"
+}

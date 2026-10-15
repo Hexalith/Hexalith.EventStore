@@ -1,0 +1,120 @@
+{
+  "attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt",
+  "audit_script_sha256": "badfe2d4836a393c6a78388a11aba6076d6b375db3fef01efcde88aa38cc9bc7",
+  "checks": [
+    {
+      "id": "current-exact-source-closure",
+      "passed": true
+    },
+    {
+      "id": "production-source-remains-equal-to-published-tag",
+      "passed": true
+    },
+    {
+      "id": "independent-executed-driver-and-manifest-hashes",
+      "passed": true
+    },
+    {
+      "id": "measurement-invocation-has-no-executor-errors",
+      "passed": true
+    },
+    {
+      "id": "original-inputs-and-unchanged-source-file-binding",
+      "passed": true
+    },
+    {
+      "id": "repair-scope-cannot-grant-immutable-successor-qualification",
+      "passed": true
+    },
+    {
+      "id": "independent-package-signature-assets-lock-physical-load:candidate",
+      "passed": true
+    },
+    {
+      "id": "independent-package-signature-assets-lock-physical-load:comparison-3.70.1",
+      "passed": true
+    },
+    {
+      "id": "independent-package-signature-assets-lock-physical-load:comparison-3.110.0",
+      "passed": true
+    }
+  ],
+  "conformance": "pending",
+  "errors": [
+    "KeyError: 'invocation'"
+  ],
+  "final_outer_isolation_audit": "pending",
+  "finished_utc": "2026-10-14T12:40:25.331969+00:00",
+  "four_role_acceptance": "pending",
+  "inputs_sha256": "f062ac7be753c0563e21223e3298d10f0ea3372ec824dcf143c99b0d1d089002",
+  "lanes": [],
+  "measurement_invocation": "ef9dbe9d76c1400695f51ce6d0f46b62",
+  "measurement_valid_evidence": false,
+  "p1r_usable": false,
+  "packages": [
+    {
+      "retained_files": 15,
+      "role": "candidate",
+      "row": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "candidate-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/3900d2758fea4bd8b038dbeb15846c75.json"
+        ],
+        "scope": "published-package"
+      }
+    },
+    {
+      "retained_files": 15,
+      "role": "comparison-3.70.1",
+      "row": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.70.1-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/9dddcbade1284b2ca503ccc8404090fd.json"
+        ],
+        "scope": "published-package"
+      }
+    },
+    {
+      "retained_files": 15,
+      "role": "comparison-3.110.0",
+      "row": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "id": "comparison-3.110.0-packages",
+        "reason": null,
+        "receipts": [
+          "receipts/833ba0935d85493fba74e86ac9022c09.json"
+        ],
+        "scope": "published-package"
+      }
+    }
+  ],
+  "private_daemon_id": "3c4c8b40-cadf-47aa-8308-7c1261aa0ce9",
+  "run": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement",
+  "scope": "existing-3.121.0-package-repair-verification-only",
+  "scripts_binding_sha256": "814c0a17352e3adbb98fc0799b84826bf44e511e7572a4caf69181121097fb7a",
+  "story_6_1": "blocked",
+  "support_disposition": "pending",
+  "valid_evidence": null
+}

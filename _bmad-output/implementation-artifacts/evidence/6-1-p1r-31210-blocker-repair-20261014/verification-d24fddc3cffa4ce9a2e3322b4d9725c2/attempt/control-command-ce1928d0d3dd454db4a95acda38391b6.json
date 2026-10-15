@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "docker",
+    "start",
+    "507168395abd65e79745ab725d0ba8d434023d7e6f3fc57cae786306c79ea3fd"
+  ],
+  "exit_code": 0,
+  "output": "507168395abd65e79745ab725d0ba8d434023d7e6f3fc57cae786306c79ea3fd\n",
+  "output_sha256": "b025c4b9ad561fec38bf4ea889b5a4aad0289e9a85d07bb2f3222d974395e07a"
+}

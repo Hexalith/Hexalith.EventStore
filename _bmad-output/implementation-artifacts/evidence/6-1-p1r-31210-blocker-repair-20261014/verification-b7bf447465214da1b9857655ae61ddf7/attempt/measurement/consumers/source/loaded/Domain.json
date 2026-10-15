@@ -1,0 +1,34 @@
+{
+  "assemblies": [
+    {
+      "name": "Hexalith.EventStore.Client",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "982bcf3bd7e981e59c9fb47e992195afb3763a213282a212e723ea0b2112aef0",
+      "version": "3.120.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "1b76ebd7bf2533388ee66748146776dc0525b1fa7d930360ebd5d2ece89694d8",
+      "version": "3.120.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Server",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "05d117f2c9643579814f447b9729f541e2559cc5b8df66303413ff9378f64add",
+      "version": "3.120.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.DomainService",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "6cad7b5e80d1978ec4a6389b1aa7db2405a96d76c0cecb6ab254009a4b3d1af2",
+      "version": "3.120.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.ServiceDefaults",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "da181e36e126be0cec2187302781a0e50614a53e508998b129335aabda7b14db",
+      "version": "3.120.0.0"
+    }
+  ]
+}
