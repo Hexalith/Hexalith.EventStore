@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-12
+# last_updated: 2026-10-15
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '14-10-2026 12:00'
+last_updated: '15-10-2026 17:25'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -232,7 +232,7 @@ development_status:
   6-1-folded-snapshot-frozen-spec: done
   6-2-folded-snapshot-implementation: done
   # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
-  6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
+  6-3-projection-delivery-cost-and-sequence-guard-spec: done
   6-4-projection-cost-and-sequence-guard-implementation: backlog
   # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
   6-5-event-versioning-and-upcasting-spec: done
@@ -639,7 +639,8 @@ action_items:
     action: "Complete and approve the projection cost/sequence guard specification
       before 6.4 starts (AGG-1; `epics.md:4976-5044`)."
     owner: "Projection architecture owner"
-    status: open
+    status: done
+    # Owner approval 2026-10-15: spec-projection-cost-sequence-guard.md; 6.4 authorized, runtime backlog.
     ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-10-10.md"
   - id: "epic-6-retro-item-3-complete-story-6-4"
     epic: 6

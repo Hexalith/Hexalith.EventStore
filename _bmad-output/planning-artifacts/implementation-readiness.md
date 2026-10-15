@@ -50,7 +50,9 @@ Repair: use `bmad-correct-course` to reconcile requirements, story slices, lifec
 
 ### 3. Mandatory Decisions And Requirement Ownership Are Incomplete
 
-The projection-cost specification `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` is absent. G-NFR8 requires an approved numeric budget, workload/page-size model, validation command, evidence identity, and Story 6.4 authorization before that implementation starts.
+At the 2026-10-06 assessment, the projection-cost specification `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` was absent. G-NFR8 requires an approved numeric budget, workload/page-size model, validation command, evidence identity, and Story 6.4 authorization before that implementation starts.
+
+**Dated reconciliation (2026-10-15):** Story 6.3 now provides that version 1 specification under normative SHA-256 `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`. Its detached record contains Jérôme Piquot's sole-owner approval for the Epic 6, architecture and Test roles and explicit Story 6.4 authorization. Story 6.3 is done for the specification gate; Story 6.4 remains backlog. This resolves the absent/unapproved-specification finding and OR16's specification obligation only. It is not a new readiness assessment, runtime NFR8 result, sealed assurance transition or approval of an atomic planning baseline; the report's overall FAIL remains unchanged.
 
 The required `docs/reference/aot-and-trimming-posture.md` is also absent. G-NFR18 requires the document, an owning story, and reviewed validation evidence. PRD §11.4 further records missing primary ownership for FR36-C3, FR36-C4, FR36-C5, NFR17-C5, and other incomplete NFR slices; the current epics do not provide the complete required mapping.
 

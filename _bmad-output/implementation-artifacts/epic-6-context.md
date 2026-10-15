@@ -40,6 +40,6 @@ Snapshot and projection views expose support-safe size, sequence, readability, h
 
 ## Cross-Story Dependencies
 
-- Story 6.1's approved folded-snapshot specification authorizes Story 6.2, which remains backlog. Story 6.3's approved projection-cost specification is absent, so Story 6.4 cannot start; Stories 1.18 and 1.19 remain its correctness foundation.
+- Story 6.1's approved folded-snapshot specification authorizes Story 6.2. Story 6.3 is done for its specification gate: Jérôme Piquot (`jpiquot`), sole owner/contributor holding the Epic 6, architecture and Test roles for this approval, approved `spec-projection-cost-sequence-guard.md` version 1 on 2026-10-15, normative SHA-256 `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`, and explicitly authorized Story 6.4. Story 6.4 remains backlog; preflight must verify the detached approval/digest and Stories 1.18/1.19 preservation evidence. Runtime NFR8 acceptance and assurance/readiness gates remain unproven.
 - Stories 6.5a–6.5d fed the completed 6.5 design gate. For Story 6.6, the October 9 story design and acceptance criteria supersede that earlier runtime design; 6.6 has no blocking dependency on those earlier implementation obligations or optional Epic 8 protection work.
 - Story 6.7 owns the AOT/trimming documentation and release guard. Snapshot, projection and event-evolution changes do not authorize work in one another's implementation lanes.
