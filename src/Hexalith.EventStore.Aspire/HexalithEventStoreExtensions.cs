@@ -2,6 +2,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
 using CommunityToolkit.Aspire.Hosting.Dapr;
+using YamlDotNet.RepresentationModel;
 
 namespace Hexalith.EventStore.Aspire;
 
@@ -141,9 +142,46 @@ public static class HexalithEventStoreExtensions {
         int eventStoreDaprHttpPort = 3501,
         string? daprPlacementHostAddress = null,
         string? daprSchedulerHostAddress = null,
-        string? pubSubComponentPath = null) {
+        string? pubSubComponentPath = null)
+        => AddHexalithEventStore(builder, eventStore, adminServer, adminUI, eventStoreDaprConfigPath,
+            adminServerDaprConfigPath, resiliencyConfigPath, stateStoreComponentPath, eventStoreDaprHttpPort,
+            daprPlacementHostAddress, daprSchedulerHostAddress, pubSubComponentPath, "statestore", "pubsub");
+
+    /// <summary>Adds the topology with Platform-assigned component names, retaining the isolated overloads.</summary>
+    /// <param name="builder">The distributed application builder.</param>
+    /// <param name="eventStore">The gateway resource.</param>
+    /// <param name="adminServer">The optional admin resource.</param>
+    /// <param name="adminUI">The optional admin UI.</param>
+    /// <param name="eventStoreDaprConfigPath">The gateway Dapr policy.</param>
+    /// <param name="adminServerDaprConfigPath">The optional admin Dapr policy.</param>
+    /// <param name="resiliencyConfigPath">The optional resiliency file.</param>
+    /// <param name="stateStoreComponentPath">The optional state component file.</param>
+    /// <param name="eventStoreDaprHttpPort">The gateway sidecar listener.</param>
+    /// <param name="daprPlacementHostAddress">The placement address.</param>
+    /// <param name="daprSchedulerHostAddress">The scheduler address.</param>
+    /// <param name="pubSubComponentPath">The optional pubsub component file.</param>
+    /// <param name="stateStoreComponentName">The assigned state component name.</param>
+    /// <param name="pubSubComponentName">The assigned pubsub component name.</param>
+    /// <returns>The composed gateway resources.</returns>
+    public static HexalithEventStoreResources AddHexalithEventStore(
+        this IDistributedApplicationBuilder builder,
+        IResourceBuilder<ProjectResource> eventStore,
+        IResourceBuilder<ProjectResource>? adminServer,
+        IResourceBuilder<ProjectResource>? adminUI,
+        string? eventStoreDaprConfigPath,
+        string? adminServerDaprConfigPath,
+        string? resiliencyConfigPath,
+        string? stateStoreComponentPath,
+        int eventStoreDaprHttpPort,
+        string? daprPlacementHostAddress,
+        string? daprSchedulerHostAddress,
+        string? pubSubComponentPath,
+        string stateStoreComponentName,
+        string pubSubComponentName) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
+        ArgumentException.ThrowIfNullOrWhiteSpace(stateStoreComponentName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pubSubComponentName);
 
         // adminServer (and adminUI) may be null for a gateway-only composition — the EventStore command
         // gateway is added without the admin server / admin UI surface. All admin wiring below is guarded
@@ -182,24 +220,33 @@ public static class HexalithEventStoreExtensions {
                 resolvedPubSubComponentPath);
         }
 
+        ValidateComponentName(resolvedStateStoreComponentPath, stateStoreComponentName);
+        ValidateComponentName(resolvedPubSubComponentPath, pubSubComponentName);
+
         IResourceBuilder<IDaprComponentResource> stateStore = string.IsNullOrWhiteSpace(stateStoreComponentPath)
             ? builder
-                .AddDaprComponent("statestore", "state.redis")
+                .AddDaprComponent(stateStoreComponentName, "state.redis")
                 .WithMetadata("actorStateStore", "true")
                 .WithMetadata("redisHost", LocalDaprRedisHost)
                 .WithMetadata("keyPrefix", "none")
             : builder.AddDaprComponent(
-                "statestore",
+                stateStoreComponentName,
                 "state.redis",
                 new DaprComponentOptions { LocalPath = resolvedStateStoreComponentPath });
         IResourceBuilder<IDaprComponentResource> pubSub = string.IsNullOrWhiteSpace(pubSubComponentPath)
             ? builder
-                .AddDaprPubSub("pubsub")
+                .AddDaprPubSub(pubSubComponentName)
                 .WithMetadata("redisHost", LocalDaprRedisHost)
             : builder.AddDaprComponent(
-                "pubsub",
+                pubSubComponentName,
                 "pubsub.redis",
                 new DaprComponentOptions { LocalPath = resolvedPubSubComponentPath });
+
+        _ = eventStore.WithEnvironment("EventStore__CommandStatus__StateStoreName", stateStoreComponentName)
+            .WithEnvironment("EventStore__Projections__CheckpointStateStoreName", stateStoreComponentName)
+            .WithEnvironment("EventStore__Projections__ReadModelStateStoreName", stateStoreComponentName)
+            .WithEnvironment("EventStore__Publisher__PubSubName", pubSubComponentName)
+            .WithEnvironment("EventStore__ProjectionChanges__PubSubName", pubSubComponentName);
 
         // Wire up EventStore with DAPR sidecar and component references.
         // AppPort is intentionally omitted so the CommunityToolkit auto-detects
@@ -231,7 +278,8 @@ public static class HexalithEventStoreExtensions {
             // All services use keyPrefix:none so keys are shared across appIds.
             // It does not publish or subscribe directly, so it intentionally does not
             // reference the pub/sub component.
-            _ = adminServer.WithReference(eventStore);
+            _ = adminServer.WithReference(eventStore)
+                .WithEnvironment("AdminServer__StateStoreName", stateStoreComponentName);
 
             // Aspire-orchestration-only env vars. These resolve to localhost-based endpoints
             // and the Aspire dashboard, which are valid under `dotnet aspire run` but NOT in
@@ -299,6 +347,25 @@ public static class HexalithEventStoreExtensions {
         }
 
         return new HexalithEventStoreResources(stateStore, pubSub, eventStore, adminServer, adminUI);
+    }
+
+    private static void ValidateComponentName(string? path, string expectedName)
+    {
+        if (path is null) return;
+        try
+        {
+            YamlStream yaml = new();
+            yaml.Load(new StringReader(File.ReadAllText(path)));
+            if (yaml.Documents.Count != 1 || yaml.Documents[0].RootNode is not YamlMappingNode root
+                || !root.Children.TryGetValue(new YamlScalarNode("metadata"), out YamlNode? metadata) || metadata is not YamlMappingNode mapping
+                || !mapping.Children.TryGetValue(new YamlScalarNode("name"), out YamlNode? name) || name is not YamlScalarNode scalar
+                || scalar.Value != expectedName)
+                throw new InvalidDataException($"metadata.name must match assigned component '{expectedName}'.");
+        }
+        catch (Exception exception) when (exception is YamlDotNet.Core.YamlException or InvalidDataException)
+        {
+            throw new InvalidDataException($"{path}: metadata.name: {exception.Message}", exception);
+        }
     }
 
 }

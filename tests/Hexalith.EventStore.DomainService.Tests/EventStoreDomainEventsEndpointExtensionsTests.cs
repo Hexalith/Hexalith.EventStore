@@ -20,9 +20,12 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// Tests for the generic DAPR domain-event subscription endpoint.
 /// </summary>
 public sealed class EventStoreDomainEventsEndpointExtensionsTests {
-    [Fact]
-    public void MapEventStoreDomainEvents_MapsConfiguredRouteAndTopicMetadata() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MapEventStoreDomainEvents_MapsConfiguredRouteAndTopicMetadata(bool declarative) {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["Dapr:DeclarativeSubscriptions"] = declarative.ToString();
         _ = builder.Services.AddLogging();
         _ = builder.Services.AddSingleton(Substitute.For<DaprClient>());
         _ = builder.Services.AddEventStoreDomainEvents(typeof(WidgetCreated).Assembly);
@@ -43,6 +46,12 @@ public sealed class EventStoreDomainEventsEndpointExtensionsTests {
 
         IHttpMethodMetadata methodMetadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>().ShouldNotBeNull();
         methodMetadata.HttpMethods.ShouldContain(HttpMethods.Post);
+
+        if (declarative)
+        {
+            endpoint.Metadata.GetMetadata<ITopicMetadata>().ShouldBeNull();
+            return;
+        }
 
         ITopicMetadata topicMetadata = endpoint.Metadata.GetMetadata<ITopicMetadata>().ShouldNotBeNull();
         topicMetadata.PubsubName.ShouldBe("event-pubsub");

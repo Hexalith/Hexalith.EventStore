@@ -123,16 +123,15 @@ public class ProjectionChangeNotifierOptionsTests {
     }
 
     [Fact]
-    public void Validation_PubSubTransportWithCustomComponent_Fails() {
+    public void Validation_PubSubTransportWithAssignedComponentAndBindingIssuer_Succeeds() {
         var options = new ProjectionChangeNotifierOptions {
             PubSubName = "custom-pubsub",
             Transport = ProjectionChangeTransport.PubSub,
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, options);
+        ValidateOptionsResult result = new ValidateProjectionChangeNotifierOptions(Issuer(canBind: true)).Validate(null, options);
 
-        result.Failed.ShouldBeTrue();
-        result.FailureMessage.ShouldContain(ProjectionChangeNotifierOptions.DefaultPubSubName);
+        result.Succeeded.ShouldBeTrue();
     }
 
     [Fact]

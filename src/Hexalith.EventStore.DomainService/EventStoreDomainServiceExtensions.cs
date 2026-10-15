@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -238,7 +239,7 @@ public static class EventStoreDomainServiceExtensions {
                 _ = app.MapEventStoreDomainEvents();
             }
 
-            if (!IsDaprSubscribeMapped(app)) {
+            if (!app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions") && !IsDaprSubscribeMapped(app)) {
                 // Subscription discovery is a sidecar-originated call: it carries the app-channel token only.
                 _ = app.MapSubscribeHandler().RequireEventStoreSidecarChannel();
             }

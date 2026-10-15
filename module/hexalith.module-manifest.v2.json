@@ -21,19 +21,55 @@
             "role": "state",
             "capability": "state",
             "recoveryClass": "authoritative-restore",
-            "configurationKey": "Dapr:StateStoreComponent"
+            "configurationKey": "EventStore:CommandStatus:StateStoreName",
+            "servers": [
+              "gateway"
+            ]
+          },
+          {
+            "role": "state",
+            "capability": "state",
+            "recoveryClass": "authoritative-restore",
+            "configurationKey": "EventStore:Projections:CheckpointStateStoreName",
+            "servers": [
+              "gateway"
+            ]
+          },
+          {
+            "role": "state",
+            "capability": "state",
+            "recoveryClass": "authoritative-restore",
+            "configurationKey": "EventStore:Projections:ReadModelStateStoreName",
+            "servers": [
+              "gateway"
+            ]
           },
           {
             "role": "events",
             "capability": "pubsub",
             "recoveryClass": "rebuild-only",
-            "configurationKey": "Dapr:PubSubComponent"
+            "configurationKey": "EventStore:Publisher:PubSubName",
+            "servers": [
+              "gateway"
+            ]
+          },
+          {
+            "role": "events",
+            "capability": "pubsub",
+            "recoveryClass": "rebuild-only",
+            "configurationKey": "EventStore:ProjectionChanges:PubSubName",
+            "servers": [
+              "gateway"
+            ]
           },
           {
             "role": "rate-limit-configuration",
             "capability": "configuration",
             "recoveryClass": "authoritative-restore",
-            "configurationKey": "Dapr:ConfigurationStoreComponent"
+            "configurationKey": "EventStore:RateLimiting:ConfigurationStoreName",
+            "servers": [
+              "gateway"
+            ]
           }
         ],
         "extensions": [
@@ -295,7 +331,9 @@
               "policy": "authenticated",
               "permissions": []
             },
-            "callers": [],
+            "callers": [
+              "tenants-api"
+            ],
             "operations": [
               {
                 "name": "submit-command",
@@ -322,6 +360,22 @@
                 "kind": "administration",
                 "authorizationPolicy": "authenticated"
               }
+            ],
+            "invocationRules": [
+              {
+                "caller": "tenants-api",
+                "path": "/api/v1/commands",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "tenants-api",
+                "path": "/api/v1/queries",
+                "verbs": [
+                  "POST"
+                ]
+              }
             ]
           }
         ]
@@ -333,6 +387,18 @@
             "role": "events",
             "deadLetter": {
               "strategy": "none"
+            }
+          },
+          {
+            "name": "projection-notifications",
+            "role": "events",
+            "deadLetter": {
+              "strategy": "none"
+            },
+            "subscription": {
+              "server": "gateway",
+              "route": "/projections/changed",
+              "topic": "*.*.projection-changed"
             }
           }
         ],

@@ -18,7 +18,7 @@ public class DaprRateLimitConfigSync(
     IServiceProvider serviceProvider,
     IConfiguration configuration,
     ILogger<DaprRateLimitConfigSync> logger) : BackgroundService {
-    private const string _configStoreName = "configstore";
+    private readonly string _configStoreName = configuration["EventStore:RateLimiting:ConfigurationStoreName"] ?? "configstore";
     private const string _keyPrefix = "ratelimit:";
     private const string _permitLimitSuffix = ":permit-limit";
     private const string _tenantsKey = "ratelimit:tenants";
@@ -60,7 +60,7 @@ public class DaprRateLimitConfigSync(
         ex is OperationCanceledException or TaskCanceledException
         || (ex.InnerException is not null && ContainsCancellation(ex.InnerException));
 
-    private static async Task<GetConfigurationResponse> FetchConfigurationAsync(
+    private async Task<GetConfigurationResponse> FetchConfigurationAsync(
         DaprClient daprClient,
         string[] keys,
         CancellationToken cancellationToken) {
@@ -74,7 +74,7 @@ public class DaprRateLimitConfigSync(
 
     private static string GetTenantConfigPath(string tenantId) => $"EventStore:RateLimiting:TenantPermitLimits:{tenantId}";
 
-    private static async Task<string[]> LoadTenantIdsAsync(DaprClient daprClient, CancellationToken cancellationToken) {
+    private async Task<string[]> LoadTenantIdsAsync(DaprClient daprClient, CancellationToken cancellationToken) {
         // DAPR GetConfiguration requires explicit key names — we use a well-known
         // sentinel key to discover which tenants currently have overrides.
         GetConfigurationResponse response = await FetchConfigurationAsync(daprClient, [_tenantsKey], cancellationToken).ConfigureAwait(false);

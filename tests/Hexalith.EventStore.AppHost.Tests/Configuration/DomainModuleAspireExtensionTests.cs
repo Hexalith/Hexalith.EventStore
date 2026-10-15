@@ -9,6 +9,69 @@ using Hexalith.EventStore.Aspire;
 
 public class DomainModuleAspireExtensionTests {
     [Fact]
+    public async Task AssignedGatewayComponentNamesReachResourcesOwnerOptionsAndSidecarAsync()
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        IResourceBuilder<ProjectResource> gateway = builder.AddProject<EventStoreProjectMetadata>("eventstore");
+        IResourceBuilder<ProjectResource> admin = builder.AddProject<EventStoreProjectMetadata>("admin");
+        HexalithEventStoreResources resources = builder.AddHexalithEventStore(gateway, admin, null, null, null, null, null,
+            3501, null, null, null, "assigned-state", "assigned-events");
+        resources.StateStore.Resource.Name.ShouldBe("assigned-state");
+        resources.PubSub.Resource.Name.ShouldBe("assigned-events");
+        GetReferencedComponentNames(GetSidecar(gateway)).ShouldBe(["assigned-events", "assigned-state"]);
+        Dictionary<string, object> environment = [];
+        foreach (EnvironmentCallbackAnnotation callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+        {
+            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, environment, TestContext.Current.CancellationToken));
+        }
+
+        environment["EventStore__CommandStatus__StateStoreName"].ShouldBe("assigned-state");
+        environment["EventStore__Projections__ReadModelStateStoreName"].ShouldBe("assigned-state");
+        environment["EventStore__Publisher__PubSubName"].ShouldBe("assigned-events");
+        environment.Clear();
+        foreach (EnvironmentCallbackAnnotation callback in admin.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, admin.Resource, environment, TestContext.Current.CancellationToken));
+        environment["AdminServer__StateStoreName"].ShouldBe("assigned-state");
+        GetReferencedComponentNames(GetSidecar(admin)).ShouldBe(["assigned-state"]);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void SuppliedComponentFilesMustMatchAssignedNamesBeforeResourcesAreAdded(bool wrongState, bool wrongPubSub)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "assigned-components-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string state = Path.Combine(directory, "state.yaml");
+            string events = Path.Combine(directory, "events.yaml");
+            File.WriteAllText(state, "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: " + (wrongState ? "statestore" : "assigned-state") + "\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n  - name: redisHost\n    value: localhost:6379\n");
+            File.WriteAllText(events, "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: " + (wrongPubSub ? "pubsub" : "assigned-events") + "\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n  - name: redisHost\n    value: localhost:6379\n");
+            IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+            IResourceBuilder<ProjectResource> gateway = builder.AddProject<EventStoreProjectMetadata>("eventstore");
+            IResource[] existing = builder.Resources.ToArray();
+            if (wrongState || wrongPubSub)
+            {
+                InvalidDataException failure = Should.Throw<InvalidDataException>(() => builder.AddHexalithEventStore(gateway, null, null, null, null, null, state, 3501, null, null, events, "assigned-state", "assigned-events"));
+                failure.Message.ShouldContain(wrongState ? state : events);
+                failure.Message.ShouldContain("metadata.name");
+                builder.Resources.ShouldBe(existing);
+                gateway.Resource.Annotations.OfType<DaprSidecarAnnotation>().ShouldBeEmpty();
+            }
+            else
+            {
+                HexalithEventStoreResources resources = builder.AddHexalithEventStore(gateway, null, null, null, null, null, state, 3501, null, null, events, "assigned-state", "assigned-events");
+                resources.StateStore.Resource.Name.ShouldBe("assigned-state");
+                resources.PubSub.Resource.Name.ShouldBe("assigned-events");
+                GetReferencedComponentNames(GetSidecar(gateway)).ShouldBe(["assigned-events", "assigned-state"]);
+            }
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public void AddEventStoreDomainModule_WhenShared_EnablesAliveAppHealthAndReferencesSharedComponents() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
         HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
