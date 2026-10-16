@@ -54,7 +54,7 @@ public sealed partial class SecretsProtectionTests
             path,
             "\"Hexalith.Tests.RequiresCredentials\": 128,\n\"oci_credentials\": {\n")
             .ShouldBeEmpty();
-        FindViolations(path, "api.token: 123456789").ShouldNotBeEmpty();
+        FindViolations(path, "api.token: " + new string('9', 9)).ShouldNotBeEmpty();
         FindViolations(path, Assignment("password", RandomSecret())).ShouldNotBeEmpty();
     }
 
