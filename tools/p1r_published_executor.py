@@ -839,7 +839,7 @@ class Executor:
 
     def inventory(self, container=None):
         container = container or self.redis
-        return json.loads(self.run([sys.executable, "-I", ROOT / "tools/p1r-published-executor.py", "inventory",
+        return json.loads(self.run([str(Path(sys.executable).resolve()), "-I", ROOT / "tools/p1r-published-executor.py", "inventory",
                                    "--container", container, "--invocation", self.invocation,
                                    "--backend", self.inputs["operational_profile"]["backend"]]))
 

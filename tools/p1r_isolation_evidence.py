@@ -24,12 +24,7 @@ PINNED_EXECUTABLES = {
 
 def canonical_engine_directory(value):
     """Validate an engine's absolute POSIX directory lexically, without local lookup."""
-    if not isinstance(value,str) or not value.startswith('/'):
-        return False
-    parts = value.split('/')[1:]
-    return (all(part and part not in ('.','..') for part in parts)
-            and not any(ord(character) < 32 or ord(character) == 127 for character in value)
-            and not parts[-1].endswith(('.sock','.socket')))
+    return isinstance(value, str) and isolation.supported_workspace_path(value)
 
 
 def validate(wrapper, private, context, run_root, wrapper_path, times):
@@ -50,6 +45,9 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
     require(volume == 'p1r-isolation-'+invocation, 'outer volume identity substituted')
     mounts = wrapper['runner_proof']['Mounts']
     workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind'))
+    outer_socket = Path(wrapper['outer_host'].removeprefix('unix://'))
+    require(canonical_engine_directory(str(workspace)) and not outer_socket.is_relative_to(workspace)
+            and not outer_socket.resolve().is_relative_to(workspace), 'isolation workspace exposes the outer Docker socket')
     require(workspace.is_absolute() and workspace == workspace.resolve() and repository.is_relative_to(workspace)
             and Path(wrapper_path).is_relative_to(workspace) and run_root.is_relative_to(workspace),
             'isolation workspace containment differs')

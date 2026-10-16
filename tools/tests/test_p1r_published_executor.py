@@ -158,10 +158,38 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                        input_bytes=len(b'TRUNCATE TABLE state;'),output='',output_sha256=executor.digest(b''))
         fixture[1]['commands'].append(command)
         self.rehash_inventory(fixture)
-        with self.assertRaisesRegex(preparation.InvalidPacket,'provider mutation'):
+        with self.assertRaisesRegex(preparation.InvalidPacket,'provider mutation|unapproved'):
             self.validate(fixture)
         command.update(started_utc='2026-10-14T00:00:22+00:00',finished_utc='2026-10-14T00:00:22.500000+00:00')
         self.validate(fixture)
+
+    def testInventoryExecutableSubstitutionIsRejectedAfterRehashing(self):
+        for executable in ('/bin/echo', '/substituted/python3', 'sh'):
+            fixture = self.fixture()
+            inventory = fixture[1]['commands'][12]
+            self.assertEqual(inventory['argv'][0], fixture[2]['python']['path'])
+            inventory['argv'][0] = executable
+            self.rehash_inventory(fixture)
+            with self.subTest(executable=executable), self.assertRaises(preparation.InvalidPacket):
+                self.validate(fixture)
+
+    def testShellMediatedProviderMutationInsideSeedIsRejected(self):
+        for shell in ('sh', '/bin/bash', 'env', 'busybox', '/bin/toybox', 'timeout'):
+            for outer_shell in (False, True):
+                fixture = self.fixture()
+                command = copy.deepcopy(fixture[1]['commands'][11])
+                argv = [shell, '-c', 'psql -U postgres -d eventstore -c "TRUNCATE TABLE state"']
+                if Path(shell).name in ('busybox', 'toybox'):
+                    argv.insert(1, 'sh')
+                elif shell == 'timeout':
+                    argv[1:1] = ['5', 'sh']
+                command.update(id=100, argv=argv if outer_shell else command['argv'][:4] + argv,
+                               output='', output_sha256=executor.digest(b''))
+                fixture[1]['commands'].append(command)
+                self.rehash_inventory(fixture)
+                with self.subTest(shell=shell, outer_shell=outer_shell), self.assertRaisesRegex(
+                        preparation.InvalidPacket, 'provider mutation|shell-mediated'):
+                    self.validate(fixture)
 
     def import_fixture(self,scope='published-package'):
         row,evidence,binding,sources = self.fixture()
@@ -532,7 +560,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
         command = record(['docker','exec','-i',database,'psql','-U','postgres','-d','eventstore','-At','-v','ON_ERROR_STOP=1','-f','-'],[[key+'snapshot',snapshot]],12,12.5)
         query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
         command.update(input_sha256=executor.digest(query.encode()),input_bytes=len(query.encode()),provider_sql=query)
-        argv = [sys.executable,'-I',str(preparation.ROOT/'tools/p1r-published-executor.py'),'inventory','--container',database,
+        argv = [str(Path(sys.executable).resolve()),'-I',str(preparation.ROOT/'tools/p1r-published-executor.py'),'inventory','--container',database,
                 '--invocation',invocation,'--backend','state.postgresql']
         record(argv,before,13,13.5)
         record(['HTTP','GET','http://127.0.0.1:10006/ready'],{},15.5,15.6)

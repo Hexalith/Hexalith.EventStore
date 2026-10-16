@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -444,9 +445,106 @@ class LifecycleTests(unittest.TestCase):
 
 
 class LocalStartupTests(unittest.TestCase):
+    def testUnsafeWorkspaceMountsRefuseBeforeAnyDockerProvisioning(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'repo'
+            root.mkdir()
+            for index, workspace in enumerate(('/', directory, str(root) + '/.', str(root) + '/',
+                                               str(root) + '/a/..', '/proc', '/dev', 'relative', '/tmp/repo,socket')):
+                output = root / ('refusal-' + str(index))
+                with self.subTest(workspace=workspace), mock.patch.object(isolation, 'ROOT', root), \
+                        mock.patch.object(preparation, 'git', return_value=b''), \
+                        mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
+                    with self.assertRaises(preparation.InvalidPacket):
+                        isolation.IsolatedRunner(output, workspace=workspace, outer_host='unix:///outside/docker.sock')
+                    docker.assert_not_called()
+                    self.assertFalse(json.loads((output / 'isolation.json').read_text())['passed'])
+
+    def testWorkspaceCannotExposeTheSelectedSocketOrAnAlias(self):
+        import socket
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / 'repo'
+            root.mkdir()
+            with socket.socket(socket.AF_UNIX) as listener:
+                selected = parent / 'outer.sock'
+                listener.bind(str(selected))
+                alias = root / 'alias.sock'
+                os.link(selected, alias)
+                for endpoint in (selected, alias):
+                    with self.subTest(endpoint=endpoint), mock.patch.object(isolation, 'ROOT', root), \
+                            mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
+                        with self.assertRaisesRegex(preparation.InvalidPacket, 'outer Docker socket'):
+                            isolation.IsolatedRunner(root / ('refusal-' + endpoint.name), workspace=root,
+                                                     outer_host='unix://' + str(endpoint))
+                        docker.assert_not_called()
+                alias.unlink()
+                link = parent / 'linked.sock'
+                selected.rename(alias)
+                link.symlink_to(alias)
+                with self.assertRaisesRegex(preparation.InvalidPacket, 'outer Docker socket'):
+                    isolation.validate_workspace(root, root, 'unix://' + str(link))
+
+    def testSupportedWorkspaceAndReadOnlySocketOutsideItRemainUsable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(isolation.validate_workspace(root, root, 'unix:///outside/docker.sock'), root)
+            with mock.patch.object(preparation, 'git', return_value=str(root).encode()):
+                self.assertEqual(isolation.validate_workspace(root, root / 'references/EventStore', 'unix:///outside/docker.sock'), root)
+
+    def testUnreadableWorkspaceSubtreeRefusesRatherThanHidingSocketAliases(self):
+        import socket
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / 'repo'
+            root.mkdir()
+            with socket.socket(socket.AF_UNIX) as listener:
+                selected = parent / 'outer.sock'
+                listener.bind(str(selected))
+                def unavailable(path, *, onerror):
+                    onerror(PermissionError('unreadable subtree'))
+                    return iter(())
+                with mock.patch.object(isolation.os, 'walk', side_effect=unavailable), \
+                        mock.patch.object(isolation, 'ROOT', root), \
+                        mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
+                    with self.assertRaisesRegex(preparation.InvalidPacket, 'workspace contents unavailable'):
+                        isolation.IsolatedRunner(root / 'refusal', workspace=root, outer_host='unix://' + str(selected))
+                    docker.assert_not_called()
+
+    def testEarlyConfigurationAndInitialSaveFailuresCleanOwnedScratch(self):
+        for failure in ('config', 'save'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                scratch = root / 'owned-scratch'
+                scratch.mkdir()
+                original_mkdir = Path.mkdir
+                original_save = isolation.IsolatedRunner.save
+                calls = []
+                def mkdir(path, *args, **kwargs):
+                    if failure == 'config' and path.name == 'docker-config':
+                        raise OSError('injected config failure')
+                    return original_mkdir(path, *args, **kwargs)
+                def save(worker):
+                    calls.append(True)
+                    if failure == 'save' and len(calls) == 1:
+                        raise OSError('injected save failure')
+                    return original_save(worker)
+                with mock.patch.object(isolation.tempfile, 'mkdtemp', return_value=str(scratch)), \
+                        mock.patch.object(Path, 'mkdir', mkdir), \
+                        mock.patch.object(isolation.IsolatedRunner, 'save', save), \
+                        mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
+                    with self.assertRaisesRegex(OSError, 'injected'):
+                        isolation.IsolatedRunner(root / 'evidence', workspace=root, outer_host='unix:///outside/docker.sock')
+                    docker.assert_not_called()
+                self.assertFalse(scratch.exists())
+                retained = json.loads((root / 'evidence/isolation.json').read_text())
+                self.assertFalse(retained['passed'])
+                self.assertEqual(len(retained['cleanup']), 2)
+
     def testRemoteEndpointsRefuseBeforeProvisioningAndDoNotRetainCredentials(self):
-        for host in ('tcp://user:secret@remote:2376','ssh://user:secret@remote','unix://remote/socket','https://user:secret@remote',
-                     'unix:///socket?token=secret','unix:///socket#secret'):
+        credential = uuid.uuid4().hex
+        for host in (f'tcp://user:{credential}@remote:2376',f'ssh://user:{credential}@remote','unix://remote/socket',
+                     f'https://user:{credential}@remote',f'unix:///socket?token={credential}',f'unix:///socket#{credential}'):
             with self.subTest(host=host), tempfile.TemporaryDirectory() as directory:
                 output = Path(directory)/'evidence'
                 with mock.patch.object(isolation.IsolatedRunner,'docker') as docker:
@@ -454,7 +552,7 @@ class LocalStartupTests(unittest.TestCase):
                         isolation.IsolatedRunner(output,workspace=Path(directory),outer_host=host)
                 docker.assert_not_called()
                 raw = (output/'isolation.json').read_text()
-                self.assertNotIn('secret',raw)
+                self.assertNotIn(credential,raw)
                 retained = json.loads(raw)
                 self.assertFalse(retained['passed'])
                 self.assertEqual(len(retained['cleanup']),2)

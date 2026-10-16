@@ -164,6 +164,7 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     import json
     import p1r_qualification as preparation
     import p1r_qualification_runtime as runtime
+    from p1r_published_executor import DOCKER_FORMAT
     required = ('snapshot-fixture-enrolled','snapshot-state-roundtrip-parity','snapshot-canonical-event-parity',
                 'snapshot-detached-apply-parity','snapshot-nine-events-committed','tenant-a:committed-count',
                 'qualified-snapshot-created-by-published-actor','qualified-snapshot-envelope-version-one',
@@ -358,8 +359,24 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     snapshot_key = 'eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:snapshot'
     query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
     provider_argv = ['docker','exec','-i',database,'psql','-U','postgres','-d','eventstore','-At','-v','ON_ERROR_STOP=1','-f','-']
+    inventory_argv = [binding['python']['path'],'-I',str(Path(binding['repository'])/'tools/p1r-published-executor.py'),'inventory',
+                      '--container',database,'--invocation',execution['invocation'],'--backend','state.postgresql']
     for identity,command in commands.items():
-        if ('psql' in command['argv'] and command['argv'][:2] == ['docker','exec']
+        if (times[identity][0] <= times[tail_command['id']][1]
+                and times[identity][1] >= times[nine_command['id']][0]):
+            argv = command['argv']
+            # A finite producer grammar keeps shell multiplexers and wrappers out
+            # without guessing every possible interpreter name.
+            require(argv in (nine_command['argv'], manual_command['argv'], tail_command['argv'],
+                             first_host['argv'], domain_host['argv'], tail_host['argv'], inventory_argv, provider_argv)
+                    or argv[:2] == ['HTTP', 'GET'] and len(argv) == 3
+                    or argv[:2] == ['docker', 'exec']  # Exact read-only SQL profile is required below.
+                    or argv == ['docker', 'ps', '-aq']
+                    or argv[:4] == ['docker', 'inspect', '--format', DOCKER_FORMAT]
+                    or argv[0] == first_sidecar['argv'][0] and command.get('runtime_configuration') in configurations
+                       and command.get('runtime_configuration_sha256') == digest(canonical(configurations[command['runtime_configuration']])),
+                    'qualified snapshot unapproved or shell-mediated command during genuine seed')
+        if (command['argv'][:2] == ['docker','exec']
                 and times[identity][0] <= times[tail_command['id']][1]
                 and times[identity][1] >= times[nine_command['id']][0]):
             require(command['argv'] == provider_argv and command.get('provider_sql') == query
@@ -395,8 +412,7 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     for name in ('before_tail','after_tail'):
         runtime.validate_rows(seed.get(name))
         matches = [command for identity,command in commands.items() if command.get('exit_code') == 0
-                   and command['argv'][1:] == ['-I',str(Path(binding['repository'])/'tools/p1r-published-executor.py'),'inventory',
-                        '--container',database,'--invocation',execution['invocation'],'--backend','state.postgresql']
+                   and command['argv'] == inventory_argv
                    and outputs.get(identity) == seed[name]
                    and (times[identity][1] < min(times[tail_sidecar['id']][0],times[tail_host['id']][0])
                         and times[identity][0] >= max(times[first_sidecar['id']][1],times[first_host['id']][1])
