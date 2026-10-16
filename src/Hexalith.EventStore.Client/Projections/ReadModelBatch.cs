@@ -14,6 +14,10 @@ namespace Hexalith.EventStore.Client.Projections;
 /// of each operation is its index in <see cref="Operations"/> and participates in the fingerprint.
 /// </remarks>
 public sealed class ReadModelBatch {
+    /// <summary>Gets optional selection evidence explicitly carried by a fingerprint-bound model operation.</summary>
+    public Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection? OwnerSelection { get; init; }
+    /// <summary>Gets optional route selections contained in a coordinated full-replay manifest.</summary>
+    public IReadOnlyList<Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection>? OwnerSelections { get; init; }
     /// <summary>
     /// Initializes a new <see cref="ReadModelBatch"/>.
     /// </summary>

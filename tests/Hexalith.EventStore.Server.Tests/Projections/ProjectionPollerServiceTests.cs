@@ -17,6 +17,38 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public class ProjectionPollerServiceTests {
+    [Fact]
+    public async Task PollOnceAsync_GuardedIndependentFinalizationDeadlineRetainsWorkWithoutLoggingAnException()
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(2, 1);
+        fixture.ReleaseDelay = TimeSpan.FromSeconds(29);
+        fixture.CleanupDelay = TimeSpan.FromSeconds(1);
+        var tracker = new FakeProjectionCheckpointTracker(fixture.Identity);
+        IProjectionPollerDeliveryGateway gateway = Substitute.For<IProjectionPollerDeliveryGateway>();
+        ProjectionSourceGuardDeliveryResult? observed = null;
+        gateway.DeliverProjectionAsync(fixture.Identity, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            observed = await fixture.Probe.TryDeliverAsync(fixture.Identity, 1, call.ArgAt<CancellationToken>(1)).ConfigureAwait(false);
+        });
+        ILogger<ProjectionPollerService> logger = Substitute.For<ILogger<ProjectionPollerService>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        using ProjectionPollerService poller = CreateService(tracker, gateway,
+            new ProjectionOptions { DefaultRefreshIntervalMs = 1000 }, timeProvider: fixture.Clock,
+            logger: logger);
+        await poller.PollOnceAsync(fixture.Clock.GetUtcNow());
+        observed.ShouldNotBeNull().AlreadyCurrent.ShouldBeFalse();
+        observed.ReasonCode.ShouldBe("delivery_reconciliation_required");
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(2);
+        fixture.Work.ShouldNotBeNull();
+        fixture.Handlers.Single().Calls.ShouldBe(1);
+        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls().Where(static call => call.GetMethodInfo().Name == nameof(ILogger.Log)))
+        {
+            object?[] arguments = call.GetArguments();
+            ((int)(LogLevel)arguments[0]!).ShouldBeLessThan((int)LogLevel.Warning);
+            arguments[3].ShouldBeNull("the independent deadline must not export an exception or stack through the poller");
+        }
+    }
+
     private static readonly AggregateIdentity FastIdentity = new("tenant", "fast", "agg-1");
     private static readonly AggregateIdentity SlowIdentity = new("tenant", "slow", "agg-2");
 

@@ -397,6 +397,11 @@ public sealed class DomainServiceTrustBoundaryTests
     [InlineData("/project/rebuild/commit/v1")]
     [InlineData("/project/rebuild/abort/v1")]
     [InlineData("/project/rebuild/verify/v1")]
+    [InlineData("/project/rebuild/reclaim-guarded/v1")]
+    [InlineData("/project/rebuild/reclaim-recovery/v1")]
+    [InlineData("/project/source-guard/owner-proof/v1")]
+    [InlineData("/project/source-guard/applied-receipt/v1")]
+    [InlineData("/project/source-guard/reconcile-applied-receipt/v1")]
     [InlineData("/project/rebuild/shared/v1")]
     [InlineData("/admin/operational-index-metadata")]
     public async Task EveryOperationalRoute_RequiresItsOwnOperation(string route)

@@ -26,7 +26,8 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
     IOptions<ProjectionDispatchOptions> dispatchOptions,
     IProjectionRebuildCheckpointStore rebuildCheckpointStore,
     TimeProvider timeProvider,
-    ILogger<ProjectionDeliveryRetryWorker> logger) : BackgroundService {
+    ILogger<ProjectionDeliveryRetryWorker> logger,
+    IProjectionSourceGuardDelivery? sourceGuardDelivery = null) : BackgroundService {
     private const int ReadPageSize = 256;
 
     /// <inheritdoc/>
@@ -67,7 +68,72 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
         ProjectionDeliveryRetryWorkItem workItem,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.RetryActivations);
         var identity = new AggregateIdentity(workItem.TenantId, workItem.Domain, workItem.AggregateId);
+        if (sourceGuardDelivery is not null)
+        {
+            CancellationTokenSource? cleanupBudget = null;
+            ProjectionDeliveryRetryWorkItem? cleanup = null;
+            try
+            {
+                ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, workItem,
+                    ReadPageSize, cancellationToken).ConfigureAwait(false)
+                    ?? await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
+                if (guarded.Owned)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    cleanupBudget = guarded.CreateCleanupBudget(timeProvider);
+                    // The current probe itself performs no cleanup. This is separately scheduled
+                    // reconciliation of the exact original work under its durable revision/lease.
+                    string[] provenPending = [.. workItem.PendingRoutes.Where(guarded.ProvenFreshnessVersions.ContainsKey)];
+                    bool allCompleted = guarded.AlreadyCurrent && workItem.TerminalRoutes.Count == 0;
+                    if ((allCompleted || provenPending.Length > 0) && guarded.ObservedHeadSequence == workItem.HeadSequence
+                        && guarded.ObservedHeadMessageId == workItem.HeadMessageId
+                        && guarded.CatalogFingerprint == workItem.CatalogFingerprint
+                        && (allCompleted
+                            ? await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, cleanupBudget.Token).ConfigureAwait(false)
+                            : await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, workItem, provenPending, cleanupBudget.Token).ConfigureAwait(false)))
+                    {
+                        cleanup = await scheduler.TryAcquireAsync(workItem,
+                            Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
+                            timeProvider.GetUtcNow(), options.RetryLeaseDuration, cleanupBudget.Token).ConfigureAwait(false);
+                        if (cleanup is not null)
+                        {
+                            string[] remaining = allCompleted ? [] : [.. cleanup.PendingRoutes.Except(provenPending, StringComparer.Ordinal)];
+                            if (remaining.Length > 0 || cleanup.TerminalRoutes.Count > 0)
+                                await DeferClaimedAsync(cleanup with { PendingRoutes = remaining,
+                                    ReservationFencingTokens = cleanup.ReservationFencingTokens.Where(pair => remaining.Contains(pair.Key, StringComparer.Ordinal))
+                                        .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal) },
+                                    options, guarded.ReasonCode ?? "delivery_reconciliation_required", cleanupBudget.Token).ConfigureAwait(false);
+                            else if (!await scheduler.TryDeleteAsync(cleanup, cleanupBudget.Token).ConfigureAwait(false))
+                                await DeferClaimedAsync(cleanup, options, "delivery_reconciliation_required", cleanupBudget.Token).ConfigureAwait(false);
+                        }
+                        return;
+                    }
+                    // The sampled revision fences this defer against work already updated by
+                    // tail/finalization recovery. A stale revision cannot double-defer it.
+                    await DeferAsync(workItem, options, cleanupBudget.Token,
+                        guarded.ReasonCode ?? "delivery_reconciliation_required").ConfigureAwait(false);
+                    return;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch
+            {
+                cleanupBudget ??= new(TimeSpan.FromSeconds(30), timeProvider);
+                try
+                {
+                    if (cleanup is not null)
+                        await DeferClaimedAsync(cleanup, options, "delivery_state_unavailable", cleanupBudget.Token).ConfigureAwait(false);
+                    else
+                        await DeferAsync(workItem, options, cleanupBudget.Token, "delivery_state_unavailable").ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch { /* Pending durable work survives an unavailable or exhausted cleanup lane. */ }
+                return;
+            }
+            finally { cleanupBudget?.Dispose(); }
+        }
         using IDisposable projectionLock = await ProjectionUpdateOrchestrator.ProjectionLocks
             .AcquireAsync(identity.ActorId, cancellationToken)
             .ConfigureAwait(false);
@@ -91,6 +157,18 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                     cancellationToken).ConfigureAwait(false);
                 if (!mappedHandled)
                     await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            if (workItem.ReplayRecoveryBindings is { Count: > 0 })
+            {
+                // This explicitly enrolled full-replay lane admits both byte ceilings while
+                // decoding, and never retains another complete raw envelope prefix.
+                ProjectionEventDto[] prefix = await LoadRecoveryPrefixAsync(identity, workItem, cancellationToken).ConfigureAwait(false);
+                bool boundHandled = await coordinator.TryDispatchHeadAsync(identity,
+                    new(workItem.AppId, "project/v2", identity.TenantId, identity.Domain, workItem.ServiceVersion),
+                    workItem.HeadSequence, workItem.HeadMessageId, prefix, cancellationToken).ConfigureAwait(false);
+                if (!boundHandled) await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -123,6 +201,14 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                 await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
                 return;
             }
+        }
+        catch (ProjectionDeliveryHistoryValidationException exception) when (workItem.ReplayRecoveryBindings is { Count: > 0 })
+        {
+            string reason = exception.Message is "delivery_owner_limit_exceeded" or "delivery_page_limit_exceeded"
+                or "delivery_byte_limit_exceeded" or "delivery_identity_conflict" or "delivery_gap" or "history_unavailable"
+                or "source_conflict" ? exception.Message : ProjectionDispatchReasonCodes.DeliveryStateUnavailable;
+            Log.RetryFailed(logger, reason);
+            await DeferAsync(workItem, options, cancellationToken, reason).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -170,7 +256,8 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
     private async Task DeferAsync(
         ProjectionDeliveryRetryWorkItem workItem,
         ProjectionDispatchOptions options,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        string reasonCode = ProjectionDispatchReasonCodes.PartialRetry) {
         ProjectionDeliveryRetryWorkItem? claimed = await scheduler.TryAcquireAsync(
             workItem,
             Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
@@ -181,14 +268,19 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             return;
         }
 
-        int attempt = Math.Min(claimed.Attempt + 1, options.MaxRetryAttempts);
+        await DeferClaimedAsync(claimed, options, reasonCode, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task DeferClaimedAsync(ProjectionDeliveryRetryWorkItem claimed, ProjectionDispatchOptions options,
+        string reasonCode, CancellationToken cancellationToken) {
+        int attempt = claimed.Attempt < options.MaxRetryAttempts ? claimed.Attempt + 1 : options.MaxRetryAttempts;
         double multiplier = Math.Pow(2, Math.Max(0, attempt - 1));
         long delayTicks = (long)Math.Min(options.RetryMaxDelay.Ticks, options.RetryBaseDelay.Ticks * multiplier);
         _ = await scheduler.TryUpdateAsync(
             claimed with {
                 Attempt = attempt,
                 NextDueUtc = timeProvider.GetUtcNow() + TimeSpan.FromTicks(delayTicks),
-                LastReasonCode = ProjectionDispatchReasonCodes.PartialRetry,
+                LastReasonCode = reasonCode,
             },
             cancellationToken).ConfigureAwait(false);
     }

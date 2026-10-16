@@ -54,16 +54,68 @@ public static class ProjectionRouteCatalogFingerprint {
             ProjectionDispatchRoute[] ordinary = [.. ordinaryRoutes
                 .OrderBy(static route => route.Domain, StringComparer.Ordinal)
                 .ThenBy(static route => route.ProjectionType, StringComparer.Ordinal)];
-            if (ordinary.Distinct().Count() != ordinary.Length || ordinary.Any(route => !canonicalRoutes.Contains(route))) {
+            if (ordinary.Select(static route => (route.Domain, route.ProjectionType)).Distinct().Count() != ordinary.Length
+                || ordinary.Any(route => !canonicalRoutes.Any(candidate => candidate.Domain == route.Domain
+                    && candidate.ProjectionType == route.ProjectionType))) {
                 throw new ArgumentException("Ordinary delivery must be a unique subset of the named catalog.", nameof(ordinaryRoutes));
             }
-            if (!canonicalRoutes.SequenceEqual(ordinary)) {
+            if (!canonicalRoutes.Select(static route => (route.Domain, route.ProjectionType))
+                .SequenceEqual(ordinary.Select(static route => (route.Domain, route.ProjectionType)))) {
                 Append(hash, "ordinary-delivery-v1");
                 BinaryPrimitives.WriteInt32BigEndian(routeCount, ordinary.Length);
                 hash.AppendData(routeCount);
                 foreach (ProjectionDispatchRoute route in ordinary) {
                     Append(hash, route.Domain);
                     Append(hash, route.ProjectionType);
+                }
+            }
+        }
+
+        ProjectionDispatchRoute[] guarded = [.. canonicalRoutes.Where(static route => route.SourceGuard is not null)];
+        if (guarded.Length > 0)
+        {
+            if (guarded.Any(static route => route.SourceGuard?.IsSupported != true))
+                throw new ArgumentException("Unsupported source guard descriptor.", nameof(routes));
+            Append(hash, ProjectionSourceGuardCapability.Capability);
+            BinaryPrimitives.WriteInt32BigEndian(routeCount, guarded.Length);
+            hash.AppendData(routeCount);
+            foreach (ProjectionDispatchRoute route in guarded)
+            {
+                ProjectionSourceGuardCapability descriptor = route.SourceGuard!;
+                Append(hash, route.Domain);
+                Append(hash, route.ProjectionType);
+                Append(hash, descriptor.Version.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                Append(hash, descriptor.SourceCodecVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                Append(hash, descriptor.GuardEvidenceVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                Append(hash, descriptor.HandlerSemantics);
+                Append(hash, descriptor.SelectedOwnerProofProtocol);
+                Append(hash, descriptor.PerEventBatchIdentity ?? string.Empty);
+                Append(hash, descriptor.AppliedReceiptRecovery ?? string.Empty);
+            }
+            ProjectionDispatchRoute[] initialized = [.. guarded.Where(static route => route.SourceGuard!.InitialOwnerProtocol is not null)];
+            if (initialized.Length > 0)
+            {
+                Append(hash, "projection-initial-owner/v1");
+                BinaryPrimitives.WriteInt32BigEndian(routeCount, initialized.Length);
+                hash.AppendData(routeCount);
+                foreach (ProjectionDispatchRoute route in initialized)
+                {
+                    Append(hash, route.Domain);
+                    Append(hash, route.ProjectionType);
+                    Append(hash, route.SourceGuard!.InitialOwnerProtocol!);
+                }
+            }
+            ProjectionDispatchRoute[] fallbacks = [.. guarded.Where(static route => route.SourceGuard!.CanonicalReplayProtocol is not null)];
+            if (fallbacks.Length > 0)
+            {
+                Append(hash, "projection-canonical-fallback/v1");
+                BinaryPrimitives.WriteInt32BigEndian(routeCount, fallbacks.Length);
+                hash.AppendData(routeCount);
+                foreach (ProjectionDispatchRoute route in fallbacks)
+                {
+                    Append(hash, route.Domain);
+                    Append(hash, route.ProjectionType);
+                    Append(hash, route.SourceGuard!.CanonicalReplayProtocol!);
                 }
             }
         }

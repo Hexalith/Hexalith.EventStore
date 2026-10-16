@@ -1,0 +1,59 @@
+# Sanitized runner results; synthetic host logs and stack traces omitted.
+# Raw capture SHA-256: 8ee8ef1489ab10a283c5a1dedc506e9e81571efd559b991227b95c4b4b3e9c72
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_BoundedRetryWithinSameTick [SKIP]
+      ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_AdvancesNextDueToPreventTightRetryStorm [SKIP]
+      ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_IdentityIndexCorruption_EmitsTrackerCorruptIdentityIndexReasonCode [SKIP]
+      ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_ScopeIndexCorruption_EmitsTrackerCorruptScopeIndexReasonCode [SKIP]
+      ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_NullState_LogsProjectInvalidStateReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_InvalidCharset_LogsProjectInvalidCharsetReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_AnyClassifiedFailure_DoesNotLogEventPayload [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_MalformedJson_LogsProjectMalformedJsonReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream4xx_LogsProjectUpstream4xxReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_EmptyProjectionType_LogsProjectInvalidProjectionTypeReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HttpTimeoutWhileHostStillRunning_LogsProjectTimeoutAndDoesNotThrow [SKIP]
+      ATDD red phase — DW1 AC#3 (cancellation vs timeout). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_TwoOverlappingCallsForSameActorId_AreSerializedByKeyedSemaphore [SKIP]
+      ATDD red phase — DW1 AC#4 (per-aggregate serialization). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_EmitsCheckpointDriftReasonCode [SKIP]
+      ATDD red phase — DW1 AC#1 (checkpoint drift). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_DoesNotRegressCheckpoint [SKIP]
+      ATDD red phase — DW1 AC#1 (checkpoint drift). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HostTokenCancelled_PropagatesOperationCanceledException [SKIP]
+      ATDD red phase — DW1 AC#3 (cancellation vs timeout). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream5xx_LogsProjectUpstream5xxReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_UnsupportedContentType_LogsProjectUnsupportedContentTypeReasonCode [SKIP]
+      ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainAnyClassifiedFailure_ActivityFailureReasonTagDoesNotContainRawExceptionMessage [SKIP]
+      ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_PublishesAtMostOnce [SKIP]
+      ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_DecrementsPendingCounterAtMostOnce [SKIP]
+      ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_ActivityFailureReasonTagIsStableReasonCode [SKIP]
+      ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_DoesNotDecrementPendingCommandCount [SKIP]
+      ATDD red phase — DW1 AC#7 (drain poison disposition). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainPublishFailed_ActivityFailureReasonTagIsStableReasonCode [SKIP]
+      ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainMissingEventInRange_ActivityFailureReasonTagIsStableReasonCode [SKIP]
+      ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.
+    Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_UnregistersReminderAtMostOnce [SKIP]
+      ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 4747, Errors: 0, Failed: 0, Skipped: 25, Not Run: 0, Time: 739.331s

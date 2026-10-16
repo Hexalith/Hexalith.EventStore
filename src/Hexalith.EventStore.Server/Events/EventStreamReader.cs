@@ -53,6 +53,13 @@ public partial class EventStreamReader(
         }
 
         AggregateMetadata metadata = metadataResult.Value;
+        if (SourceProofCodec.IsQualifiedEmpty(metadata, identity))
+        {
+            if (snapshot is not null || await stateManager.ContainsStateAsync(identity.SnapshotKey, cancellationToken).ConfigureAwait(false))
+                throw new InvalidOperationException("SnapshotStreamUnavailable");
+            await RequireUnchangedMetadataAsync(identity, metadata, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
         if (metadata.CurrentSequence <= 0) {
             throw new InvalidOperationException(
                 $"Invalid aggregate metadata: CurrentSequence={metadata.CurrentSequence} for {identity.ActorId}");
@@ -213,6 +220,7 @@ public partial class EventStreamReader(
         cancellationToken.ThrowIfCancellationRequested();
         if (!observed.HasValue || observed.Value.CurrentSequence != expected.CurrentSequence
             || observed.Value.RetainedFloor != expected.RetainedFloor
+            || observed.Value.SourceProof != expected.SourceProof
             || !string.Equals(observed.Value.ETag, expected.ETag, StringComparison.Ordinal)) {
             throw new InvalidOperationException("SourceHeadChanged: actor metadata changed during stream rehydration.");
         }

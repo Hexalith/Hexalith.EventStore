@@ -41,6 +41,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
+    /// <inheritdoc/>
+    public Task<bool> TryDispatchCompatibleAsync(AggregateIdentity identity, NamedProjectionRouteCatalogEntry catalog,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, IReadOnlyList<string> routes,
+        CancellationToken cancellationToken)
+        => TryDispatchCoreAsync(identity, new(catalog.AppId, "project/v2", identity.TenantId, identity.Domain, catalog.ServiceVersion),
+            headSequence, headMessageId, events, false, cancellationToken, routes, catalog.CatalogFingerprint);
+
     public async Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(
         AggregateIdentity identity, DomainServiceRegistration registration, CancellationToken cancellationToken) {
         NamedProjectionRouteCatalogEntry? entry = await ResolveCatalogEntryAsync(identity, registration,
@@ -107,6 +114,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 using HttpRequestMessage upload = daprClient.CreateInvokeMethodRequest(
                     registration.AppId, "project/rebuild/part/v1",
                     new ProjectionRebuildTransportPartRequest(header, ordinal, data));
+                upload.Content?.Dispose();
+                upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, data), daprClient.JsonSerializerOptions);
                 using HttpResponseMessage response = await uploadClient.SendAsync(upload, token)
                     .ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
@@ -384,6 +393,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     }
 
     /// <inheritdoc/>
+    public Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken)
+        => TryDispatchCoreAsync(identity, registration, headSequence, headMessageId, events, false, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<bool> TryDispatchAsync(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
@@ -418,7 +432,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     private async Task<bool> TryDispatchCoreAsync(
         AggregateIdentity identity, DomainServiceRegistration registration,
         long highestSequence, string headMessageId, ProjectionEventDto[] projectionEvents,
-        bool mappedOnly, CancellationToken cancellationToken) {
+        bool mappedOnly, CancellationToken cancellationToken, IReadOnlyList<string>? compatibleRoutes = null,
+        string? expectedCatalogFingerprint = null) {
 
         ProjectionDispatchOptions dispatchOptions = options.Value;
         dispatchOptions.Validate();
@@ -442,6 +457,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         if (catalogEntry.OrdinaryProjectionTypes.Count == 0) return false;
+        if (expectedCatalogFingerprint is not null && (catalogEntry.CatalogFingerprint != expectedCatalogFingerprint
+            || compatibleRoutes is null || compatibleRoutes.Count == 0
+            || compatibleRoutes.Distinct(StringComparer.Ordinal).Count() != compatibleRoutes.Count
+            || compatibleRoutes.Any(route => !catalogEntry.OrdinaryProjectionTypes.Contains(route, StringComparer.Ordinal)))) return false;
+        string[] deliveryRoutes = [.. compatibleRoutes ?? catalogEntry.OrdinaryProjectionTypes];
 
         if (mappedOnly && !await SupportsMappedOnlyStreamedDeliveryAsync(identity, registration,
             cancellationToken).ConfigureAwait(false)) return false;
@@ -478,7 +498,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             catalogEntry.CatalogFingerprint,
             0,
             now + dispatchOptions.RetryWorkerInterval,
-            null) { MappedOnlyStreamed = mappedOnly };
+            null) { MappedOnlyStreamed = mappedOnly,
+                ReplayRecoveryBindings = ProjectionReplayRecoveryContext.Freeze(catalogEntry) };
         ProjectionDeliveryRetryWorkItem scheduledWork;
         if (retryScheduler is null) {
             scheduledWork = proposedWork;
@@ -524,7 +545,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             || !string.Equals(scheduledWork.CatalogFingerprint, catalogEntry.CatalogFingerprint, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.AppId, registration.AppId, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.ServiceVersion, serviceVersion, StringComparison.Ordinal)
-            || scheduledWork.MappedOnlyStreamed != mappedOnly) {
+            || scheduledWork.MappedOnlyStreamed != mappedOnly
+            || !ProjectionReplayRecoveryContext.Matches(scheduledWork.ReplayRecoveryBindings, proposedWork.ReplayRecoveryBindings)) {
             await DeferAsync(
                     scheduledWork,
                     ProjectionDispatchReasonCodes.PartialRetry,
@@ -537,7 +559,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         Dictionary<string, ProjectionDeliveryFingerprintHistory>? mappedHistories = null;
         if (mappedOnly) {
             mappedHistories = new Dictionary<string, ProjectionDeliveryFingerprintHistory>(StringComparer.Ordinal);
-            foreach (string projectionType in catalogEntry.OrdinaryProjectionTypes) {
+            foreach (string projectionType in deliveryRoutes) {
                 ProjectionDeliveryAcceptedPrefix? accepted = await idempotencyCoordinator!
                     .ReadAcceptedPrefixAsync(identity, projectionType, cancellationToken).ConfigureAwait(false);
                 ProjectionDeliveryFingerprintHistory history;
@@ -587,7 +609,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         // delivery reservation's own lease bound.
         string deliveryLeaseToken = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
         try {
-            foreach (string projectionType in catalogEntry.OrdinaryProjectionTypes
+            foreach (string projectionType in deliveryRoutes
                 .Where(pendingRoutes.Contains)
                 .Order(StringComparer.Ordinal)) {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -688,6 +710,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             }
 
             if (admittedRoutes.Count == 0) {
+                await ReclaimCompletedRecoveryAsync(identity, catalogEntry, scheduledWork, completedRoutes, cancellationToken).ConfigureAwait(false);
                 IReadOnlySet<string> reconciledRoutes = mappedOnly
                     ? new HashSet<string>(StringComparer.Ordinal)
                     : await ReconcileTerminalRoutesAsync(
@@ -695,7 +718,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         identity,
                         projectionEvents,
                         scheduledWork,
-                        terminalRoutes,
+                        terminalRoutes.Where(deliveryRoutes.Contains).ToHashSet(StringComparer.Ordinal),
                         identityConflict,
                         dispatchOptions,
                         cancellationToken)
@@ -719,7 +742,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             }
 
             ProjectionDispatchResponse? dispatchResponse;
-            if (mappedOnly) {
+            if (scheduledWork.ReplayRecoveryBindings is { Count: > 0 } && !mappedOnly) {
+                dispatchResponse = await InvokeRecoveryBoundRoutesAsync(identity, catalogEntry, scheduledWork,
+                    admittedRoutes, projectionEvents, reservations, completedRoutes, cancellationToken).ConfigureAwait(false);
+            }
+            else if (compatibleRoutes is not null) {
+                dispatchResponse = await InvokeCompatibleRoutesAsync(identity, catalogEntry, scheduledWork,
+                    admittedRoutes, projectionEvents, reservations, cancellationToken).ConfigureAwait(false);
+            }
+            else if (mappedOnly) {
                 dispatchResponse = await InvokeMappedOrdinaryRoutesAsync(identity, registration,
                     catalogEntry, scheduledWork, admittedRoutes, mappedHistories!,
                     cancellationToken).ConfigureAwait(false);
@@ -850,13 +881,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     identity,
                     projectionEvents,
                     scheduledWork,
-                    terminalRoutes,
+                    terminalRoutes.Where(deliveryRoutes.Contains).ToHashSet(StringComparer.Ordinal),
                     identityConflict,
                     dispatchOptions,
                     cancellationToken)
                 .ConfigureAwait(false);
             terminalRoutes.ExceptWith(reconciledTerminalRoutes);
             settledRoutes.UnionWith(reconciledTerminalRoutes);
+
+            await ReclaimCompletedRecoveryAsync(identity, catalogEntry, scheduledWork, completedRoutes, cancellationToken).ConfigureAwait(false);
 
             await ReconcileRetryLedgerAsync(
                     scheduledWork,
@@ -1064,7 +1097,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             foreach (ProjectionEventDto item in page) {
                 if (!first) await output.WriteAsync(new byte[] { (byte)',' }, cancellationToken)
                     .ConfigureAwait(false);
-                await JsonSerializer.SerializeAsync(output, item, daprClient.JsonSerializerOptions,
+                await ProjectionWireJsonSerializer.SerializeAsync(output, item, daprClient.JsonSerializerOptions,
                     cancellationToken).ConfigureAwait(false);
                 first = false;
             }
@@ -1195,9 +1228,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             var updated = scheduledWork with {
                 PendingRoutes = remainingRoutes,
                 TerminalRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)],
-                ReservationFencingTokens = reservations
+                ReservationFencingTokens = scheduledWork.ReservationFencingTokens.Concat(reservations.Select(static pair =>
+                        new KeyValuePair<string, long>(pair.Key, pair.Value.FencingToken)))
                     .Where(pair => remainingRoutes.Contains(pair.Key, StringComparer.Ordinal))
-                    .ToDictionary(static pair => pair.Key, static pair => pair.Value.FencingToken, StringComparer.Ordinal),
+                    .GroupBy(static pair => pair.Key, StringComparer.Ordinal)
+                    .ToDictionary(static group => group.Key, static group => group.Last().Value, StringComparer.Ordinal),
                 Attempt = attempt,
                 NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
                 LastReasonCode = identityConflict
@@ -1244,10 +1279,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 workItem with {
                     ReservationFencingTokens = reservations is null
                         ? workItem.ReservationFencingTokens
-                        : reservations.ToDictionary(
-                            static pair => pair.Key,
-                            static pair => pair.Value.FencingToken,
-                            StringComparer.Ordinal),
+                        : workItem.ReservationFencingTokens.Concat(reservations.Select(static pair =>
+                            new KeyValuePair<string, long>(pair.Key, pair.Value.FencingToken)))
+                            .GroupBy(static pair => pair.Key, StringComparer.Ordinal)
+                            .ToDictionary(static group => group.Key, static group => group.Last().Value, StringComparer.Ordinal),
                     Attempt = attempt,
                     NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
                     LastReasonCode = reasonCode,
@@ -1416,13 +1451,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         string methodName,
         ProjectionDispatchRequest request,
         ProjectionDispatchOptions dispatchOptions,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken, string? replayRecoveryHeader = null) {
         try {
-            if (methodName.StartsWith("project/rebuild/", StringComparison.Ordinal)
+            if (replayRecoveryHeader is null && methodName.StartsWith("project/rebuild/", StringComparison.Ordinal)
                 && methodName != "project/rebuild/part/v1")
             {
                 using var measure = new ProjectionRebuildHashCountStream();
-                await JsonSerializer.SerializeAsync(measure, request.Request.Events, SerializerOptions, cancellationToken)
+                await ProjectionWireJsonSerializer.SerializeAsync(measure, request.Request.Events, SerializerOptions, cancellationToken)
                     .ConfigureAwait(false);
                 if (measure.Length > ProjectionRebuildTransportReference.PartBytes)
                 {
@@ -1442,13 +1477,17 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     {
                         using HttpRequestMessage upload = daprClient.CreateInvokeMethodRequest(appId,
                             "project/rebuild/part/v1", new ProjectionRebuildTransportPartRequest(header, ordinal, data));
+                        if (ProjectionReplayTransportContext.Header(header) is { } replayContext)
+                            upload.Headers.Add(ProjectionReplayTransportContext.HeaderName, replayContext);
+                        upload.Content?.Dispose();
+                        upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, data), daprClient.JsonSerializerOptions);
                         using HttpResponseMessage uploaded = await uploadClient.SendAsync(upload, token)
                             .ConfigureAwait(false);
                         if (!uploaded.IsSuccessStatusCode)
                             throw new IOException("Mapped replay part upload was rejected.");
                     }
                     using var uploadStream = new ProjectionRebuildPartUploadStream(UploadPartAsync);
-                    await JsonSerializer.SerializeAsync(uploadStream, request.Request.Events, SerializerOptions, cancellationToken)
+                    await ProjectionWireJsonSerializer.SerializeAsync(uploadStream, request.Request.Events, SerializerOptions, cancellationToken)
                         .ConfigureAwait(false);
                     await uploadStream.CompleteAsync(cancellationToken).ConfigureAwait(false);
                     if (uploadStream.PartCount != count) return null;
@@ -1457,6 +1496,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 }
             }
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(appId, methodName, request);
+            if (ProjectionReplayTransportContext.Header(request) is { } replayContextHeader)
+                httpRequest.Headers.Add(ProjectionReplayTransportContext.HeaderName, replayContextHeader);
+            if (replayRecoveryHeader is not null)
+                _ = httpRequest.Headers.TryAddWithoutValidation(ProjectionReplayRecoveryBinding.HeaderName, replayRecoveryHeader);
+            httpRequest.Content?.Dispose();
+            httpRequest.Content = ProjectionWireJsonSerializer.CreateContent(request, daprClient.JsonSerializerOptions);
             HttpClient client = httpClientFactory.CreateClient();
             using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode

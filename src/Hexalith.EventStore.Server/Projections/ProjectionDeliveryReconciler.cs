@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Configuration;
@@ -56,6 +59,11 @@ internal sealed class ProjectionDeliveryReconciler(
 
             long preservedSequence = observed?.LastDeliveredSequence ?? 0;
             lastObservedSequence = preservedSequence;
+            // Ordinary v2 hydration cannot downgrade or manufacture source/model bindings. Guarded
+            // rows require the authenticated qualification path, including selected-owner readback.
+            if (read.SourceGuard is not null || observed?.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion)
+                return new(ProjectionDeliveryReconciliationStatus.RebuildRequired,
+                    ProjectionDispatchReasonCodes.DeliveryReconciliationRequired, preservedSequence);
             if (read.Classification is ProjectionDeliveryStateClassification.SchemaRegression
                 or ProjectionDeliveryStateClassification.Unsupported) {
                 return await RecordRebuildRequiredAsync(
@@ -157,7 +165,11 @@ internal sealed class ProjectionDeliveryReconciler(
                 preservedSequence == 0
                     ? ProjectionDeliveryMigrationProvenance.InitializedFromZero
                     : ProjectionDeliveryMigrationProvenance.HydratedFromPersistedCheckpoint,
-                reconciledAt);
+                reconciledAt)
+            {
+                CompletedMessageIdDigests = [.. events.Select(static item =>
+                    Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(item.MessageId!))))],
+            };
             var work = new ProjectionDeliveryReconciliationWork(
                 identity.TenantId,
                 identity.Domain,

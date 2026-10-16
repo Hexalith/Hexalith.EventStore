@@ -1,0 +1,19 @@
+{
+  "head": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "dotnetSdk": "10.0.401",
+  "testRuntime": "10.0.12",
+  "daprFixtureBinary": "/home/administrator/.dapr/bin/daprd",
+  "observedDaprRuntime": "1.18.7",
+  "pinnedDaprRuntime": "1.18.2",
+  "daprQualification": "unqualified: observed runtime differs from pinned runtime",
+  "dockerServer": "29.8.2",
+  "existingContainerImages": [
+    "daprio/dapr:1.18.7 (placement)",
+    "daprio/dapr:1.18.7 (scheduler)",
+    "redis:6",
+    "openzipkin/zipkin"
+  ],
+  "environmentAdmission": "none",
+  "implementationStatus": "incomplete"
+}

@@ -32,16 +32,18 @@ internal static class DomainProjectionRebuildTransport
 
         IReadModelStore store = services.GetRequiredService<IReadModelStore>();
         string key = Key(part.Header, part.Ordinal);
+        var storedPart = new DomainProjectionStoredReplayPart(part.Header, part.Ordinal, part.Data)
+            { ReplayContext = ProjectionReplayTransportContext.Capture(part.Header.Request) };
         IReadModelExpiringStore? expiring = services.GetService<IReadModelExpiringStore>();
         bool saved = expiring is null
-            ? await store.TrySaveAsync(storeName, key, part, string.Empty, cancellationToken).ConfigureAwait(false)
-            : await expiring.TrySaveWithTimeToLiveAsync(storeName, key, part, string.Empty,
+            ? await store.TrySaveAsync(storeName, key, storedPart, string.Empty, cancellationToken).ConfigureAwait(false)
+            : await expiring.TrySaveWithTimeToLiveAsync(storeName, key, storedPart, string.Empty,
                 TimeSpan.FromDays(7), cancellationToken).ConfigureAwait(false);
         if (saved)
             return;
         ProjectionRebuildTransportPartRequest? existing = (await store
-            .GetAsync<ProjectionRebuildTransportPartRequest>(storeName, key, cancellationToken)
-            .ConfigureAwait(false)).Value;
+            .GetAsync<DomainProjectionStoredReplayPart>(storeName, key, cancellationToken)
+            .ConfigureAwait(false)).Value?.Restore();
         if (existing is null || existing.Ordinal != part.Ordinal
             || !HeaderMatches(existing.Header, part.Header)
             || !existing.Data.AsSpan().SequenceEqual(part.Data))
@@ -76,6 +78,7 @@ internal static class DomainProjectionRebuildTransport
         using var stream = new PartReadStream(services.GetRequiredService<IReadModelStore>(), storeName, header);
         EventPayloadEvolutionRegistry? evolution = services.GetService<EventPayloadEvolutionRegistry>();
         int count = 0;
+        string? headMessageId = null;
         await foreach (ProjectionEventDto? item in JsonSerializer.DeserializeAsyncEnumerable<ProjectionEventDto>(
             stream, s_json, cancellationToken).ConfigureAwait(false))
         {
@@ -85,12 +88,14 @@ internal static class DomainProjectionRebuildTransport
                 || string.IsNullOrWhiteSpace(item.SerializationFormat))
                 throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
             DomainProjectionEvolutionAdmission.RequireLegacyEvents([item]);
+            headMessageId = item.MessageId;
             yield return DomainProjectionDispatcher.UpcastEvent(evolution, item);
         }
         await stream.CompleteAsync(cancellationToken).ConfigureAwait(false);
         if (!StringComparer.Ordinal.Equals(stream.Digest, header.RebuildTransport!.Digest))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         if (header.Request.RebuildSourceHeadSequence != count
+            || header.Request.RebuildSourceHeadMessageId is { } expectedMessageId && expectedMessageId != headMessageId
             || header.Request.RebuildSourceErased != (count == 0))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
     }
@@ -160,7 +165,7 @@ internal static class DomainProjectionRebuildTransport
             restored[ordinal] = batch.Operations[ordinal]
                 .WithConcurrency(plan.Operations[ordinal].Concurrency);
         }
-        return new ReadModelBatch(batch.Scope, restored);
+        return new ReadModelBatch(batch.Scope, restored) { OwnerSelection = batch.OwnerSelection, OwnerSelections = batch.OwnerSelections };
     }
 
     internal static string ValidateAndGetStore(IServiceProvider services, ProjectionDispatchRequest header,
@@ -179,11 +184,10 @@ internal static class DomainProjectionRebuildTransport
         ProjectionDispatchRoute[] routes = [.. allHandlers
             .Where(handler => StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
-        if (routes.Length == 0 || !StringComparer.Ordinal.Equals(
-            ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, routes,
+        if (routes.Length == 0 || !DomainProjectionOwnerProof.MatchesCatalog(services, identity.AppId, identity.ServiceVersion, routes,
                 allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
                     && StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain))
-                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),
+                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType)),
             header.CatalogFingerprint))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         HashSet<string> types = new(header.ProjectionTypes, StringComparer.Ordinal);
@@ -202,7 +206,7 @@ internal static class DomainProjectionRebuildTransport
         return stores[0];
     }
 
-    private static string Key(ProjectionDispatchRequest header, int ordinal)
+    internal static string Key(ProjectionDispatchRequest header, int ordinal)
     {
         string identity = string.Join('\0', header.Request.TenantId, header.Request.Domain,
             header.Request.AggregateId, header.DispatchId, header.CatalogFingerprint);
@@ -216,6 +220,9 @@ internal static class DomainProjectionRebuildTransport
             && StringComparer.Ordinal.Equals(left.Request.Domain, right.Request.Domain)
             && StringComparer.Ordinal.Equals(left.Request.AggregateId, right.Request.AggregateId)
             && left.Request.RebuildSourceHeadSequence == right.Request.RebuildSourceHeadSequence
+            && left.Request.RebuildSourceHeadMessageId == right.Request.RebuildSourceHeadMessageId
+            && Equals(ProjectionReplayTransportContext.CaptureCanonical(left.Request),
+                ProjectionReplayTransportContext.CaptureCanonical(right.Request))
             && left.Request.RebuildSourceErased == right.Request.RebuildSourceErased
             && StringComparer.Ordinal.Equals(left.DispatchId, right.DispatchId)
             && StringComparer.Ordinal.Equals(left.CatalogFingerprint, right.CatalogFingerprint)
@@ -252,8 +259,8 @@ internal static class DomainProjectionRebuildTransport
             {
                 if (_ordinal == header.RebuildTransport!.PartCount) return 0;
                 ProjectionRebuildTransportPartRequest? stored = (await store
-                    .GetAsync<ProjectionRebuildTransportPartRequest>(storeName, Key(header, _ordinal),
-                        cancellationToken).ConfigureAwait(false)).Value;
+                    .GetAsync<DomainProjectionStoredReplayPart>(storeName, Key(header, _ordinal),
+                        cancellationToken).ConfigureAwait(false)).Value?.Restore();
                 if (stored is null || stored.Ordinal != _ordinal || !HeaderMatches(stored.Header, header)
                     || stored.Data is null || stored.Data.Length == 0 || stored.Data.Length > PartBytes)
                     throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryGap);

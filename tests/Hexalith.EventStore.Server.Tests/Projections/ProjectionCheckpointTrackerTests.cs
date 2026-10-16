@@ -1,4 +1,5 @@
 using Dapr.Client;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
@@ -1051,20 +1052,16 @@ public class ProjectionCheckpointTrackerTests {
             ProjectionDeliveryFingerprint.ComputeInitial(TestIdentity, projectionName),
             DateTimeOffset.UtcNow);
         DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAndETagAsync<ProjectionDeliveryState>(
-                "statestore",
-                ProjectionCheckpointTracker.GetProjectionScopedStateKey(TestIdentity, projectionName),
-                consistencyMode: Arg.Any<ConsistencyMode?>(),
-                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
-                cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((current, "v2-etag"));
-        _ = daprClient.GetStateAsync<ProjectionDeliveryWriterProtocol>(
-                "statestore",
-                ProjectionDeliveryStateKeys.WriterProtocol,
-                consistencyMode: Arg.Any<ConsistencyMode?>(),
-                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
-                cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(new ProjectionDeliveryWriterProtocol(1, 2, "commit-abc", DateTimeOffset.UtcNow));
+        daprClient.JsonSerializerOptions.Returns(JsonSerializerOptions.Web);
+        byte[] row = JsonSerializer.SerializeToUtf8Bytes(current, JsonSerializerOptions.Web);
+        byte[] marker = JsonSerializer.SerializeToUtf8Bytes(new ProjectionDeliveryWriterProtocol(1, 2, "commit-abc", DateTimeOffset.UtcNow), JsonSerializerOptions.Web);
+        _ = daprClient.GetByteStateAndETagAsync("statestore", Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>()).Returns(call =>
+                call.ArgAt<string>(1) == ProjectionDeliveryStateKeys.GetStateKey(TestIdentity, projectionName)
+                    ? ((ReadOnlyMemory<byte>)row, "v2-etag")
+                    : call.ArgAt<string>(1) == ProjectionDeliveryStateKeys.WriterProtocol
+                        ? ((ReadOnlyMemory<byte>)marker, "writer-etag") : (ReadOnlyMemory<byte>.Empty, string.Empty));
         ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, projectionName, 1);

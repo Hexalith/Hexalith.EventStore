@@ -25,7 +25,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class NamedProjectionDispatchCoordinatorTests {
+public sealed partial class NamedProjectionDispatchCoordinatorTests {
     private static readonly AggregateIdentity Identity = new("tenant-a", "widget", "widget-1");
 
     [Fact]

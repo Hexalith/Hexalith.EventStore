@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.DomainService;
 
@@ -43,8 +44,13 @@ public sealed class DomainProjectionCatalogRegistry {
 
         ImmutableDictionary<string, ImmutableHashSet<ProjectionDispatchRoute>> snapshot = _routesByFingerprint;
         return snapshot.TryGetValue(fingerprint, out ImmutableHashSet<ProjectionDispatchRoute>? routes)
-            && projectionTypes.All(projectionType => routes.Contains(new ProjectionDispatchRoute(domain, projectionType)));
+            && projectionTypes.All(projectionType => routes.Any(route => route.Domain == domain && route.ProjectionType == projectionType));
     }
+
+    /// <summary>Requires an exact persisted catalog descriptor for the read-only owner proof operation.</summary>
+    public bool AuthorizesSourceGuard(string fingerprint, string domain, string projectionType, ProjectionSourceGuardCapability capability)
+        => _routesByFingerprint.TryGetValue(fingerprint, out ImmutableHashSet<ProjectionDispatchRoute>? routes)
+            && routes.Any(route => route.Domain == domain && route.ProjectionType == projectionType && route.SourceGuard == capability);
 
     /// <summary>Checks whether this service issued the supplied fingerprint.</summary>
     /// <param name="fingerprint">The supplied catalog fingerprint.</param>

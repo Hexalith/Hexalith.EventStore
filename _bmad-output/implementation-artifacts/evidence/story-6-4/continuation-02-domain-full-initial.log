@@ -1,0 +1,25 @@
+# Sanitized runner results; synthetic host logs and stack traces omitted.
+# Raw capture SHA-256: 552976093548c10c85d8959b2f34f5105637e3bc47e282a799aba4fe7423dd2b
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.DomainService.Tests
+  Discovered:  Hexalith.EventStore.DomainService.Tests
+  Starting:    Hexalith.EventStore.DomainService.Tests
+    Hexalith.EventStore.DomainService.Tests.EventStoreDomainServiceExtensionsTests.MapEventStoreDomainService_MapsCanonicalEndpointsUnchanged [FAIL]
+      System.InvalidOperationException : Failure to infer one or more parameters.
+      Below is the list of parameters that we found:
+
+      Parameter           | Source
+      ---------------------------------------------------------------------------------
+      request             | Body (Inferred)
+      services            | Services (Inferred)
+      catalog             | UNKNOWN
+
+
+      Did you mean to register the "UNKNOWN" parameters as a Service?
+
+
+    Hexalith.EventStore.DomainService.Tests.Processes.ProcessReadDeadlineTests.ExhaustedWorkersRejectPromptlyAndRecoverAfterRelease [FAIL]
+      Hexalith.EventStore.DomainService.ProcessReadAdmissionException : Process read worker admission is exhausted.
+  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '77b650111d4de2b76e49edcd8caa99af54555db3d9490c233d3cb5a895692a92')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.DomainService.Tests  Total: 893, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 119.930s

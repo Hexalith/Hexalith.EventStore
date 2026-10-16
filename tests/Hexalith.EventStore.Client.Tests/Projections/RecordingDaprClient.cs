@@ -14,6 +14,8 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public bool TrySaveResult { get; init; }
 
+    public bool PersistTypedState { get; init; }
+
     public bool? TryDeleteResult { get; init; }
 
     public Exception ExecuteStateTransactionException { get; init; }
@@ -66,6 +68,13 @@ internal sealed class RecordingDaprClient : DaprClient
     // logical data operations, so read-back verification (not the void response) must catch the gap.
     public Func<StateTransactionRequest, bool> TransactionOperationApplyFilter { get; set; }
 
+    // Opt-in transaction CAS validation for delivery qualification and racing scope admission.
+    public bool EnforceTransactionConcurrency { get; set; }
+
+    public Action<IReadOnlyList<StateTransactionRequest>> BeforeStateTransaction { get; set; }
+
+    public Action<IReadOnlyList<StateTransactionRequest>> AfterStateTransaction { get; set; }
+
     private string NextByteETag() => (++_byteEtag).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     public bool ByteStoreContains(string key) => _byteStore.ContainsKey(key);
@@ -90,6 +99,9 @@ internal sealed class RecordingDaprClient : DaprClient
         ETag = etag;
         StateOptions = stateOptions;
         Metadata = metadata;
+        if (PersistTypedState)
+            return TrySaveByteStateAsync(storeName, key, JsonSerializer.SerializeToUtf8Bytes(value, JsonSerializerOptions),
+                etag, stateOptions ?? new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, metadata, cancellationToken);
         return Task.FromResult(TrySaveResult);
     }
 
@@ -144,6 +156,14 @@ internal sealed class RecordingDaprClient : DaprClient
             return Task.FromException(ExecuteStateTransactionException);
         }
 
+        BeforeStateTransaction?.Invoke(operations);
+        if (EnforceTransactionConcurrency && operations.Any(operation =>
+            operation.Options?.Concurrency == ConcurrencyMode.FirstWrite
+            && (_byteStore.TryGetValue(operation.Key, out var entry) ? entry.ETag : string.Empty) != (operation.ETag ?? string.Empty)))
+        {
+            return Task.FromException(new InvalidOperationException("Conditional transaction conflict."));
+        }
+
         // Apply the transaction to the stateful byte store so read-back verification can prove the persisted
         // end state. Normally all-or-nothing (transaction-qualified profile); a test may install
         // TransactionOperationApplyFilter to simulate a mis-qualified store that partially commits.
@@ -164,12 +184,21 @@ internal sealed class RecordingDaprClient : DaprClient
             }
         }
 
+        AfterStateTransaction?.Invoke(operations);
         return Task.CompletedTask;
     }
 
     public override Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(string storeName, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!PersistTypedState) throw new NotSupportedException();
+        StoreName = storeName; BulkStateCallCount++; BulkStateParallelism = parallelism;
+        return Task.FromResult<IReadOnlyList<BulkStateItem>>([.. keys.Select(key => _byteStore.TryGetValue(key, out var entry)
+            ? new BulkStateItem(key, System.Text.Encoding.UTF8.GetString(entry.Value), entry.ETag)
+            : new BulkStateItem(key, null, string.Empty))]);
+    }
 
     public override Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
@@ -204,9 +233,22 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<Dictionary<string, string>> GetSecretAsync(string storeName, string key, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<(TValue, string)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<(TValue, string)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!PersistTypedState) throw new NotSupportedException();
+        return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
+            ? Task.FromResult((JsonSerializer.Deserialize<TValue>(entry.Value, JsonSerializerOptions), entry.ETag))
+            : Task.FromResult<(TValue, string)>((default, string.Empty));
+    }
 
-    public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!PersistTypedState) throw new NotSupportedException();
+        return Task.FromResult(_byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
+            ? JsonSerializer.Deserialize<TValue>(entry.Value, JsonSerializerOptions) : default);
+    }
 
     public override Task<BindingResponse> InvokeBindingAsync(BindingRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
 
@@ -252,7 +294,13 @@ internal sealed class RecordingDaprClient : DaprClient
         return Task.CompletedTask;
     }
 
-    public override Task SaveStateAsync<TValue>(string storeName, string key, TValue value, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task SaveStateAsync<TValue>(string storeName, string key, TValue value, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!PersistTypedState) throw new NotSupportedException();
+        _byteStore[key] = (JsonSerializer.SerializeToUtf8Bytes(value, JsonSerializerOptions), NextByteETag());
+        return Task.CompletedTask;
+    }
 
     public override Task SetMetadataAsync(string attributeName, string attributeValue, CancellationToken cancellationToken) => throw new NotSupportedException();
 

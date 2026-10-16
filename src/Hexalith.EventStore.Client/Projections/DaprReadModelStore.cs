@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// resumable batch's commit marker is durable, and the committed value afterwards.
 /// </para>
 /// </remarks>
-public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private readonly DaprClient _daprClient;
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;
@@ -141,6 +141,7 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStor
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
 
+        RecordTypedMutation(value);
         await _daprClient
             .SaveStateAsync(storeName, key, value, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -159,6 +160,7 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStor
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(etag);
 
+        RecordTypedMutation(value);
         return await _daprClient
             .TrySaveStateAsync(
                 storeName,
@@ -185,6 +187,7 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStor
         ArgumentNullException.ThrowIfNull(etag);
         long ttlSeconds = ToTtlSeconds(timeToLive);
 
+        RecordTypedMutation(value);
         return await _daprClient
             .TrySaveStateAsync(
                 storeName,
@@ -209,6 +212,8 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStor
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(etag);
 
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         return await _daprClient
             .TryDeleteStateAsync(
                 storeName,
@@ -294,5 +299,14 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStor
         }
 
         return checked((long)Math.Ceiling(timeToLive.TotalSeconds));
+    }
+
+    private void RecordTypedMutation<TValue>(TValue value)
+    {
+        long bytes = JsonSerializer.SerializeToUtf8Bytes(value, _daprClient.JsonSerializerOptions).Length;
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
     }
 }

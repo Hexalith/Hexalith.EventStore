@@ -18,7 +18,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
-public class EventReplayProjectionActorTests {
+public partial class EventReplayProjectionActorTests {
     private const string ActorIdString = "GetCounterValue:tenant-a:counter-1";
     private const string TestProjectionType = "counter-projection";
     private const string TestTenantId = "tenant-a";

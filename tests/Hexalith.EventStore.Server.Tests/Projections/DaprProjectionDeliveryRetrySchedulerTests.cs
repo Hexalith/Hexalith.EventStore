@@ -12,7 +12,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class DaprProjectionDeliveryRetrySchedulerTests {
+public sealed partial class DaprProjectionDeliveryRetrySchedulerTests {
     [Fact]
     public async Task ScheduleAsync_DifferentShardWorkItems_PersistToDistinctV2LedgerKeys() {
         DaprClient daprClient = Substitute.For<DaprClient>();

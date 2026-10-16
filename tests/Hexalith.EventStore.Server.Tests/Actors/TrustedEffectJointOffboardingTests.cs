@@ -12,6 +12,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
+using Hexalith.EventStore.Server.Tests.Projections;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -610,6 +611,167 @@ public sealed class TrustedEffectJointOffboardingTests
             && ((TrustedEffectErasureProgress)snapshot[TrustedEffectErasureProgress.StateName]).NextSequence == 65
             && !snapshot.ContainsKey(target.EventStreamKeyPrefix + "64")
             && snapshot.ContainsKey(target.EventStreamKeyPrefix + "65"));
+    }
+
+    /// <summary>An interrupted erasure durably invalidates source inspection before event deletion and after restart.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceErasureDefersGuardedReservationBeforeInvalidatingItsSourceOrDeletingHistory(bool idleBindingPending)
+    {
+        var delivery = new GuardedFinalizationFixture();
+        ProjectionDeliveryReservation reservation = await delivery.ReserveAsync();
+        if (idleBindingPending)
+            (await delivery.Coordinator.PrepareIdleBindingAsync(GuardedFinalizationFixture.Identity,
+                GuardedFinalizationFixture.Projection, reservation, "original-delivery-token", delivery.Selected)).ShouldBeTrue();
+        ProjectionDeliveryState original = delivery.State;
+        AggregateIdentity target = GuardedFinalizationFixture.Identity;
+        var effect = new EffectIdentity(target.TenantId, target.Domain, "source-001", 1, EffectKindCatalog.DateResume,
+            target.Domain, target.AggregateId, 0);
+        var source = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(1, _now, null) { SourceProof = delivery.Head };
+        await source.SeedCommittedStateAsync(new Dictionary<string, object>
+        { [target.MetadataKey] = metadata, [target.EventStreamKeyPrefix + "1"] = "preserved-event" });
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        catalog.Current.Returns(new NamedProjectionRouteCatalogSnapshot([delivery.Catalog]));
+        IActorProxyFactory proxies = Substitute.For<IActorProxyFactory>();
+        using ServiceProvider services = new ServiceCollection().AddSingleton(catalog)
+            .AddSingleton<IProjectionLifecycleGateway>(new DaprProjectionLifecycleGateway(proxies, deliveryStates: delivery.Store))
+            .BuildServiceProvider();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(stateManager: source, serviceProvider: services,
+            trustedEffectErasureAuthority: authority, actorId: target.ActorId);
+
+        (await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, effect))))
+            .Message.ShouldBe("delivery_in_progress");
+
+        source.CreateCommittedView()[target.MetadataKey].ShouldBe(metadata);
+        source.CreateCommittedView()[target.EventStreamKeyPrefix + "1"].ShouldBe("preserved-event");
+        source.Trace.ShouldNotContain("TryRemoveState:" + target.EventStreamKeyPrefix + "1");
+        ((TrustedEffectErasureProgress)source.CreateCommittedView()[TrustedEffectErasureProgress.StateName])
+            .SourceProjectionRoutes.ShouldBe([GuardedFinalizationFixture.Projection]);
+        delivery.State.ShouldBe(original);
+        (await actor.Actor.InspectSourceProofAsync()).Proof.ShouldBe(delivery.Head);
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    /// <summary>An interrupted erasure durably invalidates source inspection before event deletion and after restart.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task SourceErasureReleasesOnlyItsOwnLifecycleAndAllowsTheOriginalModelErasureManifest(
+        bool loseAcquireResponse, bool loseReleaseResponse)
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        var source = new FaultInjectingActorStateManager();
+        await source.SeedCommittedStateAsync(new Dictionary<string, object>
+        { [target.MetadataKey] = new AggregateMetadata(1, _now, null), [target.EventStreamKeyPrefix + "1"] = "event" });
+        var lifecycleState = new FaultInjectingActorStateManager();
+        var lifecycle = new ProjectionLifecycleActor(ActorHost.CreateForTest<ProjectionLifecycleActor>(
+            new ActorTestOptions { ActorId = new ActorId(target.ActorId + ":detail") }),
+            NullLogger<ProjectionLifecycleActor>.Instance);
+        ActorStateManagerTestHelper.SetStateManager(lifecycle, lifecycleState);
+        IProjectionLifecycleGateway gateway = Substitute.For<IProjectionLifecycleGateway>();
+        bool failAcquire = loseAcquireResponse, failRelease = loseReleaseResponse;
+        gateway.BeginEraseAsync(target, "detail", Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                ProjectionEraseAdmission admitted = await lifecycle.BeginEraseAsync(new(call.ArgAt<string>(2), call.ArgAt<string>(3), true)).ConfigureAwait(false);
+                if (failAcquire) { failAcquire = false; throw new IOException("lost source-erasure acquire response"); }
+                return admitted;
+            });
+        gateway.CompleteEraseAsync(target, "detail", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (failRelease) { failRelease = false; throw new IOException("lost source-erasure release response"); }
+                return lifecycle.CompleteEraseAsync(new(call.ArgAt<string>(2)));
+            });
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        catalog.Current.Returns(new NamedProjectionRouteCatalogSnapshot([new("sample", "v1", target.Domain, 2,
+            Hexalith.EventStore.Contracts.Projections.ProjectionDispatchProtocol.Capability, "catalog", ["detail"])]));
+        using ServiceProvider services = new ServiceCollection().AddSingleton(catalog).AddSingleton(gateway).BuildServiceProvider();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(stateManager: source, serviceProvider: services,
+            trustedEffectErasureAuthority: authority);
+
+        if (loseAcquireResponse || loseReleaseResponse)
+        {
+            await Should.ThrowAsync<IOException>(async () =>
+                await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity)));
+            TrustedEffectErasureProgress retained = (TrustedEffectErasureProgress)source.CreateCommittedView()[TrustedEffectErasureProgress.StateName];
+            retained.SourceProjectionRoutes.ShouldBe(["detail"]);
+            retained.Completed.ShouldBe(loseReleaseResponse);
+            source.CreateCommittedView().ContainsKey(target.EventStreamKeyPrefix + "1").ShouldBe(loseAcquireResponse);
+            // A restarted writer must resume/release the original acquired scope even after removal.
+            catalog.Current.Returns(new NamedProjectionRouteCatalogSnapshot([]));
+            await source.ClearCacheAsync();
+            actor = AggregateActorTestHelper.CreateActor(stateManager: source, serviceProvider: services, trustedEffectErasureAuthority: authority);
+        }
+        await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity));
+
+        (await lifecycle.ReadSnapshotAsync()).Phase.ShouldBe(ProjectionLifecyclePhase.Idle);
+        ProjectionEraseAdmission modelErase = await lifecycle.BeginEraseAsync(new("original-model-erasure", "original-target-manifest", true));
+        modelErase.Kind.ShouldBe(ProjectionEraseAdmissionKind.Admitted);
+        modelErase.PerTargetOutcomes.ShouldBeEmpty();
+        (await lifecycle.RecordTargetOutcomeAsync(new("original-model-erasure", "selected-detail", "Erased"))).ShouldBeTrue();
+        (await lifecycle.CompleteEraseAsync(new("original-model-erasure"))).ShouldBeTrue();
+        source.CreateCommittedView().Keys.ShouldNotContain(target.MetadataKey);
+    }
+
+    /// <summary>An interrupted erasure durably invalidates source inspection before event deletion and after restart.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InterruptedErasureCannotExposeThePreviousCurrentSourceProof(bool lostBatchSaveResponse)
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        var state = new FaultInjectingActorStateManager();
+        SourceProof proof = SourceProofCodec.CreateSeed(target, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        var seed = new Dictionary<string, object>();
+        for (int sequence = 1; sequence <= 70; sequence++)
+        {
+            var envelope = new Hexalith.EventStore.Server.Events.EventEnvelope("event-" + sequence,
+                target.AggregateId, "Counter", target.TenantId, target.Domain, sequence, sequence, _now,
+                "correlation", "cause", "user", "v1", "CounterIncremented", 1, "json", [], null);
+            seed[target.EventStreamKeyPrefix + sequence] = envelope;
+            proof = SourceProofCodec.Extend(proof, envelope);
+        }
+        seed[target.MetadataKey] = new AggregateMetadata(70, _now, "preserved-etag") { SourceProof = proof };
+        await state.SeedCommittedStateAsync(seed);
+        if (lostBatchSaveResponse) state.FaultAfterCall("SaveState", 2, new IOException("lost erasure batch response"));
+        else state.FaultOnCall("TryRemoveState:" + target.EventStreamKeyPrefix + "65", 1, new IOException("interrupted erasure"));
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(stateManager: state, trustedEffectErasureAuthority: authority);
+
+        await Should.ThrowAsync<IOException>(async () =>
+            await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity)));
+
+        AggregateMetadata interrupted = (AggregateMetadata)state.CreateCommittedView()[target.MetadataKey];
+        interrupted.SourceErasurePending.ShouldBeTrue();
+        interrupted.SourceProof.ShouldBe(proof);
+        state.CommittedSnapshots.First(snapshot => snapshot.ContainsKey(TrustedEffectErasureProgress.StateName))
+            .Keys.ShouldContain(target.EventStreamKeyPrefix + "1");
+        ((AggregateMetadata)state.CommittedSnapshots.First(snapshot => snapshot.ContainsKey(TrustedEffectErasureProgress.StateName))
+            [target.MetadataKey]).SourceErasurePending.ShouldBeTrue();
+        state.CreateCommittedView().Keys.ShouldNotContain(target.EventStreamKeyPrefix + "1");
+        await state.ClearCacheAsync();
+        ActorTestContext restarted = AggregateActorTestHelper.CreateActor(stateManager: state, trustedEffectErasureAuthority: authority);
+        SourceProofInspection inspected = await restarted.Actor.InspectSourceProofAsync();
+        inspected.Status.ShouldBe(SourceProofInspectionStatus.Invalid);
+        inspected.Erased.ShouldBeTrue();
+        inspected.CurrentSequence.ShouldBe(70);
+        inspected.Proof.ShouldBeNull();
+        SourceEventRange range = await restarted.Actor.ReadMeasuredEventsBoundedRangeAsync(64, 70, 256, 2_097_152);
+        range.ReasonCode.ShouldBe("history_unavailable");
+        range.Events.ShouldBeEmpty();
+        range.EnvelopeArrayBytes.ShouldBe(2);
+        (await Should.ThrowAsync<InvalidOperationException>(() => restarted.Actor.ReadEventsBoundedRangeAsync(64, 70, 256, 2_097_152)))
+            .Message.ShouldBe("history_unavailable");
     }
 
     /// <summary>A retried erasure resumes from its durable cursor instead of the first sequence.</summary>

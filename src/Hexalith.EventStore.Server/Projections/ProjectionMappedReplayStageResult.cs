@@ -6,6 +6,3 @@ namespace Hexalith.EventStore.Server.Projections;
 internal sealed record ProjectionMappedReplayStageResult(
     NamedProjectionRebuildResult Result,
     ProjectionDispatchRequest? Header);
-
-/// <summary>Actions supported after bounded mapped staging.</summary>
-internal enum ProjectionMappedReplayAction { Commit, Verify, Abort }

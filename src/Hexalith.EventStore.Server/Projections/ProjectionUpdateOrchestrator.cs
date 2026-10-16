@@ -47,7 +47,11 @@ internal partial class ProjectionUpdateOrchestrator(
     IProjectionLifecycleGateway? lifecycleGateway = null,
     INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
     IProjectionActivationOutbox? projectionActivationOutbox = null,
-    IProjectionRebuildWriteGateway? rebuildWriteGateway = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IProjectionRebuildWriteGateway? rebuildWriteGateway = null,
+    IProjectionSourceGuardDelivery? sourceGuardDelivery = null,
+    IProjectionDeliveryStateStore? deliveryStateStore = null,
+    IProjectionDeliveryIdempotencyCoordinator? deliveryIdempotency = null,
+    TimeProvider? timeProvider = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -79,7 +83,13 @@ internal partial class ProjectionUpdateOrchestrator(
     /// <inheritdoc/>
     public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
+        if (sourceGuardDelivery is not null)
+        {
+            ProjectionSourceGuardDeliveryResult guarded = await sourceGuardDelivery.TryDeliverAsync(identity, cancellationToken).ConfigureAwait(false);
+            if (guarded.Owned) return;
+        }
         bool namedActivationDurable = namedProjectionDispatchCoordinator is null;
+        bool releasedCompatibility = false;
         ProjectionActivationWorkItem? activationWorkItem = null;
 
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
@@ -117,16 +127,6 @@ internal partial class ProjectionUpdateOrchestrator(
                 new ActorId(identity.ActorId),
                 AggregateActorTypeName);
 
-            long lastDeliveredSequence = 0;
-            try {
-                lastDeliveredSequence = await checkpointTracker
-                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
-            }
-
             if (namedProjectionDispatchCoordinator is not null
                 && await namedProjectionDispatchCoordinator.SupportsMappedOnlyStreamedDeliveryAsync(
                     identity, registration, cancellationToken).ConfigureAwait(false)) {
@@ -148,6 +148,27 @@ internal partial class ProjectionUpdateOrchestrator(
                         .ConfigureAwait(false);
                     return;
                 }
+            }
+
+            if (rebuildWriteGateway is IProjectionReplayPublicationGateway publication
+                && rebuildWriteGateway is IProjectionRebuildInspectionGateway inspection
+                && projectionActivationOutbox is IProjectionLegacyDeliveryOutbox legacyOutbox
+                && lifecycleGateway is not null && deliveryStateStore is not null && deliveryIdempotency is not null)
+            {
+                namedActivationDurable = false;
+                if (await DeliverCompatibleReplayAsync(identity, registration, activationWorkItem,
+                    publication, inspection, legacyOutbox, cancellationToken).ConfigureAwait(false)) return;
+                releasedCompatibility = true;
+            }
+
+            long lastDeliveredSequence = 0;
+            try {
+                lastDeliveredSequence = await checkpointTracker
+                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
             }
 
             // Full replay remains the safe immediate-delivery contract until
@@ -206,7 +227,7 @@ internal partial class ProjectionUpdateOrchestrator(
 
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
-            if (namedProjectionDispatchCoordinator is not null) {
+            if (!releasedCompatibility && namedProjectionDispatchCoordinator is not null) {
                 try {
                     _ = await namedProjectionDispatchCoordinator
                         .TryDispatchAsync(
@@ -286,6 +307,8 @@ internal partial class ProjectionUpdateOrchestrator(
             // checkpoint save below are suppressed when the projection-scoped checkpoint is ahead of
             // the available stream. When no delivery store is supplied (legacy path used by the
             // orchestrator unit tests) the aggregate-wide value read earlier is used instead.
+            if (releasedCompatibility && !await CanUseReleasedWriterAsync(identity, response.ProjectionType,
+                activationWorkItem, cancellationToken).ConfigureAwait(false)) return;
             long scopedLastDelivered = deliveryCheckpointStore is not null
                 ? await deliveryCheckpointStore
                     .ReadDeliveredSequenceAsync(identity, response.ProjectionType, cancellationToken)
@@ -335,7 +358,10 @@ internal partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
+            bool releasedCompletion = false;
             try {
+                if (releasedCompatibility && !await CanUseReleasedWriterAsync(identity, response.ProjectionType,
+                    activationWorkItem, cancellationToken).ConfigureAwait(false)) return;
                 // Step 5: Derive projection actor ID and update state
                 string projectionActorId = QueryActorIdHelper.DeriveActorId(
                     response.ProjectionType,
@@ -369,6 +395,10 @@ internal partial class ProjectionUpdateOrchestrator(
                     if (!checkpointSaved) {
                         Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
                     }
+                    else if (releasedCompatibility) {
+                        releasedCompletion = await deliveryCheckpointStore!.ReadDeliveredSequenceAsync(identity,
+                            response.ProjectionType, cancellationToken).ConfigureAwait(false) == highestDeliveredSequence;
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     Log.CheckpointSaveFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
@@ -387,6 +417,14 @@ internal partial class ProjectionUpdateOrchestrator(
                         .ConfigureAwait(false)) {
                     throw new InvalidOperationException("Projection delivery lifecycle lease completion was rejected.");
                 }
+            }
+            if (releasedCompatibility && releasedCompletion) {
+                // A successful named call either has no compatible named routes
+                // or owns their durable retry work. Its failure retains activation.
+                if (namedProjectionDispatchCoordinator is not null)
+                    _ = await namedProjectionDispatchCoordinator.TryDispatchAsync(identity, registration,
+                        events, projectionReadability.Events!, cancellationToken).ConfigureAwait(false);
+                namedActivationDurable = true;
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -1262,7 +1300,8 @@ internal partial class ProjectionUpdateOrchestrator(
                     await rebuildWriteGateway
                         .StageAsync(
                             projectionActorId,
-                            new ProjectionRebuildCandidate(operationId, candidateState),
+                            new ProjectionRebuildCandidate(operationId, candidateState)
+                            { SelectedReplayFence = new(identity.ActorId, response.ProjectionType, operationId, frozenTarget) },
                             CancellationToken.None)
                         .ConfigureAwait(false);
                     actorStaged = true;

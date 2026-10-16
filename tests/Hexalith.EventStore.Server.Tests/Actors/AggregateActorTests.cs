@@ -15,6 +15,24 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorTests {
     [Fact]
+    public async Task ProcessCommandAsync_AuthenticatedEmptySourceSeedRehydratesAsNewWithoutReadingAnEnvelope()
+    {
+        ActorTestContext context = CreateActor();
+        ConfigureNoDuplicate(context.StateManager);
+        CommandEnvelope command = CreateTestEnvelope();
+        var metadata = new Hexalith.EventStore.Server.Events.AggregateMetadata(0, DateTimeOffset.UnixEpoch, null)
+        { SourceProof = Hexalith.EventStore.Server.Events.SourceProofCodec.CreateSeed(command.AggregateIdentity, "01ARZ3NDEKTSV4RRFFQ69G5FAV") };
+        context.StateManager.TryGetStateAsync<Hexalith.EventStore.Server.Events.AggregateMetadata>(
+            command.AggregateIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<Hexalith.EventStore.Server.Events.AggregateMetadata>(true, metadata));
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command).ConfigureAwait(true);
+        result.Accepted.ShouldBeTrue();
+        await context.Invoker.Received(1).InvokeAsync(command, null, Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        await context.StateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<Hexalith.EventStore.Server.Events.EventEnvelope>(default!, default)
+            .ConfigureAwait(true);
+    }
+
+    [Fact]
     public async Task ProcessCommandAsync_ValidCommand_ReturnsAccepted() {
         // Arrange
         ActorTestContext ctx = CreateActor();

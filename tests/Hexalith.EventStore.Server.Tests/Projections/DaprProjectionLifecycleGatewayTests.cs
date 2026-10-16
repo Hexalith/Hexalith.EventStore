@@ -24,6 +24,51 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 /// strongly typed dispatch proxy — and it must reject reserved-character projection names.
 /// </summary>
 public class DaprProjectionLifecycleGatewayTests {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task PendingDeliveryFence_DefersCompetingWriterBeforeEffectsAndClosesAcquireRace(bool erase, bool appearsAfterAcquire)
+    {
+        var fixture = new GuardedFinalizationFixture();
+        ProjectionDeliveryReservation reservation = await fixture.ReserveAsync();
+        (await fixture.Coordinator.PrepareIdleBindingAsync(GuardedFinalizationFixture.Identity, GuardedFinalizationFixture.Projection,
+            reservation, "delivery-token", fixture.Selected)).ShouldBeTrue();
+        ProjectionDeliveryState pending = fixture.State;
+        IProjectionDeliveryStateStore states = Substitute.For<IProjectionDeliveryStateStore>();
+        int reads = 0;
+        states.ReadAsync(GuardedFinalizationFixture.Identity, GuardedFinalizationFixture.Projection, Arg.Any<CancellationToken>()).Returns(_ =>
+            new ProjectionDeliveryStateReadResult(++reads == 1 && appearsAfterAcquire
+                ? pending with { ActiveReservation = null, IdleBindingPending = null } : pending,
+                "etag", ProjectionDeliveryStateClassification.Current, true));
+        var calls = new List<string>();
+        using var handler = new MockHttpMessageHandler(async (request, token) =>
+        {
+            calls.Add(request.RequestUri!.AbsolutePath);
+            string body = await request.Content!.ReadAsStringAsync(token);
+            body.ShouldContain("competing-token");
+            body.ShouldNotContain("delivery-token");
+            object result = request.RequestUri.AbsolutePath.EndsWith(nameof(IProjectionLifecycleActor.BeginEraseAsync), StringComparison.Ordinal)
+                ? new ProjectionEraseAdmission(ProjectionEraseAdmissionKind.Admitted, new Dictionary<string, string>()) : true;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = new StringContent(JsonSerializer.Serialize(result, JsonSerializerOptions.Web), Encoding.UTF8, "application/json") };
+        });
+        var factory = new ActorProxyFactory(new ActorProxyOptions { HttpEndpoint = "http://localhost:3500", UseJsonSerialization = true,
+            JsonSerializerOptions = JsonSerializerOptions.Web }, handler);
+        var gateway = new DaprProjectionLifecycleGateway(factory, deliveryStates: states);
+        if (erase)
+            (await gateway.BeginEraseAsync(GuardedFinalizationFixture.Identity, GuardedFinalizationFixture.Projection,
+                "competing-token", "manifest", true)).Kind.ShouldBe(ProjectionEraseAdmissionKind.BeginNotAllowed);
+        else
+            (await gateway.BeginRebuildAsync(GuardedFinalizationFixture.Identity, GuardedFinalizationFixture.Projection,
+                "competing-token")).ShouldBeFalse();
+        calls.Count.ShouldBe(appearsAfterAcquire ? 2 : 0);
+        fixture.State.ShouldBeSameAs(pending);
+        fixture.State.LastDeliveredSequence.ShouldBe(0);
+        fixture.State.IdleBindingPending.ShouldNotBeNull().LifecycleOperationToken.ShouldBe("delivery-token");
+    }
+
     private static readonly AggregateIdentity TestIdentity = new("tenant1", "domain1", "agg1");
 
     [Fact]

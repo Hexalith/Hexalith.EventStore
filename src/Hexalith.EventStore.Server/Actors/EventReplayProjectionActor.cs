@@ -1,11 +1,15 @@
 
 using Dapr.Actors.Runtime;
+using Dapr.Actors.Client;
+using System.Security.Cryptography;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Server.Actors;
 
@@ -31,7 +35,20 @@ public partial class EventReplayProjectionActor(
     IETagService eTagService,
     IProjectionChangeNotifier projectionChangeNotifier,
     ILogger<EventReplayProjectionActor> logger)
-    : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor {
+    : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor, IProjectionRebuildInspectionActor, IProjectionReplayPublicationActor {
+    private IProjectionLifecycleGateway? _publicationLifecycle;
+
+    /// <summary>Creates a projection actor with actor-owned lifecycle-fenced replay publication.</summary>
+    [ActivatorUtilitiesConstructor]
+    public EventReplayProjectionActor(ActorHost host, IETagService eTagService,
+        IProjectionChangeNotifier projectionChangeNotifier, ILogger<EventReplayProjectionActor> logger,
+        IActorProxyFactory actorProxyFactory) : this(host, eTagService, projectionChangeNotifier, logger)
+    {
+        _publicationLifecycle = new DaprProjectionLifecycleGateway(actorProxyFactory);
+    }
+
+    /// <summary>Sets the owning lifecycle seam for production protocol fixtures.</summary>
+    internal void SetPublicationLifecycle(IProjectionLifecycleGateway lifecycle) => _publicationLifecycle = lifecycle;
     internal const string ProjectionStateKey = "projection-state";
     internal const string ProjectionRebuildCandidateKey = "projection-rebuild-candidate";
     internal const string ProjectionRebuildPromotionReceiptKey = "projection-rebuild-promotion";
@@ -53,8 +70,8 @@ public partial class EventReplayProjectionActor(
         ArgumentException.ThrowIfNullOrWhiteSpace(state.TenantId);
 
         // 1. Persist to DAPR actor state
-        await StateManager.SetStateAsync(ProjectionStateKey, state, cancellationToken).ConfigureAwait(false);
-        await StateManager.SaveStateAsync(cancellationToken).ConfigureAwait(false);
+        await SetPublicationStateAsync(ProjectionStateKey, state, cancellationToken).ConfigureAwait(false);
+        await SavePublicationStateAsync(cancellationToken).ConfigureAwait(false);
 
         Log.ProjectionStatePersisted(logger, Id.GetId(), state.ProjectionType, state.TenantId);
         cancellationToken.ThrowIfCancellationRequested();
@@ -85,9 +102,9 @@ public partial class EventReplayProjectionActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
         ValidateState(request.State);
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
 
-        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
-            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
             .ConfigureAwait(false);
         if (receipt.HasValue
             && string.Equals(receipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
@@ -95,27 +112,33 @@ public partial class EventReplayProjectionActor(
         }
 
         if (receipt.HasValue) {
-            await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+            await RemovePublicationStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
         }
 
-        await StateManager.SetStateAsync(ProjectionRebuildCandidateKey, request).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionRebuildCandidate> previousCandidate = await ReadPublicationStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        await SetPublicationStateAsync(ProjectionRebuildCandidateKey, request with
+        { PublicationFloor = receipt.HasValue ? receipt.Value.PublicationFloor ?? receipt.Value.PublicationBinding
+            : previousCandidate.HasValue ? previousCandidate.Value.PublicationFloor : request.PublicationFloor,
+            PriorReplayFence = receipt.HasValue ? receipt.Value.SelectedReplayFence
+                : previousCandidate.HasValue ? previousCandidate.Value.PriorReplayFence : request.PriorReplayFence })
+            .ConfigureAwait(false);
+        await SaveRebuildStateAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task<bool> PromoteProjectionAsync(ProjectionRebuildCandidateOperation request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
-        ConditionalValue<ProjectionRebuildPromotionReceipt> existingReceipt = await StateManager
-            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> existingReceipt = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
             .ConfigureAwait(false);
         if (existingReceipt.HasValue
             && string.Equals(existingReceipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
-            return true;
+            ProjectionRebuildInspection selected = await InspectProjectionRebuildAsync(request).ConfigureAwait(false);
+            return selected.Status == ProjectionRebuildInspectionStatus.Promoted;
         }
 
-        ConditionalValue<ProjectionRebuildCandidate> candidate = await StateManager
-            .TryGetStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
+        ConditionalValue<ProjectionRebuildCandidate> candidate = await ReadPublicationStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
             .ConfigureAwait(false);
         if (!candidate.HasValue
             || !string.Equals(candidate.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
@@ -123,18 +146,20 @@ public partial class EventReplayProjectionActor(
         }
 
         ValidateState(candidate.Value.State);
-        ConditionalValue<ProjectionState> previous = await StateManager
-            .TryGetStateAsync<ProjectionState>(ProjectionStateKey)
+        ConditionalValue<ProjectionState> previous = await ReadPublicationStateAsync<ProjectionState>(ProjectionStateKey)
             .ConfigureAwait(false);
-        await StateManager.SetStateAsync(ProjectionStateKey, candidate.Value.State).ConfigureAwait(false);
-        await StateManager.SetStateAsync(
+        await SetPublicationStateAsync(ProjectionStateKey, candidate.Value.State).ConfigureAwait(false);
+        await SetPublicationStateAsync(
             ProjectionRebuildPromotionReceiptKey,
             new ProjectionRebuildPromotionReceipt(
                 request.OperationId,
                 previous.HasValue ? previous.Value : null,
-                candidate.Value.State)).ConfigureAwait(false);
-        await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+                candidate.Value.State) { PublicationFloor = candidate.Value.PublicationFloor,
+                    SelectedReplayFence = candidate.Value.SelectedReplayFence ?? candidate.Value.PriorReplayFence,
+                    PriorReplayFence = candidate.Value.PriorReplayFence,
+                    SelectedStateFingerprint = Convert.ToHexStringLower(SHA256.HashData(candidate.Value.State.StateBytes)) }).ConfigureAwait(false);
+        await RemovePublicationStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        await SaveRebuildStateAsync().ConfigureAwait(false);
 
         Log.ProjectionStatePersisted(
             logger,
@@ -166,8 +191,8 @@ public partial class EventReplayProjectionActor(
     public async Task<bool> DiscardProjectionAsync(ProjectionRebuildCandidateOperation request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
-        ConditionalValue<ProjectionRebuildCandidate> candidate = await StateManager
-            .TryGetStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionRebuildCandidate> candidate = await ReadPublicationStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
             .ConfigureAwait(false);
         if (!candidate.HasValue) {
             return true;
@@ -177,8 +202,17 @@ public partial class EventReplayProjectionActor(
             return false;
         }
 
-        await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (candidate.Value.PublicationFloor is not null || candidate.Value.PriorReplayFence is not null)
+        {
+            ProjectionReplayPublicationBinding? floor = candidate.Value.PublicationFloor;
+            await SetPublicationStateAsync(ProjectionRebuildPromotionReceiptKey,
+                new ProjectionRebuildPromotionReceipt(candidate.Value.PriorReplayFence?.OperationId ?? floor!.OperationId, null, null)
+                { PublicationBinding = floor, PublicationFloor = floor, Completed = true,
+                    SelectedReplayFence = candidate.Value.PriorReplayFence }).ConfigureAwait(false);
+        }
+
+        await RemovePublicationStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        await SaveRebuildStateAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -186,8 +220,8 @@ public partial class EventReplayProjectionActor(
     public async Task<bool> RollbackProjectionAsync(ProjectionRebuildCandidateOperation request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
-        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
-            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
             .ConfigureAwait(false);
         if (!receipt.HasValue) {
             return true;
@@ -197,16 +231,30 @@ public partial class EventReplayProjectionActor(
             return false;
         }
 
+        if (receipt.Value.Completed) return false;
+        ConditionalValue<ProjectionState> live = await ReadPublicationStateAsync<ProjectionState>(ProjectionStateKey).ConfigureAwait(false);
+        if (!live.HasValue || live.Value is null || receipt.Value.PromotedState is not { } promoted
+            || live.Value.ProjectionType != promoted.ProjectionType || live.Value.TenantId != promoted.TenantId
+            || !live.Value.StateBytes.AsSpan().SequenceEqual(promoted.StateBytes)) return false;
+
         if (receipt.Value.PreviousState is null) {
-            await StateManager.RemoveStateAsync(ProjectionStateKey).ConfigureAwait(false);
+            await RemovePublicationStateAsync(ProjectionStateKey).ConfigureAwait(false);
         }
         else {
-            await StateManager.SetStateAsync(ProjectionStateKey, receipt.Value.PreviousState).ConfigureAwait(false);
+            await SetPublicationStateAsync(ProjectionStateKey, receipt.Value.PreviousState).ConfigureAwait(false);
         }
 
-        await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
-        await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (receipt.Value.PublicationFloor is not null || receipt.Value.PriorReplayFence is not null)
+        {
+            ProjectionReplayPublicationBinding? floor = receipt.Value.PublicationFloor;
+            await SetPublicationStateAsync(ProjectionRebuildPromotionReceiptKey,
+                new ProjectionRebuildPromotionReceipt(receipt.Value.PriorReplayFence?.OperationId ?? floor!.OperationId, null, null)
+                { PublicationBinding = floor, PublicationFloor = floor, Completed = true,
+                    SelectedReplayFence = receipt.Value.PriorReplayFence }).ConfigureAwait(false);
+        }
+        else await RemovePublicationStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+        _ = await TryRemovePublicationStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        await SaveRebuildStateAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -214,8 +262,8 @@ public partial class EventReplayProjectionActor(
     public async Task<bool> FinalizeProjectionAsync(ProjectionRebuildCandidateOperation request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
-        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
-            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await ReadPublicationStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
             .ConfigureAwait(false);
         if (!receipt.HasValue) {
             return true;
@@ -225,17 +273,33 @@ public partial class EventReplayProjectionActor(
             return false;
         }
 
-        await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        if (receipt.Value.PublicationFloor is not null || receipt.Value.SelectedReplayFence is not null)
+        {
+            if (receipt.Value.Completed) return true;
+            await SetPublicationStateAsync(ProjectionRebuildPromotionReceiptKey,
+                receipt.Value with { PreviousState = null, PromotedState = null, Completed = true }).ConfigureAwait(false);
+        }
+        else await RemovePublicationStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+        await SaveRebuildStateAsync().ConfigureAwait(false);
         return true;
     }
 
     /// <inheritdoc/>
     public async Task<ProjectionState?> ReadProjectionStateAsync() {
-        ConditionalValue<ProjectionState> state = await StateManager
-            .TryGetStateAsync<ProjectionState>(ProjectionStateKey)
+        await ClearPublicationCacheAsync().ConfigureAwait(false);
+        ConditionalValue<ProjectionState> state = await ReadPublicationStateAsync<ProjectionState>(ProjectionStateKey)
             .ConfigureAwait(false);
         return state.HasValue ? state.Value : null;
+    }
+
+    private async Task SaveRebuildStateAsync()
+    {
+        try { await SavePublicationStateAsync().ConfigureAwait(false); }
+        catch
+        {
+            await ClearPublicationCacheAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <inheritdoc/>
@@ -253,7 +317,7 @@ public partial class EventReplayProjectionActor(
 
         // Read last persisted state from DAPR actor state
         ConditionalValue<ProjectionState> result =
-            await StateManager.TryGetStateAsync<ProjectionState>(ProjectionStateKey, cancellationToken)
+            await ReadPublicationStateAsync<ProjectionState>(ProjectionStateKey, cancellationToken)
                 .ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 

@@ -17,6 +17,93 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
     private const string StoreName = "statestore";
     private const string IndexKey = "widget:shared-index";
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GuardEnrolledSharedDispatch_RequiresFoldReceiptAndCompleteDeclaredWriterCoverageBeforeCompletion(bool publishedCatalog)
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var handler = new FencedIndexHandler { RequireOtherWriter = true };
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "shared-epoch-v1", "projection-owner-proof/v1",
+            "source-sequence-position/v1", "shared-applied/v1");
+        var route = new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType) { SourceGuard = capability };
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("widget-service", "v1", [route]);
+        var registry = new DomainProjectionCatalogRegistry();
+        registry.Register(fingerprint, [route]);
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IReadModelStore>(store);
+        _ = services.AddSingleton<IReadModelBatchStore>(store);
+        _ = services.AddSingleton(coordinator);
+        if (publishedCatalog) _ = services.AddSingleton(registry);
+        _ = services.AddSingleton<IAsyncDomainProjectionHandler>(handler);
+        _ = services.AddSingleton(new DomainProjectionOwnerProofRegistration(handler.Domain, handler.ProjectionType,
+            capability, new(StoreName, "unused")));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        var dispatch = new ProjectionDispatchRequest(new("tenant-a", handler.Domain, "owner", [Event(1, 1)]),
+            [handler.ProjectionType], "same-work", fingerprint);
+        ProjectionDispatchOutcome incomplete = (await DomainProjectionDispatcher.DispatchAsync(provider, dispatch,
+            new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None)).Outcomes.Single();
+        incomplete.Status.ShouldBe(ProjectionDispatchStatus.Retryable);
+        incomplete.ReasonCode.ShouldBe("delivery_in_progress");
+        SharedProjectionScope scope = handler.CreateScope("tenant-a");
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value.ShouldNotBeNull().Count.ShouldBe(1);
+        _ = await coordinator.RegisterWriterAsync(scope, "other-writer");
+        ProjectionDispatchOutcome completed = (await DomainProjectionDispatcher.DispatchAsync(provider, dispatch,
+            new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None)).Outcomes.Single();
+        completed.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value.ShouldNotBeNull().Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AppliedProof_JournalAcceptanceCannotProveFoldAndInspectionPerformsNoRepairs()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var scope = new SharedProjectionScope(StoreName, "tenant-a", "widget", "shared-proof", ["writer-a"]);
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(scope, "writer-a");
+        var request = new ProjectionRequest("tenant-a", "widget", "owner", [Event(1, 1)]);
+        var delivery = new SharedProjectionDelivery("owner", 1,
+            JsonSerializer.SerializeToUtf8Bytes(request, JsonSerializerOptions.Web), "1"u8.ToArray(), OwnerSequenceNumber: 1);
+        (await coordinator.JournalAsync(scope, lease, delivery)).ShouldBe(SharedProjectionJournalResult.Journaled);
+        (await coordinator.GetCheckpointAsync(scope, "owner"))!.OwnerSequenceNumber.ShouldBe(1);
+        (await coordinator.ReadAppliedDeliveryProofAsync(scope, delivery)).IsApplied.ShouldBeFalse();
+        _ = await coordinator.CatchUpAsync(scope, (_, _, _) => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>(
+            [ReadModelBatchOperation.Write(IndexKey, new Index(1), ReadModelBatchConcurrency.LastWrite)]));
+        SharedProjectionReadResult<Index> model = await coordinator.ReadAsync<Index>(scope, IndexKey);
+        int keys = store.Count;
+        int mutations = 0;
+        store.ConcurrentWriteBeforeTrySave = () => mutations++;
+        store.ConcurrentWriteBeforeTryErase = () => mutations++;
+        store.BatchFaultHook = (_, _, _) => { mutations++; return Task.CompletedTask; };
+        SharedProjectionAppliedDeliveryProof proof = await coordinator.ReadAppliedDeliveryProofAsync(scope, delivery);
+        proof.IsApplied.ShouldBeTrue();
+        proof.Generation.ShouldBe(model.Generation);
+        proof.ReceiptIdentity.ShouldNotBeNullOrWhiteSpace();
+        proof.ReceiptFingerprint.ShouldNotBeNullOrWhiteSpace();
+        mutations.ShouldBe(0);
+        store.Count.ShouldBe(keys);
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).SelectedETag.ShouldBe(model.SelectedETag);
+        (await coordinator.ReadAppliedDeliveryProofAsync(scope, delivery with { CanonicalPayload = "changed"u8.ToArray() }))
+            .ReasonCode.ShouldBe("delivery_identity_conflict");
+    }
+
+    [Fact]
+    public async Task AppliedProof_RequiresEveryDeclaredWriterEvenAfterOneOwnerWasFolded()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var scope = new SharedProjectionScope(StoreName, "tenant-a", "widget", "shared-proof", ["writer-a", "writer-b"]);
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(scope, "writer-a");
+        var delivery = new SharedProjectionDelivery("owner", 1, "payload"u8.ToArray(), "1"u8.ToArray(), OwnerSequenceNumber: 1);
+        _ = await coordinator.JournalAsync(scope, lease, delivery);
+        _ = await coordinator.CatchUpAsync(scope, (_, _, _) => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>(
+            [ReadModelBatchOperation.Write(IndexKey, new Index(1), ReadModelBatchConcurrency.LastWrite)]));
+        (await coordinator.ReadAppliedDeliveryProofAsync(scope, delivery)).IsApplied.ShouldBeFalse();
+        _ = await coordinator.RegisterWriterAsync(scope, "writer-b");
+        (await coordinator.ReadAppliedDeliveryProofAsync(scope, delivery)).IsApplied.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task GlobalEpochDeliverySeparatesIdenticalOwnerIdsAcrossTenants()
     {
@@ -622,6 +709,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         public bool EpochEnabled => true;
 
         public bool GlobalScope { get; init; }
+        public bool RequireOtherWriter { get; init; }
 
         public bool GlobalEpochScope => GlobalScope;
 
@@ -641,7 +729,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
 
         public SharedProjectionScope CreateScope(string tenantId)
             => new(StoreName, GlobalScope ? IAsyncDomainSharedProjectionEpochHandler.GlobalTenantSegment
-                : tenantId, Domain, ProjectionType, [OrdinaryWriterId]);
+                : tenantId, Domain, ProjectionType, RequireOtherWriter ? [OrdinaryWriterId, "other-writer"] : [OrdinaryWriterId]);
 
         public Task<DomainSharedProjectionRebuildCandidate> CreateEmptyCandidateAsync(
             DomainSharedProjectionRebuildIdentity identity,

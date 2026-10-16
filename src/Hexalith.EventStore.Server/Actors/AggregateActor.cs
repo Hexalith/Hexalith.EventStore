@@ -1323,7 +1323,8 @@ public partial class AggregateActor(
                                 throw new InvalidOperationException("SnapshotStreamUnavailable");
                             }
                         }
-                        else if (streamHead.Value.CurrentSequence <= 0
+                        else if (streamHead.Value.CurrentSequence < 0 || streamHead.Value.CurrentSequence == 0
+                                && !SourceProofCodec.IsQualifiedEmpty(streamHead.Value, command.AggregateIdentity)
                             || streamHead.Value.RetainedFloor < 1
                             || (streamHead.Value.RetainedFloor > streamHead.Value.CurrentSequence
                                 && streamHead.Value.RetainedFloor - streamHead.Value.CurrentSequence > 1))
@@ -2314,6 +2315,10 @@ public partial class AggregateActor(
 
         if (savedProgress.HasValue && savedProgress.Value.Completed)
         {
+            string completedOperation = SourceErasureOperation(identity);
+            string[] completedRoutes = savedProgress.Value.SourceProjectionRoutes ?? SourceErasureRoutes(identity);
+            await AcquireSourceErasureFencesAsync(identity, completedOperation, completedRoutes).ConfigureAwait(false);
+            await ReleaseSourceErasureFencesAsync(identity, completedOperation, completedRoutes).ConfigureAwait(false);
             return;
         }
 
@@ -2360,20 +2365,18 @@ public partial class AggregateActor(
             throw new InvalidOperationException("Aggregate publication or command work remains pending.");
         }
 
+        string sourceErasureOperation = SourceErasureOperation(identity);
+        ConditionalValue<AggregateMetadata> sourceMetadata = await StateManager
+            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
+
         TrustedEffectErasureProgress progress;
         if (savedProgress.HasValue)
         {
             progress = savedProgress.Value with { CapabilityNonce = request.Nonce };
-            await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
-                .ConfigureAwait(false);
-            await StateManager.SaveStateAsync().ConfigureAwait(false);
-            await StateManager.ClearCacheAsync().ConfigureAwait(false);
         }
         else
         {
-            ConditionalValue<AggregateMetadata> metadata = await StateManager
-                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
-            long lastSequence = metadata.HasValue ? metadata.Value.CurrentSequence : 0;
+            long lastSequence = sourceMetadata.HasValue ? sourceMetadata.Value.CurrentSequence : 0;
             if (lastSequence < 0)
             {
                 throw new InvalidOperationException("Aggregate stream metadata is corrupt.");
@@ -2391,11 +2394,27 @@ public partial class AggregateActor(
             }
             progress = new TrustedEffectErasureProgress(lastSequence, 1, Completed: false,
                 request.Nonce, lastGlobalPosition);
+        }
+
+        string[] sourceErasureRoutes = progress.SourceProjectionRoutes ?? SourceErasureRoutes(identity);
+        progress = progress with { SourceProjectionRoutes = sourceErasureRoutes };
+        if (sourceErasureRoutes.Length > 0)
+        {
+            // Persist the exact route inventory before the first cross-actor lease. A crash
+            // after acquisition can then resume removed routes without scanning any backend.
+            // Source metadata remains intact until every pending-delivery fence is excluded.
             await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
                 .ConfigureAwait(false);
             await StateManager.SaveStateAsync().ConfigureAwait(false);
             await StateManager.ClearCacheAsync().ConfigureAwait(false);
         }
+        await AcquireSourceErasureFencesAsync(identity, sourceErasureOperation, sourceErasureRoutes).ConfigureAwait(false);
+        if (sourceMetadata.HasValue)
+            await StateManager.SetStateAsync(identity.MetadataKey,
+                sourceMetadata.Value with { SourceErasurePending = true }).ConfigureAwait(false);
+        await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
 
         while (progress.NextSequence <= progress.LastSequence)
         {
@@ -2449,6 +2468,7 @@ public partial class AggregateActor(
                 throw new InvalidOperationException("Trusted effect erasure left receipt or collision evidence.");
             }
         }
+        await ReleaseSourceErasureFencesAsync(identity, sourceErasureOperation, sourceErasureRoutes).ConfigureAwait(false);
         if (erasureFence is not null)
         {
             await erasureFence.CompleteWriteAsync(identity, erasureIntentId!).ConfigureAwait(false);

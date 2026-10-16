@@ -1,9 +1,18 @@
 using System.Collections.Immutable;
 
+using Hexalith.EventStore.Contracts.Projections;
+
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Represents one capability-bound domain entry in the named projection route catalog.</summary>
 public sealed class NamedProjectionRouteCatalogEntry {
+    /// <summary>Gets the explicitly enrolled source-guard descriptors from this verified catalog.</summary>
+    public IReadOnlyDictionary<string, ProjectionSourceGuardCapability> SourceGuardCapabilities { get; init; }
+        = ImmutableDictionary<string, ProjectionSourceGuardCapability>.Empty;
+
+    /// <summary>Gets explicitly verified original-manifest recovery bindings without changing legacy catalog bytes.</summary>
+    public IReadOnlyDictionary<string, ProjectionReplayRecoveryBinding> ReplayRecoveryBindings { get; init; }
+        = ImmutableDictionary<string, ProjectionReplayRecoveryBinding>.Empty;
     /// <summary>Initializes a new named route catalog entry.</summary>
     /// <param name="appId">The exact DAPR app id.</param>
     /// <param name="serviceVersion">The exact domain-service version.</param>

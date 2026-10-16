@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.Server.Projections;
@@ -41,6 +42,7 @@ internal static class ProjectionDeliveryFingerprint {
 
     /// <summary>Computes the v2 position- and provenance-sensitive mapped event identity.</summary>
     public static string ComputeEvent(ProjectionEventDto value, bool positionSensitive) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.RouteEventHashes);
         ArgumentNullException.ThrowIfNull(value);
         if (value.SequenceNumber <= 0) {
             throw new ArgumentException("Projection event sequence numbers must be positive.", nameof(value));
@@ -306,5 +308,13 @@ internal static class ProjectionDeliveryFingerprint {
         catch (FormatException exception) {
             throw new ArgumentException("Projection delivery fingerprint is malformed.", nameof(fingerprint), exception);
         }
+    }
+
+    /// <summary>Checks canonical recognized fingerprint bytes for guarded persisted evidence.</summary>
+    internal static bool IsCanonical(string? fingerprint)
+    {
+        if (fingerprint is null) return false;
+        try { return Format(Parse(fingerprint), fingerprint.StartsWith("v2:", StringComparison.Ordinal)) == fingerprint; }
+        catch (ArgumentException) { return false; }
     }
 }

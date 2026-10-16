@@ -164,6 +164,7 @@ public sealed partial class AdminOperationalIndexHostedService(
         var request = new AdminOperationalIndexMetadataRequest([registration.Domain]) {
             AppId = registration.AppId,
             ServiceVersion = serviceVersion,
+            ProjectionSourceGuardVersion = 1,
         };
         using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
             registration.AppId,
@@ -247,7 +248,10 @@ public sealed partial class AdminOperationalIndexHostedService(
             ProjectionDispatchRoute[] routes = [.. response.Domains
                 .Where(static domain => domain.NamedProjectionTypes is { Count: > 0 })
                 .SelectMany(domain => domain.NamedProjectionTypes!
-                    .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)))];
+                    .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)
+                    {
+                        SourceGuard = domain.SourceGuardCapabilities?.GetValueOrDefault(projectionType),
+                    }))];
             if (routes.Length == 0) {
                 return false;
             }
@@ -268,6 +272,11 @@ public sealed partial class AdminOperationalIndexHostedService(
             }
 
             foreach (AdminOperationalIndexDomainMetadata domain in response.Domains) {
+                if (domain.ReplayRecoveryBindings is { } recoveries && recoveries.Any(pair => !pair.Value.IsSupported
+                    || pair.Value.CatalogFingerprint != response.CatalogFingerprint
+                    || !(domain.FullReplayProjectionTypes ?? []).Contains(pair.Key, StringComparer.Ordinal))) return false;
+                if (domain.SourceGuardCapabilities is { } guards && guards.Any(pair => !pair.Value.IsSupported
+                    || !(domain.NamedProjectionTypes ?? []).Contains(pair.Key, StringComparer.Ordinal))) return false;
                 if (domain.FullReplayProjectionTypes is { } replayTypes
                     && (replayTypes.Count != replayTypes.Distinct(StringComparer.Ordinal).Count()
                         || replayTypes.Any(type => !(domain.NamedProjectionTypes ?? []).Contains(type, StringComparer.Ordinal)))) {
@@ -329,7 +338,13 @@ public sealed partial class AdminOperationalIndexHostedService(
                     response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
                         .IncrementalReplayProjectionTypes,
                     response.Domains.Single(domain => string.Equals(domain.Domain, group.Key, StringComparison.Ordinal))
-                        .OrdinaryProjectionTypes))];
+                        .OrdinaryProjectionTypes)
+                {
+                    SourceGuardCapabilities = response.Domains.Single(domain => domain.Domain == group.Key)
+                        .SourceGuardCapabilities ?? new Dictionary<string, ProjectionSourceGuardCapability>(),
+                    ReplayRecoveryBindings = response.Domains.Single(domain => domain.Domain == group.Key)
+                        .ReplayRecoveryBindings ?? new Dictionary<string, ProjectionReplayRecoveryBinding>(),
+                })];
             return true;
         }
         catch (ArgumentException) {
@@ -670,6 +685,9 @@ internal sealed record AdminOperationalIndexMetadataLoadResult(
 /// <summary>Metadata request sent from EventStore to domain services for admin index population.</summary>
 /// <param name="Domains">Configured domains for the target domain service.</param>
 public sealed record AdminOperationalIndexMetadataRequest(IReadOnlyList<string> Domains) {
+    /// <summary>Gets the explicitly negotiated source-guard catalog descriptor version.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ProjectionSourceGuardVersion { get; init; }
     /// <summary>Gets the DAPR app id requested for capability binding.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AppId { get; init; }
@@ -712,6 +730,13 @@ public sealed record AdminOperationalIndexDomainMetadata(
     IReadOnlyList<string> AggregateTypes,
     IReadOnlyList<string> ProjectionNames,
     IReadOnlyList<string>? QueryTypes = null) {
+    /// <summary>Gets explicitly enrolled source-guard proof descriptors by exact named route.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, ProjectionSourceGuardCapability>? SourceGuardCapabilities { get; init; }
+
+    /// <summary>Gets optional original-manifest recovery attestations bound to this catalog identity.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, ProjectionReplayRecoveryBinding>? ReplayRecoveryBindings { get; init; }
     /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? NamedProjectionTypes { get; init; }

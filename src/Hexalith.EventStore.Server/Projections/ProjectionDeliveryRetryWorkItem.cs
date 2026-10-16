@@ -51,6 +51,10 @@ public sealed record ProjectionDeliveryRetryWorkItem(
     /// <summary>Gets whether retry must reload source pages and use the mapped normal route.</summary>
     public bool MappedOnlyStreamed { get; init; }
 
+    /// <summary>Gets original opaque recovery bindings; absence preserves old work serialization and compatibility.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? ReplayRecoveryBindings { get; init; }
+
     /// <summary>Creates a deterministic opaque work id without persisting event payloads.</summary>
     /// <param name="tenantId">The aggregate tenant.</param>
     /// <param name="domain">The aggregate domain.</param>

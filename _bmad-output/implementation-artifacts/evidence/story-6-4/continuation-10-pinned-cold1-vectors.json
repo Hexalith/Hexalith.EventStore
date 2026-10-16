@@ -1,0 +1,238 @@
+{
+  "scope": "Pinned Dapr 1.18.2 / Redis actual cold catalog and separately observed warm guarded Current; frozen Debug live build19 before removed-route cancellation filter",
+  "testCommand": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*SourceGuard_CatalogCold*",
+    "-showLiveOutput"
+  ],
+  "environment": {
+    "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+    "EVENTSTORE_TEST_PLACEMENT_PORT": "52991",
+    "EVENTSTORE_TEST_SCHEDULER_PORT": "52353"
+  },
+  "result": {
+    "selected": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "notRun": 0,
+    "seconds": 4.237,
+    "exitCode": 0,
+    "controlExitCodes": [
+      0,
+      0
+    ]
+  },
+  "assets": [
+    {
+      "assembly": "Hexalith.EventStore.Admin.Abstractions.dll",
+      "bytes": 239104,
+      "sha256": "2f498c84ba78f920eee730b63e20cbf00f13579972c7edbc535dda75ec76e48e"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Client.dll",
+      "bytes": 990720,
+      "sha256": "989b69609cad3a9d543306194eddbd3848f767962c081f87687969582583b6f5"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Contracts.dll",
+      "bytes": 692224,
+      "sha256": "9a5450afe0cd9ee3e0abaa0556a063a7cf65b7478d887216dad6e358631b15fd"
+    },
+    {
+      "assembly": "Hexalith.EventStore.DomainService.dll",
+      "bytes": 1046016,
+      "sha256": "fa9c210c1b867f82ef8bcf0174fee9c7061f7e568ea86dfccdd7a67aef6d400a"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Gateway.dll",
+      "bytes": 875520,
+      "sha256": "b62dd102503041aa2e422753873cacf4b61870e9bf6c261bf3e45d183ddcab10"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Sample.Contracts.dll",
+      "bytes": 11776,
+      "sha256": "d7a944c41fc574391a5b5a1414e8920b806da72e1111d8a514bb97905fe6e21f"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Sample.dll",
+      "bytes": 23552,
+      "sha256": "44644ec532421aebb14dd80fd9584b8ff1559b3316f8d5ca105856abb7582d64"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "bytes": 1080320,
+      "sha256": "2853be6d846a9098ce1b090561aa3369ff8a135701e156d5d974f5b4dbdf2aa0"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Server.dll",
+      "bytes": 3214336,
+      "sha256": "023e1cfd79b5b3260d32dfe4b064f5f490992d5ae3236813cfc2a1668d6910eb"
+    },
+    {
+      "assembly": "Hexalith.EventStore.ServiceDefaults.dll",
+      "bytes": 121856,
+      "sha256": "59600756425f33aa5ab6cd32aeac0dccde29ab83a3045501a65e04d4b39f02e4"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Testing.Integration.dll",
+      "bytes": 153600,
+      "sha256": "d4214db9270bb9709cc58a50e9d8f7a75d2317d62896d29a7461e1ed5d8d97e3"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Testing.dll",
+      "bytes": 125952,
+      "sha256": "b80a6e3c551d9019032bb61421b722c0b9643264b6fc2106395da9d14c5d35b5"
+    },
+    {
+      "assembly": "Hexalith.EventStore.dll",
+      "bytes": 11776,
+      "sha256": "97456dfa89c63c052fb09e18f9c8cadd0ce76929707ed56c2c472766916fd209"
+    }
+  ],
+  "observations": [
+    {
+      "cold": {
+        "primary/app_callbacks/metadata": 1,
+        "primary/app_callbacks/other": 0,
+        "primary/app_callbacks/metadata_request_bytes": 143,
+        "primary/app_callbacks/metadata_response_bytes": 1090,
+        "primary/app_callbacks/actor_methods": 0,
+        "primary/caller_actor_http/other_actor_call": 0,
+        "primary/caller_actor_http/ProcessCommandAsync": 0,
+        "primary/sdk_http/service_invocation": 1,
+        "primary/sdk_http/actor_state_transaction": 0,
+        "primary/sdk_http/actor_state_get": 0,
+        "primary/sdk_http/actor_method": 0,
+        "primary/native/dapr_grpc_io_server_completed_rpcs//dapr.proto.runtime.v1.Dapr/GetState": 0,
+        "primary/native/dapr_grpc_io_server_completed_rpcs//dapr.proto.runtime.v1.Dapr/SaveState": 5,
+        "primary/native/dapr_http_client_completed_count/all_app_callbacks": 1,
+        "primary/native/dapr_http_server_request_count/all_sidecar_requests": 1
+      },
+      "coldStateSaveRpcs": 5,
+      "owningIndexRowBytes": [
+        177,
+        177,
+        2,
+        2,
+        2
+      ],
+      "warm": {
+        "primary/app_callbacks/metadata": 0,
+        "primary/app_callbacks/other": 0,
+        "primary/app_callbacks/metadata_request_bytes": 0,
+        "primary/app_callbacks/metadata_response_bytes": 0,
+        "primary/app_callbacks/actor_methods": 4,
+        "primary/app_callbacks/projections": 1,
+        "primary/caller_actor_http/other_actor_call": 0,
+        "primary/caller_actor_http/ReadMeasuredEventsBoundedRangeAsync": 0,
+        "primary/caller_actor_http/CompleteDeliveryWriteAsync": 0,
+        "primary/caller_actor_http/ProcessCommandAsync": 0,
+        "primary/caller_actor_http/BeginDeliveryWriteAsync": 0,
+        "primary/caller_actor_http/InspectSourceProofAsync": 2,
+        "primary/caller_actor_http/ReadSnapshotAsync": 2,
+        "primary/sdk_http/service_invocation": 1,
+        "primary/sdk_http/actor_state_transaction": 0,
+        "primary/sdk_http/actor_state_get": 2,
+        "primary/sdk_http/actor_method": 4,
+        "primary/native/dapr_grpc_io_server_completed_rpcs//dapr.proto.runtime.v1.Dapr/ExecuteStateTransaction": 0,
+        "primary/native/dapr_grpc_io_server_completed_rpcs//dapr.proto.runtime.v1.Dapr/GetState": 5,
+        "primary/native/dapr_grpc_io_server_completed_rpcs//dapr.proto.runtime.v1.Dapr/SaveState": 0,
+        "primary/native/dapr_http_client_completed_count/all_app_callbacks": 1,
+        "primary/native/dapr_http_server_request_count/all_sidecar_requests": 1
+      },
+      "warmCost": {
+        "SourceInspections": 2,
+        "SourceRanges": 0,
+        "SourceMetadataReads": 2,
+        "SourceMetadataBytes": 910,
+        "SourceEventReads": 0,
+        "SourceDeserializations": 0,
+        "SourceDeserializationBytes": 0,
+        "SourceSizingBytes": 0,
+        "SourceResponses": 0,
+        "SourceResponseBytes": 0,
+        "SourceReturnedEvents": 0,
+        "SourceLookaheadEvents": 0,
+        "SourceLookaheadBytes": 0,
+        "SourceEventHashes": 0,
+        "SourceChainExtensions": 0,
+        "RouteEventHashes": 0,
+        "WireEvents": 0,
+        "WireBytes": 0,
+        "ProofReads": 1,
+        "ProofReadBytes": 1896,
+        "ProofWriteAttempts": 0,
+        "ProofWriteBytes": 0,
+        "MarkerReads": 2,
+        "MarkerReadBytes": 775,
+        "ProofVisits": 4,
+        "MetadataReads": 6,
+        "MetadataReadBytes": 1115,
+        "MutationAttempts": 0,
+        "MutationBytes": 0,
+        "StateRpcAttempts": 5,
+        "TransactionAttempts": 0,
+        "HandlerAttempts": 0,
+        "FoldAttempts": 0,
+        "BatchExecutions": 0,
+        "ModelMutations": 0,
+        "ModelBytes": 1113,
+        "SchedulerScans": 0,
+        "SchedulerShardReads": 0,
+        "SchedulerEntries": 0,
+        "SchedulerReadBytes": 0,
+        "SchedulerWriteAttempts": 0,
+        "SchedulerWriteBytes": 0,
+        "SchedulerCasAttempts": 0,
+        "Activations": 0,
+        "SourceResponseSerializationBytes": 0,
+        "SourceResponseDeserializationBytes": 0,
+        "MetadataSizingBytes": 910,
+        "ProofParsingBytes": 1896,
+        "ProofSerializationBytes": 0,
+        "ManifestOperations": 0,
+        "RetryActivations": 0,
+        "WireReadabilityAttempts": 0,
+        "WireReadabilityInputBytes": 0,
+        "WireUnprotectionAttempts": 0,
+        "WireDecodedEvents": 0,
+        "WireDecodedPayloadBytes": 0,
+        "WireSizingBytes": 0,
+        "GuardActivationAttempts": 0,
+        "WriterActivationAttempts": 0,
+        "ReconciliationReads": 0,
+        "ReconciliationWrites": 0,
+        "MetadataSerializationBytes": 0,
+        "ManifestSerializationBytes": 0,
+        "SourceBootstrapAttempts": 0,
+        "BootstrapStateReads": 0,
+        "SourceAnchorWriteAttempts": 0,
+        "SourceAnchorWriteBytes": 0,
+        "SourceAnchorReadbacks": 0,
+        "BootstrapSaveAttempts": 0,
+        "ReplayTransportSerializationBytes": 0,
+        "ReplayPartUploadAttempts": 0,
+        "ReplayPartUploadBytes": 0,
+        "ActivationScans": 0,
+        "ActivationShardReads": 0,
+        "ActivationEntries": 0,
+        "ActivationReadBytes": 0,
+        "ActivationWriteAttempts": 0,
+        "ActivationWriteBytes": 0,
+        "WireTransportSerializationBytes": 0,
+        "WireStreamingFallbacks": 0,
+        "ReplayRequestDigestSerializationBytes": 0,
+        "SchedulerMigrationReads": 0,
+        "SchedulerMigrationReadBytes": 0,
+        "SchedulerMigrationEntries": 0,
+        "SchedulerMigrationWrites": 0,
+        "SchedulerMigrationWriteBytes": 0
+      }
+    }
+  ],
+  "privacy": "Only closed operation categories, aggregate byte/count values and assembly identities retained. Raw runtime logs remain outside repository."
+}

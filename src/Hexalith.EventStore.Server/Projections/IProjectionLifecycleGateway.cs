@@ -9,6 +9,10 @@ namespace Hexalith.EventStore.Server.Projections;
 /// DAPR proxy path. Kept internal so the actor + its contracts remain the only public surface.
 /// </summary>
 internal interface IProjectionLifecycleGateway {
+    /// <summary>Reads exact current delivery lease ownership and revision without renewal or repair.</summary>
+    Task<bool> OwnsDeliveryWriteAsync(AggregateIdentity identity, string projectionName, string operationId,
+        ProjectionLifecycleSnapshot snapshot, CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     /// <summary>Begins or resumes a persisted rebuild lifecycle operation.</summary>
     Task<bool> BeginRebuildAsync(
         AggregateIdentity identity,

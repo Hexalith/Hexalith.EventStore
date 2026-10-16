@@ -8,4 +8,21 @@ namespace Hexalith.EventStore.Server.Actors;
 [DataContract]
 public sealed record ProjectionRebuildCandidate(
     [property: DataMember] string OperationId,
-    [property: DataMember] ProjectionState State);
+    [property: DataMember] ProjectionState State)
+{
+    /// <summary>Gets the optional immutable live-fallback publication binding.</summary>
+    [DataMember]
+    public ProjectionReplayPublicationBinding? PublicationBinding { get; init; }
+
+    /// <summary>Gets the retained prior completed publication floor during an ordinary rebuild.</summary>
+    [DataMember]
+    public ProjectionReplayPublicationBinding? PublicationFloor { get; init; }
+
+    /// <summary>Gets the selected source ordering supplied by the owning replay orchestrator.</summary>
+    [DataMember]
+    public ProjectionReplaySelectionFence? SelectedReplayFence { get; init; }
+
+    /// <summary>Gets the prior selected ordering retained while this candidate remains non-live.</summary>
+    [DataMember]
+    public ProjectionReplaySelectionFence? PriorReplayFence { get; init; }
+}

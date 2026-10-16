@@ -1,6 +1,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 
 using Microsoft.Extensions.Options;
 
@@ -14,7 +15,82 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 /// follows read-back proof rather than a void response; the live-sidecar lane is authoritative for
 /// persisted DAPR/Redis end state.
 /// </summary>
-public class DaprReadModelBatchTests {
+public partial class DaprReadModelBatchTests {
+    [Theory]
+    [InlineData(ReadModelBatchStoreProfile.Resumable)]
+    [InlineData(ReadModelBatchStoreProfile.TransactionQualified)]
+    public async Task AppliedReceipt_ReadsOriginalCompletedBatchAfterSelectedOwnerAdvancesWithoutWrites(ReadModelBatchStoreProfile profile)
+    {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client, profile);
+        ReadModelBatchScope scope = Scope();
+        var original = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId,
+            scope.ProjectionType, "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
+        var first = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new
+        { Count = 2, ProjectionVersion = original.FreshnessVersion, ProjectionOwner = original }, ReadModelBatchConcurrency.LastWrite)]) { OwnerSelection = original };
+        (await store.ExecuteAsync(first)).IsSuccess.ShouldBeTrue();
+        var nextScope = scope with { BatchId = "next-message" };
+        var advanced = original with { AppliedSequence = 3, MessageId = nextScope.BatchId, BatchId = nextScope.BatchId, FreshnessVersion = "version-3" };
+        var next = new ReadModelBatch(nextScope, [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new
+        { Count = 3, ProjectionVersion = advanced.FreshnessVersion, ProjectionOwner = advanced }, ReadModelBatchConcurrency.LastWrite)]) { OwnerSelection = advanced };
+        (await store.ExecuteAsync(next)).IsSuccess.ShouldBeTrue();
+        int writes = client.TrySaveByteOperations.Count;
+        var request = new ProjectionAppliedReceiptRequest(new(scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType, "catalog"),
+            2, scope.BatchId, original.OwnerIdentity, original.OwnerGeneration);
+        ProjectionOwnerProofResult proof = await store.ReadAppliedReceiptAsync(request, new(Store, "detail"));
+        proof.Proof.ShouldNotBeNull().Selection.ShouldBe(original);
+        proof.MetadataKeyReads.ShouldBe(1);
+        proof.ReadBodyBytes.ShouldBeGreaterThan(0);
+        client.TrySaveByteOperations.Count.ShouldBe(writes);
+        (await store.ReadAppliedReceiptAsync(request with { OwnerGeneration = "different-generation" }, new(Store, "detail"))).Proof.ShouldBeNull();
+        (await store.ReadAppliedReceiptAsync(request with { MessageId = "missing-original-receipt" }, new(Store, "detail"))).Proof.ShouldBeNull();
+        client.TrySaveByteOperations.Count.ShouldBe(writes);
+    }
+
+    [Theory]
+    [InlineData(ReadModelBatchStoreProfile.Resumable)]
+    [InlineData(ReadModelBatchStoreProfile.TransactionQualified)]
+    public async Task OwnerProof_ReadsExistingSelectedModelAndTerminalReceiptWithoutMutations(ReadModelBatchStoreProfile profile)
+    {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client, profile);
+        ReadModelBatchScope scope = Scope();
+        var selection = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId,
+            scope.ProjectionType, "owner-1", "generation-1", 2, "event-2", scope.BatchId, "version-2");
+        var batch = new ReadModelBatch(scope,
+        [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new
+        {
+            Count = 2, ProjectionVersion = "version-2", ProjectionOwner = selection,
+        }, ReadModelBatchConcurrency.LastWrite)]) { OwnerSelection = selection };
+        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
+        int saves = client.TrySaveByteOperations.Count;
+        ProjectionOwnerProofResult result = await store.ReadOwnerProofAsync(new(scope.TenantId, scope.Domain,
+            scope.AggregateId, scope.ProjectionType, "catalog-1"), new(Store, "detail"));
+
+        result.ReasonCode.ShouldBeNull();
+        result.Proof.ShouldNotBeNull().Selection.ShouldBe(selection);
+        result.MetadataKeyReads.ShouldBe(2);
+        result.ReadBodyBytes.ShouldBeGreaterThan(0);
+        client.TrySaveByteOperations.Count.ShouldBe(saves);
+        result.Proof.ReceiptIdentity.ShouldBe(scope.ComputeScopeHash());
+    }
+
+    [Fact]
+    public async Task OwnerProof_RefusesLegacyModelWithoutMintingOrRepairingEvidence()
+    {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        var batch = new ReadModelBatch(Scope(), [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail",
+            new { Count = 1, ProjectionVersion = "version-1" }, ReadModelBatchConcurrency.LastWrite)]);
+        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
+        int writes = client.TrySaveByteOperations.Count;
+        ProjectionOwnerProofResult result = await store.ReadOwnerProofAsync(new("tenant-1", "counter", "agg-1", "counterView", "catalog"), new(Store, "detail"));
+        result.Proof.ShouldBeNull();
+        result.ReasonCode.ShouldBe("delivery_reconciliation_required");
+        result.MetadataKeyReads.ShouldBe(1);
+        client.TrySaveByteOperations.Count.ShouldBe(writes);
+    }
+
     private const string Store = "statestore";
 
     public sealed record Detail(int Version);

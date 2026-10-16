@@ -30,7 +30,7 @@ Cross-repo Hexalith library dependencies use package mode by default in every co
 
 - Use `-p:UseHexalithProjectReferences=true` only for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
 - Package publication must use `-p:UseHexalithProjectReferences=false`.
-- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper.
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` imports that catalog and carries only the [approved five-package `10.0.13` servicing exception](../reference/nuget-packages.md#source-vs-package-dependencies).
 
 Rerun `dotnet restore` when switching between these modes. Build assets restored in source mode can keep stale
 project-reference edges if reused with `--no-restore` in package mode.

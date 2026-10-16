@@ -15,6 +15,42 @@ namespace Hexalith.EventStore.DomainService.Tests;
 
 public sealed class DomainProjectionHandlerCompatibilityTests {
     [Fact]
+    public async Task SharedSelectedProof_GenericBatchMetadataCannotSubstituteForCompleteSharedOwnerEvidence()
+    {
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "shared-epoch-v1", "projection-owner-proof/v1",
+            "source-sequence-position/v1", "shared-applied/v1");
+        var registry = new DomainProjectionCatalogRegistry();
+        registry.Register("catalog", [new ProjectionDispatchRoute("widget", "shared") { SourceGuard = capability }]);
+        IReadModelOwnerProofStore generic = Substitute.For<IReadModelOwnerProofStore>();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(generic);
+        _ = services.AddSingleton(new DomainProjectionOwnerProofRegistration("widget", "shared", capability, new("store", "model")));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ProjectionOwnerProofResult result = await DomainProjectionOwnerProof.ReadAsync(provider,
+            new("tenant-a", "widget", "owner", "shared", "catalog"), registry, CancellationToken.None);
+        result.Proof.ShouldBeNull();
+        result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        _ = generic.DidNotReceive().ReadOwnerProofAsync(Arg.Any<ProjectionOwnerProofRequest>(),
+            Arg.Any<ReadModelOwnerProofBinding>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void SourceGuardEnrollment_CoexistingLegacyOutputKeepsGuardDisabled()
+    {
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "single-event-v1", "projection-owner-proof/v1",
+            "event-message-id/v1", "read-model-batch/v1");
+        var registration = new DomainProjectionOwnerProofRegistration("widget", "widget-detail", capability, new("store", "detail"));
+        var response = new AdminOperationalIndexMetadata.Response([
+            new("widget", [], [], [], [], ["widget"], []) { NamedProjectionTypes = ["widget-detail"], OrdinaryProjectionTypes = ["widget-detail"] },
+        ]) { AppId = "sample", ServiceVersion = "v1", CatalogFingerprint = new string('a', 64) };
+        IDomainProjectionHandler legacy = Substitute.For<IDomainProjectionHandler>();
+        legacy.Domain.Returns("widget");
+        DomainProjectionOwnerProof.BindMetadata(response, [registration], [legacy]).ShouldBeSameAs(response);
+        DomainProjectionOwnerProof.BindMetadata(response, [registration], []).Domains[0]
+            .SourceGuardCapabilities.ShouldNotBeNull()["widget-detail"].ShouldBe(capability);
+    }
+
+    [Fact]
     public void AddEventStoreDomainService_RegistersNamedAsyncHandlersAsScoped() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 

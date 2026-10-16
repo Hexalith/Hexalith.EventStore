@@ -329,26 +329,28 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("pre-commit conflict"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(2).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
         ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
             .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
         durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
         // The additional save acknowledges advisory success; terminal persistence is not repeated.
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(5);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -363,28 +365,28 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultAfterCall("SaveState", 2, new InvalidOperationException("commit uncertain"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(1).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         _ = await context.EventPublisher.Received(1).PublishEventsAsync(
             command.AggregateIdentity,
-            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2),
             command.CorrelationId,
             Arg.Any<CancellationToken>(),
             false);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
-        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}3");
         durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
         int inspectionClear = stateManager.Trace.IndexOf("ClearCache");
         inspectionClear.ShouldBeGreaterThanOrEqualTo(0);
@@ -399,6 +401,8 @@ public class AggregateActorInfrastructureFailureTests
             .ShouldBe(1);
         // The additional save acknowledges advisory success; terminal persistence is not repeated.
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -411,7 +415,7 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultOnCall("SaveState", 2, new IOException("pre-commit-secret"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
@@ -430,6 +434,8 @@ public class AggregateActorInfrastructureFailureTests
             default!, default!, default!);
         AssertSuccessfulRejectionEndState(stateManager, command);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 0).ShouldBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBeNull();
     }
 
     [Fact]
@@ -442,30 +448,32 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultAfterCall("SaveState", 2, new IOException("commit-uncertain-secret"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(1).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         _ = await context.EventPublisher.Received(1).PublishEventsAsync(
             command.AggregateIdentity,
-            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2),
             command.CorrelationId,
             Arg.Any<CancellationToken>(),
             false);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
-        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}3");
         // The additional save acknowledges advisory success; terminal persistence is not repeated.
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -2888,6 +2896,37 @@ public class AggregateActorInfrastructureFailureTests
         durable[PendingCountKey].ShouldBe(0);
         stateManager.CommittedSnapshots.ShouldAllBe(snapshot =>
             !snapshot.ContainsKey(command.AggregateIdentity.MetadataKey));
+    }
+
+    private static SourceProof? AssertCommittedSourceChains(FaultInjectingActorStateManager stateManager,
+        AggregateIdentity identity, long expectedHead)
+    {
+        SourceProof? final = null;
+        string? incarnation = null;
+        foreach (IReadOnlyDictionary<string, object> snapshot in stateManager.CommittedSnapshots.Append(stateManager.CreateCommittedView()))
+        {
+            EventEnvelope[] events = [.. snapshot.Where(pair => pair.Key.StartsWith(identity.EventStreamKeyPrefix, StringComparison.Ordinal))
+                .Select(static pair => pair.Value.ShouldBeOfType<EventEnvelope>()).OrderBy(static item => item.SequenceNumber)];
+            if (!snapshot.TryGetValue(identity.MetadataKey, out object? value))
+            {
+                events.ShouldBeEmpty();
+                continue;
+            }
+            AggregateMetadata metadata = value.ShouldBeOfType<AggregateMetadata>();
+            metadata.CurrentSequence.ShouldBe(expectedHead);
+            events.LongLength.ShouldBe(expectedHead);
+            SourceProof proof = metadata.SourceProof.ShouldNotBeNull();
+            incarnation ??= proof.SourceIncarnation;
+            proof.SourceIncarnation.ShouldBe(incarnation);
+            SourceProof rebuilt = SourceProofCodec.CreateSeed(identity, incarnation);
+            foreach (EventEnvelope envelope in events) rebuilt = SourceProofCodec.Extend(rebuilt, envelope);
+            proof.ShouldBe(rebuilt);
+            proof.HeadSequence.ShouldBe(expectedHead);
+            final = proof;
+        }
+        if (expectedHead == 0) final.ShouldBeNull();
+        else final.ShouldNotBeNull();
+        return final;
     }
 
     private static void AssertNoTerminalResidue(

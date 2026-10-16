@@ -1,0 +1,84 @@
+    Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(metadataVersion: 2, type: "evt", version: 1) [FAIL]
+      Shouldly.ShouldAssertException : Task `action`
+          should throw
+      Hexalith.EventStore.DomainService.ProjectionDispatchValidationException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs(118,0): at Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(Int32 metadataVersion, String type, Nullable`1 version)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+
+    Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(metadataVersion: 1, type: "evt", version: 1) [FAIL]
+      Shouldly.ShouldAssertException : Task `action`
+          should throw
+      Hexalith.EventStore.DomainService.ProjectionDispatchValidationException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs(118,0): at Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(Int32 metadataVersion, String type, Nullable`1 version)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+
+    Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(metadataVersion: 1, type: null, version: 0) [FAIL]
+      Shouldly.ShouldAssertException : Task `action`
+          should throw
+      Hexalith.EventStore.DomainService.ProjectionDispatchValidationException
+          but threw
+      System.InvalidOperationException
+      Stack Trace:
+           at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
+           at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+        tests/Hexalith.EventStore.DomainService.Tests/EventEvolutionLegacyIntakeTests.cs(118,0): at Hexalith.EventStore.DomainService.Tests.EventEvolutionLegacyIntakeTests.EveryProjectionIntakeRefusesVersionedMetadataBeforeHandlerOrStoreResolution(Int32 metadataVersion, String type, Nullable`1 version)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+
+  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '77b650111d4de2b76e49edcd8caa99af54555db3d9490c233d3cb5a895692a92')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.DomainService.Tests  Total: 899, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 105.148s

@@ -9,7 +9,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class ProjectionRebuildProductionPathTests {
+public sealed partial class ProjectionRebuildProductionPathTests {
     [Fact]
     public async Task Rebuild_MoreThanTwoPages_PersistsOracleEquivalentActorDetailIndexVersionsAndCheckpoints() {
         using var harness = new ProjectionRebuildProductionHarness(eventCount: 7);

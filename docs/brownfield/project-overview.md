@@ -34,7 +34,7 @@ state.Apply(Event)                          // fold events back into state
 | Primary language | **C#** (`net10.0`, `LangVersion=latest`, Nullable + ImplicitUsings enabled) |
 | Solution projects | **51 projects** (19 `src/`, 5 `samples/`, 1 `perf/`, 26 `tests/`) plus 7 root-declared submodules |
 | Source files | ~900 C# files across `src/` alone |
-| Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` is import-only (`ManagePackageVersionsCentrally=true`) |
+| Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` imports the catalog and carries the [approved five-package `10.0.13` servicing exception](../reference/nuget-packages.md#source-vs-package-dependencies) (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
 | Submodules | `references/Hexalith.Tenants`, `references/Hexalith.Commons`, `references/Hexalith.AI.Tools`, `references/Hexalith.Builds`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations` (root-declared only) |
 

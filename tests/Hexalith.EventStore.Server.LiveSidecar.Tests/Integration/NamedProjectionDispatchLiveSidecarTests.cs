@@ -35,7 +35,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 /// <summary>Tier-3 persisted-state evidence for normal v2 detail/index delivery and partial retry.</summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFixture fixture) {
+public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFixture fixture) {
     private const int RetryLedgerShardCount = 64;
     private const string StoreName = "statestore";
 

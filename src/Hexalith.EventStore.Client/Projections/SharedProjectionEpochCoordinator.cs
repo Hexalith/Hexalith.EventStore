@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// ordinary writers journal through this coordinator before acknowledgement; readers use
 /// <see cref="ReadAsync{TValue}"/> rather than the underlying raw state keys.
 /// </summary>
-public sealed class SharedProjectionEpochCoordinator
+public sealed partial class SharedProjectionEpochCoordinator
 {
     private const int MaxJournalEntries = 128;
     private const int MaxDeliveryBytes = 32 * 1024 * 1024;
